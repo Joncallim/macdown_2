@@ -186,7 +186,7 @@ E06 depends only on E01 and can run parallel to E04/E05 if desired.
 
 | # | Question | Blocks |
 |---|---|---|
-| O1 | **Product name + bundle ID** (e.g. `com.you.product`) | E00 (project creation) |
+| O1 | Product name + bundle ID → **RESOLVED: MacDown 2 / `com.joncallim.macdown2`** (2026-07-19) | E00 (project creation) |
 | O2 | Where does the app live long-term: rename this fork, or fresh repo? | E17 (can defer) |
 | O3 | Import old MacDown prefs/themes on first run? (nice-to-have) | E13 |
 | O4 | Which legacy themes ship in v1? (Resources has ~15 CSS/themes) | E05/E07 |
