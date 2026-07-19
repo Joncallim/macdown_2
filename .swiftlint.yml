@@ -1,0 +1,11 @@
+excluded:
+  - MacDown2/MacDown2.xcodeproj
+  - MacDown2/Packages/MacDownKit/.build
+line_length:
+  warning: 120
+  error: 160
+opt_in_rules:
+  - empty_count
+  - force_unwrapping
+trailing_comma:
+  mandatory_comma: true

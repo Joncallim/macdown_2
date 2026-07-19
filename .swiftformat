@@ -1,0 +1,3 @@
+--swiftversion 6.0
+--maxwidth 120
+--exclude MacDown2/MacDown2.xcodeproj,MacDown2/Packages/MacDownKit/.build
