@@ -17,6 +17,19 @@ struct WorkspaceStateStoreTests {
         #expect(store.sidebarVisible == true)
     }
 
+    @Test func stateStoreDefaultsToVisibleForNonBooleanValue() {
+        let suiteName = UUID().uuidString
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            Issue.record("Could not create test UserDefaults suite")
+            return
+        }
+        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+        defaults.set("not a bool", forKey: "sidebarVisible")
+
+        let store = WorkspaceStateStore(defaults: defaults)
+        #expect(store.sidebarVisible == true)
+    }
+
     @Test func stateStorePersistsSidebarVisibility() {
         let suiteName = UUID().uuidString
         guard let defaults = UserDefaults(suiteName: suiteName) else {

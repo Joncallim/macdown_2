@@ -45,3 +45,54 @@ private func plaintextFallback() -> FileFormat {
         extensions: ["txt"]
     )
 }
+
+@Suite("PreviewSecurity")
+struct PreviewSecurityTests {
+    @Test func injectsCSPIntoExistingHead() {
+        let html = "<html><head><title>t</title></head><body>hi</body></html>"
+        let out = PreviewSecurity.hardenedHTMLDocument(from: html)
+        #expect(out.contains("Content-Security-Policy"))
+        #expect(out.contains("default-src 'none'"))
+        // The CSP must appear before the document's own <title>.
+        let csp = out.range(of: "Content-Security-Policy")
+        let title = out.range(of: "<title>")
+        #expect(csp != nil)
+        #expect(title != nil)
+        if let csp, let title {
+            #expect(csp.lowerBound < title.lowerBound)
+        }
+    }
+
+    @Test func addsHeadWhenOnlyHTMLTagPresent() {
+        let html = "<html><body>content</body></html>"
+        let out = PreviewSecurity.hardenedHTMLDocument(from: html)
+        #expect(out.contains("<html><head>"))
+        #expect(out.contains("Content-Security-Policy"))
+        #expect(out.contains("<body>content</body>"))
+    }
+
+    @Test func wrapsBareFragment() {
+        let html = "<p>hello</p>"
+        let out = PreviewSecurity.hardenedHTMLDocument(from: html)
+        #expect(out.hasPrefix("<!DOCTYPE html>"))
+        #expect(out.contains("Content-Security-Policy"))
+        #expect(out.contains("<p>hello</p>"))
+    }
+
+    @Test func doesNotMatchHeaderTag() {
+        // <header> must not be mistaken for <head>; a real <head> is added
+        // after <html> instead.
+        let html = "<html><body><header>menu</header></body></html>"
+        let out = PreviewSecurity.hardenedHTMLDocument(from: html)
+        #expect(out.contains("<html><head>"))
+        #expect(out.contains("<header>menu</header>"))
+        #expect(out.contains("Content-Security-Policy"))
+    }
+
+    @Test func matchesHeadWithAttributes() {
+        let html = "<html><head class=\"x\"><title>t</title></head><body>hi</body></html>"
+        let out = PreviewSecurity.hardenedHTMLDocument(from: html)
+        // Injected right after the opening <head ...> tag.
+        #expect(out.contains("<head class=\"x\"><meta http-equiv=\"Content-Security-Policy\""))
+    }
+}

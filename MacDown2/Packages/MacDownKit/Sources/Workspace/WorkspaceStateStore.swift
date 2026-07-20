@@ -25,11 +25,13 @@ public struct WorkspaceStateStore: WorkspaceStateStoring {
 
     public var sidebarVisible: Bool {
         get {
-            // Default to visible on first launch.
-            if defaults.object(forKey: Keys.sidebarVisible) == nil {
-                return true
+            // Default to visible on first launch, and also if a non-boolean
+            // value somehow got stored (`bool(forKey:)` would silently coerce
+            // that to `false` and hide the sidebar).
+            if let value = defaults.object(forKey: Keys.sidebarVisible) as? Bool {
+                return value
             }
-            return defaults.bool(forKey: Keys.sidebarVisible)
+            return true
         }
         set {
             defaults.set(newValue, forKey: Keys.sidebarVisible)

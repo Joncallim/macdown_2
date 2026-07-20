@@ -15,6 +15,11 @@ public enum MarkdownEngine {
     /// This is intentionally lightweight: it only styles headings and code
     /// spans/blocks so the preview pane is useful out of the box. Returns `nil`
     /// only for malformed input that cannot be represented as a string.
+    ///
+    /// Isolated to `@MainActor` because it constructs AppKit types (`NSFont`,
+    /// `NSColor`, `NSAttributedString`) which are only safe to touch on the main
+    /// thread. Callers today are all on the main actor (SwiftUI `View.body`).
+    @MainActor
     public static func renderAttributed(_ markdown: String) -> NSAttributedString? {
         let result = NSMutableAttributedString()
         let lines = markdown.components(separatedBy: .newlines)

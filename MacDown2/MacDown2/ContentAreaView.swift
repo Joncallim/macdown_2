@@ -174,7 +174,9 @@ private struct HTMLPreviewView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context _: Context) {
-        webView.loadHTMLString(text, baseURL: nil)
+        // Inject a restrictive CSP so a previewed file cannot load remote
+        // resources (defence-in-depth on top of the disabled JavaScript above).
+        webView.loadHTMLString(PreviewSecurity.hardenedHTMLDocument(from: text), baseURL: nil)
     }
 }
 
