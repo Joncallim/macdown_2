@@ -47,9 +47,14 @@ public struct MarkdownPreviewBody: View {
     }
 
     public var body: some View {
-        let attributed = MarkdownEngine.renderAttributed(text) ?? NSAttributedString(string: text)
-        return Text(AttributedString(attributed))
+        Text(attributedContent)
             .font(.system(.body))
             .textSelection(.enabled)
+    }
+
+    private var attributedContent: AttributedString {
+        let nsAttributed = MarkdownEngine.renderAttributed(text)
+            ?? NSAttributedString(string: text)
+        return AttributedString(nsAttributed)
     }
 }
