@@ -50,7 +50,7 @@ struct ContentAreaView: View {
 
             Divider()
 
-            // Source / preview split (preview restored next to the source pane)
+            // Source / preview split
             DocumentEditorSplitView(document: document)
         }
     }
@@ -99,9 +99,21 @@ private struct DocumentEditorSplitView: View {
     let document: FileCore.FileDocument
 
     var body: some View {
-        HSplitView {
-            SourcePane(text: document.text, format: document.format)
-            previewPane
+        GeometryReader { geometry in
+            HStack(spacing: 0) {
+                // Source pane (left)
+                SourcePane(text: document.text, format: document.format)
+                    .frame(width: geometry.size.width / 2)
+
+                // Divider
+                Rectangle()
+                    .fill(.separator)
+                    .frame(width: 1)
+
+                // Preview pane (right)
+                previewPane
+                    .frame(width: geometry.size.width / 2 - 1)
+            }
         }
     }
 
@@ -132,7 +144,6 @@ private struct SourcePane: View {
                 .padding(16)
                 .textSelection(.enabled)
         }
-        .accessibilityIdentifier("source-pane")
     }
 }
 
@@ -148,7 +159,6 @@ private struct MarkdownPreviewView: View {
                 .padding(16)
         }
         .background(Color(.textBackgroundColor))
-        .accessibilityIdentifier("preview-pane")
     }
 }
 
