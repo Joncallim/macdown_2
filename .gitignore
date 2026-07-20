@@ -190,5 +190,6 @@ MacDown/Resources/Prism/*
 # ---- MacDown 2 (rewrite) ----
 MacDown2/MacDown2.xcodeproj/
 MacDown2/MacDown2/Info.plist
-MacDown2/Packages/MacDownKit/.build/
-.build/
+# Keep this scoped to MacDown2; a root-level `/.build/` would ignore any
+# `.build/` directory anywhere in the repo and could suppress unexpected assets.
+MacDown2/**/.build/

@@ -1,3 +1,6 @@
 --swiftversion 6.0
 --maxwidth 120
+--commas always
+# --commas always keeps SwiftFormat aligned with .swiftlint.yml's
+# `trailing_comma: mandatory_comma: true` rule.
 --exclude MacDown2/MacDown2.xcodeproj,MacDown2/Packages/MacDownKit/.build

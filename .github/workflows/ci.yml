@@ -14,7 +14,10 @@ concurrency:
 
 jobs:
   lint:
-    runs-on: macos-26
+    # macos-15 arm64 images carry Xcode 26, so this is the documented fallback
+    # until the macos-26 runner label is confirmed available everywhere.
+    # See planning/epic-00-implementation.md Step 6.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
@@ -25,9 +28,14 @@ jobs:
         run: swiftlint lint --strict MacDown2
 
   build-and-test:
-    runs-on: macos-26
+    # macos-15 arm64 images carry Xcode 26, so this is the documented fallback
+    # until the macos-26 runner label is confirmed available everywhere.
+    # See planning/epic-00-implementation.md Step 6.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      # Select Xcode 26 FIRST so every subsequent step (swift build/test,
+      # xcodegen, xcodebuild) uses the same Swift 6.2+ toolchain.
       - name: Select Xcode 26
         run: |
           XCODE=$(ls -d /Applications/Xcode*.app | grep "26" | head -1 || true)
