@@ -169,11 +169,11 @@ struct WorkspaceModelFileTests {
         try? FileStore().write("content", to: url)
 
         var attributes = try? FileManager.default.attributesOfItem(atPath: directory.path)
-        attributes?[.posixPermissions] = 0o555
+        attributes?[FileAttributeKey.posixPermissions] = 0o555
         try? FileManager.default.setAttributes(attributes ?? [:], ofItemAtPath: directory.path)
         defer {
             var reset = try? FileManager.default.attributesOfItem(atPath: directory.path)
-            reset?[.posixPermissions] = 0o755
+            reset?[FileAttributeKey.posixPermissions] = 0o755
             try? FileManager.default.setAttributes(reset ?? [:], ofItemAtPath: directory.path)
         }
 

@@ -189,9 +189,10 @@ public final class WorkspaceModel {
     /// Resolves a dirty-close prompt.
     public func resolveClose(_ resolution: CloseResolution) async {
         pendingClose = false
+        let action = pendingAction
+        pendingAction = nil
         await applyCloseResolution(resolution)
-        if resolution != .cancel, let action = pendingAction {
-            pendingAction = nil
+        if resolution != .cancel, let action {
             await action()
         }
     }
