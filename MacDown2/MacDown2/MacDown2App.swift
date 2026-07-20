@@ -4,7 +4,11 @@ import SwiftUI
 struct MacDown2App: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            WorkspaceShellView()
+        }
+        .defaultSize(width: 1200, height: 800)
+        .commands {
+            WorkspaceCommands()
         }
     }
 }

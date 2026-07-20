@@ -1,4 +1,7 @@
-/// Workspace — module stub. See planning/epics/ and planning/MIGRATION_PLAN.md \u00a7 4 for its role.
-public enum Workspace {
+/// Workspace — workspace shell model, command routing, and window state persistence.
+///
+/// See `planning/epics/EPIC-02-workspace-shell.md` and
+/// `planning/epic-02-implementation.md` for the full scope.
+public enum WorkspaceModule {
     public static let moduleName = "Workspace"
 }
