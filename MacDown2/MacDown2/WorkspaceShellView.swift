@@ -6,12 +6,24 @@ struct WorkspaceShellView: View {
     @State private var model = WorkspaceModel(panel: NSFilePanelProvider())
 
     var body: some View {
+        // 2-column only; 3-column inspector was dropped because macOS
+        // columnVisibility in 3-col mode cannot hide just the sidebar.
         NavigationSplitView(columnVisibility: sidebarVisibilityBinding) {
             SidebarView(model: model)
         } detail: {
             ContentAreaView(document: model.activeDocument)
         }
         .navigationSplitViewStyle(.balanced)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    model.sidebarVisible.toggle()
+                } label: {
+                    Label("Toggle Sidebar", systemImage: "sidebar.left")
+                }
+                .help("Toggle Sidebar")
+            }
+        }
         .focusedSceneValue(\.workspaceModel, model)
         .alert("Unsaved Changes", isPresented: $model.pendingClose) {
             Button("Save", role: .none) {

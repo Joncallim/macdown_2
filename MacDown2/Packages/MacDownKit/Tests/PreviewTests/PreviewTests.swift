@@ -2,5 +2,5 @@
 import Testing
 
 @Test func moduleLoads() {
-    #expect(Preview.moduleName == "Preview")
+    #expect(PreviewModule.moduleName == "Preview")
 }

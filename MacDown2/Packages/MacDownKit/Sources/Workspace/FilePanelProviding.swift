@@ -16,6 +16,11 @@ public protocol FilePanelProviding: Sendable {
 // MARK: - Test fakes
 
 /// A scripted file panel provider for tests.
+///
+/// `FakeFilePanelProvider` uses `@unchecked Sendable` because it stores mutable
+/// scripted URL state that is only ever mutated from the `@MainActor` test
+/// harness. This keeps the test fake lightweight while satisfying the
+/// `FilePanelProviding: Sendable` protocol requirement.
 public final class FakeFilePanelProvider: FilePanelProviding, @unchecked Sendable {
     public var nextFileURL: URL?
     public var nextFolderURL: URL?
