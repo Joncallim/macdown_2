@@ -7,14 +7,6 @@ import Testing
     #expect(WorkspaceModule.moduleName == "Workspace")
 }
 
-// MARK: - Fakes
-
-@MainActor
-final class FakeStateStore: WorkspaceStateStoring {
-    var sidebarVisible: Bool = true
-    var sidebarSectionExpanded: [String: Bool] = [:]
-}
-
 // MARK: - Test suite
 
 @MainActor
@@ -22,9 +14,9 @@ final class FakeStateStore: WorkspaceStateStoring {
 struct WorkspaceModelTests {
     // MARK: - Command enablement
 
-    @Test func newDocumentCreatesUntitledDocument() {
+    @Test func newDocumentCreatesUntitledDocument() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        model.newDocument()
+        await model.newDocument()
 
         #expect(model.hasActiveDocument)
         #expect(model.canClose)
@@ -32,17 +24,17 @@ struct WorkspaceModelTests {
         #expect(model.activeDocument?.fileURL == nil)
     }
 
-    @Test func editingUntitledEnablesSave() {
+    @Test func editingUntitledEnablesSave() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        model.newDocument()
+        await model.newDocument()
         model.activeDocument = model.activeDocument?.updatingText("hello")
 
         #expect(model.canSave == true)
     }
 
-    @Test func cleanSavedDocumentCannotSave() {
+    @Test func cleanSavedDocumentCannotSave() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        model.newDocument()
+        await model.newDocument()
         #expect(model.canSave == false)
     }
 
@@ -53,133 +45,45 @@ struct WorkspaceModelTests {
         #expect(model.canClose == false)
     }
 
-    // MARK: - Open file
+    // MARK: - New document
 
-    @Test func openFileLoadsDocument() async {
-        let directory = temporaryDirectory()
-        defer { cleanup(directory) }
-        let url = directory.appendingPathComponent("doc.md")
-        try? FileStore().write("# Hello", to: url)
+    @Test func newDocumentPromptsWhenDirty() async {
+        let model = WorkspaceModel(stateStore: FakeStateStore())
+        await model.newDocument()
+        model.activeDocument = model.activeDocument?.updatingText("dirty")
 
-        let panel = FakeFilePanelProvider()
-        panel.nextFileURL = url
-
-        let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.openFile()
-
-        #expect(model.activeDocument?.text == "# Hello")
-        #expect(model.activeDocument?.format.id == "markdown")
-        #expect(model.activeDocument?.state == .clean)
-    }
-
-    @Test func openFileCancelledLeavesWorkspaceEmpty() async {
-        let panel = FakeFilePanelProvider()
-        let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.openFile()
-        #expect(model.activeDocument == nil)
-    }
-
-    @Test func openFileWhileDirtyPromptsClose() async {
-        let directory = temporaryDirectory()
-        defer { cleanup(directory) }
-        let firstURL = directory.appendingPathComponent("first.md")
-        let secondURL = directory.appendingPathComponent("second.md")
-        try? FileStore().write("first", to: firstURL)
-        try? FileStore().write("second", to: secondURL)
-
-        let panel = FakeFilePanelProvider()
-        panel.nextFileURL = firstURL
-
-        let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.openFile()
-        model.activeDocument = model.activeDocument?.updatingText("edited")
-
-        panel.nextFileURL = secondURL
-        await model.openFile()
+        await model.newDocument()
 
         #expect(model.pendingClose == true)
-        #expect(model.activeDocument?.text == "edited")
+        #expect(model.activeDocument?.text == "dirty")
     }
 
-    // MARK: - Save / Save As
-
-    @Test func saveExistingFileWritesToDisk() async throws {
-        let directory = temporaryDirectory()
-        defer { cleanup(directory) }
-        let url = directory.appendingPathComponent("doc.md")
-        try? FileStore().write("old", to: url)
-
-        let panel = FakeFilePanelProvider()
-        panel.nextFileURL = url
-
-        let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.openFile()
-        model.activeDocument = model.activeDocument?.updatingText("new")
-
-        await model.save()
-
-        #expect(model.activeDocument?.state == .clean)
-        let (text, _) = try FileStore().read(from: url)
-        #expect(text == "new")
-    }
-
-    @Test func saveUntitledUsesSavePanel() async throws {
-        let directory = temporaryDirectory()
-        defer { cleanup(directory) }
-        let url = directory.appendingPathComponent("saved.md")
-
-        let panel = FakeFilePanelProvider()
-        panel.nextSaveURL = url
-
-        let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("content")
-
-        await model.save()
-
-        #expect(model.activeDocument?.fileURL == url)
-        #expect(model.activeDocument?.state == .clean)
-        let (text, _) = try FileStore().read(from: url)
-        #expect(text == "content")
-    }
-
-    @Test func saveCancelledKeepsDocumentOpenAndDirty() async {
-        let panel = FakeFilePanelProvider()
-        let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("content")
-
-        await model.save()
-
-        #expect(model.activeDocument?.fileURL == nil)
-        #expect(model.activeDocument?.state == .dirty)
-    }
-
-    @Test func saveWithoutDocumentSetsError() async {
+    @Test func newDocumentContinuesAfterDirtyClose() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.save()
+        await model.newDocument()
+        model.activeDocument = model.activeDocument?.updatingText("dirty")
 
-        if case .noActiveDocument = model.lastError {
-            // pass
-        } else {
-            Issue.record("Expected .noActiveDocument, got \(String(describing: model.lastError))")
-        }
+        await model.newDocument()
+        await model.resolveClose(.discard)
+
+        #expect(model.pendingClose == false)
+        #expect(model.activeDocument?.text == "")
     }
 
     // MARK: - Close document
 
-    @Test func closeCleanDocumentRemovesIt() {
+    @Test func closeCleanDocumentRemovesIt() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        model.newDocument()
+        await model.newDocument()
         model.requestCloseDocument()
 
         #expect(model.activeDocument == nil)
         #expect(model.pendingClose == false)
     }
 
-    @Test func closeDirtyDocumentPrompts() {
+    @Test func closeDirtyDocumentPrompts() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        model.newDocument()
+        await model.newDocument()
         model.activeDocument = model.activeDocument?.updatingText("dirty")
         model.requestCloseDocument()
 
@@ -189,7 +93,7 @@ struct WorkspaceModelTests {
 
     @Test func closePromptCancelKeepsDocumentDirty() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        model.newDocument()
+        await model.newDocument()
         model.activeDocument = model.activeDocument?.updatingText("dirty")
         model.requestCloseDocument()
 
@@ -201,7 +105,7 @@ struct WorkspaceModelTests {
 
     @Test func closePromptDiscardRemovesDocument() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        model.newDocument()
+        await model.newDocument()
         model.activeDocument = model.activeDocument?.updatingText("dirty")
         model.requestCloseDocument()
 
@@ -220,7 +124,7 @@ struct WorkspaceModelTests {
         panel.nextSaveURL = url
 
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        model.newDocument()
+        await model.newDocument()
         model.activeDocument = model.activeDocument?.updatingText("dirty")
         model.requestCloseDocument()
 
@@ -235,7 +139,7 @@ struct WorkspaceModelTests {
     @Test func closePromptSaveCancelledKeepsDocument() async {
         let panel = FakeFilePanelProvider()
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        model.newDocument()
+        await model.newDocument()
         model.activeDocument = model.activeDocument?.updatingText("dirty")
         model.requestCloseDocument()
 
@@ -291,18 +195,5 @@ struct WorkspaceModelTests {
         let model = WorkspaceModel(stateStore: store)
         model.setSectionExpanded(.folder, false)
         #expect(store.sidebarSectionExpanded["folder"] == false)
-    }
-
-    // MARK: - Helpers
-
-    private func temporaryDirectory() -> URL {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
-    }
-
-    private func cleanup(_ url: URL) {
-        try? FileManager.default.removeItem(at: url)
     }
 }

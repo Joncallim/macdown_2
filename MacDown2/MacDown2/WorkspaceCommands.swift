@@ -18,7 +18,7 @@ struct WorkspaceCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New File") {
-                model?.newDocument()
+                Task { await model?.newDocument() }
             }
             .keyboardShortcut("n", modifiers: .command)
 
