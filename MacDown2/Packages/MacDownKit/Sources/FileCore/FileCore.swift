@@ -1,4 +1,6 @@
-/// FileCore — module stub. See planning/epics/ and planning/MIGRATION_PLAN.md \u00a7 4 for its role.
+/// FileCore — file format registry, FileStore IO, and FileDocument lifecycle.
+///
+/// See `planning/epics/EPIC-01-file-format-core.md` for the full scope.
 public enum FileCore {
     public static let moduleName = "FileCore"
 }
