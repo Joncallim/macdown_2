@@ -51,6 +51,84 @@ targets:
         NSHumanReadableCopyright: "Copyright © 2026 Joncallim"
         NSPrincipalClass: NSApplication
         LSApplicationCategoryType: public.app-category.productivity
+        # Keep these in sync with FileFormatRegistry.defaultFormats in
+        # MacDownKit/Sources/FileCore/FileFormat.swift.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - net.daringfireball.markdown
+            CFBundleTypeExtensions:
+              - md
+              - markdown
+              - mdown
+              - mkd
+              - mkdn
+          - CFBundleTypeName: HTML Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Editor
+            LSItemContentTypes:
+              - public.html
+            CFBundleTypeExtensions:
+              - html
+              - htm
+          - CFBundleTypeName: JSON Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Editor
+            LSItemContentTypes:
+              - public.json
+            CFBundleTypeExtensions:
+              - json
+          - CFBundleTypeName: YAML Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Editor
+            LSItemContentTypes:
+              - public.yaml
+            CFBundleTypeExtensions:
+              - yaml
+              - yml
+          - CFBundleTypeName: Plain Text Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Editor
+            LSItemContentTypes:
+              - public.plain-text
+            CFBundleTypeExtensions:
+              - txt
+          - CFBundleTypeName: Source Code
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.source-code
+            CFBundleTypeExtensions:
+              - js
+              - jsx
+              - ts
+              - tsx
+              - py
+              - rb
+              - css
+              - swift
+              - c
+              - cpp
+              - cc
+              - cxx
+              - h
+              - hpp
+              - sh
+              - bash
+              - zsh
+              - sql
+              - xml
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.joncallim.macdown2.toml
+            UTTypeDescription: TOML Document
+            UTTypeConformsTo:
+              - public.text
+              - public.plain-text
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - toml
   macdown2:
     type: tool
     platform: macOS
