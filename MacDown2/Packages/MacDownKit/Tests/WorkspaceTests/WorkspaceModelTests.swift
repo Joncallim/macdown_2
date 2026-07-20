@@ -3,6 +3,10 @@ import Foundation
 import Testing
 @testable import Workspace
 
+@Test func moduleLoads() {
+    #expect(WorkspaceModule.moduleName == "Workspace")
+}
+
 // MARK: - Fakes
 
 @MainActor

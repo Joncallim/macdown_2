@@ -1,5 +1,8 @@
 import FileCore
+import MarkdownEngine
+import Preview
 import SwiftUI
+import WebKit
 
 struct ContentAreaView: View {
     let document: FileCore.FileDocument?
@@ -47,14 +50,8 @@ struct ContentAreaView: View {
 
             Divider()
 
-            // Read-only text preview (editing arrives in EPIC-04)
-            ScrollView {
-                Text(document.text.isEmpty ? " " : document.text)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .textSelection(.enabled)
-            }
+            // Source / preview split (preview restored next to the source pane)
+            DocumentEditorSplitView(document: document)
         }
     }
 
@@ -95,6 +92,100 @@ struct ContentAreaView: View {
         }
     }
 }
+
+// MARK: - Source / preview split
+
+private struct DocumentEditorSplitView: View {
+    let document: FileCore.FileDocument
+
+    var body: some View {
+        HSplitView {
+            SourcePane(text: document.text, format: document.format)
+            previewPane
+        }
+    }
+
+    @ViewBuilder
+    private var previewPane: some View {
+        switch PreviewRouter.previewKind(for: document.format) {
+        case .markdown:
+            MarkdownPreviewView(text: document.text)
+        case .html:
+            HTMLPreviewView(text: document.text)
+        case .none:
+            NoPreviewView(formatName: document.format.name)
+        }
+    }
+}
+
+// MARK: - Source pane
+
+private struct SourcePane: View {
+    let text: String
+    let format: FileFormat
+
+    var body: some View {
+        ScrollView {
+            Text(text.isEmpty ? " " : text)
+                .font(.system(.body, design: .monospaced))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .textSelection(.enabled)
+        }
+        .accessibilityIdentifier("source-pane")
+    }
+}
+
+// MARK: - Markdown preview
+
+private struct MarkdownPreviewView: View {
+    let text: String
+
+    var body: some View {
+        ScrollView {
+            MarkdownPreviewBody(text: text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+        }
+        .background(Color(.textBackgroundColor))
+        .accessibilityIdentifier("preview-pane")
+    }
+}
+
+// MARK: - HTML preview
+
+private struct HTMLPreviewView: NSViewRepresentable {
+    let text: String
+
+    func makeNSView(context _: Context) -> WKWebView {
+        let webView = WKWebView()
+        webView.setValue(false, forKey: "drawsBackground")
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context _: Context) {
+        webView.loadHTMLString(text, baseURL: nil)
+    }
+}
+
+// MARK: - No preview
+
+private struct NoPreviewView: View {
+    let formatName: String
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "eye.slash")
+                .font(.system(size: 32, weight: .light))
+                .foregroundStyle(.secondary)
+            Text("No preview for \(formatName)")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Helpers
 
 private struct ShortcutHint: View {
     let shortcut: String
