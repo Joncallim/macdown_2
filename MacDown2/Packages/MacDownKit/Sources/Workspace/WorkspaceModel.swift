@@ -62,6 +62,10 @@ public final class WorkspaceModel {
 
     private var stateStore: WorkspaceStateStoring
     private let panel: any FilePanelProviding
+    /// Action to run after a dirty-close prompt resolves with Save/Discard.
+    /// Used so intents like `openFile()` and `newDocument()` can continue once
+    /// the dirty document is closed.
+    private var pendingAction: (@MainActor () async -> Void)?
 
     public init(
         stateStore: WorkspaceStateStoring = WorkspaceStateStore(),
@@ -73,6 +77,7 @@ public final class WorkspaceModel {
         folderURL = nil
         lastError = nil
         pendingClose = false
+        pendingAction = nil
         sidebarVisible = stateStore.sidebarVisible
     }
 
@@ -89,14 +94,28 @@ public final class WorkspaceModel {
     // MARK: - Intents
 
     /// Creates a new untitled document.
-    public func newDocument() {
+    ///
+    /// If the current document has unsaved changes, the dirty-close prompt is
+    /// shown first and the new document is created after the user saves or
+    /// discards.
+    public func newDocument() async {
+        guard await canProceedDespiteDirtyDocument(continuation: { [weak self] in
+            await self?.newDocument()
+        }) else { return }
+
         activeDocument = FileDocument()
         lastError = nil
     }
 
     /// Opens an existing file chosen by the user.
+    ///
+    /// If the current document has unsaved changes, the dirty-close prompt is
+    /// shown first and the file panel is presented after the user saves or
+    /// discards.
     public func openFile() async {
-        guard await canProceedDespiteDirtyDocument() else { return }
+        guard await canProceedDespiteDirtyDocument(continuation: { [weak self] in
+            await self?.openFile()
+        }) else { return }
 
         guard let url = await panel.chooseFile() else { return }
         await loadDocument(from: url)
@@ -171,19 +190,31 @@ public final class WorkspaceModel {
     public func resolveClose(_ resolution: CloseResolution) async {
         pendingClose = false
         await applyCloseResolution(resolution)
+        if resolution != .cancel, let action = pendingAction {
+            pendingAction = nil
+            await action()
+        }
     }
 
     // MARK: - Internal helpers
 
     /// Returns `false` if the current dirty document blocks the action.
-    private func canProceedDespiteDirtyDocument() async -> Bool {
+    ///
+    /// For a clean document the close resolution is applied immediately and the
+    /// caller may proceed. For a dirty document the alert is presented and the
+    /// supplied `continuation` is run after the user saves or discards.
+    private func canProceedDespiteDirtyDocument(
+        continuation: @escaping @MainActor () async -> Void
+    ) async -> Bool {
         guard let document = activeDocument else { return true }
-        let (_, resolution) = document.requestClose()
+        let (updated, resolution) = document.requestClose()
         if let resolution {
             await applyCloseResolution(resolution)
             return activeDocument == nil
         } else {
+            activeDocument = updated
             pendingClose = true
+            pendingAction = continuation
             return false
         }
     }

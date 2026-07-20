@@ -168,9 +168,9 @@ private struct HTMLPreviewView: NSViewRepresentable {
     let text: String
 
     func makeNSView(context _: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.setValue(false, forKey: "drawsBackground")
-        return webView
+        let configuration = WKWebViewConfiguration()
+        configuration.preferences.javaScriptEnabled = false
+        return WKWebView(frame: .zero, configuration: configuration)
     }
 
     func updateNSView(_ webView: WKWebView, context _: Context) {
