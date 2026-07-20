@@ -215,6 +215,10 @@ public final class WorkspaceModel {
         } else {
             activeDocument = updated
             pendingClose = true
+            // Single-slot continuation. This is safe because the dirty-close
+            // alert is modal: no other intent (New/Open) can fire while it is
+            // shown, so `pendingAction` is never overwritten mid-prompt. It is
+            // always cleared in `resolveClose(_:)`, including on cancel.
             pendingAction = continuation
             return false
         }

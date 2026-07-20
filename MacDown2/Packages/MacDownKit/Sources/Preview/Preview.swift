@@ -52,6 +52,10 @@ public struct MarkdownPreviewBody: View {
             .textSelection(.enabled)
     }
 
+    // `@MainActor` so it can call `MarkdownEngine.renderAttributed`, which
+    // builds AppKit types and is main-actor isolated. `body` is already on the
+    // main actor, so reading this property from it is free.
+    @MainActor
     private var attributedContent: AttributedString {
         let nsAttributed = MarkdownEngine.renderAttributed(text)
             ?? NSAttributedString(string: text)
