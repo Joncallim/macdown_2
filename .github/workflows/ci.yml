@@ -2,10 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [rewrite/main]
+    branches: [master]
     paths: ['MacDown2/**', '.github/workflows/ci.yml']
   pull_request:
-    branches: [rewrite/main]
+    branches: [master]
     paths: ['MacDown2/**', '.github/workflows/ci.yml']
 
 concurrency:
