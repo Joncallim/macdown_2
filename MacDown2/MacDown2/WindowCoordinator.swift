@@ -106,9 +106,9 @@ final class WindowCoordinator {
         let targetIndex = (index == 8) ? tabGroup.windows.count - 1 : min(index, tabGroup.windows.count - 1)
         let targetWindow = tabGroup.windows[targetIndex]
         tabGroup.selectedWindow = targetWindow
+        // makeKeyAndOrderFront triggers windowDidBecomeKey, which updates keyModel
+        // and schedules the session save, so no explicit calls are needed here.
         targetWindow.makeKeyAndOrderFront(nil)
-        updateKeyModel()
-        scheduleSaveSession()
     }
 
     /// `true` if the key window's tab group has more than one tab.
@@ -166,8 +166,9 @@ final class WindowCoordinator {
         let activeID = controllers.first { $0.window?.isKeyWindow ?? false }?.model.tabStore.activeTabID
 
         // Per-window `TabStore` instances also write dirty text to the recovery
-        // buffer on a 300 ms debounce. We rewrite it here so the latest text is
-        // guaranteed to be persisted on app termination and structural changes.
+        // buffer on a 300 ms debounce. We rewrite the snapshot text here so dirty
+        // content captured at this point in time is persisted even if the per-window
+        // debounced saves have not fired yet (e.g., on immediate app termination).
         for entry in snapshot where entry.documentState == .dirty || entry.documentState == .conflict {
             try? await recoveryBuffer.save(content: entry.documentText, for: entry.documentID)
         }

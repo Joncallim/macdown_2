@@ -107,6 +107,7 @@ final class TabLifecycleUITests: XCTestCase {
         app.activate()
 
         // Verify all three tabs restored and b.md is selected again.
+        // Re-query the tabs after relaunch to avoid stale accessibility references.
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(tab(named: "a.md").waitForExistence(timeout: 5))
         XCTAssertTrue(tab(named: "b.md").exists)
