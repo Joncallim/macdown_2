@@ -19,7 +19,7 @@ final class WindowCoordinator {
     /// The model for the document currently shown in the key window.
     private(set) var keyModel: WorkspaceModel?
 
-    var controllers: [WindowController] = []
+    private(set) var controllers: [WindowController] = []
     private let sessionStore: WorkspaceSessionStoring
     private let panelProvider: NSFilePanelProvider
     private let recoveryBuffer: RecoveryBuffer

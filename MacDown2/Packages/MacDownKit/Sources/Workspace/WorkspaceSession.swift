@@ -59,8 +59,8 @@ public protocol WorkspaceSessionStoring: Sendable {
 
 /// JSON file-backed session store.
 ///
-/// Writes atomically (temp file + rename) and never throws: failures are
-/// swallowed because session restore is best-effort.
+/// Writes atomically and never throws: failures are swallowed because session
+/// restore is best-effort.
 @MainActor
 public struct WorkspaceSessionStore: WorkspaceSessionStoring {
     public static let defaultFileName = "session.json"
