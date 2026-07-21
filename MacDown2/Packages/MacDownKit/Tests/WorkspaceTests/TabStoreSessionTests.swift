@@ -13,7 +13,8 @@ struct TabStoreSessionTests {
         try? FileStore().write("file", to: fileURL)
 
         let sessionStore = WorkspaceSessionStore(fileURL: directory.appendingPathComponent("session.json"))
-        let store = TabStore(sessionStore: sessionStore)
+        let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let store = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
         store.newTab()
         store.updateActiveDocument { $0.updatingText("untitled") }
         let untitledID = store.tabs[0].id
@@ -27,7 +28,7 @@ struct TabStoreSessionTests {
 
         await store.saveSession()
 
-        let restored = TabStore(sessionStore: sessionStore)
+        let restored = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
         await restored.restoreSessionIfNeeded()
 
         #expect(restored.tabs.count == 2)
@@ -48,7 +49,8 @@ struct TabStoreSessionTests {
         defer { cleanup(directory) }
         let fileURL = directory.appendingPathComponent("gone.md")
         let sessionStore = WorkspaceSessionStore(fileURL: directory.appendingPathComponent("session.json"))
-        let store = TabStore(sessionStore: sessionStore)
+        let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let store = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
         store.newTab()
         let untitledID = store.tabs[0].id
         store.updateActiveDocument { $0.updatingText("untitled") }
@@ -61,7 +63,7 @@ struct TabStoreSessionTests {
         session.tabs.append(TabRecord(id: UUID(), fileURL: fileURL, isPinned: false))
         sessionStore.saveSession(session)
 
-        let restored = TabStore(sessionStore: sessionStore)
+        let restored = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
         await restored.restoreSessionIfNeeded()
 
         #expect(restored.tabs.count == 1)
@@ -102,24 +104,28 @@ struct TabStoreSessionTests {
         try? FileStore().write("disk", to: fileURL)
 
         let sessionStore = WorkspaceSessionStore(fileURL: directory.appendingPathComponent("session.json"))
-        let store = TabStore(sessionStore: sessionStore)
+        let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let store = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
         _ = await store.openFileInTab(fileURL)
         store.updateActiveDocument { $0.updatingText("dirty") }
 
         await store.saveSession()
 
-        let recovered = try? await RecoveryBuffer.shared.load(for: store.tabs[0].document.id)
+        let recovered = try? await recoveryBuffer.load(for: store.tabs[0].document.id)
         #expect(recovered == "dirty")
     }
 
     @Test func saveSessionAutosavesUntitledDirtyTab() async {
-        let store = TabStore(sessionStore: FakeSessionStore())
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recoveryBuffer)
         store.newTab()
         store.updateActiveDocument { $0.updatingText("untitled dirty") }
 
         await store.saveSession()
 
-        let recovered = try? await RecoveryBuffer.shared.load(for: store.tabs[0].document.id)
+        let recovered = try? await recoveryBuffer.load(for: store.tabs[0].document.id)
         #expect(recovered == "untitled dirty")
     }
 }

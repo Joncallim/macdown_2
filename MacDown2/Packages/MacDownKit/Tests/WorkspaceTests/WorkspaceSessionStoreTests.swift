@@ -37,6 +37,33 @@ struct WorkspaceSessionStoreTests {
         #expect(FileManager.default.fileExists(atPath: tmpURL.path) == false)
     }
 
+    /// Regression test: repeated saves to the same file must replace the prior
+    /// contents. A previous implementation used a manual temp+`moveItem`, which
+    /// fails once the destination exists and silently froze the file at its
+    /// first-written value (the UI test caught `activeTabID` never updating).
+    @Test func repeatedSaveOverwritesExistingFile() {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("session.json")
+
+        let store = WorkspaceSessionStore(fileURL: url)
+        let firstActiveID = UUID()
+        let secondActiveID = UUID()
+
+        store.saveSession(WorkspaceSession(
+            tabs: [TabRecord(id: firstActiveID, fileURL: URL(fileURLWithPath: "/tmp/a.md"))],
+            activeTabID: firstActiveID
+        ))
+        store.saveSession(WorkspaceSession(
+            tabs: [TabRecord(id: secondActiveID, fileURL: URL(fileURLWithPath: "/tmp/b.md"))],
+            activeTabID: secondActiveID
+        ))
+
+        let loaded = store.loadSession()
+        #expect(loaded?.activeTabID == secondActiveID)
+        #expect(loaded?.tabs.map(\.id) == [secondActiveID])
+    }
+
     @Test func missingFileReturnsNil() {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }

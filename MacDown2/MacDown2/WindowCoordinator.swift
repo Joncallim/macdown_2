@@ -9,26 +9,6 @@ extension EnvironmentValues {
     @Entry var windowCoordinator: WindowCoordinator?
 }
 
-// MARK: - In-memory stores for per-window models
-
-/// A no-op session store so per-window `TabStore` instances do not compete with
-/// the global coordinator when saving the session.
-@MainActor
-final class NoOpSessionStore: WorkspaceSessionStoring {
-    func loadSession() -> WorkspaceSession? {
-        nil
-    }
-
-    func saveSession(_: WorkspaceSession) {}
-}
-
-/// A no-op state store so sidebar state is independent per window.
-@MainActor
-final class NoOpStateStore: WorkspaceStateStoring {
-    var sidebarVisible: Bool = true
-    var sidebarSectionExpanded: [String: Bool] = [:]
-}
-
 // MARK: - Coordinator
 
 /// Owns the global document pool and the native `NSWindow` controllers that
@@ -39,18 +19,21 @@ final class WindowCoordinator {
     /// The model for the document currently shown in the key window.
     private(set) var keyModel: WorkspaceModel?
 
-    fileprivate var controllers: [WindowController] = []
+    var controllers: [WindowController] = []
     private let sessionStore: WorkspaceSessionStoring
     private let panelProvider: NSFilePanelProvider
+    private let recoveryBuffer: RecoveryBuffer
     private var hasRestoredSession = false
+    private var saveTask: Task<Void, Never>?
 
     init(
         sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
-        panelProvider: NSFilePanelProvider = NSFilePanelProvider()
+        panelProvider: NSFilePanelProvider = NSFilePanelProvider(),
+        recoveryBuffer: RecoveryBuffer = .shared
     ) {
         self.sessionStore = sessionStore
         self.panelProvider = panelProvider
-        subscribeToKeyWindowChanges()
+        self.recoveryBuffer = recoveryBuffer
     }
 
     // MARK: - Window lifecycle
@@ -58,26 +41,31 @@ final class WindowCoordinator {
     /// Creates a new untitled document window. When `addAsTab` is `true` and a
     /// key window exists, the new window is added as a tab of the key window.
     func newDocument(addAsTab: Bool = false) {
+        let keyWindow = NSApp.keyWindow
+
         let model = makeWindowModel()
         model.newDocument()
         let controller = WindowController(model: model, coordinator: self)
-        addController(controller, addingAsTab: addAsTab)
+        addController(controller, addingAsTab: addAsTab, keyWindow: keyWindow)
     }
 
     /// Opens a file in a new window, or activates the existing window if the
     /// same file is already open.
     func openDocument(at url: URL) async {
-        if let existing = controllerForDocument(url: url) {
-            existing.window?.makeKeyAndOrderFront(nil)
+        if let existing = controllerForDocument(url: url), let window = existing.window {
+            window.tabGroup?.selectedWindow = window
+            window.makeKeyAndOrderFront(nil)
             return
         }
+
+        let keyWindow = NSApp.keyWindow
 
         let model = makeWindowModel()
         _ = await model.tabStore.openFileInTab(url)
 
         guard !model.tabStore.tabs.isEmpty else { return }
         let controller = WindowController(model: model, coordinator: self)
-        addController(controller, addingAsTab: true)
+        addController(controller, addingAsTab: true, keyWindow: keyWindow)
     }
 
     /// Shows the open panel and opens the chosen file.
@@ -90,7 +78,15 @@ final class WindowCoordinator {
 
     /// Closes the tab/window that is currently key.
     func closeKeyWindow() {
-        NSApp.keyWindow?.performClose(nil)
+        guard let controller = controllers.first(where: { $0.window?.isKeyWindow ?? false }),
+              let window = controller.window else { return }
+        // Call windowShouldClose directly instead of NSWindow.performClose. Under
+        // native tabbing, performClose can trigger tab-group selection changes even
+        // when windowShouldClose returns false (dirty document), causing a sibling
+        // tab to erroneously become key after the sheet is dismissed.
+        if controller.windowShouldClose(window) {
+            controller.close()
+        }
     }
 
     /// Selects the next tab in the key window's native tab group.
@@ -108,7 +104,11 @@ final class WindowCoordinator {
     func selectTab(at index: Int) {
         guard let tabGroup = NSApp.keyWindow?.tabGroup, !tabGroup.windows.isEmpty else { return }
         let targetIndex = (index == 8) ? tabGroup.windows.count - 1 : min(index, tabGroup.windows.count - 1)
-        tabGroup.windows[targetIndex].makeKeyAndOrderFront(nil)
+        let targetWindow = tabGroup.windows[targetIndex]
+        tabGroup.selectedWindow = targetWindow
+        targetWindow.makeKeyAndOrderFront(nil)
+        updateKeyModel()
+        scheduleSaveSession()
     }
 
     /// `true` if the key window's tab group has more than one tab.
@@ -128,29 +128,51 @@ final class WindowCoordinator {
 
     // MARK: - Session
 
-    /// Saves the current set of open documents as the session.
-    func saveSession() async {
-        for controller in controllers {
-            guard let tab = controller.model.tabStore.tabs.first,
-                  tab.document.state == .dirty || tab.document.state == .conflict
-            else { continue }
-            try? await RecoveryBuffer.shared.save(content: tab.document.text, for: tab.document.id)
+    /// Schedules a session save, debounced so rapid changes coalesce into one
+    /// write. Call this after any structural or document change.
+    func scheduleSaveSession() {
+        saveTask?.cancel()
+        saveTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard let self, !Task.isCancelled else { return }
+            await saveSession()
         }
+    }
 
-        let records = controllers.compactMap { controller -> TabRecord? in
+    /// Saves the current set of open documents as the session. Dirty documents
+    /// are snapshotted before any `await` so the RecoveryBuffer and session JSON
+    /// stay consistent even if the main actor processes other work between
+    /// suspensions.
+    func saveSession() async {
+        let snapshot = controllers.compactMap { controller -> TabSnapshot? in
             guard let tab = controller.model.tabStore.tabs.first else { return nil }
-            return TabRecord(
-                id: tab.id,
-                fileURL: tab.document.fileURL,
-                untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
-                isPinned: tab.isPinned,
-                cursorPosition: nil,
-                scrollOffset: nil
+            return TabSnapshot(
+                record: TabRecord(
+                    id: tab.id,
+                    fileURL: tab.document.fileURL,
+                    untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
+                    isPinned: tab.isPinned,
+                    cursorPosition: nil,
+                    scrollOffset: nil
+                ),
+                documentID: tab.document.id,
+                documentText: tab.document.text,
+                documentState: tab.document.state
             )
         }
 
+        // Capture the active tab while the snapshot is still consistent.
+        // Reading this after the `await` loop would race against tab switches.
         let activeID = controllers.first { $0.window?.isKeyWindow ?? false }?.model.tabStore.activeTabID
-        sessionStore.saveSession(WorkspaceSession(tabs: records, activeTabID: activeID))
+
+        // Per-window `TabStore` instances also write dirty text to the recovery
+        // buffer on a 300 ms debounce. We rewrite it here so the latest text is
+        // guaranteed to be persisted on app termination and structural changes.
+        for entry in snapshot where entry.documentState == .dirty || entry.documentState == .conflict {
+            try? await recoveryBuffer.save(content: entry.documentText, for: entry.documentID)
+        }
+
+        sessionStore.saveSession(WorkspaceSession(tabs: snapshot.map(\.record), activeTabID: activeID))
     }
 
     /// Restores the saved session once, creating one window per document and
@@ -168,23 +190,23 @@ final class WindowCoordinator {
         }
 
         var firstController: WindowController?
+        var firstWindow: NSWindow?
+
         for tab in tempStore.tabs {
             let model = makeWindowModel()
-            model.tabStore.newTab()
-            model.tabStore.updateActiveDocument { _ in tab.document }
+            model.tabStore.newTab(id: tab.id, document: tab.document)
 
             let controller = WindowController(model: model, coordinator: self)
             controllers.append(controller)
 
             if firstController == nil {
                 firstController = controller
-            } else if let firstWindow = firstController?.window, let newWindow = controller.window {
+                firstWindow = controller.window
+                controller.showWindow(nil)
+            } else if let firstWindow, let newWindow = controller.window {
                 firstWindow.addTabbedWindow(newWindow, ordered: .above)
+                controller.showWindow(nil)
             }
-        }
-
-        for controller in controllers {
-            controller.showWindow(nil)
         }
 
         let activeController: WindowController? = {
@@ -193,10 +215,14 @@ final class WindowCoordinator {
             }
             return nil
         }()
-        if let activeController {
-            activeController.window?.makeKeyAndOrderFront(nil)
-        } else {
-            firstController?.window?.makeKeyAndOrderFront(nil)
+        let windowToActivate = (activeController ?? firstController)?.window
+        if let windowToActivate {
+            // Set the tab group's selection explicitly. Under native tabbing,
+            // makeKeyAndOrderFront alone is not enough: the last-shown window
+            // remains the tab group's selectedWindow and re-emerges as key on the
+            // next run loop, overwriting the restored active tab.
+            windowToActivate.tabGroup?.selectedWindow = windowToActivate
+            windowToActivate.makeKeyAndOrderFront(nil)
         }
 
         updateKeyModel()
@@ -206,25 +232,29 @@ final class WindowCoordinator {
 
     func removeController(_ controller: WindowController) {
         controllers.removeAll { $0 === controller }
+        scheduleSaveSession()
         updateKeyModel()
     }
 
-    private func addController(_ controller: WindowController, addingAsTab: Bool) {
+    private func addController(
+        _ controller: WindowController,
+        addingAsTab: Bool,
+        keyWindow: NSWindow? = nil
+    ) {
         controllers.append(controller)
 
-        let keyWindow = NSApp.keyWindow
-        let newWindow = controller.window
-        if addingAsTab, let key = keyWindow, key != controller.window, let tab = newWindow {
+        if addingAsTab, let key = keyWindow ?? NSApp.keyWindow, key != controller.window, let tab = controller.window {
             key.addTabbedWindow(tab, ordered: .above)
         }
 
         controller.showWindow(nil)
+        scheduleSaveSession()
         updateKeyModel()
     }
 
     private func makeWindowModel() -> WorkspaceModel {
         WorkspaceModel(
-            tabStore: TabStore(sessionStore: NoOpSessionStore()),
+            tabStore: TabStore(sessionStore: NoOpSessionStore(), recoveryBuffer: recoveryBuffer),
             stateStore: NoOpStateStore(),
             panel: panelProvider
         )
@@ -239,115 +269,16 @@ final class WindowCoordinator {
         }
     }
 
-    private func subscribeToKeyWindowChanges() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(updateKeyModel),
-            name: NSWindow.didBecomeKeyNotification,
-            object: nil
-        )
-    }
-
-    @objc
-    private func updateKeyModel() {
+    func updateKeyModel() {
         keyModel = controllers.first { $0.window == NSApp.keyWindow }?.model
     }
 }
 
-// MARK: - Window controller
+// MARK: - Session snapshot
 
-/// A single document window. Each window is also a tab when grouped by the
-/// native tab bar.
-@MainActor
-final class WindowController: NSWindowController, NSWindowDelegate {
-    let model: WorkspaceModel
-    private weak var coordinator: WindowCoordinator?
-
-    init(model: WorkspaceModel, coordinator: WindowCoordinator) {
-        self.model = model
-        self.coordinator = coordinator
-
-        let hostingController = NSHostingController(rootView: WorkspaceShellView(model: model))
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = model.activeDocument?.fileURL?.lastPathComponent ?? "Untitled"
-        window.setContentSize(NSSize(width: 1200, height: 800))
-        window.minSize = NSSize(width: 400, height: 300)
-        window.tabbingMode = .preferred
-
-        super.init(window: window)
-        window.delegate = self
-        updateTitleAndEditedState()
-        startObservingActiveDocument()
-    }
-
-    @available(*, unavailable)
-    required init?(coder _: NSCoder) {
-        nil
-    }
-
-    private func startObservingActiveDocument() {
-        Task { @MainActor [weak self] in
-            while let self {
-                await withCheckedContinuation { continuation in
-                    withObservationTracking {
-                        _ = self.model.activeDocument
-                    } onChange: {
-                        continuation.resume()
-                    }
-                }
-                updateTitleAndEditedState()
-            }
-        }
-    }
-
-    private func updateTitleAndEditedState() {
-        let document = model.activeDocument
-        let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
-        let isDirty = document?.state == .dirty || document?.state == .conflict
-        window?.title = isDirty ? "● \(baseTitle)" : baseTitle
-        window?.representedURL = document?.fileURL
-        window?.isDocumentEdited = isDirty
-    }
-
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard let coordinator, coordinator.controllers.contains(where: { $0 === self }) else { return true }
-
-        guard let document = model.activeDocument, document.state != .clean else {
-            Task { await coordinator.saveSession() }
-            coordinator.removeController(self)
-            return true
-        }
-
-        let alert = NSAlert()
-        alert.messageText = "Unsaved Changes"
-        let fileName = document.fileURL?.lastPathComponent ?? "Untitled"
-        alert.informativeText = "Do you want to save changes to \"\(fileName)\"?"
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Discard Changes")
-        alert.alertStyle = .warning
-
-        alert.beginSheetModal(for: sender) { [weak self] response in
-            Task { @MainActor [weak self] in
-                guard let self, let coordinator = self.coordinator else { return }
-
-                switch response {
-                case .alertFirstButtonReturn:
-                    await model.save()
-                    if model.activeDocument?.state == .clean {
-                        coordinator.removeController(self)
-                        close()
-                    }
-                case .alertThirdButtonReturn:
-                    await model.tabStore.resolveClose(.discard)
-                    coordinator.removeController(self)
-                    close()
-                default:
-                    break
-                }
-            }
-        }
-
-        return false
-    }
+private struct TabSnapshot {
+    let record: TabRecord
+    let documentID: String
+    let documentText: String
+    let documentState: FileDocumentState
 }

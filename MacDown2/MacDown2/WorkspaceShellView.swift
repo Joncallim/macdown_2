@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import Workspace
 
@@ -32,8 +31,6 @@ struct WorkspaceShellView: View {
                 .help("Toggle Sidebar")
             }
         }
-        .focusedSceneValue(\.workspaceModel, model)
-        .background(WindowTitleUpdater(model: model))
     }
 
     private var sidebarVisibilityBinding: Binding<NavigationSplitViewVisibility> {
@@ -43,28 +40,5 @@ struct WorkspaceShellView: View {
                 model.sidebarVisible = newValue != .detailOnly
             }
         )
-    }
-}
-
-// MARK: - Window title / dirty dot
-
-/// Keeps the owning `NSWindow` title and dirty-edited dot in sync with the
-/// document shown in this view.
-private struct WindowTitleUpdater: NSViewRepresentable {
-    let model: WorkspaceModel
-
-    func makeNSView(context _: Context) -> NSView {
-        NSView()
-    }
-
-    func updateNSView(_ nsView: NSView, context _: Context) {
-        guard let window = nsView.window else { return }
-        let document = model.activeDocument
-
-        let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
-        let isDirty = document?.state == .dirty || document?.state == .conflict
-        window.title = isDirty ? "● \(baseTitle)" : baseTitle
-        window.representedURL = document?.fileURL
-        window.isDocumentEdited = isDirty
     }
 }

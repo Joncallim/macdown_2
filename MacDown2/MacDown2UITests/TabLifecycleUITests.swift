@@ -43,15 +43,27 @@ final class TabLifecycleUITests: XCTestCase {
 
         // Wait for the document window and native tab bar tabs.
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
-        let tabA = app.tabs.containing(NSPredicate(format: "title CONTAINS[c] %@", "a.md")).firstMatch
-        let tabB = app.tabs.containing(NSPredicate(format: "title CONTAINS[c] %@", "b.md")).firstMatch
-        let tabC = app.tabs.containing(NSPredicate(format: "title CONTAINS[c] %@", "c.md")).firstMatch
+        let tabA = app.tabs.matching(NSPredicate(format: "title CONTAINS[c] %@", "a.md")).firstMatch
+        let tabB = app.tabs.matching(NSPredicate(format: "title CONTAINS[c] %@", "b.md")).firstMatch
+        let tabC = app.tabs.matching(NSPredicate(format: "title CONTAINS[c] %@", "c.md")).firstMatch
         XCTAssertTrue(tabA.waitForExistence(timeout: 5))
         XCTAssertTrue(tabB.exists)
         XCTAssertTrue(tabC.exists)
 
-        // Activate b.md and dirty it using the debug menu.
-        tabB.click()
+        // Activate b.md and dirty it using the debug menu. Use the app's own
+        // "Select Tab 2" command so the native tab switch also makes b.md's
+        // window key; a raw accessibility click on the tab bar does not reliably
+        // update the key window under UI automation.
+        app.menuBars.menuBarItems["Window"].click()
+        app.menuBars.menuBarItems["Window"].menuItems["Select Tab 2"].firstMatch.click()
+
+        // Wait for the tab switch to complete so the next command targets the
+        // correct window. The native tab bar exposes selection as `value == 1`.
+        let selectedB = app.tabs.matching(NSPredicate(
+            format: "value == %d AND title CONTAINS[c] %@", 1, "b.md"
+        )).firstMatch
+        XCTAssertTrue(selectedB.waitForExistence(timeout: 5))
+
         app.menuBars.menuBarItems["Debug"].click()
         app.menuBars.menuBarItems["Debug"].menuItems["Mark Active Tab Dirty"].click()
 
@@ -68,10 +80,12 @@ final class TabLifecycleUITests: XCTestCase {
         sheet.buttons["Cancel"].click()
         XCTAssertTrue(tabB.waitForExistence(timeout: 5))
 
-        // Quit via the app menu so the delegate's applicationShouldTerminate
-        // runs and saves the session before the app exits.
-        app.menuBars.menuBarItems["MacDown 2"].click()
-        app.menuBars.menuBarItems["MacDown 2"].menuItems["Quit MacDown 2"].click()
+        // Terminate the app. NSRunningApplication.terminate() delivers a 'quit'
+        // Apple event that routes through applicationShouldTerminate, which saves
+        // the session before exiting. Using terminate() avoids a menu-dismissal
+        // focus switch that can reorder native tabs under UI automation.
+        app.terminate()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 5))
 
         // Wait for the session file to be written after termination.
         let sessionFile = sessionDir.appendingPathComponent("session.json")
@@ -90,14 +104,22 @@ final class TabLifecycleUITests: XCTestCase {
         app.launch()
         app.activate()
 
-        // Verify all three tabs restored.
+        // Verify all three tabs restored and b.md is selected again.
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(tab(named: "a.md").waitForExistence(timeout: 5))
         XCTAssertTrue(tab(named: "b.md").exists)
         XCTAssertTrue(tab(named: "c.md").exists)
+
+        let selectedTab = app.tabs.matching(NSPredicate(
+            format: "value == %d AND title CONTAINS[c] %@", 1, "b.md"
+        )).firstMatch
+        XCTAssertTrue(
+            selectedTab.waitForExistence(timeout: 5),
+            "Expected b.md to be the restored active tab"
+        )
     }
 
     private func tab(named name: String) -> XCUIElement {
-        app.tabs.containing(NSPredicate(format: "title CONTAINS[c] %@", name)).firstMatch
+        app.tabs.matching(NSPredicate(format: "title CONTAINS[c] %@", name)).firstMatch
     }
 }

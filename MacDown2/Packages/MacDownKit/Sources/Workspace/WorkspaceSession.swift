@@ -96,14 +96,10 @@ public struct WorkspaceSessionStore: WorkspaceSessionStoring {
 
         guard let data = try? JSONEncoder().encode(session) else { return }
 
-        let tempURL = fileURL.appendingPathExtension("tmp")
-        do {
-            try data.write(to: tempURL, options: .atomic)
-            try FileManager.default.moveItem(at: tempURL, to: fileURL)
-        } catch {
-            // Best-effort persistence: swallow the error. The user can continue
-            // working; session restore on next launch simply starts empty.
-            try? FileManager.default.removeItem(at: tempURL)
-        }
+        // `.atomic` writes to a temp file and renames it over `fileURL`,
+        // atomically replacing any existing session. A manual temp+`moveItem`
+        // would fail once the destination exists, silently freezing the file
+        // at its first-written value.
+        try? data.write(to: fileURL, options: .atomic)
     }
 }

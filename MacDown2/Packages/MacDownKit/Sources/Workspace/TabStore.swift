@@ -69,12 +69,17 @@ public final class TabStore {
     }
 
     let sessionStore: WorkspaceSessionStoring
+    let recoveryBuffer: RecoveryBuffer
     var closeQueue: [UUID]
     var saveTask: Task<Void, Never>?
     var hasRestoredSession = false
 
-    public init(sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore()) {
+    public init(
+        sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
+        recoveryBuffer: RecoveryBuffer = .shared
+    ) {
         self.sessionStore = sessionStore
+        self.recoveryBuffer = recoveryBuffer
         tabs = []
         activeTabID = nil
         pendingCloseTabID = nil
@@ -83,9 +88,15 @@ public final class TabStore {
 
     // MARK: - Lifecycle intents
 
-    /// Creates a new untitled Markdown tab and activates it.
-    public func newTab() {
-        let tab = WorkspaceTab(document: FileDocument())
+    /// Creates a new Markdown tab and activates it.
+    ///
+    /// The optional `id` and `document` are used by session restore so the
+    /// restored tab keeps its original UUID and loaded document.
+    public func newTab(id: UUID? = nil, document: FileDocument? = nil) {
+        let tab = WorkspaceTab(
+            id: id ?? UUID(),
+            document: document ?? FileDocument(recoveryBuffer: recoveryBuffer)
+        )
         tabs.append(tab)
         activeTabID = tab.id
         persist()
@@ -104,7 +115,7 @@ public final class TabStore {
             return existing
         }
 
-        let document = FileDocument(fileURL: url)
+        let document = FileDocument(fileURL: url, recoveryBuffer: recoveryBuffer)
         do {
             let loaded = try document.load()
             let tab = WorkspaceTab(document: loaded)
@@ -228,7 +239,7 @@ public final class TabStore {
     /// session JSON. Failures are swallowed.
     public func saveSession() async {
         for tab in tabs where tab.document.state == .dirty || tab.document.state == .conflict {
-            try? await RecoveryBuffer.shared.save(content: tab.document.text, for: tab.document.id)
+            try? await recoveryBuffer.save(content: tab.document.text, for: tab.document.id)
         }
 
         sessionStore.saveSession(currentSession())
