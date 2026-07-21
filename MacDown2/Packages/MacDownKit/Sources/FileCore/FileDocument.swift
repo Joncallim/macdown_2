@@ -60,16 +60,22 @@ public struct FileDocument: Sendable {
     /// The store used for disk IO. Injected to allow test doubles.
     public let fileStore: FileStore
 
+    /// The recovery buffer used for autosave/recovery of untitled documents.
+    /// Injected to allow tests to use an isolated directory.
+    public let recoveryBuffer: RecoveryBuffer
+
     /// Creates a new document, optionally backed by an existing file.
     public init(
         fileURL: URL? = nil,
         text: String = "",
         format: FileFormat? = nil,
-        fileStore: FileStore = FileStore()
+        fileStore: FileStore = FileStore(),
+        recoveryBuffer: RecoveryBuffer = .shared
     ) {
         self.fileURL = fileURL
         self.text = text
         self.fileStore = fileStore
+        self.recoveryBuffer = recoveryBuffer
         state = .clean
 
         if let fileURL {
@@ -174,18 +180,18 @@ public struct FileDocument: Sendable {
     /// Writes a recovery copy if this is an untitled document.
     public func autosave() async {
         guard fileURL == nil else { return }
-        try? await RecoveryBuffer.shared.save(content: text, for: id)
+        try? await recoveryBuffer.save(content: text, for: id)
     }
 
     /// Loads the recovery copy for an untitled document, if present.
     public func loadRecovery() async -> String? {
         guard fileURL == nil else { return nil }
-        return try? await RecoveryBuffer.shared.load(for: id)
+        return try? await recoveryBuffer.load(for: id)
     }
 
     /// Clears the recovery copy (call after a successful save-as or explicit discard).
     public func clearRecovery() async {
-        await RecoveryBuffer.shared.remove(for: id)
+        await recoveryBuffer.remove(for: id)
     }
 
     // MARK: - External change detection

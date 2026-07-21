@@ -1,65 +1,90 @@
+import AppKit
 import SwiftUI
 import Workspace
 
-public struct WorkspaceModelFocusedValue: FocusedValueKey {
-    public typealias Value = WorkspaceModel
-}
-
-public extension FocusedValues {
-    var workspaceModel: WorkspaceModel? {
-        get { self[WorkspaceModelFocusedValue.self] }
-        set { self[WorkspaceModelFocusedValue.self] = newValue }
-    }
-}
-
 struct WorkspaceCommands: Commands {
-    @FocusedValue(\.workspaceModel) private var model
+    @Environment(\.windowCoordinator) private var coordinator
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New File") {
-                Task { await model?.newDocument() }
+                coordinator?.newDocument(addAsTab: false)
             }
             .keyboardShortcut("n", modifiers: .command)
 
+            Button("New Tab") {
+                coordinator?.newDocument(addAsTab: true)
+            }
+            .keyboardShortcut("t", modifiers: .command)
+
             Button("Open…") {
-                Task { await model?.openFile() }
+                coordinator?.openFile()
             }
             .keyboardShortcut("o", modifiers: .command)
 
             Button("Open Folder…") {
-                Task { await model?.openFolder() }
+                Task { await coordinator?.keyModel?.openFolder() }
             }
             .keyboardShortcut("o", modifiers: [.command, .shift])
         }
 
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
-                Task { await model?.save() }
+                Task { await coordinator?.keyModel?.save() }
             }
             .keyboardShortcut("s", modifiers: .command)
-            .disabled(model?.canSave != true)
+            .disabled(coordinator?.keyModel?.canSave != true)
 
             Button("Save As…") {
-                Task { await model?.saveAs() }
+                Task { await coordinator?.keyModel?.saveAs() }
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
-            .disabled(model?.hasActiveDocument != true)
+            .disabled(coordinator?.keyModel?.hasActiveDocument != true)
 
             Button("Close Tab") {
-                model?.requestCloseDocument()
+                coordinator?.closeKeyWindow()
             }
             .keyboardShortcut("w", modifiers: .command)
-            .disabled(model?.canClose != true)
+            .disabled(coordinator?.keyModel?.canClose != true)
+        }
+
+        CommandGroup(before: .windowArrangement) {
+            Button("Show Next Tab") {
+                coordinator?.selectNextTab()
+            }
+            .keyboardShortcut(.tab, modifiers: .control)
+            .disabled(coordinator?.keyWindowHasMultipleTabs != true)
+
+            Button("Show Previous Tab") {
+                coordinator?.selectPreviousTab()
+            }
+            .keyboardShortcut(.tab, modifiers: [.control, .shift])
+            .disabled(coordinator?.keyWindowHasMultipleTabs != true)
+
+            ForEach(1 ..< 10, id: \.self) { index in
+                Button("Select Tab \(index)") {
+                    coordinator?.selectTab(at: index - 1)
+                }
+                .keyboardShortcut(KeyEquivalent(Character("\(index)")), modifiers: .command)
+                .disabled(coordinator?.keyWindowHasTab(at: index - 1) != true)
+            }
         }
 
         CommandGroup(before: .sidebar) {
             Button("Toggle Sidebar") {
-                if let model {
-                    model.sidebarVisible.toggle()
-                }
+                coordinator?.keyModel?.sidebarVisible.toggle()
             }
             .keyboardShortcut("s", modifiers: [.control, .command])
         }
+
+        #if DEBUG
+            CommandMenu("Debug") {
+                Button("Mark Active Tab Dirty") {
+                    coordinator?.keyModel?.tabStore.updateActiveDocument { $0.updatingText($0.text + " ") }
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift, .option])
+                .disabled(coordinator?.keyModel?.hasActiveDocument != true)
+            }
+        #endif
     }
 }

@@ -2,12 +2,12 @@ name: MacDown2
 options:
   bundleIdPrefix: com.joncallim
   deploymentTarget:
-    macOS: "26.0"
+    macOS: '26.0'
 settings:
   base:
-    SWIFT_VERSION: "6.0"
+    SWIFT_VERSION: '6.0'
     SWIFT_STRICT_CONCURRENCY: complete
-    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    MACOSX_DEPLOYMENT_TARGET: '26.0'
 packages:
   MacDownKit:
     path: Packages/MacDownKit
@@ -16,127 +16,136 @@ targets:
     type: application
     platform: macOS
     sources:
-      - MacDown2
+    - MacDown2
     dependencies:
-      - package: MacDownKit
-        product: FileCore
-      - package: MacDownKit
-        product: AppSettings
-      - package: MacDownKit
-        product: Themes
-      - package: MacDownKit
-        product: Workspace
-      - package: MacDownKit
-        product: FileTree
-      - package: MacDownKit
-        product: EditorCore
-      - package: MacDownKit
-        product: Highlighting
-      - package: MacDownKit
-        product: MarkdownEngine
-      - package: MacDownKit
-        product: Preview
-      - package: MacDownKit
-        product: OutlineUI
-      - package: MacDownKit
-        product: ExportService
+    - package: MacDownKit
+      product: FileCore
+    - package: MacDownKit
+      product: AppSettings
+    - package: MacDownKit
+      product: Themes
+    - package: MacDownKit
+      product: Workspace
+    - package: MacDownKit
+      product: FileTree
+    - package: MacDownKit
+      product: EditorCore
+    - package: MacDownKit
+      product: Highlighting
+    - package: MacDownKit
+      product: MarkdownEngine
+    - package: MacDownKit
+      product: Preview
+    - package: MacDownKit
+      product: OutlineUI
+    - package: MacDownKit
+      product: ExportService
     info:
       path: MacDown2/Info.plist
       properties:
         CFBundleName: MacDown 2
         CFBundleDisplayName: MacDown 2
-        CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
-        LSMinimumSystemVersion: "26.0"
-        NSHumanReadableCopyright: "Copyright © 2026 Joncallim"
+        CFBundleShortVersionString: 0.1.0
+        CFBundleVersion: '1'
+        LSMinimumSystemVersion: '26.0'
+        NSHumanReadableCopyright: "Copyright \xA9 2026 Joncallim"
         NSPrincipalClass: NSApplication
         LSApplicationCategoryType: public.app-category.productivity
-        # Keep these in sync with FileFormatRegistry.defaultFormats in
-        # MacDownKit/Sources/FileCore/FileFormat.swift.
         CFBundleDocumentTypes:
-          - CFBundleTypeName: Markdown Document
-            CFBundleTypeRole: Editor
-            LSHandlerRank: Owner
-            LSItemContentTypes:
-              - net.daringfireball.markdown
-            CFBundleTypeExtensions:
-              - md
-              - markdown
-              - mdown
-              - mkd
-              - mkdn
-          - CFBundleTypeName: HTML Document
-            CFBundleTypeRole: Editor
-            LSHandlerRank: Editor
-            LSItemContentTypes:
-              - public.html
-            CFBundleTypeExtensions:
-              - html
-              - htm
-          - CFBundleTypeName: JSON Document
-            CFBundleTypeRole: Editor
-            LSHandlerRank: Editor
-            LSItemContentTypes:
-              - public.json
-            CFBundleTypeExtensions:
-              - json
-          - CFBundleTypeName: YAML Document
-            CFBundleTypeRole: Editor
-            LSHandlerRank: Editor
-            LSItemContentTypes:
-              - public.yaml
-            CFBundleTypeExtensions:
-              - yaml
-              - yml
-          - CFBundleTypeName: Plain Text Document
-            CFBundleTypeRole: Editor
-            LSHandlerRank: Editor
-            LSItemContentTypes:
-              - public.plain-text
-            CFBundleTypeExtensions:
-              - txt
-          - CFBundleTypeName: Source Code
-            CFBundleTypeRole: Editor
-            LSHandlerRank: Alternate
-            LSItemContentTypes:
-              - public.source-code
-            CFBundleTypeExtensions:
-              - js
-              - jsx
-              - ts
-              - tsx
-              - py
-              - rb
-              - css
-              - swift
-              - c
-              - cpp
-              - cc
-              - cxx
-              - h
-              - hpp
-              - sh
-              - bash
-              - zsh
-              - sql
-              - xml
+        - CFBundleTypeName: Markdown Document
+          CFBundleTypeRole: Editor
+          LSHandlerRank: Owner
+          LSItemContentTypes:
+          - net.daringfireball.markdown
+          CFBundleTypeExtensions:
+          - md
+          - markdown
+          - mdown
+          - mkd
+          - mkdn
+        - CFBundleTypeName: HTML Document
+          CFBundleTypeRole: Editor
+          LSHandlerRank: Editor
+          LSItemContentTypes:
+          - public.html
+          CFBundleTypeExtensions:
+          - html
+          - htm
+        - CFBundleTypeName: JSON Document
+          CFBundleTypeRole: Editor
+          LSHandlerRank: Editor
+          LSItemContentTypes:
+          - public.json
+          CFBundleTypeExtensions:
+          - json
+        - CFBundleTypeName: YAML Document
+          CFBundleTypeRole: Editor
+          LSHandlerRank: Editor
+          LSItemContentTypes:
+          - public.yaml
+          CFBundleTypeExtensions:
+          - yaml
+          - yml
+        - CFBundleTypeName: Plain Text Document
+          CFBundleTypeRole: Editor
+          LSHandlerRank: Editor
+          LSItemContentTypes:
+          - public.plain-text
+          CFBundleTypeExtensions:
+          - txt
+        - CFBundleTypeName: Source Code
+          CFBundleTypeRole: Editor
+          LSHandlerRank: Alternate
+          LSItemContentTypes:
+          - public.source-code
+          CFBundleTypeExtensions:
+          - js
+          - jsx
+          - ts
+          - tsx
+          - py
+          - rb
+          - css
+          - swift
+          - c
+          - cpp
+          - cc
+          - cxx
+          - h
+          - hpp
+          - sh
+          - bash
+          - zsh
+          - sql
+          - xml
         UTExportedTypeDeclarations:
-          - UTTypeIdentifier: com.joncallim.macdown2.toml
-            UTTypeDescription: TOML Document
-            UTTypeConformsTo:
-              - public.text
-              - public.plain-text
-            UTTypeTagSpecification:
-              public.filename-extension:
-                - toml
+        - UTTypeIdentifier: com.joncallim.macdown2.toml
+          UTTypeDescription: TOML Document
+          UTTypeConformsTo:
+          - public.text
+          - public.plain-text
+          UTTypeTagSpecification:
+            public.filename-extension:
+            - toml
   macdown2:
     type: tool
     platform: macOS
     sources:
-      - MacDown2CLI
+    - MacDown2CLI
     dependencies:
-      - package: MacDownKit
-        product: FileCore
+    - package: MacDownKit
+      product: FileCore
+  MacDown2UITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+    - MacDown2UITests
+    dependencies:
+    - target: MacDown2
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: 'YES'
+        TEST_TARGET_NAME: MacDown2
 schemes:
   MacDown2:
     build:
@@ -145,6 +154,9 @@ schemes:
     run:
       config: Debug
       executable: MacDown2
+    test:
+      targets:
+      - MacDown2UITests
   macdown2:
     build:
       targets:
