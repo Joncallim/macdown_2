@@ -29,7 +29,15 @@ public struct TabRecord: Codable, Sendable, Equatable {
     public var fileURL: URL?
     public var untitledDocumentID: String?
     public var isPinned: Bool
+
+    /// The UTF-16 offset of the start of the editor selection. When
+    /// `selectionLength` is zero this is the insertion point (caret).
     public var cursorPosition: Int?
+
+    /// The number of UTF-16 code units selected. Together with `cursorPosition`
+    /// this reconstructs the full `NSRange` on restore.
+    public var selectionLength: Int?
+
     public var scrollOffset: Double?
 
     public init(
@@ -38,6 +46,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         untitledDocumentID: String? = nil,
         isPinned: Bool = false,
         cursorPosition: Int? = nil,
+        selectionLength: Int? = nil,
         scrollOffset: Double? = nil
     ) {
         self.id = id
@@ -45,6 +54,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         self.untitledDocumentID = untitledDocumentID
         self.isPinned = isPinned
         self.cursorPosition = cursorPosition
+        self.selectionLength = selectionLength
         self.scrollOffset = scrollOffset
     }
 }

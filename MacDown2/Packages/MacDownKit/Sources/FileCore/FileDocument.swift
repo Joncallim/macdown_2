@@ -229,6 +229,10 @@ public struct FileDocument: Sendable {
 
 public extension FileDocument {
     /// Returns a new document with `text` updated and the dirty flag set.
+    ///
+    /// Use this method when replacing text from an external source (e.g.,
+    /// recovery-buffer restore) where a no-op change should **not** mark the
+    /// document dirty. For user edits, use `edited(text:)` instead.
     func updatingText(_ newText: String) -> FileDocument {
         guard newText != text else { return self }
         var copy = self

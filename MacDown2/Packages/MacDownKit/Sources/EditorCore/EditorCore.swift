@@ -1,4 +1,6 @@
-/// EditorCore — module stub. See planning/epics/ and planning/MIGRATION_PLAN.md \u00a7 4 for its role.
+/// EditorCore module namespace.
+///
+/// Concrete types live in the sibling files in this module.
 public enum EditorCore {
     public static let moduleName = "EditorCore"
 }
