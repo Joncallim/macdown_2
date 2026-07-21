@@ -59,12 +59,13 @@ public enum PreviewSecurity {
             range: searchStart ..< html.endIndex
         ) {
             let afterName = match.upperBound
-            if afterName < html.endIndex, isTagNameBoundary(html[afterName]),
-               let end = html.range(of: ">", range: afterName ..< html.endIndex)
-            {
+            searchStart = afterName
+            guard afterName < html.endIndex, isTagNameBoundary(html[afterName]) else {
+                continue
+            }
+            if let end = html.range(of: ">", range: afterName ..< html.endIndex) {
                 return match.lowerBound ..< end.upperBound
             }
-            searchStart = match.upperBound
         }
         return nil
     }
