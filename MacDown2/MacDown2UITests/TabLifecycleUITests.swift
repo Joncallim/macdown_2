@@ -58,7 +58,9 @@ final class TabLifecycleUITests: XCTestCase {
         app.menuBars.menuBarItems["Window"].menuItems["Select Tab 2"].firstMatch.click()
 
         // Wait for the tab switch to complete so the next command targets the
-        // correct window. The native tab bar exposes selection as `value == 1`.
+        // correct window. The native tab bar exposes selection as `value == 1`
+        // on macOS 26; if this assertion flakes on a future macOS version,
+        // switch to an `isSelected == YES` predicate if AppKit exposes it.
         let selectedB = app.tabs.matching(NSPredicate(
             format: "value == %d AND title CONTAINS[c] %@", 1, "b.md"
         )).firstMatch

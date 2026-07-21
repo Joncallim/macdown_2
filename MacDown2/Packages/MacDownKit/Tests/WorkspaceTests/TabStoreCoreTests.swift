@@ -19,9 +19,13 @@ struct TabStoreCoreTests {
     }
 
     @Test func newTabPreservesProvidedIDAndDocument() {
-        let store = TabStore(sessionStore: FakeSessionStore())
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recoveryBuffer)
         let id = UUID()
-        let document = FileDocument(text: "restored")
+        let document = FileDocument(text: "restored", recoveryBuffer: recoveryBuffer)
 
         store.newTab(id: id, document: document)
 
