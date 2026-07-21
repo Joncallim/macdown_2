@@ -2,19 +2,15 @@ import SwiftUI
 
 @main
 struct MacDown2App: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
-            WorkspaceShellView()
+            EmptyView()
         }
-        .defaultSize(width: 1200, height: 800)
         .commands {
             WorkspaceCommands()
         }
+        .environment(\.windowCoordinator, appDelegate.coordinator)
     }
 }
-
-// MARK: - About panel
-
-// The default About menu item reads CFBundleDisplayName from the generated
-// Info.plist, which is set to "MacDown 2" in project.yml. No custom About
-// window is required for EPIC-02.

@@ -14,27 +14,28 @@ import Testing
 struct WorkspaceModelTests {
     // MARK: - Command enablement
 
-    @Test func newDocumentCreatesUntitledDocument() async {
+    @Test func newDocumentCreatesUntitledTab() {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
+        model.newDocument()
 
         #expect(model.hasActiveDocument)
         #expect(model.canClose)
         #expect(model.canSave == false)
         #expect(model.activeDocument?.fileURL == nil)
+        #expect(model.tabStore.tabs.count == 1)
     }
 
-    @Test func editingUntitledEnablesSave() async {
+    @Test func editingUntitledEnablesSave() {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("hello")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("hello") }
 
         #expect(model.canSave == true)
     }
 
-    @Test func cleanSavedDocumentCannotSave() async {
+    @Test func cleanSavedDocumentCannotSave() {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
+        model.newDocument()
         #expect(model.canSave == false)
     }
 
@@ -47,72 +48,60 @@ struct WorkspaceModelTests {
 
     // MARK: - New document
 
-    @Test func newDocumentPromptsWhenDirty() async {
+    @Test func newDocumentDoesNotPromptWhenDirty() {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("dirty")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("dirty") }
 
-        await model.newDocument()
+        model.newDocument()
 
-        #expect(model.pendingClose == true)
-        #expect(model.activeDocument?.text == "dirty")
-    }
-
-    @Test func newDocumentContinuesAfterDirtyClose() async {
-        let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("dirty")
-
-        await model.newDocument()
-        await model.resolveClose(.discard)
-
-        #expect(model.pendingClose == false)
-        #expect(model.activeDocument?.text == "")
+        #expect(model.tabStore.pendingCloseTabID == nil)
+        #expect(model.tabStore.tabs.count == 2)
     }
 
     // MARK: - Close document
 
-    @Test func closeCleanDocumentRemovesIt() async {
+    @Test func closeCleanTabRemovesIt() {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
+        model.newDocument()
         model.requestCloseDocument()
 
         #expect(model.activeDocument == nil)
-        #expect(model.pendingClose == false)
+        #expect(model.tabStore.tabs.isEmpty)
     }
 
-    @Test func closeDirtyDocumentPrompts() async {
+    @Test func closeDirtyTabPrompts() {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("dirty")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("dirty") }
         model.requestCloseDocument()
 
-        #expect(model.pendingClose == true)
+        #expect(model.tabStore.pendingCloseTabID != nil)
         #expect(model.activeDocument != nil)
     }
 
     @Test func closePromptCancelKeepsDocumentDirty() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("dirty")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("dirty") }
         model.requestCloseDocument()
 
         await model.resolveClose(.cancel)
 
-        #expect(model.pendingClose == false)
+        #expect(model.tabStore.pendingCloseTabID == nil)
         #expect(model.activeDocument?.state == .dirty)
     }
 
     @Test func closePromptDiscardRemovesDocument() async {
         let model = WorkspaceModel(stateStore: FakeStateStore())
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("dirty")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("dirty") }
         model.requestCloseDocument()
 
         await model.resolveClose(.discard)
 
         #expect(model.activeDocument == nil)
-        #expect(model.pendingClose == false)
+        #expect(model.tabStore.tabs.isEmpty)
     }
 
     @Test func closePromptSaveWritesAndCloses() async throws {
@@ -124,14 +113,14 @@ struct WorkspaceModelTests {
         panel.nextSaveURL = url
 
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("dirty")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("dirty") }
         model.requestCloseDocument()
 
         await model.resolveClose(.save)
 
         #expect(model.activeDocument == nil)
-        #expect(model.pendingClose == false)
+        #expect(model.tabStore.tabs.isEmpty)
         let (text, _) = try FileStore().read(from: url)
         #expect(text == "dirty")
     }
@@ -139,15 +128,15 @@ struct WorkspaceModelTests {
     @Test func closePromptSaveCancelledKeepsDocument() async {
         let panel = FakeFilePanelProvider()
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("dirty")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("dirty") }
         model.requestCloseDocument()
 
         await model.resolveClose(.save)
 
         #expect(model.activeDocument != nil)
         #expect(model.activeDocument?.state == .dirty)
-        #expect(model.pendingClose == false)
+        #expect(model.tabStore.pendingCloseTabID == nil)
     }
 
     // MARK: - Open folder

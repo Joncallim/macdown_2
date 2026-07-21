@@ -11,29 +11,30 @@ public enum SidebarSection: String, Sendable, CaseIterable {
 /// The observable model behind the MacDown 2 workspace shell.
 ///
 /// Responsibilities:
-/// - Track the active document and opened folder.
+/// - Own the `TabStore` that tracks open tabs and the active document.
 /// - Route File menu intents (`newDocument`, `openFile`, `save`, `close`, …).
 /// - Expose command enablement state for SwiftUI `Commands`.
 /// - Persist window UI state (sidebar visibility, section expansion).
+/// - Coordinate session restore on first launch.
 ///
-/// `WorkspaceModel` is deliberately a single-document shell. Tabs and session
-/// restore are EPIC-03; do not add tab state here.
+/// `WorkspaceModel` is `@MainActor` and lives in the SPM `Workspace` module.
+/// The tab bar and other views live in the app target.
 @MainActor
 @Observable
 public final class WorkspaceModel {
+    /// The tab store that owns all open tabs.
+    public let tabStore: TabStore
+
     /// The document currently shown in the content area.
-    public internal(set) var activeDocument: FileDocument?
+    public var activeDocument: FileDocument? {
+        tabStore.activeDocument
+    }
 
     /// The folder opened via ⌘⇧O, if any. The actual folder tree UI is E09.
     public private(set) var folderURL: URL?
 
     /// The most recent error surfaced to the user. Views may present this.
     public private(set) var lastError: WorkspaceError?
-
-    /// `true` while a dirty-close alert should be shown by the view.
-    /// The view may set this back to `false` when dismissing the alert; callers
-    /// should normally use `resolveClose(_:)` to drive the actual close decision.
-    public var pendingClose: Bool
 
     /// Whether the sidebar column is visible. Persisted via `stateStore`.
     public var sidebarVisible: Bool {
@@ -43,41 +44,32 @@ public final class WorkspaceModel {
     }
 
     public var hasActiveDocument: Bool {
-        activeDocument != nil
+        tabStore.hasActiveDocument
     }
 
     /// `true` if the active document can be saved right now.
     public var canSave: Bool {
-        guard let document = activeDocument else { return false }
-        if document.fileURL == nil {
-            return !document.text.isEmpty
-        }
-        return document.state == .dirty || document.state == .conflict
+        tabStore.canSave
     }
 
-    /// `true` if there is an active document that can be closed.
+    /// `true` if the active tab exists and is not pinned.
     public var canClose: Bool {
-        activeDocument != nil
+        tabStore.canCloseActiveTab
     }
 
     private var stateStore: WorkspaceStateStoring
     private let panel: any FilePanelProviding
-    /// Action to run after a dirty-close prompt resolves with Save/Discard.
-    /// Used so intents like `openFile()` and `newDocument()` can continue once
-    /// the dirty document is closed.
-    private var pendingAction: (@MainActor () async -> Void)?
 
     public init(
+        tabStore: TabStore? = nil,
         stateStore: WorkspaceStateStoring = WorkspaceStateStore(),
         panel: (any FilePanelProviding)? = nil
     ) {
+        self.tabStore = tabStore ?? TabStore()
         self.stateStore = stateStore
         self.panel = panel ?? NoOpFilePanelProvider()
-        activeDocument = nil
         folderURL = nil
         lastError = nil
-        pendingClose = false
-        pendingAction = nil
         sidebarVisible = stateStore.sidebarVisible
     }
 
@@ -93,32 +85,22 @@ public final class WorkspaceModel {
 
     // MARK: - Intents
 
-    /// Creates a new untitled document.
-    ///
-    /// If the current document has unsaved changes, the dirty-close prompt is
-    /// shown first and the new document is created after the user saves or
-    /// discards.
-    public func newDocument() async {
-        guard await canProceedDespiteDirtyDocument(continuation: { [weak self] in
-            await self?.newDocument()
-        }) else { return }
-
-        activeDocument = FileDocument()
+    /// Creates a new untitled tab with a Markdown document.
+    public func newDocument() {
+        tabStore.newTab()
         lastError = nil
     }
 
-    /// Opens an existing file chosen by the user.
-    ///
-    /// If the current document has unsaved changes, the dirty-close prompt is
-    /// shown first and the file panel is presented after the user saves or
-    /// discards.
+    /// Opens an existing file chosen by the user into a new tab, or activates
+    /// the existing tab if the file is already open.
     public func openFile() async {
-        guard await canProceedDespiteDirtyDocument(continuation: { [weak self] in
-            await self?.openFile()
-        }) else { return }
-
         guard let url = await panel.chooseFile() else { return }
-        await loadDocument(from: url)
+        let tab = await tabStore.openFileInTab(url)
+        if tab == nil {
+            lastError = .openFailed(underlying: .readFailed(underlying: CocoaError(.fileReadNoSuchFile)))
+        } else {
+            lastError = nil
+        }
     }
 
     /// Opens a folder chosen by the user.
@@ -129,7 +111,7 @@ public final class WorkspaceModel {
 
     /// Saves the active document. Untitled documents prompt for a location.
     public func save() async {
-        guard let document = activeDocument else {
+        guard let document = tabStore.activeDocument else {
             lastError = .noActiveDocument
             return
         }
@@ -140,17 +122,17 @@ public final class WorkspaceModel {
         }
 
         do {
-            activeDocument = try document.save()
+            let saved = try document.save()
+            tabStore.updateActiveDocument { _ in saved }
             lastError = nil
         } catch {
-            activeDocument = document
             lastError = .saveFailed(underlying: cast(error))
         }
     }
 
     /// Saves the active document to a user-chosen location.
     public func saveAs() async {
-        guard let document = activeDocument else {
+        guard let document = tabStore.activeDocument else {
             lastError = .noActiveDocument
             return
         }
@@ -163,95 +145,33 @@ public final class WorkspaceModel {
         ) else { return }
 
         do {
-            activeDocument = try document.saveAs(url)
-            await activeDocument?.clearRecovery()
+            let saved = try document.saveAs(url)
+            tabStore.updateActiveDocument { _ in saved }
+            await tabStore.activeDocument?.clearRecovery()
             lastError = nil
         } catch {
-            activeDocument = document
             lastError = .saveFailed(underlying: cast(error))
         }
     }
 
-    /// Begins closing the active document.
-    ///
-    /// Clean documents close synchronously. Dirty documents set `pendingClose`
-    /// and wait for the view to call `resolveClose(_:)`.
+    /// Begins closing the active tab.
     public func requestCloseDocument() {
-        guard let document = activeDocument else { return }
-        let (updated, resolution) = document.requestClose()
-        if let resolution {
-            activeDocument = resolution == .discard ? nil : updated
-        } else {
-            pendingClose = true
-        }
+        tabStore.requestCloseActiveTab()
     }
 
-    /// Resolves a dirty-close prompt.
+    /// Resolves a dirty-close prompt for the active tab.
     public func resolveClose(_ resolution: CloseResolution) async {
-        pendingClose = false
-        let action = pendingAction
-        pendingAction = nil
-        await applyCloseResolution(resolution)
-        if resolution != .cancel, let action {
-            await action()
+        await tabStore.resolveClose(resolution) { [weak self] in
+            await self?.saveInternalForClose()
+            return self?.tabStore.activeDocument?.state == .clean
         }
     }
 
     // MARK: - Internal helpers
 
-    /// Returns `false` if the current dirty document blocks the action.
-    ///
-    /// For a clean document the close resolution is applied immediately and the
-    /// caller may proceed. For a dirty document the alert is presented and the
-    /// supplied `continuation` is run after the user saves or discards.
-    private func canProceedDespiteDirtyDocument(
-        continuation: @escaping @MainActor () async -> Void
-    ) async -> Bool {
-        guard let document = activeDocument else { return true }
-        let (updated, resolution) = document.requestClose()
-        if let resolution {
-            await applyCloseResolution(resolution)
-            return activeDocument == nil
-        } else {
-            activeDocument = updated
-            pendingClose = true
-            // Single-slot continuation. This is safe because the dirty-close
-            // alert is modal: no other intent (New/Open) can fire while it is
-            // shown, so `pendingAction` is never overwritten mid-prompt. It is
-            // always cleared in `resolveClose(_:)`, including on cancel.
-            pendingAction = continuation
-            return false
-        }
-    }
-
-    private func applyCloseResolution(_ resolution: CloseResolution) async {
-        guard let document = activeDocument else { return }
-
-        switch resolution {
-        case .save:
-            await save()
-            // If save failed or was cancelled, abort the close.
-            if activeDocument?.state == .dirty || activeDocument?.state == .conflict {
-                return
-            }
-            activeDocument = nil
-        case .discard:
-            activeDocument = nil
-        case .cancel:
-            // Return to a normal dirty state so editing can continue.
-            activeDocument = document.resolveClose(.cancel)
-        }
-    }
-
-    private func loadDocument(from url: URL) async {
-        let document = FileDocument(fileURL: url)
-        do {
-            activeDocument = try document.load()
-            lastError = nil
-        } catch {
-            activeDocument = nil
-            lastError = .openFailed(underlying: cast(error))
-        }
+    private func saveInternalForClose() async {
+        guard tabStore.activeDocument != nil else { return }
+        await save()
     }
 
     private func cast(_ error: Error) -> FileStoreError {
