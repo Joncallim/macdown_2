@@ -18,6 +18,19 @@ struct TabStoreCoreTests {
         #expect(store.activeDocument?.format.id == "markdown")
     }
 
+    @Test func newTabPreservesProvidedIDAndDocument() {
+        let store = TabStore(sessionStore: FakeSessionStore())
+        let id = UUID()
+        let document = FileDocument(text: "restored")
+
+        store.newTab(id: id, document: document)
+
+        #expect(store.tabs.count == 1)
+        #expect(store.activeTabID == id)
+        #expect(store.activeDocument?.text == "restored")
+        #expect(store.activeDocument?.id == document.id)
+    }
+
     @Test func twoNewTabsAreDistinctAndLatestActive() {
         let store = TabStore(sessionStore: FakeSessionStore())
         store.newTab()

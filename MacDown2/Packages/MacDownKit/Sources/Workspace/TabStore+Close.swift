@@ -11,9 +11,9 @@ public extension TabStore {
         guard !tabs[index].isPinned else { return }
 
         let tab = tabs[index]
-        let (updated, resolution) = tab.document.requestClose()
+        let (updated, closeImmediately) = tab.document.requestClose()
 
-        if resolution != nil {
+        if closeImmediately != nil {
             removeTab(at: index)
             persist()
         } else {
@@ -94,8 +94,8 @@ public extension TabStore {
         for id in ids {
             guard let index = tabIndex(of: id) else { continue }
             let tab = tabs[index]
-            let (updated, resolution) = tab.document.requestClose()
-            if resolution != nil {
+            let (updated, closeImmediately) = tab.document.requestClose()
+            if closeImmediately != nil {
                 removeTab(at: index)
             } else {
                 tabs[index].document = updated

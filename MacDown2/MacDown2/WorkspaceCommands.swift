@@ -2,17 +2,6 @@ import AppKit
 import SwiftUI
 import Workspace
 
-public struct WorkspaceModelFocusedValue: FocusedValueKey {
-    public typealias Value = WorkspaceModel
-}
-
-public extension FocusedValues {
-    var workspaceModel: WorkspaceModel? {
-        get { self[WorkspaceModelFocusedValue.self] }
-        set { self[WorkspaceModelFocusedValue.self] = newValue }
-    }
-}
-
 struct WorkspaceCommands: Commands {
     @Environment(\.windowCoordinator) private var coordinator
 

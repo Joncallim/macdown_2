@@ -18,10 +18,10 @@ extension TabStore {
 
     func restoreTab(from record: TabRecord) async -> WorkspaceTab? {
         if let fileURL = record.fileURL {
-            let document = FileDocument(fileURL: fileURL)
+            let document = FileDocument(fileURL: fileURL, recoveryBuffer: recoveryBuffer)
             do {
                 var loaded = try document.load()
-                let recovered = try? await RecoveryBuffer.shared.load(for: loaded.id)
+                let recovered = try? await recoveryBuffer.load(for: loaded.id)
                 if let recovered, recovered != loaded.text {
                     loaded = loaded.updatingText(recovered)
                 }
@@ -30,8 +30,8 @@ extension TabStore {
                 return nil
             }
         } else if let untitledID = record.untitledDocumentID {
-            guard let recovered = try? await RecoveryBuffer.shared.load(for: untitledID) else { return nil }
-            var document = FileDocument(text: "")
+            guard let recovered = try? await recoveryBuffer.load(for: untitledID) else { return nil }
+            var document = FileDocument(text: "", recoveryBuffer: recoveryBuffer)
             document = document.updatingText(recovered)
             return WorkspaceTab(id: record.id, document: document, isPinned: record.isPinned)
         }
