@@ -27,4 +27,4 @@ MacDown2/MacDown2.xcodeproj/
 MacDown2/MacDown2/Info.plist
 
 # ---- Local-only legacy reference (pre-cleanup MacDown backup; never committed) ----
-legacy-reference/
+# legacy-reference/
