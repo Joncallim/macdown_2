@@ -2,10 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [rewrite/main]
+    branches: [master]
     paths: ['MacDown2/**', '.github/workflows/ci.yml']
   pull_request:
-    branches: [rewrite/main]
+    branches: [master]
     paths: ['MacDown2/**', '.github/workflows/ci.yml']
 
 concurrency:
@@ -56,3 +56,5 @@ jobs:
         run: |
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' build
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme macdown2 -destination 'platform=macOS' build
+      - name: App + UI tests
+        run: xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' test

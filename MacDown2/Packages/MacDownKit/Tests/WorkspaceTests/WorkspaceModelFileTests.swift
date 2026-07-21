@@ -32,7 +32,7 @@ struct WorkspaceModelFileTests {
         #expect(model.activeDocument == nil)
     }
 
-    @Test func openFileWhileDirtyPromptsClose() async {
+    @Test func openFileWhileDirtyOpensNewTabWithoutPrompt() async {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
         let firstURL = directory.appendingPathComponent("first.md")
@@ -45,56 +45,33 @@ struct WorkspaceModelFileTests {
 
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
         await model.openFile()
-        model.activeDocument = model.activeDocument?.updatingText("edited")
+        model.tabStore.updateActiveDocument { $0.updatingText("edited") }
 
         panel.nextFileURL = secondURL
         await model.openFile()
 
-        #expect(model.pendingClose == true)
-        #expect(model.activeDocument?.text == "edited")
-    }
-
-    @Test func openFileContinuesAfterDirtyClose() async {
-        let directory = temporaryDirectory()
-        defer { cleanup(directory) }
-        let firstURL = directory.appendingPathComponent("first.md")
-        let secondURL = directory.appendingPathComponent("second.md")
-        try? FileStore().write("first", to: firstURL)
-        try? FileStore().write("second", to: secondURL)
-
-        let panel = FakeFilePanelProvider()
-        panel.nextFileURL = firstURL
-
-        let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.openFile()
-        model.activeDocument = model.activeDocument?.updatingText("edited")
-
-        panel.nextFileURL = secondURL
-        await model.openFile()
-        await model.resolveClose(.discard)
-
-        #expect(model.pendingClose == false)
+        #expect(model.tabStore.pendingCloseTabID == nil)
+        #expect(model.tabStore.tabs.count == 2)
         #expect(model.activeDocument?.text == "second")
     }
 
-    @Test func openFileCancelledAbortsOpen() async {
+    @Test func openSameFileTwiceActivatesExistingTab() async {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
-        let firstURL = directory.appendingPathComponent("first.md")
-        try? FileStore().write("first", to: firstURL)
+        let url = directory.appendingPathComponent("doc.md")
+        try? FileStore().write("content", to: url)
 
         let panel = FakeFilePanelProvider()
-        panel.nextFileURL = firstURL
+        panel.nextFileURL = url
 
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
         await model.openFile()
-        model.activeDocument = model.activeDocument?.updatingText("edited")
-
+        model.newDocument()
+        panel.nextFileURL = url
         await model.openFile()
-        await model.resolveClose(.cancel)
 
-        #expect(model.pendingClose == false)
-        #expect(model.activeDocument?.text == "edited")
+        #expect(model.tabStore.tabs.count == 2)
+        #expect(model.activeDocument?.fileURL == url)
     }
 
     // MARK: - Save / Save As
@@ -110,7 +87,7 @@ struct WorkspaceModelFileTests {
 
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
         await model.openFile()
-        model.activeDocument = model.activeDocument?.updatingText("new")
+        model.tabStore.updateActiveDocument { $0.updatingText("new") }
 
         await model.save()
 
@@ -128,8 +105,8 @@ struct WorkspaceModelFileTests {
         panel.nextSaveURL = url
 
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("content")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("content") }
 
         await model.save()
 
@@ -142,8 +119,8 @@ struct WorkspaceModelFileTests {
     @Test func saveCancelledKeepsDocumentOpenAndDirty() async {
         let panel = FakeFilePanelProvider()
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
-        await model.newDocument()
-        model.activeDocument = model.activeDocument?.updatingText("content")
+        model.newDocument()
+        model.tabStore.updateActiveDocument { $0.updatingText("content") }
 
         await model.save()
 
@@ -182,7 +159,7 @@ struct WorkspaceModelFileTests {
 
         let model = WorkspaceModel(stateStore: FakeStateStore(), panel: panel)
         await model.openFile()
-        model.activeDocument = model.activeDocument?.updatingText("edited")
+        model.tabStore.updateActiveDocument { $0.updatingText("edited") }
 
         await model.save()
 

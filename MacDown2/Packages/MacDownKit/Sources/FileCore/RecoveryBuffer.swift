@@ -16,6 +16,13 @@ public actor RecoveryBuffer {
         recoveryDirectory = appSupport.appendingPathComponent("MacDown 2/Recovery", isDirectory: true)
     }
 
+    /// Creates a buffer at an arbitrary directory. Used by tests to keep
+    /// recovery files isolated from the production `~/Library/Application Support`
+    /// location.
+    public init(recoveryDirectory: URL) {
+        self.recoveryDirectory = recoveryDirectory
+    }
+
     /// Writes a recovery copy for the given document identifier.
     public func save(content: String, for documentID: String) throws {
         let url = fileURL(for: documentID)
