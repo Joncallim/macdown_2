@@ -181,7 +181,11 @@ private struct HTMLPreviewView: NSViewRepresentable {
 
     func makeNSView(context _: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
-        configuration.preferences.javaScriptEnabled = false
+        // Disable content JavaScript for every navigation. `preferences.javaScriptEnabled`
+        // is deprecated (macOS 11+); the per-configuration replacement is
+        // `defaultWebpagePreferences.allowsContentJavaScript`. This is defence-in-depth
+        // on top of the CSP injected by `PreviewSecurity.hardenedHTMLDocument(from:)`.
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
         return WKWebView(frame: .zero, configuration: configuration)
     }
 

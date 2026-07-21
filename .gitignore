@@ -26,5 +26,9 @@ MacDown2/**/.build/
 MacDown2/MacDown2.xcodeproj/
 MacDown2/MacDown2/Info.plist
 
-# ---- Local-only legacy reference (pre-cleanup MacDown backup; never committed) ----
-# legacy-reference/
+# ---- Legacy reference (pre-cleanup MacDown backup) ----
+# Now TRACKED (un-ignored) so the original MacDown resources — editor theme
+# `.style`/CSS files under Resources/ and the `MPColor`/`MPUtilities` color tests —
+# synchronise into the repo and serve as the porting source for EPIC-05 (themes +
+# highlighting). See planning/epic-05-implementation.md §3.D4 and §4.11.
+# If the backup is large, prefer committing only the theme/color subset it needs.
