@@ -60,7 +60,8 @@ public enum PreviewSecurity {
         ) {
             let afterName = match.upperBound
             if afterName < html.endIndex, isTagNameBoundary(html[afterName]),
-               let end = html.range(of: ">", range: afterName ..< html.endIndex) {
+               let end = html.range(of: ">", range: afterName ..< html.endIndex)
+            {
                 return match.lowerBound ..< end.upperBound
             }
             searchStart = match.upperBound
