@@ -1,0 +1,151 @@
+name: MacDown2
+options:
+  bundleIdPrefix: com.joncallim
+  deploymentTarget:
+    macOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+packages:
+  MacDownKit:
+    path: Packages/MacDownKit
+targets:
+  MacDown2:
+    type: application
+    platform: macOS
+    sources:
+      - MacDown2
+    dependencies:
+      - package: MacDownKit
+        product: FileCore
+      - package: MacDownKit
+        product: AppSettings
+      - package: MacDownKit
+        product: Themes
+      - package: MacDownKit
+        product: Workspace
+      - package: MacDownKit
+        product: FileTree
+      - package: MacDownKit
+        product: EditorCore
+      - package: MacDownKit
+        product: Highlighting
+      - package: MacDownKit
+        product: MarkdownEngine
+      - package: MacDownKit
+        product: Preview
+      - package: MacDownKit
+        product: OutlineUI
+      - package: MacDownKit
+        product: ExportService
+    info:
+      path: MacDown2/Info.plist
+      properties:
+        CFBundleName: MacDown 2
+        CFBundleDisplayName: MacDown 2
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "26.0"
+        NSHumanReadableCopyright: "Copyright © 2026 Joncallim"
+        NSPrincipalClass: NSApplication
+        LSApplicationCategoryType: public.app-category.productivity
+        # Keep these in sync with FileFormatRegistry.defaultFormats in
+        # MacDownKit/Sources/FileCore/FileFormat.swift.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - net.daringfireball.markdown
+            CFBundleTypeExtensions:
+              - md
+              - markdown
+              - mdown
+              - mkd
+              - mkdn
+          - CFBundleTypeName: HTML Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Editor
+            LSItemContentTypes:
+              - public.html
+            CFBundleTypeExtensions:
+              - html
+              - htm
+          - CFBundleTypeName: JSON Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Editor
+            LSItemContentTypes:
+              - public.json
+            CFBundleTypeExtensions:
+              - json
+          - CFBundleTypeName: YAML Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Editor
+            LSItemContentTypes:
+              - public.yaml
+            CFBundleTypeExtensions:
+              - yaml
+              - yml
+          - CFBundleTypeName: Plain Text Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Editor
+            LSItemContentTypes:
+              - public.plain-text
+            CFBundleTypeExtensions:
+              - txt
+          - CFBundleTypeName: Source Code
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.source-code
+            CFBundleTypeExtensions:
+              - js
+              - jsx
+              - ts
+              - tsx
+              - py
+              - rb
+              - css
+              - swift
+              - c
+              - cpp
+              - cc
+              - cxx
+              - h
+              - hpp
+              - sh
+              - bash
+              - zsh
+              - sql
+              - xml
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.joncallim.macdown2.toml
+            UTTypeDescription: TOML Document
+            UTTypeConformsTo:
+              - public.text
+              - public.plain-text
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - toml
+  macdown2:
+    type: tool
+    platform: macOS
+    sources:
+      - MacDown2CLI
+    dependencies:
+      - package: MacDownKit
+        product: FileCore
+schemes:
+  MacDown2:
+    build:
+      targets:
+        MacDown2: all
+    run:
+      config: Debug
+      executable: MacDown2
+  macdown2:
+    build:
+      targets:
+        macdown2: all
