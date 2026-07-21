@@ -69,4 +69,8 @@ for the overall plan.
 
 ## License
 
-MacDown 2 does not yet declare a license. Add one before any public distribution.
+MacDown 2 is free and open-source software, released under the [MIT License](LICENSE).
+
+It is an open-source **fork and successor of [MacDown](https://github.com/MacDownApp/macdown)**,
+the original macOS Markdown editor by Tzu-ping Chung and contributors (also MIT-licensed).
+The original copyright notice is retained in [`LICENSE`](LICENSE).
