@@ -1,4 +1,5 @@
 import AppKit
+import EditorCore
 import FileCore
 import Foundation
 import Observation
@@ -146,14 +147,22 @@ final class WindowCoordinator {
     func saveSession() async {
         let snapshot = controllers.compactMap { controller -> TabSnapshot? in
             guard let tab = controller.model.tabStore.tabs.first else { return nil }
+            let identity = tab.id.uuidString
+            let textSystem = controller.editorStore.existingSystem(for: identity)
+            let selectedRange = textSystem?.selectedRange
+            let cursorPosition = selectedRange?.location
+            let selectionLength = selectedRange?.length
+            let scrollOffset = textSystem.map { Double($0.scrollOffset) }
+
             return TabSnapshot(
                 record: TabRecord(
                     id: tab.id,
                     fileURL: tab.document.fileURL,
                     untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
                     isPinned: tab.isPinned,
-                    cursorPosition: nil,
-                    scrollOffset: nil
+                    cursorPosition: cursorPosition,
+                    selectionLength: selectionLength,
+                    scrollOffset: scrollOffset
                 ),
                 documentID: tab.document.id,
                 documentText: tab.document.text,
@@ -199,6 +208,19 @@ final class WindowCoordinator {
 
             let controller = WindowController(model: model, coordinator: self)
             controllers.append(controller)
+
+            // The text system was already created by WindowController.init; apply
+            // the restored selection and scroll position before the view appears.
+            let identity = tab.id.uuidString
+            if let textSystem = controller.editorStore.existingSystem(for: identity) {
+                if let cursorPosition = tab.cursorPosition {
+                    let length = tab.selectionLength ?? 0
+                    textSystem.selectedRange = NSRange(location: cursorPosition, length: length)
+                }
+                if let scrollOffset = tab.scrollOffset {
+                    textSystem.scrollOffset = CGFloat(scrollOffset)
+                }
+            }
 
             if firstController == nil {
                 firstController = controller

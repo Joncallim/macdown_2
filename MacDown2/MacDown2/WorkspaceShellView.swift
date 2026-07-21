@@ -1,3 +1,4 @@
+import EditorCore
 import SwiftUI
 import Workspace
 
@@ -9,16 +10,18 @@ import Workspace
 /// window.
 struct WorkspaceShellView: View {
     @State private var model: WorkspaceModel
+    let editorStore: EditorTextSystemStore
 
-    init(model: WorkspaceModel) {
+    init(model: WorkspaceModel, editorStore: EditorTextSystemStore) {
         _model = State(initialValue: model)
+        self.editorStore = editorStore
     }
 
     var body: some View {
         NavigationSplitView(columnVisibility: sidebarVisibilityBinding) {
             SidebarView(model: model)
         } detail: {
-            ContentAreaView(document: model.activeDocument)
+            ContentAreaView(model: model, editorStore: editorStore)
         }
         .navigationSplitViewStyle(.balanced)
         .toolbar {

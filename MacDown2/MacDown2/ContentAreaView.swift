@@ -1,16 +1,19 @@
+import EditorCore
 import FileCore
 import MarkdownEngine
 import Preview
 import SwiftUI
 import WebKit
+import Workspace
 
 struct ContentAreaView: View {
-    let document: FileCore.FileDocument?
+    let model: WorkspaceModel
+    let editorStore: EditorTextSystemStore
 
     var body: some View {
         Group {
-            if let document {
-                documentContent(document)
+            if let document = model.activeDocument, let identity = activeIdentity {
+                documentContent(document, identity: identity)
             } else {
                 emptyState
             }
@@ -18,7 +21,20 @@ struct ContentAreaView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func documentContent(_ document: FileCore.FileDocument) -> some View {
+    private var activeIdentity: String? {
+        model.tabStore.activeTabID?.uuidString
+    }
+
+    private var textBinding: Binding<String> {
+        Binding(
+            get: { model.activeDocument?.text ?? "" },
+            set: { newText in
+                model.tabStore.updateActiveDocument { $0.edited(text: newText) }
+            }
+        )
+    }
+
+    private func documentContent(_ document: FileCore.FileDocument, identity: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header bar
             HStack(spacing: 10) {
@@ -51,7 +67,12 @@ struct ContentAreaView: View {
             Divider()
 
             // Source / preview split
-            DocumentEditorSplitView(document: document)
+            DocumentEditorSplitView(
+                document: document,
+                identity: identity,
+                text: textBinding,
+                editorStore: editorStore
+            )
         }
     }
 
@@ -97,13 +118,21 @@ struct ContentAreaView: View {
 
 private struct DocumentEditorSplitView: View {
     let document: FileCore.FileDocument
+    let identity: String
+    @Binding var text: String
+    let editorStore: EditorTextSystemStore
 
     var body: some View {
         GeometryReader { geometry in
             HStack(spacing: 0) {
                 // Source pane (left)
-                SourcePane(text: document.text, format: document.format)
-                    .frame(width: geometry.size.width / 2)
+                EditorView(
+                    text: $text,
+                    identity: identity,
+                    configuration: .default,
+                    store: editorStore
+                )
+                .frame(width: geometry.size.width / 2)
 
                 // Divider
                 Rectangle()
@@ -121,28 +150,11 @@ private struct DocumentEditorSplitView: View {
     private var previewPane: some View {
         switch PreviewRouter.previewKind(for: document.format) {
         case .markdown:
-            MarkdownPreviewView(text: document.text)
+            MarkdownPreviewView(text: $text)
         case .html:
-            HTMLPreviewView(text: document.text)
+            HTMLPreviewView(text: $text)
         case .none:
             NoPreviewView(formatName: document.format.name)
-        }
-    }
-}
-
-// MARK: - Source pane
-
-private struct SourcePane: View {
-    let text: String
-    let format: FileFormat
-
-    var body: some View {
-        ScrollView {
-            Text(text.isEmpty ? " " : text)
-                .font(.system(.body, design: .monospaced))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .textSelection(.enabled)
         }
     }
 }
@@ -150,7 +162,7 @@ private struct SourcePane: View {
 // MARK: - Markdown preview
 
 private struct MarkdownPreviewView: View {
-    let text: String
+    @Binding var text: String
 
     var body: some View {
         ScrollView {
@@ -165,7 +177,7 @@ private struct MarkdownPreviewView: View {
 // MARK: - HTML preview
 
 private struct HTMLPreviewView: NSViewRepresentable {
-    let text: String
+    @Binding var text: String
 
     func makeNSView(context _: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()

@@ -13,10 +13,31 @@ public struct WorkspaceTab: Identifiable, Sendable {
     public var document: FileDocument
     public var isPinned: Bool
 
-    public init(id: UUID = UUID(), document: FileDocument, isPinned: Bool = false) {
+    /// Transient editor state captured at session-save time. Applied by the
+    /// app target after restore; not used by `TabStore` itself.
+    ///
+    /// `cursorPosition` is the UTF-16 offset of the start of the editor
+    /// selection (the caret when `selectionLength` is zero). `selectionLength`
+    /// is the number of UTF-16 code units selected. Together they reconstruct
+    /// the full `NSRange` on restore.
+    public var cursorPosition: Int?
+    public var selectionLength: Int?
+    public var scrollOffset: Double?
+
+    public init(
+        id: UUID = UUID(),
+        document: FileDocument,
+        isPinned: Bool = false,
+        cursorPosition: Int? = nil,
+        selectionLength: Int? = nil,
+        scrollOffset: Double? = nil
+    ) {
         self.id = id
         self.document = document
         self.isPinned = isPinned
+        self.cursorPosition = cursorPosition
+        self.selectionLength = selectionLength
+        self.scrollOffset = scrollOffset
     }
 }
 

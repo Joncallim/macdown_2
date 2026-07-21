@@ -1,4 +1,5 @@
 import AppKit
+import EditorCore
 import FileCore
 import Foundation
 import SwiftUI
@@ -9,6 +10,7 @@ import Workspace
 @MainActor
 final class WindowController: NSWindowController, NSWindowDelegate {
     let model: WorkspaceModel
+    let editorStore: EditorTextSystemStore
     private weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
@@ -17,8 +19,22 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     init(model: WorkspaceModel, coordinator: WindowCoordinator) {
         self.model = model
         self.coordinator = coordinator
+        editorStore = EditorTextSystemStore()
 
-        let hostingController = NSHostingController(rootView: WorkspaceShellView(model: model))
+        // Eagerly create the text system for the active tab so session-save
+        // can read cursor/scroll state even before SwiftUI mounts the view.
+        if let activeTab = model.tabStore.activeTab {
+            _ = editorStore.system(
+                for: activeTab.id.uuidString,
+                initialText: activeTab.document.text,
+                configuration: .default
+            )
+        }
+
+        let hostingController = NSHostingController(rootView: WorkspaceShellView(
+            model: model,
+            editorStore: editorStore
+        ))
         let window = NSWindow(contentViewController: hostingController)
         window.setFrameAutosaveName("MacDown2DocumentWindow")
         window.title = model.activeDocument?.fileURL?.lastPathComponent ?? "Untitled"
@@ -74,6 +90,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_: Notification) {
         observationTask?.cancel()
+        editorStore.evictAll()
     }
 
     func windowDidBecomeKey(_: Notification) {
