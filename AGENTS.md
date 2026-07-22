@@ -2,12 +2,14 @@
 
 ## What this repo is
 
-Fork of MacDown (legacy ObjC app on `master`) hosting the **MacDown 2**
-rewrite (Swift 6 / SwiftUI, macOS 26+) on branch `rewrite/main`.
+Fork of MacDown hosting the **MacDown 2** rewrite (Swift 6 / SwiftUI,
+macOS 26+). The rewrite lives on `master`; the legacy ObjC app survives only
+as a read-only porting source in `legacy-reference/`.
 
 ## Layout
 
-- `MacDown/`, `Dependency/`, `macdown-cmd/`, `Tools/` — legacy tree. Do not modify.
+- `legacy-reference/` — legacy ObjC tree (themes, `MPColor`/`MPUtilities`
+  tests, resources). Porting source only. Do not modify.
 - `MacDown2/` — the new product.
   - `MacDown2/MacDown2/` — app target sources
   - `MacDown2/MacDown2CLI/` — CLI target sources
@@ -32,6 +34,9 @@ rewrite (Swift 6 / SwiftUI, macOS 26+) on branch `rewrite/main`.
 - Swift 6 + strict concurrency; warnings are fixed, not ignored.
 - SPM only; third-party deps pinned and wrapped behind internal protocols
   (see `planning/MIGRATION_PLAN.md` §5).
-- One branch per epic (`epic/NN-name`) → PR into `rewrite/main`.
+- One branch per epic (`epic/NN-name`) → PR into `master`.
   CI green + tests included + epic issue referenced.
+- Tabs are **native `NSWindow` tabs** (as-built E03): one window = one
+  document; `WindowCoordinator` owns the pool. Do not reintroduce an in-app
+  tab bar.
 - Tests use Swift Testing (`@Test`), not XCTest, for all new code.

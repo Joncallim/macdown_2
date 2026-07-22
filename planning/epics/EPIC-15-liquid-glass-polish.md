@@ -13,8 +13,10 @@ audit separates "runs on Tahoe" from "feels native to Tahoe".
   grouping; no custom backgrounds anywhere behind bars
 - Sidebar/inspector: confirm material correctness, scroll-edge effects,
   `.backgroundExtensionEffect()` where content passes under the sidebar
-- Custom glass elements (tab bar, status overlays) grouped in
-  `GlassEffectContainer`; no glass-on-glass stacking; tint sparingly per HIG
+- Custom glass elements (status overlays) grouped in `GlassEffectContainer`;
+  no glass-on-glass stacking; tint sparingly per HIG. *Amended at #28: there
+  is no custom tab bar — tabs are native `NSWindow` tabs (as-built E03) and
+  get glass from AppKit; verify, don't rebuild.*
 - App icon rebuilt in Icon Composer (Liquid Glass layered icon)
 - Accessibility: Reduce Transparency, Increase Contrast, Reduce Motion,
   VoiceOver over tabs/tree/outline; Dynamic Type where sensible
