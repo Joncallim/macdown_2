@@ -12,7 +12,10 @@ headings for quick jumping — the per-document counterpart to the folder browse
 - `OutlineUI` target: heading tree built from the E06 AST (H1–H6, nested,
   collapsible), Setext + ATX support
 - Sidebar placement: below the folder browser by default; section order
-  persisted and user-rearrangeable
+  persisted and user-rearrangeable. *Amended at #28: the sidebar is per
+  window (as-built E03) — "active document" is the window's document, and
+  "switching tabs" is a native tab-group switch between windows, each with
+  its own outline.*
 - Click heading → editor jumps (scroll + cursor + brief highlight); current
   section auto-highlighted as you scroll/edit (via source-range index)
 - Live updates from the same debounced parse; graceful empty state for

@@ -3,7 +3,12 @@
 > Status: **approved direction** · Scope: full rewrite as a **new product** · Target: **macOS 26+ only**
 
 This document is the single source of truth for the rewrite. Epics live in
-`planning/epics/` and are intended to be posted as GitHub issues on the fork.
+`planning/epics/` and are tracked as GitHub issues on `Joncallim/macdown_2`.
+
+> **Amended 2026-07-22 (mid-point check-in, #28):** D2 reversed to native
+> `NSWindow` tabs (see below); branch strategy updated (`master`, not
+> `rewrite/main`); O4 resolved; EPIC-18 (live external-file changes) added as
+> a required pre-dogfooding capability.
 
 ---
 
@@ -19,7 +24,7 @@ JSON, HTML, and other popular languages — not just Markdown.
 | # | Decision | Choice |
 |---|----------|--------|
 | D1 | Deployment floor | **macOS 26+ only** (Xcode 26 SDK, Swift 6, Liquid Glass automatic; no `UIDesignRequiresCompatibility`) |
-| D2 | Tab model | **In-app workspace tabs** in a single window (not native window tabs), plus a **content browser** (heading outline of the active document) placed above or below the folder browser |
+| D2 | Tab model | **Native `NSWindow` tabs** — one window = one document, grouped by AppKit tab groups; `WindowCoordinator` owns the pool, each window hosts its own `WorkspaceModel` + sidebar. *(Amended at the mid-point check-in #28: the original "in-app tabs in a single window" plan was superseded by the implementation, which proved native tabbing composes fine with a per-window sidebar and gets dedupe, dirty-close, and session restore with far less custom UI.)* The **content browser** (heading outline) still ships in the sidebar (E08) |
 | D3 | Editor | **Custom NSTextView + TextKit 2** wrapped in `NSViewRepresentable`, **tree-sitter** highlighting (via SwiftTreeSitter). Priority: fastest, smoothest experience |
 | D4 | Markdown preview | **Native SwiftUI via Textual** (no WKWebView for Markdown) |
 | D5 | Identity | **New product** — new name, bundle ID, icon, appcast. MacDown fork serves as reference + resource donor |
@@ -30,24 +35,28 @@ JSON, HTML, and other popular languages — not just Markdown.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
+│ Native NSWindow tab bar (AppKit: title / dirty dot / reorder)  │
+├────────────────────────────────────────────────────────────────┤
 │ Toolbar (glass)                              [sidebar toggle]  │
-├──────────────┬─────────────────────────────────────────────────┤
-│ SIDEBAR      │ Tab bar (pin / dirty dot / close / reorder)     │
-│ (collapsible)├──────────────────────────────┬──────────────────┤
-│              │                              │                  │
-│ ▾ FOLDER     │  Editor                      │  Preview         │
-│   browser    │  NSTextView + TextKit 2      │  Textual (MD)    │
-│ ──────────── │  + tree-sitter highlight     │  WKWebView(HTML) │
-│ ▾ CONTENT    │                              │  Outline (JSON)  │
+├──────────────┬──────────────────────────────┬──────────────────┤
+│ SIDEBAR      │                              │                  │
+│ (collapsible,│  Editor                      │  Preview         │
+│  per window) │  NSTextView + TextKit 2      │  Textual (MD)    │
+│              │  + tree-sitter highlight     │  WKWebView(HTML) │
+│ ▾ FOLDER     │                              │  Outline (JSON)  │
 │   browser    │                              │                  │
-│   (headings  │                              │                  │
-│   of active  │                              │                  │
-│   document)  │                              │                  │
+│ ──────────── │                              │                  │
+│ ▾ CONTENT    │                              │                  │
+│   browser    │                              │                  │
 └──────────────┴──────────────────────────────┴──────────────────┘
 ```
 
-- **Scene model:** single `WindowGroup` + `WorkspaceModel`. **Not** `DocumentGroup`
-  (fights the one-window-many-tabs model). Per-tab file state owned by `TabStore`.
+- **Scene model (as built):** `AppDelegate` + `WindowCoordinator` own a pool of
+  `NSWindowController`s — one window per document, grouped as native tabs. The
+  SwiftUI `WindowGroup` scene exists only to host the command/menu structure.
+  Each window hosts its own `WorkspaceModel`; `TabStore` survives as the
+  per-window single-document holder and session-restore seam. **Not**
+  `DocumentGroup`.
 - **Document lifecycle is re-implemented** (no NSDocument): autosave-on-edit,
   dirty tracking, close-dirty prompts, session restore. This is a deliberate
   trade; it gets a dedicated state machine + heavy UI tests (EPIC-01/03).
@@ -99,7 +108,7 @@ never leaks into app code. No CocoaPods, no submodules.
 | **M1 — Skeleton** | App launches, opens/saves files in tabs | E00, E01, E02, E03 |
 | **M2 — Editor** | World-class text editing + highlighting | E04, E05, E10 |
 | **M3 — Markdown core** | Live native preview + content browser | E06, E07, E08 |
-| **M4 — Workspace & formats** | Folder browser, JSON/HTML, export, settings | E09, E11, E12, E13 |
+| **M4 — Workspace & formats** | Folder browser, JSON/HTML, export, settings, live external files | E09, E11, E12, E13, E18 |
 | **M5 — Polish & ship** | Extensions seam, glass, l10n, distribution | E14, E15, E16, E17 |
 
 ### Dependency graph (critical path in **bold**)
@@ -122,18 +131,19 @@ E00 ─▶ E01 ─▶ E02 ─▶ E03 ─▶ E09 ─┐
 
 Critical path: **E00 → E01 → E04 → E05 → E06 → E07 → E15 → E17**.
 E06 depends only on E01 and can run parallel to E04/E05 if desired.
+**E18 (live external-file changes, added at #28)** depends on E01 + the
+as-built E03 window model and must land before sustained dogfooding begins.
 
 ## 7. Repository & Branch Strategy
 
-- Work happens in this fork on branch **`rewrite/main`**. `master` (ObjC) stays
-  untouched and buildable for reference until 1.0 ships.
-- One branch per epic: `epic/NN-short-name` → PR into `rewrite/main`.
+- The rewrite lives on **`master`** of `Joncallim/macdown_2` (amended at #28;
+  the original `rewrite/main` plan was retired when the rewrite was merged to
+  master). The legacy ObjC app survives as a read-only porting source in
+  `legacy-reference/`.
+- One branch per epic: `epic/NN-short-name` → PR into `master`.
   PR requires: CI green, tests added/updated, epic issue referenced.
-- Because this is a new product (D5), expect to eventually rename the repo or
-  move `rewrite/main` to a fresh repo. Planning docs live in `planning/` and
-  ride along.
-- Planning files are currently **untracked**; commit them to `rewrite/main`
-  when the branch is created (part of E00).
+- Hand-offs are posted as **inline PR comments** on the architecture doc, not
+  committed `epic-NN-handoff.md` files (workflow adopted in E05).
 
 ## 8. Performance Budgets (acceptance thresholds)
 
@@ -146,6 +156,14 @@ E06 depends only on E01 and can run parallel to E04/E05 if desired.
 | Keystroke → preview refresh (debounced) | < 150 ms | E07 perf test |
 | Folder with 10k entries → expand | < 200 ms | E09 perf test |
 | Memory, 20 typical tabs | < 300 MB | E15 audit |
+
+> **Measurement caveat (#28):** budgets so far are verified as *package-level*
+> `swift test` benchmarks (and debug-build documentation ceilings for E05).
+> The full app path — NSTextView edit → string extraction → model update →
+> observation → highlight/preview refresh — has not been measured end-to-end.
+> Full-path measurements on representative 1 MB / 10 MB files are a #28
+> dogfooding-gate deliverable; README claims must not exceed what has been
+> measured on the complete path.
 
 ## 9. Testing Strategy
 
@@ -189,7 +207,7 @@ E06 depends only on E01 and can run parallel to E04/E05 if desired.
 | O1 | Product name + bundle ID → **RESOLVED: MacDown 2 / `com.joncallim.macdown2`** (2026-07-19) | E00 (project creation) |
 | O2 | Where does the app live long-term: rename this fork, or fresh repo? | E17 (can defer) |
 | O3 | Import old MacDown prefs/themes on first run? (nice-to-have) | E13 |
-| O4 | Which legacy themes ship in v1? (Resources has ~15 CSS/themes) | E05/E07 |
+| O4 | Which legacy themes ship in v1? → **PARTIALLY RESOLVED: Tomorrow Light + Tomorrow Dark shipped in E05** (2026-07-22); more are data-only additions (E13/E07) | E05/E07 |
 
 ## 13. Appendix — D6: Extension Design
 

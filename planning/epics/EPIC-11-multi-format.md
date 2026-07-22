@@ -16,9 +16,15 @@ highlight-only experience.
 - **HTML**: source ↔ rendered toggle in the preview pane (rendered uses a
   sandboxed `WKWebView` — this is the only WKWebView in the app); live-ish
   reload on save (not per keystroke)
-- **Other languages**: confirm all E05 grammars wired through the FileFormat
-  registry; ensure preview pane shows a clean "no preview" state with format
-  info (line count, language, encoding)
+- **Other languages**: complete the grammar registry. *Amended at #28: E05
+  shipped `markdown`, `markdown_inline`, `json`, `html` only. The remaining
+  planned grammars (css, javascript, typescript, python, yaml, toml, swift,
+  bash, sql, xml, ruby, c, cpp) land here — each is one `case` in
+  `GrammarRegistry.buildConfiguration(for:)` + `knownLanguageIDs` and one
+  pinned SPM package (or a vendored local package with canonical-capture
+  queries, following the `Packages/TreeSitterMarkdown` pattern when upstream
+  SPM packaging is missing/broken).* Ensure the preview pane shows a clean
+  "no preview" state with format info (line count, language, encoding)
 - Preview router generalizes: per-format `PreviewCapability` honored in UI
 
 ## Deliverables

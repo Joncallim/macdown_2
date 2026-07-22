@@ -13,7 +13,11 @@ text, glass-friendly.
 - `Preview` target: `MarkdownPreviewing` protocol + Textual-backed
   implementation (protocol seam isolates Textual's pre-1.0 API)
 - Editor | Preview split in the content area: draggable divider, both panes
-  collapsible (editor-only, preview-only, split), per-tab layout state
+  collapsible (editor-only, preview-only, split), per-tab layout state.
+  *Amended at #28: tabs are native windows (as-built E03), so "per-tab" means
+  per window/document, persisted through the session store. The current
+  `Preview`/`MarkdownEngine` modules are EPIC-02 placeholders this epic
+  replaces.*
 - Render pipeline: MarkdownEngine AST → Textual document on debounce
 - **Scroll sync**: editor scroll position ↔ preview position via the E06
   source-range index (block-level mapping, monotonic, no feedback loops)
