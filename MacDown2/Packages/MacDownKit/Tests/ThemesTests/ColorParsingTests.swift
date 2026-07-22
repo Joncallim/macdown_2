@@ -132,8 +132,6 @@ struct ColorParsingTests {
 
     // MARK: - Legacy port parity
 
-    // MARK: - Legacy port parity
-
     @Test func legacyHexStringToColor() {
         let color = ThemeColor(cssString: "#123456")
         #expect(color?.red == 0x12 / 255.0)
