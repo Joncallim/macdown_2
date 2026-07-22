@@ -1,14 +1,18 @@
 import EditorCore
 import FileCore
+import Highlighting
 import MarkdownEngine
 import Preview
 import SwiftUI
+import Themes
 import WebKit
 import Workspace
 
 struct ContentAreaView: View {
     let model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    let highlightStore: SyntaxHighlightStore
+    let themeController: ThemeController
 
     var body: some View {
         Group {
@@ -71,7 +75,9 @@ struct ContentAreaView: View {
                 document: document,
                 identity: identity,
                 text: textBinding,
-                editorStore: editorStore
+                editorStore: editorStore,
+                highlightStore: highlightStore,
+                themeController: themeController
             )
         }
     }
@@ -121,6 +127,14 @@ private struct DocumentEditorSplitView: View {
     let identity: String
     @Binding var text: String
     let editorStore: EditorTextSystemStore
+    let highlightStore: SyntaxHighlightStore
+    let themeController: ThemeController
+
+    private var editorConfiguration: EditorConfiguration {
+        var config = EditorConfiguration.default
+        config.scrollsPastEnd = false
+        return config
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -129,10 +143,19 @@ private struct DocumentEditorSplitView: View {
                 EditorView(
                     text: $text,
                     identity: identity,
-                    configuration: .default,
+                    configuration: editorConfiguration,
                     store: editorStore
                 )
                 .frame(width: geometry.size.width / 2)
+                .task(id: identity) {
+                    attachHighlighter()
+                }
+                .task(id: themeController.current) {
+                    highlightStore.applyThemeToAll(themeController.current)
+                }
+                .task(id: geometry.size) {
+                    highlightStore.applyThemeToAll(themeController.current)
+                }
 
                 // Divider
                 Rectangle()
@@ -144,6 +167,16 @@ private struct DocumentEditorSplitView: View {
                     .frame(width: geometry.size.width / 2 - 1)
             }
         }
+    }
+
+    private func attachHighlighter() {
+        guard let textSystem = editorStore.existingSystem(for: identity) else { return }
+        _ = highlightStore.highlighter(
+            for: identity,
+            textSystem: textSystem,
+            languageID: document.format.highlightLanguageID,
+            theme: themeController.current
+        )
     }
 
     @ViewBuilder

@@ -1,9 +1,15 @@
 import AppKit
 import SwiftUI
+import Themes
 import Workspace
 
 struct WorkspaceCommands: Commands {
     @Environment(\.windowCoordinator) private var coordinator
+    private let themeController: ThemeController
+
+    init(themeController: ThemeController) {
+        self.themeController = themeController
+    }
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -71,6 +77,14 @@ struct WorkspaceCommands: Commands {
         }
 
         CommandGroup(before: .sidebar) {
+            Menu("Theme") {
+                ForEach(themeController.available) { theme in
+                    Button(theme.name) {
+                        themeController.select(theme)
+                    }
+                }
+            }
+
             Button("Toggle Sidebar") {
                 coordinator?.keyModel?.sidebarVisible.toggle()
             }

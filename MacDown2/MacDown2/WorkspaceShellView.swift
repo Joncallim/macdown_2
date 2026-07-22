@@ -1,5 +1,7 @@
 import EditorCore
+import Highlighting
 import SwiftUI
+import Themes
 import Workspace
 
 /// The content of a single MacDown 2 document window.
@@ -11,17 +13,31 @@ import Workspace
 struct WorkspaceShellView: View {
     @State private var model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    let highlightStore: SyntaxHighlightStore
+    let themeController: ThemeController
 
-    init(model: WorkspaceModel, editorStore: EditorTextSystemStore) {
+    init(
+        model: WorkspaceModel,
+        editorStore: EditorTextSystemStore,
+        highlightStore: SyntaxHighlightStore,
+        themeController: ThemeController
+    ) {
         _model = State(initialValue: model)
         self.editorStore = editorStore
+        self.highlightStore = highlightStore
+        self.themeController = themeController
     }
 
     var body: some View {
         NavigationSplitView(columnVisibility: sidebarVisibilityBinding) {
             SidebarView(model: model)
         } detail: {
-            ContentAreaView(model: model, editorStore: editorStore)
+            ContentAreaView(
+                model: model,
+                editorStore: editorStore,
+                highlightStore: highlightStore,
+                themeController: themeController
+            )
         }
         .navigationSplitViewStyle(.balanced)
         .toolbar {

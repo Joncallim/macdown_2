@@ -53,8 +53,15 @@ public struct EditorView: NSViewRepresentable {
         scrollView.autohidesScrollers = configuration.wrapsLines
         scrollView.borderType = .noBorder
         system.scrollView = scrollView
-        system.textView.frame = scrollView.bounds
-        system.textView.autoresizingMask = [.width, .height]
+        // The scroll view has not been laid out yet, so give the text view a
+        // generous initial frame. The vertically-resizable NSTextView will
+        // shrink to fit its content after layout; starting large ensures the
+        // full document is scrollable immediately.
+        system.textView.frame = NSRect(
+            origin: .zero,
+            size: CGSize(width: max(scrollView.bounds.width, 100), height: 10000)
+        )
+        system.textView.autoresizingMask = [.width]
         system.applyPendingScrollOffset()
 
         system.textView.delegate = context.coordinator
@@ -101,6 +108,12 @@ public struct EditorView: NSViewRepresentable {
             system.setText(text)
             context.coordinator.isApplyingModelText = false
         }
+
+        // A vertically-resizable NSTextView only grows its document-view height
+        // when it is told to size to its content. Call this after the text is
+        // known so long documents become scrollable instead of being clipped
+        // to the initial placeholder frame.
+        system.textView.sizeToFit()
 
         scrollView.hasHorizontalScroller = !configuration.wrapsLines
         scrollView.autohidesScrollers = configuration.wrapsLines

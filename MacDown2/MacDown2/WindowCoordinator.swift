@@ -2,12 +2,15 @@ import AppKit
 import EditorCore
 import FileCore
 import Foundation
+import Highlighting
 import Observation
 import SwiftUI
+import Themes
 import Workspace
 
 extension EnvironmentValues {
     @Entry var windowCoordinator: WindowCoordinator?
+    @Entry var themeController: ThemeController?
 }
 
 // MARK: - Coordinator
@@ -24,17 +27,20 @@ final class WindowCoordinator {
     private let sessionStore: WorkspaceSessionStoring
     private let panelProvider: NSFilePanelProvider
     private let recoveryBuffer: RecoveryBuffer
+    private let themeController: ThemeController
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
 
     init(
         sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
         panelProvider: NSFilePanelProvider = NSFilePanelProvider(),
-        recoveryBuffer: RecoveryBuffer = .shared
+        recoveryBuffer: RecoveryBuffer = .shared,
+        themeController: ThemeController
     ) {
         self.sessionStore = sessionStore
         self.panelProvider = panelProvider
         self.recoveryBuffer = recoveryBuffer
+        self.themeController = themeController
     }
 
     // MARK: - Window lifecycle
@@ -46,7 +52,7 @@ final class WindowCoordinator {
 
         let model = makeWindowModel()
         model.newDocument()
-        let controller = WindowController(model: model, coordinator: self)
+        let controller = WindowController(model: model, coordinator: self, themeController: themeController)
         addController(controller, addingAsTab: addAsTab, keyWindow: keyWindow)
     }
 
@@ -65,7 +71,7 @@ final class WindowCoordinator {
         _ = await model.tabStore.openFileInTab(url)
 
         guard !model.tabStore.tabs.isEmpty else { return }
-        let controller = WindowController(model: model, coordinator: self)
+        let controller = WindowController(model: model, coordinator: self, themeController: themeController)
         addController(controller, addingAsTab: true, keyWindow: keyWindow)
     }
 
@@ -206,7 +212,7 @@ final class WindowCoordinator {
             let model = makeWindowModel()
             model.tabStore.newTab(id: tab.id, document: tab.document)
 
-            let controller = WindowController(model: model, coordinator: self)
+            let controller = WindowController(model: model, coordinator: self, themeController: themeController)
             controllers.append(controller)
 
             // The text system was already created by WindowController.init; apply

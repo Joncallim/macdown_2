@@ -1,4 +1,5 @@
 import SwiftUI
+import Themes
 
 @main
 struct MacDown2App: App {
@@ -9,8 +10,9 @@ struct MacDown2App: App {
             EmptyView()
         }
         .commands {
-            WorkspaceCommands()
+            WorkspaceCommands(themeController: appDelegate.themeController)
         }
         .environment(\.windowCoordinator, appDelegate.coordinator)
+        .environment(\.themeController, appDelegate.themeController)
     }
 }
