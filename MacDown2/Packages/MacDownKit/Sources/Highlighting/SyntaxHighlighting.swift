@@ -3,6 +3,9 @@ import Themes
 /// The internal seam the app talks to. One instance per open document/text system.
 @MainActor
 public protocol SyntaxHighlighting: AnyObject {
+    /// The language identifier currently in use (nil = plain text).
+    var languageID: String? { get }
+
     /// Recolour the visible range for a new theme WITHOUT reparsing.
     func applyTheme(_ theme: Theme)
 

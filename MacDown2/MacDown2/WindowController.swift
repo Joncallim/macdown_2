@@ -19,6 +19,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
+    private var lastObservedLanguageID: String??
 
     init(
         model: WorkspaceModel,
@@ -98,6 +99,26 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         lastObservedDirty = isDirty
         if changed {
             coordinator?.scheduleSaveSession()
+        }
+
+        // Re-attach the highlighter if the active document's format changed
+        // (e.g., after Save As). The `highlighter(for:)` method on
+        // `SyntaxHighlightStore` detects the language mismatch and calls
+        // `setLanguage` automatically.
+        let currentLanguageID = document?.format.highlightLanguageID
+        if lastObservedLanguageID != currentLanguageID {
+            lastObservedLanguageID = currentLanguageID
+            guard let activeTab = model.tabStore.activeTab,
+                  let textSystem = editorStore.existingSystem(for: activeTab.id.uuidString)
+            else {
+                return
+            }
+            _ = highlightStore.highlighter(
+                for: activeTab.id.uuidString,
+                textSystem: textSystem,
+                languageID: currentLanguageID,
+                theme: themeController.current
+            )
         }
     }
 

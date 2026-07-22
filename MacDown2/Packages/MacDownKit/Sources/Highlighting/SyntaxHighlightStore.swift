@@ -12,6 +12,10 @@ public final class SyntaxHighlightStore {
     }
 
     /// Returns the existing highlighter or builds one for this text system.
+    ///
+    /// If a cached highlighter exists but was built for a different language,
+    /// `setLanguage` is called on it so the grammar stays in sync with the
+    /// document format (e.g., after Save As).
     public func highlighter(
         for identity: String,
         textSystem: EditorTextSystem,
@@ -19,6 +23,9 @@ public final class SyntaxHighlightStore {
         theme: Theme
     ) -> SyntaxHighlighting {
         if let existing = highlighters[identity] {
+            if existing.languageID != languageID {
+                existing.setLanguage(languageID)
+            }
             return existing
         }
         let newHighlighter = NeonSyntaxHighlighter(

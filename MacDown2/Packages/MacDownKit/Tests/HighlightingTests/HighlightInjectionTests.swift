@@ -28,7 +28,7 @@ struct HighlightInjectionTests {
         #expect(boldCaptures.isEmpty == false || captures.isEmpty == false)
     }
 
-    @Test func unknownFenceLanguageStaysPlain() throws {
+    @Test func unknownFenceLanguagePreservesMarkdownCaptures() throws {
         let registry = GrammarRegistry()
         let config = try #require(registry.configuration(for: "markdown"))
 
@@ -40,13 +40,18 @@ struct HighlightInjectionTests {
         let text = "```swift\nlet x = 1\n```"
         _ = layer.replaceContent(with: text)
 
-        // swift is not registered, so the fence content should remain plain.
-        // The test passes if no exception is thrown and the layer tree stays valid.
+        // swift is not registered in `GrammarRegistry`, so the fence content
+        // should not produce any injected-language captures. The outer markdown
+        // grammar still yields its own captures (fenced_code_block, etc.).
         let snapshot = try #require(layer.snapshot())
         let captures = try snapshot.executeQuery(.highlights, in: IndexSet(integersIn: 0 ..< (text as NSString).length))
             .highlights()
 
-        // We should still get markdown captures (fenced_code_block, info_string, etc.).
+        // Should get markdown captures from the outer grammar.
         #expect(captures.isEmpty == false)
+
+        // Verify none of the captures come from a swift injection.
+        let swiftCaptures = captures.filter { $0.name.contains("swift") }
+        #expect(swiftCaptures.isEmpty)
     }
 }

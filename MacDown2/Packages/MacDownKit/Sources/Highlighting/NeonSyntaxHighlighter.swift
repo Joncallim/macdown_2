@@ -13,7 +13,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     private let registry: GrammarRegistry
     private var currentTheme: Theme
     private var highlighter: TextViewHighlighter?
-    private var languageID: String?
+    public private(set) var languageID: String?
     private let baseFont: NSFont
 
     /// - textSystem: the E04 system whose `.textView` we attach to.
@@ -121,13 +121,48 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     ///
     /// `row` = number of `\n` before the offset; `column` = UTF-16 code-unit
     /// distance back to the previous `\n` (or string start).
+    ///
+    /// Uses a lazily-built line-offset table with binary search for O(log n)
+    /// per-call performance instead of O(n) substring scanning.
     static func locationTransformer(for textView: NSTextView) -> (Int) -> Point? {
-        { offset in
+        var lineOffsets: [Int]?
+
+        return { offset in
             let string = textView.string as NSString
             let clamped = max(0, min(offset, string.length))
-            let lineRange = string.lineRange(for: NSRange(location: clamped, length: 0))
-            let row = string.substring(to: clamped).components(separatedBy: "\n").count - 1
-            let column = clamped - lineRange.location
+
+            // Build the line-offset table once, lazily.
+            if lineOffsets == nil {
+                var offsets = [0]
+                let length = string.length
+                var searchRange = NSRange(location: 0, length: length)
+                while searchRange.length > 0 {
+                    let newlineRange = string.range(of: "\n", options: [], range: searchRange)
+                    guard newlineRange.location != NSNotFound else { break }
+                    offsets.append(newlineRange.location + 1)
+                    let nextStart = newlineRange.location + 1
+                    guard nextStart < length else { break }
+                    searchRange = NSRange(location: nextStart, length: length - nextStart)
+                }
+                lineOffsets = offsets
+            }
+
+            guard let offsets = lineOffsets, !offsets.isEmpty else {
+                return Point(row: 0, column: clamped)
+            }
+
+            // Binary search for the row containing `clamped`.
+            var low = 0, high = offsets.count - 1
+            while low <= high {
+                let mid = (low + high) / 2
+                if offsets[mid] <= clamped {
+                    low = mid + 1
+                } else {
+                    high = mid - 1
+                }
+            }
+            let row = high
+            let column = clamped - offsets[row]
             return Point(row: row, column: column)
         }
     }
