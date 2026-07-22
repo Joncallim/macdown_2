@@ -126,13 +126,17 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     /// per-call performance instead of O(n) substring scanning.
     static func locationTransformer(for textView: NSTextView) -> (Int) -> Point? {
         var lineOffsets: [Int]?
+        var cachedLength = 0
 
         return { offset in
             let string = textView.string as NSString
             let clamped = max(0, min(offset, string.length))
 
-            // Build the line-offset table once, lazily.
-            if lineOffsets == nil {
+            // Rebuild the line-offset table when the document length changes
+            // (e.g., after an edit). This keeps row calculations correct for
+            // incremental reparse positions.
+            if lineOffsets == nil || cachedLength != string.length {
+                cachedLength = string.length
                 var offsets = [0]
                 let length = string.length
                 var searchRange = NSRange(location: 0, length: length)

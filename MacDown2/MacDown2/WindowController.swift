@@ -19,7 +19,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
-    private var lastObservedLanguageID: String??
+    private var lastObservedLanguageID: String?
 
     init(
         model: WorkspaceModel,
