@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Highlighting
 import Themes
 import Workspace
 
@@ -7,6 +8,7 @@ import Workspace
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var coordinator: WindowCoordinator!
     private(set) var themeController: ThemeController!
+    private(set) var grammarRegistry: GrammarRegistry!
     private let sessionStore: WorkspaceSessionStoring
     private let launchURLs: [URL]
     private var hasPendingDocumentOpen = false
@@ -25,12 +27,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         launchURLs = Self.openFilesPaths(from: args).map { URL(fileURLWithPath: $0) }
         themeController = ThemeController()
+        grammarRegistry = GrammarRegistry()
         super.init()
 
         coordinator = WindowCoordinator(
             sessionStore: sessionStore,
             panelProvider: NSFilePanelProvider(),
-            themeController: themeController
+            themeController: themeController,
+            grammarRegistry: grammarRegistry
         )
     }
 

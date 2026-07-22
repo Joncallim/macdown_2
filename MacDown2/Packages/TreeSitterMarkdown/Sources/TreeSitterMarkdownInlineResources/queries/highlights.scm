@@ -1,28 +1,30 @@
-; From nvim-treesitter/nvim-treesitter
+; Vendored from nvim-treesitter/nvim-treesitter, rewritten to emit the canonical
+; capture names used by the MacDown 2 theme key space.
+
 [
   (code_span)
   (link_title)
-] @text.literal
+] @markup.raw
 
-(emphasis) @text.emphasis
+(emphasis) @markup.italic
 
-(strong_emphasis) @text.strong
+(strong_emphasis) @markup.bold
 
 [
   (link_destination)
   (uri_autolink)
-] @text.uri
+] @markup.link
 
 [
   (link_label)
   (link_text)
   (image_description)
-] @text.reference
+] @markup.link
 
 [
   (backslash_escape)
   (hard_line_break)
-] @string.escape
+] @string
 
 (image
   [
@@ -31,7 +33,7 @@
     "]"
     "("
     ")"
-  ] @punctuation.delimiter)
+  ] @punctuation)
 
 (inline_link
   [
@@ -39,13 +41,13 @@
     "]"
     "("
     ")"
-  ] @punctuation.delimiter)
+  ] @punctuation)
 
 (shortcut_link
   [
     "["
     "]"
-  ] @punctuation.delimiter)
+  ] @punctuation)
 
 ; NOTE: extension not enabled by default
-; (wiki_link ["[" "|" "]"] @punctuation.delimiter)
+; (wiki_link ["[" "|" "]"] @punctuation)

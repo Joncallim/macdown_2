@@ -150,12 +150,6 @@ private struct DocumentEditorSplitView: View {
                 .task(id: identity) {
                     attachHighlighter()
                 }
-                .task(id: themeController.current) {
-                    highlightStore.applyThemeToAll(themeController.current)
-                }
-                .task(id: geometry.size) {
-                    highlightStore.applyThemeToAll(themeController.current)
-                }
 
                 // Divider
                 Rectangle()

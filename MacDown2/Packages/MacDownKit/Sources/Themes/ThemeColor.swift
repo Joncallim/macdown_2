@@ -115,12 +115,15 @@ public struct ThemeColor: Codable, Sendable, Equatable { // swiftlint:disable:th
 
         guard let red = Double(components[0]),
               let green = Double(components[1]),
-              let blue = Double(components[2]) else { return nil }
+              let blue = Double(components[2]),
+              (0 ... 255).contains(red),
+              (0 ... 255).contains(green),
+              (0 ... 255).contains(blue) else { return nil }
 
         return ThemeColor(
-            red: clamp(red / 255.0),
-            green: clamp(green / 255.0),
-            blue: clamp(blue / 255.0),
+            red: red / 255.0,
+            green: green / 255.0,
+            blue: blue / 255.0,
             alpha: 1.0
         )
     }
@@ -133,13 +136,17 @@ public struct ThemeColor: Codable, Sendable, Equatable { // swiftlint:disable:th
         guard let red = Double(components[0]),
               let green = Double(components[1]),
               let blue = Double(components[2]),
-              let alpha = Double(components[3]) else { return nil }
+              let alpha = Double(components[3]),
+              (0 ... 255).contains(red),
+              (0 ... 255).contains(green),
+              (0 ... 255).contains(blue),
+              (0 ... 1).contains(alpha) else { return nil }
 
         return ThemeColor(
-            red: clamp(red / 255.0),
-            green: clamp(green / 255.0),
-            blue: clamp(blue / 255.0),
-            alpha: clamp(alpha)
+            red: red / 255.0,
+            green: green / 255.0,
+            blue: blue / 255.0,
+            alpha: alpha
         )
     }
 

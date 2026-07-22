@@ -34,23 +34,4 @@ public enum HighlightCaptureName {
         "label",
         "embedded",
     ]
-
-    /// Maps nvim-treesitter-style capture names emitted by the vendored
-    /// markdown queries to the canonical names the bundled themes style.
-    public static func canonicalName(for captureName: String) -> String {
-        switch captureName {
-        case "text.title":
-            "markup.heading"
-        case "text.strong":
-            "markup.bold"
-        case "text.emphasis":
-            "markup.italic"
-        case "text.literal":
-            "markup.raw"
-        case "text.uri", "text.reference":
-            "markup.link"
-        default:
-            captureName
-        }
-    }
 }

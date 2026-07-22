@@ -53,16 +53,20 @@ public final class ThemeController {
         current = appearance == .dark ? dark : light
     }
 
-    /// Select a theme and make it active immediately, regardless of the current
-    /// system appearance. The theme is also stored as the preference for its
-    /// own appearance so system-appearance changes remain consistent.
+    /// Select a theme for its appearance slot.
+    ///
+    /// If the theme matches the current system appearance, it becomes
+    /// `current` immediately. Otherwise the slot is saved so that future
+    /// `setAppearance` calls use the user's choice for that appearance.
     public func select(_ theme: Theme) {
         if theme.appearance == .dark {
             dark = theme
         } else {
             light = theme
         }
-        current = theme
+        if theme.appearance == appearance {
+            current = theme
+        }
         preferenceStore.saveSelection(lightID: light.id, darkID: dark.id)
     }
 

@@ -35,6 +35,9 @@ public struct Theme: Codable, Sendable, Equatable, Identifiable {
             if let style = tokenStyles[key] {
                 return style
             }
+            // Themes cannot import Highlighting (Highlighting depends on Themes),
+            // so the fallback helper is duplicated here. Keep it identical to
+            // `HighlightCaptureName.fallback`.
             current = Self.fallback(key)
         }
 

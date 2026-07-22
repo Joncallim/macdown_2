@@ -5,6 +5,8 @@ import TreeSitterHTML
 import TreeSitterJSON
 import TreeSitterMarkdown
 import TreeSitterMarkdownInline
+import TreeSitterMarkdownInlineResources
+import TreeSitterMarkdownResources
 
 /// Maps a `FileFormat.highlightLanguageID` to a tree-sitter `LanguageConfiguration`.
 ///
@@ -52,46 +54,59 @@ public final class GrammarRegistry {
 
     /// Ids the registry can currently satisfy.
     public var supportedLanguageIDs: Set<String> {
-        Set(cache.compactMap { $0.value != nil ? $0.key : nil })
+        Self.knownLanguageIDs.union(cache.compactMap { $0.value != nil ? $0.key : nil })
     }
+
+    private static let knownLanguageIDs: Set<String> = [
+        "markdown",
+        "markdown_inline",
+        "json",
+        "html",
+    ]
 
     private func buildConfiguration(for id: String) throws -> LanguageConfiguration? {
         switch id {
         case "markdown":
-            try configuration(
+            guard let queriesURL = TreeSitterMarkdownResources.queriesURL else { return nil }
+            return try configuration(
                 language: Language(tree_sitter_markdown()),
                 name: "Markdown",
-                bundleName: "TreeSitterMarkdown_TreeSitterMarkdown"
+                queriesURL: queriesURL
             )
         case "markdown_inline":
-            try configuration(
+            guard let queriesURL = TreeSitterMarkdownInlineResources.queriesURL else { return nil }
+            return try configuration(
                 language: Language(tree_sitter_markdown_inline()),
                 name: "MarkdownInline",
-                bundleName: "TreeSitterMarkdown_TreeSitterMarkdownInline"
+                queriesURL: queriesURL
             )
         case "json":
-            try configuration(
+            return try configuration(
                 language: Language(tree_sitter_json()),
                 name: "JSON",
                 bundleName: "TreeSitterJSON_TreeSitterJSON"
             )
         case "html":
-            try configuration(
+            return try configuration(
                 language: Language(tree_sitter_html()),
                 name: "HTML",
                 bundleName: "TreeSitterHTML_TreeSitterHTML"
             )
         default:
-            nil
+            return nil
         }
+    }
+
+    private func configuration(language: Language, name: String, queriesURL: URL) throws -> LanguageConfiguration? {
+        let queries = try Self.loadQueries(for: language, in: queriesURL)
+        return LanguageConfiguration(language, name: name, queries: queries)
     }
 
     private func configuration(language: Language, name: String, bundleName: String) throws -> LanguageConfiguration? {
         guard let queriesURL = Self.queriesURL(bundleName: bundleName) else {
             return nil
         }
-        let queries = try Self.loadQueries(for: language, in: queriesURL)
-        return LanguageConfiguration(language, name: name, queries: queries)
+        return try configuration(language: language, name: name, queriesURL: queriesURL)
     }
 
     /// Manually enumerate query `.scm` files and compile them.

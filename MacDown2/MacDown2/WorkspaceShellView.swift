@@ -40,6 +40,9 @@ struct WorkspaceShellView: View {
             )
         }
         .navigationSplitViewStyle(.balanced)
+        .task(id: themeController.current) {
+            highlightStore.applyThemeToAll(themeController.current)
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {

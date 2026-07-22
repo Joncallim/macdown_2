@@ -72,6 +72,29 @@ struct ThemeControllerTests {
         #expect(selection?.lightID == lightTheme.id)
     }
 
+    @Test func selectThemeOfMatchingAppearanceBecomesCurrent() {
+        let controller = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: FakeThemePreferenceStore(),
+            appearance: .dark
+        )
+
+        controller.select(darkTheme)
+        #expect(controller.current.id == darkTheme.id)
+    }
+
+    @Test func selectThemeOfOppositeAppearanceDoesNotChangeCurrent() {
+        let controller = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: FakeThemePreferenceStore(),
+            appearance: .dark
+        )
+
+        controller.select(lightTheme)
+        #expect(controller.current.id == darkTheme.id)
+        #expect(controller.light.id == lightTheme.id)
+    }
+
     @Test func restoresPreviousSelection() {
         let store = FakeThemePreferenceStore()
         store.saveSelection(lightID: lightTheme.id, darkID: darkTheme.id)

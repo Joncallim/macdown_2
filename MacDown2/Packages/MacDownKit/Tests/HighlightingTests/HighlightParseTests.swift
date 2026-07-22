@@ -10,8 +10,8 @@ struct HighlightParseTests {
             languageID: "markdown",
             text: "# Hello\n\n## World\n"
         )
-        // The vendored markdown query uses nvim-treesitter capture names.
-        let headings = captures.filter { $0.name == "text.title" }
+        // The vendored markdown query emits canonical capture names.
+        let headings = captures.filter { $0.name == "markup.heading" }
         #expect(headings.count == 2)
     }
 

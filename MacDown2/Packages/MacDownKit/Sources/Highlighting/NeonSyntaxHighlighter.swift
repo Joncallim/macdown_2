@@ -58,7 +58,6 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
 
     public func tearDown() {
         highlighter = nil
-        textSystem.textView.textStorage?.delegate = nil
     }
 
     // MARK: - Internal
@@ -77,8 +76,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
         do {
             let attributeProvider: TokenAttributeProvider = { [weak self] token in
                 guard let self else { return [:] }
-                let canonicalName = HighlightCaptureName.canonicalName(for: token.name)
-                let style = currentTheme.style(for: canonicalName)
+                let style = currentTheme.style(for: token.name)
                 var attrs: [NSAttributedString.Key: Any] = [
                     .foregroundColor: (style?.color ?? currentTheme.chrome.foreground).nsColor,
                 ]

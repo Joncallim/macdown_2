@@ -20,12 +20,17 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
 
-    init(model: WorkspaceModel, coordinator: WindowCoordinator, themeController: ThemeController) {
+    init(
+        model: WorkspaceModel,
+        coordinator: WindowCoordinator,
+        themeController: ThemeController,
+        grammarRegistry: GrammarRegistry
+    ) {
         self.model = model
         self.coordinator = coordinator
         self.themeController = themeController
         editorStore = EditorTextSystemStore()
-        highlightStore = SyntaxHighlightStore()
+        highlightStore = SyntaxHighlightStore(registry: grammarRegistry)
 
         // Eagerly create the text system for the active tab so session-save
         // can read cursor/scroll state even before SwiftUI mounts the view.
