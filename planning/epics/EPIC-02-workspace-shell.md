@@ -8,6 +8,14 @@ The sidebar (collapsible) will hold the folder browser (E09) and content
 browser (E08); this epic delivers the shell they plug into, plus the app's
 command/menu structure.
 
+> **As built (amended at #28):** the single-window model was superseded. The
+> shipped shell is `AppDelegate` + `WindowCoordinator` owning a pool of
+> `NSWindowController`s — one window per document, grouped as **native
+> `NSWindow` tabs**. Each window hosts its own `WorkspaceModel` and
+> `NavigationSplitView` sidebar; the SwiftUI `WindowGroup` survives only to
+> host commands/menus. Sidebar sections (E08/E09) are therefore **per
+> window**, not shared.
+
 ## Scope
 
 - `@main` App + `WindowGroup` + `WorkspaceModel` (observable)

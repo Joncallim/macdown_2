@@ -7,6 +7,24 @@ In-app workspace tabs (D2), Xcode/VS Code-style: each tab owns one `FileDocument
 (from E01). Native `NSWindow` tabbing is rejected — it can't compose with a
 shared sidebar.
 
+> **As built (amended at #28) — the rejection above was reversed.** The
+> shipped tab system is **native `NSWindow` tabbing**: one window = one
+> document, tab groups provided by AppKit, per-window sidebar (the "can't
+> compose with a shared sidebar" premise proved wrong — the sidebar is simply
+> per window). Consequences:
+> - `TabStore` survives as the **per-window single-document holder** and
+>   session-restore seam; its multi-tab ordering/pin/reorder APIs are
+>   vestigial within one window.
+> - Open-file **dedupe** lives in `WindowCoordinator.openDocument(at:)`
+>   (activates the existing window's tab).
+> - ⌘1…⌘9 / ⌃⇥ navigation and the dirty dot map to the **native tab group**
+>   (`WindowController` + `NSWindow.tabGroup`), not a custom bar.
+> - Session restore builds one window per saved tab and regroups them
+>   (`WindowCoordinator.restoreSessionIfNeeded`), including cursor/selection/
+>   scroll restore and the `RecoveryBuffer` for dirty/untitled content.
+> - The custom tab-bar UI deliverable below is void; there is no custom tab
+>   bar to glass-polish in E15.
+
 ## Scope
 
 - `TabStore`: ordered tabs, active tab, open/activate/close/move/pin APIs;

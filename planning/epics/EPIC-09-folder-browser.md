@@ -7,6 +7,14 @@ The sidebar's other half (D2). Opens a folder as the workspace root; files open
 in tabs (E03). Unsandboxed (D7) but modeled on security-scoped URLs so future
 sandboxing is additive.
 
+> **Amended at #28:** the sidebar is per window (as-built E03) — the folder
+> root is per-window state, and "opens in tab" means a new native tab in the
+> same window's tab group via `WindowCoordinator` (which already dedupes).
+> The `DispatchSource` watching in this epic covers the **directory tree UI
+> only**; watching *open documents* for external changes (reload/conflict) is
+> **E18** — share low-level watcher plumbing if convenient, but E18 owns the
+> document-lifecycle semantics and must not depend on this epic.
+
 ## Scope
 
 - `FileTree` target: `FileTreeModel` — lazy children loading on expand,

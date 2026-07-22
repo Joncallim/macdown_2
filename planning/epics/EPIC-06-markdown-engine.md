@@ -13,7 +13,9 @@ re-parse per debounced edit is single-digit ms for typical docs, so this is fine
 - `MarkdownEngine` target: `ParseEngine` actor; `Task`-cancellation debounce
   (~150 ms, replacing the old 500 ms)
 - GFM options model (tables, task lists, strikethrough, autolinks, footnotes)
-  mapped from settings (defaults match MacDown behavior)
+  mapped from settings (defaults match MacDown behavior). *Amended at #28:
+  E13 (settings) has not landed — ship the options model with hardcoded
+  defaults; E13 wires the UI later.*
 - YAML front matter extraction via Yams (replaces LibYAML + vendored
   YAML-framework); front matter exposed to preview + export
 - **Source-range index**: map AST nodes → source line ranges (feeds scroll
@@ -44,3 +46,10 @@ Rendering (E07), HTML generation for export (E12 uses swift-cmark directly).
 
 Keep the swift-markdown AST type internal; expose our own `MarkdownDocument`
 value type so a future parser swap never touches Preview/OutlineUI.
+
+*Amended at #28:* the current `MarkdownEngine` module is an **EPIC-02
+placeholder** (line-based heading/code renderer feeding the placeholder
+preview). This epic **replaces** it outright; nothing in the placeholder is an
+architectural constraint. Tabs are native windows (as-built E03), so engine
+consumers are per-window — one parse pipeline per open document, torn down
+with the window.
