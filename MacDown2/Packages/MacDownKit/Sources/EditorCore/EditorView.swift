@@ -53,8 +53,34 @@ public struct EditorView: NSViewRepresentable {
         scrollView.autohidesScrollers = configuration.wrapsLines
         scrollView.borderType = .noBorder
         system.scrollView = scrollView
-        system.textView.frame = scrollView.bounds
-        system.textView.autoresizingMask = [.width, .height]
+        // The scroll view has not been laid out yet, so size the text view to
+        // its content (with a minimum that matches the scroll view). The
+        // vertically-resizable NSTextView will keep this in sync as the text
+        // changes, and the initial content height guarantees the scroll knob
+        // reflects the full document immediately.
+        let width = max(scrollView.bounds.width, 100)
+        // Estimate the content height for a correct scroll knob without
+        // blocking on an O(n) layout pass. For documents under 100 KB we
+        // compute the exact height; for larger documents we use a generous
+        // sentinel and let the vertically-resizable NSTextView grow as-needed.
+        let height: CGFloat
+        if text.utf8.count < 100_000 {
+            let font = system.textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+            let contentHeight = (text as NSString).boundingRect(
+                with: NSSize(width: width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: font],
+                context: nil
+            ).height
+            height = max(contentHeight, scrollView.bounds.height)
+        } else {
+            height = max(50000, scrollView.bounds.height)
+        }
+        system.textView.frame = NSRect(
+            origin: .zero,
+            size: CGSize(width: width, height: height)
+        )
+        system.textView.autoresizingMask = [.width]
         system.applyPendingScrollOffset()
 
         system.textView.delegate = context.coordinator
@@ -101,6 +127,12 @@ public struct EditorView: NSViewRepresentable {
             system.setText(text)
             context.coordinator.isApplyingModelText = false
         }
+
+        // A vertically-resizable NSTextView only grows its document-view height
+        // when it is told to size to its content. Call this after the text is
+        // known so long documents become scrollable instead of being clipped
+        // to the initial placeholder frame.
+        system.textView.sizeToFit()
 
         scrollView.hasHorizontalScroller = !configuration.wrapsLines
         scrollView.autohidesScrollers = configuration.wrapsLines

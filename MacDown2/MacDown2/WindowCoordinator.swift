@@ -2,12 +2,15 @@ import AppKit
 import EditorCore
 import FileCore
 import Foundation
+import Highlighting
 import Observation
 import SwiftUI
+import Themes
 import Workspace
 
 extension EnvironmentValues {
     @Entry var windowCoordinator: WindowCoordinator?
+    @Entry var themeController: ThemeController?
 }
 
 // MARK: - Coordinator
@@ -24,17 +27,23 @@ final class WindowCoordinator {
     private let sessionStore: WorkspaceSessionStoring
     private let panelProvider: NSFilePanelProvider
     private let recoveryBuffer: RecoveryBuffer
+    private let themeController: ThemeController
+    private let grammarRegistry: GrammarRegistry
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
 
     init(
         sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
         panelProvider: NSFilePanelProvider = NSFilePanelProvider(),
-        recoveryBuffer: RecoveryBuffer = .shared
+        recoveryBuffer: RecoveryBuffer = .shared,
+        themeController: ThemeController,
+        grammarRegistry: GrammarRegistry
     ) {
         self.sessionStore = sessionStore
         self.panelProvider = panelProvider
         self.recoveryBuffer = recoveryBuffer
+        self.themeController = themeController
+        self.grammarRegistry = grammarRegistry
     }
 
     // MARK: - Window lifecycle
@@ -46,7 +55,12 @@ final class WindowCoordinator {
 
         let model = makeWindowModel()
         model.newDocument()
-        let controller = WindowController(model: model, coordinator: self)
+        let controller = WindowController(
+            model: model,
+            coordinator: self,
+            themeController: themeController,
+            grammarRegistry: grammarRegistry
+        )
         addController(controller, addingAsTab: addAsTab, keyWindow: keyWindow)
     }
 
@@ -65,7 +79,12 @@ final class WindowCoordinator {
         _ = await model.tabStore.openFileInTab(url)
 
         guard !model.tabStore.tabs.isEmpty else { return }
-        let controller = WindowController(model: model, coordinator: self)
+        let controller = WindowController(
+            model: model,
+            coordinator: self,
+            themeController: themeController,
+            grammarRegistry: grammarRegistry
+        )
         addController(controller, addingAsTab: true, keyWindow: keyWindow)
     }
 
@@ -194,33 +213,24 @@ final class WindowCoordinator {
         let tempStore = TabStore(sessionStore: sessionStore)
         await tempStore.restoreSessionIfNeeded()
 
-        if tempStore.tabs.isEmpty {
+        guard !tempStore.tabs.isEmpty else {
             newDocument()
             return
         }
 
+        let (firstController, firstWindow) = restore(tabs: tempStore.tabs)
+        activate(controller: firstController, activeID: tempStore.activeTabID)
+        updateKeyModel()
+    }
+
+    private func restore(tabs: [WorkspaceTab]) -> (WindowController?, NSWindow?) {
         var firstController: WindowController?
         var firstWindow: NSWindow?
 
-        for tab in tempStore.tabs {
-            let model = makeWindowModel()
-            model.tabStore.newTab(id: tab.id, document: tab.document)
-
-            let controller = WindowController(model: model, coordinator: self)
+        for tab in tabs {
+            let controller = makeRestoredController(tab: tab)
             controllers.append(controller)
-
-            // The text system was already created by WindowController.init; apply
-            // the restored selection and scroll position before the view appears.
-            let identity = tab.id.uuidString
-            if let textSystem = controller.editorStore.existingSystem(for: identity) {
-                if let cursorPosition = tab.cursorPosition {
-                    let length = tab.selectionLength ?? 0
-                    textSystem.selectedRange = NSRange(location: cursorPosition, length: length)
-                }
-                if let scrollOffset = tab.scrollOffset {
-                    textSystem.scrollOffset = CGFloat(scrollOffset)
-                }
-            }
+            applyRestoredState(controller: controller, tab: tab)
 
             if firstController == nil {
                 firstController = controller
@@ -232,23 +242,44 @@ final class WindowCoordinator {
             }
         }
 
-        let activeController: WindowController? = {
-            if let activeID = tempStore.activeTabID {
-                return controllers.first { $0.model.tabStore.activeTabID == activeID }
-            }
-            return nil
-        }()
-        let windowToActivate = (activeController ?? firstController)?.window
-        if let windowToActivate {
-            // Set the tab group's selection explicitly. Under native tabbing,
-            // makeKeyAndOrderFront alone is not enough: the last-shown window
-            // remains the tab group's selectedWindow and re-emerges as key on the
-            // next run loop, overwriting the restored active tab.
-            windowToActivate.tabGroup?.selectedWindow = windowToActivate
-            windowToActivate.makeKeyAndOrderFront(nil)
-        }
+        return (firstController, firstWindow)
+    }
 
-        updateKeyModel()
+    private func makeRestoredController(tab: WorkspaceTab) -> WindowController {
+        let model = makeWindowModel()
+        model.tabStore.newTab(id: tab.id, document: tab.document)
+        return WindowController(
+            model: model,
+            coordinator: self,
+            themeController: themeController,
+            grammarRegistry: grammarRegistry
+        )
+    }
+
+    private func applyRestoredState(controller: WindowController, tab: WorkspaceTab) {
+        let identity = tab.id.uuidString
+        guard let textSystem = controller.editorStore.existingSystem(for: identity) else { return }
+        if let cursorPosition = tab.cursorPosition {
+            let length = tab.selectionLength ?? 0
+            textSystem.selectedRange = NSRange(location: cursorPosition, length: length)
+        }
+        if let scrollOffset = tab.scrollOffset {
+            textSystem.scrollOffset = CGFloat(scrollOffset)
+        }
+    }
+
+    private func activate(controller: WindowController?, activeID: UUID?) {
+        let activeController: WindowController? = {
+            guard let activeID else { return nil }
+            return controllers.first { $0.model.tabStore.activeTabID == activeID }
+        }()
+        guard let windowToActivate = (activeController ?? controller)?.window else { return }
+        // Set the tab group's selection explicitly. Under native tabbing,
+        // makeKeyAndOrderFront alone is not enough: the last-shown window
+        // remains the tab group's selectedWindow and re-emerges as key on the
+        // next run loop, overwriting the restored active tab.
+        windowToActivate.tabGroup?.selectedWindow = windowToActivate
+        windowToActivate.makeKeyAndOrderFront(nil)
     }
 
     // MARK: - Internal helpers

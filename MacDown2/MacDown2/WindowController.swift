@@ -2,7 +2,9 @@ import AppKit
 import EditorCore
 import FileCore
 import Foundation
+import Highlighting
 import SwiftUI
+import Themes
 import Workspace
 
 /// A single document window. Each window is also a tab when grouped by the
@@ -11,15 +13,25 @@ import Workspace
 final class WindowController: NSWindowController, NSWindowDelegate {
     let model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    let highlightStore: SyntaxHighlightStore
+    let themeController: ThemeController
     private weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
+    private var lastObservedLanguageID: String?
 
-    init(model: WorkspaceModel, coordinator: WindowCoordinator) {
+    init(
+        model: WorkspaceModel,
+        coordinator: WindowCoordinator,
+        themeController: ThemeController,
+        grammarRegistry: GrammarRegistry
+    ) {
         self.model = model
         self.coordinator = coordinator
+        self.themeController = themeController
         editorStore = EditorTextSystemStore()
+        highlightStore = SyntaxHighlightStore(registry: grammarRegistry)
 
         // Eagerly create the text system for the active tab so session-save
         // can read cursor/scroll state even before SwiftUI mounts the view.
@@ -33,7 +45,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
         let hostingController = NSHostingController(rootView: WorkspaceShellView(
             model: model,
-            editorStore: editorStore
+            editorStore: editorStore,
+            highlightStore: highlightStore,
+            themeController: themeController
         ))
         let window = NSWindow(contentViewController: hostingController)
         window.setFrameAutosaveName("MacDown2DocumentWindow")
@@ -86,11 +100,32 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         if changed {
             coordinator?.scheduleSaveSession()
         }
+
+        // Re-attach the highlighter if the active document's format changed
+        // (e.g., after Save As). The `highlighter(for:)` method on
+        // `SyntaxHighlightStore` detects the language mismatch and calls
+        // `setLanguage` automatically.
+        let currentLanguageID = document?.format.highlightLanguageID
+        if lastObservedLanguageID != currentLanguageID {
+            lastObservedLanguageID = currentLanguageID
+            guard let activeTab = model.tabStore.activeTab,
+                  let textSystem = editorStore.existingSystem(for: activeTab.id.uuidString)
+            else {
+                return
+            }
+            _ = highlightStore.highlighter(
+                for: activeTab.id.uuidString,
+                textSystem: textSystem,
+                languageID: currentLanguageID,
+                theme: themeController.current
+            )
+        }
     }
 
     func windowWillClose(_: Notification) {
         observationTask?.cancel()
         editorStore.evictAll()
+        highlightStore.evictAll()
     }
 
     func windowDidBecomeKey(_: Notification) {
