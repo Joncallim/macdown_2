@@ -1,0 +1,10 @@
+# Vendored tree-sitter grammar packages: the parser.c/scanner.c files are
+# generated C (~135k lines) and were swamping GitHub's language statistics
+# (repo showed as "mostly C"). linguist-vendored removes them from stats;
+# linguist-generated collapses them in diffs.
+MacDown2/Packages/TreeSitterMarkdown/** linguist-vendored
+MacDown2/Packages/TreeSitterMarkdown/**/src/** linguist-generated
+
+# Legacy ObjC MacDown tree (read-only porting source). Not tracked today, but
+# if any of it is committed it must not count toward language stats either.
+legacy-reference/** linguist-vendored

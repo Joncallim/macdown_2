@@ -48,9 +48,14 @@ into that existing model — it must not create a second conflict system.
 - Self-save suppression integrated with `FileDocument.save()`/`saveAs(_:)`
   (e.g., expected-mtime bookkeeping around our own writes).
 - Reload path preserves editor state: capture selection/scroll from
-  `EditorTextSystem`, apply new text via the no-dirty
-  `updatingText`-equivalent path, restore selection/scroll clamped to the new
-  length.
+  `EditorTextSystem`, apply the new text via a **new dedicated FileCore
+  transition** (e.g. `reloadedFromExternal(text:modificationDate:)`) that
+  sets the text, refreshes `lastKnownModificationDate`, and leaves the state
+  `.clean`; then restore selection/scroll clamped to the new length.
+  `updatingText(_:)` is **not** that path — it deliberately marks a `.clean`
+  document `.dirty` (user-edit semantics), which would make an automatic,
+  disk-matching reload appear dirty and trigger bogus close prompts. Add a
+  regression test asserting a clean reload ends `.clean`.
 
 ## Deliverables
 
