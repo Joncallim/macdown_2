@@ -108,6 +108,30 @@ struct ColorParsingTests {
         #expect(color?.blue == 1.0)
     }
 
+    // MARK: - Out-of-range rejection
+
+    @Test func rgbOutOfRangeReturnsNil() {
+        #expect(ThemeColor(cssString: "rgb(300,0,0)") == nil)
+        #expect(ThemeColor(cssString: "rgb(-1,0,0)") == nil)
+        #expect(ThemeColor(cssString: "rgb(0,256,0)") == nil)
+        #expect(ThemeColor(cssString: "rgb(0,-1,255)") == nil)
+    }
+
+    @Test func rgbaOutOfRangeReturnsNil() {
+        #expect(ThemeColor(cssString: "rgba(0,0,0,2.0)") == nil)
+        #expect(ThemeColor(cssString: "rgba(0,0,0,-0.1)") == nil)
+        #expect(ThemeColor(cssString: "rgba(300,0,0,0.5)") == nil)
+    }
+
+    @Test func rgbBoundaryValues() {
+        #expect(ThemeColor(cssString: "rgb(0,0,0)") != nil)
+        #expect(ThemeColor(cssString: "rgb(255,255,255)") != nil)
+        #expect(ThemeColor(cssString: "rgba(255,255,255,0)") != nil)
+        #expect(ThemeColor(cssString: "rgba(0,0,0,1)") != nil)
+    }
+
+    // MARK: - Legacy port parity
+
     // MARK: - Legacy port parity
 
     @Test func legacyHexStringToColor() {

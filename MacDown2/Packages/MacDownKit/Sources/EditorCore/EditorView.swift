@@ -59,19 +59,26 @@ public struct EditorView: NSViewRepresentable {
         // changes, and the initial content height guarantees the scroll knob
         // reflects the full document immediately.
         let width = max(scrollView.bounds.width, 100)
-        let font = system.textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let contentHeight = (text as NSString).boundingRect(
-            with: NSSize(width: width, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font],
-            context: nil
-        ).height
+        // Estimate the content height for a correct scroll knob without
+        // blocking on an O(n) layout pass. For documents under 100 KB we
+        // compute the exact height; for larger documents we use a generous
+        // sentinel and let the vertically-resizable NSTextView grow as-needed.
+        let height: CGFloat
+        if text.utf8.count < 100_000 {
+            let font = system.textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+            let contentHeight = (text as NSString).boundingRect(
+                with: NSSize(width: width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: font],
+                context: nil
+            ).height
+            height = max(contentHeight, scrollView.bounds.height)
+        } else {
+            height = max(50000, scrollView.bounds.height)
+        }
         system.textView.frame = NSRect(
             origin: .zero,
-            size: CGSize(
-                width: width,
-                height: max(contentHeight, scrollView.bounds.height)
-            )
+            size: CGSize(width: width, height: height)
         )
         system.textView.autoresizingMask = [.width]
         system.applyPendingScrollOffset()

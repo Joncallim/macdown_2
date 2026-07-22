@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftTreeSitter
 import SwiftTreeSitterLayer
 import TreeSitterHTML
@@ -178,9 +179,13 @@ public final class GrammarRegistry {
 // MARK: - Minimal logging
 
 private struct Logger {
+    private let log = OSLog(subsystem: "com.macdown2.MacDownKit", category: "GrammarRegistry")
+
     func log(_ message: @autoclosure () -> String) {
+        let msg = message()
         #if DEBUG
-            print(message())
+            print(msg)
         #endif
+        os_log(.info, log: log, "%{public}@", msg)
     }
 }

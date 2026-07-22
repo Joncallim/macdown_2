@@ -73,12 +73,18 @@ public final class ThemeController {
     public func selectLight(id: String) {
         guard let theme = availableThemes.first(where: { $0.id == id && $0.appearance == .light }) else { return }
         light = theme
+        if appearance == .light {
+            current = theme
+        }
         preferenceStore.saveSelection(lightID: light.id, darkID: dark.id)
     }
 
     public func selectDark(id: String) {
         guard let theme = availableThemes.first(where: { $0.id == id && $0.appearance == .dark }) else { return }
         dark = theme
+        if appearance == .dark {
+            current = theme
+        }
         preferenceStore.saveSelection(lightID: light.id, darkID: dark.id)
     }
 }

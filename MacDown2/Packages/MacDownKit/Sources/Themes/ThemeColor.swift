@@ -150,10 +150,6 @@ public struct ThemeColor: Codable, Sendable, Equatable { // swiftlint:disable:th
         )
     }
 
-    private static func clamp(_ value: Double) -> Double {
-        min(max(value, 0.0), 1.0)
-    }
-
     // MARK: - Named colours
 
     /// Named-colour table ported from the original MacDown `NSColor+HTML`.

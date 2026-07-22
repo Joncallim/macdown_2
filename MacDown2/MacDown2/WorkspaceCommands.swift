@@ -78,9 +78,29 @@ struct WorkspaceCommands: Commands {
 
         CommandGroup(before: .sidebar) {
             Menu("Theme") {
-                ForEach(themeController.available) { theme in
-                    Button(theme.name) {
-                        themeController.select(theme)
+                let active = themeController.current
+                let lightThemes = themeController.available.filter { $0.appearance == .light }
+                let darkThemes = themeController.available.filter { $0.appearance == .dark }
+
+                Section("Light") {
+                    ForEach(lightThemes) { theme in
+                        Button(
+                            action: { themeController.select(theme) },
+                            label: {
+                                Text((active.id == theme.id ? "✓ " : "    ") + theme.name)
+                            }
+                        )
+                    }
+                }
+
+                Section("Dark") {
+                    ForEach(darkThemes) { theme in
+                        Button(
+                            action: { themeController.select(theme) },
+                            label: {
+                                Text((active.id == theme.id ? "✓ " : "    ") + theme.name)
+                            }
+                        )
                     }
                 }
             }
