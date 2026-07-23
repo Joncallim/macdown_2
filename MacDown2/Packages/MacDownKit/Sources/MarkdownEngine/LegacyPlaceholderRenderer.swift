@@ -1,6 +1,8 @@
 import AppKit
 import Foundation
 
+// MARK: - EPIC-02 placeholder (deleted in E07)
+
 /// MarkdownEngine — parses Markdown and produces attributed-string previews.
 ///
 /// See planning/epics/ and planning/MIGRATION_PLAN.md § 4 for the full role.
