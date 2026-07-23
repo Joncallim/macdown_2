@@ -74,27 +74,27 @@ public actor ParseEngine: ParseExecuting {
     private func convertYAMLValue(_ value: Any) -> FrontMatterValue? {
         switch value {
         case let string as String:
-            return .string(string)
+            .string(string)
         // Yams 6.2.2 returns native Swift scalars on this platform, so the
         // Bool/Int/Double cases below are the normal path. NSNumber is kept
         // defensively for configurations or future Yams versions that bridge
         // numeric/boolean scalars to Foundation.
         case let bool as Bool:
-            return .bool(bool)
+            .bool(bool)
         case let int as Int:
-            return .int(int)
+            .int(int)
         case let double as Double:
-            return .number(double)
+            .number(double)
         case let number as NSNumber:
-            return convertNSNumber(number)
+            convertNSNumber(number)
         case let array as [Any]:
-            return .array(array.compactMap { convertYAMLValue($0) })
+            .array(array.compactMap { convertYAMLValue($0) })
         case let dictionary as [String: Any]:
-            return .dictionary(dictionary.compactMapValues { convertYAMLValue($0) })
+            .dictionary(dictionary.compactMapValues { convertYAMLValue($0) })
         case is NSNull:
-            return .null
+            .null
         default:
-            return nil
+            nil
         }
     }
 

@@ -175,7 +175,6 @@ struct SessionDebounceTests {
 
         #expect(session.isParsing == true, "A newer parse is still pending/running")
     }
-
 }
 
 private enum TestError: Error {
