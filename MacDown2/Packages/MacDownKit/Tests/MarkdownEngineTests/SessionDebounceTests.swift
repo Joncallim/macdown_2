@@ -175,6 +175,19 @@ struct SessionDebounceTests {
 
         #expect(session.isParsing == true, "A newer parse is still pending/running")
     }
+
+    @Test func parsingStateClearsAfterDebouncedParseCompletes() async {
+        // Regression: the pre-increment generation capture meant clearIfCurrent
+        // never matched, so isParsing stuck true after every debounced parse.
+        let spy = ParseSpy()
+        let session = MarkdownParseSession(engine: spy, debounce: .milliseconds(10))
+
+        session.textDidChange("done soon")
+        await Fixtures.wait { await MainActor.run { session.completedParseCount >= 1 && !session.isParsing } }
+
+        #expect(session.completedParseCount == 1)
+        #expect(session.isParsing == false, "Completed debounced parse must clear isParsing")
+    }
 }
 
 private enum TestError: Error {

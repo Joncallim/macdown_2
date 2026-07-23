@@ -41,8 +41,11 @@ public final class MarkdownParseSession {
         isParsing = true
         pendingTask?.cancel()
 
-        let generation = pendingGeneration
+        // Capture the post-increment value: clearIfCurrent only resets state
+        // when no newer schedule has superseded this one, so the stored counter
+        // and the captured generation must match for the latest schedule.
         pendingGeneration += 1
+        let generation = pendingGeneration
 
         let revision = nextRevision
         nextRevision += 1

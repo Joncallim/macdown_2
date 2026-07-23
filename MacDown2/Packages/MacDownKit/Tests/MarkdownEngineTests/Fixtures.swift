@@ -174,8 +174,13 @@ enum Fixtures {
     // MARK: - Polling helper
 
     /// Polls `predicate` until it returns `true` or `timeout` elapses.
+    /// The 30 s default absorbs cooperative-pool starvation on CI: the parallel
+    /// run pins every global-executor thread inside multi-second synchronous
+    /// parses (10 MB cmark ≈ 21 s on the runner), and actor hops — including the
+    /// ParseSpy's — queue behind them. Locally the pool is wide enough that
+    /// predicates settle in milliseconds; the timeout is a bound, not a delay.
     static func wait(
-        timeout: Duration = .seconds(5),
+        timeout: Duration = .seconds(30),
         sleep: Duration = .milliseconds(10),
         predicate: @Sendable () async -> Bool
     ) async {
