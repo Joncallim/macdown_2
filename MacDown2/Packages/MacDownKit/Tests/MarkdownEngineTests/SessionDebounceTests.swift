@@ -15,7 +15,7 @@ struct SessionDebounceTests {
 
         // Wait for the final debounced parse to start, then give any
         // in-flight parses time to finish before asserting coalescing.
-        await Fixtures.wait(timeout: .seconds(2)) { await spy.calls.count >= 1 }
+        await Fixtures.wait { await spy.calls.count >= 1 }
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(session.completedParseCount <= 3, "Expected coalescing; got \(session.completedParseCount)")
@@ -148,7 +148,7 @@ struct SessionDebounceTests {
         session.textDidChange("two")
         _ = await session.parseNow("three")
 
-        await Fixtures.wait(timeout: .seconds(2)) { await spy.calls.count >= 1 }
+        await Fixtures.wait { await spy.calls.count >= 1 }
         try await Task.sleep(for: .milliseconds(100))
 
         let revisions = await spy.calls.map(\.revision)

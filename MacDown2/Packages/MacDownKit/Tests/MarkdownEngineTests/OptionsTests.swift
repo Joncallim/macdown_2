@@ -34,7 +34,7 @@ struct OptionsTests {
         let session = MarkdownParseSession(engine: spy, debounce: .milliseconds(50))
 
         session.setOptions(.default)
-        await Fixtures.wait(timeout: .seconds(5)) { await spy.calls.count >= 1 }
+        await Fixtures.wait { await spy.calls.count >= 1 }
 
         #expect(await spy.calls.count >= 1)
     }
@@ -45,7 +45,7 @@ struct OptionsTests {
         let custom = MarkdownParseOptions(tables: false)
 
         session.setOptions(custom)
-        await Fixtures.wait(timeout: .seconds(5)) { await spy.calls.count >= 1 }
+        await Fixtures.wait { await spy.calls.count >= 1 }
 
         let call = try #require(await spy.calls.first)
         #expect(call.options == custom)
