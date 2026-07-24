@@ -296,10 +296,13 @@ public final class TabStore {
     }
 
     func persist() {
-        saveTask?.cancel()
+        // Debounce already in progress; saveSession reads live state so the
+        // deferred write always captures the latest tab state.
+        guard saveTask == nil else { return }
         saveTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
-            guard let self, !Task.isCancelled else { return }
+            guard let self else { return }
+            saveTask = nil
             await saveSession()
         }
     }

@@ -23,6 +23,8 @@ let package = Package(
         .package(url: "https://github.com/tree-sitter/tree-sitter-json", from: "0.24.8"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-html", from: "0.23.2"),
         .package(path: "../TreeSitterMarkdown"),
+        .package(url: "https://github.com/swiftlang/swift-markdown", exact: "0.8.0"),
+        .package(url: "https://github.com/jpsim/Yams", exact: "6.2.2"),
     ],
     targets: [
         .target(name: "FileCore"),
@@ -44,8 +46,14 @@ let package = Package(
                 .product(name: "TreeSitterHTML", package: "tree-sitter-html"),
             ]
         ),
-        .target(name: "MarkdownEngine", dependencies: ["FileCore"]),
-        .target(name: "Preview", dependencies: ["MarkdownEngine", "Themes"]),
+        .target(
+            name: "MarkdownEngine",
+            dependencies: [
+                .product(name: "Markdown", package: "swift-markdown"),
+                .product(name: "Yams", package: "Yams"),
+            ]
+        ),
+        .target(name: "Preview", dependencies: ["MarkdownEngine", "Themes", "FileCore"]),
         .target(name: "OutlineUI", dependencies: ["MarkdownEngine"]),
         .target(name: "ExportService", dependencies: ["MarkdownEngine", "Themes"]),
 

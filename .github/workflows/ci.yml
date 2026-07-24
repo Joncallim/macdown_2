@@ -15,10 +15,11 @@ concurrency:
 
 jobs:
   lint:
-    # macos-15 arm64 images carry Xcode 26, so this is the documented fallback
-    # until the macos-26 runner label is confirmed available everywhere.
-    # See planning/epic-00-implementation.md Step 6.
-    runs-on: macos-15
+    # macos-26 arm64 is GA since 2026-02 (github.blog changelog). The old
+    # macos-15 fallback ran macOS-26-deployment binaries on a macOS 15 host,
+    # which crashed (SIGBUS) once E06's dependencies exercised newer Swift
+    # runtime paths. Host now matches the deployment target.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
@@ -29,10 +30,11 @@ jobs:
         run: swiftlint lint --strict MacDown2
 
   build-and-test:
-    # macos-15 arm64 images carry Xcode 26, so this is the documented fallback
-    # until the macos-26 runner label is confirmed available everywhere.
-    # See planning/epic-00-implementation.md Step 6.
-    runs-on: macos-15
+    # macos-26 arm64 is GA since 2026-02 (github.blog changelog). The old
+    # macos-15 fallback ran macOS-26-deployment binaries on a macOS 15 host,
+    # which crashed (SIGBUS) once E06's dependencies exercised newer Swift
+    # runtime paths. Host now matches the deployment target.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       # Select Xcode 26 FIRST so every subsequent step (swift build/test,
