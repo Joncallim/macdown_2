@@ -126,13 +126,13 @@ public struct EditorView: NSViewRepresentable {
             context.coordinator.isApplyingModelText = true
             system.setText(text)
             context.coordinator.isApplyingModelText = false
-        }
 
-        // A vertically-resizable NSTextView only grows its document-view height
-        // when it is told to size to its content. Call this after the text is
-        // known so long documents become scrollable instead of being clipped
-        // to the initial placeholder frame.
-        system.textView.sizeToFit()
+            // A vertically-resizable NSTextView only grows its document-view
+            // height when it is told to size to its content. Only call when
+            // text was pushed from the model; user keystrokes already update
+            // layout through the NSTextView directly.
+            system.textView.sizeToFit()
+        }
 
         scrollView.hasHorizontalScroller = !configuration.wrapsLines
         scrollView.autohidesScrollers = configuration.wrapsLines
