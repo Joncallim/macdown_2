@@ -105,6 +105,51 @@ struct FrontMatterTests {
         #expect(frontMatter.values?["tags"] == .array([.string("swift"), .string("markdown")]))
     }
 
+    @Test func parsesFloatingPointToNumber() async throws {
+        let text = """
+        ---
+        price: 3.14
+        ---
+        # Body
+        """
+        let engine = ParseEngine()
+        let document = try await engine.parse(text, revision: 1)
+
+        let frontMatter = try #require(document.frontMatter)
+        #expect(frontMatter.values?["price"] == .number(3.14))
+    }
+
+    @Test func unsignedNSNumberInRangeConvertsToInt() async {
+        let engine = ParseEngine()
+
+        let u64 = await engine.convertNSNumber(NSNumber(value: UInt64(42)))
+        #expect(u64 == .int(42))
+
+        let u = await engine.convertNSNumber(NSNumber(value: UInt(42)))
+        #expect(u == .int(42))
+
+        let u8 = await engine.convertNSNumber(NSNumber(value: UInt8(255)))
+        #expect(u8 == .int(255))
+    }
+
+    @Test func unsignedNSNumberOutOfRangeFallsBackToNumber() async {
+        let engine = ParseEngine()
+        let number = NSNumber(value: UInt64.max)
+
+        let value = await engine.convertNSNumber(number)
+
+        #expect(value == .number(number.doubleValue))
+    }
+
+    @Test func signedNegativeNSNumberConvertsToInt() async {
+        let engine = ParseEngine()
+        let value = await engine.convertNSNumber(NSNumber(value: Int64(-42)))
+
+        #expect(value == .int(-42))
+    }
+
+    /// Value 9_999_999_999_999_999 fits in Int64; this tests that large
+    /// in-range integers survive the full Yams→parse pipeline unchanged.
     @Test func largeIntegerIsPreserved() async throws {
         let text = """
         ---
@@ -133,6 +178,18 @@ struct FrontMatterTests {
 
         let frontMatter = try #require(document.frontMatter)
         #expect(frontMatter.values == nil)
+    }
+
+    @Test func bodyLessDocumentAfterFrontMatter() async throws {
+        let text = "---\nkey: val\n---\n"
+        let engine = ParseEngine()
+        let document = try await engine.parse(text, revision: 1)
+
+        let frontMatter = try #require(document.frontMatter)
+        #expect(frontMatter.values?["key"] == .string("val"))
+        #expect(document.body.isEmpty)
+        #expect(document.blocks.isEmpty)
+        #expect(document.headings.isEmpty)
     }
 
     // MARK: - Line numbers

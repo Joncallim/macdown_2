@@ -22,6 +22,7 @@ public final class MarkdownParseSession {
     private var pendingGeneration: Int = 0
     private var nextRevision: Int = 1
     private var lastText: String = ""
+    private var immediateParseCount = 0
 
     /// `debounce` is injectable so tests run fast; production uses the default.
     public init(
@@ -71,18 +72,29 @@ public final class MarkdownParseSession {
     @discardableResult
     public func parseNow(_ text: String) async -> MarkdownDocument? {
         lastText = text
+        pendingGeneration += 1
+        let generation = pendingGeneration
         pendingTask?.cancel()
-        pendingTask = nil
+
+        immediateParseCount += 1
+        defer { immediateParseCount -= 1 }
+
+        // clearIfCurrent runs before this defer; no suspension point may be
+        // inserted between them or the deferred count decrement would race.
         let revision = nextRevision
         nextRevision += 1
-        return await parse(text: text, revision: revision)
+        let result = await parse(text: text, revision: revision)
+        clearIfCurrent(generation: generation)
+        return result
     }
 
     /// Cancels any pending/running parse without publishing.
     public func cancelPending() {
         pendingTask?.cancel()
         pendingTask = nil
-        isParsing = false
+        if immediateParseCount == 0 {
+            isParsing = false
+        }
         pendingGeneration += 1
     }
 

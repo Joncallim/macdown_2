@@ -98,14 +98,33 @@ public actor ParseEngine: ParseExecuting {
         }
     }
 
-    private func convertNSNumber(_ number: NSNumber) -> FrontMatterValue {
+    /// Defensive NSNumber→FrontMatterValue bridge. Internal (not private) so
+    /// the unsigned-int range guard is testable via `@testable import`.
+    func convertNSNumber(_ number: NSNumber) -> FrontMatterValue {
         if CFGetTypeID(number) == CFBooleanGetTypeID() {
             return .bool(number.boolValue)
         }
         if CFNumberIsFloatType(number) {
             return .number(number.doubleValue)
         }
-        return .int(number.intValue)
+        // Yams returns native Swift scalars on this platform, so NSNumber is
+        // only a defensive bridge. Use the original scalar encoding so unsigned
+        // integers are checked against UInt64 bounds and signed integers against
+        // Int64 bounds; fall back to Double when the value does not fit in Int.
+        let encoding = String(cString: number.objCType)
+        switch encoding {
+        case "C", "S", "I", "L", "Q":
+            let unsigned = number.uint64Value
+            if unsigned <= UInt64(Int.max) {
+                return .int(Int(unsigned))
+            }
+        default:
+            let signed = number.int64Value
+            if signed >= Int64(Int.min), signed <= Int64(Int.max) {
+                return .int(Int(signed))
+            }
+        }
+        return .number(number.doubleValue)
     }
 }
 

@@ -41,6 +41,29 @@ struct SessionDebounceTests {
         #expect(session.document?.body == "immediate")
     }
 
+    @Test func parseNowBumpsGenerationSoStaleDebounceCannotClearState() async throws {
+        let spy = ParseSpy(delay: .milliseconds(200))
+        let session = MarkdownParseSession(engine: spy, debounce: .milliseconds(50))
+
+        session.textDidChange("debounced")
+        // Give the debounce task time to start sleeping before parseNow cancels it.
+        try await Task.sleep(for: .milliseconds(10))
+
+        let parseTask = Task { await session.parseNow("immediate") }
+
+        // Wait long enough for the cancelled debounce task to wake and attempt
+        // its stale cleanup, but not long enough for parseNow's parse to finish.
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(session.isParsing == true, "Stale debounce cleanup must not clear parseNow's parsing state")
+
+        _ = await parseTask.value
+
+        #expect(session.completedParseCount == 1)
+        #expect(session.document?.body == "immediate")
+        #expect(session.isParsing == false)
+    }
+
     @Test func staleRevisionResultNotPublished() async {
         let spy = ParseSpy()
         let session = MarkdownParseSession(engine: spy, debounce: .milliseconds(10))
@@ -171,7 +194,7 @@ struct SessionDebounceTests {
         session.textDidChange("first")
         try await Task.sleep(for: .milliseconds(50))
         session.textDidChange("second")
-        try await Task.sleep(for: .milliseconds(70))
+        try await Task.sleep(for: .milliseconds(100))
 
         #expect(session.isParsing == true, "A newer parse is still pending/running")
     }
