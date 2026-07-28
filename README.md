@@ -6,7 +6,8 @@ TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 > **Status:** early development. Foundations, file/format core, workspace shell,
 > native window tabs, the TextKit 2 editor, tree-sitter highlighting, the theme
 > system, a native Markdown parser, and a block-sliced native preview
-> (EPIC-00 → EPIC-07) are in place. Live external-file changes (E18) are next.
+> (EPIC-00 → EPIC-07) are in place. The content browser — a heading outline of
+> the active document in the sidebar (E08) — is in progress.
 > Performance numbers are package-level, not yet full-app-path measurements.
 
 ## Requirements
