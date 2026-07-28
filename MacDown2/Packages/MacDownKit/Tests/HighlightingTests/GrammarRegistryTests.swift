@@ -79,21 +79,26 @@ struct GrammarRegistryTests {
     ///
     /// `LanguageProvider` is not declared `@Sendable` by Neon, but the captured
     /// cache is `Sendable` (guarded by `NSLock`), so the closure is safe to
-    /// invoke from concurrent tasks. `nonisolated(unsafe)` is used only to
-    /// satisfy the test harness; production callers never cross isolation.
+    /// invoke from concurrent tasks. Boxed in an `@unchecked Sendable` wrapper
+    /// (rather than a bare `nonisolated(unsafe)` capture) so the assertion is
+    /// expressed as ordinary `Sendable` conformance, which strict-concurrency
+    /// checking handles consistently across compiler versions — a bare
+    /// `nonisolated(unsafe)` local captured into a `TaskGroup.addTask` closure
+    /// was accepted by one toolchain and rejected as a "sending parameter"
+    /// violation by another. Production callers never cross isolation.
     @Test func languageProviderIsThreadSafeUnderConcurrentResolution() async {
         let known = ["markdown", "markdown_inline", "json", "html"]
         let unknown = (0 ..< 8).map { "unknown-language-\($0)" }
         let allIDs = known + unknown
 
-        let provider = registry.languageProvider
-        nonisolated(unsafe) let unsafeProvider = provider
+        let providerBox = UncheckedSendableBox(value: registry.languageProvider)
 
         let allCorrect = await withTaskGroup(of: Bool.self) { group in
             for _ in 0 ..< 32 {
                 group.addTask {
-                    allIDs.allSatisfy { id in
-                        (unsafeProvider(id) != nil) == known.contains(id)
+                    let provider = providerBox.value
+                    return allIDs.allSatisfy { id in
+                        (provider(id) != nil) == known.contains(id)
                     }
                 }
             }
@@ -106,4 +111,15 @@ struct GrammarRegistryTests {
 
         #expect(!allCorrect.contains(false))
     }
+}
+
+/// Asserts `Value` is safe to send across isolation domains without the
+/// compiler being able to verify it. Prefer this over a bare
+/// `nonisolated(unsafe) let` capture in a concurrent closure: it expresses
+/// the assertion as `Sendable` conformance on the captured *value*, which
+/// strict-concurrency checking has handled consistently across the compiler
+/// versions this project has hit, whereas closure-capture "sending"
+/// parameter inference has not (see the regression this documents above).
+private struct UncheckedSendableBox<Value>: @unchecked Sendable {
+    let value: Value
 }
