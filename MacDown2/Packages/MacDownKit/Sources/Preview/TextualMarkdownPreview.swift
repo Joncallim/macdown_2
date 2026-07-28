@@ -20,13 +20,19 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
     /// (the default) blocks are sliced lazily from `document`/`text`.
     public let blocks: [PreviewBlock]?
 
+    /// Pre-computed link reference definitions, if the caller caches them.
+    /// When `nil` (the default) they are extracted lazily from `text`. See
+    /// ``PreviewLinkDefinitions`` for why every block needs these.
+    public let linkDefinitions: [String]?
+
     public init(
         document: MarkdownDocument?,
         text: String?,
         theme: PreviewTheme,
         linkResolver: PreviewLinkResolver = PreviewLinkResolver(),
         controller: ScrollSyncController = ScrollSyncController(),
-        blocks: [PreviewBlock]? = nil
+        blocks: [PreviewBlock]? = nil,
+        linkDefinitions: [String]? = nil
     ) {
         self.document = document
         self.text = text
@@ -34,6 +40,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         self.linkResolver = linkResolver
         self.controller = controller
         self.blocks = blocks
+        self.linkDefinitions = linkDefinitions
     }
 
     private var displayBlocks: [PreviewBlock] {
@@ -45,15 +52,42 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         return PreviewBlock.blocks(from: document, text: text)
     }
 
-    /// The stack must be eager (`VStack`), not `LazyVStack`: Textual's
-    /// `StructuredText` populates its content asynchronously after first
-    /// layout, and lazy stacks never realize those zero-height children, so
-    /// the preview renders blank. Eager rendering is also required for scroll
-    /// sync — every block must report its frame, not just the visible ones.
+    private var displayLinkDefinitions: [String] {
+        linkDefinitions ?? computedLinkDefinitions
+    }
+
+    private var computedLinkDefinitions: [String] {
+        guard let text else { return [] }
+        return PreviewLinkDefinitions.extract(from: text)
+    }
+
+    /// The stack must be eager (`VStack`), not `LazyVStack`, for two
+    /// independent reasons:
+    ///
+    /// 1. Textual's `StructuredText` populates its content asynchronously
+    ///    after first layout, and lazy stacks never realize those zero-height
+    ///    children, so the preview renders blank.
+    /// 2. Scroll sync (``ScrollSyncController``) sums measured heights across
+    ///    every block in the document to convert between editor lines and
+    ///    preview scroll position — a block a `LazyVStack` never realized
+    ///    because it was off-screen would report a height of zero, silently
+    ///    corrupting that math for every block after it. Eager rendering is
+    ///    what guarantees every block reports a real frame, not just the
+    ///    visible ones.
     public var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                GeometryReader { geometry in
+        // `GeometryReader` measures the viewport OUTSIDE the `ScrollView`,
+        // not as its direct child. A `GeometryReader` placed directly inside
+        // a `ScrollView` has no intrinsic content size of its own, so it
+        // collapses to the viewport's height and reports that fixed size
+        // upward — the scroll view then believes the content is exactly
+        // viewport-tall even though the `VStack` inside actually overflows
+        // it, and never becomes scrollable for documents taller than one
+        // screen. Measuring here and passing the value down as a `minHeight`
+        // floor (not the content's actual height) avoids that collapse while
+        // still filling the viewport for short documents.
+        GeometryReader { viewportGeometry in
+            ScrollViewReader { proxy in
+                ScrollView {
                     ZStack(alignment: .topLeading) {
                         // Fill the entire scrollable document view with the
                         // theme background. Without this, an empty document
@@ -64,7 +98,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                             .frame(
                                 minWidth: 0,
                                 maxWidth: .infinity,
-                                minHeight: geometry.size.height
+                                minHeight: viewportGeometry.size.height
                             )
 
                         VStack(alignment: .leading, spacing: 0) {
@@ -72,7 +106,8 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                 BlockView(
                                     block: block,
                                     theme: theme,
-                                    linkResolver: linkResolver
+                                    linkResolver: linkResolver,
+                                    linkDefinitions: displayLinkDefinitions
                                 )
                                 .id(block.id)
                                 .background(
@@ -90,7 +125,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                         .frame(
                             minWidth: 0,
                             maxWidth: .infinity,
-                            minHeight: geometry.size.height,
+                            minHeight: viewportGeometry.size.height,
                             alignment: .topLeading
                         )
                         .background(theme.background.swiftUIColor)
@@ -100,15 +135,20 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                         updateBlockHeights(frames: frames)
                     }
                 }
-            }
-            .background(theme.background.swiftUIColor)
-            .onChange(of: displayBlocks) { _, newBlocks in
-                controller.update(map: ScrollSyncMap(blocks: newBlocks))
-            }
-            .onChange(of: controller.targetPreviewFraction) { _, fraction in
-                guard let fraction else { return }
-                scroll(to: fraction, using: proxy)
-                controller.targetPreviewFraction = nil
+                .background(theme.background.swiftUIColor)
+                .onScrollGeometryChange(for: Double.self) { geometry in
+                    geometry.contentOffset.y
+                } action: { _, newOffset in
+                    controller.previewContentOffsetDidChange(newOffset)
+                }
+                .onChange(of: displayBlocks) { _, newBlocks in
+                    controller.update(map: ScrollSyncMap(blocks: newBlocks))
+                }
+                .onChange(of: controller.targetPreviewFraction) { _, fraction in
+                    guard let fraction else { return }
+                    scroll(to: fraction, using: proxy)
+                    controller.targetPreviewFraction = nil
+                }
             }
         }
     }
@@ -122,8 +162,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
     }
 
     private func scroll(to fraction: Double, using proxy: ScrollViewProxy) {
-        guard let line = controller.line(forPreviewFraction: fraction),
-              let blockIndex = controller.map.blockIndex(forLine: line),
+        guard let blockIndex = controller.blockIndex(forPreviewFraction: fraction),
               let blockID = displayBlocks[safe: blockIndex]?.id
         else {
             return
@@ -140,20 +179,45 @@ private struct BlockView: View {
     let block: PreviewBlock
     let theme: PreviewTheme
     let linkResolver: PreviewLinkResolver
+    let linkDefinitions: [String]
+
+    /// The block's source with every document-wide link reference definition
+    /// prepended, so a `[text][label]` reference in this block resolves even
+    /// when `label` is defined in a different block. See
+    /// ``PreviewLinkDefinitions``. Oversize blocks skip this — they already
+    /// bypass Textual entirely.
+    private var renderedSource: String {
+        guard !linkDefinitions.isEmpty else { return block.source }
+        return (linkDefinitions + [block.source]).joined(separator: "\n")
+    }
 
     var body: some View {
-        StructuredText(block.source, parser: PreviewMarkupParser())
-            .foregroundStyle(theme.foreground.swiftUIColor)
-            .tint(theme.linkColor.swiftUIColor)
-            .environment(
-                \.openURL,
-                OpenURLAction { url in
-                    let resolved = linkResolver.resolve(url)
-                    NSWorkspace.shared.open(resolved)
-                    return .handled
-                }
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
+        Group {
+            if block.isOversize {
+                // Oversize blocks skip Textual entirely: it has no size limit
+                // of its own and is documented to freeze/crash on inputs
+                // around 100 KB (see ``PreviewBlock/oversizeByteThreshold``).
+                Text(block.source)
+                    .font(.system(.body, design: .monospaced))
+            } else {
+                // `baseURL` resolves relative image sources (e.g.
+                // `![plot](images/plot.png)`) during parsing. `linkResolver`
+                // carries the same document base URL used to resolve clicked
+                // links, so both paths agree on what "relative" means.
+                StructuredText(renderedSource, parser: PreviewMarkupParser(baseURL: linkResolver.baseURL))
+                    .tint(theme.linkColor.swiftUIColor)
+                    .environment(
+                        \.openURL,
+                        OpenURLAction { url in
+                            let resolved = linkResolver.resolve(url)
+                            NSWorkspace.shared.open(resolved)
+                            return .handled
+                        }
+                    )
+            }
+        }
+        .foregroundStyle(theme.foreground.swiftUIColor)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

@@ -14,10 +14,23 @@ import MarkdownEngine
 /// identity on every body evaluation, resetting per-block view state (and the
 /// scroll-sync frame lookup) each time.
 public struct PreviewBlock: Sendable, Equatable, Identifiable {
+    /// Byte threshold above which a block degrades to plain text instead of
+    /// reaching Textual. Textual 0.5.0 has no size limit of its own and is
+    /// documented to freeze/crash on inputs around 100 KB
+    /// (gonzalezreal/textual#23, #47); slicing by top-level block only bounds
+    /// the common case; a single large fenced code block, unbroken paragraph,
+    /// or big table/HTML block can still reach that size on its own.
+    public static let oversizeByteThreshold = 64 * 1024
+
     public let id: UUID
     public let kind: BlockKind
     public let source: String
     public let lineRange: ClosedRange<Int>
+
+    /// `true` when `source` exceeds ``oversizeByteThreshold``. Callers should
+    /// render an oversize block as plain text rather than handing it to
+    /// Textual.
+    public let isOversize: Bool
 
     public init(
         id: UUID = UUID(),
@@ -29,6 +42,7 @@ public struct PreviewBlock: Sendable, Equatable, Identifiable {
         self.kind = kind
         self.source = source
         self.lineRange = lineRange
+        isOversize = source.utf8.count > Self.oversizeByteThreshold
     }
 }
 

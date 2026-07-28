@@ -160,6 +160,7 @@ private struct DocumentEditorSplitView: View {
 
     @State private var dragOriginFraction: Double?
     @State private var previewBlocks: [PreviewBlock]?
+    @State private var previewLinkDefinitions: [String] = []
 
     private var parseSession: MarkdownParseSession {
         parseStore.session(for: identity)
@@ -211,14 +212,30 @@ private struct DocumentEditorSplitView: View {
         .onChange(of: parseSession.document) { _, _ in
             refreshPreviewBlocks()
         }
+        .onChange(of: scrollController.targetSourceLine) { _, line in
+            guard let line, let sourceMap = parseSession.document?.sourceMap else { return }
+            let range = sourceMap.utf16Range(ofLines: line ... line)
+            editorStore.existingSystem(for: identity)?.scrollToVisible(utf16Range: range)
+            scrollController.targetSourceLine = nil
+        }
     }
 
     private func refreshPreviewBlocks() {
         guard let document = parseSession.document, let text = parseSession.publishedText else {
             previewBlocks = nil
+            previewLinkDefinitions = []
             return
         }
         previewBlocks = PreviewBlock.blocks(from: document, text: text)
+        previewLinkDefinitions = PreviewLinkDefinitions.extract(from: text)
+    }
+
+    /// Forwards the editor's visible top line into the scroll-sync
+    /// controller so the preview follows. `utf16Offset` comes from
+    /// `EditorView`'s scroll callback (see `EditorTextSystem.topVisibleUTF16Offset`).
+    private func handleEditorScroll(utf16Offset: Int) {
+        guard let sourceMap = parseSession.document?.sourceMap else { return }
+        scrollController.editorDidScroll(toLine: sourceMap.line(atUTF16Offset: utf16Offset))
     }
 
     private var editorPane: some View {
@@ -226,7 +243,8 @@ private struct DocumentEditorSplitView: View {
             text: $text,
             identity: identity,
             configuration: editorConfiguration,
-            store: editorStore
+            store: editorStore,
+            onScrollChange: handleEditorScroll
         )
         .accessibilityIdentifier("editorPane")
         .task(id: identity) {
@@ -244,7 +262,8 @@ private struct DocumentEditorSplitView: View {
                 theme: PreviewTheme(theme: themeController.current),
                 linkResolver: PreviewLinkResolver(baseURL: document.fileURL),
                 controller: scrollController,
-                blocks: previewBlocks
+                blocks: previewBlocks,
+                linkDefinitions: previewLinkDefinitions
             )
         case .html:
             HTMLPreviewView(text: $text)

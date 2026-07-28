@@ -34,7 +34,12 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         self.themeController = themeController
         editorStore = EditorTextSystemStore()
         highlightStore = SyntaxHighlightStore(registry: grammarRegistry)
-        parseStore = MarkdownParseStore()
+        // 100 ms debounce + ≤50 ms parse/slice/render pipeline = the 150 ms
+        // keystroke-to-preview budget (plan D8). The package default stays at
+        // 150 ms so other consumers of `MarkdownParseStore` keep the
+        // conservative, E06-tested value; this is the one call site that
+        // opts into the tighter production budget.
+        parseStore = MarkdownParseStore(debounce: .milliseconds(100))
 
         // Eagerly create the text system and parse session for the active tab
         // so session-save can read cursor/scroll state and the preview can

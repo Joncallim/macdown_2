@@ -4,18 +4,19 @@ import Foundation
 /// measured preview block heights.
 ///
 /// The controller is main-actor isolated because it is updated from SwiftUI
-/// geometry preferences and drives scroll views on the main thread. Callers
-/// must set `isEditorLeading` during a sync to prevent feedback loops.
+/// geometry preferences and drives scroll views on the main thread.
+///
+/// Feedback loops (editor scroll → preview scroll → reported as a preview
+/// scroll → editor scroll → …) are broken by remembering the block index the
+/// *other* side was last asked to move to. When ``previewContentOffsetDidChange(_:)``
+/// or ``editorDidScroll(toLine:)`` reports a position that merely confirms the
+/// sync we ourselves just requested, that one report is swallowed rather than
+/// echoed back.
 @MainActor
 @Observable
 public final class ScrollSyncController {
     public private(set) var map: ScrollSyncMap
     public private(set) var blockHeights: [Int: Double]
-
-    /// Set to `true` while the editor is driving the preview scroll, or
-    /// `false` while the preview is driving the editor. Cleared when no sync is
-    /// active. This prevents recursive scroll updates.
-    public var isEditorLeading: Bool = false
 
     /// The preview scroll fraction the editor wants the preview to adopt.
     /// Consumers should clear this after acting on it.
@@ -25,9 +26,61 @@ public final class ScrollSyncController {
     /// Consumers should clear this after acting on it.
     public var targetSourceLine: Int?
 
+    /// The preview block index we most recently asked the preview to scroll
+    /// to because the editor moved. The next ``previewContentOffsetDidChange(_:)``
+    /// report that lands on this same block is the preview confirming that
+    /// request, not a new user-driven preview scroll, so it is swallowed.
+    private var lastEditorDrivenBlockIndex: Int?
+
+    /// The preview block index we most recently derived from a
+    /// preview-driven scroll and asked the editor to move to. The next
+    /// ``editorDidScroll(toLine:)`` report that lands on this same block is
+    /// the editor confirming that request, so it is swallowed.
+    private var lastPreviewDrivenBlockIndex: Int?
+
     public init(map: ScrollSyncMap = ScrollSyncMap(blocks: []), blockHeights: [Int: Double] = [:]) {
         self.map = map
         self.blockHeights = blockHeights
+    }
+
+    /// Call when the editor's visible top line changes. Publishes
+    /// `targetPreviewFraction` for the preview to adopt, unless this report
+    /// merely confirms a preview-driven scroll already in flight.
+    public func editorDidScroll(toLine line: Int) {
+        guard let blockIndex = map.blockIndex(forLine: line) else { return }
+
+        if let lastPreviewDrivenBlockIndex, blockIndex == lastPreviewDrivenBlockIndex {
+            self.lastPreviewDrivenBlockIndex = nil
+            return
+        }
+
+        lastEditorDrivenBlockIndex = blockIndex
+        targetPreviewFraction = previewFraction(forLine: line)
+    }
+
+    /// Call when the preview's scroll content offset changes, in the same
+    /// units as `blockHeights`. Publishes `targetSourceLine` for the editor
+    /// to adopt, unless this report merely confirms an editor-driven scroll
+    /// already in flight.
+    public func previewContentOffsetDidChange(_ offset: Double) {
+        // Resolved directly from the raw offset — not by dividing by
+        // `totalHeight` and multiplying back in `blockIndex(forPreviewFraction:)`
+        // — so an offset that is exactly a block's top edge (as
+        // `scrollTo(_:anchor:.top)` produces) cannot be nudged onto the wrong
+        // side of that boundary by floating-point round-trip error.
+        guard let blockIndex = blockIndex(forContentOffset: offset),
+              let line = map.line(forBlockIndex: blockIndex)
+        else {
+            return
+        }
+
+        if let lastEditorDrivenBlockIndex, blockIndex == lastEditorDrivenBlockIndex {
+            self.lastEditorDrivenBlockIndex = nil
+            return
+        }
+
+        lastPreviewDrivenBlockIndex = blockIndex
+        targetSourceLine = line
     }
 
     public func update(map: ScrollSyncMap) {
@@ -74,7 +127,44 @@ public final class ScrollSyncController {
         return map.entries.last?.lineRange.upperBound
     }
 
+    /// The preview block whose top edge is at or before `fraction` of the
+    /// total document height and whose bottom edge is after it — i.e. the
+    /// block that is at the top of the viewport when the preview is scrolled
+    /// to exactly `fraction`.
+    ///
+    /// This is the exact inverse of the block-anchored `scrollTo(_:anchor:
+    /// .top)` used to drive the preview: scrolling to a block sets the
+    /// content offset to precisely that block's accumulated top-of-document
+    /// height, so a fraction landing exactly on a block boundary must resolve
+    /// to the *later* block (the one whose top it is), not the earlier one.
+    /// `line(forPreviewFraction:)` uses the opposite convention (`next >=
+    /// target` favors the earlier block) because it targets a specific
+    /// *line*, not a block anchor, so it is not reused here.
+    public func blockIndex(forPreviewFraction fraction: Double) -> Int? {
+        let total = totalHeight
+        guard total > 0 else { return nil }
+        return blockIndex(forContentOffset: fraction * total)
+    }
+
     // MARK: - Internal helpers
+
+    /// Shared boundary-correct resolver behind ``blockIndex(forPreviewFraction:)``
+    /// and ``previewContentOffsetDidChange(_:)``. Takes a raw offset (not a
+    /// fraction) so the latter never has to round-trip through division and
+    /// remultiplication by `totalHeight`.
+    private func blockIndex(forContentOffset offset: Double) -> Int? {
+        guard !map.entries.isEmpty else { return nil }
+
+        var accumulated: Double = 0
+        for entry in map.entries {
+            let next = accumulated + height(for: entry.blockIndex)
+            if offset < next {
+                return entry.blockIndex
+            }
+            accumulated = next
+        }
+        return map.entries.last?.blockIndex
+    }
 
     private var totalHeight: Double {
         map.entries.reduce(0) { $0 + height(for: $1.blockIndex) }
