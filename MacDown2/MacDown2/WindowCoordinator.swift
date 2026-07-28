@@ -31,6 +31,7 @@ final class WindowCoordinator {
     private let grammarRegistry: GrammarRegistry
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
+    private var restoreTask: Task<Void, Never>?
 
     init(
         sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
@@ -146,6 +147,16 @@ final class WindowCoordinator {
         return index < count
     }
 
+    /// Applies the requested preview layout to the active tab of the key window.
+    /// This is the single entry point used by both the SwiftUI Commands menu and
+    /// the window-level key-equivalent handler.
+    func setPreviewLayout(_ layout: PreviewLayoutMode) {
+        guard let keyModel,
+              let activeTabID = keyModel.tabStore.activeTabID else { return }
+        keyModel.tabStore.setPreviewLayout(layout, for: activeTabID)
+        scheduleSaveSession()
+    }
+
     // MARK: - Session
 
     /// Schedules a session save, debounced so rapid changes coalesce into one
@@ -181,17 +192,22 @@ final class WindowCoordinator {
                     isPinned: tab.isPinned,
                     cursorPosition: cursorPosition,
                     selectionLength: selectionLength,
-                    scrollOffset: scrollOffset
+                    scrollOffset: scrollOffset,
+                    previewLayout: tab.previewLayout
                 ),
                 documentID: tab.document.id,
                 documentText: tab.document.text,
                 documentState: tab.document.state
             )
         }
-
         // Capture the active tab while the snapshot is still consistent.
-        // Reading this after the `await` loop would race against tab switches.
+        // Reading this after any `await` would race against tab switches.
         let activeID = controllers.first { $0.window?.isKeyWindow ?? false }?.model.tabStore.activeTabID
+
+        // Write the session JSON before touching the recovery buffer so the
+        // lightweight session metadata (including preview layout) is persisted
+        // immediately and survives early termination.
+        sessionStore.saveSession(WorkspaceSession(tabs: snapshot.map(\.record), activeTabID: activeID))
 
         // Per-window `TabStore` instances also write dirty text to the recovery
         // buffer on a 300 ms debounce. We rewrite the snapshot text here so dirty
@@ -200,16 +216,40 @@ final class WindowCoordinator {
         for entry in snapshot where entry.documentState == .dirty || entry.documentState == .conflict {
             try? await recoveryBuffer.save(content: entry.documentText, for: entry.documentID)
         }
-
-        sessionStore.saveSession(WorkspaceSession(tabs: snapshot.map(\.record), activeTabID: activeID))
     }
 
-    /// Restores the saved session once, creating one window per document and
-    /// grouping them as tabs in a single native tab group.
-    func restoreSessionIfNeeded() async {
+    /// Begins the launch-time session restore. A short grace period lets a
+    /// pending `application(_:openFiles:)` arrive before the restore decision;
+    /// `isDocumentOpenPending` is evaluated after that delay. The work is
+    /// tracked in `restoreTask` so ``ensureWindowExistsForReopen()`` can await
+    /// it instead of racing a new window into existence ahead of the restored
+    /// session.
+    func scheduleSessionRestore(isDocumentOpenPending: @escaping @MainActor () -> Bool) {
         guard !hasRestoredSession else { return }
         hasRestoredSession = true
+        restoreTask = Task { @MainActor [weak self] in
+            // Give `application(_:openFiles:)` a few run-loop ticks to arrive
+            // before we fall back to restoring the previous session.
+            try? await Task.sleep(for: .milliseconds(200))
+            guard let self, !Task.isCancelled, !isDocumentOpenPending() else { return }
+            await restoreSession()
+        }
+    }
 
+    /// Awaits any in-flight session restore, then creates an untitled window
+    /// if no document window exists. Used by the reopen handler so a reopen
+    /// event landing before the restored windows appear does not spawn a
+    /// spurious untitled window.
+    func ensureWindowExistsForReopen() async {
+        await restoreTask?.value
+        guard controllers.isEmpty else { return }
+        newDocument()
+    }
+
+    /// Restores the saved session, creating one window per document and
+    /// grouping them as tabs in a single native tab group. Falls back to an
+    /// untitled window when there is nothing to restore.
+    private func restoreSession() async {
         let tempStore = TabStore(sessionStore: sessionStore)
         await tempStore.restoreSessionIfNeeded()
 
@@ -218,7 +258,7 @@ final class WindowCoordinator {
             return
         }
 
-        let (firstController, firstWindow) = restore(tabs: tempStore.tabs)
+        let (firstController, _) = restore(tabs: tempStore.tabs)
         activate(controller: firstController, activeID: tempStore.activeTabID)
         updateKeyModel()
     }
@@ -265,6 +305,9 @@ final class WindowCoordinator {
         }
         if let scrollOffset = tab.scrollOffset {
             textSystem.scrollOffset = CGFloat(scrollOffset)
+        }
+        if let previewLayout = tab.previewLayout {
+            controller.model.tabStore.setPreviewLayout(previewLayout, for: tab.id)
         }
     }
 

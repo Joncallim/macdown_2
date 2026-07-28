@@ -172,6 +172,35 @@ public final class EditorTextSystem {
         }
     }
 
+    /// The UTF-16 offset of the character at the top-left of the visible rect.
+    ///
+    /// Returns `0` when the text view has no layout or is not installed in a
+    /// scroll view. This is the editor side of the scroll-sync seam.
+    public var topVisibleUTF16Offset: Int {
+        // Without a scroll view there is no viewport to measure against. An
+        // unlaid-out text view answers hit-tests with the end of the document,
+        // so return the documented 0 rather than that misleading value.
+        guard let scrollView else { return 0 }
+
+        let clipOrigin = scrollView.contentView.bounds.origin
+        let point = textView.convert(clipOrigin, from: scrollView.contentView)
+        // `characterIndexForInsertion(at:)` takes a point in the text view's own
+        // coordinate space. `NSTextInputClient.characterIndex(for:)` looks
+        // similar but expects *screen* coordinates, so it silently returns
+        // nonsense for a view-local point.
+        let index = textView.characterIndexForInsertion(at: point)
+        return index == NSNotFound ? 0 : index
+    }
+
+    /// Scrolls the given UTF-16 range into the visible rect.
+    ///
+    /// This is a thin seam over `NSTextView.scrollRangeToVisible(_:)` so the
+    /// app target can drive editor scroll from the preview without depending
+    /// on AppKit directly.
+    public func scrollToVisible(utf16Range range: NSRange) {
+        textView.scrollRangeToVisible(range)
+    }
+
     private var pendingScrollOffset: CGFloat?
 
     /// Applies any pending scroll offset once the text view is inside a scroll

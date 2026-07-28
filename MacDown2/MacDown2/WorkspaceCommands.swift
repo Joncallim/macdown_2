@@ -5,6 +5,7 @@ import Workspace
 
 struct WorkspaceCommands: Commands {
     @Environment(\.windowCoordinator) private var coordinator
+    @FocusedValue(\.previewLayout) private var previewLayout
     private let themeController: ThemeController
 
     init(themeController: ThemeController) {
@@ -77,6 +78,38 @@ struct WorkspaceCommands: Commands {
         }
 
         CommandGroup(before: .sidebar) {
+            Menu("Layout") {
+                let layout = previewLayout ?? .defaultMode
+
+                Button(
+                    action: { setPreviewLayout(.editorOnly) },
+                    label: {
+                        Text((layout == .editorOnly ? "✓ " : "    ") + "Editor Only")
+                    }
+                )
+                .keyboardShortcut("1", modifiers: [.command, .option])
+
+                Button(
+                    action: { setPreviewLayout(.split(fraction: 0.5)) },
+                    label: {
+                        if case .split = layout {
+                            Text("✓ Split Editor & Preview")
+                        } else {
+                            Text("    Split Editor & Preview")
+                        }
+                    }
+                )
+                .keyboardShortcut("2", modifiers: [.command, .option])
+
+                Button(
+                    action: { setPreviewLayout(.previewOnly) },
+                    label: {
+                        Text((layout == .previewOnly ? "✓ " : "    ") + "Preview Only")
+                    }
+                )
+                .keyboardShortcut("3", modifiers: [.command, .option])
+            }
+
             Menu("Theme") {
                 let active = themeController.current
                 let lightThemes = themeController.available.filter { $0.appearance == .light }
@@ -120,5 +153,25 @@ struct WorkspaceCommands: Commands {
                 .disabled(coordinator?.keyModel?.hasActiveDocument != true)
             }
         #endif
+    }
+
+    private func setPreviewLayout(_ layout: PreviewLayoutMode) {
+        coordinator?.setPreviewLayout(layout)
+    }
+}
+
+// MARK: - Focused layout state
+
+/// Key for the active tab's preview layout so `Commands` can reactively update
+/// the Layout menu checkmark. The value is published from the key window's
+/// shell view via `.focusedSceneValue`.
+private struct PreviewLayoutFocusedValueKey: FocusedValueKey {
+    typealias Value = PreviewLayoutMode
+}
+
+extension FocusedValues {
+    var previewLayout: PreviewLayoutMode? {
+        get { self[PreviewLayoutFocusedValueKey.self] }
+        set { self[PreviewLayoutFocusedValueKey.self] = newValue }
     }
 }

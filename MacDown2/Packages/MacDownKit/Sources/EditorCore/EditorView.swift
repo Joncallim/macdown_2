@@ -12,7 +12,7 @@ public struct EditorView: NSViewRepresentable {
     private let configuration: EditorConfiguration
     private let store: EditorTextSystemStore
     private let onSelectionChange: ((NSRange) -> Void)?
-    private let onScrollChange: ((CGFloat) -> Void)?
+    private let onScrollChange: ((Int) -> Void)?
 
     /// Creates an editor view.
     /// - Parameters:
@@ -22,14 +22,16 @@ public struct EditorView: NSViewRepresentable {
     ///   - configuration: Editor appearance and behavior preferences.
     ///   - store: The cache that owns per-tab text systems.
     ///   - onSelectionChange: Optional callback invoked when the selection changes.
-    ///   - onScrollChange: Optional callback invoked when the scroll offset changes.
+    ///   - onScrollChange: Optional callback invoked with the UTF-16 offset of
+    ///     the character at the top of the visible rect whenever the editor
+    ///     scrolls (see ``EditorTextSystem/topVisibleUTF16Offset``).
     public init(
         text: Binding<String>,
         identity: String,
         configuration: EditorConfiguration,
         store: EditorTextSystemStore,
         onSelectionChange: ((NSRange) -> Void)? = nil,
-        onScrollChange: ((CGFloat) -> Void)? = nil
+        onScrollChange: ((Int) -> Void)? = nil
     ) {
         _text = text
         self.identity = identity
@@ -148,7 +150,7 @@ public struct EditorView: NSViewRepresentable {
         weak var system: EditorTextSystem?
         var textBinding: Binding<String>?
         var onSelectionChange: ((NSRange) -> Void)?
-        var onScrollChange: ((CGFloat) -> Void)?
+        var onScrollChange: ((Int) -> Void)?
         var isApplyingModelText = false
 
         public func textDidChange(_: Notification) {
@@ -165,7 +167,7 @@ public struct EditorView: NSViewRepresentable {
 
         @objc @MainActor func scrollViewDidScroll(_: Notification) {
             guard let system else { return }
-            onScrollChange?(system.scrollOffset)
+            onScrollChange?(system.topVisibleUTF16Offset)
         }
     }
 }

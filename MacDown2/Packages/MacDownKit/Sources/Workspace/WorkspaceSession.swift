@@ -39,6 +39,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
     public var selectionLength: Int?
 
     public var scrollOffset: Double?
+    public var previewLayout: PreviewLayoutMode?
 
     public init(
         id: UUID,
@@ -47,7 +48,8 @@ public struct TabRecord: Codable, Sendable, Equatable {
         isPinned: Bool = false,
         cursorPosition: Int? = nil,
         selectionLength: Int? = nil,
-        scrollOffset: Double? = nil
+        scrollOffset: Double? = nil,
+        previewLayout: PreviewLayoutMode? = nil
     ) {
         self.id = id
         self.fileURL = fileURL
@@ -56,6 +58,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         self.cursorPosition = cursorPosition
         self.selectionLength = selectionLength
         self.scrollOffset = scrollOffset
+        self.previewLayout = previewLayout
     }
 }
 

@@ -1,5 +1,6 @@
 import EditorCore
 import Highlighting
+import MarkdownEngine
 import SwiftUI
 import Themes
 import Workspace
@@ -14,17 +15,20 @@ struct WorkspaceShellView: View {
     @State private var model: WorkspaceModel
     let editorStore: EditorTextSystemStore
     let highlightStore: SyntaxHighlightStore
+    let parseStore: MarkdownParseStore
     let themeController: ThemeController
 
     init(
         model: WorkspaceModel,
         editorStore: EditorTextSystemStore,
         highlightStore: SyntaxHighlightStore,
+        parseStore: MarkdownParseStore,
         themeController: ThemeController
     ) {
         _model = State(initialValue: model)
         self.editorStore = editorStore
         self.highlightStore = highlightStore
+        self.parseStore = parseStore
         self.themeController = themeController
     }
 
@@ -36,10 +40,12 @@ struct WorkspaceShellView: View {
                 model: model,
                 editorStore: editorStore,
                 highlightStore: highlightStore,
+                parseStore: parseStore,
                 themeController: themeController
             )
         }
         .navigationSplitViewStyle(.balanced)
+        .focusedSceneValue(\.previewLayout, model.tabStore.activeTab?.previewLayout ?? .defaultMode)
         .task(id: themeController.current) {
             highlightStore.applyThemeToAll(themeController.current)
         }

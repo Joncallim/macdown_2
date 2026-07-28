@@ -9,6 +9,10 @@ public final class MarkdownParseSession {
     /// Latest completed parse. nil until the first parse completes.
     public private(set) var document: MarkdownDocument?
 
+    /// The source text that produced `document`. Published in the same mutation
+    /// so preview consumers can snapshot the text that corresponds to the AST.
+    public private(set) var publishedText: String?
+
     /// True while a parse Task is pending or running (drives subtle UI later).
     public private(set) var isParsing: Bool = false
 
@@ -69,8 +73,14 @@ public final class MarkdownParseSession {
 
     /// Immediate parse, bypassing the debounce (document open, tests).
     /// Cancels any pending debounced parse first. Publishes AND returns.
+    ///
+    /// If the calling task is cancelled before the parse completes, the result
+    /// is discarded and no state is published. This prevents a stale parse for
+    /// a tab that SwiftUI has already switched away from from overwriting the
+    /// session.
     @discardableResult
     public func parseNow(_ text: String) async -> MarkdownDocument? {
+        guard !Task.isCancelled else { return nil }
         lastText = text
         pendingGeneration += 1
         let generation = pendingGeneration
@@ -111,10 +121,14 @@ public final class MarkdownParseSession {
 
         do {
             let result = try await engine.parse(text, options: options, revision: revision)
+            // A cancelled task must not publish: the identity that requested this
+            // parse may have been switched away by the time the engine returns.
+            guard !Task.isCancelled else { return nil }
             guard result.revision > (document?.revision ?? 0) else {
                 return nil
             }
             document = result
+            publishedText = text
             completedParseCount += 1
             return result
         } catch is CancellationError {

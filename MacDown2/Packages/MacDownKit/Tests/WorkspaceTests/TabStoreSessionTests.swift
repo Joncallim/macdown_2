@@ -128,4 +128,33 @@ struct TabStoreSessionTests {
         let recovered = try? await recoveryBuffer.load(for: store.tabs[0].document.id)
         #expect(recovered == "untitled dirty")
     }
+
+    @Test func sessionRoundTripRestoresPreviewLayout() async {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let sessionStore = FakeSessionStore()
+        let store = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
+        store.newTab()
+        store.updateActiveDocument { $0.updatingText("untitled") }
+        let id = store.tabs[0].id
+        store.setPreviewLayout(.split(fraction: 0.7), for: id)
+
+        await store.saveSession()
+
+        let restored = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
+        await restored.restoreSessionIfNeeded()
+
+        #expect(restored.tabs.count == 1)
+        #expect(restored.tabs[0].previewLayout == .split(fraction: 0.7))
+    }
+
+    @Test func previewLayoutIsClampedWhenStored() {
+        let store = TabStore(sessionStore: FakeSessionStore())
+        store.newTab()
+        let id = store.tabs[0].id
+        store.setPreviewLayout(.split(fraction: 0.95), for: id)
+
+        #expect(store.tabs[0].previewLayout == .split(fraction: 0.85))
+    }
 }

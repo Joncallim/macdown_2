@@ -24,13 +24,18 @@ public struct WorkspaceTab: Identifiable, Sendable {
     public var selectionLength: Int?
     public var scrollOffset: Double?
 
+    /// The editor/preview layout for this tab. Persisted with the session
+    /// because it is part of the document workspace, not global UI state.
+    public var previewLayout: PreviewLayoutMode?
+
     public init(
         id: UUID = UUID(),
         document: FileDocument,
         isPinned: Bool = false,
         cursorPosition: Int? = nil,
         selectionLength: Int? = nil,
-        scrollOffset: Double? = nil
+        scrollOffset: Double? = nil,
+        previewLayout: PreviewLayoutMode? = nil
     ) {
         self.id = id
         self.document = document
@@ -38,6 +43,7 @@ public struct WorkspaceTab: Identifiable, Sendable {
         self.cursorPosition = cursorPosition
         self.selectionLength = selectionLength
         self.scrollOffset = scrollOffset
+        self.previewLayout = previewLayout
     }
 }
 
@@ -157,6 +163,15 @@ public final class TabStore {
         persist()
     }
 
+    /// Sets the preview layout for the tab identified by `id`. The layout is
+    /// clamped before storage so session restore cannot produce an invisible
+    /// pane.
+    public func setPreviewLayout(_ layout: PreviewLayoutMode, for id: UUID) {
+        guard let index = tabIndex(of: id) else { return }
+        tabs[index].previewLayout = layout.clamped()
+        persist()
+    }
+
     public func selectNextTab() {
         guard let activeTabID, tabs.count > 1 else { return }
         guard let index = tabIndex(of: activeTabID) else { return }
@@ -186,9 +201,25 @@ public final class TabStore {
         let pinnedCount = tabs.filter(\.isPinned).count
 
         if wasPinned {
-            tabs.insert(WorkspaceTab(id: tab.id, document: tab.document, isPinned: false), at: pinnedCount)
+            tabs.insert(WorkspaceTab(
+                id: tab.id,
+                document: tab.document,
+                isPinned: false,
+                cursorPosition: tab.cursorPosition,
+                selectionLength: tab.selectionLength,
+                scrollOffset: tab.scrollOffset,
+                previewLayout: tab.previewLayout
+            ), at: pinnedCount)
         } else {
-            tabs.insert(WorkspaceTab(id: tab.id, document: tab.document, isPinned: true), at: pinnedCount)
+            tabs.insert(WorkspaceTab(
+                id: tab.id,
+                document: tab.document,
+                isPinned: true,
+                cursorPosition: tab.cursorPosition,
+                selectionLength: tab.selectionLength,
+                scrollOffset: tab.scrollOffset,
+                previewLayout: tab.previewLayout
+            ), at: pinnedCount)
         }
 
         persist()

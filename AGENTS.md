@@ -24,6 +24,7 @@ as a read-only porting source in `legacy-reference/`.
 |---|---|
 | Generate Xcode project | `cd MacDown2 && xcodegen generate` |
 | Build app | `xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' build` |
+| Build app for dogfooding | same as above + `-configuration Release` — Debug Swift has no optimizations and materially changes how the app feels to type in; judge responsiveness on a Release build, not Debug |
 | Build + test package | `cd MacDown2/Packages/MacDownKit && swift build && swift test` |
 | Lint | `swiftlint lint --strict MacDown2` |
 | Format check | `swiftformat --lint MacDown2` |
