@@ -12,17 +12,31 @@ struct ContentAreaView: View {
     let model: WorkspaceModel
     let editorStore: EditorTextSystemStore
     let highlightStore: SyntaxHighlightStore
+    let parseStore: MarkdownParseStore
     let themeController: ThemeController
 
+    @State private var scrollController = ScrollSyncController()
+
     var body: some View {
-        Group {
-            if let document = model.activeDocument, let identity = activeIdentity {
-                documentContent(document, identity: identity)
-            } else {
-                emptyState
-            }
-        }
+        content(
+            for: model.activeDocument,
+            tab: model.tabStore.activeTab,
+            identity: activeIdentity
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private func content(
+        for document: FileCore.FileDocument?,
+        tab: WorkspaceTab?,
+        identity: String?
+    ) -> some View {
+        if let document, let tab, let identity {
+            documentContent(document, tab: tab, identity: identity)
+        } else {
+            emptyState
+        }
     }
 
     private var activeIdentity: String? {
@@ -38,7 +52,11 @@ struct ContentAreaView: View {
         )
     }
 
-    private func documentContent(_ document: FileCore.FileDocument, identity: String) -> some View {
+    private func documentContent(
+        _ document: FileCore.FileDocument,
+        tab: WorkspaceTab,
+        identity: String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header bar
             HStack(spacing: 10) {
@@ -72,12 +90,16 @@ struct ContentAreaView: View {
 
             // Source / preview split
             DocumentEditorSplitView(
+                model: model,
                 document: document,
+                tab: tab,
                 identity: identity,
                 text: textBinding,
                 editorStore: editorStore,
                 highlightStore: highlightStore,
-                themeController: themeController
+                parseStore: parseStore,
+                themeController: themeController,
+                scrollController: scrollController
             )
         }
     }
@@ -123,12 +145,36 @@ struct ContentAreaView: View {
 // MARK: - Source / preview split
 
 private struct DocumentEditorSplitView: View {
+    let model: WorkspaceModel
     let document: FileCore.FileDocument
+    let tab: WorkspaceTab
     let identity: String
     @Binding var text: String
     let editorStore: EditorTextSystemStore
     let highlightStore: SyntaxHighlightStore
+    let parseStore: MarkdownParseStore
     let themeController: ThemeController
+    let scrollController: ScrollSyncController
+
+    @Environment(\.windowCoordinator) private var coordinator
+
+    @State private var dragOriginFraction: Double?
+    @State private var previewBlocks: [PreviewBlock]?
+
+    private var parseSession: MarkdownParseSession {
+        parseStore.session(for: identity)
+    }
+
+    private var previewLayout: PreviewLayoutMode {
+        tab.previewLayout ?? .defaultMode
+    }
+
+    private var currentSplitFraction: Double? {
+        switch previewLayout {
+        case let .split(fraction): fraction
+        case .editorOnly, .previewOnly: nil
+        }
+    }
 
     private var editorConfiguration: EditorConfiguration {
         var config = EditorConfiguration.default
@@ -139,28 +185,103 @@ private struct DocumentEditorSplitView: View {
     var body: some View {
         GeometryReader { geometry in
             HStack(spacing: 0) {
-                // Source pane (left)
-                EditorView(
-                    text: $text,
-                    identity: identity,
-                    configuration: editorConfiguration,
-                    store: editorStore
-                )
-                .frame(width: geometry.size.width / 2)
-                .task(id: identity) {
-                    attachHighlighter()
+                if previewLayout.showsEditor {
+                    editorPane
+                        .frame(width: PreviewPaneWidths.editorWidth(in: geometry.size.width, layout: previewLayout))
                 }
 
-                // Divider
-                Rectangle()
-                    .fill(.separator)
-                    .frame(width: 1)
+                if previewLayout.showsEditor, previewLayout.showsPreview {
+                    divider(in: geometry)
+                }
 
-                // Preview pane (right)
-                previewPane
-                    .frame(width: geometry.size.width / 2 - 1)
+                if previewLayout.showsPreview {
+                    previewPane
+                        .accessibilityIdentifier("previewPane")
+                        .frame(width: PreviewPaneWidths.previewWidth(in: geometry.size.width, layout: previewLayout))
+                }
             }
         }
+        .task(id: identity) {
+            await parseSession.parseNow(text)
+            refreshPreviewBlocks()
+        }
+        .onChange(of: text) { _, newText in
+            parseSession.textDidChange(newText)
+        }
+        .onChange(of: parseSession.document) { _, _ in
+            refreshPreviewBlocks()
+        }
+    }
+
+    private func refreshPreviewBlocks() {
+        guard let document = parseSession.document, let text = parseSession.publishedText else {
+            previewBlocks = nil
+            return
+        }
+        previewBlocks = PreviewBlock.blocks(from: document, text: text)
+    }
+
+    private var editorPane: some View {
+        EditorView(
+            text: $text,
+            identity: identity,
+            configuration: editorConfiguration,
+            store: editorStore
+        )
+        .accessibilityIdentifier("editorPane")
+        .task(id: identity) {
+            attachHighlighter()
+        }
+    }
+
+    @ViewBuilder
+    private var previewPane: some View {
+        switch PreviewRouter.previewKind(for: document.format) {
+        case .markdown:
+            TextualMarkdownPreview(
+                document: parseSession.document,
+                text: parseSession.publishedText,
+                theme: PreviewTheme(theme: themeController.current),
+                linkResolver: PreviewLinkResolver(baseURL: document.fileURL),
+                controller: scrollController,
+                blocks: previewBlocks
+            )
+        case .html:
+            HTMLPreviewView(text: $text)
+        case .none:
+            NoPreviewView(formatName: document.format.name)
+        }
+    }
+
+    private func divider(in geometry: GeometryProxy) -> some View {
+        Rectangle()
+            .fill(.separator)
+            .frame(width: dividerWidth)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let total = geometry.size.width
+                        guard total > 0 else { return }
+                        if dragOriginFraction == nil {
+                            guard let currentSplitFraction else {
+                                assertionFailure("Drag origin captured in non-split layout")
+                                return
+                            }
+                            dragOriginFraction = currentSplitFraction
+                        }
+                        let fraction = (dragOriginFraction ?? 0.5) + value.translation.width / total
+                        model.tabStore.setPreviewLayout(
+                            .split(fraction: fraction),
+                            for: tab.id
+                        )
+                        coordinator?.scheduleSaveSession()
+                    }
+                    .onEnded { _ in
+                        dragOriginFraction = nil
+                    }
+            )
+            .accessibilityLabel("Resize editor and preview")
     }
 
     private func attachHighlighter() {
@@ -171,33 +292,6 @@ private struct DocumentEditorSplitView: View {
             languageID: document.format.highlightLanguageID,
             theme: themeController.current
         )
-    }
-
-    @ViewBuilder
-    private var previewPane: some View {
-        switch PreviewRouter.previewKind(for: document.format) {
-        case .markdown:
-            MarkdownPreviewView(text: $text)
-        case .html:
-            HTMLPreviewView(text: $text)
-        case .none:
-            NoPreviewView(formatName: document.format.name)
-        }
-    }
-}
-
-// MARK: - Markdown preview
-
-private struct MarkdownPreviewView: View {
-    @Binding var text: String
-
-    var body: some View {
-        ScrollView {
-            MarkdownPreviewBody(text: text)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-        }
-        .background(Color(.textBackgroundColor))
     }
 }
 

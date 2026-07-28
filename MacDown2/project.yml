@@ -142,6 +142,8 @@ targets:
     - MacDown2UITests
     dependencies:
     - target: MacDown2
+    - package: MacDownKit
+      product: Workspace
     settings:
       base:
         GENERATE_INFOPLIST_FILE: 'YES'

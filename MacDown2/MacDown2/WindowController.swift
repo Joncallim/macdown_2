@@ -3,6 +3,7 @@ import EditorCore
 import FileCore
 import Foundation
 import Highlighting
+import MarkdownEngine
 import SwiftUI
 import Themes
 import Workspace
@@ -14,6 +15,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let model: WorkspaceModel
     let editorStore: EditorTextSystemStore
     let highlightStore: SyntaxHighlightStore
+    let parseStore: MarkdownParseStore
     let themeController: ThemeController
     private weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
@@ -32,24 +34,30 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         self.themeController = themeController
         editorStore = EditorTextSystemStore()
         highlightStore = SyntaxHighlightStore(registry: grammarRegistry)
+        parseStore = MarkdownParseStore()
 
-        // Eagerly create the text system for the active tab so session-save
-        // can read cursor/scroll state even before SwiftUI mounts the view.
+        // Eagerly create the text system and parse session for the active tab
+        // so session-save can read cursor/scroll state and the preview can
+        // render immediately once SwiftUI mounts the view.
         if let activeTab = model.tabStore.activeTab {
+            let identity = activeTab.id.uuidString
             _ = editorStore.system(
-                for: activeTab.id.uuidString,
+                for: identity,
                 initialText: activeTab.document.text,
                 configuration: .default
             )
+            _ = parseStore.session(for: identity)
         }
 
         let hostingController = NSHostingController(rootView: WorkspaceShellView(
             model: model,
             editorStore: editorStore,
             highlightStore: highlightStore,
+            parseStore: parseStore,
             themeController: themeController
         ))
-        let window = NSWindow(contentViewController: hostingController)
+        let window = DocumentWindow(contentViewController: hostingController)
+        window.coordinator = coordinator
         window.setFrameAutosaveName("MacDown2DocumentWindow")
         window.title = model.activeDocument?.fileURL?.lastPathComponent ?? "Untitled"
         window.setContentSize(NSSize(width: 1200, height: 800))
@@ -126,6 +134,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         observationTask?.cancel()
         editorStore.evictAll()
         highlightStore.evictAll()
+        parseStore.evictAll()
     }
 
     func windowDidBecomeKey(_: Notification) {

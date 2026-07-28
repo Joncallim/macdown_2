@@ -4,11 +4,10 @@ A native macOS Markdown editor — a ground-up Swift / SwiftUI rewrite built on
 TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 
 > **Status:** early development. Foundations, file/format core, workspace shell,
-> native window tabs, the TextKit 2 editor, and tree-sitter highlighting with a
-> theme system (EPIC-00 → EPIC-05) are in place. The markdown engine (E06),
-> native preview (E07), and live external-file changes (E18) are next.
-> The current Markdown preview is a temporary placeholder renderer, and
-> performance numbers are package-level, not yet full-app-path measurements.
+> native window tabs, the TextKit 2 editor, tree-sitter highlighting, the theme
+> system, a native Markdown parser, and a block-sliced native preview
+> (EPIC-00 → EPIC-07) are in place. Live external-file changes (E18) are next.
+> Performance numbers are package-level, not yet full-app-path measurements.
 
 ## Requirements
 
@@ -30,8 +29,8 @@ MacDown2/
 │       ├── EditorCore        # NSTextView + TextKit 2 editor
 │       ├── Highlighting      # Tree-sitter engine (markdown/json/html), Neon-backed
 │       ├── Themes            # Theme model + Tomorrow Light/Dark, live switching
-│       ├── MarkdownEngine    # PLACEHOLDER — swift-markdown parse actor arrives in E06
-│       ├── Preview           # PLACEHOLDER — native Textual preview arrives in E07
+│       ├── MarkdownEngine    # Native swift-markdown parser + parse session store
+│       ├── Preview           # Block-sliced native Textual preview + scroll sync
 │       ├── OutlineUI / FileTree / AppSettings / ExportService   # stubs for E08/E09/E13/E12
 │       └── …
 ├── Packages/TreeSitterMarkdown  # Vendored markdown + markdown-inline grammars

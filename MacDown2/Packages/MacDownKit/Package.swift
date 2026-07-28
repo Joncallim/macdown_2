@@ -25,6 +25,7 @@ let package = Package(
         .package(path: "../TreeSitterMarkdown"),
         .package(url: "https://github.com/swiftlang/swift-markdown", exact: "0.8.0"),
         .package(url: "https://github.com/jpsim/Yams", exact: "6.2.2"),
+        .package(url: "https://github.com/gonzalezreal/textual", exact: "0.5.0"),
     ],
     targets: [
         .target(name: "FileCore"),
@@ -53,7 +54,15 @@ let package = Package(
                 .product(name: "Yams", package: "Yams"),
             ]
         ),
-        .target(name: "Preview", dependencies: ["MarkdownEngine", "Themes", "FileCore"]),
+        .target(
+            name: "Preview",
+            dependencies: [
+                "MarkdownEngine",
+                "Themes",
+                "FileCore",
+                .product(name: "Textual", package: "textual"),
+            ]
+        ),
         .target(name: "OutlineUI", dependencies: ["MarkdownEngine"]),
         .target(name: "ExportService", dependencies: ["MarkdownEngine", "Themes"]),
 

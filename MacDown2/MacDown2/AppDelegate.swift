@@ -59,18 +59,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        Task { @MainActor in
-            if !launchURLs.isEmpty {
+        if !launchURLs.isEmpty {
+            Task { @MainActor in
                 for url in launchURLs {
                     await coordinator.openDocument(at: url)
                 }
-            } else {
-                // Give `application(_:openFiles:)` a few run-loop ticks to arrive
-                // before we fall back to creating an empty untitled document.
-                try? await Task.sleep(for: .milliseconds(200))
-                if !hasPendingDocumentOpen {
-                    await coordinator.restoreSessionIfNeeded()
-                }
+            }
+        } else {
+            // Scheduled synchronously so the tracked restore task exists before
+            // any reopen event can be handled; the grace delay inside gives
+            // `application(_:openFiles:)` a few run-loop ticks to arrive first.
+            coordinator.scheduleSessionRestore { [weak self] in
+                self?.hasPendingDocumentOpen ?? false
             }
         }
     }
@@ -93,16 +93,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            coordinator.newDocument()
+            Task { @MainActor in
+                await coordinator.ensureWindowExistsForReopen()
+            }
         }
         return true
     }
 
     func application(_: NSApplication, openFiles filenames: [String]) {
+        // AppKit also routes bare launch-argument paths (such as the
+        // `-sessionDir` value under UI testing) and folder drops through this
+        // handler. Only regular files count as document opens; anything else
+        // must not suppress the session restore.
+        let fileURLs = filenames
+            .map { URL(fileURLWithPath: $0) }
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true }
+        guard !fileURLs.isEmpty else { return }
         hasPendingDocumentOpen = true
         Task { @MainActor in
-            for filename in filenames {
-                await coordinator.openDocument(at: URL(fileURLWithPath: filename))
+            for url in fileURLs {
+                await coordinator.openDocument(at: url)
             }
         }
     }

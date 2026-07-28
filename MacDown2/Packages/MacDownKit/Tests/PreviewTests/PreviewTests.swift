@@ -1,6 +1,9 @@
 @testable import FileCore
+import Foundation
+@testable import MarkdownEngine
 @testable import Preview
 import Testing
+import Themes
 
 @Test func moduleLoads() {
     #expect(PreviewModule.moduleName == "Preview")
@@ -94,5 +97,187 @@ struct PreviewSecurityTests {
         let out = PreviewSecurity.hardenedHTMLDocument(from: html)
         // Injected right after the opening <head ...> tag.
         #expect(out.contains("<head class=\"x\"><meta http-equiv=\"Content-Security-Policy\""))
+    }
+}
+
+@Suite("PreviewBlock")
+struct PreviewBlockTests {
+    @Test func extractsBlockSourceFromOriginalText() {
+        let text = "# Hello\n\nFirst paragraph.\n\nSecond paragraph."
+        let blocks = [
+            MarkdownBlock(kind: .heading(level: 1), lineRange: 1 ... 1),
+            MarkdownBlock(kind: .paragraph, lineRange: 3 ... 3),
+            MarkdownBlock(kind: .paragraph, lineRange: 5 ... 5),
+        ]
+        let document = PreviewFixtures.documentWithBlocks(text: text, blocks: blocks)
+        let previewBlocks = PreviewBlock.blocks(from: document, text: text)
+
+        #expect(previewBlocks.count == 3)
+        #expect(previewBlocks[0].source == "# Hello")
+        #expect(previewBlocks[1].source == "First paragraph.")
+        #expect(previewBlocks[2].source == "Second paragraph.")
+    }
+
+    @Test func blockSourceExcludesLineTerminators() {
+        // SourceMap ranges stop before the terminating newline, so block
+        // sources do not include it.
+        let text = "# Hello\n\nBody\n"
+        let blocks = [
+            MarkdownBlock(kind: .heading(level: 1), lineRange: 1 ... 1),
+            MarkdownBlock(kind: .paragraph, lineRange: 3 ... 3),
+        ]
+        let document = PreviewFixtures.documentWithBlocks(text: text, blocks: blocks)
+        let previewBlocks = PreviewBlock.blocks(from: document, text: text)
+
+        #expect(previewBlocks[0].source == "# Hello")
+        #expect(previewBlocks[1].source == "Body")
+    }
+
+    @Test func blockIDsAreStableAcrossRebuilds() {
+        // Preview blocks derive their identity from content and position so
+        // SwiftUI view identity (and the scroll-sync frame lookup) survives
+        // re-evaluation. Random IDs would churn `ForEach` on every pass.
+        let text = "# Hello\n\nFirst paragraph.\n\nSecond paragraph."
+        let blocks = [
+            MarkdownBlock(kind: .heading(level: 1), lineRange: 1 ... 1),
+            MarkdownBlock(kind: .paragraph, lineRange: 3 ... 3),
+            MarkdownBlock(kind: .paragraph, lineRange: 5 ... 5),
+        ]
+        let document = PreviewFixtures.documentWithBlocks(text: text, blocks: blocks)
+
+        let first = PreviewBlock.blocks(from: document, text: text)
+        let second = PreviewBlock.blocks(from: document, text: text)
+
+        #expect(first == second)
+        #expect(Set(first.map(\.id)).count == first.count)
+    }
+}
+
+@Suite("ScrollSyncMap")
+struct ScrollSyncMapTests {
+    @Test func mapsLinesToBlockIndices() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
+            PreviewBlock(kind: .paragraph, source: "p2", lineRange: 5 ... 5),
+        ]
+        let map = ScrollSyncMap(blocks: blocks)
+
+        #expect(map.blockIndex(forLine: 1) == 0)
+        #expect(map.blockIndex(forLine: 3) == 1)
+        #expect(map.blockIndex(forLine: 5) == 2)
+    }
+
+    @Test func fallsBackToNearestBlockForBlankLines() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
+        ]
+        let map = ScrollSyncMap(blocks: blocks)
+
+        #expect(map.blockIndex(forLine: 2) == 0)
+        #expect(map.blockIndex(forLine: 4) == 1)
+    }
+
+    @Test func lineForBlockIndexReturnsFirstLine() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 5),
+        ]
+        let map = ScrollSyncMap(blocks: blocks)
+
+        #expect(map.line(forBlockIndex: 1) == 3)
+    }
+}
+
+@Suite("ScrollSyncController")
+@MainActor
+struct ScrollSyncControllerTests {
+    @Test func previewFractionForFirstLineIsZero() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
+        ]
+        let controller = ScrollSyncController(
+            map: ScrollSyncMap(blocks: blocks),
+            blockHeights: [0: 10, 1: 20]
+        )
+
+        #expect(controller.previewFraction(forLine: 1) == 0)
+    }
+
+    @Test func previewFractionAtSecondBlockStart() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
+        ]
+        let controller = ScrollSyncController(
+            map: ScrollSyncMap(blocks: blocks),
+            blockHeights: [0: 10, 1: 20]
+        )
+
+        #expect(controller.previewFraction(forLine: 3) == 10.0 / 30.0)
+    }
+
+    @Test func lineForPreviewFractionRoundTrips() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 5),
+        ]
+        let controller = ScrollSyncController(
+            map: ScrollSyncMap(blocks: blocks),
+            blockHeights: [0: 10, 1: 30]
+        )
+
+        let fraction = controller.previewFraction(forLine: 4)
+        #expect(fraction != nil)
+        #expect(controller.line(forPreviewFraction: fraction ?? 0) == 4)
+    }
+
+    @Test func emptyMapReturnsNoFraction() {
+        let controller = ScrollSyncController()
+        #expect(controller.previewFraction(forLine: 1) == nil)
+        #expect(controller.line(forPreviewFraction: 0.5) == nil)
+    }
+}
+
+@Suite("PreviewLinkResolver")
+struct PreviewLinkResolverTests {
+    @Test func leavesAbsoluteURLUnchanged() throws {
+        let resolver = PreviewLinkResolver(baseURL: URL(string: "https://example.com/page.md"))
+        let url = try #require(URL(string: "https://other.com/doc.md"))
+        #expect(resolver.resolve(url) == url)
+    }
+
+    @Test func resolvesRelativeURLAgainstBaseURL() throws {
+        let base = URL(string: "https://example.com/page.md")
+        let resolver = PreviewLinkResolver(baseURL: base)
+        let url = try #require(URL(string: "other.md"))
+        let resolved = resolver.resolve(url)
+        #expect(resolved.absoluteString == "https://example.com/other.md")
+    }
+
+    @Test func returnsOriginalWhenNoBaseURL() throws {
+        let resolver = PreviewLinkResolver()
+        let url = try #require(URL(string: "other.md"))
+        #expect(resolver.resolve(url) == url)
+    }
+}
+
+@Suite("PreviewTheme")
+struct PreviewThemeTests {
+    @Test func derivesFromEditorTheme() {
+        let theme = BundledThemes.light
+        let preview = PreviewTheme(theme: theme)
+
+        #expect(preview.background == theme.chrome.background)
+        #expect(preview.foreground == theme.chrome.foreground)
+    }
+
+    @Test func defaultThemeIsDifferentForLightAndDark() {
+        let light = PreviewTheme.default(for: .light)
+        let dark = PreviewTheme.default(for: .dark)
+
+        #expect(light.background != dark.background)
     }
 }

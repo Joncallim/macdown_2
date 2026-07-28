@@ -18,7 +18,8 @@ extension TabStore {
                 isPinned: tab.isPinned,
                 cursorPosition: nil,
                 selectionLength: nil,
-                scrollOffset: nil
+                scrollOffset: nil,
+                previewLayout: tab.previewLayout
             )
         }
         return WorkspaceSession(tabs: records, activeTabID: activeTabID)
@@ -39,7 +40,8 @@ extension TabStore {
                     isPinned: record.isPinned,
                     cursorPosition: record.cursorPosition,
                     selectionLength: record.selectionLength,
-                    scrollOffset: record.scrollOffset
+                    scrollOffset: record.scrollOffset,
+                    previewLayout: record.previewLayout
                 )
             } catch {
                 return nil
@@ -54,7 +56,8 @@ extension TabStore {
                 isPinned: record.isPinned,
                 cursorPosition: record.cursorPosition,
                 selectionLength: record.selectionLength,
-                scrollOffset: record.scrollOffset
+                scrollOffset: record.scrollOffset,
+                previewLayout: record.previewLayout
             )
         }
         return nil

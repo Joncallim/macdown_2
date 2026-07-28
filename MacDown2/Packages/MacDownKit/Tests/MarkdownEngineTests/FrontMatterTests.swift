@@ -125,11 +125,11 @@ struct FrontMatterTests {
         let u64 = await engine.convertNSNumber(NSNumber(value: UInt64(42)))
         #expect(u64 == .int(42))
 
-        let u = await engine.convertNSNumber(NSNumber(value: UInt(42)))
-        #expect(u == .int(42))
+        let uint = await engine.convertNSNumber(NSNumber(value: UInt(42)))
+        #expect(uint == .int(42))
 
-        let u8 = await engine.convertNSNumber(NSNumber(value: UInt8(255)))
-        #expect(u8 == .int(255))
+        let uint8 = await engine.convertNSNumber(NSNumber(value: UInt8(255)))
+        #expect(uint8 == .int(255))
     }
 
     @Test func unsignedNSNumberOutOfRangeFallsBackToNumber() async {

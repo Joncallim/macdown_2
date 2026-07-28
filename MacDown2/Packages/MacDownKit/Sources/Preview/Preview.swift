@@ -33,32 +33,3 @@ public enum PreviewRouter {
         }
     }
 }
-
-/// A SwiftUI view that renders Markdown source as attributed text.
-///
-/// This is a temporary EPIC-02 placeholder for the native Textual-based preview
-/// planned in E07. It uses `MarkdownEngine` to produce a plain attributed
-/// string so the split editor/preview layout is visible immediately.
-public struct MarkdownPreviewBody: View {
-    public let text: String
-
-    public init(text: String) {
-        self.text = text
-    }
-
-    public var body: some View {
-        Text(attributedContent)
-            .font(.system(.body))
-            .textSelection(.enabled)
-    }
-
-    /// `@MainActor` so it can call `MarkdownEngine.renderAttributed`, which
-    /// builds AppKit types and is main-actor isolated. `body` is already on the
-    /// main actor, so reading this property from it is free.
-    @MainActor
-    private var attributedContent: AttributedString {
-        let nsAttributed = MarkdownEngine.renderAttributed(text)
-            ?? NSAttributedString(string: text)
-        return AttributedString(nsAttributed)
-    }
-}

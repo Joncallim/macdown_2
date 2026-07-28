@@ -4,17 +4,19 @@ import Foundation
 @MainActor
 public final class MarkdownParseStore {
     private let engine: any ParseExecuting
+    private let debounce: Duration
     private var sessions: [String: MarkdownParseSession] = [:]
 
-    public init(engine: any ParseExecuting = ParseEngine()) {
+    public init(engine: any ParseExecuting = ParseEngine(), debounce: Duration = .milliseconds(150)) {
         self.engine = engine
+        self.debounce = debounce
     }
 
     public func session(for identity: String) -> MarkdownParseSession {
         if let session = sessions[identity] {
             return session
         }
-        let session = MarkdownParseSession(engine: engine)
+        let session = MarkdownParseSession(engine: engine, debounce: debounce)
         sessions[identity] = session
         return session
     }
