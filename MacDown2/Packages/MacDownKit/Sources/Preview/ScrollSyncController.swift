@@ -86,6 +86,15 @@ public final class ScrollSyncController {
     public func update(map: ScrollSyncMap) {
         guard self.map != map else { return }
         self.map = map
+
+        // A block index recorded against the old map may not identify the
+        // same block (or any block) in the new one — e.g. a debounced
+        // re-parse can land between an editor-driven scroll being requested
+        // and the preview's echo of it. Clearing here means the worst case
+        // is one un-suppressed echo (a harmless, self-correcting sync) rather
+        // than a stale index silently swallowing or misdirecting a real one.
+        lastEditorDrivenBlockIndex = nil
+        lastPreviewDrivenBlockIndex = nil
     }
 
     public func update(blockHeights: [Int: Double]) {
