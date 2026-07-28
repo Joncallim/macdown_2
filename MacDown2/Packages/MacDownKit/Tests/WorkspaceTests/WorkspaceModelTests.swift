@@ -185,4 +185,40 @@ struct WorkspaceModelTests {
         model.setSectionExpanded(.folder, false)
         #expect(store.sidebarSectionExpanded["folder"] == false)
     }
+
+    @Test func modelHydratesSectionOrderFromStore() {
+        let store = FakeStateStore()
+        store.sidebarSectionOrder = ["outline", "folder"]
+        let model = WorkspaceModel(stateStore: store)
+        #expect(model.sectionOrder == [.outline, .folder])
+    }
+
+    @Test func modelDefaultsSectionOrderWhenStoreIsEmpty() {
+        let store = FakeStateStore()
+        store.sidebarSectionOrder = []
+        let model = WorkspaceModel(stateStore: store)
+        #expect(model.sectionOrder == SidebarSection.defaultOrder)
+    }
+
+    @Test func modelMoveSectionsUpdatesOrderAndStore() {
+        let store = FakeStateStore()
+        store.sidebarSectionOrder = ["folder", "outline"]
+        let model = WorkspaceModel(stateStore: store)
+
+        model.moveSections(fromOffsets: IndexSet(integer: 0), toOffset: 2)
+
+        #expect(model.sectionOrder == [.outline, .folder])
+        #expect(store.sidebarSectionOrder == ["outline", "folder"])
+    }
+
+    @Test func modelCachesSectionExpansionIndependentlyOfStoreReads() {
+        let store = FakeStateStore()
+        store.sidebarSectionExpanded = ["folder": false, "outline": true]
+        let model = WorkspaceModel(stateStore: store)
+
+        store.sidebarSectionExpanded = [:]
+
+        #expect(model.isSectionExpanded(.folder) == false)
+        #expect(model.isSectionExpanded(.outline) == true)
+    }
 }

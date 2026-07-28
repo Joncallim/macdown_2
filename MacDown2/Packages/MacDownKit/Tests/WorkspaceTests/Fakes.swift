@@ -5,6 +5,7 @@ import Workspace
 final class FakeStateStore: WorkspaceStateStoring {
     var sidebarVisible: Bool = true
     var sidebarSectionExpanded: [String: Bool] = [:]
+    var sidebarSectionOrder: [String] = []
 }
 
 @MainActor

@@ -3,9 +3,33 @@ import Foundation
 import Observation
 
 /// Sidebar sections displayed in the workspace shell.
-public enum SidebarSection: String, Sendable, CaseIterable {
+public enum SidebarSection: String, Sendable, CaseIterable, Identifiable {
     case folder
     case outline
+
+    public var id: String {
+        rawValue
+    }
+
+    /// Order used on first launch and to fill gaps during reconciliation.
+    public static var defaultOrder: [SidebarSection] {
+        allCases
+    }
+
+    /// Drops unknown identifiers, appends missing cases in `allCases` order.
+    public static func reconcile(_ stored: [String]) -> [SidebarSection] {
+        var result: [SidebarSection] = []
+        var seen: Set<String> = []
+        for rawValue in stored {
+            guard let section = SidebarSection(rawValue: rawValue),
+                  seen.insert(section.id).inserted else { continue }
+            result.append(section)
+        }
+        for section in SidebarSection.allCases where !seen.contains(section.id) {
+            result.append(section)
+        }
+        return result
+    }
 }
 
 /// The observable model behind the MacDown 2 workspace shell.
@@ -43,6 +67,13 @@ public final class WorkspaceModel {
         }
     }
 
+    /// Document-order of sidebar sections. Persisted via `stateStore`.
+    public private(set) var sectionOrder: [SidebarSection]
+
+    /// Cached expansion state so SwiftUI body evaluations do not hit
+    /// `UserDefaults` on every read.
+    private var sectionExpanded: [SidebarSection: Bool]
+
     public var hasActiveDocument: Bool {
         tabStore.hasActiveDocument
     }
@@ -71,16 +102,34 @@ public final class WorkspaceModel {
         folderURL = nil
         lastError = nil
         sidebarVisible = stateStore.sidebarVisible
+        sectionOrder = SidebarSection.reconcile(stateStore.sidebarSectionOrder)
+        sectionExpanded = Dictionary(uniqueKeysWithValues: SidebarSection.allCases.map { section in
+            (section, stateStore.sidebarSectionExpanded[section.rawValue] ?? true)
+        })
     }
 
     // MARK: - State store helpers
 
     public func isSectionExpanded(_ section: SidebarSection) -> Bool {
-        stateStore.sidebarSectionExpanded[section.rawValue] ?? true
+        sectionExpanded[section] ?? true
     }
 
     public func setSectionExpanded(_ section: SidebarSection, _ expanded: Bool) {
+        sectionExpanded[section] = expanded
         stateStore.sidebarSectionExpanded[section.rawValue] = expanded
+    }
+
+    /// Reorders sidebar sections and persists the new order.
+    public func moveSections(fromOffsets offsets: IndexSet, toOffset offset: Int) {
+        var order = sectionOrder
+        let moved = offsets.compactMap { order[$0] }
+        let remaining = order.enumerated()
+            .filter { !offsets.contains($0.offset) }
+            .map(\.element)
+        let targetIndex = min(offset, remaining.count)
+        order = Array(remaining[..<targetIndex] + moved + remaining[targetIndex...])
+        sectionOrder = order
+        stateStore.sidebarSectionOrder = order.map(\.rawValue)
     }
 
     // MARK: - Intents

@@ -352,7 +352,7 @@ final class WindowCoordinator {
     private func makeWindowModel() -> WorkspaceModel {
         WorkspaceModel(
             tabStore: TabStore(sessionStore: NoOpSessionStore(), recoveryBuffer: recoveryBuffer),
-            stateStore: NoOpStateStore(),
+            stateStore: WorkspaceStateStore(),
             panel: panelProvider
         )
     }

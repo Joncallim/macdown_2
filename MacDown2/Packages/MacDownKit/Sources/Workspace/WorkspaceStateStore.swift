@@ -10,6 +10,7 @@ import Foundation
 public protocol WorkspaceStateStoring {
     var sidebarVisible: Bool { get set }
     var sidebarSectionExpanded: [String: Bool] { get set }
+    var sidebarSectionOrder: [String] { get set }
 }
 
 /// UserDefaults-backed `WorkspaceStateStoring` implementation.
@@ -54,8 +55,25 @@ public struct WorkspaceStateStore: WorkspaceStateStoring {
         }
     }
 
+    public var sidebarSectionOrder: [String] {
+        get {
+            guard let data = defaults.data(forKey: Keys.sidebarSectionOrder),
+                  let decoded = try? JSONDecoder().decode([String].self, from: data)
+            else {
+                return []
+            }
+            return decoded
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: Keys.sidebarSectionOrder)
+            }
+        }
+    }
+
     private enum Keys {
         static let sidebarVisible = "sidebarVisible"
         static let sidebarSectionExpanded = "sidebarSectionExpanded"
+        static let sidebarSectionOrder = "sidebarSectionOrder"
     }
 }
