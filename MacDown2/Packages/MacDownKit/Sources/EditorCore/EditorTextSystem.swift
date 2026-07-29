@@ -197,8 +197,32 @@ public final class EditorTextSystem {
     /// This is a thin seam over `NSTextView.scrollRangeToVisible(_:)` so the
     /// app target can drive editor scroll from the preview without depending
     /// on AppKit directly.
+    ///
+    /// Callers build the range from a *parsed* document's `SourceMap`, which
+    /// trails the live text by up to one debounce interval. Delete a trailing
+    /// section and sync inside that window and the range runs past the end of
+    /// the text, so it is clamped here.
+    ///
+    /// Measured on macOS 26.6, `NSTextView.scrollRangeToVisible(_:)` clamps
+    /// such a range internally rather than raising — so this is not a crash
+    /// fix, and E08's plan (§2.3) is wrong to describe it as one. It is here
+    /// to make the contract explicit and version-independent: a stale range
+    /// scrolls to the end of the live text, by this code's decision rather
+    /// than by an undocumented AppKit one.
     public func scrollToVisible(utf16Range range: NSRange) {
-        textView.scrollRangeToVisible(range)
+        textView.scrollRangeToVisible(clampedToLiveText(range))
+    }
+
+    /// Clamps a range built against a stale snapshot to the live text length.
+    ///
+    /// Uses `NSString.length` — UTF-16 code units, the unit `NSRange` is in.
+    /// `String.count` counts Characters and under-clamps on emoji and CJK,
+    /// which is exactly where a stale range is most likely to be wrong.
+    func clampedToLiveText(_ range: NSRange) -> NSRange {
+        let length = (textView.string as NSString).length
+        let location = min(max(0, range.location), length)
+        let maxLength = length - location
+        return NSRange(location: location, length: min(max(0, range.length), maxLength))
     }
 
     private var pendingScrollOffset: CGFloat?

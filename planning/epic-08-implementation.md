@@ -57,11 +57,15 @@ public func scrollToVisible(utf16Range range: NSRange) {
 }
 ```
 
-The range is unclamped, and it is derived from the **parsed** document's `SourceMap` while `textView` holds the **live** text. Those disagree for up to one debounce interval. Delete a large trailing section and, inside that window, the parsed `SourceMap` still describes the longer document — an offset past `textView`'s current length reaches `NSTextContentStorage` and raises `NSRangeException`, which is not catchable in Swift.
+The range is unclamped, and it is derived from the **parsed** document's `SourceMap` while `textView` holds the **live** text. Those disagree for up to one debounce interval. Delete a large trailing section and, inside that window, the parsed `SourceMap` still describes the longer document, so the offset handed to the seam runs past `textView`'s current length.
 
-Today this is hard to hit: E07's only caller is preview→editor scroll sync, and the user has to be scrolling the preview at the moment they delete text from the editor. **E08 makes it easy to hit** — an outline row is one click away at all times, and clicking one is the natural thing to do right after a big edit.
+> **Correction (2026-07-29, review pass).** An earlier revision of this section asserted that such an offset "reaches `NSTextContentStorage` and raises `NSRangeException`, which is not catchable in Swift", and scheduled the fix as implementation step 1 on that basis. **That does not reproduce on the deployment target.** Driven on macOS 26.6 with the text view hosted in a real `NSWindow` and layout ensured, `scrollRangeToVisible(_:)`, `setSelectedRange(_:)` and `showFindIndicator(for:)` were each given a range starting well past the end of the text; all three clamped internally and returned normally (`setSelectedRange` reported `{length, 0}` afterwards). There is no crash here to fix, and no reviewer should accept a "regression test" claiming to prove one.
+>
+> The clamp still lands, with the justification restated: it makes the seam's behavior **defined by this code** — a stale range scrolls to the end of the live text — instead of resting on an undocumented AppKit behavior that is free to change, and it fixes the unit bug that *would* have made a hand-rolled clamp wrong (`String.count` is Characters; `NSRange` is UTF-16 code units, so any clamp written against `count` under-clamps on emoji and CJK). Scope it as hardening, not as a defect: it does not need its own step-1 slot, and the epic is not blocked on it.
 
-Fix in `EditorTextSystem` (§4.4): clamp against the live text length inside the seam, so *both* the E07 path and the new E08 path are covered, with a regression test that drives a deliberately-too-long range through the live method.
+E07's only caller is preview→editor scroll sync. E08 adds a second, much more reachable one — an outline row is one click away at all times, and clicking one right after a big edit is the natural thing to do — which is why the seam is worth making explicit even without a crash behind it.
+
+Fix in `EditorTextSystem` (§4.4): clamp against the live text length inside the seam, so *both* the E07 path and the new E08 path are covered. The accompanying tests pin the clamp arithmetic (including the emoji/CJK case); they are not crash regressions and are commented as such.
 
 ### 2.4 The always-on Markdown parse means the outline must be gated on format
 
@@ -342,8 +346,9 @@ public final class OutlineController {
 /// flashes the native find indicator over it (D9).
 ///
 /// `range` is clamped to the live text (§2.3): the caller's range comes from a
-/// parse that may lag the text view by one debounce interval, and an
-/// out-of-bounds NSRange raises an uncatchable `NSRangeException`.
+/// parse that may lag the text view by one debounce interval. AppKit clamps
+/// such a range internally on macOS 26.6 — see the correction in §2.3 — so the
+/// clamp is here to define the behavior rather than to prevent a raise.
 ///
 /// Order matters: select → ensure layout for the range → scroll → flash. The
 /// indicator is drawn from laid-out geometry, so flashing before layout puts
@@ -417,7 +422,7 @@ public func moveSections(fromOffsets: IndexSet, toOffset: Int)   // writes throu
 | H1 → H3 (skipped level) | H3 is a child of H1, `level` stays 3 (D3) |
 | Heading inside a block quote / list item | **Included** — E06 emits them and has tests asserting so. Flagged as open decision §10.2 |
 | Heading inside a fenced code block | Absent — guaranteed by E06, re-asserted in `OutlineTreeTests` as an E08-level regression |
-| Jump range past live text end | Clamped in `EditorTextSystem`; caret lands at end of document, no raise (§2.3) |
+| Jump range past live text end | Clamped in `EditorTextSystem`; caret lands at end of document (§2.3 — AppKit would clamp anyway, we do it explicitly) |
 | Re-parse drops the selected/collapsed id | Remapped, then intersected with `allIDs` in `update(...)`; no dangling selection |
 | Re-parse *shifts* ordinals (heading inserted above) | `OutlineIdentityMap.remap` follows `(level, title)` to the new ordinal; collapse and cursor stay on the same heading, not the one below it (D4) |
 | Collapsed heading is itself retitled | Its id drops; the node reopens. Accepted (D4) — the alternative is guessing |
@@ -527,7 +532,7 @@ If a `Package.swift` or `project.yml` diff appears in this PR, something has gon
 | 5 | Full keyboard navigation works | `OutlineTreeTests.visibleItems*`: traversal order equals depth-first document order; collapsing a parent removes exactly its descendants; collapsing a leaf changes nothing; nested collapse. `OutlineControllerTests`: `activate` publishes the jump and moves the cursor; `requestFocus` increments. `OutlineNavigationUITests` (local): ⌃⌘O focuses, ↓↓ moves, Return scrolls the editor |
 | — | Tree building (deliverable 2) | `OutlineTreeTests`: skipped levels H1→H3; document opening at H3; H6→H1 producing a second root; duplicate titles; empty title; Setext (`Title\n=====`) nests and reports the **title** line as `lowerBound`; front matter offset (heading after YAML reports original line, no `bodyLineOffset` subtraction); empty document; 5 000-heading corpus builds in O(n) with a documented ceiling |
 | — | Current-section resolution (D5) | `OutlineSelectionTests`: line before the first heading → nil; exact heading line → that heading; line inside a section → that section; line inside a *nested* section → the nested heading, not its parent; last line → last heading; monotonicity property (non-decreasing ids over ascending lines); empty headings → nil |
-| — | Jump correctness / defect #2 (§2.3) | `EditorScrollAPITests`: `revealSelection` sets `selectedRange` and moves `topVisibleUTF16Offset` to the target; **`revealSelection` and `scrollToVisible` with a range past the live text end do not raise and clamp to the document end** (the regression for the latent defect — drive a range built from a longer document through a text view holding a shorter one) |
+| — | Jump correctness / range clamping (§2.3) | `EditorScrollAPITests`: `revealSelection` sets `selectedRange` and moves `topVisibleUTF16Offset` to the target; `scrollToVisible` (**already landed**) and `revealSelection` clamp a range past the live text end to the document end, asserted on the clamp arithmetic including an emoji/CJK case. These pin behavior, they do **not** prove a crash — see the §2.3 correction before writing a comment that says otherwise |
 | — | Availability gating (D7/§2.4) | `OutlineControllerTests`: `isMarkdown: false` with populated `headings` (a Python-comment corpus parsed as Markdown) yields `.unsupportedFormat` **and an empty `items`**; Markdown with zero headings yields `.noHeadings`; nil document yields `.notParsed` |
 | — | Reconciliation on re-parse | `OutlineControllerTests`: collapse ids 3 and 7, re-parse a document with 4 headings → `collapsedItemIDs ⊆ allIDs`; selected id that vanishes clears |
 | — | Ordinal remap across a re-parse (D4) | `OutlineIdentityMapTests`: insert a heading above a collapsed one → its id shifts by one, and the heading that *inherited* the old ordinal is **not** collapsed; delete a heading above → shifts back; duplicate titles at the same level resolve to the nearest ordinal and each new ordinal is claimed once; retitled heading drops. `OutlineControllerTests` asserts the same end-to-end through `update(...)` |
@@ -538,7 +543,7 @@ House rules carried from E05–E07: `@Test`/`#expect` only; no `Task.sleep`-and-
 
 ## 8. Implementation order (suite green at every step)
 
-1. **Defect #2** (§2.3): clamp in `EditorTextSystem`, `revealSelection`, extended `EditorScrollAPITests`. Own commit — it fixes an E07 path and must be reviewable in isolation.
+1. ~~**Defect #2** (§2.3): clamp in `EditorTextSystem`~~ — **done on this branch.** `scrollToVisible` now clamps via `clampedToLiveText`, with `EditorScrollAPITests` coverage. `revealSelection` is *not* done: it is E08 API, not a defect fix, and belongs with the controller work in step 7. Re-read the §2.3 correction first — this is hardening, not the crash the plan originally claimed.
 2. **Defect #1** (§2.2): `sidebarSectionOrder` on the protocol + store, `SidebarSection` ordering + `reconcile`, `WorkspaceModel.sectionOrder`/`moveSections`/hydrated expansion, delete `NoOpStateStore`, real store in `makeWindowModel`. Own commit. → `SidebarSectionOrderTests`, extended `WorkspaceStateStoreTests`/`WorkspaceModelTests`.
 3. `OutlineItem` + `OutlineTree.build` → `OutlineTreeTests` (build cases).
 4. `OutlineTree.visibleItems` / `allIDs` → traversal + collapse tests.
