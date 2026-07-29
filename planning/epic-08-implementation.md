@@ -82,17 +82,42 @@ The outline reads the same `MarkdownParseSession` the preview reads (§2.1). No 
 ### D3 — Tree building is a stack fold; skipped levels attach, never synthesize
 `H1 → H3` makes the H3 a child of the H1. No placeholder H2 node is invented, and the H3's `level` stays `3` (the authored level is preserved for display; only *nesting* is normalized). A document that opens at H3 and later has an H1 produces two roots — the H3 first, then the H1 — in document order. Depth is derived from position in the tree, never from `level`.
 
-### D4 — Node identity is the flattened ordinal; per-node collapse state is in-memory only
+### D4 — Node identity is the flattened ordinal; per-node collapse state is in-memory only and **remapped** across re-parses
 `OutlineItem.id` is the index of the heading in `MarkdownDocument.headings`. It is deterministic, allocation-free, and stable for the lifetime of a parse — which is all SwiftUI's diffing needs. Ordinals shift when a heading is inserted above, so **per-node collapse state is deliberately not persisted**: the epic requires the *sections* to persist their order, not each heading to remember its twist-down. Collapse state lives on the per-window controller and resets on relaunch. Do not invent slug-path identity to work around this; it collides on duplicate titles and buys nothing the acceptance criteria ask for.
 
-### D5 — "Current section" is one reference line, last-event-wins
-The current section is the **last heading whose `lineRange.lowerBound ≤ referenceLine`** — a binary search over the already-ordered heading list, `nil` when the line precedes every heading (a preamble before the first `#`).
+Within a session, though, an ordinal is only meaningful relative to the parse that produced it. **Intersecting the old ids with the new tree's ids is not reconciliation** — insert one heading above a collapsed node and every id below it still exists, so nothing gets dropped and the collapse silently moves to the *next* section down. Same for the navigation cursor. So `update(...)` does a real remap, not a filter:
 
-`referenceLine` is supplied by the app from whichever editor event fired most recently:
-- **selection change** → the caret's line (`sourceMap.line(atUTF16Offset: selectedRange.location)`)
-- **scroll** → the top visible line (the offset `EditorView.onScrollChange` already delivers)
+```swift
+// OutlineUI/OutlineIdentityMap.swift — pure, no state, testable in isolation
+/// Old ordinal → new ordinal across a re-parse. An old id maps to the new
+/// heading with the same `(level, title)` whose ordinal is nearest to it;
+/// each new ordinal is claimed at most once, and an old id with no match
+/// is dropped.
+public enum OutlineIdentityMap {
+    public static func remap(
+        _ ids: Set<Int>,
+        from old: [HeadingItem],
+        to new: [HeadingItem]
+    ) -> Set<Int>
 
-Last-event-wins is the whole rule. There is no mode flag, no "is the caret on screen" heuristic, and no timer. The package tests the resolution as pure math; which line arrives is app wiring.
+    public static func remap(_ id: Int?, from old: [HeadingItem], to new: [HeadingItem]) -> Int?
+}
+```
+
+Nearest-ordinal match on `(level, title)` is a heuristic, and deliberately so: it is exact for the cases that actually happen while typing (insert above, delete above, edit a *different* heading's text), it degrades to "drop the id" rather than to "collapse the wrong section", and it costs one dictionary of candidate ordinals per rebuild. Retitling the collapsed heading itself still loses its collapse state — accepted, and the same thing every editor with an outline does. The controller therefore keeps the previous `[HeadingItem]` alongside its ids; that is the only new stored state this adds.
+
+### D5 — "Current section" is one reference **offset**, last-event-wins
+The current section is the **last heading whose `lineRange.lowerBound ≤ referenceLine`** — a binary search over the already-ordered heading list, `nil` when the line precedes every heading (a preamble before the first `#`). Where `referenceLine` comes from is the part that has to be got right.
+
+The reference position is stored as a **UTF-16 offset, not a line**, and is translated to a line with the `SourceMap` of the *currently published* parse. This matters because the two disagree: the caret offset is live, the `SourceMap` is up to one debounce old, so translating at the event site (as an earlier draft of this plan did) freezes a line number that was computed against the previous document. Insert or delete lines above the caret and the tint sticks to the wrong section until the user happens to move the caret again. Storing the offset and re-translating inside `update(...)` costs one binary search per parse and is correct by construction.
+
+Consequence for the app wiring (§4.7): the app forwards the raw UTF-16 offset it already has from both event sources and never calls `sourceMap.line(atUTF16Offset:)` itself.
+
+`referenceOffset` is supplied by the app from whichever editor event fired most recently:
+- **selection change** → `selectedRange.location`
+- **scroll** → the top visible offset (the offset `EditorView.onScrollChange` already delivers)
+
+Last-event-wins is the whole rule. There is no mode flag, no "is the caret on screen" heuristic, and no timer. The package tests the resolution as pure math; which offset arrives is app wiring.
 
 **No echo latch is needed** (contrast E07's `ScrollSyncController`): clicking outline item *n* moves the caret into item *n*'s range, which resolves back to item *n*. The loop is idempotent and terminates in one hop. Do not port the latch pattern here — it would add state with nothing to suppress.
 
@@ -207,8 +232,10 @@ public enum OutlineTree {
     /// keys traverse and the order `List` renders (D6).
     public static func visibleItems(_ items: [OutlineItem], collapsed: Set<Int>) -> [OutlineItem]
 
-    /// Every id in the tree, depth-first. Used to reconcile `collapsed` and
-    /// the navigation cursor against a re-parse.
+    /// Every id in the tree, depth-first. The *last* step of reconciling
+    /// `collapsed` and the navigation cursor against a re-parse — it drops
+    /// ids the new tree does not contain at all. It is **not** sufficient on
+    /// its own; run `OutlineIdentityMap.remap` first (D4).
     public static func allIDs(_ items: [OutlineItem]) -> Set<Int>
 }
 
@@ -218,6 +245,9 @@ public enum OutlineSelection {
     /// The last heading starting at or before `line` (D5). Binary search over
     /// the document-ordered list. `nil` when `line` precedes every heading, or
     /// when `headings` is empty.
+    ///
+    /// Callers pass a line derived from the *current* parse's `SourceMap`;
+    /// the controller owns that translation so a stale map can never leak in.
     public static func currentItemID(forLine line: Int, in headings: [HeadingItem]) -> Int?
 }
 
@@ -251,7 +281,8 @@ public final class OutlineController {
     /// The user's navigation cursor — bound to `List(selection:)` (D6).
     public var selectedItemID: Int?
 
-    /// Collapsed nodes, by `OutlineItem.id`. In-memory only (D4).
+    /// Collapsed nodes, by `OutlineItem.id`. In-memory only, and remapped
+    /// through `OutlineIdentityMap` on every rebuild (D4).
     public var collapsedItemIDs: Set<Int>
 
     /// Set by `activate(_:)`; the app consumes it, drives the editor, and
@@ -274,14 +305,22 @@ public final class OutlineController {
     ///     emptied and no tree is built, whatever `document.headings` holds.
     ///   - formatName: display name for `.unsupportedFormat`.
     ///
-    /// On rebuild: `collapsedItemIDs` and `selectedItemID` are reconciled
-    /// against `OutlineTree.allIDs` (ids that no longer exist are dropped);
-    /// `currentItemID` is recomputed from the last reference line.
+    /// On rebuild, in this order (D4, D5):
+    /// 1. `collapsedItemIDs` and `selectedItemID` are **remapped** from the
+    ///    previous headings to the new ones via `OutlineIdentityMap`, then
+    ///    intersected with `OutlineTree.allIDs` as a backstop. Intersecting
+    ///    alone is wrong: after an insert above, a stale ordinal still exists
+    ///    and would hand the collapse to the section below it.
+    /// 2. `currentItemID` is recomputed by translating the stored reference
+    ///    **offset** through `document.sourceMap` — the map that just
+    ///    arrived, never the one the offset was observed against.
     public func update(document: MarkdownDocument?, isMarkdown: Bool, formatName: String)
 
-    /// Editor caret or viewport moved (D5). Recomputes `currentItemID`.
+    /// Editor caret or viewport moved (D5) — a UTF-16 offset into the live
+    /// text, *not* a line. Stored, translated through the current parse's
+    /// `SourceMap`, and re-translated on the next `update(...)`.
     /// Cheap enough to call on every keystroke and every scroll tick.
-    public func referenceLineDidChange(_ line: Int)
+    public func referenceOffsetDidChange(_ utf16Offset: Int)
 
     /// Outline row activated (click or Return). Publishes `pendingJumpLineRange`
     /// and moves `selectedItemID` to `id`.
@@ -379,9 +418,14 @@ public func moveSections(fromOffsets: IndexSet, toOffset: Int)   // writes throu
 | Heading inside a block quote / list item | **Included** — E06 emits them and has tests asserting so. Flagged as open decision §10.2 |
 | Heading inside a fenced code block | Absent — guaranteed by E06, re-asserted in `OutlineTreeTests` as an E08-level regression |
 | Jump range past live text end | Clamped in `EditorTextSystem`; caret lands at end of document, no raise (§2.3) |
-| Re-parse drops the selected/collapsed id | Reconciled away in `update(...)`; no dangling selection |
-| `referenceLine` before the first heading | `currentItemID == nil`; nothing tinted |
+| Re-parse drops the selected/collapsed id | Remapped, then intersected with `allIDs` in `update(...)`; no dangling selection |
+| Re-parse *shifts* ordinals (heading inserted above) | `OutlineIdentityMap.remap` follows `(level, title)` to the new ordinal; collapse and cursor stay on the same heading, not the one below it (D4) |
+| Collapsed heading is itself retitled | Its id drops; the node reopens. Accepted (D4) — the alternative is guessing |
+| Caret moves, then the debounced parse lands | The stored reference **offset** is re-translated through the new `document.sourceMap`; the tint follows the caret without waiting for another editor event (D5) |
+| `referenceOffset` before the first heading | `currentItemID == nil`; nothing tinted |
+| `referenceOffset` past the live text end | `SourceMap.line(atUTF16Offset:)` already clamps to `lineCount`; last section stays current |
 | Stored section order corrupt/partial | `reconcile` returns a complete ordering; no section can vanish (D10) |
+| `moveSections` offset/indices out of range | `Workspace.reorder` ignores out-of-range sources and clamps the destination; a stale drag cannot trap (D10) |
 
 ### 4.7 App-target integration (exact wiring)
 
@@ -400,8 +444,8 @@ public func moveSections(fromOffsets: IndexSet, toOffset: Int)   // writes throu
 
 **`ContentAreaView.swift`** — the editor is here, so the wiring is here:
 - `.onChange(of: parseSession.document)` already fires for the preview; extend the same handler to call `outlineController.update(document:isMarkdown:formatName:)` with `PreviewRouter.previewKind(for: document.format) == .markdown`.
-- Add `onSelectionChange:` to the existing `EditorView(...)` call → `outlineController.referenceLineDidChange(sourceMap.line(atUTF16Offset: range.location))`. **This callback is currently unwired**; adding it is the only editor-side change.
-- Extend the existing `handleEditorScroll(utf16Offset:)` to also call `referenceLineDidChange` with the same line it already computes for `scrollController` — one extra call, no new event source.
+- Add `onSelectionChange:` to the existing `EditorView(...)` call → `outlineController.referenceOffsetDidChange(range.location)`. **This callback is currently unwired**; adding it is the only editor-side change. Forward the raw offset — do **not** translate it here with the parsed `SourceMap` (D5); that map can be a debounce behind the caret and the frozen line is what makes the tint stick to the wrong section after an edit above.
+- Extend the existing `handleEditorScroll(utf16Offset:)` to also call `referenceOffsetDidChange` with the same offset it already hands `scrollController` — one extra call, no new event source, no translation.
 - `.onChange(of: outlineController.pendingJumpLineRange)` → `sourceMap.utf16Range(ofLines:)` → `editorStore.existingSystem(for: identity)?.revealSelection(utf16Range:flash: true)` → clear the pending value. Mirrors the existing `targetSourceLine` handler exactly.
 - Jump target is `lineRange.lowerBound ... lineRange.lowerBound` (the heading line), not the whole `lineRange` — selecting the whole Setext heading including its underline reads as a bug.
 
@@ -426,11 +470,13 @@ MacDown2/Packages/MacDownKit/Sources/OutlineUI/
   OutlineItem.swift            (NEW)
   OutlineTree.swift            (NEW — build / visibleItems / allIDs)
   OutlineSelection.swift       (NEW — currentItemID(forLine:in:))
+  OutlineIdentityMap.swift     (NEW — ordinal remap across a re-parse, D4)
   OutlineAvailability.swift    (NEW)
   OutlineController.swift      (NEW)
 
 MacDown2/Packages/MacDownKit/Sources/Workspace/
   WorkspaceModel.swift         (SidebarSection + ordering; sectionOrder; moveSections;
+                                reorder(_:fromOffsets:toOffset:);
                                 hydrated expansion dictionary)
   WorkspaceStateStore.swift    (+ sidebarSectionOrder requirement + impl)
 
@@ -442,6 +488,7 @@ MacDown2/Packages/MacDownKit/Tests/
                                              MarkdownEngineTests/Fixtures.swift style)
   OutlineUITests/OutlineTreeTests.swift     (NEW)
   OutlineUITests/OutlineSelectionTests.swift(NEW)
+  OutlineUITests/OutlineIdentityMapTests.swift (NEW)
   OutlineUITests/OutlineControllerTests.swift (NEW)
   OutlineUITests/OutlineUITests.swift       (existing stub test — keep or fold in)
   WorkspaceTests/SidebarSectionOrderTests.swift (NEW)
@@ -453,7 +500,7 @@ MacDown2/MacDown2/
   WindowController.swift       (+ outlineController)
   WorkspaceShellView.swift     (+ pass-through)
   SidebarView.swift            (rewrite — the bulk of the app work)
-  ContentAreaView.swift        (+ outline update / reference line / jump handler)
+  ContentAreaView.swift        (+ outline update / reference offset / jump handler)
   WorkspaceCommands.swift      (+ Focus Outline ⌃⌘O)
   WindowCoordinator.swift      (+ focusOutline(); real WorkspaceStateStore)
   NoOpStores.swift             (DELETE NoOpStateStore)
@@ -483,6 +530,9 @@ If a `Package.swift` or `project.yml` diff appears in this PR, something has gon
 | — | Jump correctness / defect #2 (§2.3) | `EditorScrollAPITests`: `revealSelection` sets `selectedRange` and moves `topVisibleUTF16Offset` to the target; **`revealSelection` and `scrollToVisible` with a range past the live text end do not raise and clamp to the document end** (the regression for the latent defect — drive a range built from a longer document through a text view holding a shorter one) |
 | — | Availability gating (D7/§2.4) | `OutlineControllerTests`: `isMarkdown: false` with populated `headings` (a Python-comment corpus parsed as Markdown) yields `.unsupportedFormat` **and an empty `items`**; Markdown with zero headings yields `.noHeadings`; nil document yields `.notParsed` |
 | — | Reconciliation on re-parse | `OutlineControllerTests`: collapse ids 3 and 7, re-parse a document with 4 headings → `collapsedItemIDs ⊆ allIDs`; selected id that vanishes clears |
+| — | Ordinal remap across a re-parse (D4) | `OutlineIdentityMapTests`: insert a heading above a collapsed one → its id shifts by one, and the heading that *inherited* the old ordinal is **not** collapsed; delete a heading above → shifts back; duplicate titles at the same level resolve to the nearest ordinal and each new ordinal is claimed once; retitled heading drops. `OutlineControllerTests` asserts the same end-to-end through `update(...)` |
+| — | Reference offset survives a re-parse (D5) | `OutlineControllerTests.currentSectionFollowsCaretAcrossReparse`: set a reference offset, publish a parse whose `SourceMap` has extra lines inserted above it, assert `currentItemID` moves to the section the offset now lands in **without** a second `referenceOffsetDidChange` call. Also: offset past `utf16Length` → last heading, no trap |
+| — | `moveSections` offset convention (D10) | `ReorderTests`: three- and four-element cases pinning `ForEach.onMove` semantics (`toOffset` is an insertion point in the pre-move ordering), discontiguous sources, out-of-range source, negative/oversized destination, empty collection. `SidebarSection` has only two cases, so these are the only place the convention is observable |
 
 House rules carried from E05–E07: `@Test`/`#expect` only; no `Task.sleep`-and-hope (await deterministic signals with the bounded polling helpers already in the test fixtures); no real `UserDefaults`; no fixture files on disk — inline builders in `Fixtures.swift`.
 
@@ -493,11 +543,12 @@ House rules carried from E05–E07: `@Test`/`#expect` only; no `Task.sleep`-and-
 3. `OutlineItem` + `OutlineTree.build` → `OutlineTreeTests` (build cases).
 4. `OutlineTree.visibleItems` / `allIDs` → traversal + collapse tests.
 5. `OutlineSelection` → `OutlineSelectionTests`.
-6. `OutlineAvailability` + `OutlineController` → `OutlineControllerTests` (gating, reconciliation, jump, focus, revision no-op).
-7. App wiring: `WindowController`, `WorkspaceShellView`, `ContentAreaView` handlers.
-8. `SidebarView` rewrite (sections reorderable, outline rows, focus, tint).
-9. `WorkspaceCommands` ⌃⌘O + `WindowCoordinator.focusOutline()`.
-10. `OutlineNavigationUITests`; local run. README module-map update.
+6. `OutlineIdentityMap` → `OutlineIdentityMapTests` (pure; land it before the controller so the controller can just call it).
+7. `OutlineAvailability` + `OutlineController` → `OutlineControllerTests` (gating, remap + reconciliation, reference-offset re-translation, jump, focus, revision no-op).
+8. App wiring: `WindowController`, `WorkspaceShellView`, `ContentAreaView` handlers.
+9. `SidebarView` rewrite (sections reorderable, outline rows, focus, tint).
+10. `WorkspaceCommands` ⌃⌘O + `WindowCoordinator.focusOutline()`.
+11. `OutlineNavigationUITests`; local run. README module-map update.
 
 ## 9. Validation (must all pass before review)
 
@@ -519,7 +570,7 @@ xcodebuild -project MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=m
 1. **Sidebar state becoming app-wide (§2.2).** The fix restores persistence by making sidebar visibility/expansion/order shared across windows rather than per-window. That is a deliberate behavior change from today's (broken) per-window-and-forgotten state. If product wants genuinely per-window sidebar layout, the answer is per-window records in `session.json`, not `UserDefaults` — a bigger change, and out of scope here. **Confirm the app-wide reading on the PR.**
 2. **Headings inside block quotes and list items.** E06 emits them and has passing tests asserting so (`headingsInsideBlockQuotesIncluded`, `headingsInsideListsIncluded`). They will therefore appear in the outline. Defensible (they *are* headings) but debatable for a navigation aid — a `> # quoted heading` in a code review snippet becomes a top-level outline entry. This plan includes them; if review disagrees, the filter belongs in `OutlineTree.build`, not in E06.
 3. **Current section on scroll vs caret (D5).** Last-event-wins is the simplest rule that satisfies "as you scroll/edit". Xcode's jump bar follows scroll; VS Code's outline follows the caret. If the mixed behavior reads as jitter in practice, the fallback is caret-only — record which shipped and why.
-4. **Per-node collapse state is not persisted (D4).** The acceptance criteria do not ask for it and ordinal identity cannot support it across edits. If it is wanted later, it needs stable heading identity (a real design question, not a one-liner). Confirm it is not expected for v1.
+4. **Per-node collapse state is not persisted *across relaunch* (D4).** The acceptance criteria do not ask for it and ordinal identity cannot support it across a process boundary. If it is wanted later, it needs stable heading identity (a real design question, not a one-liner). Confirm it is not expected for v1. Distinct from — and not an excuse for skipping — the **in-session** remap: within a session, collapse and cursor must follow their heading across re-parses, which `OutlineIdentityMap` does on a `(level, title)` nearest-ordinal basis. If review would rather see the simpler "clear collapse state whenever the heading list changes", say so; it is a smaller change but it makes the twist-downs pop open while you type.
 5. **⌃⌘O binding.** Free today, and it reads as "Outline". Verify against system-wide shortcuts on the reviewer's machine before sign-off.
 6. **Non-Markdown documents are still Markdown-parsed** (§2.4). E08 gates the *outline*, but `ContentAreaView` still runs a full Markdown parse on every Python/JSON/YAML file on open and on every keystroke. That is wasted work and arguably an E11 (multi-format) concern. **Flagged, not fixed here** — fixing it means changing what E07's preview path receives, which is outside this epic's scope.
 7. **`showFindIndicator` under TextKit 2 (D9).** The indicator needs laid-out geometry; §4.4 specifies ensure-layout-then-scroll-then-flash. Confirm on a real 500 KB document that the flash lands correctly when jumping far off screen, and record the finding.
@@ -534,7 +585,8 @@ xcodebuild -project MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=m
 - **Clamp every range that crosses the parse/live-text boundary** (§2.3). `textView.string as NSString` length — `String.count` is the wrong unit and under-clamps on emoji and CJK.
 - **Jump to `lineRange.lowerBound` only**, never the full `lineRange` — a Setext heading's range includes its `=====` underline, and selecting that reads as a bug.
 - **`update(...)` must no-op on an unchanged revision.** It is called from a SwiftUI `onChange` on a hot path; rebuilding the tree per body evaluation is the quadratic trap here.
-- **Reconcile `collapsedItemIDs` and `selectedItemID` on every rebuild** (D4) — ordinals shift when a heading is inserted above, and a dangling id means a phantom collapsed node or a selection pointing at nothing.
+- **Remap `collapsedItemIDs` and `selectedItemID` on every rebuild — do not merely intersect them with `allIDs`** (D4). Insert a heading above a collapsed node and every old ordinal still exists, so an intersection drops nothing and the collapse silently slides onto the section below. Run `OutlineIdentityMap.remap` first; the intersection is only the backstop for ids that vanished outright.
+- **Store the reference position as a UTF-16 offset, translate it inside `update(...)`** (D5). The caret offset is live; the `SourceMap` is up to one debounce behind. Translating at the event site freezes a line computed against the previous document, and the tint then sticks to the wrong section until the user moves the caret again. The app forwards `range.location` raw and never calls `sourceMap.line(atUTF16Offset:)` itself.
 - **`OutlineUI` imports `MarkdownEngine` and nothing else** (D1). If you write `import Workspace`, `import Preview`, `import EditorCore`, or `import FileCore` in this module, stop.
 - **No `Package.swift` / `project.yml` / `ci.yml` diff** (§6). The targets already exist.
 - **`NoOpSessionStore` stays; only `NoOpStateStore` is deleted** (§2.2). They look alike and do very different jobs — the session one is load-bearing.

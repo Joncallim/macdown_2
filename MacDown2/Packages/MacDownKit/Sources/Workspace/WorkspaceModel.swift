@@ -32,6 +32,30 @@ public enum SidebarSection: String, Sendable, CaseIterable, Identifiable {
     }
 }
 
+/// Applies a SwiftUI `onMove`-style reorder and returns the new ordering.
+///
+/// `destination` follows the `ForEach.onMove` convention: it is an insertion
+/// point expressed in the *pre-move* ordering, so sources that precede it are
+/// discounted before the elements are re-inserted. Source indices outside
+/// `elements` are ignored and `destination` is clamped, so a stale drag from a
+/// view that has not yet observed a shorter list can never trap.
+func reorder<Element>(
+    _ elements: [Element],
+    fromOffsets source: IndexSet,
+    toOffset destination: Int
+) -> [Element] {
+    let valid = IndexSet(source.filter { elements.indices.contains($0) })
+    let moved = valid.map { elements[$0] }
+    var remaining = elements.enumerated()
+        .filter { !valid.contains($0.offset) }
+        .map(\.element)
+    let clampedDestination = max(0, min(destination, elements.count))
+    let precedingSources = valid.filter { $0 < clampedDestination }.count
+    let insertionIndex = max(0, min(clampedDestination - precedingSources, remaining.count))
+    remaining.insert(contentsOf: moved, at: insertionIndex)
+    return remaining
+}
+
 /// The observable model behind the MacDown 2 workspace shell.
 ///
 /// Responsibilities:
@@ -120,14 +144,11 @@ public final class WorkspaceModel {
     }
 
     /// Reorders sidebar sections and persists the new order.
+    ///
+    /// `offsets`/`offset` use the `ForEach.onMove` convention; out-of-range
+    /// values are tolerated rather than trapping.
     public func moveSections(fromOffsets offsets: IndexSet, toOffset offset: Int) {
-        var order = sectionOrder
-        let moved = offsets.compactMap { order.indices.contains($0) ? order[$0] : nil }
-        let remaining = order.enumerated()
-            .filter { !offsets.contains($0.offset) }
-            .map(\.element)
-        let targetIndex = max(0, min(offset, remaining.count))
-        order = Array(remaining[..<targetIndex] + moved + remaining[targetIndex...])
+        let order = reorder(sectionOrder, fromOffsets: offsets, toOffset: offset)
         sectionOrder = order
         stateStore.sidebarSectionOrder = order.map(\.rawValue)
     }
