@@ -122,11 +122,11 @@ public final class WorkspaceModel {
     /// Reorders sidebar sections and persists the new order.
     public func moveSections(fromOffsets offsets: IndexSet, toOffset offset: Int) {
         var order = sectionOrder
-        let moved = offsets.compactMap { order[$0] }
+        let moved = offsets.compactMap { order.indices.contains($0) ? order[$0] : nil }
         let remaining = order.enumerated()
             .filter { !offsets.contains($0.offset) }
             .map(\.element)
-        let targetIndex = min(offset, remaining.count)
+        let targetIndex = max(0, min(offset, remaining.count))
         order = Array(remaining[..<targetIndex] + moved + remaining[targetIndex...])
         sectionOrder = order
         stateStore.sidebarSectionOrder = order.map(\.rawValue)

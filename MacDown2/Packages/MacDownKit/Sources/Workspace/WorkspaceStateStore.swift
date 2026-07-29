@@ -14,6 +14,10 @@ public protocol WorkspaceStateStoring {
 }
 
 /// UserDefaults-backed `WorkspaceStateStoring` implementation.
+///
+/// State is conceptually window-level, but because the backing store is a
+/// shared `UserDefaults` suite it is shared across all windows in the same
+/// process (last writer wins).
 @MainActor
 public struct WorkspaceStateStore: WorkspaceStateStoring {
     public static let defaultSuiteName = "com.joncallim.macdown2.workspace"
