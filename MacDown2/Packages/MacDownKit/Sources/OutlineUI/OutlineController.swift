@@ -139,7 +139,18 @@ public final class OutlineController {
     }
 
     /// ⌃⌘O (D11).
+    ///
+    /// Also selects a row when nothing is selected yet, defaulting to the
+    /// current section if one is tracked. `focusRequestID` alone moves
+    /// keyboard focus onto the `List`, but an unselected, focused `List` has
+    /// no on-screen highlight — from the user's side, nothing visibly
+    /// happened. Selecting a row is what actually shows the shortcut did
+    /// something, and it's also what makes the very next arrow-key press
+    /// move from somewhere sensible instead of nowhere.
     public func requestFocus() {
+        if selectedItemID == nil {
+            selectedItemID = currentItemID ?? OutlineTree.visibleRows(items, collapsed: collapsedItemIDs).first?.id
+        }
         focusRequestID += 1
     }
 

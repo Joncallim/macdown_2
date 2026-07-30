@@ -156,6 +156,46 @@ struct OutlineControllerTests {
         #expect(controller.focusRequestID == start + 2)
     }
 
+    /// A focused-but-unselected List has no visible highlight, so the
+    /// shortcut needs to select something or it reads as doing nothing.
+    @Test func requestFocusSelectsTheCurrentSectionWhenNothingIsSelected() async throws {
+        let session = MarkdownParseSession()
+        let document = await session.parseNow("# A\npreamble under A\n## B\n")
+        let sourceMap = try #require(document?.sourceMap)
+
+        let controller = OutlineController()
+        controller.update(document: document, isMarkdown: true, formatName: "Markdown")
+        controller.referenceOffsetDidChange(sourceMap.utf16Range(ofLines: 3 ... 3).location)
+        #expect(controller.currentItemID == 1)
+
+        controller.requestFocus()
+        #expect(controller.selectedItemID == 1)
+    }
+
+    @Test func requestFocusFallsBackToTheFirstRowWhenThereIsNoCurrentSection() async {
+        let session = MarkdownParseSession()
+        let document = await session.parseNow("# A\n## B\n")
+
+        let controller = OutlineController()
+        controller.update(document: document, isMarkdown: true, formatName: "Markdown")
+        #expect(controller.currentItemID == nil, "no reference offset has been reported yet")
+
+        controller.requestFocus()
+        #expect(controller.selectedItemID == 0)
+    }
+
+    @Test func requestFocusDoesNotStealAnExistingSelection() async {
+        let session = MarkdownParseSession()
+        let document = await session.parseNow("# A\n## B\n")
+
+        let controller = OutlineController()
+        controller.update(document: document, isMarkdown: true, formatName: "Markdown")
+        controller.selectedItemID = 1
+
+        controller.requestFocus()
+        #expect(controller.selectedItemID == 1)
+    }
+
     // MARK: - Reference offset resolution (D5)
 
     @Test func referenceOffsetBeforeTheFirstHeadingYieldsNilCurrentItem() async {

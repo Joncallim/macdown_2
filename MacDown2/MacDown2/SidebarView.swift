@@ -20,12 +20,9 @@ struct SidebarView: View {
                     ) {
                         content(for: section)
                     } label: {
-                        Label(section.title, systemImage: section.systemImage)
+                        sectionLabel(for: section)
                     }
                 }
-            }
-            .onMove { offsets, offset in
-                model.moveSections(fromOffsets: offsets, toOffset: offset)
             }
         }
         .listStyle(.sidebar)
@@ -39,6 +36,57 @@ struct SidebarView: View {
             outlineController.activate(selectedItemID)
             return .handled
         }
+    }
+
+    /// Section header with explicit reorder controls (acceptance box 4:
+    /// "user-rearrangeable").
+    ///
+    /// `List`'s native `.onMove` drag reordering is documented for a
+    /// `ForEach` of plain rows; applied to a `ForEach` producing `Section`s
+    /// (as this sidebar needs, to keep each section collapsible) it does not
+    /// reliably reorder — confirmed interactively: dragging shows the
+    /// insertion-line affordance but the drop does not apply. Rather than
+    /// depend on that undefined behavior, reordering is an explicit,
+    /// always-visible control — arguably more discoverable than an
+    /// undiscoverable drag besides.
+    private func sectionLabel(for section: SidebarSection) -> some View {
+        HStack {
+            Label(section.title, systemImage: section.systemImage)
+            Spacer()
+            if let index = model.sectionOrder.firstIndex(of: section) {
+                HStack(spacing: 8) {
+                    Button {
+                        moveSection(at: index, up: true)
+                    } label: {
+                        Image(systemName: "chevron.up")
+                    }
+                    .disabled(index == 0)
+                    .help("Move \(section.title) Up")
+
+                    Button {
+                        moveSection(at: index, up: false)
+                    } label: {
+                        Image(systemName: "chevron.down")
+                    }
+                    .disabled(index == model.sectionOrder.count - 1)
+                    .help("Move \(section.title) Down")
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("moveSection-\(section.rawValue)")
+            }
+        }
+    }
+
+    /// Mirrors the `ForEach.onMove` offset convention `Workspace.reorder`
+    /// implements: `toOffset` is an insertion point in the pre-move ordering.
+    /// Moving `index` up by one is "insert before `index - 1`"; moving it
+    /// down by one is "insert before `index + 2`" (past both itself and its
+    /// neighbor in the pre-move list).
+    private func moveSection(at index: Int, up movingUp: Bool) {
+        let destination = movingUp ? index - 1 : index + 2
+        model.moveSections(fromOffsets: IndexSet(integer: index), toOffset: destination)
     }
 
     @ViewBuilder
