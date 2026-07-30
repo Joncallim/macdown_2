@@ -74,12 +74,29 @@ struct OutlineTreeBuildTests {
     }
 }
 
-@Suite("OutlineTree.visibleItems / allIDs")
+@Suite("OutlineTree.visibleRows / allIDs")
 struct OutlineTreeTraversalTests {
-    @Test func visibleItemsIsDepthFirstDocumentOrderWhenNothingCollapsed() {
+    @Test func visibleRowsIsDepthFirstDocumentOrderWhenNothingCollapsed() {
         let items = OutlineTree.build(from: Fixtures.simpleNesting)
-        let visible = OutlineTree.visibleItems(items, collapsed: [])
+        let visible = OutlineTree.visibleRows(items, collapsed: [])
         #expect(visible.map(\.id) == [0, 1, 2])
+    }
+
+    // D3: H1 → H2 → H3 indents one level per tree step. The regression this
+    // guards is indenting by `level` instead, which would be identical here
+    // but wrong for the skipped-level case below.
+    @Test func visibleRowsReportDepthByTreePosition() {
+        let items = OutlineTree.build(from: Fixtures.simpleNesting)
+        #expect(OutlineTree.visibleRows(items, collapsed: []).map(\.depth) == [0, 1, 2])
+    }
+
+    @Test func skippedLevelIndentsOneStepNotTwo() {
+        // H1 → H3 is ONE level of indent, because depth is tree position.
+        // Indenting by `level` would render a phantom gap.
+        let items = OutlineTree.build(from: Fixtures.skippedLevel)
+        let rows = OutlineTree.visibleRows(items, collapsed: [])
+        #expect(rows.map(\.depth) == [0, 1])
+        #expect(rows.map(\.item.level) == [1, 3], "level stays authored; only depth is normalized")
     }
 
     @Test func collapsingAParentHidesExactlyItsDescendants() {
@@ -89,13 +106,14 @@ struct OutlineTreeTraversalTests {
             Fixtures.heading(level: 1, title: "B", line: 3),
         ]
         let items = OutlineTree.build(from: headings)
-        let visible = OutlineTree.visibleItems(items, collapsed: [0])
+        let visible = OutlineTree.visibleRows(items, collapsed: [0])
         #expect(visible.map(\.id) == [0, 2])
+        #expect(visible.map(\.depth) == [0, 0])
     }
 
     @Test func collapsingALeafChangesNothing() {
         let items = OutlineTree.build(from: Fixtures.simpleNesting)
-        let visible = OutlineTree.visibleItems(items, collapsed: [2])
+        let visible = OutlineTree.visibleRows(items, collapsed: [2])
         #expect(visible.map(\.id) == [0, 1, 2])
     }
 
@@ -107,8 +125,9 @@ struct OutlineTreeTraversalTests {
             Fixtures.heading(level: 2, title: "A.2", line: 4),
         ]
         let items = OutlineTree.build(from: headings)
-        let visible = OutlineTree.visibleItems(items, collapsed: [1])
+        let visible = OutlineTree.visibleRows(items, collapsed: [1])
         #expect(visible.map(\.id) == [0, 1, 3])
+        #expect(visible.map(\.depth) == [0, 1, 1])
     }
 
     @Test func allIDsCollectsEveryNodeRegardlessOfDepth() {

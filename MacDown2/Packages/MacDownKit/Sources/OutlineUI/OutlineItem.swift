@@ -20,3 +20,19 @@ public struct OutlineItem: Sendable, Equatable, Identifiable {
         self.children = children
     }
 }
+
+/// One rendered outline row: an item plus its tree depth (D3 — depth is tree
+/// position, never `item.level`). Produced by `OutlineTree.visibleRows`.
+public struct OutlineRow: Sendable, Equatable, Identifiable {
+    public let item: OutlineItem
+    public let depth: Int
+
+    public var id: Int {
+        item.id
+    }
+
+    public init(item: OutlineItem, depth: Int) {
+        self.item = item
+        self.depth = depth
+    }
+}

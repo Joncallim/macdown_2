@@ -46,9 +46,14 @@ public enum OutlineTree {
     /// Depth-first document order, honouring `collapsed`: a collapsed item is
     /// present, its descendants are not. This is exactly the sequence arrow
     /// keys traverse and the order `List` renders (D6).
-    public static func visibleItems(_ items: [OutlineItem], collapsed: Set<Int>) -> [OutlineItem] {
-        var result: [OutlineItem] = []
-        appendVisible(items, collapsed: collapsed, into: &result)
+    ///
+    /// Each row carries its tree depth so the view can indent by position
+    /// rather than by `level` (D3). Depth belongs here, not in the view: it is
+    /// a property of the tree, and keeping it here means the traversal the
+    /// sidebar actually renders is the one these tests cover.
+    public static func visibleRows(_ items: [OutlineItem], collapsed: Set<Int>) -> [OutlineRow] {
+        var result: [OutlineRow] = []
+        appendVisible(items, collapsed: collapsed, depth: 0, into: &result)
         return result
     }
 
@@ -84,12 +89,13 @@ public enum OutlineTree {
     private static func appendVisible(
         _ items: [OutlineItem],
         collapsed: Set<Int>,
-        into result: inout [OutlineItem]
+        depth: Int,
+        into result: inout [OutlineRow]
     ) {
         for item in items {
-            result.append(item)
+            result.append(OutlineRow(item: item, depth: depth))
             if !collapsed.contains(item.id) {
-                appendVisible(item.children, collapsed: collapsed, into: &result)
+                appendVisible(item.children, collapsed: collapsed, depth: depth + 1, into: &result)
             }
         }
     }

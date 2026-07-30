@@ -63,24 +63,6 @@ struct SidebarView: View {
         }
     }
 
-    /// Flat, depth-annotated traversal of the visible tree (D6/D3: indent by
-    /// tree position, never by `level`). `OutlineTree.visibleItems` already
-    /// does the collapse-aware flattening; depth is display-only, so it's
-    /// tracked here rather than in the headless-testable `OutlineUI` module.
-    private var visibleRows: [(item: OutlineItem, depth: Int)] {
-        var result: [(item: OutlineItem, depth: Int)] = []
-        func visit(_ items: [OutlineItem], depth: Int) {
-            for item in items {
-                result.append((item, depth))
-                if !outlineController.collapsedItemIDs.contains(item.id) {
-                    visit(item.children, depth: depth + 1)
-                }
-            }
-        }
-        visit(outlineController.items, depth: 0)
-        return result
-    }
-
     @ViewBuilder
     private var outlineContent: some View {
         switch outlineController.availability {
@@ -93,7 +75,13 @@ struct SidebarView: View {
             Text("No headings")
                 .foregroundStyle(.secondary)
         case .ready:
-            ForEach(visibleRows, id: \.item.id) { row in
+            // Collapse-aware flattening and depth both come from the module,
+            // so what renders here is exactly what `OutlineTreeTests` covers.
+            let rows = OutlineTree.visibleRows(
+                outlineController.items,
+                collapsed: outlineController.collapsedItemIDs
+            )
+            ForEach(rows) { row in
                 OutlineRowView(item: row.item, depth: row.depth, outlineController: outlineController)
                     .tag(row.item.id)
                     .accessibilityIdentifier("outlineRow-\(row.item.id)")
