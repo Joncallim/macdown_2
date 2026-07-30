@@ -96,11 +96,11 @@ public final class OutlineController {
         lastSourceMap = document?.sourceMap
         lastAppliedRevision = document?.revision
 
-        currentItemID = Self.resolveCurrentItemID(
+        setCurrentItemID(Self.resolveCurrentItemID(
             offset: referenceOffset,
             headings: newHeadings,
             sourceMap: lastSourceMap
-        )
+        ))
     }
 
     /// Editor caret or viewport moved (D5) — a UTF-16 offset into the live
@@ -109,11 +109,25 @@ public final class OutlineController {
     /// Cheap enough to call on every keystroke and every scroll tick.
     public func referenceOffsetDidChange(_ utf16Offset: Int) {
         referenceOffset = utf16Offset
-        currentItemID = Self.resolveCurrentItemID(
+        setCurrentItemID(Self.resolveCurrentItemID(
             offset: utf16Offset,
             headings: lastHeadings,
             sourceMap: lastSourceMap
-        )
+        ))
+    }
+
+    /// Assigns `currentItemID` only when it actually changes.
+    ///
+    /// `referenceOffsetDidChange` fires on every keystroke and every scroll
+    /// tick, but the caret stays under the same heading for the overwhelming
+    /// majority of them. `@Observable` sends a change notification on every
+    /// *assignment*, not every *value change* — so an unconditional write
+    /// here would re-render `SidebarView` (and re-walk its collapse-aware
+    /// tree traversal) on every keystroke in the document, whether or not
+    /// the outline has anything new to show.
+    private func setCurrentItemID(_ newValue: Int?) {
+        guard currentItemID != newValue else { return }
+        currentItemID = newValue
     }
 
     /// Outline row activated (click or Return). Publishes `pendingJumpLineRange`
