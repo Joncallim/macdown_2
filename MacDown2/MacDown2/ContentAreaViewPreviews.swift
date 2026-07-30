@@ -1,6 +1,7 @@
 import EditorCore
 import Highlighting
 import MarkdownEngine
+import OutlineUI
 import Preview
 import SwiftUI
 import Themes
@@ -51,6 +52,7 @@ private func contentAreaPreview(
         editorStore: EditorTextSystemStore(),
         highlightStore: SyntaxHighlightStore(),
         parseStore: MarkdownParseStore(),
-        themeController: ThemeController()
+        themeController: ThemeController(),
+        outlineController: OutlineController()
     )
 }

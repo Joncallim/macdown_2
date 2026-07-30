@@ -1,6 +1,7 @@
 import EditorCore
 import Highlighting
 import MarkdownEngine
+import OutlineUI
 import SwiftUI
 import Themes
 import Workspace
@@ -17,31 +18,35 @@ struct WorkspaceShellView: View {
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let themeController: ThemeController
+    let outlineController: OutlineController
 
     init(
         model: WorkspaceModel,
         editorStore: EditorTextSystemStore,
         highlightStore: SyntaxHighlightStore,
         parseStore: MarkdownParseStore,
-        themeController: ThemeController
+        themeController: ThemeController,
+        outlineController: OutlineController
     ) {
         _model = State(initialValue: model)
         self.editorStore = editorStore
         self.highlightStore = highlightStore
         self.parseStore = parseStore
         self.themeController = themeController
+        self.outlineController = outlineController
     }
 
     var body: some View {
         NavigationSplitView(columnVisibility: sidebarVisibilityBinding) {
-            SidebarView(model: model)
+            SidebarView(model: model, outlineController: outlineController)
         } detail: {
             ContentAreaView(
                 model: model,
                 editorStore: editorStore,
                 highlightStore: highlightStore,
                 parseStore: parseStore,
-                themeController: themeController
+                themeController: themeController,
+                outlineController: outlineController
             )
         }
         .navigationSplitViewStyle(.balanced)

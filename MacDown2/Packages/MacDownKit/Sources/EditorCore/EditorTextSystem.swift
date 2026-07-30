@@ -213,6 +213,24 @@ public final class EditorTextSystem {
         textView.scrollRangeToVisible(clampedToLiveText(range))
     }
 
+    /// Places the selection at `range`, brings it on screen, and optionally
+    /// flashes the native find indicator over it (D9 — the outline's jump).
+    ///
+    /// `range` is clamped to the live text, for the same reason as
+    /// `scrollToVisible` above. Order matters: select → ensure layout for the
+    /// range → scroll → flash. `showFindIndicator(for:)` draws from laid-out
+    /// geometry, so flashing before layout puts it in the wrong place or
+    /// drops it silently.
+    public func revealSelection(utf16Range range: NSRange, flash: Bool) {
+        let clamped = clampedToLiveText(range)
+        textView.setSelectedRange(clamped)
+        ensureLayout(for: clamped)
+        textView.scrollRangeToVisible(clamped)
+        if flash {
+            textView.showFindIndicator(for: clamped)
+        }
+    }
+
     /// Clamps a range built against a stale snapshot to the live text length.
     ///
     /// Uses `NSString.length` — UTF-16 code units, the unit `NSRange` is in.
@@ -223,6 +241,17 @@ public final class EditorTextSystem {
         let location = min(max(0, range.location), length)
         let maxLength = length - location
         return NSRange(location: location, length: min(max(0, range.length), maxLength))
+    }
+
+    private func ensureLayout(for range: NSRange) {
+        let documentStart = contentStorage.documentRange.location
+        guard let start = contentStorage.location(documentStart, offsetBy: range.location),
+              let end = contentStorage.location(start, offsetBy: range.length),
+              let textRange = NSTextRange(location: start, end: end)
+        else {
+            return
+        }
+        layoutManager.ensureLayout(for: textRange)
     }
 
     private var pendingScrollOffset: CGFloat?

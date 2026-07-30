@@ -4,6 +4,7 @@ import FileCore
 import Foundation
 import Highlighting
 import MarkdownEngine
+import OutlineUI
 import SwiftUI
 import Themes
 import Workspace
@@ -17,6 +18,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let themeController: ThemeController
+    let outlineController: OutlineController
     private weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
@@ -40,6 +42,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // conservative, E06-tested value; this is the one call site that
         // opts into the tighter production budget.
         parseStore = MarkdownParseStore(debounce: .milliseconds(100))
+        outlineController = OutlineController()
 
         // Eagerly create the text system and parse session for the active tab
         // so session-save can read cursor/scroll state and the preview can
@@ -59,7 +62,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             editorStore: editorStore,
             highlightStore: highlightStore,
             parseStore: parseStore,
-            themeController: themeController
+            themeController: themeController,
+            outlineController: outlineController
         ))
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
