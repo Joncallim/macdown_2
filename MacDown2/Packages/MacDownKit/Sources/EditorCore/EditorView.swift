@@ -136,6 +136,11 @@ public struct EditorView: NSViewRepresentable {
             system.textView.sizeToFit()
         }
 
+        // Corrects the document-view height once AppKit has actually laid the
+        // scroll view out (its width/height are unreliable at `makeNSView`
+        // time). Cheap after the first real call — see the doc comment.
+        system.syncFrameHeightToContent()
+
         scrollView.hasHorizontalScroller = !configuration.wrapsLines
         scrollView.autohidesScrollers = configuration.wrapsLines
     }
@@ -162,6 +167,7 @@ public struct EditorView: NSViewRepresentable {
 
         public func textViewDidChangeSelection(_: Notification) {
             guard let system else { return }
+            system.ensureSelectionVisible()
             onSelectionChange?(system.selectedRange)
         }
 

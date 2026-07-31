@@ -134,6 +134,9 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                         // so that mismatch reads as "the whole preview is
                         // cramped." Bring it in line with the rest of the scale.
                         .textual.paragraphStyle(PreviewTypography.ParagraphStyle())
+                        // Same reasoning, for the gap below a heading and
+                        // above the body text that follows it.
+                        .textual.headingStyle(PreviewTypography.HeadingStyle())
                         .padding(16)
                         .frame(
                             minWidth: 0,
