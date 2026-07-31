@@ -121,6 +121,19 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                 )
                             }
                         }
+                        // Textual reads the ambient `.font` as its "1x" scale for
+                        // headings/code/etc., so setting a comfortable base size
+                        // here (SwiftUI's `.body` default is ~13pt — cramped for
+                        // an article-reading pane) scales the whole hierarchy
+                        // proportionally rather than just the paragraph text.
+                        .font(.system(size: PreviewTypography.baseFontSize))
+                        // Textual's own default paragraph line-spacing (0.23x
+                        // font size) is a noticeable outlier next to its other
+                        // block styles — block quotes use 0.471x, code blocks
+                        // 0.39x — and paragraphs are most of a typical document,
+                        // so that mismatch reads as "the whole preview is
+                        // cramped." Bring it in line with the rest of the scale.
+                        .textual.paragraphStyle(PreviewTypography.ParagraphStyle())
                         .padding(16)
                         .frame(
                             minWidth: 0,
