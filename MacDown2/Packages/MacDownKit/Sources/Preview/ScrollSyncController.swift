@@ -49,11 +49,13 @@ public final class ScrollSyncController {
     public func editorDidScroll(toLine line: Int) {
         guard let blockIndex = map.blockIndex(forLine: line) else { return }
 
-        if let lastPreviewDrivenBlockIndex, blockIndex == lastPreviewDrivenBlockIndex {
-            self.lastPreviewDrivenBlockIndex = nil
+        // Sticky: every report that lands on the latched block is swallowed,
+        // not just the first. See `previewContentOffsetDidChange` for why.
+        if blockIndex == lastPreviewDrivenBlockIndex {
             return
         }
 
+        lastPreviewDrivenBlockIndex = nil
         lastEditorDrivenBlockIndex = blockIndex
         targetPreviewFraction = previewFraction(forLine: line)
     }
@@ -74,11 +76,23 @@ public final class ScrollSyncController {
             return
         }
 
-        if let lastEditorDrivenBlockIndex, blockIndex == lastEditorDrivenBlockIndex {
-            self.lastEditorDrivenBlockIndex = nil
+        // Sticky: every report that lands on the latched block is swallowed,
+        // not just the first.
+        //
+        // Both sides emit their position *repeatedly* for a single user
+        // gesture — SwiftUI's `onScrollGeometryChange` fires throughout a
+        // scroll, and AppKit posts a bounds-change notification per frame of
+        // a smooth scroll. The previous one-shot latch (clear-on-match)
+        // therefore absorbed only the first echo and let every subsequent one
+        // through, so a single drag in the editor bounced back off the
+        // preview as a scroll command and the two panes fought each other.
+        // Holding the latch until a genuinely *different* block is reported
+        // is what makes one gesture produce one sync.
+        if blockIndex == lastEditorDrivenBlockIndex {
             return
         }
 
+        lastEditorDrivenBlockIndex = nil
         lastPreviewDrivenBlockIndex = blockIndex
         targetSourceLine = line
     }

@@ -232,31 +232,29 @@ public final class EditorTextSystem {
         }
     }
 
-    /// Corrects the frame height and re-scrolls to the current selection.
+    /// Brings the frame height up to date off the back of an editing or
+    /// caret-movement event, one run-loop turn later.
     ///
-    /// Keyboard-driven caret movement (arrow keys, etc.) is entirely internal
-    /// to `NSTextView` — it never flows through SwiftUI's `updateNSView`, so
-    /// `syncFrameHeightToContent()` never gets a chance to run for that path
-    /// on its own. This is the hook for it: `NSTextViewDelegate`'s
-    /// selection-change callback fires on every selection change regardless
-    /// of SwiftUI, including on every keystroke while typing — cheap in that
-    /// case because `syncFrameHeightToContent()`'s own signature check finds
-    /// nothing changed once the frame has already caught up.
+    /// Keyboard-driven caret movement and typing are entirely internal to
+    /// `NSTextView` — they never flow through SwiftUI's `updateNSView`, so
+    /// `syncFrameHeightToContent()` would otherwise never run for those paths
+    /// and the frame would fall behind the content again. Cheap on the common
+    /// path: the signature check inside no-ops once the frame has caught up.
     ///
-    /// Deferred one run-loop turn: `NSTextViewDelegate`'s selection-change
-    /// notification fires *during* `NSTextView`'s own keyboard handling (e.g.
-    /// `moveDown:`), which does its own scroll-to-caret immediately
-    /// afterward using its own (still-short) idea of the frame. Correcting
-    /// the frame synchronously here just loses that race — the correction
-    /// lands, then AppKit's own step overwrites it right back. Applying the
-    /// fix on the next turn, after AppKit's own handling has finished, is
-    /// what makes it stick.
-    func ensureSelectionVisible() {
+    /// Deferred one run-loop turn because the delegate callbacks that drive
+    /// this fire *during* `NSTextView`'s own handling, before it has finished
+    /// updating its layout; measuring then reads a half-updated state.
+    ///
+    /// This deliberately does **not** scroll. An earlier version called
+    /// `scrollRangeToVisible(selection)` here, which meant every selection
+    /// change — including ones the user never initiated — yanked the viewport
+    /// back to the caret, so scrolling away from the caret and releasing
+    /// snapped straight back to it. `NSTextView` already scrolls to follow the
+    /// caret on its own; all it ever needed from us was a frame tall enough
+    /// to have somewhere to scroll to.
+    func scheduleFrameHeightSync() {
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            let selection = textView.selectedRange()
-            syncFrameHeightToContent()
-            textView.scrollRangeToVisible(selection)
+            self?.syncFrameHeightToContent()
         }
     }
 

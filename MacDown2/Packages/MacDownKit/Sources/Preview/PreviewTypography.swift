@@ -29,26 +29,35 @@ enum PreviewTypography {
         }
     }
 
-    /// Heading style identical to Textual's `DefaultHeadingStyle` — same
-    /// per-level font scale and line spacing — except for the space below a
-    /// heading, before the body text that follows it. The default (`0.8`×)
-    /// reads as too tight against a paragraph's own top spacing (`1.0`× on
-    /// `ParagraphStyle` above); a heading needs to visually separate from
-    /// what comes after it more than a paragraph needs to separate from the
-    /// next paragraph.
+    /// Heading style: Textual's `DefaultHeadingStyle` shape, retuned for a
+    /// document-reading pane rather than a web-style article page.
+    ///
+    /// Two changes from the library default, both driven by how they read
+    /// against the 15.5pt base above:
+    ///
+    /// - **Font scales are much smaller.** Textual's defaults top out at
+    ///   `2.353` for H1, which multiplied against this base gives a ~36pt
+    ///   heading — sized for a wide article column, not a side-by-side
+    ///   editor pane, where it just reads as oversized. These top out at
+    ///   `1.55` (~24pt H1, ~20pt H2), enough to establish hierarchy without
+    ///   dominating the body text they head.
+    /// - **More space below a heading.** The default (`0.8`×) is tighter than
+    ///   a paragraph's own top spacing (`1.0`× on `ParagraphStyle` above), so
+    ///   a heading sat closer to the body under it than two paragraphs sit to
+    ///   each other — backwards. Bottom spacing is now `0.7`× of the
+    ///   *heading's own* (scaled-up) size, which lands well clear of the
+    ///   body, and top spacing is larger still so each section reads as a
+    ///   distinct group.
     struct HeadingStyle: StructuredText.HeadingStyle {
-        // Textual's own per-level constants aren't exposed for reuse, so
-        // these are copied from `DefaultHeadingStyle` — only `bottom` below
-        // differs from the library default (`0.8`).
-        private static let lineSpacings: [CGFloat] = [0.1, 0.25, 0.143, 0.167, 0.182, 0.471]
-        private static let fontScales: [CGFloat] = [2.353, 1.882, 1.647, 1.412, 1.294, 1]
+        private static let lineSpacings: [CGFloat] = [0.15, 0.18, 0.2, 0.22, 0.24, 0.26]
+        private static let fontScales: [CGFloat] = [1.55, 1.3, 1.15, 1.05, 1.0, 0.95]
 
         func makeBody(configuration: Configuration) -> some View {
             let level = min(configuration.headingLevel, 6)
             configuration.label
                 .textual.fontScale(Self.fontScales[level - 1])
                 .textual.lineSpacing(.fontScaled(Self.lineSpacings[level - 1]))
-                .textual.blockSpacing(.fontScaled(top: 1.6, bottom: 1.2))
+                .textual.blockSpacing(.fontScaled(top: 1.3, bottom: 0.7))
                 .fontWeight(.semibold)
         }
     }

@@ -163,11 +163,14 @@ public struct EditorView: NSViewRepresentable {
             isApplyingModelText = true
             textBinding?.wrappedValue = system.text
             isApplyingModelText = false
+            // Typing changes the content height; keep the document view's
+            // frame in step so the caret always has somewhere to scroll to.
+            system.scheduleFrameHeightSync()
         }
 
         public func textViewDidChangeSelection(_: Notification) {
             guard let system else { return }
-            system.ensureSelectionVisible()
+            system.scheduleFrameHeightSync()
             onSelectionChange?(system.selectedRange)
         }
 

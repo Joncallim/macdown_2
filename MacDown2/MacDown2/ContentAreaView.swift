@@ -136,7 +136,10 @@ struct ContentAreaView: View {
             return "chevron.left.forwardslash.chevron.right"
         }
         switch formatID {
-        case "markdown": return "richtext"
+        // `doc.richtext`, not `richtext` — the latter is not an SF Symbol and
+        // logged "No symbol named 'richtext' found in system symbol set" on
+        // every header render, which is what filled the console with errors.
+        case "markdown": return "doc.richtext"
         case "html": return "chevron.left.forwardslash.chevron.right"
         case "json": return "curlybraces"
         default: return "doc.text"

@@ -148,6 +148,45 @@ struct ScrollSyncControllerTests {
         #expect(controller.targetSourceLine == 1)
     }
 
+    // Regression: one user gesture produces MANY position reports, not one —
+    // SwiftUI's `onScrollGeometryChange` fires throughout a scroll, and AppKit
+    // posts a bounds-change notification per frame of a smooth scroll. A
+    // one-shot latch (clear-on-first-match) swallowed only the first echo and
+    // let every subsequent one through, so a single drag in one pane bounced
+    // back off the other as a scroll command and the two fought each other —
+    // observed as the editor snapping away mid-scroll.
+    @Test func repeatedEchoesAtTheSameBlockAreAllSuppressed() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
+        ]
+        let controller = ScrollSyncController(
+            map: ScrollSyncMap(blocks: blocks),
+            blockHeights: [0: 10, 1: 20]
+        )
+
+        controller.editorDidScroll(toLine: 3)
+        controller.targetPreviewFraction = nil
+
+        // The preview reports settling on the same block repeatedly. Every one
+        // of these is the same editor-driven sync, so none may bounce back.
+        for _ in 0 ..< 5 {
+            controller.previewContentOffsetDidChange(10)
+            #expect(controller.targetSourceLine == nil, "Repeated echo of one gesture must not drive the editor")
+        }
+
+        // And the reverse direction, which oscillated the same way.
+        controller.previewContentOffsetDidChange(0)
+        #expect(controller.targetSourceLine == 1)
+        controller.targetSourceLine = nil
+        controller.targetPreviewFraction = nil
+
+        for _ in 0 ..< 5 {
+            controller.editorDidScroll(toLine: 1)
+            #expect(controller.targetPreviewFraction == nil, "Repeated echo of one gesture must not drive the preview")
+        }
+    }
+
     // Regression: a debounced re-parse can replace `map` between an
     // editor-driven scroll request and the preview's echo of it. A block
     // index recorded against the old map must not be compared against block

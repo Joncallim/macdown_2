@@ -43,6 +43,11 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         self.linkDefinitions = linkDefinitions
     }
 
+    /// Per-block measured heights, keyed by position in ``displayBlocks``.
+    /// Fed to ``ScrollSyncController`` so it can map editor lines to preview
+    /// scroll offsets. Cleared whenever the block list changes.
+    @State private var measuredBlockHeights: [Int: Double] = [:]
+
     private var displayBlocks: [PreviewBlock] {
         blocks ?? computedBlocks
     }
@@ -102,7 +107,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                             )
 
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(displayBlocks) { block in
+                            ForEach(Array(displayBlocks.enumerated()), id: \.element.id) { index, block in
                                 BlockView(
                                     block: block,
                                     theme: theme,
@@ -110,15 +115,23 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                     linkDefinitions: displayLinkDefinitions
                                 )
                                 .id(block.id)
-                                .background(
-                                    GeometryReader { blockGeometry in
-                                        Color.clear
-                                            .preference(
-                                                key: BlockFramePreferenceKey.self,
-                                                value: [block.id: blockGeometry.frame(in: .named("previewContent"))]
-                                            )
-                                    }
-                                )
+                                // Measured with `onGeometryChange` rather than a
+                                // `GeometryReader` writing a `PreferenceKey`.
+                                // Every block wrote its own entry into one
+                                // dictionary-valued preference, all reduced
+                                // together, so SwiftUI logged "Bound preference
+                                // BlockFramePreferenceKey tried to update
+                                // multiple times per frame" on every layout pass
+                                // — a preference write that itself triggers the
+                                // re-layout that writes it again. This reports
+                                // per block, outside the preference system, and
+                                // only the height is needed.
+                                .onGeometryChange(for: CGFloat.self) { proxy in
+                                    proxy.size.height
+                                } action: { newHeight in
+                                    measuredBlockHeights[index] = Double(newHeight)
+                                    controller.update(blockHeights: measuredBlockHeights)
+                                }
                             }
                         }
                         // Textual reads the ambient `.font` as its "1x" scale for
@@ -146,10 +159,6 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                         )
                         .background(theme.background.swiftUIColor)
                     }
-                    .coordinateSpace(name: "previewContent")
-                    .onPreferenceChange(BlockFramePreferenceKey.self) { frames in
-                        updateBlockHeights(frames: frames)
-                    }
                 }
                 .background(theme.background.swiftUIColor)
                 .onScrollGeometryChange(for: Double.self) { geometry in
@@ -158,6 +167,10 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                     controller.previewContentOffsetDidChange(newOffset)
                 }
                 .onChange(of: displayBlocks) { _, newBlocks in
+                    // Heights are keyed by position, so entries from the old
+                    // block list would otherwise linger and corrupt the scroll
+                    // map's totals once the document gets shorter.
+                    measuredBlockHeights = [:]
                     controller.update(map: ScrollSyncMap(blocks: newBlocks))
                 }
                 .onChange(of: controller.targetPreviewFraction) { _, fraction in
@@ -167,14 +180,6 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                 }
             }
         }
-    }
-
-    private func updateBlockHeights(frames: [UUID: CGRect]) {
-        var heights: [Int: Double] = [:]
-        for (index, block) in displayBlocks.enumerated() {
-            heights[index] = Double(frames[block.id]?.height ?? 0)
-        }
-        controller.update(blockHeights: heights)
     }
 
     private func scroll(to fraction: Double, using proxy: ScrollViewProxy) {
@@ -234,18 +239,6 @@ private struct BlockView: View {
         }
         .foregroundStyle(theme.foreground.swiftUIColor)
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// MARK: - Geometry preference
-
-private struct BlockFramePreferenceKey: PreferenceKey {
-    static var defaultValue: [UUID: CGRect] {
-        [:]
-    }
-
-    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
-        value.merge(nextValue()) { _, new in new }
     }
 }
 
