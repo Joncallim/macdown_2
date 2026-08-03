@@ -29,18 +29,45 @@ public final class ScrollSyncController {
     /// The preview block index we most recently asked the preview to scroll
     /// to because the editor moved. The next ``previewContentOffsetDidChange(_:)``
     /// report that lands on this same block is the preview confirming that
-    /// request, not a new user-driven preview scroll, so it is swallowed.
+    /// request, not a new user-driven preview scroll, so it is swallowed —
+    /// with no time limit, since this is the request we are still waiting on.
     private var lastEditorDrivenBlockIndex: Int?
 
     /// The preview block index we most recently derived from a
     /// preview-driven scroll and asked the editor to move to. The next
     /// ``editorDidScroll(toLine:)`` report that lands on this same block is
-    /// the editor confirming that request, so it is swallowed.
+    /// the editor confirming that request, so it is swallowed — with no time
+    /// limit, for the same reason as above.
     private var lastPreviewDrivenBlockIndex: Int?
 
-    public init(map: ScrollSyncMap = ScrollSyncMap(blocks: []), blockHeights: [Int: Double] = [:]) {
+    /// Blocks we asked the preview to scroll to, each paired with when we
+    /// asked, kept only for ``echoSuppressionWindow``. See
+    /// ``isSuppressedEcho(blockIndex:latchedBlockIndex:recentlyRequested:)``
+    /// for why `lastEditorDrivenBlockIndex` alone is not enough during a
+    /// continuous scroll gesture.
+    private var recentEditorRequestedBlocks: [(index: Int, at: ContinuousClock.Instant)] = []
+
+    /// Blocks we asked the editor to scroll to, each paired with when we
+    /// asked. Symmetric counterpart to `recentEditorRequestedBlocks`.
+    private var recentPreviewRequestedBlocks: [(index: Int, at: ContinuousClock.Instant)] = []
+
+    /// How long a superseded request's block index is still recognized as
+    /// "one we asked for" once a newer request has replaced it as the sticky
+    /// latch. See ``isSuppressedEcho(blockIndex:latchedBlockIndex:recentlyRequested:)``.
+    private static let echoSuppressionWindow: Duration = .milliseconds(300)
+
+    /// Injected clock, overridable in tests so the suppression window can be
+    /// exercised deterministically without real sleeps.
+    private let now: () -> ContinuousClock.Instant
+
+    public init(
+        map: ScrollSyncMap = ScrollSyncMap(blocks: []),
+        blockHeights: [Int: Double] = [:],
+        now: @escaping () -> ContinuousClock.Instant = { ContinuousClock.now }
+    ) {
         self.map = map
         self.blockHeights = blockHeights
+        self.now = now
     }
 
     /// Call when the editor's visible top line changes. Publishes
@@ -49,14 +76,19 @@ public final class ScrollSyncController {
     public func editorDidScroll(toLine line: Int) {
         guard let blockIndex = map.blockIndex(forLine: line) else { return }
 
-        // Sticky: every report that lands on the latched block is swallowed,
-        // not just the first. See `previewContentOffsetDidChange` for why.
-        if blockIndex == lastPreviewDrivenBlockIndex {
+        // Sticky-plus-recent-history: see `isSuppressedEcho` for why an exact
+        // match against the latch alone is not enough.
+        if isSuppressedEcho(
+            blockIndex: blockIndex,
+            latchedBlockIndex: lastPreviewDrivenBlockIndex,
+            recentlyRequested: recentPreviewRequestedBlocks
+        ) {
             return
         }
 
         lastPreviewDrivenBlockIndex = nil
         lastEditorDrivenBlockIndex = blockIndex
+        recordRequest(blockIndex, into: &recentEditorRequestedBlocks)
         targetPreviewFraction = previewFraction(forLine: line)
     }
 
@@ -76,8 +108,8 @@ public final class ScrollSyncController {
             return
         }
 
-        // Sticky: every report that lands on the latched block is swallowed,
-        // not just the first.
+        // Sticky-plus-recent-history: see `isSuppressedEcho` for why an exact
+        // match against the latch alone is not enough.
         //
         // Both sides emit their position *repeatedly* for a single user
         // gesture — SwiftUI's `onScrollGeometryChange` fires throughout a
@@ -88,12 +120,17 @@ public final class ScrollSyncController {
         // preview as a scroll command and the two panes fought each other.
         // Holding the latch until a genuinely *different* block is reported
         // is what makes one gesture produce one sync.
-        if blockIndex == lastEditorDrivenBlockIndex {
+        if isSuppressedEcho(
+            blockIndex: blockIndex,
+            latchedBlockIndex: lastEditorDrivenBlockIndex,
+            recentlyRequested: recentEditorRequestedBlocks
+        ) {
             return
         }
 
         lastEditorDrivenBlockIndex = nil
         lastPreviewDrivenBlockIndex = blockIndex
+        recordRequest(blockIndex, into: &recentPreviewRequestedBlocks)
         targetSourceLine = line
     }
 
@@ -109,6 +146,8 @@ public final class ScrollSyncController {
         // than a stale index silently swallowing or misdirecting a real one.
         lastEditorDrivenBlockIndex = nil
         lastPreviewDrivenBlockIndex = nil
+        recentEditorRequestedBlocks.removeAll()
+        recentPreviewRequestedBlocks.removeAll()
     }
 
     public func update(blockHeights: [Int: Double]) {
@@ -171,6 +210,51 @@ public final class ScrollSyncController {
 
     // MARK: - Internal helpers
 
+    /// Whether an incoming report of `blockIndex` from one side should be
+    /// treated as the echo of a request we ourselves sent to that side,
+    /// rather than a fresh user-driven scroll.
+    ///
+    /// An exact match against `latchedBlockIndex` is the common case — the
+    /// gesture settled and the other side's confirming report names the same
+    /// block we asked it to move to. But a continuous mouse-wheel scroll
+    /// fires `editorDidScroll`/`previewContentOffsetDidChange` many times per
+    /// second, and each call overwrites the latch with the *newest* requested
+    /// block before an *older* request's async echo (a SwiftUI
+    /// `scrollTo`/AppKit bounds-change round trip) has come back. That echo
+    /// then names a block that no longer matches the latch, so the old
+    /// exact-match-only check let it through as if it were a new,
+    /// independent scroll — and applied it to the other side, which visibly
+    /// fought the user's still-active wheel gesture ("bounces").
+    ///
+    /// `recentlyRequested` is what closes that gap: every block we asked for
+    /// is remembered for `echoSuppressionWindow`, not just the newest one, so
+    /// a stale echo of a superseded-but-still-in-flight request is still
+    /// recognized. This must key on the *specific* block index rather than
+    /// "any report within the window" — a genuine user-driven scroll to a
+    /// block we never asked for can legitimately arrive moments after an
+    /// echo of an unrelated request, and must not be swallowed just because
+    /// it happened to land inside the same window.
+    private func isSuppressedEcho(
+        blockIndex: Int,
+        latchedBlockIndex: Int?,
+        recentlyRequested: [(index: Int, at: ContinuousClock.Instant)]
+    ) -> Bool {
+        if blockIndex == latchedBlockIndex {
+            return true
+        }
+        let cutoff = now() - Self.echoSuppressionWindow
+        return recentlyRequested.contains { $0.index == blockIndex && $0.at > cutoff }
+    }
+
+    /// Records that we just asked one side to move to `blockIndex`, pruning
+    /// entries older than `echoSuppressionWindow` first so the list stays
+    /// bounded during a long scroll gesture.
+    private func recordRequest(_ blockIndex: Int, into list: inout [(index: Int, at: ContinuousClock.Instant)]) {
+        let cutoff = now() - Self.echoSuppressionWindow
+        list.removeAll { $0.at <= cutoff }
+        list.append((index: blockIndex, at: now()))
+    }
+
     /// Shared boundary-correct resolver behind ``blockIndex(forPreviewFraction:)``
     /// and ``previewContentOffsetDidChange(_:)``. Takes a raw offset (not a
     /// fraction) so the latter never has to round-trip through division and
@@ -180,17 +264,47 @@ public final class ScrollSyncController {
 
         // Heights are measured asynchronously by the preview, so they are all
         // zero until it has laid out at least once (and again briefly after a
-        // re-parse replaces the block list). Without this guard the loop below
-        // can never satisfy `offset < next`, falls through to the final
-        // `return`, and reports the LAST block for *any* offset — which the
-        // editor then obeys by scrolling to the end of the document. That is
-        // the "preview scroll snaps the editor to the bottom" failure. There
+        // re-parse replaces the block list). With every height zero this
+        // guard is what stops the loop below from falling through to the
+        // final `return` and reporting the LAST block for *any* offset. There
         // is genuinely no mapping available yet; say so instead of guessing.
         guard totalHeight > 0 else { return nil }
 
         var accumulated: Double = 0
         for entry in map.entries {
-            let next = accumulated + height(for: entry.blockIndex)
+            let entryHeight = height(for: entry.blockIndex)
+
+            // A block whose height has not been measured *yet* — as opposed
+            // to one that is genuinely near-zero-tall — reports exactly 0
+            // (real rendered content, even a bare divider, always occupies
+            // some space once the top-of-block padding introduced by
+            // `PreviewTypography.gapAbove` is included). Accumulating it as
+            // zero-width, as the loop below otherwise would, silently folds
+            // its entire true span into whichever LATER block happens to
+            // already be measured — misattributing any offset that actually
+            // falls inside or after this block to that unrelated one instead.
+            //
+            // That produced two symptoms that looked unrelated but shared
+            // this one cause: scrolling the editor to line 1 (whose block is
+            // still unmeasured on a freshly typed document) resolved the
+            // preview's confirming echo to some later, already-measured
+            // block, which the editor then obeyed — the "scroll to top snaps
+            // to the bottom" bug. And scrolling the editor toward the very
+            // end, where the newest blocks are least likely to have measured
+            // yet, resolved the echo to an earlier block instead of the true
+            // last one — "scroll wheel bounces back above the end".
+            //
+            // We cannot know where the offset truly falls relative to an
+            // unmeasured block's real (nonzero, unknown) extent, so this
+            // block is the only answer that isn't an outright guess: `offset`
+            // is provably at or after `accumulated`, which is this entry's
+            // start, and every entry after it is provably beyond our current
+            // knowledge once one gap in the measurements is open.
+            if entryHeight == 0 {
+                return entry.blockIndex
+            }
+
+            let next = accumulated + entryHeight
             if offset < next {
                 return entry.blockIndex
             }
