@@ -178,6 +178,16 @@ public final class ScrollSyncController {
     private func blockIndex(forContentOffset offset: Double) -> Int? {
         guard !map.entries.isEmpty else { return nil }
 
+        // Heights are measured asynchronously by the preview, so they are all
+        // zero until it has laid out at least once (and again briefly after a
+        // re-parse replaces the block list). Without this guard the loop below
+        // can never satisfy `offset < next`, falls through to the final
+        // `return`, and reports the LAST block for *any* offset — which the
+        // editor then obeys by scrolling to the end of the document. That is
+        // the "preview scroll snaps the editor to the bottom" failure. There
+        // is genuinely no mapping available yet; say so instead of guessing.
+        guard totalHeight > 0 else { return nil }
+
         var accumulated: Double = 0
         for entry in map.entries {
             let next = accumulated + height(for: entry.blockIndex)

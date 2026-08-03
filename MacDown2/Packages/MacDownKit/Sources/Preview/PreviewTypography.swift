@@ -1,3 +1,4 @@
+import MarkdownEngine
 import SwiftUI
 import Textual
 
@@ -15,17 +16,45 @@ enum PreviewTypography {
     /// scale.
     static let baseFontSize: CGFloat = 15.5
 
+    /// Vertical gap to insert *above* a block, given what kind of block it is.
+    ///
+    /// This exists because Textual's own `blockSpacing` cannot do the job in
+    /// this preview. `TextualMarkdownPreview` slices the document into one
+    /// `StructuredText` **per block** (so scroll sync can measure each block's
+    /// height independently) and stacks them in a `VStack`. Textual's block
+    /// spacing separates blocks *within a single* `StructuredText` document,
+    /// so between our sliced views it has no effect at all — the real gap was
+    /// whatever the `VStack` spacing was, and that was `0`. Hence "extremely
+    /// cramped" no matter how the styles below were tuned.
+    ///
+    /// Applied as top padding on the block itself rather than as `VStack`
+    /// spacing, so the gap is inside the frame `onGeometryChange` measures and
+    /// the scroll-sync height math stays exact.
+    static func gapAbove(_ kind: BlockKind) -> CGFloat {
+        switch kind {
+        case .heading:
+            // A heading opens a new section: it needs clearly more air above
+            // it than sits between two paragraphs, or the hierarchy reads flat.
+            baseFontSize * 1.6
+        case .thematicBreak:
+            baseFontSize * 1.4
+        default:
+            baseFontSize * 0.95
+        }
+    }
+
     /// Paragraph line spacing, brought in line with Textual's own other
     /// block styles. The library's default paragraph spacing (`0.23` ×
     /// font size) is noticeably tighter than its block quote (`0.471`) and
     /// code block (`0.39`) defaults — and paragraphs are most of a typical
     /// document, so that mismatch is what reads as "the whole preview is
     /// cramped" rather than a single odd block.
+    /// Only sets leading *within* a paragraph. Spacing *between* blocks is
+    /// `gapAbove(_:)` — see there for why `blockSpacing` cannot do it here.
     struct ParagraphStyle: StructuredText.ParagraphStyle {
         func makeBody(configuration: Configuration) -> some View {
             configuration.label
-                .textual.lineSpacing(.fontScaled(0.42))
-                .textual.blockSpacing(.fontScaled(top: 1.0))
+                .textual.lineSpacing(.fontScaled(0.5))
         }
     }
 
@@ -41,13 +70,8 @@ enum PreviewTypography {
     ///   editor pane, where it just reads as oversized. These top out at
     ///   `1.55` (~24pt H1, ~20pt H2), enough to establish hierarchy without
     ///   dominating the body text they head.
-    /// - **More space below a heading.** The default (`0.8`×) is tighter than
-    ///   a paragraph's own top spacing (`1.0`× on `ParagraphStyle` above), so
-    ///   a heading sat closer to the body under it than two paragraphs sit to
-    ///   each other — backwards. Bottom spacing is now `0.7`× of the
-    ///   *heading's own* (scaled-up) size, which lands well clear of the
-    ///   body, and top spacing is larger still so each section reads as a
-    ///   distinct group.
+    /// Spacing around a heading is `gapAbove(_:)`, not `blockSpacing` — see
+    /// there for why.
     struct HeadingStyle: StructuredText.HeadingStyle {
         private static let lineSpacings: [CGFloat] = [0.15, 0.18, 0.2, 0.22, 0.24, 0.26]
         private static let fontScales: [CGFloat] = [1.55, 1.3, 1.15, 1.05, 1.0, 0.95]
@@ -57,7 +81,6 @@ enum PreviewTypography {
             configuration.label
                 .textual.fontScale(Self.fontScales[level - 1])
                 .textual.lineSpacing(.fontScaled(Self.lineSpacings[level - 1]))
-                .textual.blockSpacing(.fontScaled(top: 1.3, bottom: 0.7))
                 .fontWeight(.semibold)
         }
     }

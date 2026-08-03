@@ -82,6 +82,37 @@ struct ScrollSyncControllerTests {
         #expect(controller.targetSourceLine == 3)
     }
 
+    // Regression: block heights are measured asynchronously by the preview, so
+    // they are all zero before its first layout pass and again briefly after a
+    // re-parse swaps the block list. With every height at zero the resolver's
+    // running total never exceeds the reported offset, so it used to fall
+    // through and name the LAST block for any offset — which the editor obeyed
+    // by scrolling to the end of the document. Observed as the editor snapping
+    // to the bottom and refusing to stay scrolled anywhere else.
+    @Test func unmeasuredBlockHeightsDoNotResolveEveryScrollToTheLastBlock() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
+            PreviewBlock(kind: .paragraph, source: "p2", lineRange: 5 ... 5),
+        ]
+        let controller = ScrollSyncController(
+            map: ScrollSyncMap(blocks: blocks),
+            blockHeights: [:] // nothing measured yet
+        )
+
+        controller.previewContentOffsetDidChange(250)
+
+        #expect(
+            controller.targetSourceLine == nil,
+            "With no measured heights there is no valid mapping; must not fall back to the last block"
+        )
+
+        // Once heights arrive the mapping works normally again.
+        controller.update(blockHeights: [0: 10, 1: 20, 2: 30])
+        controller.previewContentOffsetDidChange(10)
+        #expect(controller.targetSourceLine == 3)
+    }
+
     // Regression: without echo suppression, an editor-driven preview scroll
     // gets reported back by the preview's own scroll notification, which
     // would re-target the editor and bounce indefinitely.

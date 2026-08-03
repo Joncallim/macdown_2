@@ -115,6 +115,12 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                     linkDefinitions: displayLinkDefinitions
                                 )
                                 .id(block.id)
+                                // Inter-block spacing. Applied here, above the
+                                // measurement below, so the gap is part of the
+                                // frame the scroll-sync map sees. The first
+                                // block gets none — the container's own padding
+                                // already provides the top margin.
+                                .padding(.top, index == 0 ? 0 : PreviewTypography.gapAbove(block.kind))
                                 // Measured with `onGeometryChange` rather than a
                                 // `GeometryReader` writing a `PreferenceKey`.
                                 // Every block wrote its own entry into one
@@ -167,11 +173,19 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                     controller.previewContentOffsetDidChange(newOffset)
                 }
                 .onChange(of: displayBlocks) { _, newBlocks in
-                    // Heights are keyed by position, so entries from the old
-                    // block list would otherwise linger and corrupt the scroll
-                    // map's totals once the document gets shorter.
-                    measuredBlockHeights = [:]
+                    // Drop only the stale *tail* — entries past the new block
+                    // count would otherwise inflate the scroll map's totals
+                    // once the document gets shorter. Surviving entries are
+                    // kept deliberately: `onGeometryChange` only fires when a
+                    // block's height actually changes, so clearing the whole
+                    // dictionary here (as this first did) left every height at
+                    // zero until something happened to resize, and a zeroed
+                    // map makes every preview scroll resolve to the last
+                    // block — which drags the editor to the end of the
+                    // document on every sync.
+                    measuredBlockHeights = measuredBlockHeights.filter { $0.key < newBlocks.count }
                     controller.update(map: ScrollSyncMap(blocks: newBlocks))
+                    controller.update(blockHeights: measuredBlockHeights)
                 }
                 .onChange(of: controller.targetPreviewFraction) { _, fraction in
                     guard let fraction else { return }
