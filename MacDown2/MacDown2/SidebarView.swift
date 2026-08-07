@@ -167,10 +167,25 @@ private struct OutlineRowView: View {
                 .lineLimit(1)
         }
         .padding(.leading, CGFloat(depth) * 14)
+        // Without this, the HStack sizes to its content (chevron + text), so
+        // `.contentShape(Rectangle())` below only covers that narrow strip —
+        // clicking the rest of the row's visually-highlighted width (past a
+        // short title) did nothing. `maxWidth: .infinity` stretches the shape
+        // to the full row before contentShape is applied to it.
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .onTapGesture {
-            outlineController.activate(item.id)
-        }
+        // `.simultaneousGesture`, not `.onTapGesture`/`.gesture`: a `List`
+        // row already carries its own click-to-select gesture, and a
+        // plain (exclusive) gesture here can lose that arbitration —
+        // observed as some clicks doing nothing at all, intermittently,
+        // with no pattern visible from the outside. Declaring this one
+        // simultaneous means it always fires alongside whatever the List
+        // does internally, instead of competing with it for the same click.
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                outlineController.activate(item.id)
+            }
+        )
     }
 
     private var isCollapsed: Bool {

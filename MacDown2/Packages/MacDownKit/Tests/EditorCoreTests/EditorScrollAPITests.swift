@@ -194,4 +194,125 @@ struct EditorScrollAPITests {
         let range = NSRange(location: 4, length: 3)
         #expect(system.clampedToLiveText(range) == range)
     }
+
+    // Regression: `syncFrameHeightToContent()` skips its (expensive) work
+    // entirely once (text length, width) match the last call — but TextKit
+    // 2's viewport layout controller reclaims off-screen fragments on its
+    // own schedule and has been observed shrinking `textView.frame` back
+    // toward viewport size *between* calls, with no text or width change to
+    // invalidate that cache. The skip left the frame stuck at the shrunk
+    // height indefinitely. This simulates that external shrink directly
+    // (the cheapest reliable way to trigger it — TextKit 2's own reclaiming
+    // is not something a test can force on demand) and asserts the next
+    // call restores the previously-established watermark rather than
+    // leaving it shrunk.
+    @Test("syncFrameHeightToContent reasserts a shrunk frame even when the signature is unchanged")
+    func syncFrameHeightToContentReassertsShrunkFrame() {
+        let lineText = "The quick brown fox jumps over the lazy dog.\n"
+        let text = String(repeating: lineText, count: 100)
+        let system = makeSystem(text: text)
+
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 200))
+        scrollView.documentView = system.textView
+        system.scrollView = scrollView
+        scrollView.layoutSubtreeIfNeeded()
+
+        // Establish the watermark: the first call measures the real content
+        // height, grows the frame, and caches the (textLength, width) signature.
+        system.syncFrameHeightToContent()
+        let grownHeight = system.textView.frame.height
+        #expect(grownHeight > 200, "Expected the frame to grow past the viewport height")
+
+        // Simulate TextKit 2 externally shrinking the frame, with no text or
+        // width change — so the cached signature still matches.
+        system.textView.frame.size.height = 200
+
+        system.syncFrameHeightToContent()
+
+        #expect(
+            system.textView.frame.height == grownHeight,
+            "A frame shrunk externally between calls must be restored to the watermark height, not left shrunk"
+        )
+    }
+
+    /// End-to-end version of the regression above, through the actual path
+    /// the outline sidebar's heading jump uses. With the frame stuck at
+    /// viewport size, `scrollRangeToVisible` could only clamp against that
+    /// undersized frame — observed live as clicking a heading near the start
+    /// of a long document and landing at its very end instead.
+    @Test("revealSelection lands near the target line even if the frame shrank between calls")
+    func revealSelectionRecoversFromAnExternallyShrunkFrame() {
+        let lineText = "The quick brown fox jumps over the lazy dog.\n"
+        let lineCount = 400
+        let text = String(repeating: lineText, count: lineCount)
+        let system = makeSystem(text: text)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 200),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 200))
+        scrollView.documentView = system.textView
+        system.scrollView = scrollView
+        window.contentView = scrollView
+        scrollView.layoutSubtreeIfNeeded()
+
+        // Establish the watermark and the (unchanging) signature, matching
+        // ordinary use before a jump is ever requested.
+        system.syncFrameHeightToContent()
+
+        // Simulate TextKit 2 externally shrinking the frame back toward
+        // viewport size, with no text or width change to invalidate the
+        // cached signature.
+        system.textView.frame.size.height = 200
+
+        let lineUTF16Length = lineText.utf16.count
+        let targetLine = 10
+        let targetOffset = (targetLine - 1) * lineUTF16Length
+        system.revealSelection(utf16Range: NSRange(location: targetOffset, length: 1), flash: false)
+
+        let reportedOffset = system.topVisibleUTF16Offset
+        let reportedLine = reportedOffset / lineUTF16Length + 1
+
+        #expect(
+            reportedLine < lineCount / 2,
+            "Expected the editor near line \(targetLine), not at the document end (got line \(reportedLine))"
+        )
+    }
+
+    // Regression: a narrower container wraps the same text into more lines,
+    // genuinely needing a taller frame — that is not the "TextKit 2 momentarily
+    // under-measures" case the watermark protects against, so widening back
+    // out must let the frame shrink again. Accumulating height as a running
+    // maximum across different (text, width) signatures left the frame stuck
+    // at the narrow-width height forever, even once the pane was much wider
+    // and the same content needed far less of it — a permanent blank gap
+    // below the actual content, e.g. after dragging the editor/preview
+    // divider wider or maximizing the window.
+    @Test("syncFrameHeightToContent shrinks the frame back down after widening")
+    func syncFrameHeightToContentShrinksAfterWidening() {
+        let text = String(repeating: "word ", count: 2000)
+        let system = makeSystem(text: text)
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 40, height: 200))
+        scrollView.documentView = system.textView
+        system.scrollView = scrollView
+        system.textView.frame = NSRect(x: 0, y: 0, width: 40, height: 200)
+        scrollView.layoutSubtreeIfNeeded()
+
+        system.syncFrameHeightToContent()
+        let narrowHeight = system.textView.frame.height
+        #expect(narrowHeight > 200, "Expected wrapping at a narrow width to require a tall frame")
+
+        system.textView.frame.size.width = 2000
+        scrollView.frame.size.width = 2000
+        scrollView.layoutSubtreeIfNeeded()
+        system.syncFrameHeightToContent()
+
+        #expect(
+            system.textView.frame.height < narrowHeight,
+            "A wider container needs far less height; the frame must shrink, not stay stuck at the narrow-width height"
+        )
+    }
 }

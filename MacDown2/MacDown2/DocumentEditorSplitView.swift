@@ -98,7 +98,12 @@ struct DocumentEditorSplitView: View {
         .onChange(of: outlineController.pendingJumpLineRange) { _, lineRange in
             guard let lineRange, let sourceMap = parseSession.document?.sourceMap else { return }
             let range = sourceMap.utf16Range(ofLines: lineRange)
-            editorStore.existingSystem(for: identity)?.revealSelection(utf16Range: range, flash: true)
+            // Both sides are told the same source line directly, rather than
+            // the editor deriving its target and the preview reading back
+            // where the editor landed — see `ScrollSyncController.jump(toLine:)`
+            // for why that round trip is fragile for a jump this large.
+            scrollController.jump(toLine: lineRange.lowerBound)
+            editorStore.existingSystem(for: identity)?.revealSelection(utf16Range: range, flash: true, animated: true)
             outlineController.pendingJumpLineRange = nil
         }
     }
@@ -126,9 +131,19 @@ struct DocumentEditorSplitView: View {
     /// Forwards the editor's visible top line into the scroll-sync
     /// controller so the preview follows. `utf16Offset` comes from
     /// `EditorView`'s scroll callback (see `EditorTextSystem.topVisibleUTF16Offset`).
+    ///
+    /// Skips the outline update while `scrollController.isJumping`: an
+    /// animated `revealSelection` (the outline's own jump) fires this
+    /// callback once per frame of its ~0.2s scroll animation, and those
+    /// mid-flight offsets don't yet reflect the jump's target — reading them
+    /// back into the outline overwrote the correct highlight (already set
+    /// synchronously by the jump's own selection change, below in
+    /// `pendingJumpLineRange`) with a stale one, leaving the *previous*
+    /// heading bolded after a jump landed correctly.
     private func handleEditorScroll(utf16Offset: Int) {
         guard let sourceMap = parseSession.document?.sourceMap else { return }
         scrollController.editorDidScroll(toLine: sourceMap.line(atUTF16Offset: utf16Offset))
+        guard !scrollController.isJumping else { return }
         outlineController.referenceOffsetDidChange(utf16Offset)
     }
 

@@ -22,6 +22,28 @@ public final class ScrollSyncController {
     /// Consumers should clear this after acting on it.
     public var targetPreviewFraction: Double?
 
+    /// The precise block and within-block progress for the same scroll
+    /// `targetPreviewFraction` describes, published alongside it whenever the
+    /// caller (``editorDidScroll(toLine:)``, ``jump(toLine:)``) already knows
+    /// them exactly. `TextualMarkdownPreview.scroll(to:)` uses this in
+    /// preference to re-deriving a block from the fraction — that
+    /// derivation (`blockIndexAndLocalProgress(forFraction:)`, dividing by
+    /// `totalHeight` then multiplying back) is a lossy round trip: float
+    /// error in it can recover an offset just *before* the intended block's
+    /// start, resolving to the block before it. Scrolling to that wrong
+    /// block produces an echo that doesn't match `lastEditorDrivenBlockIndex`,
+    /// defeating echo suppression and yanking the editor backward. Consumers
+    /// should clear this after acting on it, alongside `targetPreviewFraction`.
+    public var targetPreviewBlock: PreviewBlockTarget?
+
+    /// Whether the *next* `targetPreviewFraction` change should animate.
+    /// Set by ``jump(toLine:)`` just before publishing its target. Ordinary
+    /// live scroll-sync (mouse wheel, keyboard, preview-driven) never sets
+    /// this, so it stays false and the preview snaps instantly as before —
+    /// animating every live-sync tick would fight the user's own scroll
+    /// gesture instead of following it.
+    public var animatesNextPreviewScroll = false
+
     /// The source line the preview wants the editor to scroll to.
     /// Consumers should clear this after acting on it.
     public var targetSourceLine: Int?
@@ -31,21 +53,25 @@ public final class ScrollSyncController {
     /// report that lands on this same block is the preview confirming that
     /// request, not a new user-driven preview scroll, so it is swallowed —
     /// with no time limit, since this is the request we are still waiting on.
-    private var lastEditorDrivenBlockIndex: Int?
+    /// Not `private`: also written by ``jump(toLine:)`` in another file of
+    /// this same module.
+    var lastEditorDrivenBlockIndex: Int?
 
     /// The preview block index we most recently derived from a
     /// preview-driven scroll and asked the editor to move to. The next
     /// ``editorDidScroll(toLine:)`` report that lands on this same block is
     /// the editor confirming that request, so it is swallowed — with no time
-    /// limit, for the same reason as above.
-    private var lastPreviewDrivenBlockIndex: Int?
+    /// limit, for the same reason as above. Not `private`: also written by
+    /// ``jump(toLine:)`` in another file of this same module.
+    var lastPreviewDrivenBlockIndex: Int?
 
     /// Blocks we asked the preview to scroll to, each paired with when we
     /// asked, kept only for ``echoSuppressionWindow``. See
     /// ``isSuppressedEcho(blockIndex:latchedBlockIndex:recentlyRequested:)``
     /// for why `lastEditorDrivenBlockIndex` alone is not enough during a
-    /// continuous scroll gesture.
-    private var recentEditorRequestedBlocks: [(index: Int, at: ContinuousClock.Instant)] = []
+    /// continuous scroll gesture. Not `private`: also written by
+    /// ``jump(toLine:)`` in another file of this same module.
+    var recentEditorRequestedBlocks: [(index: Int, at: ContinuousClock.Instant)] = []
 
     /// Blocks we asked the editor to scroll to, each paired with when we
     /// asked. Symmetric counterpart to `recentEditorRequestedBlocks`.
@@ -56,9 +82,15 @@ public final class ScrollSyncController {
     /// latch. See ``isSuppressedEcho(blockIndex:latchedBlockIndex:recentlyRequested:)``.
     private static let echoSuppressionWindow: Duration = .milliseconds(300)
 
+    /// Set by ``jump(toLine:)``; cleared implicitly once `now()` passes it.
+    /// See ``isJumping``. Not `private`: written from another file of this
+    /// same module.
+    var jumpSettleDeadline: ContinuousClock.Instant?
+
     /// Injected clock, overridable in tests so the suppression window can be
-    /// exercised deterministically without real sleeps.
-    private let now: () -> ContinuousClock.Instant
+    /// exercised deterministically without real sleeps. Not `private`: also
+    /// read by ``jump(toLine:)`` in another file of this same module.
+    let now: () -> ContinuousClock.Instant
 
     public init(
         map: ScrollSyncMap = ScrollSyncMap(blocks: []),
@@ -74,6 +106,7 @@ public final class ScrollSyncController {
     /// `targetPreviewFraction` for the preview to adopt, unless this report
     /// merely confirms a preview-driven scroll already in flight.
     public func editorDidScroll(toLine line: Int) {
+        guard !isJumping else { return }
         guard let blockIndex = map.blockIndex(forLine: line) else { return }
 
         // Sticky-plus-recent-history: see `isSuppressedEcho` for why an exact
@@ -90,6 +123,7 @@ public final class ScrollSyncController {
         lastEditorDrivenBlockIndex = blockIndex
         recordRequest(blockIndex, into: &recentEditorRequestedBlocks)
         targetPreviewFraction = previewFraction(forLine: line)
+        targetPreviewBlock = blockTarget(forLine: line)
     }
 
     /// Call when the preview's scroll content offset changes, in the same
@@ -97,6 +131,7 @@ public final class ScrollSyncController {
     /// to adopt, unless this report merely confirms an editor-driven scroll
     /// already in flight.
     public func previewContentOffsetDidChange(_ offset: Double) {
+        guard !isJumping else { return }
         // Resolved directly from the raw offset — not by dividing by
         // `totalHeight` and multiplying back in `blockIndex(forPreviewFraction:)`
         // — so an offset that is exactly a block's top edge (as
@@ -157,15 +192,13 @@ public final class ScrollSyncController {
 
     /// Returns the preview scroll fraction (0...1) for the given editor line.
     public func previewFraction(forLine line: Int) -> Double? {
-        guard let blockIndex = map.blockIndex(forLine: line) else { return nil }
+        guard let target = blockTarget(forLine: line) else { return nil }
         let total = totalHeight
         guard total > 0 else { return nil }
 
-        let offset = offsetUpTo(blockIndex: blockIndex)
-        let blockHeight = height(for: blockIndex)
-        let entry = map.entries.first { $0.blockIndex == blockIndex }
-        let localProgress = localProgress(in: entry?.lineRange ?? (line ... line), for: line)
-        return (offset + blockHeight * localProgress) / total
+        let offset = offsetUpTo(blockIndex: target.blockIndex)
+        let blockHeight = height(for: target.blockIndex)
+        return (offset + blockHeight * target.localProgress) / total
     }
 
     /// Returns the editor source line corresponding to a preview scroll fraction.
@@ -210,6 +243,17 @@ public final class ScrollSyncController {
 
     // MARK: - Internal helpers
 
+    /// Whether ``editorDidScroll(toLine:)`` and ``previewContentOffsetDidChange(_:)``
+    /// should ignore incoming reports because a ``jump(toLine:)`` animation
+    /// is still settling. See `jump(toLine:)` for why. `public`, not just
+    /// internal to the module: the app target's own scroll callback also
+    /// needs to skip updating the outline's "current heading" highlight from
+    /// an animated jump's mid-flight frames, for the same reason.
+    public var isJumping: Bool {
+        guard let jumpSettleDeadline else { return false }
+        return now() < jumpSettleDeadline
+    }
+
     /// Whether an incoming report of `blockIndex` from one side should be
     /// treated as the echo of a request we ourselves sent to that side,
     /// rather than a fresh user-driven scroll.
@@ -248,8 +292,9 @@ public final class ScrollSyncController {
 
     /// Records that we just asked one side to move to `blockIndex`, pruning
     /// entries older than `echoSuppressionWindow` first so the list stays
-    /// bounded during a long scroll gesture.
-    private func recordRequest(_ blockIndex: Int, into list: inout [(index: Int, at: ContinuousClock.Instant)]) {
+    /// bounded during a long scroll gesture. Not `private`: also called by
+    /// ``jump(toLine:)`` in another file of this same module.
+    func recordRequest(_ blockIndex: Int, into list: inout [(index: Int, at: ContinuousClock.Instant)]) {
         let cutoff = now() - Self.echoSuppressionWindow
         list.removeAll { $0.at <= cutoff }
         list.append((index: blockIndex, at: now()))
@@ -258,8 +303,10 @@ public final class ScrollSyncController {
     /// Shared boundary-correct resolver behind ``blockIndex(forPreviewFraction:)``
     /// and ``previewContentOffsetDidChange(_:)``. Takes a raw offset (not a
     /// fraction) so the latter never has to round-trip through division and
-    /// remultiplication by `totalHeight`.
-    private func blockIndex(forContentOffset offset: Double) -> Int? {
+    /// remultiplication by `totalHeight`. Not `private`: also called by
+    /// ``blockIndexAndLocalProgress(forFraction:)`` in another file of this
+    /// same module.
+    func blockIndex(forContentOffset offset: Double) -> Int? {
         guard !map.entries.isEmpty else { return nil }
 
         // Heights are measured asynchronously by the preview, so they are all
@@ -313,11 +360,15 @@ public final class ScrollSyncController {
         return map.entries.last?.blockIndex
     }
 
-    private var totalHeight: Double {
+    /// Not `private`: also read by ``blockIndexAndLocalProgress(forFraction:)``
+    /// in another file of this same module.
+    var totalHeight: Double {
         map.entries.reduce(0) { $0 + height(for: $1.blockIndex) }
     }
 
-    private func offsetUpTo(blockIndex: Int) -> Double {
+    /// Not `private`: also called by ``blockIndexAndLocalProgress(forFraction:)``
+    /// in another file of this same module.
+    func offsetUpTo(blockIndex: Int) -> Double {
         var offset: Double = 0
         for entry in map.entries {
             if entry.blockIndex == blockIndex {
@@ -328,11 +379,15 @@ public final class ScrollSyncController {
         return offset
     }
 
-    private func height(for blockIndex: Int) -> Double {
+    /// Not `private`: also called by ``blockIndexAndLocalProgress(forFraction:)``
+    /// in another file of this same module.
+    func height(for blockIndex: Int) -> Double {
         blockHeights[blockIndex, default: 0]
     }
 
-    private func localProgress(in lineRange: ClosedRange<Int>, for line: Int) -> Double {
+    /// Not `private`: also called by ``blockTarget(forLine:)`` in another
+    /// file of this same module.
+    func localProgress(in lineRange: ClosedRange<Int>, for line: Int) -> Double {
         let clamped = min(max(line, lineRange.lowerBound), lineRange.upperBound)
         let count = max(lineRange.count - 1, 1)
         return Double(clamped - lineRange.lowerBound) / Double(count)
