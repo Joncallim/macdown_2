@@ -142,6 +142,12 @@ struct WorkspaceCommands: Commands {
                 coordinator?.keyModel?.sidebarVisible.toggle()
             }
             .keyboardShortcut("s", modifiers: [.control, .command])
+
+            Button("Focus Outline") {
+                coordinator?.focusOutline()
+            }
+            .keyboardShortcut("o", modifiers: [.control, .command])
+            .disabled(coordinator?.keyModel?.hasActiveDocument != true)
         }
 
         #if DEBUG

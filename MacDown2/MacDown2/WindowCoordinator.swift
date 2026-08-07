@@ -23,12 +23,16 @@ final class WindowCoordinator {
     /// The model for the document currently shown in the key window.
     private(set) var keyModel: WorkspaceModel?
 
-    private(set) var controllers: [WindowController] = []
-    private let sessionStore: WorkspaceSessionStoring
+    // `controllers`, `sessionStore`, `themeController`, and `grammarRegistry`
+    // are internal rather than private: `WindowCoordinator+SessionRestore.swift`
+    // is a same-module extension in a separate file (split out to stay under
+    // the type-body-length lint budget) and needs them.
+    var controllers: [WindowController] = []
+    let sessionStore: WorkspaceSessionStoring
     private let panelProvider: NSFilePanelProvider
     private let recoveryBuffer: RecoveryBuffer
-    private let themeController: ThemeController
-    private let grammarRegistry: GrammarRegistry
+    let themeController: ThemeController
+    let grammarRegistry: GrammarRegistry
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
     private var restoreTask: Task<Void, Never>?
@@ -157,6 +161,17 @@ final class WindowCoordinator {
         scheduleSaveSession()
     }
 
+    /// ⌃⌘O (D11). Reveals the outline in the key window, then hands off to
+    /// its `OutlineController` — focusing a hidden list is a dead shortcut,
+    /// so both the sidebar and the outline's own disclosure are ensured open
+    /// first.
+    func focusOutline() {
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        controller.model.sidebarVisible = true
+        controller.model.setSectionExpanded(.outline, true)
+        controller.outlineController.requestFocus()
+    }
+
     // MARK: - Session
 
     /// Schedules a session save, debounced so rapid changes coalesce into one
@@ -249,7 +264,11 @@ final class WindowCoordinator {
     /// Restores the saved session, creating one window per document and
     /// grouping them as tabs in a single native tab group. Falls back to an
     /// untitled window when there is nothing to restore.
-    private func restoreSession() async {
+    ///
+    /// See `WindowCoordinator+SessionRestore.swift` for the rest of the
+    /// restore pipeline — split out to keep this file under the type-body-
+    /// length lint budget.
+    func restoreSession() async {
         let tempStore = TabStore(sessionStore: sessionStore)
         await tempStore.restoreSessionIfNeeded()
 
@@ -261,68 +280,6 @@ final class WindowCoordinator {
         let (firstController, _) = restore(tabs: tempStore.tabs)
         activate(controller: firstController, activeID: tempStore.activeTabID)
         updateKeyModel()
-    }
-
-    private func restore(tabs: [WorkspaceTab]) -> (WindowController?, NSWindow?) {
-        var firstController: WindowController?
-        var firstWindow: NSWindow?
-
-        for tab in tabs {
-            let controller = makeRestoredController(tab: tab)
-            controllers.append(controller)
-            applyRestoredState(controller: controller, tab: tab)
-
-            if firstController == nil {
-                firstController = controller
-                firstWindow = controller.window
-                controller.showWindow(nil)
-            } else if let firstWindow, let newWindow = controller.window {
-                firstWindow.addTabbedWindow(newWindow, ordered: .above)
-                controller.showWindow(nil)
-            }
-        }
-
-        return (firstController, firstWindow)
-    }
-
-    private func makeRestoredController(tab: WorkspaceTab) -> WindowController {
-        let model = makeWindowModel()
-        model.tabStore.newTab(id: tab.id, document: tab.document)
-        return WindowController(
-            model: model,
-            coordinator: self,
-            themeController: themeController,
-            grammarRegistry: grammarRegistry
-        )
-    }
-
-    private func applyRestoredState(controller: WindowController, tab: WorkspaceTab) {
-        let identity = tab.id.uuidString
-        guard let textSystem = controller.editorStore.existingSystem(for: identity) else { return }
-        if let cursorPosition = tab.cursorPosition {
-            let length = tab.selectionLength ?? 0
-            textSystem.selectedRange = NSRange(location: cursorPosition, length: length)
-        }
-        if let scrollOffset = tab.scrollOffset {
-            textSystem.scrollOffset = CGFloat(scrollOffset)
-        }
-        if let previewLayout = tab.previewLayout {
-            controller.model.tabStore.setPreviewLayout(previewLayout, for: tab.id)
-        }
-    }
-
-    private func activate(controller: WindowController?, activeID: UUID?) {
-        let activeController: WindowController? = {
-            guard let activeID else { return nil }
-            return controllers.first { $0.model.tabStore.activeTabID == activeID }
-        }()
-        guard let windowToActivate = (activeController ?? controller)?.window else { return }
-        // Set the tab group's selection explicitly. Under native tabbing,
-        // makeKeyAndOrderFront alone is not enough: the last-shown window
-        // remains the tab group's selectedWindow and re-emerges as key on the
-        // next run loop, overwriting the restored active tab.
-        windowToActivate.tabGroup?.selectedWindow = windowToActivate
-        windowToActivate.makeKeyAndOrderFront(nil)
     }
 
     // MARK: - Internal helpers
@@ -349,10 +306,10 @@ final class WindowCoordinator {
         updateKeyModel()
     }
 
-    private func makeWindowModel() -> WorkspaceModel {
+    func makeWindowModel() -> WorkspaceModel {
         WorkspaceModel(
             tabStore: TabStore(sessionStore: NoOpSessionStore(), recoveryBuffer: recoveryBuffer),
-            stateStore: NoOpStateStore(),
+            stateStore: WorkspaceStateStore(),
             panel: panelProvider
         )
     }

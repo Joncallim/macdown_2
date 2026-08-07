@@ -136,6 +136,11 @@ public struct EditorView: NSViewRepresentable {
             system.textView.sizeToFit()
         }
 
+        // Corrects the document-view height once AppKit has actually laid the
+        // scroll view out (its width/height are unreliable at `makeNSView`
+        // time). Cheap after the first real call — see the doc comment.
+        system.syncFrameHeightToContent()
+
         scrollView.hasHorizontalScroller = !configuration.wrapsLines
         scrollView.autohidesScrollers = configuration.wrapsLines
     }
@@ -158,10 +163,14 @@ public struct EditorView: NSViewRepresentable {
             isApplyingModelText = true
             textBinding?.wrappedValue = system.text
             isApplyingModelText = false
+            // Typing changes the content height; keep the document view's
+            // frame in step so the caret always has somewhere to scroll to.
+            system.scheduleFrameHeightSync()
         }
 
         public func textViewDidChangeSelection(_: Notification) {
             guard let system else { return }
+            system.scheduleFrameHeightSync()
             onSelectionChange?(system.selectedRange)
         }
 

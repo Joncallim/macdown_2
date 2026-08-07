@@ -72,4 +72,31 @@ struct WorkspaceStateStoreTests {
         let store = WorkspaceStateStore(defaults: defaults)
         #expect(store.sidebarSectionExpanded.isEmpty)
     }
+
+    @Test func stateStoreReturnsEmptyOrderByDefault() {
+        let suiteName = UUID().uuidString
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            Issue.record("Could not create test UserDefaults suite")
+            return
+        }
+        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+
+        let store = WorkspaceStateStore(defaults: defaults)
+        #expect(store.sidebarSectionOrder.isEmpty)
+    }
+
+    @Test func stateStorePersistsSectionOrder() {
+        let suiteName = UUID().uuidString
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            Issue.record("Could not create test UserDefaults suite")
+            return
+        }
+        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+
+        var store = WorkspaceStateStore(defaults: defaults)
+        store.sidebarSectionOrder = ["outline", "folder"]
+
+        let reloaded = WorkspaceStateStore(defaults: defaults)
+        #expect(reloaded.sidebarSectionOrder == ["outline", "folder"])
+    }
 }

@@ -3,9 +3,57 @@ import Foundation
 import Observation
 
 /// Sidebar sections displayed in the workspace shell.
-public enum SidebarSection: String, Sendable, CaseIterable {
+public enum SidebarSection: String, Sendable, CaseIterable, Identifiable {
     case folder
     case outline
+
+    public var id: String {
+        rawValue
+    }
+
+    /// Order used on first launch and to fill gaps during reconciliation.
+    public static var defaultOrder: [SidebarSection] {
+        allCases
+    }
+
+    /// Drops unknown identifiers, appends missing cases in `allCases` order.
+    public static func reconcile(_ stored: [String]) -> [SidebarSection] {
+        var result: [SidebarSection] = []
+        var seen: Set<String> = []
+        for rawValue in stored {
+            guard let section = SidebarSection(rawValue: rawValue),
+                  seen.insert(section.id).inserted else { continue }
+            result.append(section)
+        }
+        for section in SidebarSection.allCases where !seen.contains(section.id) {
+            result.append(section)
+        }
+        return result
+    }
+}
+
+/// Applies a SwiftUI `onMove`-style reorder and returns the new ordering.
+///
+/// `destination` follows the `ForEach.onMove` convention: it is an insertion
+/// point expressed in the *pre-move* ordering, so sources that precede it are
+/// discounted before the elements are re-inserted. Source indices outside
+/// `elements` are ignored and `destination` is clamped, so a stale drag from a
+/// view that has not yet observed a shorter list can never trap.
+func reorder<Element>(
+    _ elements: [Element],
+    fromOffsets source: IndexSet,
+    toOffset destination: Int
+) -> [Element] {
+    let valid = IndexSet(source.filter { elements.indices.contains($0) })
+    let moved = valid.map { elements[$0] }
+    var remaining = elements.enumerated()
+        .filter { !valid.contains($0.offset) }
+        .map(\.element)
+    let clampedDestination = max(0, min(destination, elements.count))
+    let precedingSources = valid.filter { $0 < clampedDestination }.count
+    let insertionIndex = max(0, min(clampedDestination - precedingSources, remaining.count))
+    remaining.insert(contentsOf: moved, at: insertionIndex)
+    return remaining
 }
 
 /// The observable model behind the MacDown 2 workspace shell.
@@ -43,6 +91,13 @@ public final class WorkspaceModel {
         }
     }
 
+    /// Document-order of sidebar sections. Persisted via `stateStore`.
+    public private(set) var sectionOrder: [SidebarSection]
+
+    /// Cached expansion state so SwiftUI body evaluations do not hit
+    /// `UserDefaults` on every read.
+    private var sectionExpanded: [SidebarSection: Bool]
+
     public var hasActiveDocument: Bool {
         tabStore.hasActiveDocument
     }
@@ -71,16 +126,31 @@ public final class WorkspaceModel {
         folderURL = nil
         lastError = nil
         sidebarVisible = stateStore.sidebarVisible
+        sectionOrder = SidebarSection.reconcile(stateStore.sidebarSectionOrder)
+        sectionExpanded = Dictionary(uniqueKeysWithValues: SidebarSection.allCases.map { section in
+            (section, stateStore.sidebarSectionExpanded[section.rawValue] ?? true)
+        })
     }
 
     // MARK: - State store helpers
 
     public func isSectionExpanded(_ section: SidebarSection) -> Bool {
-        stateStore.sidebarSectionExpanded[section.rawValue] ?? true
+        sectionExpanded[section] ?? true
     }
 
     public func setSectionExpanded(_ section: SidebarSection, _ expanded: Bool) {
+        sectionExpanded[section] = expanded
         stateStore.sidebarSectionExpanded[section.rawValue] = expanded
+    }
+
+    /// Reorders sidebar sections and persists the new order.
+    ///
+    /// `offsets`/`offset` use the `ForEach.onMove` convention; out-of-range
+    /// values are tolerated rather than trapping.
+    public func moveSections(fromOffsets offsets: IndexSet, toOffset offset: Int) {
+        let order = reorder(sectionOrder, fromOffsets: offsets, toOffset: offset)
+        sectionOrder = order
+        stateStore.sidebarSectionOrder = order.map(\.rawValue)
     }
 
     // MARK: - Intents

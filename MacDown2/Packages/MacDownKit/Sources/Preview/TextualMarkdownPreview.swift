@@ -43,6 +43,11 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         self.linkDefinitions = linkDefinitions
     }
 
+    /// Per-block measured heights, keyed by position in ``displayBlocks``.
+    /// Fed to ``ScrollSyncController`` so it can map editor lines to preview
+    /// scroll offsets. Cleared whenever the block list changes.
+    @State private var measuredBlockHeights: [Int: Double] = [:]
+
     private var displayBlocks: [PreviewBlock] {
         blocks ?? computedBlocks
     }
@@ -102,7 +107,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                             )
 
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(displayBlocks) { block in
+                            ForEach(Array(displayBlocks.enumerated()), id: \.element.id) { index, block in
                                 BlockView(
                                     block: block,
                                     theme: theme,
@@ -110,17 +115,47 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                     linkDefinitions: displayLinkDefinitions
                                 )
                                 .id(block.id)
-                                .background(
-                                    GeometryReader { blockGeometry in
-                                        Color.clear
-                                            .preference(
-                                                key: BlockFramePreferenceKey.self,
-                                                value: [block.id: blockGeometry.frame(in: .named("previewContent"))]
-                                            )
-                                    }
-                                )
+                                // Inter-block spacing. Applied here, above the
+                                // measurement below, so the gap is part of the
+                                // frame the scroll-sync map sees. The first
+                                // block gets none — the container's own padding
+                                // already provides the top margin.
+                                .padding(.top, index == 0 ? 0 : PreviewTypography.gapAbove(block.kind))
+                                // Measured with `onGeometryChange` rather than a
+                                // `GeometryReader` writing a `PreferenceKey`.
+                                // Every block wrote its own entry into one
+                                // dictionary-valued preference, all reduced
+                                // together, so SwiftUI logged "Bound preference
+                                // BlockFramePreferenceKey tried to update
+                                // multiple times per frame" on every layout pass
+                                // — a preference write that itself triggers the
+                                // re-layout that writes it again. This reports
+                                // per block, outside the preference system, and
+                                // only the height is needed.
+                                .onGeometryChange(for: CGFloat.self) { proxy in
+                                    proxy.size.height
+                                } action: { newHeight in
+                                    measuredBlockHeights[index] = Double(newHeight)
+                                    controller.update(blockHeights: measuredBlockHeights)
+                                }
                             }
                         }
+                        // Textual reads the ambient `.font` as its "1x" scale for
+                        // headings/code/etc., so setting a comfortable base size
+                        // here (SwiftUI's `.body` default is ~13pt — cramped for
+                        // an article-reading pane) scales the whole hierarchy
+                        // proportionally rather than just the paragraph text.
+                        .font(.system(size: PreviewTypography.baseFontSize))
+                        // Textual's own default paragraph line-spacing (0.23x
+                        // font size) is a noticeable outlier next to its other
+                        // block styles — block quotes use 0.471x, code blocks
+                        // 0.39x — and paragraphs are most of a typical document,
+                        // so that mismatch reads as "the whole preview is
+                        // cramped." Bring it in line with the rest of the scale.
+                        .textual.paragraphStyle(PreviewTypography.ParagraphStyle())
+                        // Same reasoning, for the gap below a heading and
+                        // above the body text that follows it.
+                        .textual.headingStyle(PreviewTypography.HeadingStyle())
                         .padding(16)
                         .frame(
                             minWidth: 0,
@@ -130,10 +165,6 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                         )
                         .background(theme.background.swiftUIColor)
                     }
-                    .coordinateSpace(name: "previewContent")
-                    .onPreferenceChange(BlockFramePreferenceKey.self) { frames in
-                        updateBlockHeights(frames: frames)
-                    }
                 }
                 .background(theme.background.swiftUIColor)
                 .onScrollGeometryChange(for: Double.self) { geometry in
@@ -142,33 +173,95 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                     controller.previewContentOffsetDidChange(newOffset)
                 }
                 .onChange(of: displayBlocks) { _, newBlocks in
+                    // Drop only the stale *tail* — entries past the new block
+                    // count would otherwise inflate the scroll map's totals
+                    // once the document gets shorter. Surviving entries are
+                    // kept deliberately: `onGeometryChange` only fires when a
+                    // block's height actually changes, so clearing the whole
+                    // dictionary here (as this first did) left every height at
+                    // zero until something happened to resize, and a zeroed
+                    // map makes every preview scroll resolve to the last
+                    // block — which drags the editor to the end of the
+                    // document on every sync.
+                    measuredBlockHeights = measuredBlockHeights.filter { $0.key < newBlocks.count }
                     controller.update(map: ScrollSyncMap(blocks: newBlocks))
+                    controller.update(blockHeights: measuredBlockHeights)
                 }
                 .onChange(of: controller.targetPreviewFraction) { _, fraction in
                     guard let fraction else { return }
-                    scroll(to: fraction, using: proxy)
+                    let animated = controller.animatesNextPreviewScroll
+                    let preciseBlock = controller.targetPreviewBlock
+                    controller.animatesNextPreviewScroll = false
+                    scroll(
+                        to: fraction,
+                        preciseBlock: preciseBlock,
+                        animated: animated,
+                        using: proxy,
+                        viewportHeight: Double(viewportGeometry.size.height)
+                    )
                     controller.targetPreviewFraction = nil
+                    controller.targetPreviewBlock = nil
                 }
             }
         }
     }
 
-    private func updateBlockHeights(frames: [UUID: CGRect]) {
-        var heights: [Int: Double] = [:]
-        for (index, block) in displayBlocks.enumerated() {
-            heights[index] = Double(frames[block.id]?.height ?? 0)
-        }
-        controller.update(blockHeights: heights)
-    }
-
-    private func scroll(to fraction: Double, using proxy: ScrollViewProxy) {
-        guard let blockIndex = controller.blockIndex(forPreviewFraction: fraction),
-              let blockID = displayBlocks[safe: blockIndex]?.id
+    /// Scrolls to the position `fraction` names — not always the containing
+    /// block's *top* edge, but the point `fraction` falls at *within* that
+    /// block, via a proportional `anchor`. Always snapping to the block's top
+    /// (the first version of this) discarded that position entirely: for a
+    /// block shorter than the viewport the difference is invisible, but for
+    /// one taller than the viewport (a long paragraph, a big table), each
+    /// small onward scroll re-snapped to the very top of the *same* block, or
+    /// jumped to the top of the *next* block the moment the source line
+    /// crossed into it — so the block's lower portion could never be brought
+    /// into view at all.
+    ///
+    /// A precise pixel offset (via SwiftUI's `ScrollPosition`) was tried
+    /// next, and fixed that — but writing to `ScrollPosition` at the rate
+    /// live scroll-sync calls this (many times a second, continuously)
+    /// triggered spurious re-layout that Textual's `StructuredText` responds
+    /// to by reporting drastically smaller measured heights for blocks far
+    /// from the new position, corrupting `blockHeights` for every block
+    /// after them and producing wild, wrong jumps — confirmed by the same
+    /// corruption never occurring under genuine user-driven preview
+    /// scrolling, which never writes to `ScrollPosition` at all. Block-id
+    /// anchored `scrollTo` does not share this: it is the same mechanism
+    /// genuine user scrolling already proved stable under, just with a
+    /// proportional anchor instead of a fixed `.top`.
+    ///
+    /// `animated` is true only for the outline sidebar's jump-to-heading
+    /// (see `ScrollSyncController.jump(toLine:)`); ordinary live scroll-sync
+    /// leaves it false so the preview snaps instantly and keeps pace with
+    /// the user's own scroll gesture rather than trailing an animation.
+    ///
+    /// See `ScrollSyncController.previewScrollTarget(forFraction:viewportHeight:preciseBlock:)`
+    /// for why the anchor it returns is 0 (`.top`-equivalent) except when the
+    /// target block genuinely overflows the viewport, and why `preciseBlock`
+    /// — when the caller has one — is used instead of deriving the block
+    /// from `fraction`.
+    private func scroll(
+        to fraction: Double,
+        preciseBlock: PreviewBlockTarget?,
+        animated: Bool,
+        using proxy: ScrollViewProxy,
+        viewportHeight: Double
+    ) {
+        guard let target = controller.previewScrollTarget(
+            forFraction: fraction,
+            viewportHeight: viewportHeight,
+            preciseBlock: preciseBlock
+        ), let blockID = displayBlocks[safe: target.blockIndex]?.id
         else {
             return
         }
-        withAnimation(.none) {
-            proxy.scrollTo(blockID, anchor: .top)
+        let anchor = UnitPoint(x: 0, y: target.anchorY)
+        if animated {
+            withAnimation(.easeInOut(duration: ScrollSyncController.jumpAnimationDuration)) {
+                proxy.scrollTo(blockID, anchor: anchor)
+            }
+        } else {
+            proxy.scrollTo(blockID, anchor: anchor)
         }
     }
 }
@@ -218,18 +311,6 @@ private struct BlockView: View {
         }
         .foregroundStyle(theme.foreground.swiftUIColor)
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// MARK: - Geometry preference
-
-private struct BlockFramePreferenceKey: PreferenceKey {
-    static var defaultValue: [UUID: CGRect] {
-        [:]
-    }
-
-    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
-        value.merge(nextValue()) { _, new in new }
     }
 }
 

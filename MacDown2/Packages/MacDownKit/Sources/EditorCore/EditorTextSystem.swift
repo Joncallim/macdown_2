@@ -38,6 +38,11 @@ public final class EditorTextSystem {
     private let fallbackUndoManager = UndoManager()
     private var lastAppliedConfiguration: EditorConfiguration?
     private var lastAppliedOverscroll: OverscrollState?
+    private var lastFrameSyncSignature: FrameSyncSignature?
+    private var measuredContentHeight: CGFloat = 0
+    /// Set by `scrollOffset`'s setter before the scroll view exists yet
+    /// (session restore); applied by `applyPendingScrollOffset()` once it does.
+    var pendingScrollOffset: CGFloat?
 
     /// Snapshot of the inputs that produced the current overscroll inset so we
     /// can skip redundant updates.
@@ -45,6 +50,14 @@ public final class EditorTextSystem {
         let enabled: Bool
         let height: CGFloat
         let textInsets: NSSize
+    }
+
+    /// Snapshot of the inputs that produced the last frame-height sync, so
+    /// `syncFrameHeightToContent()` can skip the (TextKit 2 layout) work when
+    /// neither has changed.
+    private struct FrameSyncSignature: Equatable {
+        let textLength: Int
+        let width: CGFloat
     }
 
     /// The scroll view that owns the text view. Weak because the scroll view
@@ -68,6 +81,10 @@ public final class EditorTextSystem {
     /// and conflict resolution; it resets selection and scroll.
     public func setText(_ text: String) {
         textView.string = text
+        // A wholesale text replacement invalidates any measured height from
+        // the previous document — see `syncFrameHeightToContent`.
+        measuredContentHeight = 0
+        lastFrameSyncSignature = nil
     }
 
     /// The current plain-text content of the editor.
@@ -155,63 +172,109 @@ public final class EditorTextSystem {
         )
     }
 
-    // MARK: - Selection / scroll (session restore seam)
+    /// Corrects the text view's frame height against TextKit 2's real,
+    /// laid-out content bounds.
+    ///
+    /// `isVerticallyResizable = true` does not, on its own, keep this
+    /// manually-constructed TextKit 2 stack's frame in sync with content
+    /// outside the viewport-lazy layout pass — nothing here ever asks the
+    /// layout manager to lay out beyond what has actually been visible, so
+    /// the frame stays close to whatever `EditorView.makeNSView`'s initial
+    /// (plain `NSString.boundingRect`, and at that point almost certainly the
+    /// wrong width — the scroll view has not been laid out yet) estimate
+    /// produced. Scrolling — via `scrollRangeToVisible`, keyboard caret
+    /// navigation, or manual scroll — has nowhere further to go once the
+    /// frame stops growing, which reads as "scrolling doesn't work" even
+    /// though the selection/caret genuinely moved.
+    ///
+    /// Forces one full-document layout pass and applies the real content
+    /// height, so this is skipped for documents ≥ 100 KB — the same
+    /// threshold `makeNSView` already uses to avoid blocking on an O(n)
+    /// layout for large files. Cheap to call on every `updateNSView`: it
+    /// no-ops unless the text length or available width actually changed.
+    ///
+    /// The computed height is re-measured fresh for each distinct (text
+    /// length, width) signature — it is NOT accumulated as a running maximum
+    /// across signatures. A previous, different width or text length can
+    /// genuinely need a *different* height (a narrower container wraps to
+    /// more lines; shorter text needs less), so an earlier signature's
+    /// height is not a valid floor for a new one. Carrying it forward as one
+    /// left the frame stuck too tall after a pane resize or a large
+    /// deletion — a permanent blank gap below the actual content.
+    func syncFrameHeightToContent() {
+        guard let scrollView else { return }
+        let string = textView.string as NSString
+        guard string.length < 100_000 else { return }
 
-    /// The current selected range in UTF-16 offsets.
-    public var selectedRange: NSRange {
-        get { textView.selectedRange() }
-        set { textView.setSelectedRange(newValue) }
+        // Matching text/width does NOT mean the frame still matches the last
+        // measurement: TextKit 2's viewport controller reclaims off-screen
+        // fragments on its own schedule and has been observed shrinking
+        // `textView.frame` between calls with nothing here to invalidate the
+        // signature. Skipping the reapplication below left it stuck shrunk,
+        // so a later `scrollRangeToVisible` (e.g. the outline's
+        // jump-to-heading) clamped against it and landed far from the target.
+        let signature = FrameSyncSignature(textLength: string.length, width: textView.frame.width)
+        guard signature != lastFrameSyncSignature else {
+            applyMeasuredFrameHeight(scrollView: scrollView)
+            return
+        }
+        lastFrameSyncSignature = signature
+
+        // `usageBoundsForTextContainer` does not reflect a forced
+        // `ensureLayout(for:)` pass for this manually-constructed stack —
+        // measured directly, it stayed pinned near the viewport height
+        // regardless. Enumerating fragments with `.ensuresLayout` forces
+        // each one through real layout and hands back its actual frame,
+        // which is the approach Apple's own TextKit 2 sample code uses to
+        // compute total content height.
+        var maxY: CGFloat = 0
+        _ = layoutManager.enumerateTextLayoutFragments(
+            from: layoutManager.documentRange.location,
+            options: [.ensuresLayout]
+        ) { fragment in
+            maxY = max(maxY, fragment.layoutFragmentFrame.maxY)
+            return true
+        }
+        measuredContentHeight = maxY
+        applyMeasuredFrameHeight(scrollView: scrollView)
     }
 
-    /// The current vertical scroll offset of the clip view.
-    public var scrollOffset: CGFloat {
-        get { scrollView?.contentView.bounds.origin.y ?? pendingScrollOffset ?? 0 }
-        set {
-            pendingScrollOffset = newValue
-            applyPendingScrollOffset()
+    /// Syncs `textView.frame.height` to exactly what `measuredContentHeight`
+    /// (for the current signature) requires — growing OR shrinking it, since
+    /// both a stale-small frame (TextKit 2 shrank it behind our back) and a
+    /// stale-large one (carried over from a since-resized/edited signature)
+    /// are equally wrong.
+    private func applyMeasuredFrameHeight(scrollView: NSScrollView) {
+        let neededHeight = max(measuredContentHeight, scrollView.bounds.height)
+        if textView.frame.height != neededHeight {
+            textView.frame.size.height = neededHeight
         }
     }
 
-    /// The UTF-16 offset of the character at the top-left of the visible rect.
+    /// Brings the frame height up to date off the back of an editing or
+    /// caret-movement event, one run-loop turn later.
     ///
-    /// Returns `0` when the text view has no layout or is not installed in a
-    /// scroll view. This is the editor side of the scroll-sync seam.
-    public var topVisibleUTF16Offset: Int {
-        // Without a scroll view there is no viewport to measure against. An
-        // unlaid-out text view answers hit-tests with the end of the document,
-        // so return the documented 0 rather than that misleading value.
-        guard let scrollView else { return 0 }
-
-        let clipOrigin = scrollView.contentView.bounds.origin
-        let point = textView.convert(clipOrigin, from: scrollView.contentView)
-        // `characterIndexForInsertion(at:)` takes a point in the text view's own
-        // coordinate space. `NSTextInputClient.characterIndex(for:)` looks
-        // similar but expects *screen* coordinates, so it silently returns
-        // nonsense for a view-local point.
-        let index = textView.characterIndexForInsertion(at: point)
-        return index == NSNotFound ? 0 : index
-    }
-
-    /// Scrolls the given UTF-16 range into the visible rect.
+    /// Keyboard-driven caret movement and typing are entirely internal to
+    /// `NSTextView` — they never flow through SwiftUI's `updateNSView`, so
+    /// `syncFrameHeightToContent()` would otherwise never run for those paths
+    /// and the frame would fall behind the content again. Cheap on the common
+    /// path: the signature check inside no-ops once the frame has caught up.
     ///
-    /// This is a thin seam over `NSTextView.scrollRangeToVisible(_:)` so the
-    /// app target can drive editor scroll from the preview without depending
-    /// on AppKit directly.
-    public func scrollToVisible(utf16Range range: NSRange) {
-        textView.scrollRangeToVisible(range)
-    }
-
-    private var pendingScrollOffset: CGFloat?
-
-    /// Applies any pending scroll offset once the text view is inside a scroll
-    /// view. Called by ``EditorView`` after mounting the text view.
-    func applyPendingScrollOffset() {
-        guard let scrollView, let offset = pendingScrollOffset else { return }
-        var origin = scrollView.contentView.bounds.origin
-        origin.y = offset
-        scrollView.contentView.scroll(to: origin)
-        scrollView.reflectScrolledClipView(scrollView.contentView)
-        pendingScrollOffset = nil
+    /// Deferred one run-loop turn because the delegate callbacks that drive
+    /// this fire *during* `NSTextView`'s own handling, before it has finished
+    /// updating its layout; measuring then reads a half-updated state.
+    ///
+    /// This deliberately does **not** scroll. An earlier version called
+    /// `scrollRangeToVisible(selection)` here, which meant every selection
+    /// change — including ones the user never initiated — yanked the viewport
+    /// back to the caret, so scrolling away from the caret and releasing
+    /// snapped straight back to it. `NSTextView` already scrolls to follow the
+    /// caret on its own; all it ever needed from us was a frame tall enough
+    /// to have somewhere to scroll to.
+    func scheduleFrameHeightSync() {
+        Task { @MainActor [weak self] in
+            self?.syncFrameHeightToContent()
+        }
     }
 
     // MARK: - Teardown

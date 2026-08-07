@@ -82,106 +82,76 @@ struct ScrollSyncControllerTests {
         #expect(controller.targetSourceLine == 3)
     }
 
-    // Regression: without echo suppression, an editor-driven preview scroll
-    // gets reported back by the preview's own scroll notification, which
-    // would re-target the editor and bounce indefinitely.
-    @Test func editorDrivenPreviewScrollIsNotEchoedBackToEditor() {
+    // Regression: block heights are measured asynchronously by the preview, so
+    // they are all zero before its first layout pass and again briefly after a
+    // re-parse swaps the block list. With every height at zero the resolver's
+    // running total never exceeds the reported offset, so it used to fall
+    // through and name the LAST block for any offset — which the editor obeyed
+    // by scrolling to the end of the document. Observed as the editor snapping
+    // to the bottom and refusing to stay scrolled anywhere else.
+    @Test func unmeasuredBlockHeightsDoNotResolveEveryScrollToTheLastBlock() {
         let blocks = [
             PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
             PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
+            PreviewBlock(kind: .paragraph, source: "p2", lineRange: 5 ... 5),
         ]
         let controller = ScrollSyncController(
             map: ScrollSyncMap(blocks: blocks),
-            blockHeights: [0: 10, 1: 20]
+            blockHeights: [:] // nothing measured yet
         )
 
-        controller.editorDidScroll(toLine: 3)
-        #expect(controller.targetPreviewFraction != nil)
-        controller.targetPreviewFraction = nil
+        controller.previewContentOffsetDidChange(250)
 
-        // The preview reports the position it was just told to adopt (block 1
-        // starts at content offset 10).
-        controller.previewContentOffsetDidChange(10)
-
-        #expect(controller.targetSourceLine == nil, "Echo of the editor-driven scroll must not bounce back")
-    }
-
-    /// Symmetric case for the reverse direction.
-    @Test func previewDrivenEditorScrollIsNotEchoedBackToPreview() {
-        let blocks = [
-            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
-            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
-        ]
-        let controller = ScrollSyncController(
-            map: ScrollSyncMap(blocks: blocks),
-            blockHeights: [0: 10, 1: 20]
-        )
-
-        controller.previewContentOffsetDidChange(10)
-        #expect(controller.targetSourceLine != nil)
-        controller.targetSourceLine = nil
-
-        // The editor reports the line it was just told to adopt.
-        controller.editorDidScroll(toLine: 3)
-
-        #expect(controller.targetPreviewFraction == nil, "Echo of the preview-driven scroll must not bounce back")
-    }
-
-    @Test func genuineFollowUpScrollAfterEchoIsNotSuppressed() {
-        let blocks = [
-            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
-            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
-        ]
-        let controller = ScrollSyncController(
-            map: ScrollSyncMap(blocks: blocks),
-            blockHeights: [0: 10, 1: 20]
-        )
-
-        controller.editorDidScroll(toLine: 3)
-        controller.targetPreviewFraction = nil
-        controller.previewContentOffsetDidChange(10) // echo, swallowed
-        #expect(controller.targetSourceLine == nil)
-
-        // A real user scroll of the preview back to the top must still work
-        // after the echo was swallowed once.
-        controller.previewContentOffsetDidChange(0)
-        #expect(controller.targetSourceLine == 1)
-    }
-
-    // Regression: a debounced re-parse can replace `map` between an
-    // editor-driven scroll request and the preview's echo of it. A block
-    // index recorded against the old map must not be compared against block
-    // indices resolved from the new one.
-    @Test func mapChangeInvalidatesInFlightEchoSuppression() {
-        let blocks = [
-            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
-            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3),
-        ]
-        let controller = ScrollSyncController(
-            map: ScrollSyncMap(blocks: blocks),
-            blockHeights: [0: 10, 1: 20]
-        )
-
-        // Editor scrolls to block 1; controller now expects an echo at
-        // content offset 10 (block 1's top edge) to be swallowed.
-        controller.editorDidScroll(toLine: 3)
-        controller.targetPreviewFraction = nil
-
-        // A re-parse replaces the map (and heights) before that echo arrives.
-        let newBlocks = [
-            PreviewBlock(kind: .heading(level: 1), source: "# H", lineRange: 1 ... 1),
-            PreviewBlock(kind: .paragraph, source: "p0.5 (new)", lineRange: 2 ... 2),
-            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 4 ... 4),
-        ]
-        controller.update(map: ScrollSyncMap(blocks: newBlocks))
-        controller.update(blockHeights: [0: 10, 1: 5, 2: 20])
-
-        // The stale echo, now resolved against the new map, must be treated
-        // as a genuine preview scroll rather than silently swallowed.
-        controller.previewContentOffsetDidChange(10)
         #expect(
-            controller.targetSourceLine != nil,
-            "Stale echo-suppression state must not swallow a real scroll after the map changed"
+            controller.targetSourceLine == nil,
+            "With no measured heights there is no valid mapping; must not fall back to the last block"
+        )
+
+        // Once heights arrive the mapping works normally again.
+        controller.update(blockHeights: [0: 10, 1: 20, 2: 30])
+        controller.previewContentOffsetDidChange(10)
+        #expect(controller.targetSourceLine == 3)
+    }
+
+    // Regression: the "all heights zero" guard above only covers the
+    // all-or-nothing case. Blocks measure asynchronously and independently,
+    // so it is entirely normal for SOME to be measured while others (often
+    // whichever were rendered most recently — the very ones a user is likely
+    // to be scrolling toward) are not. The old resolver accumulated an
+    // unmeasured block's height as zero and kept walking, which silently
+    // folded that block's entire true span into whichever LATER, already-
+    // measured block it hit next — misattributing any offset that actually
+    // belonged to the unmeasured block.
+    //
+    // This produced two symptoms that looked unrelated but shared this one
+    // cause: scrolling the editor to line 1, whose block is still unmeasured
+    // on a freshly typed document, resolved the preview's confirming echo to
+    // some later already-measured block instead of block 0 — not recognized
+    // as an echo, so it re-targeted the editor there ("scroll to top snaps to
+    // the bottom"). And scrolling toward the very end — where the newest
+    // blocks are least likely to have measured yet — could resolve the echo
+    // to an earlier block than the true last one ("scroll wheel bounces back
+    // above the end").
+    @Test func unmeasuredBlockIsNotSkippedInFavorOfALaterMeasuredOne() {
+        let blocks = [
+            PreviewBlock(kind: .heading(level: 1), source: "# A", lineRange: 1 ... 1),
+            PreviewBlock(kind: .paragraph, source: "p1", lineRange: 3 ... 3), // unmeasured
+            PreviewBlock(kind: .paragraph, source: "p2", lineRange: 5 ... 5),
+        ]
+        let controller = ScrollSyncController(
+            map: ScrollSyncMap(blocks: blocks),
+            blockHeights: [0: 10, 2: 20] // block 1 has not measured yet
+        )
+
+        // Offset 15 is past block 0's known 10pt span. With block 1 unmeasured
+        // there is no way to know whether 15 still falls inside it or past
+        // it — but it is provably NOT inside block 2, which the old resolver
+        // (treating block 1 as zero-width) would have reported instead.
+        controller.previewContentOffsetDidChange(15)
+
+        #expect(
+            controller.targetSourceLine == 3,
+            "Offset just past block 0 must resolve to the unmeasured block 1, not skip ahead to block 2"
         )
     }
 }

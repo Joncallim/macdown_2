@@ -11,10 +11,3 @@ final class NoOpSessionStore: WorkspaceSessionStoring {
 
     func saveSession(_: WorkspaceSession) {}
 }
-
-/// A no-op state store so sidebar state is independent per window.
-@MainActor
-final class NoOpStateStore: WorkspaceStateStoring {
-    var sidebarVisible: Bool = true
-    var sidebarSectionExpanded: [String: Bool] = [:]
-}
