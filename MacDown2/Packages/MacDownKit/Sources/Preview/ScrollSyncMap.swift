@@ -37,15 +37,31 @@ public struct ScrollSyncMap: Sendable, Equatable {
     public func blockIndex(forLine line: Int) -> Int? {
         guard !entries.isEmpty else { return nil }
 
-        if let exact = entries.first(where: { $0.lineRange.contains(line) }) {
-            return exact.blockIndex
+        var low = 0
+        var high = entries.count
+        while low < high {
+            let middle = low + (high - low) / 2
+            if entries[middle].lineRange.upperBound < line {
+                low = middle + 1
+            } else {
+                high = middle
+            }
         }
 
-        // Between blocks: pick the nearest boundary.
-        let nearest = entries.min { lhs, rhs in
-            abs(lhs.lineRange.lowerBound - line) < abs(rhs.lineRange.lowerBound - line)
+        if low < entries.count, entries[low].lineRange.contains(line) {
+            return entries[low].blockIndex
         }
-        return nearest?.blockIndex
+
+        // In a gap, compare the previous block's end with the next block's
+        // start. Comparing lower bounds biases large asymmetric gaps toward a
+        // later block even when the line is visibly closer to the prior block.
+        guard low > 0 else { return entries.first?.blockIndex }
+        guard low < entries.count else { return entries.last?.blockIndex }
+        let previous = entries[low - 1]
+        let next = entries[low]
+        let distanceToPrevious = line - previous.lineRange.upperBound
+        let distanceToNext = next.lineRange.lowerBound - line
+        return (distanceToPrevious <= distanceToNext ? previous : next).blockIndex
     }
 
     /// Returns the source line at the start of the block at `index`, if any.

@@ -1,6 +1,7 @@
 import AppKit
 import EditorCore
 import FileCore
+import FileTree
 import Foundation
 import Highlighting
 import Observation
@@ -29,10 +30,13 @@ final class WindowCoordinator {
     // the type-body-length lint budget) and needs them.
     var controllers: [WindowController] = []
     let sessionStore: WorkspaceSessionStoring
-    private let panelProvider: NSFilePanelProvider
+    let panelProvider: NSFilePanelProvider
     private let recoveryBuffer: RecoveryBuffer
     let themeController: ThemeController
     let grammarRegistry: GrammarRegistry
+    let fileTreePreferences: FileTreePreferences
+    let recentFolderRoots: RecentFolderRoots
+    private let workspaceStateStore: any WorkspaceStateStoring
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
     private var restoreTask: Task<Void, Never>?
@@ -42,13 +46,19 @@ final class WindowCoordinator {
         panelProvider: NSFilePanelProvider = NSFilePanelProvider(),
         recoveryBuffer: RecoveryBuffer = .shared,
         themeController: ThemeController,
-        grammarRegistry: GrammarRegistry
+        grammarRegistry: GrammarRegistry,
+        fileTreePreferences: FileTreePreferences,
+        recentFolderRoots: RecentFolderRoots,
+        workspaceStateStore: any WorkspaceStateStoring = WorkspaceStateStore()
     ) {
         self.sessionStore = sessionStore
         self.panelProvider = panelProvider
         self.recoveryBuffer = recoveryBuffer
         self.themeController = themeController
         self.grammarRegistry = grammarRegistry
+        self.fileTreePreferences = fileTreePreferences
+        self.recentFolderRoots = recentFolderRoots
+        self.workspaceStateStore = workspaceStateStore
     }
 
     // MARK: - Window lifecycle
@@ -64,15 +74,28 @@ final class WindowCoordinator {
             model: model,
             coordinator: self,
             themeController: themeController,
-            grammarRegistry: grammarRegistry
+            grammarRegistry: grammarRegistry,
+            fileTreePreferences: fileTreePreferences
         )
         addController(controller, addingAsTab: addAsTab, keyWindow: keyWindow)
     }
 
     /// Opens a file in a new window, or activates the existing window if the
     /// same file is already open.
-    func openDocument(at url: URL) async {
+    func openDocument(
+        at url: URL,
+        folderRoot: URL? = nil,
+        folderAccessURL: URL? = nil,
+        folderSelectionURL: URL? = nil,
+        folderRenameURL: URL? = nil
+    ) async {
         if let existing = controllerForDocument(url: url), let window = existing.window {
+            if let folderRoot, existing.fileTreeModel.root == nil {
+                existing.model.setFolderRoot(folderRoot)
+                await existing.fileTreeModel.setRoot(folderRoot, accessURL: folderAccessURL)
+            }
+            existing.fileTreeModel.selectedURL = folderSelectionURL
+            existing.fileTreeModel.renamingURL = folderRenameURL
             window.tabGroup?.selectedWindow = window
             window.makeKeyAndOrderFront(nil)
             return
@@ -82,14 +105,21 @@ final class WindowCoordinator {
 
         let model = makeWindowModel()
         _ = await model.tabStore.openFileInTab(url)
+        model.setFolderRoot(folderRoot)
 
         guard !model.tabStore.tabs.isEmpty else { return }
         let controller = WindowController(
             model: model,
             coordinator: self,
             themeController: themeController,
-            grammarRegistry: grammarRegistry
+            grammarRegistry: grammarRegistry,
+            fileTreePreferences: fileTreePreferences
         )
+        if let folderRoot {
+            await controller.fileTreeModel.setRoot(folderRoot, accessURL: folderAccessURL)
+        }
+        controller.fileTreeModel.selectedURL = folderSelectionURL
+        controller.fileTreeModel.renamingURL = folderRenameURL
         addController(controller, addingAsTab: true, keyWindow: keyWindow)
     }
 
@@ -199,6 +229,12 @@ final class WindowCoordinator {
             let selectionLength = selectedRange?.length
             let scrollOffset = textSystem.map { Double($0.scrollOffset) }
 
+            let lexicalRoot = controller.model.folderURL
+            let physicalRoot = lexicalRoot?.resolvingSymlinksInPath().standardizedFileURL
+            let scope = physicalRoot.map(FolderAccessScope.init)
+            let bookmark = physicalRoot.flatMap { try? $0.bookmarkData(options: .withSecurityScope) }
+                ?? tab.folderRootBookmark
+            _ = scope
             return TabSnapshot(
                 record: TabRecord(
                     id: tab.id,
@@ -208,7 +244,9 @@ final class WindowCoordinator {
                     cursorPosition: cursorPosition,
                     selectionLength: selectionLength,
                     scrollOffset: scrollOffset,
-                    previewLayout: tab.previewLayout
+                    previewLayout: tab.previewLayout,
+                    folderRootBookmark: bookmark,
+                    folderRootAlias: lexicalRoot ?? tab.folderRootAlias
                 ),
                 documentID: tab.document.id,
                 documentText: tab.document.text,
@@ -309,18 +347,13 @@ final class WindowCoordinator {
     func makeWindowModel() -> WorkspaceModel {
         WorkspaceModel(
             tabStore: TabStore(sessionStore: NoOpSessionStore(), recoveryBuffer: recoveryBuffer),
-            stateStore: WorkspaceStateStore(),
+            stateStore: workspaceStateStore,
             panel: panelProvider
         )
     }
 
     private func controllerForDocument(url: URL) -> WindowController? {
-        let standardized = url.standardizedFileURL
-        return controllers.first { controller in
-            controller.model.tabStore.tabs.contains {
-                $0.document.fileURL?.standardizedFileURL == standardized
-            }
-        }
+        controllers.first { $0.model.tabStore.tabID(forFileURL: url) != nil }
     }
 
     func updateKeyModel() {

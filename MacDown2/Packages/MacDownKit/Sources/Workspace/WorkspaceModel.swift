@@ -81,6 +81,19 @@ public final class WorkspaceModel {
     /// The folder opened via ⌘⇧O, if any. The actual folder tree UI is E09.
     public private(set) var folderURL: URL?
 
+    /// Keeps the per-window folder association aligned with an in-app folder
+    /// rename without changing a lexical URL that is outside that subtree.
+    public func remapFolderRoot(from old: URL, to new: URL) {
+        guard let folderURL else { return }
+        let oldComponents = old.standardizedFileURL.pathComponents
+        let components = folderURL.standardizedFileURL.pathComponents
+        guard components.starts(with: oldComponents) else { return }
+        let suffix = components.dropFirst(oldComponents.count).joined(separator: "/")
+        self.folderURL = suffix.isEmpty
+            ? new.standardizedFileURL
+            : new.appendingPathComponent(suffix, isDirectory: true).standardizedFileURL
+    }
+
     /// The most recent error surfaced to the user. Views may present this.
     public private(set) var lastError: WorkspaceError?
 
@@ -176,7 +189,12 @@ public final class WorkspaceModel {
     /// Opens a folder chosen by the user.
     public func openFolder() async {
         guard let url = await panel.chooseFolder() else { return }
-        folderURL = url
+        setFolderRoot(url)
+    }
+
+    /// Sets this window's folder root without showing a panel.
+    public func setFolderRoot(_ url: URL?) {
+        folderURL = url?.standardizedFileURL
     }
 
     /// Saves the active document. Untitled documents prompt for a location.

@@ -1,5 +1,6 @@
 import AppKit
 import EditorCore
+import FileCore
 import Foundation
 import Workspace
 
@@ -36,7 +37,8 @@ extension WindowCoordinator {
             model: model,
             coordinator: self,
             themeController: themeController,
-            grammarRegistry: grammarRegistry
+            grammarRegistry: grammarRegistry,
+            fileTreePreferences: fileTreePreferences
         )
     }
 
@@ -52,6 +54,26 @@ extension WindowCoordinator {
         }
         if let previewLayout = tab.previewLayout {
             controller.model.tabStore.setPreviewLayout(previewLayout, for: tab.id)
+        }
+        if let bookmark = tab.folderRootBookmark {
+            var stale = false
+            if let root = try? URL(
+                resolvingBookmarkData: bookmark,
+                options: [.withSecurityScope],
+                relativeTo: nil,
+                bookmarkDataIsStale: &stale
+            ) {
+                let lexical = tab.folderRootAlias.flatMap {
+                    PhysicalFileIdentity.matches($0, root) ? $0 : nil
+                } ?? root
+                controller.model.setFolderRoot(lexical)
+                Task { await controller.fileTreeModel.setRoot(lexical, accessURL: root) }
+                if stale {
+                    // The next debounced session save rewrites the optional
+                    // bookmark without changing the session schema.
+                    scheduleSaveSession()
+                }
+            }
         }
     }
 

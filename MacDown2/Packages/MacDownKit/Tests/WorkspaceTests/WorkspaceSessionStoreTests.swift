@@ -95,4 +95,31 @@ struct WorkspaceSessionStoreTests {
 
         #expect(store.loadSession() == nil)
     }
+
+    @Test func legacySessionWithoutFolderRootFieldsStillDecodesAtVersionOne() throws {
+        let id = UUID()
+        let data = Data(
+            """
+            {
+              "version": 1,
+              "tabs": [{
+                "id": "\(id.uuidString)",
+                "fileURL": "file:///tmp/notes.md",
+                "untitledDocumentID": null,
+                "isPinned": false,
+                "cursorPosition": null,
+                "selectionLength": null,
+                "scrollOffset": null,
+                "previewLayout": null
+              }],
+              "activeTabID": "\(id.uuidString)"
+            }
+            """.utf8
+        )
+
+        let decoded = try JSONDecoder().decode(WorkspaceSession.self, from: data)
+        #expect(decoded.version == WorkspaceSession.currentVersion)
+        #expect(decoded.tabs.first?.folderRootBookmark == nil)
+        #expect(decoded.tabs.first?.folderRootAlias == nil)
+    }
 }

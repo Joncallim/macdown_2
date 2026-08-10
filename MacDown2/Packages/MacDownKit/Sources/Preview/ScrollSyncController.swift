@@ -18,6 +18,19 @@ public final class ScrollSyncController {
     public private(set) var map: ScrollSyncMap
     public private(set) var blockHeights: [Int: Double]
 
+    // Geometry callbacks can arrive for every preview block in a layout pass.
+    // Keep the derived height index here, rebuilding it only when either input
+    // changes, instead of re-walking every block for each scroll callback.
+    // Zero-height entries still use the conservative linear resolver below:
+    // before every block has measured, their true position is unknowable.
+    @ObservationIgnored var prefixEndHeights: [Double] = []
+    @ObservationIgnored var offsetsByBlockIndex: [Int: Double] = [:]
+    @ObservationIgnored var entriesByBlockIndex: [Int: ScrollSyncMap.Entry] = [:]
+    @ObservationIgnored var orderedLineStarts: [Int] = []
+    @ObservationIgnored var cachedTotalHeight: Double = 0
+    @ObservationIgnored var allBlockHeightsMeasured = true
+    @ObservationIgnored var hasOrderedNonOverlappingLineRanges = true
+
     /// The preview scroll fraction the editor wants the preview to adopt.
     /// Consumers should clear this after acting on it.
     public var targetPreviewFraction: Double?
@@ -100,6 +113,7 @@ public final class ScrollSyncController {
         self.map = map
         self.blockHeights = blockHeights
         self.now = now
+        rebuildHeightIndex()
     }
 
     /// Call when the editor's visible top line changes. Publishes
@@ -107,7 +121,7 @@ public final class ScrollSyncController {
     /// merely confirms a preview-driven scroll already in flight.
     public func editorDidScroll(toLine line: Int) {
         guard !isJumping else { return }
-        guard let blockIndex = map.blockIndex(forLine: line) else { return }
+        guard let blockIndex = blockIndex(forLine: line) else { return }
 
         // Sticky-plus-recent-history: see `isSuppressedEcho` for why an exact
         // match against the latch alone is not enough.
@@ -138,7 +152,7 @@ public final class ScrollSyncController {
         // `scrollTo(_:anchor:.top)` produces) cannot be nudged onto the wrong
         // side of that boundary by floating-point round-trip error.
         guard let blockIndex = blockIndex(forContentOffset: offset),
-              let line = map.line(forBlockIndex: blockIndex)
+              let line = line(forBlockIndex: blockIndex)
         else {
             return
         }
@@ -172,6 +186,7 @@ public final class ScrollSyncController {
     public func update(map: ScrollSyncMap) {
         guard self.map != map else { return }
         self.map = map
+        rebuildHeightIndex()
 
         // A block index recorded against the old map may not identify the
         // same block (or any block) in the new one — e.g. a debounced
@@ -188,6 +203,7 @@ public final class ScrollSyncController {
     public func update(blockHeights: [Int: Double]) {
         guard self.blockHeights != blockHeights else { return }
         self.blockHeights = blockHeights
+        rebuildHeightIndex()
     }
 
     /// Returns the preview scroll fraction (0...1) for the given editor line.
@@ -207,6 +223,10 @@ public final class ScrollSyncController {
         guard total > 0, !map.entries.isEmpty else { return nil }
 
         let target = fraction * total
+        if allBlockHeightsMeasured, let position = firstPrefixEnd(atOrAfter: target) {
+            return line(in: map.entries[position], at: target)
+        }
+
         var accumulated: Double = 0
         for entry in map.entries {
             let height = height(for: entry.blockIndex)
@@ -317,6 +337,13 @@ public final class ScrollSyncController {
         // is genuinely no mapping available yet; say so instead of guessing.
         guard totalHeight > 0 else { return nil }
 
+        // Once every entry is measured, prefix ends are strictly increasing
+        // and a binary search exactly preserves the old `offset < next`
+        // boundary rule (the later block owns a shared edge).
+        if allBlockHeightsMeasured, let position = firstPrefixEnd(after: offset) {
+            return map.entries[position].blockIndex
+        }
+
         var accumulated: Double = 0
         for entry in map.entries {
             let entryHeight = height(for: entry.blockIndex)
@@ -358,31 +385,6 @@ public final class ScrollSyncController {
             accumulated = next
         }
         return map.entries.last?.blockIndex
-    }
-
-    /// Not `private`: also read by ``blockIndexAndLocalProgress(forFraction:)``
-    /// in another file of this same module.
-    var totalHeight: Double {
-        map.entries.reduce(0) { $0 + height(for: $1.blockIndex) }
-    }
-
-    /// Not `private`: also called by ``blockIndexAndLocalProgress(forFraction:)``
-    /// in another file of this same module.
-    func offsetUpTo(blockIndex: Int) -> Double {
-        var offset: Double = 0
-        for entry in map.entries {
-            if entry.blockIndex == blockIndex {
-                return offset
-            }
-            offset += height(for: entry.blockIndex)
-        }
-        return offset
-    }
-
-    /// Not `private`: also called by ``blockIndexAndLocalProgress(forFraction:)``
-    /// in another file of this same module.
-    func height(for blockIndex: Int) -> Double {
-        blockHeights[blockIndex, default: 0]
     }
 
     /// Not `private`: also called by ``blockTarget(forLine:)`` in another

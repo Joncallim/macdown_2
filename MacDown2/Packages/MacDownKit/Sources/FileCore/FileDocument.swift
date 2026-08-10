@@ -39,7 +39,7 @@ public enum ConflictResolution: Sendable, Equatable {
 public struct FileDocument: Sendable {
     /// A stable identifier. For saved files this is the file URL's absolute
     /// string; for untitled documents it is a generated UUID.
-    public let id: String
+    public private(set) var id: String
 
     /// The URL of the file on disk, or `nil` for untitled documents.
     public var fileURL: URL?
@@ -48,7 +48,7 @@ public struct FileDocument: Sendable {
     public var text: String
 
     /// The format associated with this document.
-    public let format: FileFormat
+    public private(set) var format: FileFormat
 
     /// The current lifecycle state.
     public var state: FileDocumentState
@@ -172,6 +172,18 @@ public struct FileDocument: Sendable {
         copy.fileURL = url
         copy.lastKnownModificationDate = modificationDate(of: url)
         copy.state = .clean
+        return copy
+    }
+
+    /// Re-points a file-backed document after an in-app move or rename.
+    /// This intentionally performs no IO; the caller has already completed it.
+    public func renamed(to url: URL) -> FileDocument {
+        var copy = self
+        copy.fileURL = url
+        copy.id = url.absoluteString
+        copy.format = FileFormat.format(for: url, in: FileFormatRegistry())
+            ?? FileFormatRegistry.defaultFormats.first { $0.id == "plaintext" }
+            ?? FileFormat(id: "plaintext", name: "Plain Text", utType: .plainText, extensions: ["txt"])
         return copy
     }
 

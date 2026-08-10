@@ -82,6 +82,24 @@ struct ScrollSyncControllerTests {
         #expect(controller.targetSourceLine == 3)
     }
 
+    @Test func measuredHeightIndexKeepsExactBlockBoundarySemantics() {
+        let blocks = (0 ..< 1024).map { index in
+            PreviewBlock(
+                kind: .paragraph,
+                source: "block \(index)",
+                lineRange: index * 2 + 1 ... index * 2 + 2
+            )
+        }
+        let heights = Dictionary(uniqueKeysWithValues: (0 ..< blocks.count).map { ($0, 10.0) })
+        let controller = ScrollSyncController(map: ScrollSyncMap(blocks: blocks), blockHeights: heights)
+
+        // A content offset at the common edge is owned by the later block.
+        controller.previewContentOffsetDidChange(5120)
+        #expect(controller.targetSourceLine == 1025)
+        // Fraction-to-line retains its intentional opposite boundary rule.
+        #expect(controller.line(forPreviewFraction: 0.5) == 1024)
+    }
+
     // Regression: block heights are measured asynchronously by the preview, so
     // they are all zero before its first layout pass and again briefly after a
     // re-parse swaps the block list. With every height at zero the resolver's

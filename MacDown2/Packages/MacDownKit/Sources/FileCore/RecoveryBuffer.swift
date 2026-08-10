@@ -48,6 +48,17 @@ public actor RecoveryBuffer {
         try? FileManager.default.removeItem(at: recoveryDirectory)
     }
 
+    /// Moves a recovery snapshot when an in-app rename changes a saved
+    /// document's identity. The destination is written before the old key is
+    /// removed so a write failure leaves the recoverable original intact.
+    public func migrate(from oldID: String, to newID: String) {
+        guard oldID != newID, let content = try? load(for: oldID) else { return }
+        do {
+            try save(content: content, for: newID)
+            remove(for: oldID)
+        } catch {}
+    }
+
     private func fileURL(for documentID: String) -> URL {
         // Only UUID-based IDs reach this path today (recovery is for untitled
         // documents), but sanitize defensively so any future identifier is a

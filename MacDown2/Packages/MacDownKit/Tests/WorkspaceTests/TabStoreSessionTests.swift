@@ -70,6 +70,25 @@ struct TabStoreSessionTests {
         #expect(restored.tabs.first?.id == untitledID)
     }
 
+    @Test func restoreKeepsMissingDirtyFileWhenRecoveryExists() async {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let fileURL = directory.appendingPathComponent("gone.md")
+        let sessionStore = WorkspaceSessionStore(fileURL: directory.appendingPathComponent("session.json"))
+        let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let record = TabRecord(id: UUID(), fileURL: fileURL)
+        sessionStore.saveSession(WorkspaceSession(tabs: [record], activeTabID: record.id))
+        try? await recoveryBuffer.save(content: "keep me", for: fileURL.absoluteString)
+
+        let restored = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
+        await restored.restoreSessionIfNeeded()
+
+        #expect(restored.tabs.count == 1)
+        #expect(restored.tabs[0].document.text == "keep me")
+        #expect(restored.tabs[0].document.state == .dirty)
+        #expect(restored.tabs[0].document.fileURL == fileURL)
+    }
+
     @Test func restoreDropsUntitledWithoutRecovery() async {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }

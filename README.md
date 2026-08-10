@@ -6,10 +6,11 @@ TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 > **Status:** early development. Foundations, file/format core, workspace shell,
 > native window tabs, the TextKit 2 editor, tree-sitter highlighting, the theme
 > system, a native Markdown parser, a block-sliced native preview, and the
-> content browser — a heading outline of the active document in the sidebar,
-> with reorderable/persisted sidebar sections (EPIC-00 → EPIC-08) — are in
-> place. Performance numbers are package-level, not yet full-app-path
-> measurements.
+> content browser — heading outline plus the Epic 9 lazy folder browser with
+> watching, filters, drag/drop, and recoverable CRUD — are in place. Epic 9 has
+> package, app-build, formatter, and strict-lint validation in the working tree;
+> hosted CI remains a separate release gate. The 10k folder check is a
+> package-level Release benchmark, not a full-app-path measurement.
 
 ## Requirements
 
@@ -34,7 +35,7 @@ MacDown2/
 │       ├── MarkdownEngine    # Native swift-markdown parser + parse session store
 │       ├── Preview           # Block-sliced native Textual preview + scroll sync
 │       ├── OutlineUI         # Heading outline: tree, selection, identity remap, controller
-│       ├── FileTree / AppSettings / ExportService   # stubs for E09/E13/E12
+│       ├── FileTree / AppSettings / ExportService   # E09 / E13 / E12 modules
 │       └── …
 ├── Packages/TreeSitterMarkdown  # Vendored markdown + markdown-inline grammars
 └── project.yml               # XcodeGen project definition

@@ -1,6 +1,7 @@
 import AppKit
 import EditorCore
 import FileCore
+import FileTree
 import Foundation
 import Highlighting
 import MarkdownEngine
@@ -19,17 +20,20 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let parseStore: MarkdownParseStore
     let themeController: ThemeController
     let outlineController: OutlineController
+    let fileTreeModel: FileTreeModel
     private weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
+    private var lastObservedURL: URL?
     private var lastObservedLanguageID: String?
 
     init(
         model: WorkspaceModel,
         coordinator: WindowCoordinator,
         themeController: ThemeController,
-        grammarRegistry: GrammarRegistry
+        grammarRegistry: GrammarRegistry,
+        fileTreePreferences: FileTreePreferences
     ) {
         self.model = model
         self.coordinator = coordinator
@@ -43,6 +47,10 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // opts into the tighter production budget.
         parseStore = MarkdownParseStore(debounce: .milliseconds(100))
         outlineController = OutlineController()
+        fileTreeModel = FileTreeModel(
+            preferences: fileTreePreferences,
+            supportedExtensions: Set(FileFormatRegistry.defaultFormats.flatMap(\.extensions))
+        )
 
         // Eagerly create the text system and parse session for the active tab
         // so session-save can read cursor/scroll state and the preview can
@@ -57,14 +65,17 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             _ = parseStore.session(for: identity)
         }
 
-        let hostingController = NSHostingController(rootView: WorkspaceShellView(
+        let shell = WorkspaceShellView(
             model: model,
             editorStore: editorStore,
             highlightStore: highlightStore,
             parseStore: parseStore,
             themeController: themeController,
-            outlineController: outlineController
-        ))
+            outlineController: outlineController,
+            fileTreeModel: fileTreeModel
+        )
+        .environment(\.windowCoordinator, coordinator)
+        let hostingController = NSHostingController(rootView: shell)
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
         window.setFrameAutosaveName("MacDown2DocumentWindow")
@@ -75,6 +86,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
         super.init(window: window)
         window.delegate = self
+        fileTreeModel.startObservingPreferences()
         updateTitleAndEditedState()
         startObservingActiveDocument()
     }
@@ -91,12 +103,13 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private func startObservingActiveDocument() {
         // Polling is used instead of `withObservationTracking` because the
         // observation closure in the previous implementation leaked the task.
-        // The 250 ms period is a pragmatic trade-off: title/dirty changes may
-        // take up to one tick to reflect, but session saves are coalesced.
+        // Keep the active native tab responsive, but do not wake every hidden
+        // tab four times a second solely to re-check its title.
         observationTask = Task { @MainActor [weak self] in
             while !Task.isCancelled, let self {
                 updateTitleAndEditedState()
-                try? await Task.sleep(for: .milliseconds(250))
+                let interval: Duration = window?.isKeyWindow == true ? .milliseconds(250) : .seconds(1)
+                try? await Task.sleep(for: interval)
             }
         }
     }
@@ -106,15 +119,16 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
         let isDirty = document?.state == .dirty || document?.state == .conflict
         let title = isDirty ? "● \(baseTitle)" : baseTitle
+        let url = document?.fileURL
 
-        window?.title = title
-        window?.representedURL = document?.fileURL
-        window?.isDocumentEdited = isDirty
-
-        let changed = title != lastObservedTitle || isDirty != lastObservedDirty
+        let changed = title != lastObservedTitle || isDirty != lastObservedDirty || url != lastObservedURL
         lastObservedTitle = title
         lastObservedDirty = isDirty
+        lastObservedURL = url
         if changed {
+            window?.title = title
+            window?.representedURL = url
+            window?.isDocumentEdited = isDirty
             coordinator?.scheduleSaveSession()
         }
 
@@ -144,6 +158,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         editorStore.evictAll()
         highlightStore.evictAll()
         parseStore.evictAll()
+        fileTreeModel.dispose()
     }
 
     func windowDidBecomeKey(_: Notification) {
@@ -152,6 +167,10 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // document windows because the coordinator is their delegate.
         coordinator?.updateKeyModel()
         coordinator?.scheduleSaveSession()
+        // The inactive polling cadence is intentionally low; refresh once
+        // synchronously when a native tab becomes visible again.
+        updateTitleAndEditedState()
+        Task { await fileTreeModel.rescanExpandedDirectories() }
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

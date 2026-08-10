@@ -1,15 +1,21 @@
+import AppKit
+import CoreTransferable
+import FileTree
 import OutlineUI
 import SwiftUI
+import UniformTypeIdentifiers
 import Workspace
 
 struct SidebarView: View {
     @Bindable var model: WorkspaceModel
     @Bindable var outlineController: OutlineController
+    @Bindable var fileTreeModel: FileTreeModel
+    @Environment(\.windowCoordinator) var coordinator
 
     @FocusState private var outlineFocused: Bool
 
     var body: some View {
-        List(selection: $outlineController.selectedItemID) {
+        List(selection: sidebarSelection) {
             ForEach(model.sectionOrder) { section in
                 Section {
                     DisclosureGroup(
@@ -32,10 +38,48 @@ struct SidebarView: View {
             outlineFocused = true
         }
         .onKeyPress(.return) {
-            guard let selectedItemID = outlineController.selectedItemID else { return .ignored }
-            outlineController.activate(selectedItemID)
+            if let url = fileTreeModel.selectedURL {
+                activateFileTreeURL(url)
+            } else if let selectedItemID = outlineController.selectedItemID {
+                outlineController.activate(selectedItemID)
+            } else {
+                return .ignored
+            }
             return .handled
         }
+        .alert(
+            "Folder Operation Failed",
+            isPresented: Binding(
+                get: { fileTreeModel.lastOperationError != nil },
+                set: {
+                    if !$0 {
+                        fileTreeModel.clearOperationError()
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) { fileTreeModel.clearOperationError() }
+        } message: {
+            Text(fileTreeModel.lastOperationError?.localizedDescription ?? "Unknown error")
+        }
+    }
+
+    private var sidebarSelection: Binding<SidebarSelection?> {
+        Binding(
+            get: {
+                if let url = fileTreeModel.selectedURL {
+                    return .file(url)
+                }
+                return outlineController.selectedItemID.map(SidebarSelection.outline)
+            },
+            set: { selection in
+                switch selection {
+                case let .file(url): fileTreeModel.selectedURL = url; outlineController.selectedItemID = nil
+                case let .outline(id): outlineController.selectedItemID = id; fileTreeModel.selectedURL = nil
+                case nil: fileTreeModel.selectedURL = nil; outlineController.selectedItemID = nil
+                }
+            }
+        )
     }
 
     /// Section header with explicit reorder controls (acceptance box 4:
@@ -77,6 +121,7 @@ struct SidebarView: View {
                 .accessibilityIdentifier("moveSection-\(section.rawValue)")
             }
         }
+        .accessibilityIdentifier(section == .folder ? "folderSection" : "outlineSection")
     }
 
     /// Mirrors the `ForEach.onMove` offset convention `Workspace.reorder`
@@ -101,17 +146,6 @@ struct SidebarView: View {
     }
 
     @ViewBuilder
-    private var folderContent: some View {
-        if let folderURL = model.folderURL {
-            Text(folderURL.lastPathComponent)
-                .lineLimit(1)
-        } else {
-            Text("No folder opened")
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
     private var outlineContent: some View {
         switch outlineController.availability {
         case .notParsed:
@@ -131,92 +165,24 @@ struct SidebarView: View {
             )
             ForEach(rows) { row in
                 OutlineRowView(item: row.item, depth: row.depth, outlineController: outlineController)
-                    .tag(row.item.id)
+                    .tag(SidebarSelection.outline(row.item.id))
                     .accessibilityIdentifier("outlineRow-\(row.item.id)")
             }
         }
     }
-}
 
-/// One outline row: a disclosure chevron (only for nodes with children),
-/// title text, and current-section tint (D6 — a distinct visual channel from
-/// `List` selection, never bound to it).
-private struct OutlineRowView: View {
-    let item: OutlineItem
-    let depth: Int
-    @Bindable var outlineController: OutlineController
-
-    var body: some View {
-        HStack(spacing: 4) {
-            if item.children.isEmpty {
-                Color.clear.frame(width: 12, height: 12)
-            } else {
-                Button(action: toggleCollapsed) {
-                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                        .frame(width: 12, height: 12)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Text(item.title.isEmpty ? "Untitled section" : item.title)
-                .fontWeight(isCurrent ? .semibold : .regular)
-                .foregroundStyle(item.title
-                    .isEmpty ? AnyShapeStyle(.tertiary) :
-                    (isCurrent ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary)))
-                .lineLimit(1)
-        }
-        .padding(.leading, CGFloat(depth) * 14)
-        // Without this, the HStack sizes to its content (chevron + text), so
-        // `.contentShape(Rectangle())` below only covers that narrow strip —
-        // clicking the rest of the row's visually-highlighted width (past a
-        // short title) did nothing. `maxWidth: .infinity` stretches the shape
-        // to the full row before contentShape is applied to it.
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        // `.simultaneousGesture`, not `.onTapGesture`/`.gesture`: a `List`
-        // row already carries its own click-to-select gesture, and a
-        // plain (exclusive) gesture here can lose that arbitration —
-        // observed as some clicks doing nothing at all, intermittently,
-        // with no pattern visible from the outside. Declaring this one
-        // simultaneous means it always fires alongside whatever the List
-        // does internally, instead of competing with it for the same click.
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                outlineController.activate(item.id)
-            }
-        )
-    }
-
-    private var isCollapsed: Bool {
-        outlineController.collapsedItemIDs.contains(item.id)
-    }
-
-    private var isCurrent: Bool {
-        outlineController.currentItemID == item.id
-    }
-
-    private func toggleCollapsed() {
-        if isCollapsed {
-            outlineController.collapsedItemIDs.remove(item.id)
+    func activateFileTreeURL(_ url: URL) {
+        guard let row = fileTreeModel.rows.first(where: { $0.id == url }) else { return }
+        if row.entry.isDirectory, !row.entry.isPackage {
+            Task { await fileTreeModel.toggleExpansion(url) }
         } else {
-            outlineController.collapsedItemIDs.insert(item.id)
-        }
-    }
-}
-
-private extension SidebarSection {
-    var title: String {
-        switch self {
-        case .folder: "Folder"
-        case .outline: "Outline"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .folder: "folder"
-        case .outline: "list.bullet"
+            Task {
+                await coordinator?.openDocument(
+                    at: url,
+                    folderRoot: fileTreeModel.root,
+                    folderAccessURL: fileTreeModel.rootAccessURL
+                )
+            }
         }
     }
 }
