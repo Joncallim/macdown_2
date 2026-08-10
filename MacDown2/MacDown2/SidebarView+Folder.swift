@@ -42,13 +42,20 @@ extension SidebarView {
             }
         case .ready:
             ForEach(fileTreeModel.rows) { row in
-                FileTreeRowView(row: row, model: fileTreeModel, activate: activateFileTreeURL, didRename: { old, new in
-                    coordinator?.documentWasRenamed(from: old, to: new)
-                }, didMove: { old, new in
-                    coordinator?.documentWasRenamed(from: old, to: new)
-                }, didDelete: { url in coordinator?.documentFileWasDeleted(at: url) }, didCreate: createdItem)
-                    .tag(SidebarSelection.file(row.id))
-                    .accessibilityIdentifier("fileRow-\(row.entry.name)")
+                FileTreeRowView(
+                    row: row,
+                    model: fileTreeModel,
+                    isRenaming: fileTreeModel.renamingURL == row.entry.url,
+                    opensOnSingleClick: fileTreeModel.preferences.opensOnSingleClick,
+                    activate: activateFileTreeURL,
+                    didRename: { old, new in
+                        coordinator?.documentWasRenamed(from: old, to: new)
+                    }, didMove: { old, new in
+                        coordinator?.documentWasRenamed(from: old, to: new)
+                    }, didDelete: { url in coordinator?.documentFileWasDeleted(at: url) }, didCreate: createdItem
+                )
+                .tag(SidebarSelection.file(row.id))
+                .accessibilityIdentifier("fileRow-\(row.entry.name)")
             }
         }
     }

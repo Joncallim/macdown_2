@@ -231,6 +231,10 @@ struct DocumentEditorSplitView: View {
 private struct HTMLPreviewView: NSViewRepresentable {
     @Binding var text: String
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context _: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         // Disable content JavaScript for every navigation. `preferences.javaScriptEnabled`
@@ -241,10 +245,55 @@ private struct HTMLPreviewView: NSViewRepresentable {
         return WKWebView(frame: .zero, configuration: configuration)
     }
 
-    func updateNSView(_ webView: WKWebView, context _: Context) {
-        // Inject a restrictive CSP so a previewed file cannot load remote
-        // resources (defence-in-depth on top of the disabled JavaScript above).
-        webView.loadHTMLString(PreviewSecurity.hardenedHTMLDocument(from: text), baseURL: nil)
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.scheduleReload(of: text, in: webView)
+    }
+
+    static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.cancelPendingReload()
+        webView.stopLoading()
+    }
+
+    @MainActor
+    final class Coordinator {
+        private static let reloadDelay: Duration = .milliseconds(150)
+
+        private var pendingSource: String?
+        private var loadedSource: String?
+        private var reloadTask: Task<Void, Never>?
+
+        func scheduleReload(of source: String, in webView: WKWebView) {
+            // SwiftUI updates this representable for unrelated view changes
+            // (split resizing, selection, theme propagation, etc.). Avoid both
+            // rebuilding the hardened document and restarting WebKit unless
+            // the source actually changed.
+            guard source != loadedSource, source != pendingSource else { return }
+
+            reloadTask?.cancel()
+            pendingSource = source
+            reloadTask = Task { @MainActor [weak self, weak webView] in
+                do {
+                    try await Task.sleep(for: Self.reloadDelay)
+                } catch is CancellationError {
+                    return
+                } catch {
+                    return
+                }
+
+                guard let self, let webView, pendingSource == source else { return }
+                pendingSource = nil
+                loadedSource = source
+                // Inject a restrictive CSP so a previewed file cannot load
+                // remote resources (defence-in-depth on top of disabled JS).
+                webView.loadHTMLString(PreviewSecurity.hardenedHTMLDocument(from: source), baseURL: nil)
+            }
+        }
+
+        func cancelPendingReload() {
+            reloadTask?.cancel()
+            reloadTask = nil
+            pendingSource = nil
+        }
     }
 }
 

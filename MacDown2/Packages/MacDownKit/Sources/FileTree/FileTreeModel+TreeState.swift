@@ -2,18 +2,6 @@ import Foundation
 
 @MainActor
 extension FileTreeModel {
-    func rootAvailability(entries: [DirectoryEntry]) -> FolderAvailability {
-        let visible = FileTreeArrangement.arrange(
-            entries,
-            filter: preferences.filter,
-            supportedExtensions: supportedExtensions
-        )
-        if entries.isEmpty {
-            return .empty
-        }
-        return visible.isEmpty ? .emptyAfterFilter : .ready
-    }
-
     func rebuildRows() {
         guard let root, case let .loaded(rootEntries)? = children[root] else { return }
         let arranged = FileTreeArrangement.arrange(
@@ -21,10 +9,18 @@ extension FileTreeModel {
             filter: preferences.filter,
             supportedExtensions: supportedExtensions
         )
+        // The root is the common 10k-entry case. Reuse the previous row
+        // capacity where possible and avoid the otherwise repeated growth
+        // allocations while flattening.
         var output: [FileTreeRow] = []
+        output.reserveCapacity(max(rows.count, rootEntries.count))
         append(arranged, depth: 0, into: &output)
         rows = output
-        availability = rootAvailability(entries: rootEntries)
+        availability = if rootEntries.isEmpty {
+            .empty
+        } else {
+            arranged.isEmpty ? .emptyAfterFilter : .ready
+        }
     }
 
     private func append(_ entries: [DirectoryEntry], depth: Int, into output: inout [FileTreeRow]) {

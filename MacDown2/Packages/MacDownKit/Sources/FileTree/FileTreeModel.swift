@@ -216,7 +216,7 @@ public final class FileTreeModel {
         }
     }
 
-    private func applyReload(_ listed: [DirectoryEntry], at url: URL, isRoot: Bool) {
+    private func applyReload(_ listed: [DirectoryEntry], at url: URL, isRoot _: Bool) {
         let wasLoaded = children[url].map(isLoaded) ?? false
         let prior = loadedEntries(at: url)
         let diff = FileTreeDiff.diff(old: prior, new: listed)
@@ -227,9 +227,6 @@ public final class FileTreeModel {
             evictSubtree(changed.url)
         }
         children[url] = .loaded(listed)
-        if isRoot {
-            availability = rootAvailability(entries: listed)
-        }
         if !diff.isEmpty || !wasLoaded {
             rebuildRows()
             reconcileRowState()

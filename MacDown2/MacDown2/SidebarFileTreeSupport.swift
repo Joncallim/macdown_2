@@ -8,7 +8,9 @@ import Workspace
 
 struct FileTreeRowView: View {
     let row: FileTreeRow
-    @Bindable var model: FileTreeModel
+    let model: FileTreeModel
+    let isRenaming: Bool
+    let opensOnSingleClick: Bool
     let activate: (URL) -> Void
     let didRename: (URL, URL) -> Void
     let didMove: (URL, URL) -> Void
@@ -32,7 +34,7 @@ struct FileTreeRowView: View {
                 : "doc.text")
                 .foregroundStyle(row.entry.isDirectory ? .secondary : .primary)
                 .frame(width: 16, height: 16)
-            if model.renamingURL == row.entry.url {
+            if isRenaming {
                 TextField("Name", text: $newName, onCommit: commitRename)
                     .focused($renameFocused)
                     .accessibilityIdentifier("fileTreeRenameField")
@@ -64,7 +66,7 @@ struct FileTreeRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .simultaneousGesture(
-            TapGesture(count: model.preferences.opensOnSingleClick ? 1 : 2).onEnded {
+            TapGesture(count: opensOnSingleClick ? 1 : 2).onEnded {
                 if !row.entry.isDirectory || row.entry.isPackage {
                     activate(row.entry.url)
                 }

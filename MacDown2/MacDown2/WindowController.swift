@@ -25,6 +25,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
+    private var lastObservedURL: URL?
     private var lastObservedLanguageID: String?
 
     init(
@@ -117,15 +118,16 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
         let isDirty = document?.state == .dirty || document?.state == .conflict
         let title = isDirty ? "● \(baseTitle)" : baseTitle
+        let url = document?.fileURL
 
-        window?.title = title
-        window?.representedURL = document?.fileURL
-        window?.isDocumentEdited = isDirty
-
-        let changed = title != lastObservedTitle || isDirty != lastObservedDirty
+        let changed = title != lastObservedTitle || isDirty != lastObservedDirty || url != lastObservedURL
         lastObservedTitle = title
         lastObservedDirty = isDirty
+        lastObservedURL = url
         if changed {
+            window?.title = title
+            window?.representedURL = url
+            window?.isDocumentEdited = isDirty
             coordinator?.scheduleSaveSession()
         }
 

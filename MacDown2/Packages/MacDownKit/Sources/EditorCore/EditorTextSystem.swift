@@ -40,6 +40,7 @@ public final class EditorTextSystem {
     private var lastAppliedOverscroll: OverscrollState?
     private var lastFrameSyncSignature: FrameSyncSignature?
     private var measuredContentHeight: CGFloat = 0
+    private var frameSyncTask: Task<Void, Never>?
     /// Set by `scrollOffset`'s setter before the scroll view exists yet
     /// (session restore); applied by `applyPendingScrollOffset()` once it does.
     var pendingScrollOffset: CGFloat?
@@ -272,8 +273,15 @@ public final class EditorTextSystem {
     /// caret on its own; all it ever needed from us was a frame tall enough
     /// to have somewhere to scroll to.
     func scheduleFrameHeightSync() {
-        Task { @MainActor [weak self] in
-            self?.syncFrameHeightToContent()
+        frameSyncTask?.cancel()
+        frameSyncTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .milliseconds(50))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self else { return }
+            syncFrameHeightToContent()
         }
     }
 
@@ -284,6 +292,8 @@ public final class EditorTextSystem {
     /// Call this before evicting the system from the cache. It severs the
     /// text-view delegate and breaks the layout graph held by the stack.
     func prepareForDeallocation() {
+        frameSyncTask?.cancel()
+        frameSyncTask = nil
         textView.delegate = nil
         stack.layoutManager.textContainer = nil
     }

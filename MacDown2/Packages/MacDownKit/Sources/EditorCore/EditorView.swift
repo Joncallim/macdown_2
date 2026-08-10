@@ -124,10 +124,12 @@ public struct EditorView: NSViewRepresentable {
         // Only push model text into the view when it differs from the view's
         // current text *and* the change did not originate from the view itself.
         // This prevents the keystroke-echo feedback loop.
+        var pushedModelText = false
         if !context.coordinator.isApplyingModelText, system.text != text {
             context.coordinator.isApplyingModelText = true
             system.setText(text)
             context.coordinator.isApplyingModelText = false
+            pushedModelText = true
 
             // A vertically-resizable NSTextView only grows its document-view
             // height when it is told to size to its content. Only call when
@@ -136,10 +138,13 @@ public struct EditorView: NSViewRepresentable {
             system.textView.sizeToFit()
         }
 
-        // Corrects the document-view height once AppKit has actually laid the
-        // scroll view out (its width/height are unreliable at `makeNSView`
-        // time). Cheap after the first real call — see the doc comment.
-        system.syncFrameHeightToContent()
+        // Model pushes need a deferred measurement after TextKit has applied
+        // the new text. Ordinary keystrokes already schedule a coalesced sync
+        // from the text-view delegate; measuring here as well duplicated the
+        // full-document layout pass on every binding update.
+        if pushedModelText {
+            system.scheduleFrameHeightSync()
+        }
 
         scrollView.hasHorizontalScroller = !configuration.wrapsLines
         scrollView.autohidesScrollers = configuration.wrapsLines
