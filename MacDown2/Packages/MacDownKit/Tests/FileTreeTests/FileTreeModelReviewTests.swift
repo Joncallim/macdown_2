@@ -93,6 +93,26 @@ import Testing
     #expect(second.rows.map(\.entry.name) == ["keep.md"])
 }
 
+@MainActor
+@Test func lexicalRootRetainsAccessScopeForResolvedBookmarkTarget() async throws {
+    let container = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: container) }
+    let target = container.appendingPathComponent("target", isDirectory: true)
+    let alias = container.appendingPathComponent("alias", isDirectory: true)
+    try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+    try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: target)
+    let model = FileTreeModel(
+        watcher: TestWatching(),
+        preferences: FileTreePreferences(store: MemoryPreferenceStore()),
+        supportedExtensions: ["md"]
+    )
+
+    await model.setRoot(alias, accessURL: target)
+
+    #expect(model.root == alias.standardizedFileURL)
+    #expect(model.rootAccessScope?.url == target.standardizedFileURL)
+}
+
 @Test func directoryEntriesKeepDirectoryIdentityWhileDiffUsesPhysicalPath() {
     let path = URL(fileURLWithPath: "/tmp/item")
     let fileEntry = DirectoryEntry(

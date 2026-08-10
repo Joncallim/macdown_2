@@ -27,3 +27,10 @@ import Testing
         PhysicalFileIdentity(url: upper, volumeSupportsCaseSensitiveNames: nil)
     ))
 }
+
+@Test func physicalIdentityRequiresMatchingVolumeAndFileIdentifier() {
+    let first = PhysicalFileIdentity.FileObjectID(volume: "volume-a", file: "42")
+    let sameFileOnAnotherVolume = PhysicalFileIdentity.FileObjectID(volume: "volume-b", file: "42")
+
+    #expect(!PhysicalFileIdentity.matches(first, sameFileOnAnotherVolume))
+}

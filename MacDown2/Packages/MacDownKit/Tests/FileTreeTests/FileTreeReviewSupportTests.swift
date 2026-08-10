@@ -256,6 +256,40 @@ struct TestWatching: DirectoryWatching {
     }
 }
 
+final class RecordingWatching: @unchecked Sendable, DirectoryWatching {
+    private let lock = NSLock()
+    private var handles: [RecordingWatcher] = []
+
+    var activeCount: Int {
+        lock.lock(); defer { lock.unlock() }
+        return handles.filter { !$0.isCancelled }.count
+    }
+
+    var totalWatchCount: Int {
+        lock.lock(); defer { lock.unlock() }
+        return handles.count
+    }
+
+    func watch(
+        _: URL,
+        onChange _: @escaping @Sendable (DirectoryWatchEvent) -> Void
+    ) throws -> any DirectoryWatcherHandle {
+        let handle = RecordingWatcher()
+        lock.lock(); handles.append(handle); lock.unlock()
+        return handle
+    }
+}
+
+final class RecordingWatcher: @unchecked Sendable, DirectoryWatcherHandle {
+    private let lock = NSLock()
+    private(set) var isCancelled = false
+
+    func cancel() {
+        lock.lock(); defer { lock.unlock() }
+        isCancelled = true
+    }
+}
+
 final class TestWatcher: @unchecked Sendable, DirectoryWatcherHandle {
     func cancel() {}
 }

@@ -9,6 +9,7 @@ public struct FileSystemDirectoryReader: DirectoryReading {
 
     public func contents(of url: URL) throws -> [DirectoryEntry] {
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isHiddenKey, .isPackageKey, .isSymbolicLinkKey]
+        let lexicalParent = url.standardizedFileURL
         // Enumerate once with prefetched values. A symlinked directory needs
         // its target for the directory stream, but every returned entry is
         // immediately rebound to the lexical parent used by the UI.
@@ -27,7 +28,7 @@ public struct FileSystemDirectoryReader: DirectoryReading {
                 : nil
             let isDirectory = values.isDirectory == true || targetValues?.isDirectory == true
             return DirectoryEntry(
-                lexicalParent: url,
+                normalizedLexicalParent: lexicalParent,
                 name: listedChild.lastPathComponent,
                 // Resource values describe the link itself on some file
                 // systems. Keep the link's lexical URL, but use its target's

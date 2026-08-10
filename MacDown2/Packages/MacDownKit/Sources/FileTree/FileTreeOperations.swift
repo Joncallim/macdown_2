@@ -1,3 +1,4 @@
+import FileCore
 import Foundation
 
 public enum FileTreeOperationError: Error, Sendable, Equatable, LocalizedError {
@@ -122,9 +123,10 @@ public enum FileTreeCopySafety {
         }
     }
 
-    private static func identity(of url: URL) throws -> String {
-        let values = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.fileResourceIdentifierKey])
-        guard let identifier = values.fileResourceIdentifier else { throw POSIXError(.ENOENT) }
-        return String(describing: identifier)
+    private static func identity(of url: URL) throws -> PhysicalFileIdentity.FileObjectID {
+        guard let identity = PhysicalFileIdentity(url: url).fileObjectID else {
+            throw POSIXError(.ENOENT)
+        }
+        return identity
     }
 }

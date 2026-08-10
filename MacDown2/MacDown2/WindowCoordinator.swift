@@ -82,11 +82,15 @@ final class WindowCoordinator {
 
     /// Opens a file in a new window, or activates the existing window if the
     /// same file is already open.
-    func openDocument(at url: URL, folderRoot: URL? = nil) async {
+    func openDocument(
+        at url: URL,
+        folderRoot: URL? = nil,
+        folderAccessURL: URL? = nil
+    ) async {
         if let existing = controllerForDocument(url: url), let window = existing.window {
             if let folderRoot, existing.fileTreeModel.root == nil {
                 existing.model.setFolderRoot(folderRoot)
-                await existing.fileTreeModel.setRoot(folderRoot)
+                await existing.fileTreeModel.setRoot(folderRoot, accessURL: folderAccessURL)
             }
             window.tabGroup?.selectedWindow = window
             window.makeKeyAndOrderFront(nil)
@@ -108,7 +112,7 @@ final class WindowCoordinator {
             fileTreePreferences: fileTreePreferences
         )
         if let folderRoot {
-            await controller.fileTreeModel.setRoot(folderRoot)
+            await controller.fileTreeModel.setRoot(folderRoot, accessURL: folderAccessURL)
         }
         addController(controller, addingAsTab: true, keyWindow: keyWindow)
     }
@@ -220,8 +224,8 @@ final class WindowCoordinator {
             let scrollOffset = textSystem.map { Double($0.scrollOffset) }
 
             let lexicalRoot = controller.model.folderURL
-            let scope = lexicalRoot.map(FolderAccessScope.init)
             let physicalRoot = lexicalRoot?.resolvingSymlinksInPath().standardizedFileURL
+            let scope = physicalRoot.map(FolderAccessScope.init)
             let bookmark = physicalRoot.flatMap { try? $0.bookmarkData(options: .withSecurityScope) }
                 ?? tab.folderRootBookmark
             _ = scope

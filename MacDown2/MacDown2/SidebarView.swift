@@ -176,7 +176,13 @@ struct SidebarView: View {
         if row.entry.isDirectory, !row.entry.isPackage {
             Task { await fileTreeModel.toggleExpansion(url) }
         } else {
-            Task { await coordinator?.openDocument(at: url, folderRoot: fileTreeModel.root) }
+            Task {
+                await coordinator?.openDocument(
+                    at: url,
+                    folderRoot: fileTreeModel.root,
+                    folderAccessURL: fileTreeModel.rootAccessURL
+                )
+            }
         }
     }
 }

@@ -21,6 +21,10 @@ public final class FileTreeModel {
         watchers.count
     }
 
+    public var rootAccessURL: URL? {
+        rootAccessScope?.url
+    }
+
     let reader: any DirectoryReading
     let mutator: any FileSystemMutating
     let watcher: any DirectoryWatching

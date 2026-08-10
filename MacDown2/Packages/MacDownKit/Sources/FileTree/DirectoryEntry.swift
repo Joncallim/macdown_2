@@ -17,15 +17,18 @@ public struct DirectoryEntry: Sendable, Equatable, Identifiable, Hashable {
         // `standardizedFileURL` does not add a directory path hint. Rebuild the
         // lexical URL with the known entry kind so `/folder` and `/folder/`
         // cannot become separate tree identities.
-        self.url = URL(
+        let normalizedURL = URL(
             fileURLWithPath: url.standardizedFileURL.path,
             isDirectory: isDirectory
         ).standardizedFileURL
-        name = self.url.lastPathComponent
-        self.isDirectory = isDirectory
-        self.isHidden = isHidden
-        self.isPackage = isPackage
-        self.isSymbolicLink = isSymbolicLink
+        self.init(
+            normalizedURL: normalizedURL,
+            name: normalizedURL.lastPathComponent,
+            isDirectory: isDirectory,
+            isHidden: isHidden,
+            isPackage: isPackage,
+            isSymbolicLink: isSymbolicLink
+        )
     }
 
     init(
@@ -36,7 +39,42 @@ public struct DirectoryEntry: Sendable, Equatable, Identifiable, Hashable {
         isPackage: Bool,
         isSymbolicLink: Bool
     ) {
-        url = lexicalParent.appendingPathComponent(name, isDirectory: isDirectory)
+        self.init(
+            url: lexicalParent.appendingPathComponent(name, isDirectory: isDirectory),
+            isDirectory: isDirectory,
+            isHidden: isHidden,
+            isPackage: isPackage,
+            isSymbolicLink: isSymbolicLink
+        )
+    }
+
+    init(
+        normalizedLexicalParent: URL,
+        name: String,
+        isDirectory: Bool,
+        isHidden: Bool,
+        isPackage: Bool,
+        isSymbolicLink: Bool
+    ) {
+        self.init(
+            normalizedURL: normalizedLexicalParent.appendingPathComponent(name, isDirectory: isDirectory),
+            name: name,
+            isDirectory: isDirectory,
+            isHidden: isHidden,
+            isPackage: isPackage,
+            isSymbolicLink: isSymbolicLink
+        )
+    }
+
+    private init(
+        normalizedURL: URL,
+        name: String,
+        isDirectory: Bool,
+        isHidden: Bool,
+        isPackage: Bool,
+        isSymbolicLink: Bool
+    ) {
+        url = normalizedURL
         self.name = name
         self.isDirectory = isDirectory
         self.isHidden = isHidden

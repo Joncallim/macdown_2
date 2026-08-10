@@ -34,6 +34,7 @@ struct FileTreeRowView: View {
             if model.renamingURL == row.entry.url {
                 TextField("Name", text: $newName, onCommit: commitRename)
                     .focused($renameFocused)
+                    .accessibilityIdentifier("fileTreeRenameField")
                     .onAppear { newName = row.entry.name; renameFocused = true }
                     .onChange(of: renameFocused) { _, focused in
                         if !focused {

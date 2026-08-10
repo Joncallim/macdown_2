@@ -25,6 +25,21 @@ import Testing
     #expect(diff.changed == [new])
 }
 
+@Test func lexicalChildInitializerNormalizesWithoutResolvingSymlinks() {
+    let parent = URL(fileURLWithPath: "/tmp/tree/../tree", isDirectory: true)
+    let entry = DirectoryEntry(
+        lexicalParent: parent,
+        name: "folder",
+        isDirectory: true,
+        isHidden: false,
+        isPackage: false,
+        isSymbolicLink: false
+    )
+
+    #expect(entry.url == URL(fileURLWithPath: "/tmp/tree/folder", isDirectory: true))
+    #expect(entry.url.hasDirectoryPath)
+}
+
 @Test func namingAllowsCaseOnlyRenameAndRejectsSibling() {
     #expect(FileTreeNaming.validate("Notes.md", existing: ["notes.md"], currentName: "notes.md") == nil)
     #expect(FileTreeNaming.validate("other.md", existing: ["other.md"], currentName: nil) == .nameExists("other.md"))

@@ -68,7 +68,11 @@ extension WindowCoordinator {
                 controller.fileTreeModel.renamingURL = created
                 if !isDirectory {
                     controller.fileTreeModel.pendingOpenURL = created
-                    await openDocument(at: created, folderRoot: root)
+                    await openDocument(
+                        at: created,
+                        folderRoot: root,
+                        folderAccessURL: controller.fileTreeModel.rootAccessURL
+                    )
                     if controller.fileTreeModel.isCurrent(context), controller.fileTreeModel.root == root {
                         controller.fileTreeModel.pendingOpenURL = nil
                     }

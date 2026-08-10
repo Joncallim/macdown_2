@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let recoveryBuffer: RecoveryBuffer
     private let workspaceStateStore: any WorkspaceStateStoring
     private let launchURLs: [URL]
+    private let launchFolderURL: URL?
     private var hasPendingDocumentOpen = false
 
     override init() {
@@ -43,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         launchURLs = Self.openFilesPaths(from: args).map { URL(fileURLWithPath: $0) }
+        launchFolderURL = Self.openFolderPath(from: args).map { URL(fileURLWithPath: $0, isDirectory: true) }
         themeController = ThemeController()
         grammarRegistry = GrammarRegistry()
         fileTreePreferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
@@ -87,6 +89,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 for url in launchURLs {
                     await coordinator.openDocument(at: url)
                 }
+                if let launchFolderURL {
+                    coordinator.openFolder(launchFolderURL)
+                }
+            }
+        } else if let launchFolderURL {
+            Task { @MainActor in
+                await coordinator.ensureWindowExistsForReopen()
+                coordinator.openFolder(launchFolderURL)
             }
         } else {
             // Scheduled synchronously so the tracked restore task exists before
@@ -163,6 +173,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .map { String($0).trimmingCharacters(in: .whitespaces) }
         }
         return []
+    }
+
+    private static func openFolderPath(from args: [String]) -> String? {
+        guard let index = args.firstIndex(of: "-openFolder"), index + 1 < args.count else { return nil }
+        return args[index + 1]
     }
 }
 

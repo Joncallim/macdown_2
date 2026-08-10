@@ -207,13 +207,16 @@ public extension FileTreeModel {
         }; children = newChildren
         root = root.flatMap { rekey($0) ?? $0 }
         if root != previousRoot, let root {
-            rootAccessScope = FolderAccessScope(url: root)
+            rootAccessScope = FolderAccessScope(url: root.resolvingSymlinksInPath().standardizedFileURL)
         }
         selectedURL = selectedURL.flatMap { rekey($0) ?? $0 }
         renamingURL = renamingURL.flatMap { rekey($0) ?? $0 }
         pendingOpenURL = pendingOpenURL.flatMap { rekey($0) ?? $0 }
         rebuildRows()
         let expectedGeneration = generation
+        if let root, case .loaded? = children[root] {
+            startWatching(root, expectedGeneration: expectedGeneration)
+        }
         for url in expanded where url == root || findEntry(url)?.isDirectory == true {
             startWatching(url, expectedGeneration: expectedGeneration)
         }

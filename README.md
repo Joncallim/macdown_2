@@ -6,10 +6,11 @@ TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 > **Status:** early development. Foundations, file/format core, workspace shell,
 > native window tabs, the TextKit 2 editor, tree-sitter highlighting, the theme
 > system, a native Markdown parser, a block-sliced native preview, and the
-> content browser — a heading outline of the active document in the sidebar,
-> with reorderable/persisted sidebar sections — are in place. The Epic 9 folder
-> browser work is local and awaiting publication and hosted validation. Performance
-> numbers are package-level, not yet full-app-path measurements.
+> content browser — heading outline plus the Epic 9 lazy folder browser with
+> watching, filters, drag/drop, and recoverable CRUD — are in place. Epic 9 has
+> package, app-build, formatter, and strict-lint validation in the working tree;
+> hosted CI remains a separate release gate. The 10k folder check is a
+> package-level Release benchmark, not a full-app-path measurement.
 
 ## Requirements
 

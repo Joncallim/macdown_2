@@ -161,12 +161,17 @@ extension SidebarView {
         context: FileTreeOperationContext
     ) {
         let originRoot = fileTreeModel.root
+        let originAccessURL = fileTreeModel.rootAccessURL
         fileTreeModel.selectedURL = url
         fileTreeModel.renamingURL = url
         if !isDirectory {
             fileTreeModel.pendingOpenURL = url
             Task {
-                await coordinator?.openDocument(at: url, folderRoot: originRoot)
+                await coordinator?.openDocument(
+                    at: url,
+                    folderRoot: originRoot,
+                    folderAccessURL: originAccessURL
+                )
                 if fileTreeModel.isCurrent(context), fileTreeModel.root == originRoot {
                     fileTreeModel.pendingOpenURL = nil
                 }
