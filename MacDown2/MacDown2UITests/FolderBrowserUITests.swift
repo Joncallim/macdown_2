@@ -42,7 +42,9 @@ final class FolderBrowserUITests: XCTestCase {
         XCTAssertTrue(createdRow.waitForExistence(timeout: 8))
 
         createdRow.rightClick()
-        let rename = app.menuItems["Rename"].element(boundBy: 1)
+        let rename = app.descendants(matching: .menuItem)
+            .matching(NSPredicate(format: "label == %@", "Rename"))
+            .element(boundBy: 1)
         XCTAssertTrue(rename.waitForExistence(timeout: 5))
         rename.click()
 
@@ -74,7 +76,9 @@ final class FolderBrowserUITests: XCTestCase {
         let row = app.descendants(matching: .any).matching(identifier: "fileRow-delete-me.md").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 8))
         row.rightClick()
-        let trash = app.menuItems["Move to Trash"].element(boundBy: 1)
+        let trash = app.descendants(matching: .menuItem)
+            .matching(NSPredicate(format: "label == %@", "Move to Trash"))
+            .element(boundBy: 1)
         XCTAssertTrue(trash.waitForExistence(timeout: 5))
         trash.click()
 
