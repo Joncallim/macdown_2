@@ -15,9 +15,16 @@ struct WorkspaceCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New File") {
-                coordinator?.newDocument(addAsTab: false)
+                coordinator?.createInKeyFolder(isDirectory: false)
             }
             .keyboardShortcut("n", modifiers: .command)
+            .disabled(coordinator?.keyFolderRoot == nil)
+
+            Button("New Folder") {
+                coordinator?.createInKeyFolder(isDirectory: true)
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+            .disabled(coordinator?.keyFolderRoot == nil)
 
             Button("New Tab") {
                 coordinator?.newDocument(addAsTab: true)
@@ -30,9 +37,17 @@ struct WorkspaceCommands: Commands {
             .keyboardShortcut("o", modifiers: .command)
 
             Button("Open Folder…") {
-                Task { await coordinator?.keyModel?.openFolder() }
+                coordinator?.chooseFolder()
             }
             .keyboardShortcut("o", modifiers: [.command, .shift])
+
+            Menu("Open Recent Folder") {
+                ForEach(coordinator?.recentFolderRoots.roots ?? [], id: \.self) { url in
+                    Button(url.lastPathComponent) { coordinator?.openRecentFolder(url) }
+                }
+                Divider()
+                Button("Clear Menu") { coordinator?.recentFolderRoots.clear() }
+            }
         }
 
         CommandGroup(replacing: .saveItem) {
@@ -53,6 +68,26 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("w", modifiers: .command)
             .disabled(coordinator?.keyModel?.canClose != true)
+        }
+
+        CommandMenu("Folder") {
+            Button("Rename") {
+                coordinator?.renameKeyFolderSelection()
+            }
+            .keyboardShortcut(.return, modifiers: [])
+            .disabled(coordinator?.keyFolderSelection == nil)
+
+            Button("Duplicate") {
+                coordinator?.duplicateKeyFolderSelection()
+            }
+            .keyboardShortcut("d", modifiers: .command)
+            .disabled(coordinator?.keyFolderSelection == nil)
+
+            Button("Move to Trash", role: .destructive) {
+                coordinator?.trashKeyFolderSelection()
+            }
+            .keyboardShortcut(.delete, modifiers: .command)
+            .disabled(coordinator?.keyFolderSelection == nil)
         }
 
         CommandGroup(before: .windowArrangement) {
@@ -148,6 +183,12 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("o", modifiers: [.control, .command])
             .disabled(coordinator?.keyModel?.hasActiveDocument != true)
+
+            Button("Reveal Active File") {
+                coordinator?.revealActiveFile()
+            }
+            .keyboardShortcut("j", modifiers: [.command, .shift])
+            .disabled(coordinator?.keyModel?.activeDocument?.fileURL == nil)
         }
 
         #if DEBUG

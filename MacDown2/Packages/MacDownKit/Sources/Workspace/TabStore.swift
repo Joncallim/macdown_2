@@ -28,6 +28,10 @@ public struct WorkspaceTab: Identifiable, Sendable {
     /// because it is part of the document workspace, not global UI state.
     public var previewLayout: PreviewLayoutMode?
 
+    /// Per-window folder root persisted alongside this native-window tab.
+    public var folderRootBookmark: Data?
+    public var folderRootAlias: URL?
+
     public init(
         id: UUID = UUID(),
         document: FileDocument,
@@ -35,7 +39,9 @@ public struct WorkspaceTab: Identifiable, Sendable {
         cursorPosition: Int? = nil,
         selectionLength: Int? = nil,
         scrollOffset: Double? = nil,
-        previewLayout: PreviewLayoutMode? = nil
+        previewLayout: PreviewLayoutMode? = nil,
+        folderRootBookmark: Data? = nil,
+        folderRootAlias: URL? = nil
     ) {
         self.id = id
         self.document = document
@@ -44,7 +50,15 @@ public struct WorkspaceTab: Identifiable, Sendable {
         self.selectionLength = selectionLength
         self.scrollOffset = scrollOffset
         self.previewLayout = previewLayout
+        self.folderRootBookmark = folderRootBookmark
+        self.folderRootAlias = folderRootAlias
     }
+}
+
+public enum DeletedDocumentOutcome: Sendable, Equatable {
+    case notOpen
+    case closedCleanTab(UUID)
+    case needsPrompt(UUID)
 }
 
 /// In-app tab state: ordered tabs, active tab, dirty-close prompts, and session
@@ -208,7 +222,9 @@ public final class TabStore {
                 cursorPosition: tab.cursorPosition,
                 selectionLength: tab.selectionLength,
                 scrollOffset: tab.scrollOffset,
-                previewLayout: tab.previewLayout
+                previewLayout: tab.previewLayout,
+                folderRootBookmark: tab.folderRootBookmark,
+                folderRootAlias: tab.folderRootAlias
             ), at: pinnedCount)
         } else {
             tabs.insert(WorkspaceTab(
@@ -218,7 +234,9 @@ public final class TabStore {
                 cursorPosition: tab.cursorPosition,
                 selectionLength: tab.selectionLength,
                 scrollOffset: tab.scrollOffset,
-                previewLayout: tab.previewLayout
+                previewLayout: tab.previewLayout,
+                folderRootBookmark: tab.folderRootBookmark,
+                folderRootAlias: tab.folderRootAlias
             ), at: pinnedCount)
         }
 

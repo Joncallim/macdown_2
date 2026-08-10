@@ -19,7 +19,9 @@ extension TabStore {
                 cursorPosition: nil,
                 selectionLength: nil,
                 scrollOffset: nil,
-                previewLayout: tab.previewLayout
+                previewLayout: tab.previewLayout,
+                folderRootBookmark: tab.folderRootBookmark,
+                folderRootAlias: tab.folderRootAlias
             )
         }
         return WorkspaceSession(tabs: records, activeTabID: activeTabID)
@@ -27,25 +29,7 @@ extension TabStore {
 
     func restoreTab(from record: TabRecord) async -> WorkspaceTab? {
         if let fileURL = record.fileURL {
-            let document = FileDocument(fileURL: fileURL, recoveryBuffer: recoveryBuffer)
-            do {
-                var loaded = try document.load()
-                let recovered = try? await recoveryBuffer.load(for: loaded.id)
-                if let recovered, recovered != loaded.text {
-                    loaded = loaded.updatingText(recovered)
-                }
-                return WorkspaceTab(
-                    id: record.id,
-                    document: loaded,
-                    isPinned: record.isPinned,
-                    cursorPosition: record.cursorPosition,
-                    selectionLength: record.selectionLength,
-                    scrollOffset: record.scrollOffset,
-                    previewLayout: record.previewLayout
-                )
-            } catch {
-                return nil
-            }
+            return await restoreFileTab(from: record, fileURL: fileURL)
         } else if let untitledID = record.untitledDocumentID {
             guard let recovered = try? await recoveryBuffer.load(for: untitledID) else { return nil }
             var document = FileDocument(text: "", recoveryBuffer: recoveryBuffer)
@@ -57,9 +41,40 @@ extension TabStore {
                 cursorPosition: record.cursorPosition,
                 selectionLength: record.selectionLength,
                 scrollOffset: record.scrollOffset,
-                previewLayout: record.previewLayout
+                previewLayout: record.previewLayout,
+                folderRootBookmark: record.folderRootBookmark,
+                folderRootAlias: record.folderRootAlias
             )
         }
         return nil
+    }
+
+    private func restoreFileTab(from record: TabRecord, fileURL: URL) async -> WorkspaceTab? {
+        let document = FileDocument(fileURL: fileURL, recoveryBuffer: recoveryBuffer)
+        do {
+            var loaded = try document.load()
+            let recovered = try? await recoveryBuffer.load(for: loaded.id)
+            if let recovered, recovered != loaded.text {
+                loaded = loaded.updatingText(recovered)
+            }
+            return tab(from: record, document: loaded)
+        } catch {
+            guard let recovered = try? await recoveryBuffer.load(for: fileURL.absoluteString) else { return nil }
+            return tab(from: record, document: document.updatingText(recovered))
+        }
+    }
+
+    private func tab(from record: TabRecord, document: FileDocument) -> WorkspaceTab {
+        WorkspaceTab(
+            id: record.id,
+            document: document,
+            isPinned: record.isPinned,
+            cursorPosition: record.cursorPosition,
+            selectionLength: record.selectionLength,
+            scrollOffset: record.scrollOffset,
+            previewLayout: record.previewLayout,
+            folderRootBookmark: record.folderRootBookmark,
+            folderRootAlias: record.folderRootAlias
+        )
     }
 }

@@ -1,6 +1,7 @@
 import AppKit
 import EditorCore
 import FileCore
+import FileTree
 import Foundation
 import Highlighting
 import MarkdownEngine
@@ -19,6 +20,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let parseStore: MarkdownParseStore
     let themeController: ThemeController
     let outlineController: OutlineController
+    let fileTreeModel: FileTreeModel
     private weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
@@ -29,7 +31,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         model: WorkspaceModel,
         coordinator: WindowCoordinator,
         themeController: ThemeController,
-        grammarRegistry: GrammarRegistry
+        grammarRegistry: GrammarRegistry,
+        fileTreePreferences: FileTreePreferences
     ) {
         self.model = model
         self.coordinator = coordinator
@@ -43,6 +46,10 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // opts into the tighter production budget.
         parseStore = MarkdownParseStore(debounce: .milliseconds(100))
         outlineController = OutlineController()
+        fileTreeModel = FileTreeModel(
+            preferences: fileTreePreferences,
+            supportedExtensions: Set(FileFormatRegistry.defaultFormats.flatMap(\.extensions))
+        )
 
         // Eagerly create the text system and parse session for the active tab
         // so session-save can read cursor/scroll state and the preview can
@@ -63,7 +70,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             highlightStore: highlightStore,
             parseStore: parseStore,
             themeController: themeController,
-            outlineController: outlineController
+            outlineController: outlineController,
+            fileTreeModel: fileTreeModel
         ))
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
@@ -75,6 +83,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
         super.init(window: window)
         window.delegate = self
+        fileTreeModel.startObservingPreferences()
         updateTitleAndEditedState()
         startObservingActiveDocument()
     }
@@ -144,6 +153,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         editorStore.evictAll()
         highlightStore.evictAll()
         parseStore.evictAll()
+        fileTreeModel.dispose()
     }
 
     func windowDidBecomeKey(_: Notification) {
@@ -152,6 +162,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // document windows because the coordinator is their delegate.
         coordinator?.updateKeyModel()
         coordinator?.scheduleSaveSession()
+        Task { await fileTreeModel.rescanExpandedDirectories() }
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

@@ -1,4 +1,6 @@
 import AppKit
+import FileCore
+import FileTree
 import Foundation
 import Highlighting
 import Themes
@@ -9,7 +11,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var coordinator: WindowCoordinator!
     private(set) var themeController: ThemeController!
     private(set) var grammarRegistry: GrammarRegistry!
+    private(set) var fileTreePreferences: FileTreePreferences!
+    private(set) var recentFolderRoots: RecentFolderRoots!
     private let sessionStore: WorkspaceSessionStoring
+    private let recoveryBuffer: RecoveryBuffer
+    private let workspaceStateStore: any WorkspaceStateStoring
     private let launchURLs: [URL]
     private var hasPendingDocumentOpen = false
 
@@ -17,24 +23,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let args = ProcessInfo.processInfo.arguments
         let isUITesting = args.contains("-UITesting")
 
+        let defaults: UserDefaults
         if isUITesting {
             let sessionDir = Self.sessionDirectory(from: args)
             try? FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
             sessionStore = WorkspaceSessionStore(fileURL: sessionDir.appendingPathComponent("session.json"))
+            recoveryBuffer = RecoveryBuffer(
+                recoveryDirectory: sessionDir.appendingPathComponent("recovery", isDirectory: true)
+            )
+            let suite = "com.joncallim.macdown2.uitest.\(UUID().uuidString)"
+            defaults = UserDefaults(suiteName: suite) ?? .standard
+            defaults.removePersistentDomain(forName: suite)
+            workspaceStateStore = WorkspaceStateStore(defaults: defaults)
         } else {
             sessionStore = WorkspaceSessionStore()
+            recoveryBuffer = .shared
+            defaults = .standard
+            workspaceStateStore = WorkspaceStateStore()
         }
 
         launchURLs = Self.openFilesPaths(from: args).map { URL(fileURLWithPath: $0) }
         themeController = ThemeController()
         grammarRegistry = GrammarRegistry()
+        fileTreePreferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
+        recentFolderRoots = RecentFolderRoots(preferences: fileTreePreferences)
         super.init()
 
         coordinator = WindowCoordinator(
             sessionStore: sessionStore,
             panelProvider: NSFilePanelProvider(),
+            recoveryBuffer: recoveryBuffer,
             themeController: themeController,
-            grammarRegistry: grammarRegistry
+            grammarRegistry: grammarRegistry,
+            fileTreePreferences: fileTreePreferences,
+            recentFolderRoots: recentFolderRoots,
+            workspaceStateStore: workspaceStateStore
         )
     }
 

@@ -2,6 +2,15 @@
 import Foundation
 import Testing
 
+@Test func renamedUpdatesIdentityAndFormat() {
+    let original = FileDocument(fileURL: URL(fileURLWithPath: "/tmp/notes.md"), text: "# Notes")
+    let renamed = original.renamed(to: URL(fileURLWithPath: "/tmp/notes.txt"))
+    #expect(renamed.fileURL?.lastPathComponent == "notes.txt")
+    #expect(renamed.id.hasSuffix("notes.txt"))
+    #expect(renamed.format.id == "plaintext")
+    #expect(renamed.text == original.text)
+}
+
 @Test func documentStartsClean() {
     let document = FileDocument(text: "hello")
     #expect(document.state == .clean)

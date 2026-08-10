@@ -40,6 +40,10 @@ public struct TabRecord: Codable, Sendable, Equatable {
 
     public var scrollOffset: Double?
     public var previewLayout: PreviewLayoutMode?
+    /// Optional so sessions written before the folder browser still decode.
+    public var folderRootBookmark: Data?
+    /// Lexical spelling paired with the physical security-scoped bookmark.
+    public var folderRootAlias: URL?
 
     public init(
         id: UUID,
@@ -49,7 +53,9 @@ public struct TabRecord: Codable, Sendable, Equatable {
         cursorPosition: Int? = nil,
         selectionLength: Int? = nil,
         scrollOffset: Double? = nil,
-        previewLayout: PreviewLayoutMode? = nil
+        previewLayout: PreviewLayoutMode? = nil,
+        folderRootBookmark: Data? = nil,
+        folderRootAlias: URL? = nil
     ) {
         self.id = id
         self.fileURL = fileURL
@@ -59,6 +65,8 @@ public struct TabRecord: Codable, Sendable, Equatable {
         self.selectionLength = selectionLength
         self.scrollOffset = scrollOffset
         self.previewLayout = previewLayout
+        self.folderRootBookmark = folderRootBookmark
+        self.folderRootAlias = folderRootAlias
     }
 }
 

@@ -1,4 +1,5 @@
 import EditorCore
+import FileTree
 import Highlighting
 import MarkdownEngine
 import OutlineUI
@@ -19,6 +20,7 @@ struct WorkspaceShellView: View {
     let parseStore: MarkdownParseStore
     let themeController: ThemeController
     let outlineController: OutlineController
+    let fileTreeModel: FileTreeModel
 
     init(
         model: WorkspaceModel,
@@ -26,7 +28,8 @@ struct WorkspaceShellView: View {
         highlightStore: SyntaxHighlightStore,
         parseStore: MarkdownParseStore,
         themeController: ThemeController,
-        outlineController: OutlineController
+        outlineController: OutlineController,
+        fileTreeModel: FileTreeModel
     ) {
         _model = State(initialValue: model)
         self.editorStore = editorStore
@@ -34,11 +37,12 @@ struct WorkspaceShellView: View {
         self.parseStore = parseStore
         self.themeController = themeController
         self.outlineController = outlineController
+        self.fileTreeModel = fileTreeModel
     }
 
     var body: some View {
         NavigationSplitView(columnVisibility: sidebarVisibilityBinding) {
-            SidebarView(model: model, outlineController: outlineController)
+            SidebarView(model: model, outlineController: outlineController, fileTreeModel: fileTreeModel)
         } detail: {
             ContentAreaView(
                 model: model,
