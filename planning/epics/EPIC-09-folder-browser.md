@@ -1,6 +1,10 @@
 > **Title:** [EPIC-09] Folder browser: lazy file tree, FS watching, CRUD
 > **Labels:** `epic`, `workspace` · **Milestone:** M4 — Workspace & formats · **Depends on:** E01, E02, E03
 
+> **Status:** Implemented and merged in PR #38. The folder browser is now part
+> of the MacDown 2 application, including the lazy tree, directory watching,
+> filtering, drag/drop, and recoverable CRUD described below.
+
 ## Context
 
 The sidebar's other half (D2). Opens a folder as the workspace root; files open
@@ -36,11 +40,11 @@ sandboxing is additive.
 
 ## Acceptance criteria
 
-- [ ] External `touch new.md` in an expanded folder appears < 1 s
-- [ ] Deleting the file open in the active tab offers close/discard flow; no crash
-- [ ] Renaming an open file updates tab title + save target
-- [ ] Watching scoped to expanded folders (no fd leaks, instrumented)
-- [ ] Filter toggle hides non-registered extensions immediately
+- [x] External `touch new.md` in an expanded folder appears < 1 s
+- [x] Deleting the file open in the active tab offers close/discard flow; no crash
+- [x] Renaming an open file updates tab title + save target
+- [x] Watching scoped to expanded folders (no fd leaks, instrumented)
+- [x] Filter toggle hides non-registered extensions immediately
 
 ## Out of scope
 
@@ -49,3 +53,12 @@ Git status badges, multi-root workspaces, search-in-folder (v1.x candidates).
 ## Notes
 
 Same architecture rule as FileCore: pure synchronous model core, async edges.
+
+## Implementation record
+
+Epic 9 was delivered on `epic/09-folder-browser` and merged through PR #38.
+The Release package suite passed 469 tests across 50 suites, including the
+10k-entry folder benchmark and watcher lifecycle coverage. The Release app
+build, strict SwiftLint, SwiftFormat, and diff checks also passed. Focused UI
+test execution reached the runner but remained subject to the host's
+automation-mode initialization timeout before test cases could start.

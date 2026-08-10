@@ -26,7 +26,7 @@ dogfooding begins.
 | E06 | Markdown engine | M3 — Markdown core | E01 | open |
 | E07 | Native preview (Textual) | M3 — Markdown core | E06, E04 | open |
 | E08 | Content browser (document outline) | M3 — Markdown core | E06, E02 | open |
-| E09 | Folder browser | M4 — Workspace & formats | E01, E02, E03 | open |
+| E09 | Folder browser | M4 — Workspace & formats | E01, E02, E03 | ✅ done |
 | E10 | Editing assists | M2 — Editor | E04 | open |
 | E11 | Multi-format: JSON & HTML | M4 — Workspace & formats | E05, E07 | open |
 | E12 | Export: HTML & PDF | M4 — Workspace & formats | E06, E11 | open |
