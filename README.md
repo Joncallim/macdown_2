@@ -3,13 +3,12 @@
 A native macOS Markdown editor — a ground-up Swift / SwiftUI rewrite built on
 TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 
-> **Status:** early development. Foundations, file/format core, workspace shell,
+> **Status:** early development; Epic 9 is implemented and merged. Foundations, file/format core, workspace shell,
 > native window tabs, the TextKit 2 editor, tree-sitter highlighting, the theme
 > system, a native Markdown parser, a block-sliced native preview, and the
 > content browser — heading outline plus the Epic 9 lazy folder browser with
 > watching, filters, drag/drop, and recoverable CRUD — are in place. Epic 9 has
-> package, app-build, formatter, and strict-lint validation in the working tree;
-> hosted CI remains a separate release gate. The 10k folder check is a
+> package, Release app-build, formatter, and strict-lint validation; the 10k folder check is a
 > package-level Release benchmark, not a full-app-path measurement.
 
 ## Requirements

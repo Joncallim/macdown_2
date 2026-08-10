@@ -1,10 +1,15 @@
-# EPIC-09 Implementation Plan — Folder browser: lazy file tree, FS watching, CRUD
+# EPIC-09 Implementation Record — Folder browser: lazy file tree, FS watching, CRUD
 
 > **Issue:** #10 — [EPIC-09] Folder browser: lazy file tree, FS watching, CRUD
 > **High-level spec:** `planning/epics/EPIC-09-folder-browser.md` (scope/acceptance are binding, including the #28 amendment that the sidebar — and therefore the folder root — is per window).
-> **Branch:** `epic/09-folder-browser` → PR into `master`.
+> **Status:** Implemented and merged via PR #38 (`e60efb0`). This document is
+> retained as the implementation record for the delivered Epic 9 work.
+> **Branch:** `epic/09-folder-browser` → merged into `master`.
 > **Depends on:** E01 as built (`FileDocument`, `FileFormatRegistry`, `FileStore`), E02 as built (`WorkspaceModel`, `SidebarSection`, `WorkspaceStateStoring`), E03 as built (native `NSWindow` tabs, `WindowCoordinator`, per-window `WorkspaceModel`), E08 as built (the sidebar `List` this epic has to share).
-> **Intended pipeline:** implemented by **Kimi K2.7** in a single pass, reviewed by **DeepSeek**. Written so that **neither has to guess intent or fill gaps.** Read **§2 (what already exists and what collides)**, **§3 (decisions)**, and **§4.2–4.6 (API contract)** before writing code — reviews reject on §3 and §4.
+> **Historical implementation pipeline:** the plan was written as a hand-off
+> contract and subsequently implemented, independently reviewed, remediated,
+> and merged. The sections below describe the decisions and contracts that the
+> shipped implementation follows.
 >
 > **No new third-party dependencies.** The `FileTree` target already exists in `Package.swift` with `dependencies: ["FileCore"]`, already has a `FileTreeTests` test target, and is already listed under the `MacDown2` app target in `project.yml` (E00 scaffolding). **No `Package.swift` change, no `project.yml` change, no `ci.yml` change.**
 >
@@ -829,7 +834,7 @@ Also record on the PR: the **measured 10k expand time** (§4.7) and the **`watch
 
 ### Implementation evidence
 
-Epic 9 is implemented on this branch. The Release `tenThousandEntryListingArrangementAndFlatteningBenchmark` measured **115.79 ms**, below the 200 ms budget. The watcher acceptance sequence is **1** directory after `setRoot`, **3** after expanding two folders, **2** after collapsing one, and **0** after `tearDown()`; the churn test keeps the count bounded by expanded directories plus the root. The implementation preserves the plan's decisions: supported-file filtering is off by default, double-click opens while single-click selects, Finder drops copy, internal drags move, collisions reject, and roots remain per-window while preferences and recents are shared.
+Epic 9 is implemented and merged. The Release `tenThousandEntryListingArrangementAndFlatteningBenchmark` measured **115.79 ms**, below the 200 ms budget. The watcher acceptance sequence is **1** directory after `setRoot`, **3** after expanding two folders, **2** after collapsing one, and **0** after `tearDown()`; the churn test keeps the count bounded by expanded directories plus the root. The implementation preserves the plan's decisions: supported-file filtering is off by default, double-click opens while single-click selects, Finder drops copy, internal drags move, collisions reject, and roots remain per-window while preferences and recents are shared.
 
 ## 10. Implementation decisions (recorded for review)
 
