@@ -267,7 +267,13 @@ private struct HTMLPreviewView: NSViewRepresentable {
             // (split resizing, selection, theme propagation, etc.). Avoid both
             // rebuilding the hardened document and restarting WebKit unless
             // the source actually changed.
-            guard source != loadedSource, source != pendingSource else { return }
+            if source == loadedSource {
+                reloadTask?.cancel()
+                reloadTask = nil
+                pendingSource = nil
+                return
+            }
+            guard source != pendingSource else { return }
 
             reloadTask?.cancel()
             pendingSource = source

@@ -41,6 +41,7 @@ public final class EditorTextSystem {
     private var lastFrameSyncSignature: FrameSyncSignature?
     private var measuredContentHeight: CGFloat = 0
     private var frameSyncTask: Task<Void, Never>?
+    private var editRevision: UInt64 = 0
     /// Set by `scrollOffset`'s setter before the scroll view exists yet
     /// (session restore); applied by `applyPendingScrollOffset()` once it does.
     var pendingScrollOffset: CGFloat?
@@ -59,6 +60,7 @@ public final class EditorTextSystem {
     private struct FrameSyncSignature: Equatable {
         let textLength: Int
         let width: CGFloat
+        let editRevision: UInt64
     }
 
     /// The scroll view that owns the text view. Weak because the scroll view
@@ -82,6 +84,7 @@ public final class EditorTextSystem {
     /// and conflict resolution; it resets selection and scroll.
     public func setText(_ text: String) {
         textView.string = text
+        editRevision &+= 1
         // A wholesale text replacement invalidates any measured height from
         // the previous document — see `syncFrameHeightToContent`.
         measuredContentHeight = 0
@@ -91,6 +94,16 @@ public final class EditorTextSystem {
     /// The current plain-text content of the editor.
     public var text: String {
         textView.string
+    }
+
+    /// Monotonic content generation used by caches whose inputs can change
+    /// without changing the UTF-16 length (for example, newline edits).
+    public var contentRevision: UInt64 {
+        editRevision
+    }
+
+    func noteTextEdit() {
+        editRevision &+= 1
     }
 
     // MARK: - Configuration
@@ -188,11 +201,9 @@ public final class EditorTextSystem {
     /// frame stops growing, which reads as "scrolling doesn't work" even
     /// though the selection/caret genuinely moved.
     ///
-    /// Forces one full-document layout pass and applies the real content
-    /// height, so this is skipped for documents ≥ 100 KB — the same
-    /// threshold `makeNSView` already uses to avoid blocking on an O(n)
-    /// layout for large files. Cheap to call on every `updateNSView`: it
-    /// no-ops unless the text length or available width actually changed.
+    /// Uses Foundation text measurement instead of forcing TextKit 2 to
+    /// materialize every off-screen fragment. This keeps the editing path
+    /// responsive while still tracking wrapping changes.
     ///
     /// The computed height is re-measured fresh for each distinct (text
     /// length, width) signature — it is NOT accumulated as a running maximum
@@ -205,7 +216,6 @@ public final class EditorTextSystem {
     func syncFrameHeightToContent() {
         guard let scrollView else { return }
         let string = textView.string as NSString
-        guard string.length < 100_000 else { return }
 
         // Matching text/width does NOT mean the frame still matches the last
         // measurement: TextKit 2's viewport controller reclaims off-screen
@@ -214,29 +224,24 @@ public final class EditorTextSystem {
         // signature. Skipping the reapplication below left it stuck shrunk,
         // so a later `scrollRangeToVisible` (e.g. the outline's
         // jump-to-heading) clamped against it and landed far from the target.
-        let signature = FrameSyncSignature(textLength: string.length, width: textView.frame.width)
+        let signature = FrameSyncSignature(
+            textLength: string.length,
+            width: textView.frame.width,
+            editRevision: editRevision
+        )
         guard signature != lastFrameSyncSignature else {
             applyMeasuredFrameHeight(scrollView: scrollView)
             return
         }
         lastFrameSyncSignature = signature
 
-        // `usageBoundsForTextContainer` does not reflect a forced
-        // `ensureLayout(for:)` pass for this manually-constructed stack —
-        // measured directly, it stayed pinned near the viewport height
-        // regardless. Enumerating fragments with `.ensuresLayout` forces
-        // each one through real layout and hands back its actual frame,
-        // which is the approach Apple's own TextKit 2 sample code uses to
-        // compute total content height.
-        var maxY: CGFloat = 0
-        _ = layoutManager.enumerateTextLayoutFragments(
-            from: layoutManager.documentRange.location,
-            options: [.ensuresLayout]
-        ) { fragment in
-            maxY = max(maxY, fragment.layoutFragmentFrame.maxY)
-            return true
-        }
-        measuredContentHeight = maxY
+        let availableWidth = max(textView.frame.width - textView.textContainerInset.width * 2, 1)
+        let measured = string.boundingRect(
+            with: NSSize(width: availableWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: textView.typingAttributes
+        )
+        measuredContentHeight = measured.height + textView.textContainerInset.height * 2
         applyMeasuredFrameHeight(scrollView: scrollView)
     }
 

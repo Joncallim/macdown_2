@@ -46,7 +46,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
     /// Per-block measured heights, keyed by position in ``displayBlocks``.
     /// Fed to ``ScrollSyncController`` so it can map editor lines to preview
     /// scroll offsets. Cleared whenever the block list changes.
-    @State private var measuredBlockHeights: [Int: Double] = [:]
+    @State private var heightBatch = PreviewHeightBatch()
 
     private var displayBlocks: [PreviewBlock] {
         blocks ?? computedBlocks
@@ -135,8 +135,12 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                 .onGeometryChange(for: CGFloat.self) { proxy in
                                     proxy.size.height
                                 } action: { newHeight in
-                                    measuredBlockHeights[index] = Double(newHeight)
-                                    controller.update(blockHeights: measuredBlockHeights)
+                                    heightBatch.record(
+                                        Double(newHeight),
+                                        for: block.id,
+                                        at: index,
+                                        controller: controller
+                                    )
                                 }
                             }
                         }
@@ -183,9 +187,8 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                     // map makes every preview scroll resolve to the last
                     // block — which drags the editor to the end of the
                     // document on every sync.
-                    measuredBlockHeights = measuredBlockHeights.filter { $0.key < newBlocks.count }
+                    heightBatch.reconcile(with: newBlocks, controller: controller)
                     controller.update(map: ScrollSyncMap(blocks: newBlocks))
-                    controller.update(blockHeights: measuredBlockHeights)
                 }
                 .onChange(of: controller.targetPreviewFraction) { _, fraction in
                     guard let fraction else { return }

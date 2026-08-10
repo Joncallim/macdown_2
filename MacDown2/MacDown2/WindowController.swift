@@ -103,12 +103,13 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private func startObservingActiveDocument() {
         // Polling is used instead of `withObservationTracking` because the
         // observation closure in the previous implementation leaked the task.
-        // The 250 ms period is a pragmatic trade-off: title/dirty changes may
-        // take up to one tick to reflect, but session saves are coalesced.
+        // Keep the active native tab responsive, but do not wake every hidden
+        // tab four times a second solely to re-check its title.
         observationTask = Task { @MainActor [weak self] in
             while !Task.isCancelled, let self {
                 updateTitleAndEditedState()
-                try? await Task.sleep(for: .milliseconds(250))
+                let interval: Duration = window?.isKeyWindow == true ? .milliseconds(250) : .seconds(1)
+                try? await Task.sleep(for: interval)
             }
         }
     }
@@ -166,6 +167,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // document windows because the coordinator is their delegate.
         coordinator?.updateKeyModel()
         coordinator?.scheduleSaveSession()
+        // The inactive polling cadence is intentionally low; refresh once
+        // synchronously when a native tab becomes visible again.
+        updateTitleAndEditedState()
         Task { await fileTreeModel.rescanExpandedDirectories() }
     }
 

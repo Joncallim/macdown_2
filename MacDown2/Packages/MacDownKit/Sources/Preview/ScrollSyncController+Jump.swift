@@ -19,8 +19,8 @@ public extension ScrollSyncController {
     /// re-dividing/multiplying a `previewFraction(forLine:)` result —
     /// matters.
     func blockTarget(forLine line: Int) -> PreviewBlockTarget? {
-        guard let blockIndex = map.blockIndex(forLine: line) else { return nil }
-        let entry = map.entries.first { $0.blockIndex == blockIndex }
+        guard let blockIndex = blockIndex(forLine: line) else { return nil }
+        let entry = entry(forBlockIndex: blockIndex)
         let progress = localProgress(in: entry?.lineRange ?? (line ... line), for: line)
         return PreviewBlockTarget(blockIndex: blockIndex, localProgress: progress)
     }
@@ -53,7 +53,7 @@ public extension ScrollSyncController {
     /// scroll to chase instead of the jump's actual target.
     func jump(toLine line: Int) {
         jumpSettleDeadline = now() + Self.jumpSettleWindow
-        guard let blockIndex = map.blockIndex(forLine: line) else { return }
+        guard let blockIndex = blockIndex(forLine: line) else { return }
 
         lastPreviewDrivenBlockIndex = nil
         lastEditorDrivenBlockIndex = blockIndex

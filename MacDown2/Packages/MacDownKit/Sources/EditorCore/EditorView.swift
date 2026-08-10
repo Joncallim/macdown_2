@@ -168,6 +168,7 @@ public struct EditorView: NSViewRepresentable {
             isApplyingModelText = true
             textBinding?.wrappedValue = system.text
             isApplyingModelText = false
+            system.noteTextEdit()
             // Typing changes the content height; keep the document view's
             // frame in step so the caret always has somewhere to scroll to.
             system.scheduleFrameHeightSync()

@@ -14,6 +14,7 @@ extension FileTreeModel {
         // allocations while flattening.
         var output: [FileTreeRow] = []
         output.reserveCapacity(max(rows.count, rootEntries.count))
+        entriesByURL.removeAll(keepingCapacity: true)
         append(arranged, depth: 0, into: &output)
         rows = output
         availability = if rootEntries.isEmpty {
@@ -25,6 +26,7 @@ extension FileTreeModel {
 
     private func append(_ entries: [DirectoryEntry], depth: Int, into output: inout [FileTreeRow]) {
         for entry in entries {
+            entriesByURL[entry.url] = entry
             let isExpanded = expanded.contains(entry.url)
             let isLoading = if case .loading? = children[entry.url] {
                 true
@@ -57,10 +59,7 @@ extension FileTreeModel {
     }
 
     func findEntry(_ url: URL) -> DirectoryEntry? {
-        children.values.compactMap { state -> DirectoryEntry? in
-            guard case let .loaded(entries) = state else { return nil }
-            return entries.first { $0.url == url }
-        }.first
+        entriesByURL[url]
     }
 
     func startWatching(_ url: URL, expectedGeneration: UInt) {

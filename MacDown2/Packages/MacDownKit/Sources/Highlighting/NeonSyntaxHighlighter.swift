@@ -95,7 +95,9 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
                     languageConfiguration: config,
                     attributeProvider: attributeProvider,
                     languageProvider: registry.languageProvider,
-                    locationTransformer: Self.locationTransformer(for: textSystem.textView)
+                    locationTransformer: Self.locationTransformer(for: textSystem.textView) { [weak textSystem] in
+                        textSystem?.contentRevision ?? 0
+                    }
                 )
             )
         } catch {
@@ -126,18 +128,24 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     /// per-call performance instead of O(n) substring scanning. The table is
     /// only rebuilt when the document length changes, and the rebuild uses a
     /// single character-set scan rather than repeated substring searches.
-    static func locationTransformer(for textView: NSTextView) -> (Int) -> Point? {
+    static func locationTransformer(
+        for textView: NSTextView,
+        revision: @escaping () -> UInt64 = { 0 }
+    ) -> (Int) -> Point? {
         var lineOffsets: [Int]?
-        var cachedLength = 0
+        var cachedRevision: UInt64?
+        var cachedLength: Int?
 
         return { offset in
             let string = textView.string as NSString
             let clamped = max(0, min(offset, string.length))
+            let currentRevision = revision()
 
-            // Rebuild the line-offset table when the document length changes
-            // (e.g., after an edit). This keeps row calculations correct for
-            // incremental reparse positions.
-            if lineOffsets == nil || cachedLength != string.length {
+            // Length-preserving edits can still move every subsequent line.
+            // Prefer the editor's generation, with a length fallback for
+            // standalone NSTextView callers.
+            if lineOffsets == nil || cachedRevision != currentRevision || cachedLength != string.length {
+                cachedRevision = currentRevision
                 cachedLength = string.length
                 lineOffsets = Self.lineOffsets(in: string)
             }

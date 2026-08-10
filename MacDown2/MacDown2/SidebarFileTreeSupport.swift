@@ -17,6 +17,7 @@ struct FileTreeRowView: View {
     let didDelete: (URL) -> Void
     let didCreate: (URL, Bool, FileTreeOperationContext) -> Void
     @State private var newName = ""
+    @State private var dragPayload: FileTreeInternalDrag?
     @FocusState private var renameFocused: Bool
 
     var body: some View {
@@ -72,7 +73,20 @@ struct FileTreeRowView: View {
                 }
             }
         )
-        .draggable(FileTreeInternalDrag.issue(url: row.entry.url, from: model))
+        // `body` can be evaluated many times while a row is merely visible.
+        // Issuing a trusted drag token there both mutates the registry and
+        // leaves short-lived entries behind without the user ever dragging.
+        // Cache one token for this displayed row instead; the fallback is
+        // deliberately untrusted until the row appears.
+        .draggable(dragPayload ?? FileTreeInternalDrag.untrustedPayload(for: row.entry.url))
+        .onAppear(perform: refreshDragPayload)
+        .onChange(of: row.entry.url) { _, _ in refreshDragPayload() }
+        .onChange(of: model.root) { _, _ in refreshDragPayload() }
+        .onDisappear {
+            if let dragPayload {
+                FileTreeInternalDrag.revoke(dragPayload)
+            }
+        }
         .dropDestination(for: FileTreeInternalDrag.self, action: { items, _ in
             guard !row.entry.isPackage else { return false }
             let destination = destinationDirectory
@@ -206,6 +220,13 @@ struct FileTreeRowView: View {
             }
         }
     }
+
+    private func refreshDragPayload() {
+        if let dragPayload {
+            FileTreeInternalDrag.revoke(dragPayload)
+        }
+        dragPayload = FileTreeInternalDrag.issue(url: row.entry.url, from: model)
+    }
 }
 
 struct FileTreeInternalDrag: Codable, Transferable {
@@ -220,6 +241,18 @@ struct FileTreeInternalDrag: Codable, Transferable {
             modelID: ObjectIdentifier(model), root: model.root, source: url.standardizedFileURL, issuedAt: .now
         )
         return Self(url: url.standardizedFileURL, token: token)
+    }
+
+    /// A body-safe payload used before `onAppear` has issued the row's real
+    /// in-process token. It can never pass `trustedURL`, so it cannot turn an
+    /// evaluation-time placeholder into an internal move.
+    static func untrustedPayload(for url: URL) -> Self {
+        Self(url: url.standardizedFileURL, token: UUID())
+    }
+
+    @MainActor
+    static func revoke(_ item: Self) {
+        FileTreeDragRegistry.shared.entries.removeValue(forKey: item.token)
     }
 
     @MainActor

@@ -39,6 +39,7 @@ public final class FileTreeModel {
     var reloadTokens: [URL: UInt] = [:]
     var nextReloadToken: UInt = 0
     var rootIsTerminal = false
+    var entriesByURL: [URL: DirectoryEntry] = [:]
     private var preferenceObserverID: UUID?
 
     public init(
@@ -58,7 +59,7 @@ public final class FileTreeModel {
         root = url?.standardizedFileURL
         rootIsTerminal = false
         selectedURL = nil; renamingURL = nil; pendingOpenURL = nil; lastOperationError = nil
-        children = [:]; expanded = []
+        children = [:]; expanded = []; entriesByURL = [:]
         guard let root else { availability = .noRoot; rows = []; return }
         rootAccessScope = FolderAccessScope(url: accessURL?.standardizedFileURL ?? root)
         let expectedGeneration = generation
