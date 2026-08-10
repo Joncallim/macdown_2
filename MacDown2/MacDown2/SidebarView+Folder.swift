@@ -170,7 +170,9 @@ extension SidebarView {
                 await coordinator?.openDocument(
                     at: url,
                     folderRoot: originRoot,
-                    folderAccessURL: originAccessURL
+                    folderAccessURL: originAccessURL,
+                    folderSelectionURL: url,
+                    folderRenameURL: url
                 )
                 if fileTreeModel.isCurrent(context), fileTreeModel.root == originRoot {
                     fileTreeModel.pendingOpenURL = nil

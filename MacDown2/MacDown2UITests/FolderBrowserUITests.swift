@@ -36,6 +36,16 @@ final class FolderBrowserUITests: XCTestCase {
         XCTAssertTrue(newFile.waitForExistence(timeout: 8))
         newFile.click()
 
+        let createdRow = app.descendants(matching: .any)
+            .matching(identifier: "fileRow-untitled.md")
+            .firstMatch
+        XCTAssertTrue(createdRow.waitForExistence(timeout: 8))
+
+        createdRow.rightClick()
+        let rename = app.menuItems["Rename"].element(boundBy: 1)
+        XCTAssertTrue(rename.waitForExistence(timeout: 5))
+        rename.click()
+
         let renameField = app.textFields["fileTreeRenameField"]
         XCTAssertTrue(renameField.waitForExistence(timeout: 8))
         renameField.click()
@@ -64,7 +74,7 @@ final class FolderBrowserUITests: XCTestCase {
         let row = app.descendants(matching: .any).matching(identifier: "fileRow-delete-me.md").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 8))
         row.rightClick()
-        let trash = app.menuItems["Move to Trash"]
+        let trash = app.menuItems["Move to Trash"].element(boundBy: 1)
         XCTAssertTrue(trash.waitForExistence(timeout: 5))
         trash.click()
 

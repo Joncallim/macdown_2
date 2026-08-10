@@ -71,7 +71,9 @@ extension WindowCoordinator {
                     await openDocument(
                         at: created,
                         folderRoot: root,
-                        folderAccessURL: controller.fileTreeModel.rootAccessURL
+                        folderAccessURL: controller.fileTreeModel.rootAccessURL,
+                        folderSelectionURL: created,
+                        folderRenameURL: created
                     )
                     if controller.fileTreeModel.isCurrent(context), controller.fileTreeModel.root == root {
                         controller.fileTreeModel.pendingOpenURL = nil

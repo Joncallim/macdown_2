@@ -85,13 +85,17 @@ final class WindowCoordinator {
     func openDocument(
         at url: URL,
         folderRoot: URL? = nil,
-        folderAccessURL: URL? = nil
+        folderAccessURL: URL? = nil,
+        folderSelectionURL: URL? = nil,
+        folderRenameURL: URL? = nil
     ) async {
         if let existing = controllerForDocument(url: url), let window = existing.window {
             if let folderRoot, existing.fileTreeModel.root == nil {
                 existing.model.setFolderRoot(folderRoot)
                 await existing.fileTreeModel.setRoot(folderRoot, accessURL: folderAccessURL)
             }
+            existing.fileTreeModel.selectedURL = folderSelectionURL
+            existing.fileTreeModel.renamingURL = folderRenameURL
             window.tabGroup?.selectedWindow = window
             window.makeKeyAndOrderFront(nil)
             return
@@ -114,6 +118,8 @@ final class WindowCoordinator {
         if let folderRoot {
             await controller.fileTreeModel.setRoot(folderRoot, accessURL: folderAccessURL)
         }
+        controller.fileTreeModel.selectedURL = folderSelectionURL
+        controller.fileTreeModel.renamingURL = folderRenameURL
         addController(controller, addingAsTab: true, keyWindow: keyWindow)
     }
 
