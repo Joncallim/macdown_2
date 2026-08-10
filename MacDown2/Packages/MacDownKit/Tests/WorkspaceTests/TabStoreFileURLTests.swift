@@ -67,3 +67,19 @@ import Testing
     #expect(store.tabID(forFileURL: alias) == id)
     #expect(store.documentFileWasDeleted(at: alias) == .closedCleanTab(id))
 }
+
+@MainActor
+@Test func unresolvedCaseDistinctPathsDoNotRetargetOrCloseEachOther() {
+    let lower = URL(fileURLWithPath: "/case-sensitive-volume/foo.md")
+    let upper = URL(fileURLWithPath: "/case-sensitive-volume/FOO.md")
+    let renamed = URL(fileURLWithPath: "/case-sensitive-volume/renamed.md")
+    let store = TabStore(sessionStore: FakeSessionStore())
+    store.newTab(document: FileDocument(fileURL: lower, text: "foo"))
+    let id = store.activeTabID
+
+    store.documentWasRenamed(from: upper, to: renamed)
+
+    #expect(store.activeDocument?.fileURL == lower.standardizedFileURL)
+    #expect(store.documentFileWasDeleted(at: upper) == .notOpen)
+    #expect(store.activeTabID == id)
+}

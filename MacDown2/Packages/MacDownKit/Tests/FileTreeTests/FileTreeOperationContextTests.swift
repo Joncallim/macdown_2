@@ -34,6 +34,33 @@ import Testing
 }
 
 @MainActor
+@Test func deleteRecreateReexpandRejectsTheOlderReloadCompletion() async {
+    let root = URL(fileURLWithPath: "/tmp/reload-epoch-root", isDirectory: true)
+    let child = root.appendingPathComponent("child", isDirectory: true)
+    let reader = ReorderedRecreationReader(root: root, child: child)
+    let model = FileTreeModel(
+        reader: reader,
+        watcher: TestWatching(),
+        preferences: FileTreePreferences(store: MemoryPreferenceStore()),
+        supportedExtensions: ["md"]
+    )
+
+    await model.setRoot(root)
+    let oldExpansion = Task { await model.expand(child) }
+    await reader.waitForOlderReadStart()
+
+    await model.rescanExpandedDirectories() // removes and evicts child
+    await model.rescanExpandedDirectories() // recreates child at the same lexical URL
+
+    let newExpansion = Task { await model.expand(child) }
+    await newExpansion.value
+    reader.releaseOlderRead()
+    await oldExpansion.value
+
+    #expect(model.rows.map(\.entry.name) == ["child", "fresh.md"])
+}
+
+@MainActor
 @Test func queuedCreateContextRejectsBeforeStartAfterRootReplacement() async throws {
     let firstRoot = URL(fileURLWithPath: "/tmp/context-create-a", isDirectory: true)
     let secondRoot = URL(fileURLWithPath: "/tmp/context-create-b", isDirectory: true)

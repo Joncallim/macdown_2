@@ -30,6 +30,29 @@ import Testing
     #expect(FileTreeNaming.validate("other.md", existing: ["other.md"], currentName: nil) == .nameExists("other.md"))
 }
 
+@Test func renamingOneCaseDistinctSiblingCannotOverwriteTheOther() {
+    #expect(FileTreeNaming.validate("FOO.md", existing: ["foo.md", "FOO.md"], currentName: "foo.md")
+        == .nameExists("FOO.md"))
+}
+
+@MainActor
+@Test func recentRootReopensValidSymlinkLexicallyWithPhysicalAccessTarget() throws {
+    let container = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: container) }
+    let target = container.appendingPathComponent("target", isDirectory: true)
+    let alias = container.appendingPathComponent("alias", isDirectory: true)
+    try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+    try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: target)
+
+    let recents = RecentFolderRoots(preferences: FileTreePreferences(store: MemoryPreferenceStore()))
+    recents.record(alias)
+    let resolution = try #require(recents.resolve(alias))
+
+    #expect(resolution.lexicalURL == alias.standardizedFileURL)
+    #expect(resolution.accessURL == target.standardizedFileURL)
+    #expect(recents.roots == [alias.standardizedFileURL])
+}
+
 @Test func tenThousandEntryListingArrangementAndFlatteningBenchmark() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: root) }

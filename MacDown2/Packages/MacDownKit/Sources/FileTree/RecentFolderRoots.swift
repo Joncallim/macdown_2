@@ -2,6 +2,13 @@ import FileCore
 import Foundation
 import Observation
 
+public struct RecentFolderRootResolution: Sendable, Equatable {
+    /// The lexical path the user selected, retained for the sidebar and session.
+    public let lexicalURL: URL
+    /// The physical target whose bookmark grants security-scoped access.
+    public let accessURL: URL
+}
+
 @MainActor @Observable
 public final class RecentFolderRoots {
     private struct StoredRoot: Codable {
@@ -30,7 +37,7 @@ public final class RecentFolderRoots {
         save()
     }
 
-    public func resolve(_ url: URL) -> URL? {
+    public func resolve(_ url: URL) -> RecentFolderRootResolution? {
         guard let index = roots.firstIndex(where: { PhysicalFileIdentity.matches($0, url) })
         else { return nil }
         var stale = false
@@ -48,17 +55,24 @@ public final class RecentFolderRoots {
         }
         let scope = FolderAccessScope(url: resolved)
         let standardized = resolved.standardizedFileURL
-        // The lexical alias remains the displayed/reopened root when it still
-        // refers to the bookmark's physical target.
-        if !PhysicalFileIdentity.matches(roots[index], standardized) {
-            roots[index] = standardized
+        let lexical = roots[index].standardizedFileURL
+        // Keep a working symlink alias as the tree/display root. The scope
+        // remains attached to the resolved bookmark target instead.
+        var isDirectory = ObjCBool(false)
+        let lexicalStillResolves = FileManager.default.fileExists(
+            atPath: lexical.path,
+            isDirectory: &isDirectory
+        ) && isDirectory.boolValue && PhysicalFileIdentity.matches(lexical, standardized)
+        let reopenedRoot = lexicalStillResolves ? lexical : standardized
+        if roots[index] != reopenedRoot {
+            roots[index] = reopenedRoot
         }
         if stale, let refreshed = try? standardized.bookmarkData(options: .withSecurityScope) {
             bookmarks[index] = stored(bookmark: refreshed, lexicalURL: roots[index])
             save()
         }
         _ = scope
-        return standardized
+        return RecentFolderRootResolution(lexicalURL: reopenedRoot, accessURL: standardized)
     }
 
     public func clear() {

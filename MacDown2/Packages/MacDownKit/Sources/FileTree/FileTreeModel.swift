@@ -33,6 +33,7 @@ public final class FileTreeModel {
     var rootAccessScope: FolderAccessScope?
     var generation: UInt = 0
     var reloadTokens: [URL: UInt] = [:]
+    var nextReloadToken: UInt = 0
     var rootIsTerminal = false
     private var preferenceObserverID: UUID?
 
@@ -48,14 +49,14 @@ public final class FileTreeModel {
         self.supportedExtensions = Set(supportedExtensions.map { $0.lowercased() })
     }
 
-    public func setRoot(_ url: URL?) async {
+    public func setRoot(_ url: URL?, accessURL: URL? = nil) async {
         tearDown()
         root = url?.standardizedFileURL
         rootIsTerminal = false
         selectedURL = nil; renamingURL = nil; pendingOpenURL = nil; lastOperationError = nil
         children = [:]; expanded = []
         guard let root else { availability = .noRoot; rows = []; return }
-        rootAccessScope = FolderAccessScope(url: root)
+        rootAccessScope = FolderAccessScope(url: accessURL?.standardizedFileURL ?? root)
         let expectedGeneration = generation
         children[root] = .loading; availability = .loading; rows = []
         await reload(root, isRoot: true, expectedGeneration: expectedGeneration)
@@ -191,7 +192,9 @@ public final class FileTreeModel {
 
     func reload(_ url: URL, isRoot: Bool = false, expectedGeneration: UInt) async {
         let key = url.standardizedFileURL
-        let reloadToken = (reloadTokens[key] ?? 0) &+ 1
+        precondition(nextReloadToken < .max, "Reload token space exhausted")
+        nextReloadToken += 1
+        let reloadToken = nextReloadToken
         reloadTokens[key] = reloadToken
         do {
             let listed = try await contents(url)

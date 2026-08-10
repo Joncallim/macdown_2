@@ -195,7 +195,7 @@ public extension FileTreeModel {
             rescanTasks.removeValue(forKey: key)?.cancel()
         }
         for key in reloadTokens.keys.filter({ $0.pathComponents.starts(with: oldKey.pathComponents) }) {
-            reloadTokens[key] = (reloadTokens[key] ?? 0) &+ 1
+            reloadTokens.removeValue(forKey: key)
         }
         for key in watchers.keys.filter({ $0.pathComponents.starts(with: oldKey.pathComponents) }) {
             cancelWatcher(at: key)

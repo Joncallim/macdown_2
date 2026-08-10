@@ -93,6 +93,63 @@ final class RootFlakyReader: @unchecked Sendable, DirectoryReading {
     }
 }
 
+final class ReorderedRecreationReader: @unchecked Sendable, DirectoryReading {
+    let root: URL
+    let child: URL
+    private let lock = NSLock()
+    private let olderRead = DispatchSemaphore(value: 0)
+    private var rootReads = 0
+    private var childReads = 0
+    private var olderReadStart: CheckedContinuation<Void, Never>?
+
+    init(root: URL, child: URL) {
+        self.root = root.standardizedFileURL
+        self.child = child.standardizedFileURL
+    }
+
+    func contents(of url: URL) throws -> [DirectoryEntry] {
+        let key = url.standardizedFileURL
+        if key == root {
+            lock.lock(); rootReads += 1
+            let read = rootReads
+            lock.unlock()
+            return switch read {
+            case 1, 3: [directory(child)]
+            default: []
+            }
+        }
+        guard key == child else { return [] }
+        lock.lock(); childReads += 1
+        let read = childReads
+        let continuation = read == 1 ? olderReadStart : nil
+        olderReadStart = nil
+        lock.unlock()
+        continuation?.resume()
+        if read == 1 {
+            olderRead.wait()
+            return [file(child.appendingPathComponent("stale.md"))]
+        }
+        return [file(child.appendingPathComponent("fresh.md"))]
+    }
+
+    func waitForOlderReadStart() async {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if childReads > 0 {
+                lock.unlock()
+                continuation.resume()
+            } else {
+                olderReadStart = continuation
+                lock.unlock()
+            }
+        }
+    }
+
+    func releaseOlderRead() {
+        olderRead.signal()
+    }
+}
+
 final class RaceCreatingMutator: @unchecked Sendable, FileSystemMutating {
     private var raced = false
 

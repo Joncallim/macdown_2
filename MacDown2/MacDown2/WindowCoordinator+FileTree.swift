@@ -89,17 +89,17 @@ extension WindowCoordinator {
     }
 
     /// Opens a root in the key window only; roots are intentionally per-window.
-    func openFolder(_ url: URL) {
+    func openFolder(_ url: URL, accessURL: URL? = nil) {
         guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
         controller.model.setFolderRoot(url)
         recentFolderRoots.record(url)
-        Task { await controller.fileTreeModel.setRoot(url) }
+        Task { await controller.fileTreeModel.setRoot(url, accessURL: accessURL) }
         scheduleSaveSession()
     }
 
     func openRecentFolder(_ url: URL) {
-        guard let resolved = recentFolderRoots.resolve(url) else { return }
-        openFolder(resolved)
+        guard let resolution = recentFolderRoots.resolve(url) else { return }
+        openFolder(resolution.lexicalURL, accessURL: resolution.accessURL)
     }
 
     func revealActiveFile() {

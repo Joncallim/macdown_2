@@ -86,9 +86,7 @@ public enum FileTreeNaming {
     ) -> FileTreeOperationError? {
         guard !name.isEmpty else { return .nameEmpty }
         guard !name.contains("/"), !name.contains(":") else { return .nameContainsPathSeparator }
-        let names = existing.filter { candidate in
-            currentName.map { candidate.caseInsensitiveCompare($0) != .orderedSame } ?? true
-        }
+        let names = existing.filter { candidate in candidate != currentName }
         return names.contains { $0.caseInsensitiveCompare(name) == .orderedSame } ? .nameExists(name) : nil
     }
 }
