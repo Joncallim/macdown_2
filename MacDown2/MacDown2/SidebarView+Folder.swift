@@ -18,6 +18,7 @@ extension SidebarView {
             VStack(alignment: .leading) {
                 Text("No folder opened").foregroundStyle(.secondary)
                 Button("Open Folder…") { coordinator?.chooseFolder() }
+                    .accessibilityIdentifier("openFolderButton")
                 Text("⌘⇧O opens a folder").font(.caption).foregroundStyle(.secondary)
             }
             .accessibilityIdentifier("folderSection")
@@ -27,6 +28,7 @@ extension SidebarView {
             VStack(alignment: .leading) {
                 Text(reason).foregroundStyle(.secondary)
                 Button("Choose Another Folder…") { coordinator?.chooseFolder() }
+                    .accessibilityIdentifier("openFolderButton")
             }
         case .empty:
             VStack(alignment: .leading) {
@@ -170,9 +172,7 @@ extension SidebarView {
                 await coordinator?.openDocument(
                     at: url,
                     folderRoot: originRoot,
-                    folderAccessURL: originAccessURL,
-                    folderSelectionURL: url,
-                    folderRenameURL: url
+                    folderAccessURL: originAccessURL
                 )
                 if fileTreeModel.isCurrent(context), fileTreeModel.root == originRoot {
                     fileTreeModel.pendingOpenURL = nil

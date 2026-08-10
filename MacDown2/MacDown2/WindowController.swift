@@ -64,7 +64,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             _ = parseStore.session(for: identity)
         }
 
-        let hostingController = NSHostingController(rootView: WorkspaceShellView(
+        let shell = WorkspaceShellView(
             model: model,
             editorStore: editorStore,
             highlightStore: highlightStore,
@@ -72,7 +72,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             themeController: themeController,
             outlineController: outlineController,
             fileTreeModel: fileTreeModel
-        ))
+        )
+        .environment(\.windowCoordinator, coordinator)
+        let hostingController = NSHostingController(rootView: shell)
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
         window.setFrameAutosaveName("MacDown2DocumentWindow")

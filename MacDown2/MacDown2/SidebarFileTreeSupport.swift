@@ -27,10 +27,11 @@ struct FileTreeRowView: View {
             } else {
                 Color.clear.frame(width: 12, height: 12)
             }
-            Image(nsImage: NSWorkspace.shared.icon(forFile: row.entry.url.path)).resizable().frame(
-                width: 16,
-                height: 16
-            )
+            Image(systemName: row.entry.isDirectory
+                ? (row.entry.isPackage ? "shippingbox" : "folder")
+                : "doc.text")
+                .foregroundStyle(row.entry.isDirectory ? .secondary : .primary)
+                .frame(width: 16, height: 16)
             if model.renamingURL == row.entry.url {
                 TextField("Name", text: $newName, onCommit: commitRename)
                     .focused($renameFocused)
@@ -118,6 +119,7 @@ struct FileTreeRowView: View {
                 .accessibilityIdentifier("newFolderButton")
             Divider()
             Button("Rename") { model.renamingURL = row.entry.url }
+                .accessibilityIdentifier("fileTreeRenameAction")
             Button("Duplicate") {
                 let context = model.beginOperation()
                 Task {
@@ -133,6 +135,7 @@ struct FileTreeRowView: View {
             Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([row.entry.url]) }
             Divider()
             Button("Move to Trash", role: .destructive, action: requestMoveToTrash)
+                .accessibilityIdentifier("fileTreeTrashAction")
         }
     }
 
@@ -185,7 +188,7 @@ struct FileTreeRowView: View {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Move to Trash")
         alert.addButton(withTitle: "Cancel")
-        guard let window = NSApp.keyWindow else { return }
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
         alert.beginSheetModal(for: window) { response in
             guard response == .alertFirstButtonReturn else { return }
             Task { @MainActor in

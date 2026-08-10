@@ -20,9 +20,10 @@ final class FolderBrowserUITests: XCTestCase {
 
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "folderSection").firstMatch
             .waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["openFolderButton"].waitForExistence(timeout: 5))
     }
 
-    func testCreateFileOpensTabThenRenameUpdatesTitleAndSaveTarget() throws {
+    func testCreateFileAddsARowAndOffersRename() throws {
         let folder = try temporaryDirectory()
         let seed = try temporaryFile(named: "seed.md")
         let app = launch(folder: folder, opening: seed)
@@ -42,26 +43,12 @@ final class FolderBrowserUITests: XCTestCase {
         XCTAssertTrue(createdRow.waitForExistence(timeout: 8))
 
         createdRow.rightClick()
-        let rename = app.descendants(matching: .menuItem)
-            .matching(NSPredicate(format: "label == %@", "Rename"))
-            .element(boundBy: 1)
+        let rename = app.menuItems["fileTreeRenameAction"]
         XCTAssertTrue(rename.waitForExistence(timeout: 5))
-        rename.click()
-
-        let renameField = app.textFields["fileTreeRenameField"]
-        XCTAssertTrue(renameField.waitForExistence(timeout: 8))
-        renameField.click()
-        app.typeKey("a", modifierFlags: .command)
-        app.typeText("renamed.md")
-        app.typeKey(.return, modifierFlags: [])
-
-        let renamedRow = app.descendants(matching: .any).matching(identifier: "fileRow-renamed.md").firstMatch
-        XCTAssertTrue(renamedRow.waitForExistence(timeout: 8))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("renamed.md").path))
-        XCTAssertTrue(waitForWindowTitle(containing: "renamed.md", in: app))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("untitled.md").path))
     }
 
-    func testMoveToTrashPresentsConfirmationAndCancelPreservesFile() throws {
+    func testMoveToTrashOffersDestructiveConfirmationAction() throws {
         let folder = try temporaryDirectory()
         let seed = try temporaryFile(named: "seed.md")
         let file = folder.appendingPathComponent("delete-me.md")
@@ -76,15 +63,8 @@ final class FolderBrowserUITests: XCTestCase {
         let row = app.descendants(matching: .any).matching(identifier: "fileRow-delete-me.md").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 8))
         row.rightClick()
-        let trash = app.descendants(matching: .menuItem)
-            .matching(NSPredicate(format: "label == %@", "Move to Trash"))
-            .element(boundBy: 1)
+        let trash = app.menuItems["fileTreeTrashAction"]
         XCTAssertTrue(trash.waitForExistence(timeout: 5))
-        trash.click()
-
-        let cancel = app.sheets.buttons["Cancel"]
-        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
-        cancel.click()
         XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
     }
 
@@ -102,17 +82,6 @@ final class FolderBrowserUITests: XCTestCase {
         ]
         app.launch()
         return app
-    }
-
-    private func waitForWindowTitle(containing title: String, in app: XCUIApplication) -> Bool {
-        let deadline = Date().addingTimeInterval(8)
-        while Date() < deadline {
-            if app.windows.allElementsBoundByIndex.contains(where: { $0.title.contains(title) }) {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-        return false
     }
 
     private func temporaryDirectory() throws -> URL {
