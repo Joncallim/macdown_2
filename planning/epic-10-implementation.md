@@ -2,198 +2,241 @@
 
 > **Issue:** #11 — `[EPIC-10] Editing assists: list continuation, auto-pairing, indenting`
 >
-> **Status:** Architecture only. This document is the binding implementation contract for the Epic 10 branch. Production code must be implemented on the same branch only after this plan has been read end-to-end.
+> **Status:** Architecture only. This is the binding implementation contract for the Epic 10 branch. Production code starts only after this document has been read end-to-end.
 >
 > **Branch:** `epic/10-editing-assists` → draft PR into `master`.
 >
-> **Baseline:** branch cut from `master` at `48d852927ac19fd8d2eb0119750c528c3922eae1`, the merged Epic 18 head.
+> **Baseline:** `48d852927ac19fd8d2eb0119750c528c3922eae1` — merged Epic 18 head.
 >
-> **Depends on:** E04 as built (`EditorView`, `EditorTextSystem`, TextKit 2 and per-window undo), E05 as built (highlighting attached to the existing text system), E07/E08 as built (preview/outline consuming the editor binding), E18 as built (programmatic external-replacement guard and document-safety path).
+> **Depends on:** E04 as built (`EditorView`, `EditorTextSystem`, TextKit 2 and per-window undo), E05 as built (highlighting attached to the same text system), E07/E08 as built (preview/outline consuming the editor binding), E18 as built (external-replacement guard and document-safety path).
 >
-> **No new third-party dependencies. No Package.swift, project.yml, or CI-workflow change is expected.**
+> **No new third-party dependencies. No `Package.swift`, `project.yml`, session-schema, or CI-workflow change is expected.**
 
 ---
 
-## 1. Why this epic is next
+## 1. Product decision and reconciliation with the old issue
 
-The data-safety blocker that previously justified doing E18 before E10 is now merged. Epic 10 should therefore make the editor feel like a Markdown editor rather than a generic `NSTextView` without reopening architecture that is already working.
+Epic 18 is merged, so the document-safety reason for postponing E10 is gone. E10 is now the editor-feel pass: it should make the existing source editor pleasant and Markdown-native without reopening already-working architecture.
 
-This pass deliberately reconciles the 19 July Epic 10 issue against the live repository. The repository wins where they differ.
+The live repository is authoritative where the 19 July issue has drifted.
 
-Two pieces of the original issue are now stale:
+### 1.1 Stale shortcut assumption
 
-1. **Heading shortcuts `⌘1…6` cannot ship.** The as-built native-tab model uses `⌘1…9` for tab selection in `WorkspaceCommands`. Reclaiming those keys would regress shipped navigation. Epic 10 uses **`⌃⌘1…6` for H1…H6** and **`⌃⌘0` for Paragraph**. `⌘1…9` remains native-tab selection.
-2. **Preferences UI does not exist yet.** `AppSettings` is still a stub and E13 owns the Settings scene. Epic 10 therefore introduces a typed assist configuration with documented defaults and a live configuration seam, but **does not build a settings pane**.
+The issue proposed `⌘1…6` for headings. The as-built native-tab model now owns `⌘1…9` for tab selection, and the layout menu owns `⌘⌥1…3`. E10 must preserve both.
 
-The user's current difficulty dogfooding a Debug build also changes the validation policy: correctness still runs through package tests, but perceived typing feel and the `<50 ms` user-facing latency claim must be checked against a **Release app build**, not inferred from Debug-mode behavior.
+Binding shortcuts:
+
+- Bold — `⌘B`
+- Italic — `⌘I`
+- Inline Code — **`⌃⌘E`**
+- Paragraph — `⌃⌘0`
+- Heading 1…6 — `⌃⌘1…6`
+
+`⌘E` is intentionally **not** taken: the existing editor uses AppKit's standard `NSTextFinder` responder-chain behavior, whose Find group includes “Use Selection for Find”. E10 leaves the entire SwiftUI `.textEditing` command group untouched.
+
+### 1.2 Plain-text formatting menu
+
+The editor explicitly sets `NSTextView.isRichText = false`; rich-text Font/Text formatting is not a MacDown document capability. E10 therefore replaces SwiftUI's `.textFormatting` command group with Markdown formatting commands rather than adding a duplicate top-level menu with competing Bold/Italic shortcuts.
+
+Use:
+
+```swift
+CommandGroup(replacing: .textFormatting) {
+    Button("Bold") { ... }
+        .keyboardShortcut("b", modifiers: .command)
+    Button("Italic") { ... }
+        .keyboardShortcut("i", modifiers: .command)
+    Button("Inline Code") { ... }
+        .keyboardShortcut("e", modifiers: [.control, .command])
+    Divider()
+    Menu("Heading") { ... }
+}
+```
+
+Do **not** replace `.textEditing`; that group owns Find, spelling/grammar, substitutions, transformations, and related standard editing behavior.
+
+### 1.3 Settings are not part of E10
+
+`AppSettings` is still a stub and E13 owns the Settings scene. E10 introduces a typed assist configuration and live application seam, with documented defaults, but does not build a settings pane or preference migration.
+
+### 1.4 Debug mode is not a product-feel gate
+
+Correctness still runs through package tests. Perceived typing feel and user-facing latency must be checked with a **Release app build**. Do not treat a Debug build's responsiveness as release evidence.
 
 ---
 
-## 2. As-built repository findings that constrain the design
+## 2. As-built constraints discovered from `master`
 
-### 2.1 There is already exactly one NSTextView delegate
+### 2.1 One NSTextView delegate already owns the input seam
 
-`EditorView.Coordinator` is the current `NSTextViewDelegate`. It owns:
+`EditorView.Coordinator` is the current and only `NSTextViewDelegate`. It owns:
 
-- `textDidChange` → writes the live `NSTextView.string` into the SwiftUI binding;
+- `textDidChange` → live `NSTextView` text into the SwiftUI binding;
 - selection callbacks → outline tracking;
 - scroll callbacks → preview/outline sync;
-- the `isApplyingModelText` echo guard.
+- `isApplyingModelText` → model-to-view echo suppression.
 
-**Binding rule:** Epic 10 extends this existing coordinator. Do not install a second delegate, proxy delegate, notification-only parallel editing path, or replacement `NSTextView` owner.
+**Binding rule:** E10 extends this coordinator. It does not install a second delegate, a delegate proxy, a notification-only parallel editing path, or a replacement view owner.
 
 ### 2.2 EditorTextSystem is the stable per-document editing object
 
-`EditorTextSystem` owns one live TextKit 2 stack and exposes the existing per-document `UndoManager`. It also has `isPerformingProgrammaticTextUpdate`, introduced for E18, so disk-driven replacements do not flow back as user edits.
+`EditorTextSystem` owns one TextKit 2 stack and one per-document `UndoManager`. E18 added `isPerformingProgrammaticTextUpdate` so disk-driven replacement does not re-enter the user-edit binding path.
 
-**Binding rule:** editing assists are user edits and must continue through the normal `textDidChange` binding path. They must never be classified as E18 programmatic replacements.
+**Binding rule:** E10 edits are ordinary user edits. They continue through the normal `textDidChange` path and never reuse E18's programmatic-replacement path.
 
-### 2.3 Highlighting, preview and outline already consume the ordinary edit path
+### 2.3 One edit publication already feeds everything else
 
-A successful user edit currently produces:
+Current user edit flow:
 
 ```text
-NSTextView edit
+NSTextView user edit
   → EditorView.Coordinator.textDidChange
   → Binding<String>
-  → FileDocument value update / dirty state
-  → Markdown parse debounce / preview
+  → FileDocument value replacement / dirty state
   → highlighting
-  → outline refresh
+  → Markdown parse debounce
+  → preview
+  → outline
 ```
 
-Epic 10 must not add a second publication path to any of those consumers. One assist must look like **one normal NSTextView edit** to the rest of the application.
+An E10 assist must enter that same flow exactly once. It must not separately update `FileDocument`, parser, highlighter, preview, outline, or recovery state.
 
-### 2.4 EditorCore already depends on FileCore, but format gating belongs at the app boundary
+### 2.4 Avoid a second whole-document string extraction
 
-The package dependency already exists, so importing FileCore would not create a cycle. Even so, the hot-path assist engine should not repeatedly inspect file metadata. `DocumentEditorSplitView` already knows whether the active document is Markdown.
+The existing post-edit binding path already reads the editor text. E10 must not call `NSTextView.string` again *before every keystroke* merely to decide whether to auto-pair or continue a list.
 
-**Binding rule:** `DocumentEditorSplitView` passes an enabled Markdown assist configuration only for `document.format.id == "markdown"`. Every default/unknown/non-Markdown path is fail-closed (`.disabled`).
+TextKit 2's `NSTextContentStorage` uses `NSTextStorage` as its default backing store. The E10 decision engine therefore reads from the live `NSTextStorage.mutableString` as an `NSString`-compatible, UTF-16-addressable source.
 
-This is important because `WindowController` eagerly creates text systems with `EditorConfiguration.default` before SwiftUI mounts the format-specific editor. The default therefore **must have assists disabled** so a JSON/HTML/source file can never receive a transient Markdown assist before the first `updateNSView`.
+Add an internal `EditorTextSystem` accessor:
 
-### 2.5 Native-tab shortcuts already occupy ⌘1…9
+```swift
+var assistTextSource: NSString? {
+    guard let storage = contentStorage.attributedString as? NSTextStorage else {
+        return textView.textStorage?.mutableString
+    }
+    return storage.mutableString
+}
+```
 
-`WorkspaceCommands` binds `⌘1…9` to native tab selection, while `⌘⌥1…3` changes editor/preview layout.
+The exact spelling can be adjusted for the Xcode 26 SDK, but the contract is fixed:
 
-**Binding rule:** retain those commands unchanged. Heading commands use `⌃⌘0…6`.
+- common-path E10 decisions must not materialize an additional full Swift `String` copy;
+- the engine reads only the current line, selected line range, immediate neighbor characters, or explicit selection;
+- if the expected live storage is unavailable, the production adapter **fails open to native AppKit behavior** and reports/asserts in Debug rather than falling back silently to an O(document) pre-keystroke copy.
 
-### 2.6 Legacy behavior is available and should be treated as evidence
+Add a test that the current TextKit stack actually exposes an `NSTextStorage` backing object on the supported toolchain.
 
-The original MacDown implementation in `NSTextView+Autocomplete` provides concrete behavior for:
+### 2.5 Format gating belongs at the app boundary and fails closed
 
-- matching-character completion and type-over;
-- wrap-selection;
-- paired backspace;
-- Tab-to-spaces and Shift-Tab unindent;
-- selected-line indent/unindent;
-- inline markup toggles;
-- list continuation and ordered-list auto-increment;
-- blockquote continuation;
-- indentation continuation;
-- heading conversion;
-- smart Home behavior through the text-view command delegate.
+`DocumentEditorSplitView` knows the active `FileFormat`. `WindowController` eagerly creates a text system with `EditorConfiguration.default` before the format-specific SwiftUI view mounts.
 
-Epic 10 ports those semantics where they still make sense and explicitly records dropped behavior rather than silently forgetting it.
+Therefore:
+
+- `EditorConfiguration.default.editingAssists == .disabled`;
+- only `document.format.id == "markdown"` receives `.markdownDefault`;
+- HTML is not treated as Markdown merely because it also has rendered preview capability;
+- Save As from Markdown → another format disables assists on the existing text system on the next configuration update;
+- Save As into Markdown enables them.
+
+### 2.6 E10 is file-format aware, not AST-context aware
+
+E10 does **not** consult the debounced Markdown AST to determine whether the caret is inside front matter or a fenced code block. Doing so would put stale/asynchronous parser state into the synchronous keystroke path.
+
+This means E10's assists are enabled throughout a Markdown file. This matches the scope/legacy model and is a conscious limitation. If Release dogfooding shows that list continuation inside fenced code blocks is materially harmful, file a focused follow-up rather than coupling E10 to stale parse state.
 
 ---
 
 ## 3. Non-negotiable architecture rules
 
-1. **No NSTextView subclass.** Do not add `MacDownTextView`, override `keyDown`, or replace `TextKitStack.textView` with a custom subclass for this epic.
+1. **No `NSTextView` subclass.** No `keyDown` override, custom field editor, or alternate view class.
 2. **One delegate.** `EditorView.Coordinator` remains the sole `NSTextViewDelegate`.
-3. **Use AppKit's text-input pipeline.** Typed replacement interception happens in `textView(_:shouldChangeTextIn:replacementString:)`; command-key behavior happens in `textView(_:doCommandBy:)`.
-4. **Pure decision engine, thin AppKit adapter.** Parsing/decision logic is synchronous and deterministic. AppKit mutation is isolated to the text-system/application seam.
-5. **One contiguous replacement per assist.** Every text-mutating assist must be representable as one replacement range + one replacement string + one resulting selection. This is how undo stays atomic.
-6. **All editor offsets are UTF-16.** Use `NSRange`, `NSString.length`, `NSString.lineRange(for:)`, and UTF-16-aware clamping. Never use `String.count` to calculate editor ranges.
-7. **No full Markdown AST on the keystroke path.** E10 operates on the current line / selected line range / immediate neighbors only. Do not call `MarkdownEngine`, wait for a parse, or traverse the document AST to decide an assist.
-8. **No Task/actor/debounce in the assist engine.** Keystroke decisions are synchronous. The existing preview/highlight pipelines retain their own asynchronous/debounced behavior.
-9. **IME marked text passes through untouched.** Never auto-pair, wrap, or rewrite a replacement while the edit intersects marked text or while the text view is actively composing marked text.
-10. **External/model replacements never trigger assists.** Respect both `Coordinator.isApplyingModelText` and `EditorTextSystem.isPerformingProgrammaticTextUpdate`.
-11. **Markdown-only means Markdown-only.** In HTML, JSON, YAML, source files and plain text, E10 returns native AppKit behavior for typing, Return, Tab, Backspace and Home.
-12. **Do not build E13.** Configuration values exist now; the Settings UI and migration from old MacDown preferences remain E13.
-13. **Do not change native tabs, preview, parser, highlighting, external-file monitoring, session schema, file tree, export, or extension architecture.**
-14. **No Debug-build performance claims.** Release is the user-feel gate.
+3. **Use AppKit's text-input pipeline.** Typed replacements use `textView(_:shouldChangeTextIn:replacementString:)`; command behavior uses `textView(_:doCommandBy:)`.
+4. **Pure decision engine, thin AppKit adapter.** Decision logic is deterministic and synchronous.
+5. **One contiguous text replacement per mutating assist.** No “delete marker then insert prefix” multi-step publication.
+6. **All offsets are UTF-16.** `NSRange`, `NSString.length`, UTF-16-aware line/range helpers. Never `String.count` for editor positions.
+7. **No full Markdown parse on the hot path.** No `MarkdownEngine`, syntax tree, or preview state dependency.
+8. **No async work in the decision engine.** No `Task`, actor, debounce, sleep, or callback queue.
+9. **No additional whole-document extraction on the common path.** Read local ranges from live text storage.
+10. **IME marked text passes through untouched.** No pairing/wrapping/rewrite during composition.
+11. **Programmatic/model replacements bypass E10.** Respect both existing re-entrancy guards.
+12. **Markdown-only means Markdown-only.** Non-Markdown formats receive native AppKit behavior.
+13. **Do not build E13.** Configuration now; settings UI later.
+14. **Do not change native tabs, parser, highlighting, preview, external-file monitoring, FileTree, export, extension architecture, or session schema.**
+15. **Do not weaken existing performance tests.** Release evidence is additive.
 
 ---
 
 ## 4. Data flow
 
-### 4.1 Typed character / replacement
+### 4.1 Typed replacement
 
 ```text
 NSTextInputClient / NSTextView
   → EditorView.Coordinator
-       textView(_:shouldChangeTextIn:replacementString:)
-  → MarkdownEditingAssistEngine.replacement(...)
-       ├── .passthrough → return true; AppKit performs native edit
-       ├── .selection  → move selection; return false
-       └── .edit       → EditorTextSystem.applyAssistOutcome(...); return false
+      textView(_:shouldChangeTextIn:replacementString:)
+  → guard model/E18/assist re-entrancy + marked text
+  → MarkdownEditingAssistEngine.outcome(... live NSString source ...)
+      ├── .passthrough → return true; AppKit performs original edit
+      ├── .selection  → apply selection; return false
+      └── .edit       → EditorTextSystem.applyAssistOutcome(...); return false
                            ↓
-                         exactly one NSTextView.insertText(...replacementRange:)
+                         exactly one NSTextView.insertText(... replacementRange: ...)
                            ↓
-                         nested shouldChange callback sees isPerformingEditingAssist
-                         and returns true without re-processing
+                         nested shouldChange callback sees assist re-entrancy guard
+                         and returns true without re-transforming
                            ↓
-                         textDidChange fires normally exactly once
-                           ↓
-                         existing Binding/FileDocument/preview/highlight path
+                         one normal textDidChange publication
 ```
 
-### 4.2 Return / Tab / Shift-Tab / Backspace / smart Home
+### 4.2 Return / Tab / Shift-Tab / Backspace / Home
 
 ```text
 NSTextView command
-  → EditorView.Coordinator.textView(_:doCommandBy:)
-  → command mapped to EditingAssistAction
+  → Coordinator.textView(_:doCommandBy:)
+  → map supported selector to EditingAssistAction
   → pure engine
-       ├── .passthrough → return false; AppKit handles it
-       └── handled      → apply outcome; return true
+      ├── .passthrough → return false; AppKit handles command
+      └── handled      → apply outcome; return true
 ```
 
-The binding must follow Cocoa semantics: `doCommandBy` returns **true when E10 handled the command**, false when AppKit should continue.
+Cocoa return semantics are binding: `doCommandBy` returns **true when E10 handled the command**, false when AppKit should continue.
 
-### 4.3 Menu / keyboard formatting command
+### 4.3 Menu command
 
 ```text
-WorkspaceCommands
+WorkspaceCommands (.textFormatting replacement)
   → WindowCoordinator.performMarkdownEditingCommand(...)
   → key WindowController
   → active EditorTextSystem
-  → EditorTextSystem.performMarkdownCommand(...)
-  → same pure engine + same one-replacement applier
-  → normal textDidChange binding path
+  → same pure engine / same one-edit adapter
+  → normal textDidChange path
 ```
 
-Do not synthesize keyboard events to invoke formatting.
+Never synthesize key events to invoke a formatting command.
 
 ---
 
-## 5. Public and internal API contracts
+## 5. Types and exact contracts
 
-### 5.1 New `EditingAssistConfiguration.swift`
-
-Add:
+### 5.1 `EditingAssistConfiguration.swift`
 
 ```swift
 public struct EditingAssistConfiguration: Sendable, Equatable {
     public var isEnabled: Bool
-    public var continuesBlockPrefixes: Bool
+    public var continuesMarkdownPrefixes: Bool
     public var completesMatchingCharacters: Bool
     public var convertsTabsToSpaces: Bool
     public var smartHome: Bool
     public var autoIncrementOrderedLists: Bool
-    public var strikethroughEnabled: Bool
     public var indentationWidth: Int
 
     public init(
         isEnabled: Bool,
-        continuesBlockPrefixes: Bool = true,
+        continuesMarkdownPrefixes: Bool = true,
         completesMatchingCharacters: Bool = true,
         convertsTabsToSpaces: Bool = true,
         smartHome: Bool = true,
         autoIncrementOrderedLists: Bool = true,
-        strikethroughEnabled: Bool = true,
         indentationWidth: Int = 4
     )
 
@@ -204,12 +247,12 @@ public struct EditingAssistConfiguration: Sendable, Equatable {
 
 Rules:
 
-- `indentationWidth` is normalized to **1...8** at initialization. Do not allow 0 or a pathological large value into the hot path.
-- `.disabled` has `isEnabled == false`; other fields are irrelevant while disabled.
-- `.markdownDefault` is enabled, width 4, spaces enabled, prefix continuation enabled, smart Home enabled, ordered-list increment enabled, matching pairs enabled, strikethrough enabled.
-- These defaults are the temporary source of truth until E13 exposes settings.
+- normalize `indentationWidth` to `1...8` in the initializer;
+- `.disabled.isEnabled == false`;
+- `.markdownDefault`: enabled, prefix continuation on, pairing on, spaces on, smart Home on, ordered increment on, width 4;
+- no strikethrough preference is introduced here: legacy single-`~` wrapping is not GFM-correct and is deliberately not ported in E10.
 
-### 5.2 Extend `EditorConfiguration`
+### 5.2 `EditorConfiguration`
 
 Add:
 
@@ -217,21 +260,19 @@ Add:
 public var editingAssists: EditingAssistConfiguration
 ```
 
-and an initializer parameter defaulting to `.disabled`.
+with initializer default `.disabled`.
 
-`EditorConfiguration.default` must explicitly remain fail-closed with `.disabled`.
+`EditorConfiguration.default` explicitly stays disabled.
 
-`EditorTextSystem.apply(_:)` stores the currently applied assist configuration even when no AppKit appearance property changes. Add:
+`EditorTextSystem.apply(_:)` stores the current assist configuration:
 
 ```swift
 public private(set) var editingAssistConfiguration: EditingAssistConfiguration = .disabled
 ```
 
-The coordinator and menu-command path read this value. Do not duplicate assist configuration in the SwiftUI coordinator.
+Do not duplicate this value in the SwiftUI coordinator.
 
-### 5.3 New `EditingAssistOutcome.swift`
-
-Internal package types:
+### 5.3 `EditingAssistOutcome.swift`
 
 ```swift
 struct EditingAssistEdit: Equatable {
@@ -249,29 +290,27 @@ enum EditingAssistOutcome: Equatable {
 }
 ```
 
-`handledNoChange` is allowed only for a command E10 intentionally consumes without a text mutation. Do not use it to hide an unimplemented branch.
+`handledNoChange` is only for a deliberately consumed command. It is not an “implementation TODO” state.
 
-### 5.4 New `MarkdownEditingCommand.swift`
-
-Public because the app command layer needs it:
+### 5.4 `MarkdownEditingCommand.swift`
 
 ```swift
 public enum MarkdownEditingCommand: Sendable, Equatable {
     case bold
     case italic
     case inlineCode
-    case heading(level: Int)   // 1...6 only
+    case heading(level: Int)   // 1...6
     case paragraph
 }
 ```
 
-`heading(level:)` rejects values outside 1...6 at the `EditorTextSystem` boundary (return false / assertion in Debug); the pure engine is never passed an invalid level.
+Reject invalid heading levels at the `EditorTextSystem` entry boundary; never pass invalid levels into the pure engine.
 
-### 5.5 New internal action type
+### 5.5 Internal action
 
 ```swift
 enum EditingAssistAction: Equatable {
-    case replacement(range: NSRange, string: String, hasMarkedText: Bool, markedRange: NSRange)
+    case replacement(range: NSRange, string: String)
     case insertNewline
     case insertTab
     case insertBacktab
@@ -281,112 +320,113 @@ enum EditingAssistAction: Equatable {
 }
 ```
 
-The engine always also receives:
+Marked-text state is handled in the adapter before entering the pure engine.
 
-- current `String`;
-- current `NSRange` selection;
-- current `EditingAssistConfiguration`.
-
-### 5.6 New `MarkdownEditingAssistEngine.swift`
-
-Internal, stateless, synchronous:
+### 5.6 Pure engine
 
 ```swift
 struct MarkdownEditingAssistEngine {
     static func outcome(
         for action: EditingAssistAction,
-        text: String,
+        text: NSString,
         selection: NSRange,
         configuration: EditingAssistConfiguration
     ) -> EditingAssistOutcome
 }
 ```
 
-The first branch is always:
+First branch:
 
 ```swift
 guard configuration.isEnabled else { return .passthrough }
 ```
 
-Internally bridge `text` to `NSString` once per call and perform all range arithmetic in UTF-16.
+The engine never mutates `text` and never asks for the whole Swift `String` value.
 
-### 5.7 Extend `EditorTextSystem`
+### 5.7 EditorTextSystem editing adapter
 
-Add an internal re-entrancy state distinct from E18's programmatic-update state:
-
-```swift
-private(set) var isPerformingEditingAssist = false
-```
-
-Add internal application:
+Add in `EditorTextSystem+EditingAssists.swift`:
 
 ```swift
+private(set) var isPerformingEditingAssist: Bool
+
 @discardableResult
 func applyAssistOutcome(_ outcome: EditingAssistOutcome) -> Bool
-```
 
-and public menu-command entry:
-
-```swift
 @discardableResult
 public func performMarkdownCommand(_ command: MarkdownEditingCommand) -> Bool
 ```
 
-`applyAssistOutcome` behavior:
+If stored properties cannot live in an extension, keep the boolean storage in `EditorTextSystem.swift` and the methods in the extension file.
 
-- `.passthrough` → `false`.
-- `.selection(range)` → clamp to live UTF-16 text, set selection, return `true`; no undo item.
-- `.handledNoChange` → return `true`.
+`applyAssistOutcome`:
+
+- `.passthrough` → return false;
+- `.selection(range)` → clamp to live UTF-16 range, set selection, return true, no text undo entry;
+- `.handledNoChange` → return true;
 - `.edit(edit)`:
-  1. set `isPerformingEditingAssist = true` with `defer` reset;
-  2. call **exactly one** `textView.insertText(edit.replacementString, replacementRange: edit.replacementRange)`;
-  3. set the clamped resulting selection;
-  4. give the undo manager `edit.undoActionName` where AppKit has created an undo action;
-  5. return `true`.
+  1. guard the replacement range against current live text length;
+  2. `textView.breakUndoCoalescing()` before the assist so it is not merged into prior ordinary typing;
+  3. set `isPerformingEditingAssist = true` with `defer` reset;
+  4. perform **exactly one** `textView.insertText(edit.replacementString, replacementRange: edit.replacementRange)`;
+  5. set the clamped resulting selection;
+  6. set the undo action name if native AppKit created an undo item;
+  7. `textView.breakUndoCoalescing()` after the assist so subsequent typing starts a new coalescing group;
+  8. return true.
 
-Do not mutate `NSTextStorage` directly. Do not manually call `textDidChange`. Let `NSTextView.insertText` drive the same AppKit/delegate path as ordinary input.
+Do not mutate `NSTextStorage` directly for the edit. The storage is the local read source; `NSTextView.insertText` is the write seam so delegate validation, undo, dirty-state publication, selection behavior, and TextKit notifications remain native.
 
-The coordinator's nested `shouldChangeTextIn` invocation sees `isPerformingEditingAssist == true` and immediately returns `true`, preventing recursive transformation while still allowing the inner AppKit edit.
+Do not manually call `textDidChange`.
+
+If the mounted AppKit integration test proves that one `insertText` plus `breakUndoCoalescing()` does not produce one undo step on Xcode/macOS 26, **stop and report an architecture event**. Do not fake atomic undo by manually registering a second independent undo action.
 
 ---
 
-## 6. EditorView coordinator wiring
+## 6. Coordinator wiring
 
-### 6.1 Replacement hook
+### 6.1 Typed replacement hook
 
 Implement the existing delegate method:
 
 ```swift
 public func textView(
     _ textView: NSTextView,
-    shouldChangeTextIn affectedCharRange: NSRange,
+    shouldChangeTextIn affectedRange: NSRange,
     replacementString: String?
 ) -> Bool
 ```
 
-Required guard order:
+Guard order:
 
-1. `system` exists.
-2. `replacementString` is non-nil; otherwise native behavior.
-3. `!isApplyingModelText`.
-4. `!system.isPerformingProgrammaticTextUpdate`.
-5. `!system.isPerformingEditingAssist`.
-6. current assist configuration is enabled.
-7. if `textView.hasMarkedText` **or** `NSIntersectionRange(textView.markedRange, affectedCharRange).length > 0`, return true without invoking the engine.
+1. `system` exists;
+2. `replacementString` non-nil, else native;
+3. `!isApplyingModelText`;
+4. `!system.isPerformingProgrammaticTextUpdate`;
+5. `!system.isPerformingEditingAssist`;
+6. configuration enabled;
+7. IME safety:
 
-Then ask the pure engine for `.replacement(...)`. If the outcome is handled, apply it and return `false`; otherwise return `true`.
+```swift
+let marked = textView.markedRange
+if textView.hasMarkedText ||
+   (marked.location != NSNotFound && NSIntersectionRange(marked, affectedRange).length > 0) {
+    return true
+}
+```
 
-Do not perform list/Return behavior here. Return is command-selector behavior.
+8. live `assistTextSource` exists, otherwise fail open.
+
+Then call `.replacement(range:string:)`. If handled, apply and return false. Otherwise return true.
 
 ### 6.2 Command hook
 
 Implement:
 
 ```swift
-public func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool
+public func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool
 ```
 
-Map only these AppKit commands:
+Map only:
 
 - `insertNewline:` → `.insertNewline`
 - `insertTab:` → `.insertTab`
@@ -396,17 +436,34 @@ Map only these AppKit commands:
 
 Everything else returns false immediately.
 
-This mirrors the original MacDown delegation seam and avoids intercepting raw key codes, dead keys, accessibility input, or input-method composition.
-
-For smart Home specifically, `moveToLeftEndOfLine:` is the canonical behavior inherited from MacDown 1. The local manual gate must verify that the physical/key-binding path used on macOS 26 reaches this selector. If macOS 26 emits a different *documented NSText command selector* for the plain Home binding, add that observed selector to the same `.smartHome` action; do not add a `keyDown` override.
+For smart Home, `moveToLeftEndOfLine:` is the legacy/expected AppKit command seam. The Release manual gate must confirm the supported macOS 26 key-binding path reaches it. If it emits a different **documented NSText command selector**, add that selector to the same action. Do not introduce raw `keyDown` interception.
 
 ---
 
-## 7. Behavior specification — Return / continuation
+## 7. Local UTF-16 helpers
 
-The continuation parser is line-local. It must not regex or scan the complete document.
+The engine may add small internal helpers, but they must stay range-local.
 
-Create an internal `MarkdownLinePrefix` value in `MarkdownEditingAssistEngine.swift` or a separate `MarkdownLinePrefix.swift` if lint length requires it:
+Required primitives:
+
+- clamp a requested `NSRange` to `0...text.length`;
+- current line start/end/content-end around a UTF-16 location;
+- previous/next composed scalar around a UTF-16 boundary without treating half of a surrogate pair as punctuation;
+- substring for a known local range;
+- selected logical line range;
+- first non-whitespace offset in a local line.
+
+Use `NSString`/`NSMutableString` APIs and local substrings. Do not call `components(separatedBy:)` on the entire document or compile/run a whole-document regex on each keystroke.
+
+Boundary classification for pair completion uses whitespace/newline/punctuation, but must inspect a complete neighboring Unicode scalar/composed sequence. Emoji/CJK neighbors are ordinary non-boundary text unless the actual scalar is classified as punctuation/space.
+
+---
+
+## 8. Return / list / task / blockquote continuation
+
+### 8.1 Unified line prefix
+
+Parse from the current line start to the caret into one value:
 
 ```swift
 struct MarkdownLinePrefix: Equatable {
@@ -416,88 +473,91 @@ struct MarkdownLinePrefix: Equatable {
     let taskMarker: TaskMarker?
     let contentRangeInLine: NSRange
 }
-```
 
-`ListMarker` is internal:
-
-```swift
 enum ListMarker: Equatable {
-    case unordered(Character)     // -, +, *
-    case ordered(number: Int)     // `N.` only for E10
+    case unordered(Character)           // -, +, *
+    case ordered(rawDigits: String)     // digits + '.'
 }
 ```
 
-`TaskMarker` recognizes `[ ]`, `[x]`, `[X]`. A continued task always emits `[ ]`.
+`TaskMarker` recognizes `[ ]`, `[x]`, `[X]`; continuation always emits `[ ]`.
 
-### 7.1 Prefix grammar
-
-Parse only from line start to the caret:
+Grammar order:
 
 ```text
 [indentation]
-[zero or more blockquote markers, preserving exact `>` + optional space spelling]
-[optional list marker + following whitespace]
-[optional task marker + following whitespace]
-[content before caret]
+[zero or more `>` markers, preserving each marker's optional following space]
+[optional unordered marker OR decimal-digits + '.' + whitespace]
+[optional task marker + whitespace]
+[content]
 ```
 
-Support composition, not only isolated constructs. Examples:
+Support composition:
 
-- `- item` → `- ` continuation.
-- `  4. item` → `  5. `.
-- `> quote` → `> `.
-- `> - item` → `> - `.
-- `> - [x] done` → `> - [ ] `.
-- `    indented` → preserve four leading spaces on the new line.
+- `- item` → `- `
+- `  4. item` → `  5. `
+- `> quote` → `> `
+- `> - item` → `> - `
+- `> - [x] done` → `> - [ ] `
+- indentation-only content → same indentation on the new line.
 
-This deliberately improves an old MacDown seam: MacDown 1 tested list continuation before blockquote continuation, so a combined `> - item` did not preserve the full composition. E10 treats the combined prefix as one Markdown construct.
+This intentionally improves the legacy separate list/blockquote handlers: composed prefixes are treated as one Markdown structure.
 
-### 7.2 Normal continuation
+### 8.2 Ordered-number safety
 
-The assist only runs when the selection length is zero.
+Never parse ordered markers with a force-converting integer.
 
-For non-empty content before the caret:
+For auto-increment:
 
-- unordered list → insert `\n` + indentation + blockquote prefix + the same marker + one space;
-- ordered list → same but increment the integer when `autoIncrementOrderedLists`; otherwise repeat it;
-- task list → same list prefix + `[ ] ` regardless of prior checked state;
-- blockquote-only → `\n` + indentation + exact blockquote prefix;
-- indentation-only with at least one non-whitespace content character → `\n` + indentation;
-- no recognized prefix → `.passthrough` so AppKit inserts a normal newline.
+- if `rawDigits` can be represented and incremented safely, increment it;
+- preserve zero-padding width where possible (`009.` → `010.`);
+- if it cannot be represented or increment would overflow, repeat the exact original digits rather than trap or delete content.
 
-When Return splits a line in the middle, the prefix is inserted before the tail exactly once; text after the caret remains untouched.
+When auto-increment is off, repeat `rawDigits` exactly.
 
-### 7.3 Empty construct termination
+### 8.3 Normal continuation
 
-An "empty item" means the recognized construct prefix exists and the content after that prefix up to the caret is whitespace-only.
+Only for collapsed selection.
 
-- empty list/task item → exit the list level while preserving outer indentation and any blockquote prefix;
-- empty blockquote-only line → remove the blockquote prefix and insert a plain newline at the same indentation;
-- empty combined blockquote + list → exit the list but remain in the outer blockquote;
-- plain whitespace-only line with no block/list construct → native newline.
+For non-empty content before caret:
 
-The whole operation must be one contiguous replacement transaction, not "delete marker" followed by "insert newline" as two undoable edits.
+- unordered → newline + outer prefixes + same marker + space;
+- ordered → newline + outer prefixes + safe next/repeated number + `. `;
+- task → same list prefix + `[ ] `;
+- blockquote-only → newline + indentation + exact quote prefix;
+- indentation-only line with non-whitespace content → newline + indentation;
+- no recognized prefix → `.passthrough`.
 
-### 7.4 Existing-next-prefix suppression
+If Return splits a line, preserve the tail exactly once.
 
-MacDown 1 contained logic intended to avoid duplicating an already-present matching marker after Return. Preserve the useful behavior, but implement it deterministically from the original text rather than mutating first and inspecting a stale snapshot:
+### 8.4 Empty-construct termination
 
-- if the tail at the insertion point already begins with the exact continuation prefix because Return is splitting immediately before it, insert only the newline/indent needed to expose that prefix;
-- never duplicate the prefix.
+“Empty” means the recognized inner construct has no non-whitespace content before the caret.
 
-Add a direct regression test; do not copy the old mutation-first implementation literally.
+- empty list/task → exit one list level;
+- empty list inside quote → remove list/task marker but keep quote context;
+- empty quote-only line → exit quote;
+- whitespace-only line without list/quote construct → native newline.
 
-### 7.5 CRLF
+Calculate the entire result first and perform one replacement. Do not delete a marker and then separately insert a newline.
 
-Line discovery must use `NSString` line-range APIs and preserve the document's existing line separator at the active line when it is determinable. If the current separator cannot be observed (e.g. last line), use `\n`, matching NSTextView's normal insertion behavior. Do not accidentally leave a `\r` inside the parsed prefix.
+### 8.5 Existing next-prefix suppression
+
+If splitting immediately before an already-present exact continuation prefix, do not duplicate it. Decide this from the original live text before mutation.
+
+### 8.6 Line endings
+
+Use local line metadata. Preserve CRLF when the active line has an observable CRLF separator; otherwise use `\n`, matching normal NSTextView insertion at a final line. Never leak a literal `\r` into prefix text.
 
 ---
 
-## 8. Behavior specification — matching characters and selection wrapping
+## 9. Matching characters and Markdown delimiters
 
-### 8.1 Structural pair table
+E10 must satisfy the issue's markup-pairing requirement *and* avoid breaking normal Markdown list entry.
 
-Port the legacy matching table as data, not a switch spread across delegate code:
+### 9.1 Structural pair table
+
+Port as data:
 
 - `(` → `)`
 - `[` → `]`
@@ -505,191 +565,186 @@ Port the legacy matching table as data, not a switch spread across delegate code
 - `<` → `>`
 - `'` → `'`
 - `"` → `"`
-- full-width parentheses `（` → `）`
-- corner brackets `「` → `」`
-- white corner brackets `『` → `』`
-- left/right curly single quotes
-- left/right curly double quotes
+- `（` → `）`
+- `「` → `」`
+- `『` → `』`
+- curly single/double quote pairs
 - single/double guillemets
-- East Asian single/double angle brackets
+- East Asian single/double angle-bracket pairs.
 
-Keep the table inside the pure engine.
+### 9.2 Structural no-selection pairing
 
-### 8.2 No-selection opener completion
+For one supported opener with collapsed selection:
 
-Port MacDown 1's conservative boundary rule:
+- next character is end-of-document or whitespace/newline/punctuation;
+- symmetric quote opener additionally requires previous boundary/end;
+- asymmetric brackets keep the legacy permissive previous-character behavior.
 
-- replacement must be one UTF-16 unit / one supported opener;
-- the following character is end-of-document or whitespace/newline/punctuation;
-- for symmetric pairs (`'`, `"`), the previous character is also a boundary/end;
-- asymmetric brackets may pair after a non-boundary previous character, matching legacy behavior.
+Insert opener+closer in one edit and leave caret between.
 
-Outcome: one edit inserts opener + closer at the affected range and returns a selection between them.
+### 9.3 Markdown symmetric delimiters
 
-Do **not** auto-close `*`, `_`, backtick, `~`, or `=` on an empty selection. Legacy MacDown only auto-completed structural matching characters in this path; Markdown markup characters participated in **selection wrapping**. This is intentional: automatically emitting `**` while the user is typing ordinary emphasis is materially more intrusive than the behavior this epic is supposed to port.
+The issue explicitly calls out `*`, `_`, backtick, and strong `**`. These are **not** handled identically to structural brackets.
 
-### 8.3 Type-over closer
+#### `*`
 
-If the typed character is a supported structural closer and the next live character is already that closer, return `.selection` one UTF-16 unit to the right and suppress the insertion.
+- At the first non-whitespace position of a line, **do not auto-pair** a single `*`; allow native insertion so `* ` unordered-list typing remains natural.
+- Else, when at a word/punctuation boundary suitable for opening emphasis, typing `*` inserts `**` with caret between.
+- If the caret is between the just-representable local shape `*|*` and the user types a second `*`, upgrade in one replacement to `**|**` so strong emphasis can be typed naturally.
 
-No undo item is created because the text did not change.
+#### `_`
 
-### 8.4 Selection wrapping
+- Pair only at a boundary; never auto-pair intra-word underscore.
+- The local `_ |_` equivalent may upgrade to `__|__` on a second underscore.
 
-When the affected range has non-zero length and the replacement is one supported opener/markup character:
+#### backtick
 
-- structural opener wraps selected text with its mapped closer;
-- `*`, `_`, and backtick wrap with the same character;
-- `~` wraps only when `strikethroughEnabled`;
-- `=` selection wrapping from old MacDown is **not ported** in E10 because the current Markdown product contract does not expose the old highlight/underline extension that behavior belonged to. It is recorded as deliberately dropped, not forgotten.
+- A single backtick may pair to `` `|` `` when pairing is enabled.
+- Do not invent multi-backtick fence escalation in E10.
 
-The selected logical content remains selected inside the newly inserted delimiters.
+These rules are local and state-free. No hidden “paired character registry” is persisted across edits.
 
-### 8.5 Paired Backspace
+### 9.4 Type-over closer
 
-Port `deleteMatchingCharactersAround` for structural pairs only:
+For structural pairs and symmetric Markdown delimiters, if the typed character is already the immediate next delimiter character, move selection one UTF-16 unit right and suppress insertion.
 
-- collapsed caret between an adjacent recognized opener+closer;
-- Backspace removes both characters in one edit and leaves the caret at the pair's start.
+For a strong closer `**`, two successive typed `*` characters naturally move over the two existing closing characters one at a time.
 
-Do not invent paired deletion for Markdown markup delimiters in E10.
+No undo item for a selection-only move.
 
-### 8.6 IME safety
+### 9.5 Selection wrapping
 
-Unlike old MacDown's partial ASCII/non-ASCII special case, E10 is fail-open for the whole marked-text composition interval: no E10 transformation while `hasMarkedText` is true or the affected range intersects `markedRange`.
+When replacement range is non-empty:
 
-This is an intentional safety deviation from legacy behavior and must be listed in the parity table. The final committed text is still a normal user edit; it simply does not retroactively gain a pair after composition ends.
+- structural opener → mapped close;
+- `*` → `*selection*`;
+- `_` → `_selection_`;
+- backtick → `` `selection` ``.
+
+After first `*` or `_` wrap, keep the original logical content selected. A second typed same delimiter therefore wraps the still-selected logical content again, producing strong `**selection**` / `__selection__` naturally.
+
+Deliberate non-ports:
+
+- legacy `=` wrapping — dropped; current product has no matching legacy highlight/underline extension contract;
+- legacy single-`~` wrapping — dropped; single tilde is not the modern GFM strikethrough delimiter. E10 does not invent a strikethrough command that issue #11 did not request.
+
+### 9.6 Paired Backspace
+
+Collapsed caret between an adjacent recognized auto-pair removes both characters in one edit:
+
+- structural pair;
+- single `*|*`, `_|_`, or `` `|` ``.
+
+For `**|**`, one Backspace may reduce one adjacent star pair to `*|*`; a second Backspace removes the remaining pair. Do not build hidden pair ownership state.
+
+Ordinary Backspace passes through.
+
+### 9.7 IME safety
+
+If `hasMarkedText` is true or the affected range intersects a valid marked range, E10 does nothing. This is stricter and safer than legacy MacDown's partial ASCII exception and is recorded as an intentional parity deviation.
 
 ---
 
-## 9. Behavior specification — Tab / Shift-Tab indentation
+## 10. Tab / Shift-Tab indentation
 
-All indentation is UTF-16 selection aware but indentation width is ASCII-space based.
+### 10.1 Collapsed Tab
 
-### 9.1 Collapsed selection + Tab
+If `convertsTabsToSpaces`:
 
-When `convertsTabsToSpaces` is true:
+```text
+spaces = indentationWidth - (column % indentationWidth)
+```
 
-- determine the UTF-16 column from line start to caret;
-- insert `indentationWidth - (column % indentationWidth)` spaces;
-- if modulo is zero, insert a full `indentationWidth` spaces.
+Modulo zero inserts a full indentation width.
 
-This ports `insertSpacesForTab`, generalized from hardcoded width 4.
+Column is UTF-16 distance from local line start; spaces are ASCII.
 
-When conversion is disabled, `.passthrough` and AppKit inserts its native tab.
+If conversion disabled, pass through to native Tab behavior.
 
-### 9.2 Non-empty selection + Tab
+### 10.2 Selected Tab
 
-Replace the full selected logical line range once:
+Replace the selected logical line range once:
 
-- prefix each selected non-terminal line with exactly `indentationWidth` spaces;
-- do not create padding on the synthetic empty line produced solely because a selection ends immediately after a trailing newline;
-- adjust selection so the same logical text remains selected after the per-line shifts.
+- prefix each selected real line with exactly `indentationWidth` spaces;
+- do not indent a synthetic trailing empty line caused solely by selection ending immediately after newline;
+- remap selection by exact per-line UTF-16 deltas.
 
-One replacement = one undo.
+### 10.3 Selected Shift-Tab
 
-### 9.3 Non-empty selection + Shift-Tab
+For each selected line remove:
 
-For each selected line remove, in order:
-
-1. one leading tab, or
+1. one leading tab, else
 2. up to `indentationWidth` leading spaces.
 
-Replace the entire selected line range once and remap the selection by the exact removed UTF-16 counts.
+One replacement over the selected line range; one undo step.
 
-### 9.4 Collapsed selection + Shift-Tab
+### 10.4 Collapsed Shift-Tab
 
-Remove spaces immediately before the caret back to the previous indentation stop, capped at `indentationWidth`. If there is one leading tab immediately before the caret within indentation, remove the tab.
+Within leading indentation, remove one tab or spaces back to previous indentation stop, capped at width.
 
-If there is nothing valid to unindent, return `.passthrough` to preserve native responder traversal semantics rather than swallowing Shift-Tab globally.
-
----
-
-## 10. Behavior specification — smart Home
-
-Smart Home is enabled only for Markdown assist configuration.
-
-For a collapsed selection on the current line:
-
-1. calculate line start;
-2. calculate first non-whitespace UTF-16 location on that line;
-3. if caret is not at first non-whitespace, move there;
-4. if caret is already at first non-whitespace, move to physical line start;
-5. on an all-whitespace line, line start is the only target.
-
-For a non-empty selection, collapse to the computed target; do not preserve an extending selection in E10.
-
-Use the AppKit `moveToLeftEndOfLine:` command seam matching MacDown 1. Do not intercept raw Home key codes.
+If nothing can be unindented, pass through so E10 does not globally swallow responder traversal.
 
 ---
 
-## 11. Behavior specification — markup commands
+## 11. Smart Home
 
-### 11.1 Inline toggles
+Only when Markdown assists and `smartHome` are enabled.
 
-Mappings:
+For current line:
 
-- `.bold` → prefix/suffix `**`
-- `.italic` → `*`
-- `.inlineCode` → backtick
+1. compute line start;
+2. compute first non-whitespace UTF-16 offset;
+3. if caret is elsewhere, move to first non-whitespace;
+4. if already there, move to physical line start;
+5. all-whitespace line → line start.
 
-For all three:
+For a non-empty selection, collapse to the computed target; no Shift+Home extension behavior is introduced in E10.
 
-- if the current selection is already surrounded by the exact prefix/suffix, remove them and retain the logical selection;
-- otherwise wrap the selection and retain the logical selection;
-- empty selection is valid: inserting delimiters leaves the caret between them.
+Use the AppKit text command seam, not key codes.
 
-Port MacDown's emphasis ambiguity rule:
+---
 
-- a selection inside `***selection***` counts as surrounded by single `*`;
-- a selection inside only `**selection**` does **not** count as single-`*` italic markup.
+## 12. Markup commands
 
-All toggle operations are one contiguous replacement.
+### 12.1 Inline toggles
 
-### 11.2 Heading / paragraph conversion
+- Bold → `**selection**`
+- Italic → `*selection*`
+- Inline Code → `` `selection` ``
 
-`.heading(level: 1...6)` and `.paragraph` operate on every logical line touched by the current selection.
+If selection is already exactly surrounded by the command's delimiter, remove it and keep the logical selection.
+
+Empty selection inserts delimiters and leaves caret inside.
+
+Preserve the legacy emphasis ambiguity rule:
+
+- `***selection***` counts as surrounded by a single outer `*` for italic toggle;
+- `**selection**` alone does not count as single-star italic markup.
+
+All toggles are one contiguous replacement.
+
+### 12.2 Headings / Paragraph
+
+Commands apply to every logical line touched by selection.
 
 For each processed non-empty line:
 
-1. remove one existing leading ATX heading prefix matching `#{1,6}` followed by at least one space/tab;
-2. for heading, prepend exactly `level` `#` characters + one space;
-3. for paragraph, prepend nothing.
+1. remove one existing leading ATX heading prefix matching 1…6 `#` plus at least one space/tab;
+2. Heading N prepends exactly N `#` + one space;
+3. Paragraph prepends nothing.
 
 Rules:
 
-- preserve all content after the removed prefix verbatim;
-- whitespace-only lines inside a multi-line selection are not converted;
-- when the only selected line is blank, a heading command may insert the heading prefix so the user can type the heading immediately, matching the useful legacy behavior;
+- preserve content after the removed prefix verbatim;
+- skip whitespace-only lines inside a multi-line selection;
+- if the only targeted line is blank, Heading N inserts the heading prefix so typing can begin immediately;
 - do not convert Setext underline syntax in E10;
-- replace the complete affected line range exactly once;
-- remap selection using per-line UTF-16 deltas so the same logical content remains selected.
+- replace the complete affected line range once;
+- remap selection using exact per-line UTF-16 deltas.
 
-### 11.3 Command shortcuts
+### 12.3 Command bridge
 
-Add one top-level `CommandMenu("Markup")` (or, if implementation confirms a clean existing Format-group insertion without duplicating system menus, a `Markdown` submenu in Format; do not create two competing menu copies).
-
-Binding shortcuts:
-
-- Bold — `⌘B`
-- Italic — `⌘I`
-- Inline Code — `⌘E`
-- Paragraph — `⌃⌘0`
-- Heading 1…6 — `⌃⌘1…6`
-
-Do not change:
-
-- native tab `⌘1…9`;
-- layout `⌘⌥1…3`;
-- sidebar/outline shortcuts.
-
-### 11.4 WindowCoordinator command bridge
-
-Put the bridge in a new app-target extension file to avoid further growing `WindowCoordinator.swift`:
-
-`MacDown2/MacDown2/WindowCoordinator+Editing.swift`
-
-Add:
+Create `MacDown2/MacDown2/WindowCoordinator+Editing.swift`:
 
 ```swift
 var canPerformMarkdownEditingCommand: Bool { get }
@@ -698,22 +753,24 @@ var canPerformMarkdownEditingCommand: Bool { get }
 func performMarkdownEditingCommand(_ command: MarkdownEditingCommand) -> Bool
 ```
 
-Resolve the key `WindowController`, active tab identity and existing text system. Guard all of:
+Resolve key `WindowController`, active Markdown document, active tab identity, and existing `EditorTextSystem`.
 
-- key document exists;
-- `document.format.id == "markdown"`;
+Before mutating, verify:
+
+- document format id is `markdown`;
 - text system exists;
-- the text view is the key window's current first responder when the command is invoked.
+- assist configuration enabled;
+- `NSApp.keyWindow?.firstResponder === textSystem.textView` or first responder is a descendant/responder state proven to be the active editor for this exact window.
 
-Do not apply a formatting command to a stale selection in a background/native sibling tab or while the sidebar owns keyboard focus.
+Do not apply a formatting command to a stale selection when focus is in sidebar, Find UI, or another native tab.
 
-`WorkspaceCommands` repeats the format guard in `.disabled(...)` and the bridge repeats it before mutation (UI enablement is not a safety boundary).
+`WorkspaceCommands` may use `canPerformMarkdownEditingCommand` for disabled state, but the command bridge repeats all guards. Menu enablement is not a safety boundary.
 
 ---
 
-## 12. App format wiring
+## 13. App format wiring
 
-Modify only `DocumentEditorSplitView.editorConfiguration`:
+Only `DocumentEditorSplitView.editorConfiguration` decides file-format enablement:
 
 ```swift
 private var editorConfiguration: EditorConfiguration {
@@ -724,44 +781,38 @@ private var editorConfiguration: EditorConfiguration {
 }
 ```
 
-Use the format id, not the preview capability (`HTML` is also `.rendered`).
-
-On Save As from Markdown to another extension, the ordinary view/configuration update disables assists on the existing text system. On Save As into Markdown, it enables them. Add an integration test at the highest practical seam for this state change.
-
-No `AppSettings` changes land in this epic.
+No `AppSettings` changes.
 
 ---
 
-## 13. Legacy parity ledger
+## 14. Legacy parity ledger
 
-The acceptance criterion says every behavior in `NSTextView+Autocomplete` is ported or explicitly dropped. The implementation record must contain this table, updated to actual shipped status:
+Issue #11 cannot close until implementation updates this table to actual shipped status.
 
-| Legacy API | E10 disposition |
+| Legacy `NSTextView+Autocomplete` API | E10 disposition |
 |---|---|
-| `substringInRange:isSurroundedByPrefix:suffix:` | Port as internal inline-markup helper, including `*` vs `**`/`***` rule |
-| `insertSpacesForTab` | Port, generalized to configured 1...8 width |
-| `completeMatchingCharactersForTextInRange` | Port through replacement engine |
-| `completeMatchingCharacterForText:atLocation:` | Port structural opener/type-over semantics |
-| `wrapTextInRange` | Port as generic one-replacement wrapper helper |
-| `wrapMatchingCharactersOfCharacter` | Port structural + `*`/`_`/backtick + strikethrough selection wrapping; drop `=` |
-| `deleteMatchingCharactersAround` | Port structural paired Backspace |
-| `unindentForSpacesBefore` | Port, generalized width |
-| `toggleForMarkupPrefix:suffix:` | Port for bold/italic/code |
-| `toggleBlockWithPattern:prefix:` | **Deliberately deferred** — generic quote/list block-toggle commands are not in issue #11; continuation remains in scope |
+| `substringInRange:isSurroundedByPrefix:suffix:` | Port as internal markup-surround helper incl. `*` vs `**`/`***` rule |
+| `insertSpacesForTab` | Port; configurable width 1…8 |
+| `completeMatchingCharactersForTextInRange` | Port/extend through typed replacement engine |
+| `completeMatchingCharacterForText:atLocation:` | Port structural pair/type-over; extend with scoped Markdown delimiter pairing required by issue #11 |
+| `wrapTextInRange` | Port as generic one-replacement wrapper |
+| `wrapMatchingCharactersOfCharacter` | Port structural + `*`/`_`/backtick; drop legacy `=` and single-`~` behavior |
+| `deleteMatchingCharactersAround` | Port; extend paired deletion to E10's symmetric Markdown auto-pairs |
+| `unindentForSpacesBefore` | Port; configurable width |
+| `toggleForMarkupPrefix:suffix:` | Port for Bold/Italic/Code |
+| `toggleBlockWithPattern:prefix:` | Deliberately deferred — generic quote/list toggle commands are not issue #11 scope |
 | `indentSelectedLinesWithPadding` | Port |
 | `unindentSelectedLines` | Port |
-| `insertMappedContent` | **Drop** — legacy bundled data-map helper is not an editor feature/product requirement |
-| `completeNextListItem` | Port and extend with task lists/composed quote+list prefixes |
-| `completeNextBlockquoteLine` | Port and integrate with unified prefix parser |
+| `insertMappedContent` | Drop — legacy bundled data-map helper is not a current editor requirement |
+| `completeNextListItem` | Port; extend tasks and composed quote/list prefixes |
+| `completeNextBlockquoteLine` | Port into unified prefix parser |
 | `completeNextIndentedLine` | Port |
-| `makeHeaderForSelectedLinesWithLevel` | Port as H1…H6 + Paragraph commands |
-| old partial marked-text matching | **Replace deliberately** with full marked-text pass-through for IME safety |
-
-Do not close #11 until this ledger reflects implementation reality and any additional deviations discovered during review.
+| `makeHeaderForSelectedLinesWithLevel` | Port as H1…H6 + Paragraph |
+| legacy partial marked-text behavior | Replace with full marked-text pass-through for IME safety |
 
 ---
 
-## 14. Exact file layout
+## 15. Exact file layout
 
 Expected new files:
 
@@ -774,7 +825,7 @@ MacDown2/Packages/MacDownKit/Sources/EditorCore/
   EditorTextSystem+EditingAssists.swift
 
 MacDown2/Packages/MacDownKit/Tests/EditorCoreTests/
-  EditingAssistReplacementTests.swift
+  EditingAssistPairingTests.swift
   EditingAssistNewlineTests.swift
   EditingAssistIndentationTests.swift
   EditingAssistFormattingTests.swift
@@ -797,12 +848,12 @@ MacDown2/Packages/MacDownKit/Sources/EditorCore/EditorTextSystem.swift
 MacDown2/Packages/MacDownKit/Sources/EditorCore/EditorView.swift
 MacDown2/MacDown2/DocumentEditorSplitView.swift
 MacDown2/MacDown2/WorkspaceCommands.swift
-planning/epic-10-implementation.md              # implementation record appended as work lands
-planning/epics/EPIC-10-editing-assists.md       # mark implemented only after gates pass
-README.md                                       # status only after implementation is real
+planning/epic-10-implementation.md
+planning/epics/EPIC-10-editing-assists.md   # completion status only at end
+README.md                                  # completion status only at end
 ```
 
-Files that should **not** change without an explicit architecture-review comment first:
+Must **not** change without an explicit architecture-review comment first:
 
 ```text
 MacDown2/Packages/MacDownKit/Package.swift
@@ -812,187 +863,217 @@ MarkdownEngine/**
 Highlighting/**
 Preview/**
 FileTree/**
-External-file monitor/controller architecture
+E18 monitor/controller architecture
 Workspace session schema
 ```
 
 ---
 
-## 15. Unit and integration test matrix
+## 16. Required tests
 
-Tests should be table-driven where behavior differs only by marker/delimiter. Do not create hundreds of near-identical handwritten functions.
+Use table-driven tests where only marker/pair inputs vary.
 
-### 15.1 Replacement / pairs
+### 16.1 Live TextKit source seam
 
-At minimum:
+- current `TextKitStack` exposes `NSTextStorage` / mutable-string backing on Xcode/macOS 26;
+- E10 source accessor reads local text without calling a new full-document Swift-string snapshot API;
+- unavailable source fails open, never crashes or transforms blindly.
 
-- each structural opener pairs at a valid boundary;
-- structural opener before ordinary alphanumeric following text does not pair;
-- symmetric quotes require a previous boundary;
-- closer typed before identical closer moves selection instead of duplicating;
-- selection wraps for each structural opener;
-- selection wraps with `*`, `_`, backtick;
-- selection wraps with `~` only when strikethrough enabled;
-- `=` is not transformed;
-- markup character with collapsed selection is native/pass-through;
-- paired Backspace deletes both structural characters once;
+### 16.2 Structural pairing
+
+- every structural opener pairs at a valid boundary;
+- opener before ordinary alphanumeric next character does not pair;
+- symmetric quote requires previous boundary;
+- closer before identical existing closer moves selection without duplicate;
+- selected content wraps for each structural opener;
+- paired Backspace deletes both once;
 - ordinary Backspace passes through;
-- marked-text / intersecting-marked-range replacements pass through;
-- emoji/CJK text around the pair proves UTF-16 range arithmetic is correct.
+- emoji/CJK neighbors prove UTF-16 and scalar-boundary correctness.
 
-### 15.2 Newline / continuation
+### 16.3 Markdown delimiter pairing
 
-At minimum:
+- `*` in prose boundary → `*|*`;
+- `*` at first non-whitespace line position does **not** pair, preserving `* ` list typing;
+- second `*` inside `*|*` upgrades to `**|**`;
+- `_` boundary pairs; intra-word `_` does not;
+- second `_` upgrades to strong equivalent;
+- backtick pairs;
+- type-over works for symmetric closing delimiters;
+- selection wrapping keeps logical selection selected;
+- second wrapping of still-selected content produces strong delimiters;
+- `=` and `~` receive native/pass-through behavior;
+- paired Backspace on Markdown pair behaves as §9.6.
 
-- `-`, `+`, `*` unordered markers continue unchanged;
-- ordered `1.` increments to `2.`;
-- multi-digit ordered values increment correctly;
-- auto-increment disabled repeats the number;
-- `[ ]`, `[x]`, `[X]` tasks continue as `[ ]`;
-- blockquote marker spelling/spacing is preserved;
-- nested blockquotes preserve the full prefix;
-- `> - item` continues `> - `;
-- `> - [x] item` continues `> - [ ] `;
-- indentation-only line preserves indent;
-- plain line returns passthrough;
-- empty unordered/ordered/task item exits the list;
-- empty list nested inside blockquote exits list but retains quote;
-- empty blockquote exits quote;
-- selection present returns passthrough;
-- Return in the middle of content retains the tail after the continuation prefix;
-- already-present exact continuation prefix is not duplicated;
-- CRLF fixture does not leak `\r` into the prefix.
+### 16.4 IME
 
-### 15.3 Indentation
+- `hasMarkedText` path bypasses engine;
+- valid marked-range intersection bypasses engine;
+- `NSNotFound` marked range is never passed into `NSIntersectionRange` as a real range;
+- final normal input after composition still works natively.
 
-At minimum:
+### 16.5 Newline / prefixes
 
-- width 4 at columns 0,1,2,3,4 inserts 4,3,2,1,4 spaces;
-- non-default widths 2 and 8;
-- selected one-line and multi-line indent;
-- selection ending exactly at newline does not indent a synthetic extra line;
-- selected lines unindent one leading tab;
-- selected lines unindent up to configured spaces;
-- collapsed Shift-Tab removes to previous stop;
-- collapsed Shift-Tab with no removable indent passes through;
-- UTF-16 selection spanning emoji/CJK remaps correctly.
+- `-`, `+`, `*` continue unchanged;
+- ordered `1.` → `2.`;
+- multi-digit increment;
+- leading-zero increment preserves width;
+- huge/overflowing digit string repeats safely;
+- increment-disabled repeats exact digits;
+- `[ ]`, `[x]`, `[X]` continue as `[ ]`;
+- blockquote spelling/spacing preserved;
+- nested quotes preserved;
+- `> - item` → `> - `;
+- `> - [x] item` → `> - [ ] `;
+- indentation-only content continues indent;
+- plain line passes through;
+- empty list/task exits list;
+- empty list in quote exits list but retains quote context;
+- empty quote exits quote;
+- selection present passes through;
+- mid-line Return preserves tail exactly once;
+- existing matching next prefix not duplicated;
+- CRLF fixture does not leak `\r`.
 
-### 15.4 Smart Home
+### 16.6 Indentation
 
-At minimum:
+- width 4 columns 0…4 insert 4,3,2,1,4 spaces;
+- widths 2 and 8;
+- selected one/multi-line indent;
+- selection ending at newline does not create synthetic padded line;
+- selected Shift-Tab removes one tab or configured spaces;
+- collapsed Shift-Tab to previous stop;
+- no removable indent passes through;
+- UTF-16 selection around emoji/CJK remaps correctly.
 
-- indented content: first trigger → first non-whitespace;
-- second trigger from first non-whitespace → column zero;
-- no indentation → column zero;
-- all-whitespace line → column zero;
-- line after emoji/CJK in prior lines calculates the current UTF-16 line start correctly.
+### 16.7 Smart Home
 
-### 15.5 Formatting
+- indented line first trigger → first non-whitespace;
+- second trigger → physical line start;
+- unindented line → start;
+- all-whitespace line → start;
+- previous lines containing emoji/CJK do not corrupt current UTF-16 position.
 
-At minimum:
+### 16.8 Formatting
 
-- bold wraps/toggles off;
-- italic wraps/toggles off;
-- italic does not strip only-strong `**` delimiters;
-- italic correctly recognizes the outer single stars in `***...***`;
-- inline code wraps/toggles off;
-- empty selection leaves caret inside delimiters;
-- H1…H6 replaces existing ATX level rather than stacking prefixes;
+- Bold wrap/toggle off;
+- Italic wrap/toggle off;
+- Italic does not strip only-strong `**`;
+- Italic recognizes outer single stars in `***...***`;
+- Inline Code wrap/toggle off;
+- empty selection caret inside delimiters;
+- H1…H6 replace existing ATX level rather than stack;
 - Paragraph strips ATX prefix;
-- multi-line heading command skips blank interior lines;
-- selection remains on same logical content after positive/negative per-line shifts;
-- CRLF selection remains structurally valid.
+- multi-line heading skips blank interior lines;
+- selection tracks same logical content after positive/negative per-line shifts;
+- CRLF range remains valid.
 
-### 15.6 Disabled / non-Markdown behavior
+### 16.9 Disabled / Save As gating
 
-This is a release blocker, not a token test:
+Release blocker:
 
-- `.disabled` returns `.passthrough` for every action family;
-- `EditorConfiguration.default.editingAssists == .disabled`;
-- `DocumentEditorSplitView` selects `.markdownDefault` only for format id `markdown`;
-- a text-system config transition enabled → disabled stops the very next assist;
-- a disabled pair opener does not inject a closer;
-- disabled Return does not inject a Markdown prefix.
+- `.disabled` → passthrough for every action family;
+- `EditorConfiguration.default` disabled;
+- Markdown config enabled only for exact format id;
+- live config enabled → disabled stops the very next assist;
+- Save As `.md` → `.txt` behavior loses E10 transformations;
+- Save As back into Markdown re-enables them.
 
-### 15.7 One edit / one binding publication
+### 16.10 One action → one publication
 
-Add a coordinator/text-system integration test with a real `NSTextView` and binding counter:
+Mounted coordinator/text-system integration test with binding counter:
 
-- trigger one pair assist → binding setter called once with final text;
-- trigger one list continuation → once;
-- trigger one formatting command → once.
+- one pair assist → one binding write with final text;
+- one list continuation → one binding write;
+- one formatting command → one binding write;
+- no intermediate half-applied value escapes.
 
-Do not accept an implementation where the intermediate deletion/insertion states escape into FileDocument/preview.
+### 16.11 Undo / redo
 
-### 15.8 Undo / redo
+Mounted AppKit tests for representative mutation classes:
 
-Use a mounted AppKit text system where necessary so native undo registration is active. Parameterize representative mutation classes:
-
-- structural pair insertion;
+- pair insertion;
 - list continuation;
-- selected-lines indentation;
-- bold toggle;
+- selected-line indent;
+- Bold toggle;
 - heading conversion.
 
 For each:
 
-1. capture exact original text + selection;
+1. capture original text/selection;
 2. perform assist;
-3. **one Undo** restores original text (and selection where AppKit provides it);
+3. **one Undo** restores original text;
 4. **one Redo** restores transformed text;
-5. there is no intermediate half-applied state on the undo stack.
+5. no intermediate half-edit exists.
 
-Type-over closer and smart Home are selection-only and should not add text undo entries.
+Type-over and smart Home do not add text undo entries.
 
-### 15.9 Programmatic-update regression
+### 16.12 E18 / model replacement regressions
 
-Exercise both existing non-user paths:
+Exercise:
 
-- `updateNSView` model push guarded by `isApplyingModelText`;
-- E18 `replaceTextFromExternal(...clearUndo:)` guarded by `isPerformingProgrammaticTextUpdate`.
+- `updateNSView` model push (`isApplyingModelText`);
+- `replaceTextFromExternal` (`isPerformingProgrammaticTextUpdate`).
 
-Neither path may invoke an E10 transformation even if replacement text contains an opener/marker.
+Neither may trigger E10 even when replacement text contains a pair/list marker.
 
----
+### 16.13 Existing integration remains green
 
-## 16. Performance gates
+Do not modify expectations to make E10 pass if these regress:
 
-The current EditorCore already has a `<50 ms` 1 MB keystroke test. E10 must not weaken or delete it.
-
-Add two focused measurements:
-
-1. **No-op assist decision, 1 MB document:** ordinary alphanumeric replacement through the engine near a representative line must be line-local and complete with substantial headroom. Record the measured value; target **<5 ms Release** on the development Mac, but do not encode an unrealistically tight cross-runner wall-clock threshold if CI variance proves it flaky.
-2. **Handled assist + viewport layout, 1 MB:** representative pair or newline continuation through the actual EditorTextSystem adapter must remain inside the existing **<50 ms** user-facing keystroke budget in Release.
-
-Structural requirement is stronger than a microbenchmark: code review must be able to see that the common path does **not** scan from document start to caret or run a whole-document regex/AST parse.
-
-### Debug vs Release
-
-- `swift test` remains the correctness gate.
-- Run `swift test -c release` for the E10 performance evidence.
-- Do not claim that Debug app typing speed represents product performance.
+- highlighting attachment/language switching;
+- preview update;
+- outline update;
+- selection/scroll restore;
+- existing EditorCore <50 ms keystroke performance test.
 
 ---
 
-## 17. XCUITest / manual behavior gate
+## 17. Performance contract
 
-### 17.1 XCUITest
+### 17.1 Structural hot-path guarantee
 
-Add `EditingAssistsUITests.swift` using the existing `-UITesting`/open-file hooks. Minimum smoke:
+Review must be able to prove the common no-op input path:
 
-1. open a Markdown document;
+- reads live backing storage;
+- inspects only immediate neighbors/current line;
+- does not copy/scan the full document;
+- does not parse Markdown;
+- allocates no Task;
+- runs no document-wide regex.
+
+Selection-line commands may scale with the selected line range; they must not scale with unrelated document text.
+
+### 17.2 Measurements
+
+Keep the existing `EditorPerformanceTests.keystroke()` `<50 ms` gate.
+
+Add Release measurements:
+
+1. **No-op assist decision on a 1 MB document:** ordinary alphanumeric replacement near a representative line. Record measured value; target substantial headroom (<5 ms on development hardware) but avoid a flaky cross-runner hard threshold if runner variance proves high.
+2. **Handled assist + existing viewport path on 1 MB:** pair or newline continuation through actual `EditorTextSystem` adapter remains under the existing 50 ms user-facing budget.
+3. Compare against a baseline run with assists disabled so the PR records incremental E10 overhead.
+
+Use `swift test -c release` for performance evidence. Do not make user-facing claims from Debug.
+
+---
+
+## 18. UI / Release dogfood gate
+
+### 18.1 XCUITest
+
+`EditingAssistsUITests.swift` minimum:
+
+1. launch/open Markdown fixture;
 2. focus editor;
 3. type `- item` + Return;
-4. assert the editor now contains the continued `- ` prefix;
-5. type another character to prove normal input continues after the assist.
+4. assert continued `- ` appears;
+5. type more text proving normal input continues after handled Return.
 
-If stable with the existing accessibility seam, add one non-Markdown smoke that types `(` into `.txt` and verifies no synthetic `)`.
+If the existing accessibility seam is stable, also open `.txt`, type `(`, verify no synthetic `)`.
 
-CI reality remains as documented by E04: the target is compiled by `build-for-testing`; actual XCUITest execution requires a compatible macOS 26 environment. Do not mark a UI behavior verified merely because the bundle compiled.
+`build-for-testing` compilation is not proof that UI behavior ran. Record actual local macOS 26 execution separately.
 
-### 17.2 Release dogfood build
-
-Because Debug mode is not a useful feel/performance gate, use a deterministic Release build for the human pass:
+### 18.2 Deterministic Release build
 
 ```bash
 rm -rf /tmp/MacDown2-E10
@@ -1008,31 +1089,37 @@ xcodebuild \
 open /tmp/MacDown2-E10/Build/Products/Release/MacDown2.app
 ```
 
-Manual matrix:
+### 18.3 Manual matrix
 
-- type prose normally for several minutes — no synthetic characters or lag;
-- unordered/ordered/task lists, including termination;
-- nested blockquote + list;
-- pair open/type-over/backspace;
+In Release:
+
+- several minutes ordinary prose typing: no synthetic characters/lag;
+- unordered/ordered/task continuation + termination;
+- `* ` list typing specifically confirms asterisk pairing does not fight bullets;
+- nested blockquote + list/task;
+- bracket/quote pair open/type-over/backspace;
+- emphasis/strong/backtick auto-pair path;
 - selection wrapping;
-- Tab/Shift-Tab single and multi-line;
+- Tab/Shift-Tab single/multi-line;
 - smart Home;
-- Bold/Italic/Code and H1…H6/Paragraph menu shortcuts;
-- Undo once for each mutation class;
-- switch a `.md` file to `.txt` via Save As and confirm Markdown assists stop;
-- switch back to Markdown and confirm they resume;
-- exercise at least one IME composition path and confirm E10 leaves marked text alone;
-- preview/highlighting/outline remain responsive after each assisted edit.
+- Bold/Italic/Code and H1…H6/Paragraph menu commands;
+- `⌘E` still performs standard Find-selection behavior rather than Inline Code;
+- native-tab `⌘1…9` unchanged;
+- one Undo per representative assist;
+- Save As Markdown → text disables assists, and back enables;
+- at least one IME composition path is untouched;
+- preview/highlighting/outline remain responsive;
+- fenced code/front-matter behavior is observed and recorded as the known format-only gating limitation, not silently “fixed” by adding parser coupling.
 
-Record concrete failures on the PR; fix them in focused commits. Do not broaden E10 because dogfooding suggests unrelated product features.
+Dogfood findings that are genuinely E10 bugs are fixed on this PR. Unrelated feature ideas become follow-up issues.
 
 ---
 
-## 18. Ordered implementation commits
+## 19. Ordered implementation commits
 
-Implementation agents must follow this order. Commits 1–4 are serial because each consumes the contract established by the prior commit.
+Commits 1–4 are serial. Do not parallelize them.
 
-### Commit 1 — pure assist engine + exhaustive pure tests
+### Commit 1 — pure engine + exhaustive pure tests
 
 Only:
 
@@ -1040,74 +1127,76 @@ Only:
 - `EditingAssistOutcome.swift`
 - `MarkdownEditingCommand.swift`
 - `MarkdownEditingAssistEngine.swift`
-- pure `EditingAssist*Tests.swift`
+- pure pairing/newline/indent/format/Home tests.
 
-No EditorView, app-target, WorkspaceCommands, Package.swift or UI-test changes.
+Use `NSString` test sources. No EditorView/app changes.
 
-Exit gate: package compiles; pure tests cover continuation, pairing, indentation, smart Home and formatting including UTF-16 cases.
+Exit gate: behavior contract green, including overflow and UTF-16 cases.
 
-### Commit 2 — configuration + format gate
+### Commit 2 — configuration + live-storage/format seam
 
 Only:
 
 - `EditorConfiguration.swift`
-- `EditorTextSystem.swift` configuration readout
+- `EditorTextSystem.swift` local text-source/config readout
 - `DocumentEditorSplitView.swift`
-- configuration/non-Markdown tests
+- storage/config/non-Markdown tests.
 
-Exit gate: `.default` is disabled, Markdown config enables, non-Markdown disables, live config transitions are tested.
+Exit gate: current TextKit stack exposes expected live storage; default fail-closed; format transitions tested.
 
-### Commit 3 — delegate interception + one-edit adapter
+### Commit 3 — delegate interception + one-edit/undo adapter
 
 Only:
 
 - `EditorView.swift`
 - `EditorTextSystem+EditingAssists.swift`
 - coordinator/system integration tests
-- undo/reentrancy/programmatic-update tests
+- one-publication, undo, re-entrancy, marked-text, and E18 regression tests.
 
-Exit gate: one assist → one AppKit edit → one binding publication; Undo is atomic; ordinary input and E18 replacement behavior remain unchanged.
+Exit gate: one assist → one AppKit edit → one binding publication; one Undo; native input unaffected.
 
-### Commit 4 — app markup commands and shortcut reconciliation
+### Commit 4 — app Markdown formatting commands
 
 Only:
 
 - `WindowCoordinator+Editing.swift`
 - `WorkspaceCommands.swift`
-- formatting command integration tests where possible
+- command integration tests where practical.
 
-Exit gate: `⌘B`, `⌘I`, `⌘E`, `⌃⌘0…6` work on the key Markdown editor; `⌘1…9` native tabs and `⌘⌥1…3` layout are unchanged.
+Use `CommandGroup(replacing: .textFormatting)`; leave `.textEditing` untouched.
 
-### Commit 5 — performance + UI test + implementation record
+Exit gate: `⌘B`, `⌘I`, `⌃⌘E`, `⌃⌘0…6`; `⌘E`, `⌘1…9`, and `⌘⌥1…3` preserved.
 
-- performance tests/evidence;
+### Commit 5 — perf/UI/Release evidence + implementation record
+
+- E10 performance tests/evidence;
 - `EditingAssistsUITests.swift`;
-- Release dogfood findings/fixes that are strictly E10;
-- update this document with actual implementation notes/deviations;
-- update Epic 10 spec/README status only when the feature is actually complete.
+- focused fixes from Release dogfood;
+- update this document with implementation notes/deviations;
+- mark Epic/README implemented only after all gates are real.
 
-Do not squash away the architecture/implementation/review boundaries while the PR is under review.
+Keep architecture/implementation/review boundaries visible while PR is under review.
 
 ---
 
-## 19. Validation gate before marking PR ready
+## 20. Validation before leaving draft
 
-Run and record all applicable results:
+Run and record:
 
 ```bash
-# Debug package correctness
+# Debug correctness
 cd MacDown2/Packages/MacDownKit
 swift build
 swift test
 
-# Release package + performance evidence
+# Release + performance evidence
 swift build -c release
 swift test -c release
 
-# Thread sanitizer for delegate/re-entrancy regressions
+# Concurrency regression pass
 swift test --sanitize=thread
 
-# App/CLI/UI-test build
+# App / CLI / UI-test build
 cd ../..
 xcodegen generate
 xcodebuild -project MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' build
@@ -1120,136 +1209,152 @@ swiftlint lint --strict MacDown2
 git diff --check master...HEAD
 ```
 
-Then perform the §17.2 Release dogfood matrix.
+Then run §18 Release dogfood matrix.
 
-Do not mark ready if:
+Do not mark ready if any is true:
 
-- package tests are green but Release dogfooding exposes typing interference;
-- a non-Markdown file receives an E10 assist;
-- one assisted action takes two Undos;
-- marked text is corrupted;
-- an assist creates multiple binding publications;
-- the existing `<50 ms` keystroke budget regresses;
-- native-tab shortcuts are displaced;
-- any E18 external-replacement regression appears.
+- non-Markdown receives an E10 assist;
+- marked text is transformed;
+- one assist requires two Undos;
+- one assist publishes multiple binding states;
+- `⌘E` Find behavior or native-tab shortcuts regress;
+- existing <50 ms keystroke test regresses;
+- E18 external/model replacement path changes behavior;
+- Release dogfooding shows ordinary typing interference.
 
 ---
 
-## 20. Review checklist — orthogonal pass
+## 21. Orthogonal review checklist
 
-The reviewer must explicitly audit these independent dimensions rather than only re-running tests:
+Reviewer must explicitly audit independent dimensions.
 
-### Correctness
+### 21.1 Correctness
 
-- UTF-16 arithmetic at every range boundary;
-- lineRange behavior at document start/end and trailing newline;
-- ordered-list overflow/invalid integer handling fails to repeat safely rather than trapping;
-- selection remap for multi-line prefix changes;
+- every range is UTF-16;
+- no surrogate-half classification;
+- line-start/end/trailing-newline behavior;
+- ordered integer overflow is safe;
+- zero-padding behavior is deterministic;
+- selection remap after multi-line prefix changes;
 - empty construct termination;
-- nested quote/list/task composition.
+- nested quote/list/task composition;
+- asterisk list-entry suppression;
+- strong-emphasis upgrade/type-over sequence.
 
-### AppKit semantics
+### 21.2 AppKit semantics
 
-- delegate return values are correct (`true` handled in `doCommandBy`, `false` when native should continue);
-- nested assist insertion does not recursively re-assist;
-- `textDidChange` is neither duplicated nor suppressed;
-- should-change validation is not bypassed by direct text-storage mutation;
-- undo grouping is native/atomic.
+- delegate Bool return semantics correct;
+- nested assist insertion bypasses re-transformation;
+- one `textDidChange`, not zero/two;
+- writes go through `NSTextView.insertText`, not direct storage mutation;
+- `breakUndoCoalescing()` isolation verified by real undo test;
+- selection-only actions do not dirty text or add text undo.
 
-### Safety / integration
+### 21.3 Integration/safety
 
-- IME marked text bypass;
-- model/external replacements bypass;
-- Markdown-only fail-closed default;
+- marked text bypass;
+- model/E18 replacement bypass;
+- fail-closed default;
 - Save As format transition;
-- highlight/preview/outline receive one final value;
-- no new retain cycle between coordinator and text system.
+- preview/highlight/outline consume only final text;
+- no retain cycle between coordinator/system;
+- `.textEditing` command group preserved;
+- `.textFormatting` replacement does not create duplicate shortcut owners.
 
-### Performance
+### 21.4 Performance
 
-- common no-op input is constant/local with respect to document size apart from unavoidable NSTextView string access;
-- no full-document regex, `components(separatedBy:)`, AST parse or per-keystroke Task;
-- selection-line operations scale with selected lines, not full document;
-- performance results are from Release when making user-facing claims.
+- no pre-keystroke whole-document String extraction added by E10;
+- local live-storage reads only;
+- no document-wide regex/AST/Task;
+- selection operations scale with selected text only;
+- Release evidence used for feel/performance claims.
 
-### Scope
+### 21.5 Scope
 
-Reject changes that opportunistically add:
+Reject opportunistic additions:
 
-- autocomplete/snippet/link/image insertion;
-- generic command palette work;
+- link/image autocomplete;
+- snippets;
+- generic command palette;
 - E13 settings UI;
-- parser/highlighter rewrites;
+- parser/highlighter refactor;
 - native-tab changes;
-- extension/plugin changes.
+- extension/plugin work;
+- AST-aware fenced-code suppression.
 
 ---
 
-## 21. Lower-tier implementation handoff
+## 22. Lower-tier implementation handoff
 
-An implementation agent should not make product or architecture decisions beyond this list.
+### Start
 
-### Start here
-
-1. Branch is already `epic/10-editing-assists` from `48d8529`.
-2. Read this entire document.
-3. Re-read the current `EditorView.swift`, `EditorTextSystem.swift`, `EditorConfiguration.swift`, `DocumentEditorSplitView.swift`, and `WorkspaceCommands.swift` before editing.
-4. Implement **Commit 1 only** first.
-5. Run the package tests.
-6. Request review before moving into delegate/AppKit wiring if the pure engine contract needs to change.
+1. Use existing `epic/10-editing-assists` branch.
+2. Read this document completely.
+3. Re-read current `EditorView.swift`, `EditorTextSystem.swift`, `EditorConfiguration.swift`, `DocumentEditorSplitView.swift`, `WorkspaceCommands.swift`, and legacy `NSTextView+Autocomplete` before editing.
+4. Implement **Commit 1 only**.
+5. Run package tests.
+6. Request focused review before changing the pure engine contract.
 
 ### Decisions already made — do not revisit
 
-- no custom NSTextView subclass;
-- existing coordinator remains sole delegate;
+- no custom `NSTextView` subclass;
+- existing coordinator is sole delegate;
+- live `NSTextStorage.mutableString`/NSString-style source, no extra whole-document pre-keystroke copy;
 - Markdown-only fail-closed configuration;
-- pure synchronous line-local engine;
-- one contiguous edit per assist;
-- UTF-16 ranges;
+- pure synchronous local engine;
+- one contiguous write per mutating assist;
+- UTF-16 ranges only;
 - no Markdown AST on hot path;
-- no AppSettings UI;
-- `⌘1…9` remains native tabs;
-- headings use `⌃⌘1…6`, Paragraph `⌃⌘0`;
-- markup characters with no selection do not auto-close merely because issue prose listed them; legacy behavior is the reference;
-- marked-text composition is left untouched;
-- task-list continuation resets checked state to unchecked;
-- combined blockquote/list prefixes are supported;
-- `=` selection wrapping is dropped;
-- `insertMappedContent` is dropped;
-- generic block-toggle commands are deferred.
+- no settings UI;
+- `⌘1…9` stays native tabs;
+- `⌘E` stays Find; Inline Code is `⌃⌘E`;
+- `.textFormatting` is replaced; `.textEditing` is preserved;
+- asterisk auto-pair is suppressed at line-start bullet position;
+- second `*`/`_` inside an empty local pair upgrades to strong;
+- task continuation resets checked → unchecked;
+- combined quote/list/task prefixes supported;
+- legacy `=` and single-`~` wrapping dropped;
+- `insertMappedContent` dropped;
+- generic block-toggle commands deferred;
+- marked text is untouched;
+- no AST-aware fenced-code/front-matter gating in E10.
 
 ### Stop and report instead of improvising if
 
-- the AppKit delegate signatures differ on the actual Xcode 26 toolchain;
-- `moveToLeftEndOfLine:` is not the command emitted by the macOS 26 Home/smart-home path during the manual verification;
-- one `NSTextView.insertText` does not produce one undo unit in the mounted integration test;
-- formatting shortcuts collide with an as-built command not identified here;
-- the existing coordinator cannot receive `shouldChangeTextIn` without displacing another production delegate;
-- any required behavior would force a Package.swift/dependency or architecture change.
+- Xcode 26 delegate method signatures differ;
+- current TextKit stack does not expose the expected `NSTextStorage` backing source;
+- Home emits no usable documented text command selector;
+- one `insertText` + undo-coalescing break cannot produce one undo step;
+- another shipped command owns one of the revised shortcuts;
+- coordinator cannot receive `shouldChangeTextIn` without displacing another production delegate;
+- required behavior would force dependency/project/CI/session changes.
 
-Those are architecture-review events, not invitations to invent a parallel implementation.
+Those are architecture-review events.
 
 ---
 
-## 22. Completion definition
+## 23. Completion definition
 
-Epic 10 is complete only when all of the following are true:
+Epic 10 is complete only when:
 
-- [ ] list/ordered/task/blockquote/indent continuation behaves per §7;
+- [ ] unordered/ordered/task/blockquote/indent continuation works;
 - [ ] empty constructs terminate safely;
-- [ ] structural pair completion/type-over/paired backspace works;
-- [ ] selection wrapping works for the supported legacy/Markdown delimiters;
+- [ ] structural pair completion/type-over/paired Backspace works;
+- [ ] `*`/`_`/backtick pairing satisfies issue #11 without breaking `* ` list entry;
+- [ ] selection wrapping works;
 - [ ] Tab/Shift-Tab and smart Home work;
-- [ ] Bold/Italic/Code and H1…H6/Paragraph commands work with non-conflicting shortcuts;
-- [ ] every legacy `NSTextView+Autocomplete` API is marked ported/deferred/dropped in the parity ledger;
-- [ ] non-Markdown formats receive zero E10 transformations;
-- [ ] marked-text IME input receives zero E10 transformations;
-- [ ] each text-mutating assist is exactly one undoable edit;
-- [ ] one assist produces one binding publication;
+- [ ] Bold/Italic/Code and H1…H6/Paragraph commands work;
+- [ ] `⌘E`, native tabs, and layout shortcuts remain intact;
+- [ ] legacy parity ledger is updated to actual implementation;
+- [ ] non-Markdown gets zero E10 transformations;
+- [ ] marked-text IME gets zero transformations;
+- [ ] each mutating assist is one undoable edit;
+- [ ] each assist produces one binding publication;
 - [ ] E18 external/model replacement semantics remain intact;
-- [ ] existing package, build, lint and app gates are green;
-- [ ] Release performance evidence exists and the `<50 ms` typing budget is not regressed;
-- [ ] the Release dogfood matrix has been performed and concrete E10 defects are closed or explicitly recorded;
-- [ ] README/spec status describes only what was actually validated.
+- [ ] Debug + Release package/build/lint gates pass;
+- [ ] existing <50 ms keystroke gate is not regressed;
+- [ ] Release incremental E10 performance evidence is recorded;
+- [ ] Release dogfood matrix is performed and E10 defects resolved/recorded;
+- [ ] README/spec claim only what was actually validated.
 
-Only then change the PR from draft and close #11.
+Only then mark the PR ready and close #11.
