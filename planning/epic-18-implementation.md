@@ -4,7 +4,7 @@
 >
 > **Status:** Implemented in the Epic 18 working tree. FileCore now provides
 > stable snapshots, conditional-save reconciliation, recovery buffering, and
-> parent-directory monitoring; the app integrates those contracts through the
+> parent/file monitoring; the app integrates those contracts through the
 > external-file controller, native windows, and status UI. Local package and
 > app validation remains a required proof gate before publication; hosted CI,
 > release dogfooding, and full UI-runner evidence must not be inferred from
@@ -52,7 +52,7 @@ The implementation is complete only when all of these behaviours hold:
 1. **One monitor per file-backed `WindowController`.** A native window is the lifetime owner of the editor, parser, highlighter, and this monitor.
 2. **`FileDocument` remains a value type.** Reconciliation is expressed as pure synchronous transitions returning a new document and a named disposition.
 3. **Kernel notifications are invalidations, not truth.** A vnode event means “probe the current state”; event flags do not decide reload/conflict directly.
-4. **Watch the parent directory, not only the file inode.** Atomic replacement destroys the watched inode. Parent-directory watching survives replacement and exposes rename/delete churn at the path boundary.
+4. **Watch the parent directory and the bound file.** Atomic replacement destroys the watched inode, while in-place writes may only notify the file vnode. Keep both watches armed and re-arm both after parent recreation.
 5. **No modification-date-only comparison.** Stable content digests are authoritative; modification date and size are supporting metadata.
 6. **No timing-window self-save suppression.** Do not use `ignoreNextEvent`, `Date()` windows, or event counts. A successful save returns the exact new revision; later observations reconcile against content and that revision.
 7. **No polling loop.** There must be no periodic idle wake-up. A one-shot delayed confirmation after an event is allowed.
@@ -69,13 +69,13 @@ parent-directory DispatchSource
         │ coarse invalidation
         ▼
 DocumentFileMonitor actor
-        │ debounce + generation guard
+        │ debounce + binding/request generation guard
         ▼
 DocumentFileProber
         │ stable read + identity classification
         ▼
 DocumentFileObservation
-        │ typed immutable value
+        │ typed immutable value (expected URL + binding/request generations)
         ▼
 ExternalFileController (@MainActor, one per WindowController)
         │ pure FileDocument transition
@@ -192,7 +192,7 @@ Map Cocoa/POSIX errors to `.fileMissing` and `.permissionDenied` where determina
 
 Keep the existing sibling-temp + replacement design. After replacement completes, call `readSnapshot(from:)` or a metadata/digest helper against the destination and return that exact revision. Mark the method `@discardableResult` so unchanged call sites may ignore it during migration.
 
-The returned revision is the self-save suppression mechanism. Do not add an “ignore next watcher event” flag.
+The returned revision is the self-save suppression mechanism. Do not add an “ignore next watcher event” flag. At the write boundary, ordinary saves revalidate the acknowledged baseline; if the disk changed during monitor debounce, the write fails closed into the existing conflict flow. FileStore also verifies the post-publication bytes so a replacement racing the final read cannot be reported as the revision MacDown wrote.
 
 ### 4.3 Modify `FileDocument.swift`
 

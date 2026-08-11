@@ -76,6 +76,17 @@ final class ExternalFileController {
         }
     }
 
+    func handle(_ context: DocumentFileObservationContext) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let currentRequest = await monitor.currentRequestGeneration()
+            guard context.bindingGeneration == lifecycleGeneration,
+                  context.expectedURL.standardizedFileURL == boundURL?.standardizedFileURL,
+                  context.requestGeneration == currentRequest else { return }
+            await apply(context.observation, generation: context.bindingGeneration)
+        }
+    }
+
     private func apply(_ observation: DocumentFileObservation, generation: UInt) async {
         guard generation == lifecycleGeneration else { return }
         guard !disposed, let model, let document = model.activeDocument else { return }
@@ -123,19 +134,6 @@ final class ExternalFileController {
         pendingClose = nil
         boundURL = nil
         bindTask = Task { [monitor] in await monitor.cancel() }
-    }
-
-    func saveAs() async {
-        await owner?.saveDocumentAs()
-    }
-
-    func retryRecoveryCleanup() {
-        guard !disposed, let recoveryRetryAction else { return }
-        enqueueRecovery(
-            recoveryRetryAction,
-            resumeMoveWhenComplete: true,
-            resumeCloseWhenComplete: true
-        )
     }
 
     private func applyAvailable(_ snapshot: FileSnapshot, to document: FileDocument, model: WorkspaceModel) {

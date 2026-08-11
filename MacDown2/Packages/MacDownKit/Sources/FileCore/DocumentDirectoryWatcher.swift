@@ -16,6 +16,20 @@ protocol DocumentDirectoryWatching: Sendable {
         _ directoryURL: URL,
         onSignal: @escaping @Sendable (DocumentDirectorySignal) -> Void
     ) throws -> any DocumentDirectoryWatcherHandle
+
+    func watchFile(
+        _ fileURL: URL,
+        onSignal: @escaping @Sendable (DocumentDirectorySignal) -> Void
+    ) throws -> any DocumentDirectoryWatcherHandle
+}
+
+extension DocumentDirectoryWatching {
+    func watchFile(
+        _ fileURL: URL,
+        onSignal: @escaping @Sendable (DocumentDirectorySignal) -> Void
+    ) throws -> any DocumentDirectoryWatcherHandle {
+        try watch(fileURL, onSignal: onSignal)
+    }
 }
 
 struct LiveDocumentDirectoryWatcher: DocumentDirectoryWatching, Sendable {
@@ -24,6 +38,13 @@ struct LiveDocumentDirectoryWatcher: DocumentDirectoryWatching, Sendable {
         onSignal: @escaping @Sendable (DocumentDirectorySignal) -> Void
     ) throws -> any DocumentDirectoryWatcherHandle {
         try DocumentDirectoryWatcherHandleImpl(directoryURL: directoryURL, onSignal: onSignal)
+    }
+
+    func watchFile(
+        _ fileURL: URL,
+        onSignal: @escaping @Sendable (DocumentDirectorySignal) -> Void
+    ) throws -> any DocumentDirectoryWatcherHandle {
+        try DocumentDirectoryWatcherHandleImpl(directoryURL: fileURL, onSignal: onSignal)
     }
 }
 

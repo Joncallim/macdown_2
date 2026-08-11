@@ -7,6 +7,16 @@ public enum DocumentFileObservation: Sendable, Equatable {
     case unavailable(URL, FileBackingIssue)
 }
 
+/// Immutable monitor metadata travels with every emitted observation. The
+/// controller uses both generations because a binding can remain the same
+/// while an older detached probe is superseded by a newer signal.
+public struct DocumentFileObservationContext: Sendable, Equatable {
+    public let observation: DocumentFileObservation
+    public let bindingGeneration: UInt
+    public let requestGeneration: UInt
+    public let expectedURL: URL
+}
+
 protocol DocumentFileProbing: Sendable {
     func observe(
         expectedURL: URL,

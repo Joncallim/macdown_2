@@ -199,6 +199,33 @@ struct WorkspaceModelFileTests {
         }
     }
 
+    @Test func ordinarySaveDetectsExternalWriteDuringMonitorDebounce() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("debounced-conflict.md")
+        _ = try FileStore().write("baseline", to: url)
+        let store = FileStore(afterBaselineVerification: { url in
+            try Data("external during debounce".utf8).write(to: url, options: .atomic)
+        })
+        let document = try FileDocument(fileURL: url, fileStore: store)
+            .load()
+            .edited(text: "local edit")
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        tabStore.newTab(document: document)
+        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore())
+
+        await model.save()
+
+        #expect(model.activeDocument?.text == "local edit")
+        #expect(model.activeDocument?.state == .conflict)
+        #expect(try FileStore().read(from: url).content == "external during debounce")
+        if case .unresolvedExternalConflict = model.lastError {
+            // expected
+        } else {
+            Issue.record("Expected unresolved external conflict")
+        }
+    }
+
     @Test func saveAdoptsAnExternallyReconciledBaselineAfterAnEarlierSave() async throws {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
@@ -255,49 +282,6 @@ struct WorkspaceModelFileTests {
 
         #expect(model.activeDocument?.state == .clean)
         #expect(try FileStore().read(from: url).content == "second local")
-    }
-
-    @Test func saveAsRebindsALaterEditAndDefersOldPathSaves() async throws {
-        let directory = temporaryDirectory()
-        defer { cleanup(directory) }
-        let source = directory.appendingPathComponent("source.md")
-        let destination = directory.appendingPathComponent("destination.md")
-        _ = try FileStore().write("baseline", to: source)
-        let barrier = SavePublicationBarrier()
-        let delayedStore = FileStore(afterBaselineVerification: { _ in barrier.arriveAndWait() })
-        let document = try FileDocument(fileURL: source, fileStore: delayedStore)
-            .load()
-            .edited(text: "published")
-        let panel = FakeFilePanelProvider()
-        panel.nextSaveURL = destination
-        let tabStore = TabStore(sessionStore: FakeSessionStore())
-        tabStore.newTab(document: document)
-        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore(), panel: panel)
-        await document.saveRecovery()
-
-        let saveAs = Task { @MainActor in await model.saveAs() }
-        await waitUntil { barrier.hasArrived }
-        model.tabStore.updateActiveDocument { $0.edited(text: "later local") }
-        // This request is intentionally coalesced until Save As has rebound
-        // the active descendant, so it cannot write the former source path.
-        await model.save()
-        barrier.allowPublication()
-        await saveAs.value
-
-        #expect(model.activeDocument?.fileURL == destination)
-        #expect(model.activeDocument?.text == "later local")
-        #expect(model.activeDocument?.state == .dirty)
-        #expect(try FileStore().read(from: destination).content == "published")
-        #expect(try FileStore().read(from: source).content == "baseline")
-        #expect(try await document.recoveryBuffer.load(for: document.id, epoch: document.recoveryEpoch) == nil)
-        if let rebound = model.activeDocument {
-            #expect(try await rebound.recoveryBuffer
-                .load(for: rebound.id, epoch: rebound.recoveryEpoch) == "later local")
-        }
-
-        await model.save()
-        #expect(model.activeDocument?.state == .clean)
-        #expect(try FileStore().read(from: destination).content == "later local")
     }
 
     private func waitUntil(

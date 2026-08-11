@@ -84,14 +84,15 @@ extension ExternalFileController {
                 try await monitor.bind(
                     to: fileURL,
                     priorFileObjectID: priorID,
-                    onObservation: { [weak self] observation in
-                        Task { @MainActor [weak self] in
-                            self?.handle(observation, generation: generation)
-                        }
-                    },
+                    onObservation: { _ in },
                     onHealthChange: { [weak self] health in
                         Task { @MainActor [weak self] in
                             self?.handleMonitorHealth(health, generation: generation)
+                        }
+                    },
+                    onContext: { [weak self] context in
+                        Task { @MainActor [weak self] in
+                            self?.handle(context)
                         }
                     }
                 )

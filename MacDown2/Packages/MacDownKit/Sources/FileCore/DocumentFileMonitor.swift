@@ -10,14 +10,15 @@ public enum DocumentFileMonitorHealth: Sendable, Equatable {
 
 public actor DocumentFileMonitor {
     private let debounce: Duration
-    private let watcher: any DocumentDirectoryWatching
+    let watcher: any DocumentDirectoryWatching
     private let prober: any DocumentFileProbing
     private let sleeper: @Sendable (Duration) async -> Void
-    private var generation: UInt = 0
-    private var probeSequence: UInt = 0
-    private var boundURL: URL?
+    var generation: UInt = 0
+    var probeSequence: UInt = 0
+    var boundURL: URL?
     private var priorFileObjectID: PhysicalFileIdentity.FileObjectID?
     private var handle: (any DocumentDirectoryWatcherHandle)?
+    var fileHandle: (any DocumentDirectoryWatcherHandle)?
     private var watcherHealthy = false
     /// A `.changed` event can arrive while the debounced `.parentVanished`
     /// recovery is pending. Keep this latch until a replacement watcher is
@@ -25,6 +26,7 @@ public actor DocumentFileMonitor {
     private var parentRecoveryPending = false
     private var debounceTask: Task<Void, Never>?
     private var callback: (@Sendable (DocumentFileObservation) -> Void)?
+    private var contextCallback: (@Sendable (DocumentFileObservationContext) -> Void)?
     private var healthCallback: (@Sendable (DocumentFileMonitorHealth) -> Void)?
 
     public init(debounce: Duration = .milliseconds(150)) {
@@ -52,7 +54,8 @@ public actor DocumentFileMonitor {
         to fileURL: URL,
         priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
         onObservation: @escaping @Sendable (DocumentFileObservation) -> Void,
-        onHealthChange: @escaping @Sendable (DocumentFileMonitorHealth) -> Void = { _ in }
+        onHealthChange: @escaping @Sendable (DocumentFileMonitorHealth) -> Void = { _ in },
+        onContext: @escaping @Sendable (DocumentFileObservationContext) -> Void = { _ in }
     ) async throws {
         generation &+= 1
         probeSequence &+= 1
@@ -60,17 +63,21 @@ public actor DocumentFileMonitor {
         let initialSequence = probeSequence
         cancelPending()
         handle?.cancel()
+        fileHandle?.cancel()
         handle = nil
+        fileHandle = nil
         watcherHealthy = false
         parentRecoveryPending = false
         let standardized = fileURL.standardizedFileURL
         boundURL = standardized
         self.priorFileObjectID = priorFileObjectID
         callback = onObservation
+        contextCallback = onContext
         healthCallback = onHealthChange
         handle = try watcher.watch(standardized.deletingLastPathComponent()) { [weak self] signal in
             Task { await self?.received(signal, generation: currentGeneration) }
         }
+        fileHandle = try watchFileIfAvailable(standardized, generation: currentGeneration)
         watcherHealthy = true
         healthCallback?(.healthy)
         let initial = await prober.observe(expectedURL: standardized, priorFileObjectID: priorFileObjectID)
@@ -91,6 +98,10 @@ public actor DocumentFileMonitor {
         return await prober.observe(expectedURL: boundURL, priorFileObjectID: priorFileObjectID)
     }
 
+    public func currentRequestGeneration() -> UInt {
+        probeSequence
+    }
+
     /// Attempts one event-driven watcher installation after a bounded recovery
     /// sequence has exhausted. Callers invoke this when the document becomes
     /// active or the user explicitly retries; it never creates idle polling.
@@ -102,12 +113,15 @@ public actor DocumentFileMonitor {
         let replacement = try watcher.watch(boundURL.deletingLastPathComponent()) { [weak self] signal in
             Task { await self?.received(signal, generation: currentGeneration) }
         }
+        let replacementFile = try watchFileIfAvailable(boundURL, generation: currentGeneration)
         guard isCurrent(generation: currentGeneration, sequence: sequence) else {
             replacement.cancel()
             return
         }
         handle?.cancel()
+        fileHandle?.cancel()
         handle = replacement
+        fileHandle = replacementFile
         watcherHealthy = true
         healthCallback?(.healthy)
         let initial = await prober.observe(expectedURL: boundURL, priorFileObjectID: priorFileObjectID)
@@ -121,7 +135,9 @@ public actor DocumentFileMonitor {
         probeSequence &+= 1
         cancelPending()
         handle?.cancel()
+        fileHandle?.cancel()
         handle = nil
+        fileHandle = nil
         watcherHealthy = false
         parentRecoveryPending = false
         callback = nil
@@ -130,7 +146,7 @@ public actor DocumentFileMonitor {
         priorFileObjectID = nil
     }
 
-    private func received(_ signal: DocumentDirectorySignal, generation: UInt) {
+    func received(_ signal: DocumentDirectorySignal, generation: UInt) {
         guard generation == self.generation, boundURL != nil else { return }
         if signal == .parentVanished {
             parentRecoveryPending = true
@@ -161,8 +177,10 @@ public actor DocumentFileMonitor {
             guard !Task.isCancelled, isCurrent(generation: generation, sequence: sequence) else { return }
             let confirmed = await prober.observe(expectedURL: boundURL, priorFileObjectID: priorFileObjectID)
             guard !Task.isCancelled, isCurrent(generation: generation, sequence: sequence) else { return }
+            await installFileWatcherIfNeeded(generation: generation, sequence: sequence, observation: confirmed)
             emit(confirmed, generation: generation, sequence: sequence)
         } else {
+            await installFileWatcherIfNeeded(generation: generation, sequence: sequence, observation: first)
             emit(first, generation: generation, sequence: sequence)
         }
         if parentRecoveryPending {
@@ -177,15 +195,21 @@ public actor DocumentFileMonitor {
             priorFileObjectID = snapshot.revision.fileObjectID
         }
         callback?(observation)
+        if let boundURL {
+            contextCallback?(
+                DocumentFileObservationContext(
+                    observation: observation,
+                    bindingGeneration: generation,
+                    requestGeneration: sequence,
+                    expectedURL: boundURL
+                )
+            )
+        }
     }
 
     private func cancelPending() {
         debounceTask?.cancel()
         debounceTask = nil
-    }
-
-    private func isCurrent(generation: UInt, sequence: UInt) -> Bool {
-        generation == self.generation && sequence == probeSequence && boundURL != nil
     }
 
     private func reinstallWatcherIfCurrent(generation: UInt, sequence: UInt) async {
@@ -202,12 +226,16 @@ public actor DocumentFileMonitor {
                 let replacement = try watcher.watch(boundURL.deletingLastPathComponent()) { [weak self] signal in
                     Task { await self?.received(signal, generation: generation) }
                 }
+                let replacementFile = try watchFileIfAvailable(boundURL, generation: generation)
                 guard isCurrent(generation: generation, sequence: sequence) else {
                     replacement.cancel()
+                    replacementFile?.cancel()
                     return
                 }
                 handle?.cancel()
+                fileHandle?.cancel()
                 handle = replacement
+                fileHandle = replacementFile
                 watcherHealthy = true
                 parentRecoveryPending = false
                 healthCallback?(.healthy)

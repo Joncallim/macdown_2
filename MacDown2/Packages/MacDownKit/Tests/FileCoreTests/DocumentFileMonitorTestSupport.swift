@@ -48,8 +48,12 @@ actor DeferredProber: DocumentFileProbing {
     }
 
     func resume(_ snapshot: FileSnapshot, at index: Int) {
+        resume(.available(snapshot), at: index)
+    }
+
+    func resume(_ observation: DocumentFileObservation, at index: Int) {
         guard waiters.indices.contains(index) else { return }
-        waiters[index].resume(returning: .available(snapshot))
+        waiters[index].resume(returning: observation)
     }
 }
 
@@ -73,10 +77,13 @@ actor RecordingProber: DocumentFileProbing {
 final class MonitorWatcher: DocumentDirectoryWatching, @unchecked Sendable {
     private let lock = NSLock()
     private var callbacks: [@Sendable (DocumentDirectorySignal) -> Void] = []
+    private var fileCallbacks: [@Sendable (DocumentDirectorySignal) -> Void] = []
     private var storedWatchedDirectories: [URL] = []
     private var storedCancelCount = 0
     private var failuresRemaining = 0
+    private var fileFailuresRemaining = 0
     private var storedFailedWatchCount = 0
+    private var storedFileWatchCount = 0
 
     var watchedDirectories: [URL] {
         lock.lock()
@@ -94,6 +101,12 @@ final class MonitorWatcher: DocumentDirectoryWatching, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return storedFailedWatchCount
+    }
+
+    var fileWatchCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedFileWatchCount
     }
 
     func watch(
@@ -115,9 +128,33 @@ final class MonitorWatcher: DocumentDirectoryWatching, @unchecked Sendable {
         }
     }
 
+    func watchFile(
+        _: URL,
+        onSignal: @escaping @Sendable (DocumentDirectorySignal) -> Void
+    ) throws -> any DocumentDirectoryWatcherHandle {
+        lock.lock()
+        if fileFailuresRemaining > 0 {
+            fileFailuresRemaining -= 1
+            lock.unlock()
+            throw POSIXError(.ENOENT)
+        }
+        storedFileWatchCount += 1
+        fileCallbacks.append(onSignal)
+        lock.unlock()
+        // File-level handles are intentionally not included in the parent
+        // watcher cancellation assertions used by the legacy monitor tests.
+        return MonitorWatcherHandle(onCancel: {})
+    }
+
     func failNextWatchAttempts(_ count: Int) {
         lock.lock()
         failuresRemaining = count
+        lock.unlock()
+    }
+
+    func failNextFileWatchAttempts(_ count: Int) {
+        lock.lock()
+        fileFailuresRemaining = count
         lock.unlock()
     }
 
@@ -127,6 +164,19 @@ final class MonitorWatcher: DocumentDirectoryWatching, @unchecked Sendable {
             callbacks.indices.contains(index) ? [callbacks[index]] : []
         } else {
             callbacks
+        }
+        lock.unlock()
+        for callback in targets {
+            callback(signal)
+        }
+    }
+
+    func signalFile(_ signal: DocumentDirectorySignal, at index: Int? = nil) {
+        lock.lock()
+        let targets = if let index {
+            fileCallbacks.indices.contains(index) ? [fileCallbacks[index]] : []
+        } else {
+            fileCallbacks
         }
         lock.unlock()
         for callback in targets {
