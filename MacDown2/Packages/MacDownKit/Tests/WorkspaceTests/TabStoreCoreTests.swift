@@ -53,7 +53,7 @@ struct TabStoreCoreTests {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
         let url = directory.appendingPathComponent("doc.md")
-        try? FileStore().write("# Hello", to: url)
+        _ = try? FileStore().write("# Hello", to: url)
 
         let store = TabStore(sessionStore: FakeSessionStore())
         let tab = await store.openFileInTab(url)
@@ -68,7 +68,7 @@ struct TabStoreCoreTests {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
         let url = directory.appendingPathComponent("doc.md")
-        try? FileStore().write("content", to: url)
+        _ = try? FileStore().write("content", to: url)
 
         let store = TabStore(sessionStore: FakeSessionStore())
         let first = await store.openFileInTab(url)
@@ -84,7 +84,7 @@ struct TabStoreCoreTests {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
         let url = directory.appendingPathComponent("doc.md")
-        try? FileStore().write("content", to: url)
+        _ = try? FileStore().write("content", to: url)
 
         let store = TabStore(sessionStore: FakeSessionStore())
         store.newTab()

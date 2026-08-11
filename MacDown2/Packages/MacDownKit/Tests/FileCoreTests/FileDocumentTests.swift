@@ -100,33 +100,18 @@ import Testing
     #expect(saved.state == .clean)
 }
 
-@Test func detectExternalChangeAfterDiskModification() async throws {
+@Test func externalSnapshotReloadReplacesCleanDocument() throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: directory) }
 
     let url = directory.appendingPathComponent("doc.md")
-    let document = try FileDocument(fileURL: url, text: "original").save()
-
-    // Small sleep to ensure modification date changes.
-    try await Task.sleep(nanoseconds: 10_000_000)
-    try FileStore().write("modified externally", to: url)
-
-    #expect(document.detectExternalChange() == true)
-}
-
-@Test func resolveConflictUseExternalReloads() throws {
-    let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent(UUID().uuidString, isDirectory: true)
-    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: directory) }
-
-    let url = directory.appendingPathComponent("doc.md")
-    try FileStore().write("external", to: url)
-
-    let document = FileDocument(fileURL: url, text: "local")
-    let resolved = try document.resolveConflict(.useExternal)
+    let store = FileStore()
+    _ = try store.write("local", to: url)
+    let document = try FileDocument(fileURL: url).load()
+    _ = try store.write("external", to: url)
+    let resolved = try document.reconcilingExternalSnapshot(store.readSnapshot(from: url)).document
 
     #expect(resolved.text == "external")
     #expect(resolved.state == .clean)

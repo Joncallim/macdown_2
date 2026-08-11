@@ -9,7 +9,10 @@ TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 > content browser — heading outline plus the Epic 9 lazy folder browser with
 > watching, filters, drag/drop, and recoverable CRUD — are in place. Epic 9 has
 > package, Release app-build, formatter, and strict-lint validation; the 10k folder check is a
-> package-level Release benchmark, not a full-app-path measurement.
+> package-level Release benchmark, not a full-app-path measurement. Epic 18's
+> external-file reconciliation and recovery work is implemented locally with
+> package and app build validation; hosted CI and dogfooding remain publication
+> proof gates.
 
 ## Requirements
 

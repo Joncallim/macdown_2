@@ -5,12 +5,12 @@
 
 Added at the mid-point check-in (#28): live external-file changes are a core
 document-lifecycle capability required before sustained dogfooding — not a
-speculative extra. FileCore already models the end states
-(`FileDocumentState.conflict`, `ConflictResolution`, `detectExternalChange()`,
-`lastKnownModificationDate`), but **nothing observes the filesystem**: today
-an external change is only noticed if something calls
-`detectExternalChange()`, and nothing does. This epic wires a real watcher
-into that existing model — it must not create a second conflict system.
+speculative extra. FileCore now owns the external-file monitor, immutable
+snapshot probe, and document-reconciliation path. The app binds that monitor
+per native document window, re-arms it after replacement/move/parent recovery,
+and presents the existing conflict state without creating a second conflict
+system. Local implementation and validation are review-ready; sustained
+dogfooding and hosted CI remain publication gates.
 
 ## Required user behaviour (from #28 §4)
 
@@ -65,13 +65,19 @@ into that existing model — it must not create a second conflict system.
 
 ## Acceptance criteria (minimum tests from #28 §4)
 
-- [ ] Clean document reloads after an external edit
-- [ ] Dirty document enters `.conflict` and preserves local text
-- [ ] Application save does not trigger a false external conflict
-- [ ] Atomic replacement (temp file + rename) is detected
-- [ ] Deletion and rename/move are surfaced safely
-- [ ] Rapid external writes are debounced/coalesced
-- [ ] Selection and scroll preservation verified where feasible
+- [x] Clean document reloads after an external edit
+- [x] Dirty document enters `.conflict` and preserves local text
+- [x] Application save does not trigger a false external conflict
+- [x] Atomic replacement (temp file + rename) is detected
+- [x] Deletion and rename/move are surfaced safely
+- [x] Rapid external writes are debounced/coalesced
+- [x] Selection and scroll preservation verified at the mounted AppKit editor seam
+
+The UI suite covers clean reload, dirty-conflict resolution, and conflict-close
+using the disk version. `XCUIElement` does not reliably expose an
+`NSTextView`'s UTF-16 selection or clip-view offset, so that exact viewport
+contract is exercised by deterministic `EditorTextSystem` tests with a mounted
+`NSScrollView`, not a timing-sensitive accessibility assertion.
 
 ## Out of scope
 

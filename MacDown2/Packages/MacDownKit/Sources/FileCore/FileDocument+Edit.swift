@@ -22,6 +22,7 @@ public extension FileDocument {
             // If the user edits while being prompted, return to dirty.
             copy.state = .dirty
         }
+        copy.advanceMutation()
         return copy
     }
 }

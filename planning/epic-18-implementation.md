@@ -2,7 +2,13 @@
 
 > **Issue:** #30 — `[EPIC-18] Live external-file changes: watcher, auto-reload, conflict flow`
 >
-> **Status:** Architecture pass only. No production implementation has landed on this branch yet.
+> **Status:** Implemented in the Epic 18 working tree. FileCore now provides
+> stable snapshots, conditional-save reconciliation, recovery buffering, and
+> parent-directory monitoring; the app integrates those contracts through the
+> external-file controller, native windows, and status UI. Local package and
+> app validation remains a required proof gate before publication; hosted CI,
+> release dogfooding, and full UI-runner evidence must not be inferred from
+> this document.
 >
 > **Branch:** `epic/18-external-file-changes` → draft PR into `master`.
 >

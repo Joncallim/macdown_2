@@ -6,8 +6,8 @@ block); the live issues are on `Joncallim/macdown_2`.
 
 Resolve strictly in dependency order; the critical path is
 **E00 → E01 → E04 → E05 → E06 → E07 → E15 → E17**.
-**E18** (added at the mid-point check-in, #28) must land before sustained
-dogfooding begins.
+**E18** (added at the mid-point check-in, #28) is implemented locally; its
+hosted CI and sustained-dogfooding evidence remain required before publication.
 
 > **As-built note (amended at #28):** E02/E03 shipped with **native `NSWindow`
 > tabs** — one window = one document, per-window sidebar — superseding the
@@ -35,4 +35,4 @@ dogfooding begins.
 | E15 | Liquid Glass polish | M5 — Polish & ship | E07, E09 | open |
 | E16 | Localization | M5 — Polish & ship | stable strings (late) | open |
 | E17 | Distribution & release | M5 — Polish & ship | all | open |
-| E18 | Live external-file changes | M4 — Workspace & formats | E01, E03 (as built), E04 | open (added at #28) |
+| E18 | Live external-file changes | M4 — Workspace & formats | E01, E03 (as built), E04 | implemented locally; hosted CI and dogfooding remain proof gates |

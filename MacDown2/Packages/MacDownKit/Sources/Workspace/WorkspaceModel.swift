@@ -72,6 +72,45 @@ func reorder<Element>(
 public final class WorkspaceModel {
     /// The tab store that owns all open tabs.
     public let tabStore: TabStore
+    let documentWriter = DocumentWriter()
+    var nextSaveGeneration: UInt = 0
+    var latestSaveGenerationByDocumentID: [String: UInt] = [:]
+    /// A Save As owns the old document lane until its publication has either
+    /// rebound the active descendant or failed. Ordinary saves arriving in
+    /// that interval are deliberately coalesced instead of writing the old
+    /// pathname after Save As has selected a destination.
+    var inFlightSaveAsByDocumentID: [String: UInt] = [:]
+    /// Test seam for the crash window after destination session publication
+    /// and before a dirty Save As acknowledges its source redirect.
+    var onSaveAsDestinationSessionPublished: (@MainActor (FileDocument, FileDocument) async -> Void)?
+    /// Test seam for a local edit arriving while dirty Save As recovery is
+    /// finalizing. Production leaves this unset.
+    var onSaveAsRecoveryFinalized: (@MainActor () async -> Void)?
+    /// Former lifetimes whose post-Save As retirement needs an explicit retry
+    /// after a destination session was already published. This is a set, not
+    /// a single slot: a later Save As must not overwrite older cleanup work.
+    var pendingRecoveryCleanupActions: Set<PendingRecoveryCleanupAction> = []
+    var pendingSaveAsRecoveryContinuations: [PendingRecoveryCleanupAction: SaveAsRecoveryContinuation] = [:]
+    /// The app owns the canonical multi-window session file. A window-local
+    /// `TabStore` may intentionally use a no-op store, so dirty Save As must
+    /// await this boundary before it acknowledges the recovery redirect.
+    var saveAsSessionPublisher: (@MainActor () async -> Bool)?
+
+    /// Whether a recovery-cleanup Retry has exact Save As lifetimes to retire.
+    public var hasPendingRecoveryCleanup: Bool {
+        !pendingRecoveryCleanupActions.isEmpty
+    }
+
+    /// Installs the app-owned publication boundary used by dirty Save As.
+    /// Window-local tab stores can deliberately be no-ops because the native
+    /// window coordinator owns the canonical multi-window session file.
+    public func setSaveAsSessionPublisher(_ publisher: @escaping @MainActor () async -> Bool) {
+        saveAsSessionPublisher = publisher
+    }
+
+    /// Test seam for cancellation between recovery-lifetime minting and
+    /// publication of a new untitled tab.
+    public var onManagedDocumentLifetimePrepared: (@MainActor @Sendable () async -> Void)?
 
     /// The document currently shown in the content area.
     public var activeDocument: FileDocument? {
@@ -95,7 +134,7 @@ public final class WorkspaceModel {
     }
 
     /// The most recent error surfaced to the user. Views may present this.
-    public private(set) var lastError: WorkspaceError?
+    public internal(set) var lastError: WorkspaceError?
 
     /// Whether the sidebar column is visible. Persisted via `stateStore`.
     public var sidebarVisible: Bool {
@@ -126,7 +165,7 @@ public final class WorkspaceModel {
     }
 
     private var stateStore: WorkspaceStateStoring
-    private let panel: any FilePanelProviding
+    let panel: any FilePanelProviding
 
     public init(
         tabStore: TabStore? = nil,
@@ -174,6 +213,24 @@ public final class WorkspaceModel {
         lastError = nil
     }
 
+    /// Production new-document path. It observes the durable recovery ledger
+    /// before publishing the untitled lifetime, unlike the synchronous
+    /// compatibility helper retained for pure state tests and previews.
+    @discardableResult
+    public func newManagedDocument(shouldPublish: @escaping @MainActor () -> Bool = { true }) async -> Bool {
+        do {
+            let document = try await FileDocument.create(recoveryBuffer: tabStore.recoveryBuffer)
+            await onManagedDocumentLifetimePrepared?()
+            guard !Task.isCancelled, shouldPublish() else { return false }
+            tabStore.newTab(document: document)
+            lastError = nil
+            return true
+        } catch {
+            lastError = .recoveryCleanupRequired(URL(fileURLWithPath: "Recovery"))
+            return false
+        }
+    }
+
     /// Opens an existing file chosen by the user into a new tab, or activates
     /// the existing tab if the file is already open.
     public func openFile() async {
@@ -197,72 +254,82 @@ public final class WorkspaceModel {
         folderURL = url?.standardizedFileURL
     }
 
-    /// Saves the active document. Untitled documents prompt for a location.
-    public func save() async {
-        guard let document = tabStore.activeDocument else {
-            lastError = .noActiveDocument
-            return
-        }
-
-        if document.fileURL == nil {
-            await saveAs()
-            return
-        }
-
-        do {
-            let saved = try document.save()
-            tabStore.updateActiveDocument { _ in saved }
-            lastError = nil
-        } catch {
-            lastError = .saveFailed(underlying: cast(error))
-        }
-    }
-
-    /// Saves the active document to a user-chosen location.
-    public func saveAs() async {
-        guard let document = tabStore.activeDocument else {
-            lastError = .noActiveDocument
-            return
-        }
-
-        let defaultName = document.fileURL?.lastPathComponent
-            ?? "Untitled.\(document.format.extensions.first ?? "md")"
-        guard let url = await panel.chooseSaveLocation(
-            defaultName: defaultName,
-            format: document.format
-        ) else { return }
-
-        do {
-            let saved = try document.saveAs(url)
-            tabStore.updateActiveDocument { _ in saved }
-            await tabStore.activeDocument?.clearRecovery()
-            lastError = nil
-        } catch {
-            lastError = .saveFailed(underlying: cast(error))
-        }
-    }
-
     /// Begins closing the active tab.
     public func requestCloseDocument() {
+        guard pendingRecoveryCleanupActions.isEmpty else {
+            lastError = .recoveryCleanupRequired(
+                activeDocument?.fileURL ?? URL(fileURLWithPath: "Recovery")
+            )
+            return
+        }
         tabStore.requestCloseActiveTab()
     }
 
     /// Resolves a dirty-close prompt for the active tab.
     public func resolveClose(_ resolution: CloseResolution) async {
+        let closingDocument = tabStore.activeDocument
+        guard pendingRecoveryCleanupActions.isEmpty else {
+            lastError = .recoveryCleanupRequired(closingDocument?.fileURL ?? URL(fileURLWithPath: "Recovery"))
+            return
+        }
+        if resolution == .discard, let closingDocument {
+            let cleanup = await closingDocument.recoveryBuffer.retireWithOutcome(
+                for: closingDocument.id,
+                epoch: closingDocument.recoveryEpoch
+            )
+            guard cleanup.isAbsent else {
+                pendingRecoveryCleanupActions.insert(.retire(for: closingDocument))
+                await preserveOpenDocumentAfterFailedCloseRetirement(closingDocument)
+                lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
+                return
+            }
+        }
         await tabStore.resolveClose(resolution) { [weak self] in
             await self?.saveInternalForClose()
             return self?.tabStore.activeDocument?.state == .clean
         }
+        if let closingDocument {
+            let retainedClosingLifetime = tabStore.activeDocument.map {
+                isSameDocumentLifetime($0, closingDocument)
+            }
+            if retainedClosingLifetime != true {
+                let cleanup = await closingDocument.recoveryBuffer.retireWithOutcome(
+                    for: closingDocument.id,
+                    epoch: closingDocument.recoveryEpoch
+                )
+                if !cleanup.isAbsent {
+                    pendingRecoveryCleanupActions.insert(.retire(for: closingDocument))
+                    lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
+                }
+            }
+        }
     }
 
-    // MARK: - Internal helpers
-
-    private func saveInternalForClose() async {
-        guard tabStore.activeDocument != nil else { return }
-        await save()
+    /// A failed retirement may have written the durable stale-write fence
+    /// before its cleanup marker failed. Keep the tab open on a new managed
+    /// lifetime and persist its exact current text before returning so future
+    /// edits and relaunch recovery never depend on that ambiguous lifetime.
+    private func preserveOpenDocumentAfterFailedCloseRetirement(_ document: FileDocument) async {
+        do {
+            let replacement = try await document.withFreshRecoveryLifetime(preparedBy: document.recoveryBuffer)
+            guard isCurrent(document), await replacement.persistRecovery() else { return }
+            tabStore.updateActiveDocument { _ in replacement }
+        } catch {
+            return
+        }
     }
 
-    private func cast(_ error: Error) -> FileStoreError {
-        error as? FileStoreError ?? .readFailed(underlying: error)
+    private func recoveryCleanupWorkspaceError(
+        _ outcome: RecoveryCleanupResult,
+        document: FileDocument
+    ) -> WorkspaceError {
+        guard case let .failed(error) = outcome else {
+            return .recoveryCleanupRequired(document.fileURL ?? URL(fileURLWithPath: document.id))
+        }
+        switch error {
+        case let .markerWriteFailed(url, _), let .removalFailed(url, _), let .writeFailed(url, _),
+             let .verificationFailed(url):
+            return .recoveryCleanupRequired(url)
+        }
     }
 }

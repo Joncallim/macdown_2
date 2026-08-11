@@ -21,6 +21,7 @@ struct WorkspaceShellView: View {
     let themeController: ThemeController
     let outlineController: OutlineController
     let fileTreeModel: FileTreeModel
+    let externalFileController: ExternalFileController
 
     init(
         model: WorkspaceModel,
@@ -29,7 +30,8 @@ struct WorkspaceShellView: View {
         parseStore: MarkdownParseStore,
         themeController: ThemeController,
         outlineController: OutlineController,
-        fileTreeModel: FileTreeModel
+        fileTreeModel: FileTreeModel,
+        externalFileController: ExternalFileController
     ) {
         _model = State(initialValue: model)
         self.editorStore = editorStore
@@ -38,6 +40,7 @@ struct WorkspaceShellView: View {
         self.themeController = themeController
         self.outlineController = outlineController
         self.fileTreeModel = fileTreeModel
+        self.externalFileController = externalFileController
     }
 
     var body: some View {
@@ -50,7 +53,8 @@ struct WorkspaceShellView: View {
                 highlightStore: highlightStore,
                 parseStore: parseStore,
                 themeController: themeController,
-                outlineController: outlineController
+                outlineController: outlineController,
+                externalFileController: externalFileController
             )
         }
         .navigationSplitViewStyle(.balanced)

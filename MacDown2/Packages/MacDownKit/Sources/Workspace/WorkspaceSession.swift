@@ -28,6 +28,8 @@ public struct TabRecord: Codable, Sendable, Equatable {
     public var id: UUID
     public var fileURL: URL?
     public var untitledDocumentID: String?
+    /// Exact recovery lifetime. Optional for sessions written before E18.
+    public var documentRecoveryEpoch: UUID?
     public var isPinned: Bool
 
     /// The UTF-16 offset of the start of the editor selection. When
@@ -49,6 +51,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         id: UUID,
         fileURL: URL? = nil,
         untitledDocumentID: String? = nil,
+        documentRecoveryEpoch: UUID? = nil,
         isPinned: Bool = false,
         cursorPosition: Int? = nil,
         selectionLength: Int? = nil,
@@ -60,6 +63,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         self.id = id
         self.fileURL = fileURL
         self.untitledDocumentID = untitledDocumentID
+        self.documentRecoveryEpoch = documentRecoveryEpoch
         self.isPinned = isPinned
         self.cursorPosition = cursorPosition
         self.selectionLength = selectionLength
@@ -76,6 +80,17 @@ public struct TabRecord: Codable, Sendable, Equatable {
 public protocol WorkspaceSessionStoring: Sendable {
     func loadSession() -> WorkspaceSession?
     func saveSession(_ session: WorkspaceSession)
+}
+
+public extension WorkspaceSessionStoring {
+    /// A lifecycle boundary, unlike best-effort autosave. The caller can only
+    /// retire a recovery redirect after the exact replacement session is
+    /// readable from the canonical store.
+    @discardableResult
+    func saveSessionVerified(_ session: WorkspaceSession) -> Bool {
+        saveSession(session)
+        return loadSession() == session
+    }
 }
 
 /// JSON file-backed session store.

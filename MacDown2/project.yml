@@ -40,6 +40,10 @@ targets:
       product: OutlineUI
     - package: MacDownKit
       product: ExportService
+    settings:
+      configs:
+        Release:
+          ENABLE_TESTABILITY: 'YES'
     info:
       path: MacDown2/Info.plist
       properties:
@@ -148,6 +152,29 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: 'YES'
         TEST_TARGET_NAME: MacDown2
+  MacDown2Tests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+    - MacDown2Tests
+    dependencies:
+    - target: MacDown2
+    - package: MacDownKit
+      product: FileCore
+    - package: MacDownKit
+      product: Workspace
+    - package: MacDownKit
+      product: EditorCore
+    - package: MacDownKit
+      product: FileTree
+    - package: MacDownKit
+      product: Themes
+    - package: MacDownKit
+      product: Highlighting
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: 'YES'
+        TEST_TARGET_NAME: MacDown2
 schemes:
   MacDown2:
     build:
@@ -159,6 +186,7 @@ schemes:
     test:
       targets:
       - MacDown2UITests
+      - MacDown2Tests
   macdown2:
     build:
       targets:

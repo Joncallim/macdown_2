@@ -118,8 +118,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_: NSApplication) -> NSApplication.TerminateReply {
         Task { @MainActor in
-            await coordinator.saveSession()
-            NSApp.reply(toApplicationShouldTerminate: true)
+            let result = await coordinator.saveSessionResult()
+            NSApp.reply(toApplicationShouldTerminate: coordinator.handleTerminationSessionResult(result))
         }
         return .terminateLater
     }

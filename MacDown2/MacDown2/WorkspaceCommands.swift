@@ -52,13 +52,13 @@ struct WorkspaceCommands: Commands {
 
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
-                Task { await coordinator?.keyModel?.save() }
+                coordinator?.saveKeyDocument()
             }
             .keyboardShortcut("s", modifiers: .command)
             .disabled(coordinator?.keyModel?.canSave != true)
 
             Button("Save As…") {
-                Task { await coordinator?.keyModel?.saveAs() }
+                coordinator?.saveKeyDocumentAs()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
             .disabled(coordinator?.keyModel?.hasActiveDocument != true)

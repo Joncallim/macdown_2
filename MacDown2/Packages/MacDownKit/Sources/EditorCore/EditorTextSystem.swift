@@ -42,6 +42,9 @@ public final class EditorTextSystem {
     private var measuredContentHeight: CGFloat = 0
     private var frameSyncTask: Task<Void, Never>?
     private var editRevision: UInt64 = 0
+    /// Prevents a disk-driven replacement from flowing back through the
+    /// editor binding as a user edit.
+    public private(set) var isPerformingProgrammaticTextUpdate = false
     /// Set by `scrollOffset`'s setter before the scroll view exists yet
     /// (session restore); applied by `applyPendingScrollOffset()` once it does.
     var pendingScrollOffset: CGFloat?
@@ -89,6 +92,33 @@ public final class EditorTextSystem {
         // the previous document — see `syncFrameHeightToContent`.
         measuredContentHeight = 0
         lastFrameSyncSignature = nil
+    }
+
+    /// Captures the selection and vertical viewport before an external reload.
+    public func viewportSnapshot() -> EditorViewportSnapshot {
+        EditorViewportSnapshot(selectedRange: selectedRange, scrollOffset: scrollOffset)
+    }
+
+    /// Replaces editor content from a stable external snapshot without
+    /// creating a user edit or losing the visible location where possible.
+    public func replaceTextFromExternal(
+        _ text: String,
+        preserving snapshot: EditorViewportSnapshot,
+        clearUndo: Bool
+    ) {
+        isPerformingProgrammaticTextUpdate = true
+        defer { isPerformingProgrammaticTextUpdate = false }
+
+        textView.string = text
+        editRevision &+= 1
+        measuredContentHeight = 0
+        lastFrameSyncSignature = nil
+        textView.setSelectedRange(clampedToLiveText(snapshot.selectedRange))
+        pendingScrollOffset = max(0, snapshot.scrollOffset)
+        if clearUndo {
+            undoManager.removeAllActions()
+        }
+        scheduleFrameHeightSync()
     }
 
     /// The current plain-text content of the editor.
@@ -287,6 +317,7 @@ public final class EditorTextSystem {
             }
             guard !Task.isCancelled, let self else { return }
             syncFrameHeightToContent()
+            applyPendingScrollOffset()
         }
     }
 

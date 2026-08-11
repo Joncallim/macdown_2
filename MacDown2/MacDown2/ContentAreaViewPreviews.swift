@@ -53,6 +53,11 @@ private func contentAreaPreview(
         highlightStore: SyntaxHighlightStore(),
         parseStore: MarkdownParseStore(),
         themeController: ThemeController(),
-        outlineController: OutlineController()
+        outlineController: OutlineController(),
+        externalFileController: ExternalFileController(
+            model: model,
+            editorStore: EditorTextSystemStore(),
+            identity: model.tabStore.activeTabID?.uuidString ?? "preview"
+        )
     )
 }
