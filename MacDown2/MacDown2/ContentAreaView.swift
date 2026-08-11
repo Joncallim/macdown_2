@@ -1,3 +1,4 @@
+import AppKit
 import EditorCore
 import FileCore
 import Highlighting
@@ -15,6 +16,7 @@ struct ContentAreaView: View {
     let parseStore: MarkdownParseStore
     let themeController: ThemeController
     let outlineController: OutlineController
+    let externalFileController: ExternalFileController
 
     @State private var scrollController = ScrollSyncController()
 
@@ -87,6 +89,9 @@ struct ContentAreaView: View {
             .padding(.vertical, 8)
             .background(.ultraThinMaterial)
 
+            ExternalFileStatusView(controller: externalFileController)
+            WorkspaceRecoveryRequiredNotice(model: model)
+
             Divider()
 
             // Source / preview split
@@ -143,6 +148,64 @@ struct ContentAreaView: View {
         case "html": return "chevron.left.forwardslash.chevron.right"
         case "json": return "curlybraces"
         default: return "doc.text"
+        }
+    }
+}
+
+private struct WorkspaceRecoveryRequiredNotice: View {
+    let model: WorkspaceModel
+
+    var body: some View {
+        if case let .conditionalPublicationRecoveryRequired(url) = model.lastError {
+            HStack(spacing: 10) {
+                Image(systemName: "externaldrive.badge.exclamationmark")
+                    .foregroundStyle(.orange)
+                Text(
+                    "A competing version was preserved as \(url.lastPathComponent). "
+                        + "Reveal it, then use Save As to keep this copy."
+                )
+                .font(.callout)
+                Spacer()
+                Button("Reveal") {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+                .accessibilityIdentifier("conditionalPublicationRevealButton")
+                Button("Save As…") {
+                    Task { await model.saveAs() }
+                }
+                .accessibilityIdentifier("conditionalPublicationSaveAsButton")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(.orange.opacity(0.15))
+            .accessibilityIdentifier("conditionalPublicationRecoveryNotice")
+        } else if case let .recoveryCleanupRequired(url) = model.lastError {
+            HStack(spacing: 10) {
+                Image(systemName: "externaldrive.badge.exclamationmark")
+                    .foregroundStyle(.orange)
+                Text(
+                    "Recovery cleanup for \(url.lastPathComponent) needs attention. "
+                        + "Reveal it, retry, or use Save As."
+                )
+                .font(.callout)
+                Spacer()
+                Button("Reveal") {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+                .accessibilityIdentifier("recoveryCleanupRevealButton")
+                Button("Retry") {
+                    Task { await model.retryRecoveryCleanup() }
+                }
+                .accessibilityIdentifier("recoveryCleanupRetryButton")
+                Button("Save As…") {
+                    Task { await model.saveAs() }
+                }
+                .accessibilityIdentifier("recoveryCleanupSaveAsButton")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(.orange.opacity(0.15))
+            .accessibilityIdentifier("recoveryCleanupRequiredNotice")
         }
     }
 }

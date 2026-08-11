@@ -49,9 +49,9 @@ extension SidebarView {
                     opensOnSingleClick: fileTreeModel.preferences.opensOnSingleClick,
                     activate: activateFileTreeURL,
                     didRename: { old, new in
-                        coordinator?.documentWasRenamed(from: old, to: new)
+                        Task { await coordinator?.documentWasRenamed(from: old, to: new) }
                     }, didMove: { old, new in
-                        coordinator?.documentWasRenamed(from: old, to: new)
+                        Task { await coordinator?.documentWasRenamed(from: old, to: new) }
                     }, didDelete: { url in coordinator?.documentFileWasDeleted(at: url) }, didCreate: createdItem
                 )
                 .tag(SidebarSelection.file(row.id))
@@ -122,7 +122,7 @@ extension SidebarView {
                     }
                     do {
                         let result = try await fileTreeModel.move(source, intoDirectory: root, context: context)
-                        coordinator?.documentWasRenamed(from: source, to: result.url)
+                        await coordinator?.documentWasRenamed(from: source, to: result.url)
                     } catch {
                         if fileTreeModel.isCurrent(context) {
                             fileTreeModel.recordOperationError(error)

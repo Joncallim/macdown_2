@@ -49,3 +49,34 @@ import Testing
         try store.read(from: url)
     }
 }
+
+@Test func conditionalWriteAcceptsAFreshRevisionAfterAnAtomicReplacement() throws {
+    let store = FileStore()
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("document.md")
+
+    _ = try store.write("first", to: url)
+    _ = try store.write("external replacement", to: url)
+    let baseline = try store.readSnapshot(from: url).revision
+    _ = try store.write("local replacement", to: url, expectedRevision: baseline)
+
+    #expect(try store.read(from: url).content == "local replacement")
+}
+
+@Test func publicationLockRegistryEvictsIdleEntries() throws {
+    let registry = FilePublicationLocks()
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    for index in 0 ..< 32 {
+        let url = directory.appendingPathComponent("\(index).md")
+        registry.withLock(for: url) {}
+    }
+
+    #expect(registry.isEmpty)
+}

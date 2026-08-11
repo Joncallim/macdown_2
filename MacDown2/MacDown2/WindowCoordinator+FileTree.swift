@@ -140,11 +140,24 @@ extension WindowCoordinator {
         }
     }
 
-    func documentWasRenamed(from old: URL, to new: URL) {
+    func documentWasRenamed(from old: URL, to new: URL) async {
+        var published = false
         for controller in controllers {
-            controller.model.tabStore.documentWasRenamed(from: old, to: new)
+            guard await controller.model.tabStore.documentWasRenamed(from: old, to: new) else { continue }
+            published = true
+        }
+        guard published else { return }
+        remapFolderRootsAfterAcceptedMove(from: old, to: new)
+    }
+
+    /// A document identity is already durably migrated by the external-file
+    /// controller. Propagate only the shared root/session identities; do not
+    /// ask `TabStore` to migrate the same recovery lifetime again.
+    func remapFolderRootsAfterAcceptedMove(from old: URL, to new: URL) {
+        for controller in controllers {
             controller.model.remapFolderRoot(from: old, to: new)
             controller.fileTreeModel.itemWasRenamed(from: old, to: new)
+            controller.externalFileController.synchronize(with: controller.model.activeDocument)
         }
         recentFolderRoots.remap(from: old, to: new)
         scheduleSaveSession()
@@ -179,7 +192,7 @@ extension WindowCoordinator {
                 guard let self, let controller else { return }
                 if response == .alertFirstButtonReturn {
                     controller.model.tabStore.activate(tabID)
-                    await controller.model.saveAs()
+                    await controller.saveDocumentAs()
                 } else if response == .alertSecondButtonReturn {
                     self.removeController(controller)
                     controller.close()

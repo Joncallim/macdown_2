@@ -97,10 +97,18 @@ public final class TabStore {
     /// `true` if the active document can be saved right now.
     public var canSave: Bool {
         guard let document = activeDocument else { return false }
+        if document.state == .conflict {
+            return false
+        }
         if document.fileURL == nil {
             return !document.text.isEmpty
         }
-        return document.state == .dirty || document.state == .conflict
+        switch document.backingState {
+        case .available, .unavailable:
+            return document.state == .dirty
+        case .untitled:
+            return !document.text.isEmpty
+        }
     }
 
     /// `true` if the active tab exists and is not pinned.
@@ -113,7 +121,21 @@ public final class TabStore {
     let recoveryBuffer: RecoveryBuffer
     var closeQueue: [UUID]
     var saveTask: Task<Void, Never>?
+    var lastPublishedSession: WorkspaceSession?
     var hasRestoredSession = false
+    private var openRequestGeneration: UInt = 0
+    /// Test seam for an edit arriving after a rename's managed epoch is
+    /// prepared but before the batch captures a replacement snapshot.
+    var onRenameReplacementPrepared: (@MainActor (FileDocument) async -> Void)?
+    /// Test seam for an edit after a dirty tab's recovery migration completes
+    /// but before the batch may publish its prepared replacement.
+    var onRenameRecoveryMigrationCompleted: (@MainActor (FileDocument) async -> Void)?
+    /// Test seam for a race while a stale source is being preserved after a
+    /// recovery migration. Production leaves this unset.
+    var onRenamePreservationPrepared: (@MainActor (FileDocument) async -> Void)?
+    /// The native-window coordinator owns the canonical multi-window session
+    /// file. It installs this verified publication boundary for renames.
+    var renameSessionPublisher: (@MainActor () async -> Bool)?
 
     public init(
         sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
@@ -125,6 +147,11 @@ public final class TabStore {
         activeTabID = nil
         pendingCloseTabID = nil
         closeQueue = []
+        lastPublishedSession = nil
+    }
+
+    public func setRenameSessionPublisher(_ publisher: @escaping @MainActor () async -> Bool) {
+        renameSessionPublisher = publisher
     }
 
     // MARK: - Lifecycle intents
@@ -149,19 +176,41 @@ public final class TabStore {
     @discardableResult
     public func openFileInTab(_ url: URL) async -> WorkspaceTab? {
         let standardized = url.standardizedFileURL
+        openRequestGeneration &+= 1
+        let requestGeneration = openRequestGeneration
 
         if let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) {
-            activeTabID = existing.id
+            if requestGeneration == openRequestGeneration {
+                activeTabID = existing.id
+            }
             persist()
             return existing
         }
 
-        let document = FileDocument(fileURL: url, recoveryBuffer: recoveryBuffer)
+        let document: FileDocument
         do {
-            let loaded = try document.load()
+            document = try await FileDocument.create(fileURL: url, recoveryBuffer: recoveryBuffer)
+        } catch {
+            return nil
+        }
+        do {
+            let loaded = try await Task.detached(priority: .userInitiated) {
+                try document.load()
+            }.value
+            // The await above lets another intent open/activate this file.
+            // Reuse that tab rather than publishing a duplicate completion.
+            if let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) {
+                if requestGeneration == openRequestGeneration {
+                    activeTabID = existing.id
+                }
+                persist()
+                return existing
+            }
             let tab = WorkspaceTab(document: loaded)
             tabs.append(tab)
-            activeTabID = tab.id
+            if requestGeneration == openRequestGeneration {
+                activeTabID = tab.id
+            }
             persist()
             return tab
         } catch {
@@ -302,57 +351,50 @@ public final class TabStore {
             activeTabID = nil
         }
 
+        await acknowledgePendingRecoveryMigrations()
         await saveSession()
     }
 
-    /// Autosaves every dirty tab's text to the recovery buffer, then writes the
-    /// session JSON. Failures are swallowed.
-    public func saveSession() async {
+    /// Autosaves every dirty tab's text before publishing session identities.
+    /// If recovery cannot be verified, the prior on-disk session remains the
+    /// last-good session rather than pointing at an unrecoverable lifetime.
+    @discardableResult
+    public func saveSession() async -> Bool {
         for tab in tabs where tab.document.state == .dirty || tab.document.state == .conflict {
-            try? await recoveryBuffer.save(content: tab.document.text, for: tab.document.id)
-        }
-
-        sessionStore.saveSession(currentSession())
-    }
-
-    // MARK: - Internal helpers
-
-    func tabIndex(of id: UUID) -> Int? {
-        tabs.firstIndex { $0.id == id }
-    }
-
-    func removeTab(at index: Int) {
-        let removedID = tabs[index].id
-        tabs.remove(at: index)
-
-        if activeTabID == removedID {
-            activeTabID = nextActiveTabID(afterRemovingTabAt: index)
-        }
-    }
-
-    func nextActiveTabID(afterRemovingTabAt removedIndex: Int) -> UUID? {
-        for offset in 1 ..< max(removedIndex + 1, tabs.count - removedIndex + 1) {
-            let leftIndex = removedIndex - offset
-            if leftIndex >= 0, leftIndex < tabs.count {
-                return tabs[leftIndex].id
+            // Snapshot before suspension. Besides keeping recovery I/O off the
+            // observed main-actor store, this prevents a borrowed array entry
+            // from crossing the actor hop while a later edit replaces it.
+            let content = String(tab.document.text)
+            let documentID = String(tab.document.id)
+            let generation = tab.document.mutationGeneration
+            let lifetime = tab.document.recoveryEpoch
+            let recoveryBuffer = tab.document.recoveryBuffer
+            let persistenceTask: Task<Bool, Never> = Task.detached(priority: .utility) {
+                do {
+                    return try await recoveryBuffer.saveCurrentLifetime(
+                        content: content,
+                        for: documentID,
+                        version: generation,
+                        epoch: lifetime
+                    )
+                } catch {
+                    return false
+                }
             }
-            let rightIndex = removedIndex + offset - 1
-            if rightIndex >= 0, rightIndex < tabs.count {
-                return tabs[rightIndex].id
+            let persisted = await persistenceTask.value
+            if !persisted {
+                // A migration may have already written this exact immutable
+                // snapshot at the same version. It is safe to publish only
+                // when the recovery record still verifies the captured text;
+                // a stale/rejected write never gets this exception.
+                guard let recovered = try? await recoveryBuffer.load(for: documentID, epoch: lifetime),
+                      recovered == content
+                else { return false }
             }
         }
-        return nil
-    }
-
-    func persist() {
-        // Debounce already in progress; saveSession reads live state so the
-        // deferred write always captures the latest tab state.
-        guard saveTask == nil else { return }
-        saveTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(300))
-            guard let self else { return }
-            saveTask = nil
-            await saveSession()
-        }
+        let session = currentSession()
+        sessionStore.saveSession(session)
+        lastPublishedSession = session
+        return true
     }
 }

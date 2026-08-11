@@ -21,6 +21,11 @@ extension EnvironmentValues {
 @MainActor
 @Observable
 final class WindowCoordinator {
+    enum TerminationRecoveryState: Equatable {
+        case none
+        case recoveryRequired
+    }
+
     /// The model for the document currently shown in the key window.
     private(set) var keyModel: WorkspaceModel?
 
@@ -31,7 +36,7 @@ final class WindowCoordinator {
     var controllers: [WindowController] = []
     let sessionStore: WorkspaceSessionStoring
     let panelProvider: NSFilePanelProvider
-    private let recoveryBuffer: RecoveryBuffer
+    let recoveryBuffer: RecoveryBuffer
     let themeController: ThemeController
     let grammarRegistry: GrammarRegistry
     let fileTreePreferences: FileTreePreferences
@@ -40,6 +45,10 @@ final class WindowCoordinator {
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
     private var restoreTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingNewDocumentTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
+    @ObservationIgnored var onNewDocumentLifetimePrepared: (@MainActor () async -> Void)?
+    @ObservationIgnored var terminationRecoveryState: TerminationRecoveryState = .none
+    @ObservationIgnored var terminationRecoveryController: WindowController?
 
     init(
         sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
@@ -69,7 +78,6 @@ final class WindowCoordinator {
         let keyWindow = NSApp.keyWindow
 
         let model = makeWindowModel()
-        model.newDocument()
         let controller = WindowController(
             model: model,
             coordinator: self,
@@ -78,6 +86,17 @@ final class WindowCoordinator {
             fileTreePreferences: fileTreePreferences
         )
         addController(controller, addingAsTab: addAsTab, keyWindow: keyWindow)
+        let key = ObjectIdentifier(controller)
+        model.onManagedDocumentLifetimePrepared = { [weak self] in
+            await self?.onNewDocumentLifetimePrepared?()
+        }
+        pendingNewDocumentTasks[key] = Task { @MainActor [weak self, weak controller] in
+            defer { self?.pendingNewDocumentTasks[key] = nil }
+            guard let self, let controller else { return }
+            _ = await model.newManagedDocument {
+                !Task.isCancelled && self.controllers.contains { $0 === controller }
+            }
+        }
     }
 
     /// Opens a file in a new window, or activates the existing window if the
@@ -144,6 +163,16 @@ final class WindowCoordinator {
         }
     }
 
+    func saveKeyDocument() {
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        Task { await controller.saveDocument() }
+    }
+
+    func saveKeyDocumentAs() {
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        Task { await controller.saveDocumentAs() }
+    }
+
     /// Selects the next tab in the key window's native tab group.
     func selectNextTab() {
         NSApp.keyWindow?.selectNextTab(nil)
@@ -181,16 +210,6 @@ final class WindowCoordinator {
         return index < count
     }
 
-    /// Applies the requested preview layout to the active tab of the key window.
-    /// This is the single entry point used by both the SwiftUI Commands menu and
-    /// the window-level key-equivalent handler.
-    func setPreviewLayout(_ layout: PreviewLayoutMode) {
-        guard let keyModel,
-              let activeTabID = keyModel.tabStore.activeTabID else { return }
-        keyModel.tabStore.setPreviewLayout(layout, for: activeTabID)
-        scheduleSaveSession()
-    }
-
     /// ⌃⌘O (D11). Reveals the outline in the key window, then hands off to
     /// its `OutlineController` — focusing a hidden list is a dead shortcut,
     /// so both the sidebar and the outline's own disclosure are ensured open
@@ -212,62 +231,6 @@ final class WindowCoordinator {
             try? await Task.sleep(for: .milliseconds(300))
             guard let self, !Task.isCancelled else { return }
             await saveSession()
-        }
-    }
-
-    /// Saves the current set of open documents as the session. Dirty documents
-    /// are snapshotted before any `await` so the RecoveryBuffer and session JSON
-    /// stay consistent even if the main actor processes other work between
-    /// suspensions.
-    func saveSession() async {
-        let snapshot = controllers.compactMap { controller -> TabSnapshot? in
-            guard let tab = controller.model.tabStore.tabs.first else { return nil }
-            let identity = tab.id.uuidString
-            let textSystem = controller.editorStore.existingSystem(for: identity)
-            let selectedRange = textSystem?.selectedRange
-            let cursorPosition = selectedRange?.location
-            let selectionLength = selectedRange?.length
-            let scrollOffset = textSystem.map { Double($0.scrollOffset) }
-
-            let lexicalRoot = controller.model.folderURL
-            let physicalRoot = lexicalRoot?.resolvingSymlinksInPath().standardizedFileURL
-            let scope = physicalRoot.map(FolderAccessScope.init)
-            let bookmark = physicalRoot.flatMap { try? $0.bookmarkData(options: .withSecurityScope) }
-                ?? tab.folderRootBookmark
-            _ = scope
-            return TabSnapshot(
-                record: TabRecord(
-                    id: tab.id,
-                    fileURL: tab.document.fileURL,
-                    untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
-                    isPinned: tab.isPinned,
-                    cursorPosition: cursorPosition,
-                    selectionLength: selectionLength,
-                    scrollOffset: scrollOffset,
-                    previewLayout: tab.previewLayout,
-                    folderRootBookmark: bookmark,
-                    folderRootAlias: lexicalRoot ?? tab.folderRootAlias
-                ),
-                documentID: tab.document.id,
-                documentText: tab.document.text,
-                documentState: tab.document.state
-            )
-        }
-        // Capture the active tab while the snapshot is still consistent.
-        // Reading this after any `await` would race against tab switches.
-        let activeID = controllers.first { $0.window?.isKeyWindow ?? false }?.model.tabStore.activeTabID
-
-        // Write the session JSON before touching the recovery buffer so the
-        // lightweight session metadata (including preview layout) is persisted
-        // immediately and survives early termination.
-        sessionStore.saveSession(WorkspaceSession(tabs: snapshot.map(\.record), activeTabID: activeID))
-
-        // Per-window `TabStore` instances also write dirty text to the recovery
-        // buffer on a 300 ms debounce. We rewrite the snapshot text here so dirty
-        // content captured at this point in time is persisted even if the per-window
-        // debounced saves have not fired yet (e.g., on immediate app termination).
-        for entry in snapshot where entry.documentState == .dirty || entry.documentState == .conflict {
-            try? await recoveryBuffer.save(content: entry.documentText, for: entry.documentID)
         }
     }
 
@@ -323,6 +286,7 @@ final class WindowCoordinator {
     // MARK: - Internal helpers
 
     func removeController(_ controller: WindowController) {
+        pendingNewDocumentTasks.removeValue(forKey: ObjectIdentifier(controller))?.cancel()
         controllers.removeAll { $0 === controller }
         scheduleSaveSession()
         updateKeyModel()
@@ -344,16 +308,23 @@ final class WindowCoordinator {
         updateKeyModel()
     }
 
-    func makeWindowModel() -> WorkspaceModel {
-        WorkspaceModel(
-            tabStore: TabStore(sessionStore: NoOpSessionStore(), recoveryBuffer: recoveryBuffer),
+    func makeWindowModel(panel: (any FilePanelProviding)? = nil) -> WorkspaceModel {
+        let tabStore = TabStore(sessionStore: NoOpSessionStore(), recoveryBuffer: recoveryBuffer)
+        let model = WorkspaceModel(
+            tabStore: tabStore,
             stateStore: workspaceStateStore,
-            panel: panelProvider
+            panel: panel ?? panelProvider
         )
-    }
-
-    private func controllerForDocument(url: URL) -> WindowController? {
-        controllers.first { $0.model.tabStore.tabID(forFileURL: url) != nil }
+        model.setSaveAsSessionPublisher { [weak self, weak model] in
+            guard let self, let model else { return false }
+            let result = await saveSessionResult(allowingSaveAsPublicationFor: model)
+            return result.persisted
+        }
+        tabStore.setRenameSessionPublisher { [weak self, weak model] in
+            guard let self, let model else { return false }
+            return await saveSessionResult(allowingSaveAsPublicationFor: model).persisted
+        }
+        return model
     }
 
     func updateKeyModel() {
@@ -363,9 +334,11 @@ final class WindowCoordinator {
 
 // MARK: - Session snapshot
 
-private struct TabSnapshot {
+struct TabSnapshot {
     let record: TabRecord
     let documentID: String
     let documentText: String
     let documentState: FileDocumentState
+    let documentGeneration: UInt
+    let documentRecoveryEpoch: UUID
 }

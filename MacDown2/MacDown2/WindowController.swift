@@ -21,7 +21,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let themeController: ThemeController
     let outlineController: OutlineController
     let fileTreeModel: FileTreeModel
-    private weak var coordinator: WindowCoordinator?
+    let externalFileController: ExternalFileController
+    weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
@@ -33,7 +34,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         coordinator: WindowCoordinator,
         themeController: ThemeController,
         grammarRegistry: GrammarRegistry,
-        fileTreePreferences: FileTreePreferences
+        fileTreePreferences: FileTreePreferences,
+        recoveryExecutor: any RecoveryActionExecuting = DefaultRecoveryActionExecutor()
     ) {
         self.model = model
         self.coordinator = coordinator
@@ -47,9 +49,12 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // opts into the tighter production budget.
         parseStore = MarkdownParseStore(debounce: .milliseconds(100))
         outlineController = OutlineController()
-        fileTreeModel = FileTreeModel(
-            preferences: fileTreePreferences,
-            supportedExtensions: Set(FileFormatRegistry.defaultFormats.flatMap(\.extensions))
+        fileTreeModel = Self.makeFileTreeModel(preferences: fileTreePreferences)
+        externalFileController = Self.makeExternalFileController(
+            model: model,
+            editorStore: editorStore,
+            coordinator: coordinator,
+            recoveryExecutor: recoveryExecutor
         )
 
         // Eagerly create the text system and parse session for the active tab
@@ -72,7 +77,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             parseStore: parseStore,
             themeController: themeController,
             outlineController: outlineController,
-            fileTreeModel: fileTreeModel
+            fileTreeModel: fileTreeModel,
+            externalFileController: externalFileController
         )
         .environment(\.windowCoordinator, coordinator)
         let hostingController = NSHostingController(rootView: shell)
@@ -85,10 +91,12 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         window.tabbingMode = .preferred
 
         super.init(window: window)
+        externalFileController.attach(owner: self)
         window.delegate = self
         fileTreeModel.startObservingPreferences()
         updateTitleAndEditedState()
         startObservingActiveDocument()
+        externalFileController.start()
     }
 
     @available(*, unavailable)
@@ -96,8 +104,34 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         nil
     }
 
+    private static func makeExternalFileController(
+        model: WorkspaceModel,
+        editorStore: EditorTextSystemStore,
+        coordinator: WindowCoordinator,
+        recoveryExecutor: any RecoveryActionExecuting
+    ) -> ExternalFileController {
+        ExternalFileController(
+            model: model,
+            editorStore: editorStore,
+            identity: model.tabStore.activeTab?.id.uuidString ?? UUID().uuidString,
+            coordinator: coordinator,
+            recoveryExecutor: recoveryExecutor
+        )
+    }
+
+    private static func makeFileTreeModel(preferences: FileTreePreferences) -> FileTreeModel {
+        FileTreeModel(
+            preferences: preferences,
+            supportedExtensions: Set(FileFormatRegistry.defaultFormats.flatMap(\.extensions))
+        )
+    }
+
     deinit {
         observationTask?.cancel()
+        let controller = externalFileController
+        Task { @MainActor in
+            controller.dispose()
+        }
     }
 
     private func startObservingActiveDocument() {
@@ -155,6 +189,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_: Notification) {
         observationTask?.cancel()
+        externalFileController.dispose()
         editorStore.evictAll()
         highlightStore.evictAll()
         parseStore.evictAll()
@@ -170,52 +205,20 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // The inactive polling cadence is intentionally low; refresh once
         // synchronously when a native tab becomes visible again.
         updateTitleAndEditedState()
+        externalFileController.retryMonitoring()
         Task { await fileTreeModel.rescanExpandedDirectories() }
     }
 
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard let coordinator, coordinator.controllers.contains(where: { $0 === self }) else { return true }
+    func saveDocument() async {
+        await model.save()
+        externalFileController.synchronize(with: model.activeDocument)
+        updateTitleAndEditedState()
+    }
 
-        guard let document = model.activeDocument, document.state != .clean else {
-            coordinator.removeController(self)
-            return true
-        }
-
-        let alert = NSAlert()
-        alert.messageText = "Unsaved Changes"
-        let fileName = document.fileURL?.lastPathComponent ?? "Untitled"
-        alert.informativeText = "Do you want to save changes to \"\(fileName)\"?"
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Discard Changes")
-        alert.alertStyle = .warning
-
-        alert.beginSheetModal(for: sender) { [weak self] response in
-            Task { @MainActor [weak self] in
-                guard let self, let coordinator = self.coordinator else { return }
-                // Keep a strong reference to the parent window so we can restore
-                // key focus after dismissing the sheet.
-                let parentWindow = sender
-
-                switch response {
-                case .alertFirstButtonReturn:
-                    await model.save()
-                    if model.activeDocument?.state == .clean {
-                        coordinator.removeController(self)
-                        close()
-                    }
-                case .alertThirdButtonReturn:
-                    await model.tabStore.resolveClose(.discard)
-                    coordinator.removeController(self)
-                    close()
-                default:
-                    // Ensure this window remains key. AppKit can switch the tab-
-                    // group selection during sheet dismissal under native tabbing.
-                    parentWindow.makeKeyAndOrderFront(nil)
-                }
-            }
-        }
-
-        return false
+    func saveDocumentAs() async {
+        await externalFileController.drainRecovery()
+        await model.saveAs()
+        externalFileController.synchronize(with: model.activeDocument)
+        updateTitleAndEditedState()
     }
 }

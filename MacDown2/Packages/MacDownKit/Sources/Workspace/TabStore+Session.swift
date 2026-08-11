@@ -15,6 +15,7 @@ extension TabStore {
                 id: tab.id,
                 fileURL: tab.document.fileURL,
                 untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
+                documentRecoveryEpoch: tab.document.recoveryEpoch,
                 isPinned: tab.isPinned,
                 cursorPosition: nil,
                 selectionLength: nil,
@@ -31,8 +32,16 @@ extension TabStore {
         if let fileURL = record.fileURL {
             return await restoreFileTab(from: record, fileURL: fileURL)
         } else if let untitledID = record.untitledDocumentID {
-            guard let recovered = try? await recoveryBuffer.load(for: untitledID) else { return nil }
-            var document = FileDocument(text: "", recoveryBuffer: recoveryBuffer)
+            guard let recovered = try? await recoveryBuffer.load(
+                for: untitledID,
+                epoch: record.documentRecoveryEpoch
+            ) else { return nil }
+            var document = FileDocument(
+                text: "",
+                recoveryBuffer: recoveryBuffer,
+                documentID: untitledID,
+                recoveryEpoch: record.documentRecoveryEpoch
+            )
             document = document.updatingText(recovered)
             return WorkspaceTab(
                 id: record.id,
@@ -50,17 +59,50 @@ extension TabStore {
     }
 
     private func restoreFileTab(from record: TabRecord, fileURL: URL) async -> WorkspaceTab? {
-        let document = FileDocument(fileURL: fileURL, recoveryBuffer: recoveryBuffer)
+        // Version-one sessions did not persist a recovery lifetime. Scan once
+        // for their newest UUID/legacy record; new sessions always use the
+        // exact lifetime they recorded.
+        let recoveryEpoch = record.documentRecoveryEpoch
+        let document = FileDocument(
+            fileURL: fileURL,
+            recoveryBuffer: recoveryBuffer,
+            recoveryEpoch: recoveryEpoch
+        )
         do {
-            var loaded = try document.load()
-            let recovered = try? await recoveryBuffer.load(for: loaded.id)
+            var loaded = try await Task.detached(priority: .utility) {
+                try document.load()
+            }.value
+            let recovered = try? await recoveryBuffer.load(for: loaded.id, epoch: recoveryEpoch)
             if let recovered, recovered != loaded.text {
                 loaded = loaded.updatingText(recovered)
+            } else if recovered != nil {
+                // A stale copy identical to disk is not recovery state. Remove
+                // it during restore so a later crash cannot revive clean text.
+                await recoveryBuffer.remove(for: loaded.id, epoch: recoveryEpoch)
             }
             return tab(from: record, document: loaded)
+        } catch let error as FileStoreError {
+            guard let recovered = try? await recoveryBuffer.load(
+                for: fileURL.absoluteString,
+                epoch: recoveryEpoch
+            ) else { return nil }
+            let unavailable = document
+                .updatingText(recovered)
+                .markingBackingUnavailable(backingIssue(for: error))
+            return tab(from: record, document: unavailable)
         } catch {
-            guard let recovered = try? await recoveryBuffer.load(for: fileURL.absoluteString) else { return nil }
-            return tab(from: record, document: document.updatingText(recovered))
+            return nil
+        }
+    }
+
+    private func backingIssue(for error: FileStoreError) -> FileBackingIssue {
+        switch error {
+        case .fileMissing: .missingOrMoved
+        case .permissionDenied: .permissionDenied
+        case .notRegularFile: .notRegularFile
+        case .readFailed, .writeFailed, .invalidURL, .encodingDetectionFailed, .fileChangedDuringRead,
+             .conditionalPublicationRecoveryRequired:
+            .readFailed(String(describing: error))
         }
     }
 

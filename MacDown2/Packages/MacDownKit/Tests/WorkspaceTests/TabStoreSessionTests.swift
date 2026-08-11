@@ -10,7 +10,7 @@ struct TabStoreSessionTests {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
         let fileURL = directory.appendingPathComponent("saved.md")
-        try? FileStore().write("file", to: fileURL)
+        _ = try? FileStore().write("file", to: fileURL)
 
         let sessionStore = WorkspaceSessionStore(fileURL: directory.appendingPathComponent("session.json"))
         let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
@@ -120,7 +120,7 @@ struct TabStoreSessionTests {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
         let fileURL = directory.appendingPathComponent("doc.md")
-        try? FileStore().write("disk", to: fileURL)
+        _ = try? FileStore().write("disk", to: fileURL)
 
         let sessionStore = WorkspaceSessionStore(fileURL: directory.appendingPathComponent("session.json"))
         let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))

@@ -164,7 +164,10 @@ public struct EditorView: NSViewRepresentable {
         var isApplyingModelText = false
 
         public func textDidChange(_: Notification) {
-            guard !isApplyingModelText, let system else { return }
+            guard !isApplyingModelText,
+                  let system,
+                  !system.isPerformingProgrammaticTextUpdate
+            else { return }
             isApplyingModelText = true
             textBinding?.wrappedValue = system.text
             isApplyingModelText = false
