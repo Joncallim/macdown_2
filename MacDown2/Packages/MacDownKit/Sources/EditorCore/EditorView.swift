@@ -177,10 +177,94 @@ public struct EditorView: NSViewRepresentable {
             system.scheduleFrameHeightSync()
         }
 
+        /// E10 typed-replacement hook. Returns `true` when AppKit should
+        /// perform the original edit, `false` when the assist already applied
+        /// a replacement (or moved the selection).
+        public func textView(
+            _ textView: NSTextView,
+            shouldChangeTextIn affectedRange: NSRange,
+            replacementString: String?
+        ) -> Bool {
+            guard let system else { return true }
+            guard let replacementString else { return true }
+            guard !isApplyingModelText else { return true }
+            guard !system.isPerformingProgrammaticTextUpdate else { return true }
+            guard !system.isPerformingEditingAssist else { return true }
+            guard system.editingAssistConfiguration.isEnabled else { return true }
+
+            // IME safety: marked text passes through untouched. A marked
+            // range whose location is NSNotFound is never a real range.
+            let marked = textView.markedRange()
+            if textView.hasMarkedText() ||
+                (marked.location != NSNotFound && NSIntersectionRange(marked, affectedRange).length > 0)
+            // swiftlint:disable:next opening_brace
+            {
+                return true
+            }
+
+            // Fail open: without the expected live backing source, the editor
+            // behaves exactly like native AppKit. Report the architecture
+            // event in Debug rather than falling back to an O(document) copy.
+            guard let source = system.assistTextSource else {
+                assertionFailure("E10: live NSTextStorage backing source unavailable")
+                return true
+            }
+
+            let outcome = MarkdownEditingAssistEngine.outcome(
+                for: .replacement(range: affectedRange, string: replacementString),
+                text: source,
+                selection: system.selectedRange,
+                configuration: system.editingAssistConfiguration
+            )
+            return !system.applyAssistOutcome(outcome)
+        }
+
+        /// E10 command hook. Returns `true` when the command was handled,
+        /// `false` when AppKit should continue with the responder chain.
+        public func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            guard let system else { return false }
+            guard system.editingAssistConfiguration.isEnabled else { return false }
+            guard !isApplyingModelText,
+                  !system.isPerformingProgrammaticTextUpdate,
+                  !system.isPerformingEditingAssist
+            else { return false }
+            // Marked text (IME composition) passes through untouched.
+            guard !textView.hasMarkedText() else { return false }
+
+            guard let action = Self.editingAssistAction(for: selector) else { return false }
+            guard let source = system.assistTextSource else { return false }
+            let outcome = MarkdownEditingAssistEngine.outcome(
+                for: action,
+                text: source,
+                selection: system.selectedRange,
+                configuration: system.editingAssistConfiguration
+            )
+            return system.applyAssistOutcome(outcome)
+        }
+
         public func textViewDidChangeSelection(_: Notification) {
             guard let system else { return }
             system.scheduleFrameHeightSync()
             onSelectionChange?(system.selectedRange)
+        }
+
+        /// Maps the AppKit text command selectors E10 understands. Everything
+        /// else returns `nil` and falls through to native behavior.
+        private static func editingAssistAction(for selector: Selector) -> EditingAssistAction? {
+            switch selector {
+            case #selector(NSResponder.insertNewline(_:)):
+                .insertNewline
+            case #selector(NSResponder.insertTab(_:)):
+                .insertTab
+            case #selector(NSResponder.insertBacktab(_:)):
+                .insertBacktab
+            case #selector(NSResponder.deleteBackward(_:)):
+                .deleteBackward
+            case #selector(NSResponder.moveToLeftEndOfLine(_:)):
+                .smartHome
+            default:
+                nil
+            }
         }
 
         @objc @MainActor func scrollViewDidScroll(_: Notification) {

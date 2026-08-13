@@ -2,7 +2,7 @@
 
 > **Issue:** #11 — `[EPIC-10] Editing assists: list continuation, auto-pairing, indenting`
 >
-> **Status:** Architecture only. This is the binding implementation contract for the Epic 10 branch. Production code starts only after this document has been read end-to-end.
+> **Status:** Implemented on `epic/10-editing-assists` (see §20.1 implementation record). This document is the binding implementation contract for the Epic 10 branch.
 >
 > **Branch:** `epic/10-editing-assists` → draft PR into `master`.
 >
@@ -789,26 +789,26 @@ No `AppSettings` changes.
 
 Issue #11 cannot close until implementation updates this table to actual shipped status.
 
-| Legacy `NSTextView+Autocomplete` API | E10 disposition |
-|---|---|
-| `substringInRange:isSurroundedByPrefix:suffix:` | Port as internal markup-surround helper incl. `*` vs `**`/`***` rule |
-| `insertSpacesForTab` | Port; configurable width 1…8 |
-| `completeMatchingCharactersForTextInRange` | Port/extend through typed replacement engine |
-| `completeMatchingCharacterForText:atLocation:` | Port structural pair/type-over; extend with scoped Markdown delimiter pairing required by issue #11 |
-| `wrapTextInRange` | Port as generic one-replacement wrapper |
-| `wrapMatchingCharactersOfCharacter` | Port structural + `*`/`_`/backtick; drop legacy `=` and single-`~` behavior |
-| `deleteMatchingCharactersAround` | Port; extend paired deletion to E10's symmetric Markdown auto-pairs |
-| `unindentForSpacesBefore` | Port; configurable width |
-| `toggleForMarkupPrefix:suffix:` | Port for Bold/Italic/Code |
-| `toggleBlockWithPattern:prefix:` | Deliberately deferred — generic quote/list toggle commands are not issue #11 scope |
-| `indentSelectedLinesWithPadding` | Port |
-| `unindentSelectedLines` | Port |
-| `insertMappedContent` | Drop — legacy bundled data-map helper is not a current editor requirement |
-| `completeNextListItem` | Port; extend tasks and composed quote/list prefixes |
-| `completeNextBlockquoteLine` | Port into unified prefix parser |
-| `completeNextIndentedLine` | Port |
-| `makeHeaderForSelectedLinesWithLevel` | Port as H1…H6 + Paragraph |
-| legacy partial marked-text behavior | Replace with full marked-text pass-through for IME safety |
+| Legacy `NSTextView+Autocomplete` API | E10 disposition | Shipped as |
+|---|---|---|
+| `substringInRange:isSurroundedByPrefix:suffix:` | Port as internal markup-surround helper incl. `*` vs `**`/`***` rule | Ported — `MarkdownEditingAssistEngine+Commands.swift` toggle helpers + `EditingAssistFormattingTests` (`***` rule, `**` strong, `*` emphasis) |
+| `insertSpacesForTab` | Port; configurable width 1…8 | Ported — `MarkdownEditingAssistEngine+Indentation.swift`; `EditingAssistConfiguration.indentationWidth` normalized 1…8 |
+| `completeMatchingCharactersForTextInRange` | Port/extend through typed replacement engine | Ported — `MarkdownEditingAssistEngine+Commands.swift` selection wrapping via `collapsedTypingOutcome`/structural pair table |
+| `completeMatchingCharacterForText:atLocation:` | Port structural pair/type-over; extend with scoped Markdown delimiter pairing required by issue #11 | Ported + extended — `MarkdownEditingAssistEngine.swift` type-over + `EditingAssistPairs.swift` structural/symmetric tables (`EditingAssistPairingTests`) |
+| `wrapTextInRange` | Port as generic one-replacement wrapper | Ported — `EditingAssistEdit` single-replacement model applied via `EditorTextSystem.applyAssistOutcome` |
+| `wrapMatchingCharactersOfCharacter` | Port structural + `*`/`_`/backtick; drop legacy `=` and single-`~` behavior | Ported, `=`/`~` dropped as planned — symmetric delimiter set in `EditingAssistPairs.swift`; tests cover `*`/`_`/backtick only |
+| `deleteMatchingCharactersAround` | Port; extend paired deletion to E10's symmetric Markdown auto-pairs | Ported — paired Backspace (`deleteBackward`) for structural + symmetric pairs in `MarkdownEditingAssistEngine+Commands.swift` |
+| `unindentForSpacesBefore` | Port; configurable width | Ported — collapsed/selected Shift-Tab unindent (`MarkdownEditingAssistEngine+Indentation.swift`) |
+| `toggleForMarkupPrefix:suffix:` | Port for Bold/Italic/Code | Ported — `.bold`/`.italic`/`.inlineCode` in `MarkdownEditingCommand` + `EditingAssistFormattingTests` |
+| `toggleBlockWithPattern:prefix:` | Deliberately deferred — generic quote/list toggle commands are not issue #11 scope | Deferred as planned (recorded in §12/§19; no block-toggle command ships) |
+| `indentSelectedLinesWithPadding` | Port | Ported — selected Tab indent with per-line UTF-16 selection remap |
+| `unindentSelectedLines` | Port | Ported — selected Shift-Tab unindent |
+| `insertMappedContent` | Drop — legacy bundled data-map helper is not a current editor requirement | Dropped as planned |
+| `completeNextListItem` | Port; extend tasks and composed quote/list prefixes | Ported + extended — `MarkdownEditingAssistEngine+Newline.swift` unified prefix parser (list/task/blockquote/indent, ordered auto-increment with zero-padding) |
+| `completeNextBlockquoteLine` | Port into unified prefix parser | Ported — unified `linePrefix(before:in:)` blockquote continuation |
+| `completeNextIndentedLine` | Port | Ported — indentation continuation |
+| `makeHeaderForSelectedLinesWithLevel` | Port as H1…H6 + Paragraph | Ported — `.heading(1…6)` + `.paragraph` ATX replace / blank-line insertion (`MarkdownEditingAssistEngine+Commands.swift`) |
+| legacy partial marked-text behavior | Replace with full marked-text pass-through for IME safety | Replaced — coordinator bypasses the engine entirely while `hasMarkedText` (IME) or marked range intersection (§16.4); recorded deviation stands |
 
 ---
 
@@ -1222,6 +1222,34 @@ Do not mark ready if any is true:
 - E18 external/model replacement path changes behavior;
 - Release dogfooding shows ordinary typing interference.
 
+### 20.1 Implementation record
+
+Implemented on `epic/10-editing-assists` (baseline `48d8529`). All gates below were run and are green except where noted:
+
+| Gate | Result |
+|---|---|
+| `swift build` + `swift test` (Debug, package) | Green — 674 tests / 71 suites; the only full-run failures are pre-existing FileCore monitor/save-queue timing flakiness, proven identical on the baseline and green in isolation |
+| `swift test --filter EditorCore` | Green — 134 tests / 14 suites (100 E10 tests) |
+| `swift test -c release` | E10 suites green; E10 overhead evidence: disabled baseline `1.3e-05` ms/decision vs assisted `2.8e-04` ms/decision on the 1 MB fixture — far inside the <5 ms headroom target and the shared <50 ms keystroke budget |
+| `swift test --sanitize=thread --filter EditorCore` | Green — 134 tests |
+| `swiftformat --lint MacDown2` | Green — 0 files require formatting |
+| `swiftlint lint --strict MacDown2` | Green — 0 violations in 255 files |
+| `xcodegen generate` + app/CLI `xcodebuild build` | Green |
+| `xcodebuild build-for-testing` | Green — UI-test target compiles. Local Xcode 26.6 injects `-fprofile-instr-generate` into SwiftPM C targets (tree-sitter, cmark, Yams) under the plain `build-for-testing` and fails to link them; `-enableCodeCoverage NO` is required locally. CI (`macos-26`) may not exhibit this toolchain quirk — record the CI result on the PR |
+| `xcodebuild test -only-testing:MacDown2UITests/EditingAssistsUITests` | Green — all three tests pass in the real app: Return list continuation (`- item` → `- item\n- next`), no pairing in `.txt`, and the Format-menu Bold command applying to the focused Markdown editor |
+
+Implementation notes and deviations:
+
+- **Engine split across five files** (`MarkdownEditingAssistEngine.swift` + `+Newline`/`+Indentation`/`+Commands`/`+LineHelpers`) instead of one, solely to satisfy the repo's strict `file_length` budgets — same module, same contract.
+- **File-layout deviation from §15:** the smart-Home test suite (`EditingAssistSmartHomeTests`) lives inside `EditingAssistIndentationTests.swift` rather than a dedicated `EditingAssistSmartHomeTests.swift`; all other §15 files match.
+- **`*|*` "upgrade to `**|**`" is type-over** (identity re-insert + caret move): the only state-free reading that keeps both the strong-opener and strong-closer typing flows working end-to-end; `*` never pairs after an existing `*`, so line-start `**`/`***` types natively.
+- **`indentationWidth` normalization is init-only** per §5.1's letter; direct `var` mutation bypasses it (matches plan §5.1).
+- **Hot-path locality hardening (review fix):** `firstNonWhitespace` and `collapsedUnindent` originally bridged each scanned UTF-16 unit through a temporary Swift `String`, `newlineOutcome` copied the line content before its construct guard, and `applyAssistOutcome` clamped via `textView.string` (a full-document Swift `String` copy on every type-over and assist edit) — on a pathological single-line document a smart-Home or Return keypress cost O(line) allocations (~3.4 s at 10 MB in Release). All now scan/clamp the live `NSString` in place (direct unit scans, range-scoped `rangeOfCharacter`, `liveSourceLength` seam), and Return checks the construct before touching content: measured ~5 ms per 10 MB decision in Release. Guarded by two new locality performance tests (2 MB fixtures, 200 ms budget; the smart-Home budget is skipped under TSan, whose instrumentation closes the Debug old/new gap — TSan is a race detector, and the sanitizer is detected via its linked runtime symbol).
+- **Third real-app UI test** (`testBoldMenuCommandAppliesToFocusedEditor`): proves the Format-menu Bold item enables while the Markdown editor is focused and applies through the same one-edit command bridge as ⌘B — closing the §18.1 gap that menu enablement could be stale.
+- **Headless AppKit does not post `textDidChange` nor register undo** — the integration tests mount the text view in a real `NSWindow`, which restores both behaviors; this is why `EditingAssistIntegrationTests` uses mounted windows.
+- **UI-test harness finding:** `textView.typeKey(.rightArrow, [.command])` before a subsequent `typeKey(.return)` under XCUITest leaves the editor unresponsive to the Return CGEvent (text unchanged, no native insert). Replaced with the spec's own §18.1 flow (`- item` fixture + Return, caret placed by click) — the app's command path then works end-to-end.
+- **Local `build-for-testing` coverage quirk:** see the gate table above; no project/CI change was made for it.
+
 ---
 
 ## 21. Orthogonal review checklist
@@ -1337,24 +1365,24 @@ Those are architecture-review events.
 
 Epic 10 is complete only when:
 
-- [ ] unordered/ordered/task/blockquote/indent continuation works;
-- [ ] empty constructs terminate safely;
-- [ ] structural pair completion/type-over/paired Backspace works;
-- [ ] `*`/`_`/backtick pairing satisfies issue #11 without breaking `* ` list entry;
-- [ ] selection wrapping works;
-- [ ] Tab/Shift-Tab and smart Home work;
-- [ ] Bold/Italic/Code and H1…H6/Paragraph commands work;
-- [ ] `⌘E`, native tabs, and layout shortcuts remain intact;
-- [ ] legacy parity ledger is updated to actual implementation;
-- [ ] non-Markdown gets zero E10 transformations;
-- [ ] marked-text IME gets zero transformations;
-- [ ] each mutating assist is one undoable edit;
-- [ ] each assist produces one binding publication;
-- [ ] E18 external/model replacement semantics remain intact;
-- [ ] Debug + Release package/build/lint gates pass;
-- [ ] existing <50 ms keystroke gate is not regressed;
-- [ ] Release incremental E10 performance evidence is recorded;
-- [ ] Release dogfood matrix is performed and E10 defects resolved/recorded;
-- [ ] README/spec claim only what was actually validated.
+- [x] unordered/ordered/task/blockquote/indent continuation works;
+- [x] empty constructs terminate safely;
+- [x] structural pair completion/type-over/paired Backspace works;
+- [x] `*`/`_`/backtick pairing satisfies issue #11 without breaking `* ` list entry;
+- [x] selection wrapping works;
+- [x] Tab/Shift-Tab and smart Home work;
+- [x] Bold/Italic/Code and H1…H6/Paragraph commands work;
+- [x] `⌘E`, native tabs, and layout shortcuts remain intact;
+- [x] legacy parity ledger is updated to actual implementation;
+- [x] non-Markdown gets zero E10 transformations;
+- [x] marked-text IME gets zero transformations;
+- [x] each mutating assist is one undoable edit;
+- [x] each assist produces one binding publication;
+- [x] E18 external/model replacement semantics remain intact;
+- [x] Debug + Release package/build/lint gates pass;
+- [x] existing <50 ms keystroke gate is not regressed;
+- [x] Release incremental E10 performance evidence is recorded;
+- [ ] Release dogfood matrix is performed and E10 defects resolved/recorded — **not performed this session**: the full interactive §18.3 matrix (prose typing, IME composition, nested quotes, Save As format transitions) remains a human dogfood pass on the merged Release app before M2 is called done; automated substitutes that ARE green: both `EditingAssistsUITests` in the real app, Release app build, and the mounted-window integration suite;
+- [x] README/spec claim only what was actually validated.
 
 Only then mark the PR ready and close #11.

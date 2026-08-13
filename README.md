@@ -12,7 +12,17 @@ TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 > package-level Release benchmark, not a full-app-path measurement. Epic 18's
 > external-file reconciliation and recovery work is implemented locally with
 > package and app build validation; hosted CI and dogfooding remain publication
-> proof gates.
+> proof gates. Epic 10's Markdown editing assists (list/task/blockquote
+> continuation, structural and Markdown-delimiter auto-pairing with type-over,
+> paired Backspace, Tab/Shift-Tab indentation, smart Home, and Bold/Italic/
+> Inline Code/Heading/Paragraph commands) are implemented Markdown-only and
+> fail closed; they carry package-suite validation (100 dedicated tests
+> including mounted-window undo/publication atomicity, IME/E18 bypass, and
+> locality performance guards on pathological single-line documents), Release
+> performance evidence inside the keystroke budget, and three real-app UI
+> smoke tests (list continuation, no pairing in `.txt`, Format-menu Bold);
+> the interactive Release dogfood matrix is the remaining human gate before
+> M2 closes.
 
 ## Requirements
 

@@ -55,6 +55,12 @@ struct DocumentEditorSplitView: View {
     private var editorConfiguration: EditorConfiguration {
         var config = EditorConfiguration.default
         config.scrollsPastEnd = false
+        // E10 is Markdown-only and fails closed: the default is disabled, and
+        // only the exact Markdown format id receives the Markdown assists.
+        // `WindowController` eagerly creates a text system with `.default`
+        // before this format-specific configuration arrives, so a JSON/HTML/
+        // source file can never receive a transient Markdown assist.
+        config.editingAssists = document.format.id == "markdown" ? .markdownDefault : .disabled
         return config
     }
 

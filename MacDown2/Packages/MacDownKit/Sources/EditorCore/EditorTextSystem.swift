@@ -45,6 +45,15 @@ public final class EditorTextSystem {
     /// Prevents a disk-driven replacement from flowing back through the
     /// editor binding as a user edit.
     public private(set) var isPerformingProgrammaticTextUpdate = false
+    /// Set while an E10 assist edit is being applied, so the nested
+    /// `shouldChangeTextIn` callback does not re-transform the assist.
+    /// The setter is internal so the adapter in
+    /// `EditorTextSystem+EditingAssists.swift` can raise it around the edit.
+    public internal(set) var isPerformingEditingAssist = false
+    /// The assist configuration currently applied to this text system.
+    /// Storage lives here (extensions cannot hold stored properties);
+    /// the E10 methods live in `EditorTextSystem+EditingAssists.swift`.
+    public private(set) var editingAssistConfiguration: EditingAssistConfiguration = .disabled
     /// Set by `scrollOffset`'s setter before the scroll view exists yet
     /// (session restore); applied by `applyPendingScrollOffset()` once it does.
     var pendingScrollOffset: CGFloat?
@@ -143,6 +152,7 @@ public final class EditorTextSystem {
         let configurationChanged = configuration != lastAppliedConfiguration
         if configurationChanged {
             lastAppliedConfiguration = configuration
+            editingAssistConfiguration = configuration.editingAssists
 
             textView.font = configuration.font
             textView.textContainerInset = configuration.textInsets
