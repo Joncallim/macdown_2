@@ -46,6 +46,11 @@ final class WindowCoordinator {
     private var saveTask: Task<Void, Never>?
     private var restoreTask: Task<Void, Never>?
     @ObservationIgnored private var pendingNewDocumentTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
+    /// Changes whenever AppKit focus/input can have changed the responder used
+    /// by the formatting commands.  SwiftUI commands read this through the
+    /// command bridge, so menu validation is invalidated even though AppKit's
+    /// first-responder chain is not an Observable value.
+    private(set) var commandStateRevision = 0
     @ObservationIgnored var onNewDocumentLifetimePrepared: (@MainActor () async -> Void)?
     @ObservationIgnored var terminationRecoveryState: TerminationRecoveryState = .none
     @ObservationIgnored var terminationRecoveryController: WindowController?
@@ -176,11 +181,13 @@ final class WindowCoordinator {
     /// Selects the next tab in the key window's native tab group.
     func selectNextTab() {
         NSApp.keyWindow?.selectNextTab(nil)
+        commandStateDidChange()
     }
 
     /// Selects the previous tab in the key window's native tab group.
     func selectPreviousTab() {
         NSApp.keyWindow?.selectPreviousTab(nil)
+        commandStateDidChange()
     }
 
     /// Selects a tab by index in the key window's native tab group. Index 8
@@ -190,9 +197,10 @@ final class WindowCoordinator {
         let targetIndex = (index == 8) ? tabGroup.windows.count - 1 : min(index, tabGroup.windows.count - 1)
         let targetWindow = tabGroup.windows[targetIndex]
         tabGroup.selectedWindow = targetWindow
-        // makeKeyAndOrderFront triggers windowDidBecomeKey, which updates keyModel
-        // and schedules the session save, so no explicit calls are needed here.
+        // Refresh immediately; the window delegate will also reconcile the key
+        // model once AppKit finishes the native-tab transition.
         targetWindow.makeKeyAndOrderFront(nil)
+        commandStateDidChange()
     }
 
     /// `true` if the key window's tab group has more than one tab.
@@ -329,6 +337,13 @@ final class WindowCoordinator {
 
     func updateKeyModel() {
         keyModel = controllers.first { $0.window == NSApp.keyWindow }?.model
+        commandStateDidChange()
+    }
+
+    /// Invalidates SwiftUI command validation after AppKit has processed an
+    /// event that may have changed first responder or the key window.
+    func commandStateDidChange() {
+        commandStateRevision &+= 1
     }
 }
 

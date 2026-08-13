@@ -30,13 +30,18 @@ public struct EditorConfiguration: @unchecked Sendable, Equatable {
     /// Reserved for future invisibles rendering.
     public var showsInvisibles: Bool
 
+    /// E10 editing assists. `.default` intentionally stays `.disabled`; the
+    /// app boundary enables `.markdownDefault` only for Markdown documents.
+    public var editingAssists: EditingAssistConfiguration
+
     public init(
         font: NSFont,
         lineHeightMultiple: CGFloat = 1.0,
         textInsets: NSSize = NSSize(width: 0, height: 0),
         wrapsLines: Bool = true,
         scrollsPastEnd: Bool = true,
-        showsInvisibles: Bool = false
+        showsInvisibles: Bool = false,
+        editingAssists: EditingAssistConfiguration = .disabled
     ) {
         self.font = font
         self.lineHeightMultiple = lineHeightMultiple
@@ -44,6 +49,7 @@ public struct EditorConfiguration: @unchecked Sendable, Equatable {
         self.wrapsLines = wrapsLines
         self.scrollsPastEnd = scrollsPastEnd
         self.showsInvisibles = showsInvisibles
+        self.editingAssists = editingAssists
     }
 
     /// A sensible default configuration using the system monospaced font.

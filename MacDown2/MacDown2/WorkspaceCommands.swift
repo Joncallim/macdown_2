@@ -1,4 +1,5 @@
 import AppKit
+import EditorCore
 import SwiftUI
 import Themes
 import Workspace
@@ -189,6 +190,51 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("j", modifiers: [.command, .shift])
             .disabled(coordinator?.keyModel?.activeDocument?.fileURL == nil)
+        }
+
+        // E10: the editor is plain text (`isRichText = false`), so the rich
+        // text Format menu is replaced with Markdown formatting commands.
+        // `.textEditing` (Find, spelling, substitutions) is intentionally
+        // left untouched — in particular ⌘E keeps AppKit's "Use Selection
+        // for Find" behavior, and Inline Code is ⌃⌘E.
+        CommandGroup(replacing: .textFormatting) {
+            Button("Bold") {
+                coordinator?.performMarkdownEditingCommand(.bold)
+            }
+            .keyboardShortcut("b", modifiers: .command)
+            .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
+
+            Button("Italic") {
+                coordinator?.performMarkdownEditingCommand(.italic)
+            }
+            .keyboardShortcut("i", modifiers: .command)
+            .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
+
+            Button("Inline Code") {
+                coordinator?.performMarkdownEditingCommand(.inlineCode)
+            }
+            .keyboardShortcut("e", modifiers: [.control, .command])
+            .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
+
+            Divider()
+
+            Menu("Heading") {
+                ForEach(1 ... 6, id: \.self) { level in
+                    Button("Heading \(level)") {
+                        coordinator?.performMarkdownEditingCommand(.heading(level: level))
+                    }
+                    .keyboardShortcut(KeyEquivalent(Character("\(level)")), modifiers: [.control, .command])
+                    .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
+                }
+
+                Divider()
+
+                Button("Paragraph") {
+                    coordinator?.performMarkdownEditingCommand(.paragraph)
+                }
+                .keyboardShortcut("0", modifiers: [.control, .command])
+                .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
+            }
         }
 
         #if DEBUG

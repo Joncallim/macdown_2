@@ -8,6 +8,28 @@ import Workspace
 final class DocumentWindow: NSWindow {
     weak var coordinator: WindowCoordinator?
 
+    override func sendEvent(_ event: NSEvent) {
+        super.sendEvent(event)
+        if Self.shouldRefreshCommandState(for: event) {
+            coordinator?.commandStateDidChange()
+        }
+    }
+
+    /// Ordinary typing leaves the responder chain unchanged and should not
+    /// invalidate SwiftUI command menus. Focus-changing mouse/AppKit events,
+    /// plus ⌘F opening Find, do require a refresh.
+    static func shouldRefreshCommandState(for event: NSEvent) -> Bool {
+        switch event.type {
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown, .appKitDefined:
+            return true
+        case .keyDown:
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            return flags.contains(.command) && event.charactersIgnoringModifiers == "f"
+        default:
+            return false
+        }
+    }
+
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if handleLayoutShortcut(event) {
             return true

@@ -51,7 +51,11 @@ jobs:
         working-directory: MacDown2/Packages/MacDownKit
         run: |
           swift build
-          swift test
+          # Monitor/save-queue/performance tests share temporary filesystem
+          # resources; concurrent XCTest scheduling makes these load-sensitive
+          # tests exceed their bounded coordination timeouts on CI. Keep the
+          # full suite and its assertions intact, but serialize execution.
+          swift test --no-parallel
       - name: Generate Xcode project
         working-directory: MacDown2
         run: xcodegen generate

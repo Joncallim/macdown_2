@@ -36,6 +36,14 @@ struct SidebarView: View {
         .focused($outlineFocused)
         .onChange(of: outlineController.focusRequestID) { _, _ in
             outlineFocused = true
+            // FocusState is applied by SwiftUI on the next update pass. Wait
+            // for that pass before invalidating command validation so the
+            // formatting menu observes the actual first responder, not the
+            // pre-focus state.
+            Task { @MainActor in
+                await Task.yield()
+                coordinator?.commandStateDidChange()
+            }
         }
         .onKeyPress(.return) {
             if let url = fileTreeModel.selectedURL {
