@@ -3,6 +3,11 @@
 
 ## Context
 
+> **As-built status:** A thorough orthogonal planning pass is recorded in
+> [`../epic-11-implementation.md`](../epic-11-implementation.md). Epic 11 has
+> no production implementation PR yet; implementation must follow its
+> sequential gates and security contracts.
+
 Beyond Markdown (user requirement): JSON gets real tooling, HTML gets a
 rendered view, and all remaining registered languages get a polished
 highlight-only experience.
@@ -43,6 +48,12 @@ highlight-only experience.
       only in the sandboxed web view
 - [ ] Every registered extension opens with correct highlighting or a clean
       no-preview state
+
+The acceptance criteria are gated by the implementation plan. JSON formatting
+must use the native one-edit/undo/publication path; HTML resource and
+navigation policy must be explicit and tested; grammar packages must be pinned
+and proven individually; and all asynchronous results must be generation-
+checked before publication.
 
 ## Out of scope
 

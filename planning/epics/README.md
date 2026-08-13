@@ -28,7 +28,7 @@ hosted CI and sustained-dogfooding evidence remain required before publication.
 | E08 | Content browser (document outline) | M3 — Markdown core | E06, E02 | open |
 | E09 | Folder browser | M4 — Workspace & formats | E01, E02, E03 | ✅ done |
 | E10 | Editing assists | M2 — Editor | E04 | open |
-| E11 | Multi-format: JSON & HTML | M4 — Workspace & formats | E05, E07 | open |
+| E11 | Multi-format: JSON & HTML | M4 — Workspace & formats | E05, E07 | planning complete; implementation not started |
 | E12 | Export: HTML & PDF | M4 — Workspace & formats | E06, E11 | open |
 | E13 | Settings | M4 — Workspace & formats | E02 | open |
 | E14 | Extension points | M5 — Polish & ship | E07 | open |
