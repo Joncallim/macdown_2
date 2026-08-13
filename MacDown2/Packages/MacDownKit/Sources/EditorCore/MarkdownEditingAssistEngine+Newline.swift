@@ -22,10 +22,14 @@ extension MarkdownEditingAssistEngine {
         // Range-scoped emptiness scan on the live source. The content range
         // can span the whole document in a pathological single-line file, so
         // it is never materialized as a Swift `String` copy here.
+        let contentEnd = lineContentEnd(of: caret, in: text)
         let contentIsEmpty = text.rangeOfCharacter(
             from: .whitespacesAndNewlines.inverted,
             options: [],
-            range: prefix.contentRangeInLine
+            range: NSRange(
+                location: prefix.contentRangeInLine.location,
+                length: max(0, contentEnd - prefix.contentRangeInLine.location)
+            )
         ).location == NSNotFound
 
         let separator = lineSeparator(ofLineContaining: caret, in: text)

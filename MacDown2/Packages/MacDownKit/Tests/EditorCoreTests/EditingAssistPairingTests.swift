@@ -300,6 +300,30 @@ struct EditingAssistMarkdownDelimiterTests {
         #expect(support.type("~", in: "foo", at: 3) == .passthrough)
     }
 
+    @Test("matching-character assists honor their configuration flag")
+    func matchingCharacterFlagPassesThroughAllPairPaths() {
+        var configuration = EditingAssistConfiguration.markdownDefault
+        configuration.completesMatchingCharacters = false
+
+        #expect(support.type("(", in: "foo", at: 3, configuration: configuration) == .passthrough)
+        #expect(
+            support.outcome(
+                for: .replacement(range: NSRange(location: 1, length: 3), string: "*"),
+                in: "foo",
+                selection: NSRange(location: 1, length: 3),
+                configuration: configuration
+            ) == .passthrough
+        )
+        #expect(
+            support.outcome(
+                for: .deleteBackward,
+                in: "foo**bar",
+                selection: NSRange(location: 4, length: 0),
+                configuration: configuration
+            ) == .passthrough
+        )
+    }
+
     @Test("paired Backspace on Markdown pair behaves as documented")
     func pairedBackspaceOnMarkdownPair() {
         // `*|*`: one Backspace removes both.
