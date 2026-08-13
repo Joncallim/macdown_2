@@ -239,8 +239,21 @@ enum MarkdownEditingAssistEngine {
     /// of a very long line.
     private static func isAtFirstNonWhitespace(_ caret: Int, in text: NSString) -> Bool {
         let start = lineStart(of: caret, in: text)
+        var prefixEnd = start
+        while prefixEnd < caret, isHorizontalWhitespace(character(at: prefixEnd, in: text)) {
+            prefixEnd += 1
+        }
+        while prefixEnd < caret, character(at: prefixEnd, in: text) == 0x3E {
+            prefixEnd += 1
+            if prefixEnd < caret, character(at: prefixEnd, in: text) == 0x20 {
+                prefixEnd += 1
+            }
+            while prefixEnd < caret, isHorizontalWhitespace(character(at: prefixEnd, in: text)) {
+                prefixEnd += 1
+            }
+        }
         var index = caret
-        while index > start {
+        while index > prefixEnd {
             let unit = character(at: index - 1, in: text)
             if unit != 0x20, unit != 0x09 {
                 return false
