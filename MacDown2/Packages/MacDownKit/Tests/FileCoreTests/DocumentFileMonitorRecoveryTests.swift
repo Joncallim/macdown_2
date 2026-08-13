@@ -50,6 +50,7 @@ struct DocumentFileMonitorRecoveryTests {
         watcher.signal(.changed)
 
         await waitUntil { watcher.watchedDirectories.count == 2 }
+        await waitUntil { await recorder.values.last == .available(recovered) }
         #expect(await recorder.values.last == .available(recovered))
     }
 
