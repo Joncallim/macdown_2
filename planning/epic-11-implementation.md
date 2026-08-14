@@ -28,10 +28,10 @@ No later slice may advertise a format whose parser, grammar, resources, or previ
 
 The implementation must preserve these existing boundaries:
 
-- `FileFormat`/`FileFormatRegistry` owns document identity, extensions, UTTypes, encoding, highlight language, and preview capability.
+- `FileFormat`/`FileFormatRegistry` owns document identity, extensions, UTTypes, supported encoding policy, highlight language, and preview capability. `FileStore` owns byte decoding/encoding and revision capture; `FileDocument` owns the immutable encoding metadata carried with the document snapshot.
 - `GrammarRegistry` owns Tree-sitter language construction, query resources, caching, and failure isolation. `ParseEngine` remains Markdown-only.
 - `EditorTextSystem` and the existing AppKit delegate own native text edits, selection, undo, and binding publication. JSON formatting must enter this path exactly once.
-- `Preview` owns renderer policy and typed preview requests. The current `WKWebView` host is app-level in `DocumentEditorSplitView`; moving it into the package is not implicit in this Epic.
+- `Preview` owns renderer policy and typed preview requests. The current `WKWebView` host remains app-owned in `DocumentEditorSplitView` for this Epic; moving it into the package is explicitly deferred and is not an implementation requirement.
 - `OutlineUI` currently consumes Markdown heading data. JSON must use a format-neutral outline snapshot/adapter; it must not fabricate a Markdown AST.
 - `WorkspaceSession` is version 1 and owns tabs, identities, and recovery state. Preview mode may be added only as an optional, versioned field and must never alter document/recovery identity.
 - `WorkspaceModel` owns format commands, generation checks, save/recovery publication, and format transitions. Views must not parse extensions or mutate document text directly.
@@ -60,7 +60,75 @@ enum PreviewMode: String, Codable, Sendable {
 
 For each capability define: default mode, source of truth, per-tab ownership, session persistence (or explicit non-persistence), Save As invalidation, loading/error/empty states, accessibility identifiers, and jump/scroll rules. Markdown, HTML, JSON, and source-only formats must have routing tests.
 
-### 3.2 JSON diagnostics
+### 3.2 File bytes, encoding, and malformed-input contract
+
+This contract is a prerequisite for every JSON gate and applies to all formats. `FileStore` must read an immutable byte snapshot and return decoding metadata; `FileDocument` must retain that metadata through edits, external reconciliation, Save As, and recovery publication. `FileFormat` may constrain or recommend an encoding, but it must not perform byte decoding itself.
+
+Map this contract onto the existing FileCore API; do not add a parallel byte-identity model. `FileRevision.sha256` is already the canonical SHA-256 representation and remains a `String`. Raw bytes are transient `FileStore` data and are not retained in `FileSnapshot` or `FileDocument`, avoiding large-document duplication.
+
+```swift
+public enum FileBOM: String, Sendable, Equatable, Codable {
+    case none
+    case utf8
+    case utf16LittleEndian
+    case utf16BigEndian
+}
+
+public struct FileEncodingMetadata: Sendable, Equatable, Codable {
+    let encodingRawValue: UInt
+    let bom: FileBOM
+}
+
+// Existing FileRevision remains unchanged: url, file metadata, and sha256: String.
+// Existing FileSnapshot remains the immutable text/revision value. Add `bom` and
+// an initializer parameter; do not add raw bytes or a second hash representation.
+public struct FileSnapshot: Sendable, Equatable {
+    let text: String
+    let encodingRawValue: UInt
+    let bom: FileBOM
+    let revision: FileRevision // captured atomically with the copied bytes/text
+}
+
+// Existing FileDocument gains encoding metadata; text, URL, state, recovery
+// identity, and lastKnownRevision remain existing fields.
+public struct FileDocument: Sendable {
+    let text: String
+    let encoding: FileEncodingMetadata
+    let lastKnownRevision: FileRevision?
+}
+```
+
+The additive/replacement API and transition contract is:
+
+- `FileStore.readSnapshot(from:)` copies bytes into transient `Data`, computes the existing `FileRevision.sha256`, decodes text and BOM, and publishes `FileSnapshot` only after bytes, metadata, and revision are captured from one stable read. `read(from:)` remains a compatibility projection.
+- `FileDocument.create/load` constructs from `FileSnapshot`; untitled documents use the format default and `FileBOM.none` until an explicit override.
+- `FileDocument.edited` preserves encoding and `lastKnownRevision` while advancing generation; it never retains raw bytes.
+- External reload/reconciliation replaces text, encoding, and `lastKnownRevision` together from the accepted snapshot. Conflict/keep-local paths preserve prior document/recovery state until resolution.
+- Recovery writes use current encoding/BOM and expected source revision. Ordinary save publishes the returned revision only after exact written bytes are verified.
+- Save As preserves source encoding/BOM by default. An explicit destination override is applied before publication and only becomes document metadata after destination, session, and recovery publication succeed.
+- Session restore persists encoding metadata needed to interpret text, never raw bytes; legacy/malformed metadata uses the documented default and is covered by migration tests.
+
+```swift
+public struct FileDecodingDiagnostic: Sendable, Equatable {
+    let message: String
+    let byteOffset: Int // zero-based offset into copied input bytes
+}
+
+public enum FileStoreError: Error {
+    // existing cases remain
+    case decodingFailed([FileDecodingDiagnostic])
+}
+```
+
+Malformed input returns one diagnostic for the first invalid byte sequence, with its zero-based byte offset; no replacement characters or text snapshot are produced. The prior `FileDocument` and recovery state remain unchanged, and no JSON parsing/formatting runs. Exact-payload tests assert error case, message, offset, and unchanged state.
+
+Per-format encoding precedence is fixed before implementation:
+
+- Markdown, JSON, HTML, and source-only formats preserve detected encoding/BOM; new documents default to UTF-8 without BOM.
+- An explicit user override has highest precedence for the next write and becomes metadata only after successful publication. Save As inherits source metadata unless an explicit destination override is selected. CLI and session restore use the same precedence.
+- Registry consistency tests cover defaults, detected-BOM preservation, override precedence, Save As, CLI, and session round trips.
+
+### 3.3 JSON diagnostics
 
 Expose a stable value type rather than Foundation parser errors across actors:
 
@@ -69,13 +137,13 @@ struct JSONDiagnostic: Sendable, Equatable {
     let message: String
     let line: Int       // 1-based physical line
     let column: Int     // 1-based UTF-16 column
-    let range: Range<Int>?
+    let range: Range<Int>? // UTF-16 code-unit offsets into the immutable editor text snapshot
 }
 ```
 
-Define behavior for empty input, top-level scalars, duplicate keys, malformed UTF-8, BOM, CRLF, tabs, and error ranges. Diagnostics are generated from an immutable text snapshot and carry a document revision/generation. Rapid valid→invalid→valid edits must publish only the latest result. Invalid JSON never replaces source text or clears a valid outline without an explicit policy decision.
+`range` uses UTF-16 code-unit offsets, with a half-open range in the same coordinate system used by editor selections and `NSString`/AppKit text APIs. `line` and `column` are derived from that same snapshot; `column` is 1-based UTF-16 within the physical line. Astral scalars, combining marks, CRLF boundaries, and selections spanning surrogate pairs must have explicit expected offsets. Duplicate keys are rejected with a stable diagnostic and no formatting or outline publication; they are never silently merged. Define behavior for empty input, top-level scalars, malformed UTF-8, BOM, CRLF, tabs, and error ranges. Diagnostics are generated from an immutable text snapshot and carry a document revision/generation. Rapid valid→invalid→valid edits must publish only the latest result. Invalid JSON never replaces source text or clears a valid outline without an explicit policy decision.
 
-### 3.3 JSON outline
+### 3.4 JSON outline
 
 Use a concrete, source-neutral outline model rather than `AnyHashable` IDs or a fake Markdown document:
 
@@ -89,9 +157,9 @@ struct ContentOutlineItem: Sendable, Equatable, Identifiable {
 }
 ```
 
-IDs must encode object-key path and array index path, disambiguate duplicate keys deterministically, and remain remappable across edits/formatting. Define labels for scalar roots, empty containers, arrays, and objects; set a tested depth/node policy; preserve collapse/selection/jump behavior; and define what happens on invalid JSON.
+IDs encode object-key paths and array-index paths for valid JSON and remain remappable across edits/formatting. Duplicate-key input is rejected before outline construction, so there are no duplicate-key outline nodes or disambiguation/remapping rules. Repeated array elements remain distinct by index. Define labels for scalar roots, empty containers, and arrays/objects; set a tested depth/node policy; preserve collapse/selection/jump behavior; and define what happens on invalid JSON.
 
-### 3.4 JSON formatting
+### 3.5 JSON formatting
 
 Formatting is deterministic and operates only on valid JSON. Capture immutable text plus document generation/revision, compute off the main actor, and reject the result if the document or external-file baseline changed. Apply output as one contiguous native editor replacement, producing exactly one undo group, one binding publication, and normal dirty/recovery updates.
 
@@ -99,19 +167,18 @@ Specify:
 
 - object key sort order (Unicode scalar order, recursively for nested objects);
 - arrays retain order;
-- duplicate-key behavior (preserve/reject; never silently merge);
+- duplicate-key behavior: reject with a stable diagnostic; never format, sort, or outline a duplicate-key document;
 - scalar roots;
 - indentation and trailing-newline policy;
 - CRLF/LF and BOM preservation;
 - non-ASCII escaping policy;
 - behavior when formatting is requested for invalid JSON.
 
-### 3.5 HTML preview security and resources
+### 3.6 HTML preview security and resources
 
 The existing WebKit host disables JavaScript and loads with `baseURL: nil`. The Epic must make an explicit decision before implementation:
 
-- **Default v1 policy:** scripts, network access, popups, downloads, message handlers, forms, clipboard access, storage/cookies, and external navigation are disabled or denied. No JavaScript bridge is exposed.
-- If scripts are deliberately enabled, document the exact isolation policy and tests; a WKWebView is not equivalent to the app's OS sandbox.
+- **v1 policy:** scripts are disabled; no JavaScript bridge is exposed. Network access, popups, downloads, message handlers, forms, clipboard access, storage/cookies, and external navigation are disabled or denied. A WKWebView is not treated as an additional security boundary.
 - Relative resources may load only from an approved document directory after explicit security-scoped access. Untitled HTML has no local resource root.
 - Reject `../` escape, outside-root symlinks, remote URLs, `javascript:` URLs, iframe escapes, popups, downloads, and navigation outside the approved policy.
 - Save As, rename, delete, and preview disposal must balance security-scope access and cancel stale loads.
@@ -122,9 +189,9 @@ HTML reload is latest-request-wins, revision-tagged, cancellation-safe, and trig
 
 ## 4. Sequential implementation gates
 
-### Gate 0 — Contract and registry consistency
+### Gate 0 — Byte, format, and registry consistency
 
-Add typed capability/renderer contracts, a format manifest/consistency check, and the generation/cancellation contract. Compare registry extensions/UTTypes, `project.yml`/Info.plist declarations, highlight IDs, preview capabilities, and CLI format behavior. No implementation slice proceeds with drift.
+Add the byte/encoding metadata contract, typed capability/renderer contracts, a format manifest/consistency check, and the generation/cancellation contract. Compare registry extensions/UTTypes, `project.yml`/Info.plist declarations, highlight IDs, preview capabilities, and CLI format behavior. No implementation slice proceeds with drift.
 
 ### Gate 1 — JSON core
 
@@ -140,7 +207,7 @@ Preserve Markdown outline behavior while adding JSON adapters. Add per-tab previ
 
 ### Gate 4 — HTML source/rendered preview
 
-Implement the approved security policy, scoped base URL/resource loading, source/rendered toggle, save-triggered reload, cancellation, disposal, and navigation tests. Keep the WebKit host in its current owner unless a separate boundary change is approved.
+Implement the v1 scripts-disabled policy, scoped base URL/resource loading, source/rendered toggle, save-triggered reload, cancellation, disposal, and denied navigation/network/popup/download tests. Keep the WKWebView host app-owned in `DocumentEditorSplitView`; `Preview` supplies policy/request types only.
 
 ### Gate 5 — Grammar completion
 
@@ -157,6 +224,12 @@ Require serial package tests in CI, Debug/Release app and CLI builds, generated 
 Name suites or equivalent coverage:
 
 - `JSONDiagnosticsTests`
+- `FileEncodingMetadataTests`
+- `FileStoreMalformedEncodingPayloadTests`
+- `FileDocumentEncodingRoundTripTests`
+- `FileEncodingCoordinateBoundaryTests`
+- `JSONDiagnosticUTF16CoordinateTests`
+- `FileEncodingPrecedenceTests`
 - `JSONFormattingTests`
 - `JSONFormattingUndoPublicationTests`
 - `JSONFormattingGenerationRaceTests`
@@ -181,10 +254,12 @@ Name suites or equivalent coverage:
 
 Minimum scenarios include:
 
-- valid/invalid JSON, Unicode, CRLF, BOM, top-level scalar, duplicate keys;
+- valid/invalid JSON, Unicode, astral scalars, combining marks, CRLF, BOM, top-level scalar, and duplicate-key rejection with stable diagnostics;
+- UTF-8/UTF-16 BOM retention, malformed UTF-8 byte-offset diagnostics, encoding-preserving Save As, explicit encoding override, and external byte-revision races;
+- UTF-16 diagnostic ranges and editor selections at surrogate-pair, combining-mark, and CRLF boundaries;
 - deterministic sorted formatting, one undo/publication, edit-during-format, external replacement, and generation mismatch;
-- nested/duplicate/empty JSON nodes, 10,000-node and deep documents, source jumps, collapse/selection remapping, and invalid-input policy;
-- HTML relative image/style/font/media, missing resources, traversal, symlink escape, untitled/moved documents, blocked navigation/network/script behavior, stale reload, disposal, and scope balance;
+- nested/empty JSON nodes, repeated array elements, duplicate-key rejection before outline construction, 10,000-node and deep documents, source jumps, collapse/selection remapping, and invalid-input policy;
+- HTML relative image/style/font/media, missing resources, traversal, symlink escape, untitled/moved documents, scripts-disabled behavior, blocked navigation/network/popups/downloads, stale reload, disposal, and scope balance;
 - every advertised extension, case normalization, UTType/project metadata, grammar query loading/failure, cache behavior, and no-preview fallback;
 - Markdown↔JSON↔HTML Save As, tab isolation, session round-trip, stale parser/outline clearing, and Markdown-only editing assists.
 
@@ -222,4 +297,3 @@ This plan was checked independently from two angles:
 - **Architecture implementation audit:** mapped each slice to current `FileCore`, `EditorCore`, `Preview`, `OutlineUI`, `Workspace`, `Highlighting`, `project.yml`, and package ownership, and identified issue-text conflicts with the as-built WebKit host, Markdown-specific outline/parser, and existing format registry.
 
 The Epic is ready for implementation planning review, not yet for production implementation or merge of feature code.
-
