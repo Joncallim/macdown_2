@@ -11,6 +11,10 @@ public enum FileStoreError: Error {
     case notRegularFile
     case fileMissing
     case permissionDenied
+    /// The bytes could not be decoded with the detected encoding. One
+    /// diagnostic describes the first invalid byte sequence; no replacement
+    /// characters or text snapshot are produced.
+    case decodingFailed([FileDecodingDiagnostic])
     /// Conditional publication could not restore a displaced external writer.
     /// The external bytes were preserved at the returned sibling URL.
     case conditionalPublicationRecoveryRequired(URL)
@@ -117,10 +121,11 @@ public struct FileStore: Sendable {
                 throw .fileChangedDuringRead
             }
 
-            guard let decoded = decode(data) else { throw .encodingDetectionFailed }
+            let payload = try decode(data)
             return FileSnapshot(
-                text: decoded.text,
-                encoding: decoded.encoding,
+                text: payload.text,
+                encoding: payload.encoding,
+                bom: payload.bom,
                 revision: FileRevision(
                     url: url.standardizedFileURL,
                     modificationDate: after.modificationDate,
@@ -143,16 +148,20 @@ public struct FileStore: Sendable {
     ///   - content: Text to write.
     ///   - url: Destination file URL.
     ///   - encoding: Encoding to use for the write. Defaults to UTF-8.
+    ///   - bom: Byte-order-mark policy for the write. When non-`.none` the
+    ///     matching byte prefix is emitted before the encoded text so a
+    ///     subsequent snapshot read reproduces the exact metadata.
     @discardableResult
     public func write(
         _ content: String,
         to url: URL,
         encoding: String.Encoding = FileStore.defaultEncoding,
+        bom: FileBOM = .none,
         expectedRevision: FileRevision? = nil
     ) throws(FileStoreError) -> FileRevision {
         guard url.isFileURL else { throw .invalidURL }
 
-        guard let data = content.data(using: encoding, allowLossyConversion: false) else {
+        guard let data = encodedData(content, encoding: encoding, bom: bom) else {
             throw .encodingDetectionFailed
         }
 
@@ -162,6 +171,28 @@ public struct FileStore: Sendable {
             }
         } catch {
             throw mapWriteError(error)
+        }
+    }
+
+    /// Encodes `content` for disk, emitting the requested BOM byte prefix.
+    /// Returns `nil` when the encoding cannot represent the text losslessly.
+    private func encodedData(_ content: String, encoding: String.Encoding, bom: FileBOM) -> Data? {
+        guard let body = content.data(using: encoding, allowLossyConversion: false) else { return nil }
+        switch bom {
+        case .none:
+            return body
+        case .utf8:
+            var data = Data([0xEF, 0xBB, 0xBF])
+            data.append(body)
+            return data
+        case .utf16LittleEndian:
+            var data = Data([0xFF, 0xFE])
+            data.append(body)
+            return data
+        case .utf16BigEndian:
+            var data = Data([0xFE, 0xFF])
+            data.append(body)
+            return data
         }
     }
 
@@ -260,33 +291,6 @@ public struct FileStore: Sendable {
         )
     }
 
-    private func decode(_ data: Data) -> (text: String, encoding: String.Encoding)? {
-        // `String(data:encoding:)` does not make the BOM policy explicit. Keep
-        // it here so a UTF-16 file never happens to be accepted as a sequence
-        // of UTF-8 replacement characters on a future Foundation release.
-        if data.starts(with: [0xEF, 0xBB, 0xBF]) {
-            if let text = String(data: data.dropFirst(3), encoding: .utf8) {
-                return (text, .utf8)
-            }
-        }
-        if data.starts(with: [0xFF, 0xFE]) {
-            if let text = String(data: data.dropFirst(2), encoding: .utf16LittleEndian) {
-                return (text, .utf16LittleEndian)
-            }
-        }
-        if data.starts(with: [0xFE, 0xFF]) {
-            if let text = String(data: data.dropFirst(2), encoding: .utf16BigEndian) {
-                return (text, .utf16BigEndian)
-            }
-        }
-        for encoding in [String.Encoding.utf8, .utf16, .utf16LittleEndian, .utf16BigEndian] {
-            if let text = String(data: data, encoding: encoding) {
-                return (text, encoding)
-            }
-        }
-        return nil
-    }
-
     private func sha256(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
@@ -301,42 +305,6 @@ public struct FileStore: Sendable {
             && before.fileSize == after.fileSize
             && before.modificationDate == after.modificationDate
             && before.isRegularFile == after.isRegularFile
-    }
-
-    private func mapReadError(_ error: Error) -> FileStoreError {
-        let nsError = error as NSError
-        if nsError.domain == NSPOSIXErrorDomain {
-            switch POSIXErrorCode(rawValue: Int32(nsError.code)) {
-            case .ENOENT, .ENOTDIR:
-                return .fileMissing
-            case .EACCES, .EPERM:
-                return .permissionDenied
-            default:
-                break
-            }
-        }
-        switch nsError.code {
-        case NSFileNoSuchFileError, NSFileReadNoSuchFileError:
-            return .fileMissing
-        case NSFileReadNoPermissionError, NSFileWriteNoPermissionError:
-            return .permissionDenied
-        default:
-            return .readFailed(underlying: error)
-        }
-    }
-
-    func mapWriteError(_ error: Error) -> FileStoreError {
-        if let fileStoreError = error as? FileStoreError {
-            return fileStoreError
-        }
-        return switch mapReadError(error) {
-        case .fileMissing:
-            .fileMissing
-        case .permissionDenied:
-            .permissionDenied
-        default:
-            .writeFailed(underlying: error)
-        }
     }
 
     static var publicationLockCountForTesting: Int {

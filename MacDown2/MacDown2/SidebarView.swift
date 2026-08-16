@@ -1,6 +1,7 @@
 import AppKit
 import CoreTransferable
 import FileTree
+import JSONSupport
 import OutlineUI
 import SwiftUI
 import UniformTypeIdentifiers
@@ -48,6 +49,8 @@ struct SidebarView: View {
         .onKeyPress(.return) {
             if let url = fileTreeModel.selectedURL {
                 activateFileTreeURL(url)
+            } else if isJSON, let jsonSelected = outlineController.jsonSelectedItemID {
+                outlineController.activateJSON(jsonSelected)
             } else if let selectedItemID = outlineController.selectedItemID {
                 outlineController.activate(selectedItemID)
             } else {
@@ -78,13 +81,29 @@ struct SidebarView: View {
                 if let url = fileTreeModel.selectedURL {
                     return .file(url)
                 }
+                if isJSON {
+                    return outlineController.jsonSelectedItemID.map(SidebarSelection.jsonOutline)
+                }
                 return outlineController.selectedItemID.map(SidebarSelection.outline)
             },
             set: { selection in
                 switch selection {
-                case let .file(url): fileTreeModel.selectedURL = url; outlineController.selectedItemID = nil
-                case let .outline(id): outlineController.selectedItemID = id; fileTreeModel.selectedURL = nil
-                case nil: fileTreeModel.selectedURL = nil; outlineController.selectedItemID = nil
+                case let .file(url):
+                    fileTreeModel.selectedURL = url
+                    outlineController.selectedItemID = nil
+                    outlineController.jsonSelectedItemID = nil
+                case let .outline(id):
+                    outlineController.selectedItemID = id
+                    outlineController.jsonSelectedItemID = nil
+                    fileTreeModel.selectedURL = nil
+                case let .jsonOutline(id):
+                    outlineController.jsonSelectedItemID = id
+                    outlineController.selectedItemID = nil
+                    fileTreeModel.selectedURL = nil
+                case nil:
+                    fileTreeModel.selectedURL = nil
+                    outlineController.selectedItemID = nil
+                    outlineController.jsonSelectedItemID = nil
                 }
             }
         )
@@ -155,6 +174,49 @@ struct SidebarView: View {
 
     @ViewBuilder
     private var outlineContent: some View {
+        if isJSON {
+            jsonOutlineContent
+        } else {
+            markdownOutlineContent
+        }
+    }
+
+    /// E11: the JSON document outline — the format-neutral channel. Invalid
+    /// JSON shows the parser's diagnostic instead of a stale tree.
+    @ViewBuilder
+    private var jsonOutlineContent: some View {
+        switch outlineController.jsonAvailability {
+        case .notParsed:
+            EmptyView()
+        case .invalidJSON:
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Invalid JSON", systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                if let diagnostic = outlineController.jsonDiagnostic {
+                    Text("Line \(diagnostic.line), column \(diagnostic.column): \(diagnostic.message)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        case .ready:
+            let rows = JSONOutlineBuilder.visibleRows(
+                outlineController.jsonItems,
+                collapsed: outlineController.jsonCollapsedItemIDs
+            )
+            ForEach(rows) { row in
+                JSONOutlineRowView(item: row.item, depth: row.depth, outlineController: outlineController)
+                    .tag(SidebarSelection.jsonOutline(row.item.id))
+                    .accessibilityIdentifier("jsonOutlineRow-\(row.item.id)")
+            }
+        case .unsupportedFormat, .noHeadings:
+            EmptyView()
+        }
+    }
+
+    /// The Markdown heading outline (D8, unchanged by E11).
+    @ViewBuilder
+    private var markdownOutlineContent: some View {
         switch outlineController.availability {
         case .notParsed:
             EmptyView()
@@ -164,6 +226,9 @@ struct SidebarView: View {
         case .noHeadings:
             Text("No headings")
                 .foregroundStyle(.secondary)
+        case .invalidJSON:
+            // Only the JSON channel produces this; unreachable for Markdown.
+            EmptyView()
         case .ready:
             // Collapse-aware flattening and depth both come from the module,
             // so what renders here is exactly what `OutlineTreeTests` covers.
@@ -177,6 +242,10 @@ struct SidebarView: View {
                     .accessibilityIdentifier("outlineRow-\(row.item.id)")
             }
         }
+    }
+
+    private var isJSON: Bool {
+        model.activeDocument?.format.id == "json"
     }
 
     func activateFileTreeURL(_ url: URL) {

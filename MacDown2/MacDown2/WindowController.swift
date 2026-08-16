@@ -4,6 +4,7 @@ import FileCore
 import FileTree
 import Foundation
 import Highlighting
+import JSONSupport
 import MarkdownEngine
 import OutlineUI
 import SwiftUI
@@ -18,6 +19,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let editorStore: EditorTextSystemStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
+    let jsonAnalysisStore: JSONAnalysisStore
     let themeController: ThemeController
     let outlineController: OutlineController
     let fileTreeModel: FileTreeModel
@@ -48,6 +50,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // conservative, E06-tested value; this is the one call site that
         // opts into the tighter production budget.
         parseStore = MarkdownParseStore(debounce: .milliseconds(100))
+        jsonAnalysisStore = JSONAnalysisStore(debounce: .milliseconds(100))
         outlineController = OutlineController()
         fileTreeModel = Self.makeFileTreeModel(preferences: fileTreePreferences)
         externalFileController = Self.makeExternalFileController(
@@ -60,21 +63,12 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // Eagerly create the text system and parse session for the active tab
         // so session-save can read cursor/scroll state and the preview can
         // render immediately once SwiftUI mounts the view.
-        if let activeTab = model.tabStore.activeTab {
-            let identity = activeTab.id.uuidString
-            _ = editorStore.system(
-                for: identity,
-                initialText: activeTab.document.text,
-                configuration: .default
-            )
-            _ = parseStore.session(for: identity)
-        }
-
         let shell = WorkspaceShellView(
             model: model,
             editorStore: editorStore,
             highlightStore: highlightStore,
             parseStore: parseStore,
+            jsonAnalysisStore: jsonAnalysisStore,
             themeController: themeController,
             outlineController: outlineController,
             fileTreeModel: fileTreeModel,
@@ -91,6 +85,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         window.tabbingMode = .preferred
 
         super.init(window: window)
+        makeSessionsForActiveTab()
         externalFileController.attach(owner: self)
         window.delegate = self
         fileTreeModel.startObservingPreferences()
@@ -102,6 +97,21 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         nil
+    }
+
+    /// Eagerly creates the text system and both analysis sessions for the
+    /// active tab so session-save can read cursor/scroll state and the preview
+    /// can render immediately once SwiftUI mounts the view.
+    private func makeSessionsForActiveTab() {
+        guard let activeTab = model.tabStore.activeTab else { return }
+        let identity = activeTab.id.uuidString
+        _ = editorStore.system(
+            for: identity,
+            initialText: activeTab.document.text,
+            configuration: .default
+        )
+        _ = parseStore.session(for: identity)
+        _ = jsonAnalysisStore.session(for: identity)
     }
 
     private static func makeExternalFileController(
@@ -193,6 +203,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         editorStore.evictAll()
         highlightStore.evictAll()
         parseStore.evictAll()
+        jsonAnalysisStore.evictAll()
         fileTreeModel.dispose()
     }
 

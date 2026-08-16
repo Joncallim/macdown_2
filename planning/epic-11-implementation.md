@@ -2,7 +2,7 @@
 
 > **Issue:** #12 — `[EPIC-11] Multi-format support: JSON tools, HTML preview toggle, language registry completion`
 >
-> **Status:** Planning pass complete; implementation has not started. This document is the binding contract for the implementation PR(s).
+> **Status:** Implemented — Gates 0–6 complete. This document is the binding contract; §7.4 records the Gate 4/Gate 6 release evidence.
 >
 > **Branch:** `epic/11-multi-format` → `master`.
 >
@@ -277,6 +277,45 @@ These are initial Release targets and must be confirmed against measured baselin
 ## 7. Dependency and release evidence
 
 Every new grammar or renderer dependency requires exact version/revision, license/notice, transitive dependency inventory, resource-bundle ownership, archive inclusion, known maintenance/security risk, and a reproducible package resolution. No unpinned range may remain in the final implementation PR.
+
+### 7.1 Gate 5 grammar inventory (12 languages)
+
+Gate 5 adds 12 advertised highlight languages, each proven buildable and query-backed by `GrammarRegistryCompletenessTests` (no advertised language may silently degrade). Ten resolve from exact remote pins; two are vendored locally because upstream never commits a generated `parser.c`.
+
+| Language id | Package | Resolution | License |
+|---|---|---|---|
+| yaml | `tree-sitter-yaml` | `exact: 0.7.0` | MIT (tree-sitter-grammars) |
+| toml | `tree-sitter-toml` | `exact: 0.7.0` | MIT |
+| javascript | `TreeSitterJavaScript` (vendored) | local path | MIT (Max Brunsfeld) |
+| typescript | `tree-sitter-typescript` | `exact: 0.23.2` | MIT |
+| python | `tree-sitter-python` | `exact: 0.23.6` | MIT |
+| ruby | `tree-sitter-ruby` | `exact: 0.23.1` | MIT |
+| css | `tree-sitter-css` | `exact: 0.23.2` | MIT |
+| swift | `tree-sitter-swift` | `exact: 0.7.3-with-generated-files` | MIT |
+| cpp | `tree-sitter-cpp` | `exact: 0.23.4` | MIT |
+| bash | `tree-sitter-bash` | `exact: 0.25.1` | MIT |
+| sql | `TreeSitterSQL` (vendored) | local path | MIT (Derek Stride) |
+| xml | `tree-sitter-xml` | `exact: 0.7.0` | MIT (ObserverOfTime) |
+
+Pre-existing E05 grammars (markdown, markdown-inline via vendored `TreeSitterMarkdown`; `json` `from: 0.24.8`; `html` `from: 0.23.2`) are unchanged. Neon (`revision: 484d6fb9…`) and `SwiftTreeSitter` remain as built in E05.
+
+### 7.2 Vendored grammars
+
+- `Packages/TreeSitterJavaScript` — vendored because `tree-sitter-javascript` has no tag whose `Package.swift` lists sources explicitly. The vendored manifest pins `sources: ["src/parser.c", "src/scanner.c"]` (generated parser ≈ 2.9 MB).
+- `Packages/TreeSitterSQL` — vendored because `DerekStride/tree-sitter-sql` never checks in its generated `parser.c`, so no release builds from source. The vendored manifest pins `sources: ["src/parser.c", "src/scanner.c"]` and ships the 41,602,006-byte (~41 MB) generated parser plus a 4.8 KB scanner.
+
+### 7.3 SwiftPM conditional-manifest workaround
+
+The tree-sitter CLI's newer manifest template conditionally includes `src/scanner.c` via `FileManager.fileExists` checks that SwiftPM 6.x evaluates against the bare repository cache (no working files), silently dropping the scanner and breaking the link. The fix, applied uniformly across Gate 5:
+
+1. Pin the newest tag whose manifest lists sources explicitly (fixed-sources manifest).
+2. Where no such tag exists, vendor the grammar locally with an explicit `sources:` array (JavaScript, SQL).
+3. `tree-sitter-swift` is pinned to the maintainers' `-with-generated-files` tag, which ships `parser.c` for source distribution.
+
+### 7.4 Gate 4 and Gate 6 release evidence
+
+- **Gate 4 (HTML source/rendered preview):** `WKURLSchemeHandler` host (`HTMLPreviewView`/`HTMLPreviewPane`/`HTMLPreviewSchemeHandler`) serving a `macdown-preview://` scheme; every response carries the authoritative CSP header (`HTMLPreviewResponseHeaders`) — WebKit honors it on custom-scheme responses and no markup can divert it, so the meta-CSP injection in `PreviewSecurity` is belt-and-braces only; remote/`javascript:`/`data:`/`file:` top-level navigation, downloads (response-layer, policy-gated), and popups (navigation-layer + `createWebViewWith`) denied; scheme authority (host/userinfo/port) validated; `HTMLPreviewResourceScope`-validated subresource serving under `PreviewSecurityScope` (security-scoped access, symlink-safe); reload-on-save via `HTMLPreviewReloadGate` (clean state + generation gate + debounce + task cancellation), with failed main-document loads re-arming the gate for retry; disposal cancels tasks/loads and releases scope. Covered by the preview test suites (navigation policy, comment/rawtext-aware security tokenizer, resource scope, reload generation, response-header enforcement, mode session).
+- **Gate 6 (release and acceptance):** `swift build` green; **890 tests / 96 suites** pass; `swiftlint lint --strict MacDown2` and `swiftformat --lint MacDown2` both clean (0 findings); `xcodegen generate` reproduces the project; Debug and Release app builds and the `macdown2` CLI build succeed; `macdown2 formats` lists all 16 formats with extensions and preview capability, matching `FileFormatRegistry`. `MultiFormatUITests` covers the JSON outline rows/preview, invalid-JSON diagnostic state, the HTML source ↔ rendered toggle, and the no-preview placeholder (identifiers: `jsonOutlineRow-*`, `jsonOutlinePreviewPane`, `jsonInvalidState`, `htmlPreviewModeToggle`, `htmlSourcePane`, `htmlRenderedPane`, `noPreviewPane`). Note: the JSON pane / no-preview assertions are sensitive to accessibility-hierarchy churn in the local UI-test runner (the app's window content intermittently fails to materialize under the automated session on this machine); CI compiles the UI tests via `build-for-testing` but does not execute them.
 
 ## 8. Explicit deferrals
 

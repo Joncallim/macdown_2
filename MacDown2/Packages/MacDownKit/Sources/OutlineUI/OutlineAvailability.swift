@@ -11,4 +11,7 @@ public enum OutlineAvailability: Sendable, Equatable {
     case noHeadings
     /// Markdown, at least one heading.
     case ready
+    /// JSON (or another analyzed format), but the document is invalid. The
+    /// channel publishes the parser's diagnostic and no items.
+    case invalidJSON
 }

@@ -221,12 +221,16 @@ final class WindowCoordinator {
     /// ⌃⌘O (D11). Reveals the outline in the key window, then hands off to
     /// its `OutlineController` — focusing a hidden list is a dead shortcut,
     /// so both the sidebar and the outline's own disclosure are ensured open
-    /// first.
+    /// first. JSON documents route to the JSON outline channel.
     func focusOutline() {
         guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
         controller.model.sidebarVisible = true
         controller.model.setSectionExpanded(.outline, true)
-        controller.outlineController.requestFocus()
+        if controller.model.activeDocument?.format.id == "json" {
+            controller.outlineController.requestJSONFocus()
+        } else {
+            controller.outlineController.requestFocus()
+        }
     }
 
     // MARK: - Session

@@ -1,3 +1,4 @@
+import JSONSupport
 import MarkdownEngine
 import Observation
 
@@ -30,6 +31,44 @@ public final class OutlineController {
     /// Bumped by `requestFocus()` (D11). `SidebarView` observes and focuses.
     public private(set) var focusRequestID: Int
 
+    // MARK: JSON channel (EPIC-11 §3.4)
+
+    // Setters are `internal(set)` because the channel methods live in
+    // `OutlineController+JSON.swift` (a separate file for the lint body
+    // budget). The app target is a different module and can only read these;
+    // the mutable selections/collapse follow the Markdown channel's `public
+    // var` precedent.
+
+    /// The JSON outline tree for a valid JSON document; empty otherwise.
+    public internal(set) var jsonItems: [ContentOutlineItem]
+    /// Availability of the JSON channel, for sidebar/preview placeholders.
+    public internal(set) var jsonAvailability: OutlineAvailability
+    /// The parser's diagnostic for an invalid JSON document, or `nil`.
+    public internal(set) var jsonDiagnostic: JSONDiagnostic?
+    /// Where the caret/viewport is, as the deepest outline node containing
+    /// the UTF-16 reference offset.
+    public internal(set) var jsonCurrentItemID: String?
+    /// The user's navigation cursor in the JSON tree.
+    public var jsonSelectedItemID: String?
+    /// Collapsed JSON nodes, by path ID. In-memory only; path IDs are stable
+    /// across edits and formatting, so state survives rebuilds unchanged.
+    public var jsonCollapsedItemIDs: Set<String>
+    /// Bumped by `requestJSONFocus()`.
+    public internal(set) var jsonFocusRequestID: Int
+    /// Set by `activateJSON(_:)`; the app consumes it, drives the editor
+    /// jump, and clears it. Same consume-and-clear contract as
+    /// `pendingJumpLineRange`.
+    public var pendingJSONJumpSourceRange: Range<Int>?
+    /// Rebuild counter for the JSON channel; exists for no-op tests.
+    public internal(set) var jsonRebuildCount: Int
+
+    /// The JSON text that produced the current `jsonItems`, used to skip
+    /// redundant rebuilds.
+    var lastAppliedJSONText: String?
+    /// The last editor caret/viewport offset, re-translated through the
+    /// current JSON tree on every rebuild.
+    var jsonReferenceOffset: Int?
+
     /// The headings behind the current `items`, kept so the *next* rebuild
     /// can remap ordinal-keyed state against them (D4).
     private var lastHeadings: [HeadingItem]
@@ -52,6 +91,17 @@ public final class OutlineController {
         lastSourceMap = nil
         lastAppliedRevision = nil
         referenceOffset = nil
+        jsonItems = []
+        jsonAvailability = .notParsed
+        jsonDiagnostic = nil
+        jsonCurrentItemID = nil
+        jsonSelectedItemID = nil
+        jsonCollapsedItemIDs = []
+        jsonFocusRequestID = 0
+        pendingJSONJumpSourceRange = nil
+        jsonRebuildCount = 0
+        lastAppliedJSONText = nil
+        jsonReferenceOffset = nil
     }
 
     /// Rebuilds from a parse result. No-ops when `document.revision` matches

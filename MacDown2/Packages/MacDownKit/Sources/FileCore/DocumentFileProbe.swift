@@ -99,7 +99,7 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
         case let .readFailed(underlying):
             .unavailable(expectedURL, classifyReadFailure(underlying))
         case .invalidURL, .encodingDetectionFailed, .fileChangedDuringRead, .writeFailed,
-             .conditionalPublicationRecoveryRequired:
+             .decodingFailed, .conditionalPublicationRecoveryRequired:
             .unavailable(expectedURL, .readFailed(String(describing: error)))
         }
     }

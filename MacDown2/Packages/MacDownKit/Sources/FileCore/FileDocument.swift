@@ -1,51 +1,6 @@
 import Foundation
 import UniformTypeIdentifiers
 
-/// The state of a document's dirty flag and close-dirty prompt flow.
-///
-/// The machine is intentionally simple and synchronous at its core; IO is
-/// delegated to `FileStore` and `RecoveryBuffer`.
-public enum FileDocumentState: Sendable, Equatable {
-    /// No unsaved changes.
-    case clean
-    /// Has unsaved changes.
-    case dirty
-    /// Dirty and the user is being asked how to resolve the close.
-    case promptingClose
-    /// An external change was detected; the user must choose how to reconcile.
-    case conflict
-}
-
-/// The user's choice when closing a dirty document.
-public enum CloseResolution: Sendable, Equatable {
-    case save
-    case discard
-    case cancel
-}
-
-/// The user's choice when an external file change conflicts with in-memory edits.
-public enum ConflictResolution: Sendable, Equatable {
-    case keepMine
-    case useExternal
-    case cancel
-}
-
-public enum FileBackingIssue: Sendable, Equatable {
-    case missingOrMoved
-    case permissionDenied
-    case parentUnavailable
-    case notRegularFile
-    case ambiguousMove
-    case moveCollidesWithOpenDocument
-    case readFailed(String)
-}
-
-public enum FileBackingState: Sendable, Equatable {
-    case untitled
-    case available
-    case unavailable(FileBackingIssue)
-}
-
 /// Represents an open document and its lifecycle state.
 ///
 /// `FileDocument` is a value type: mutating the state machine returns a new
@@ -65,6 +20,11 @@ public struct FileDocument: Sendable {
 
     /// The format associated with this document.
     public private(set) var format: FileFormat
+
+    /// The encoding metadata carried with this document's text. Set from the
+    /// byte snapshot on load, preserved through edits and Save As, and only
+    /// replaced by an accepted external snapshot or an explicit override.
+    public private(set) var encoding: FileEncodingMetadata
 
     /// The current lifecycle state.
     public var state: FileDocumentState
@@ -98,6 +58,7 @@ public struct FileDocument: Sendable {
         fileURL: URL? = nil,
         text: String = "",
         format: FileFormat? = nil,
+        encoding: FileEncodingMetadata = .utf8Default,
         fileStore: FileStore = FileStore(),
         recoveryBuffer: RecoveryBuffer = .shared,
         documentID: String? = nil,
@@ -106,6 +67,7 @@ public struct FileDocument: Sendable {
         let normalizedURL = fileURL?.standardizedFileURL
         self.fileURL = normalizedURL
         self.text = text
+        self.encoding = encoding
         self.fileStore = fileStore
         self.recoveryBuffer = recoveryBuffer
         // Compatibility construction remains synchronous for pure state
@@ -133,7 +95,9 @@ public struct FileDocument: Sendable {
                     utType: UTType(filenameExtension: "md") ?? .plainText,
                     extensions: ["md"],
                     highlightLanguageID: "markdown",
-                    previewCapability: .rendered
+                    previewCapability: .markdown,
+                    defaultPreviewMode: .rendered,
+                    supportedPreviewModes: [.rendered]
                 )
         }
     }
@@ -195,6 +159,7 @@ public struct FileDocument: Sendable {
         let snapshot = try fileStore.readSnapshot(from: fileURL)
         var copy = self
         copy.text = snapshot.text
+        copy.encoding = snapshot.encodingMetadata
         copy.lastKnownRevision = snapshot.revision
         copy.pendingExternalRevision = nil
         copy.backingState = .available
@@ -218,7 +183,13 @@ public struct FileDocument: Sendable {
             throw .invalidURL
         }
 
-        let revision = try fileStore.write(text, to: fileURL, expectedRevision: expectedRevision)
+        let revision = try fileStore.write(
+            text,
+            to: fileURL,
+            encoding: encoding.encoding,
+            bom: encoding.bom,
+            expectedRevision: expectedRevision
+        )
         var copy = self
         copy.lastKnownRevision = revision
         copy.pendingExternalRevision = nil
@@ -229,17 +200,36 @@ public struct FileDocument: Sendable {
     }
 
     /// Saves the current text to a new URL and updates the document identity.
-    public func saveAs(_ url: URL) throws(FileStoreError) -> FileDocument {
-        try saveAs(url, recoveryEpoch: UUID())
+    /// The source document's encoding/BOM metadata is preserved unless an
+    /// explicit `encodingOverride` is supplied.
+    public func saveAs(
+        _ url: URL,
+        encodingOverride: FileEncodingMetadata? = nil
+    ) throws(FileStoreError) -> FileDocument {
+        try saveAs(url, recoveryEpoch: UUID(), encodingOverride: encodingOverride)
     }
 
     /// Saves to a new URL while adopting a caller-prepared recovery lifetime.
     /// Workspace production paths obtain this epoch from `RecoveryBuffer`
     /// before entering the write lane, so the resulting identity participates
     /// in the durable bounded-generation protocol.
-    public func saveAs(_ url: URL, recoveryEpoch: UUID) throws(FileStoreError) -> FileDocument {
+    public func saveAs(
+        _ url: URL,
+        recoveryEpoch: UUID,
+        encodingOverride: FileEncodingMetadata? = nil
+    ) throws(FileStoreError) -> FileDocument {
         let destination = url.standardizedFileURL
-        let revision = try fileStore.write(text, to: destination)
+        // The destination encoding becomes document metadata only after the
+        // write below succeeds; an override that fails to encode is never
+        // adopted. `encodingOverride ?? encoding` is the documented
+        // precedence: explicit destination override first, else source.
+        let destinationEncoding = encodingOverride ?? encoding
+        let revision = try fileStore.write(
+            text,
+            to: destination,
+            encoding: destinationEncoding.encoding,
+            bom: destinationEncoding.bom
+        )
         var copy = self
         copy.fileURL = destination
         copy.id = destination.absoluteString
@@ -248,6 +238,7 @@ public struct FileDocument: Sendable {
         // from the former identity cannot be admitted under the new key.
         copy.recoveryEpoch = recoveryEpoch
         copy.format = Self.format(for: destination)
+        copy.encoding = destinationEncoding
         copy.lastKnownRevision = revision
         copy.pendingExternalRevision = nil
         copy.backingState = .available
@@ -365,7 +356,9 @@ public struct FileDocument: Sendable {
         setLastKnownRevision: Bool = false,
         pendingExternalRevision: FileRevision? = nil,
         setPendingExternalRevision: Bool = false,
-        backingState: FileBackingState? = nil
+        backingState: FileBackingState? = nil,
+        encoding: FileEncodingMetadata? = nil,
+        setEncoding: Bool = false
     ) {
         if setLastKnownRevision {
             self.lastKnownRevision = lastKnownRevision
@@ -375,6 +368,9 @@ public struct FileDocument: Sendable {
         }
         if let backingState {
             self.backingState = backingState
+        }
+        if setEncoding, let encoding {
+            self.encoding = encoding
         }
     }
 

@@ -1,14 +1,28 @@
 import Foundation
 import UniformTypeIdentifiers
 
-/// The preview capability a format advertises.
+/// The preview capability a format advertises. Typed renderer identity: a
+/// format never inherits another format's renderer implicitly.
 public enum PreviewCapability: Sendable, Equatable {
-    /// A rendered preview is the primary view (e.g. Markdown, HTML).
-    case rendered
-    /// A preview can be toggled but is not the default (e.g. JSON outline).
-    case toggleable
-    /// No preview is available for this format (e.g. plain text or source-only).
+    /// No preview is available for this format (source-only).
     case none
+    /// Markdown rendered preview (EPIC-07 `TextualMarkdownPreview`).
+    case markdown
+    /// HTML preview with an explicit source ↔ rendered toggle. The rendered
+    /// side is the app-owned `WKWebView` host under the v1 security policy.
+    case htmlSourceAndRendered
+    /// JSON outline preview (format-neutral outline adapter).
+    case jsonOutline
+}
+
+/// The preview pane's display mode for a format.
+public enum PreviewMode: String, Codable, Sendable, Equatable, Hashable {
+    /// The raw source; for HTML this is the un-rendered document view.
+    case source
+    /// The rendered presentation (Markdown/HTML rendering, no outline).
+    case rendered
+    /// The structural outline (JSON).
+    case outline
 }
 
 /// Metadata describing a file format MacDown 2 understands.
@@ -19,6 +33,12 @@ public struct FileFormat: Sendable, Equatable, Identifiable {
     public let extensions: [String]
     public let highlightLanguageID: String?
     public let previewCapability: PreviewCapability
+    /// The mode the preview pane starts in for this format, or `nil` when the
+    /// capability is `.none`.
+    public let defaultPreviewMode: PreviewMode?
+    /// The modes the preview pane may display for this format. Empty when the
+    /// capability is `.none`.
+    public let supportedPreviewModes: [PreviewMode]
 
     public init(
         id: String,
@@ -26,7 +46,9 @@ public struct FileFormat: Sendable, Equatable, Identifiable {
         utType: UTType,
         extensions: [String],
         highlightLanguageID: String? = nil,
-        previewCapability: PreviewCapability = .none
+        previewCapability: PreviewCapability = .none,
+        defaultPreviewMode: PreviewMode? = nil,
+        supportedPreviewModes: [PreviewMode] = []
     ) {
         self.id = id
         self.name = name
@@ -34,6 +56,8 @@ public struct FileFormat: Sendable, Equatable, Identifiable {
         self.extensions = extensions
         self.highlightLanguageID = highlightLanguageID
         self.previewCapability = previewCapability
+        self.defaultPreviewMode = defaultPreviewMode
+        self.supportedPreviewModes = supportedPreviewModes
     }
 
     /// Returns the first format whose extension list matches the URL's path extension.
@@ -64,7 +88,9 @@ public final class FileFormatRegistry: Sendable {
             utType: UTType(filenameExtension: "md") ?? .plainText,
             extensions: ["md", "markdown", "mdown", "mkd", "mkdn"],
             highlightLanguageID: "markdown",
-            previewCapability: .rendered
+            previewCapability: .markdown,
+            defaultPreviewMode: .rendered,
+            supportedPreviewModes: [.rendered]
         ),
         FileFormat(
             id: "html",
@@ -72,7 +98,9 @@ public final class FileFormatRegistry: Sendable {
             utType: UTType(filenameExtension: "html") ?? .plainText,
             extensions: ["html", "htm"],
             highlightLanguageID: "html",
-            previewCapability: .rendered
+            previewCapability: .htmlSourceAndRendered,
+            defaultPreviewMode: .rendered,
+            supportedPreviewModes: [.source, .rendered]
         ),
         FileFormat(
             id: "json",
@@ -80,7 +108,9 @@ public final class FileFormatRegistry: Sendable {
             utType: UTType(filenameExtension: "json") ?? .plainText,
             extensions: ["json"],
             highlightLanguageID: "json",
-            previewCapability: .toggleable
+            previewCapability: .jsonOutline,
+            defaultPreviewMode: .outline,
+            supportedPreviewModes: [.outline]
         ),
         FileFormat(
             id: "yaml",

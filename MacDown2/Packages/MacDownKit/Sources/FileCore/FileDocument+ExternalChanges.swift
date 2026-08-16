@@ -88,7 +88,9 @@ public extension FileDocument {
             setLastKnownRevision: true,
             pendingExternalRevision: nil,
             setPendingExternalRevision: true,
-            backingState: .available
+            backingState: .available,
+            encoding: snapshot.encodingMetadata,
+            setEncoding: true
         )
         copy.advanceMutation()
         return ExternalReconciliation(document: copy, disposition: .localNowMatchesDisk)
@@ -116,7 +118,9 @@ public extension FileDocument {
             setLastKnownRevision: true,
             pendingExternalRevision: nil,
             setPendingExternalRevision: true,
-            backingState: .available
+            backingState: .available,
+            encoding: snapshot.encodingMetadata,
+            setEncoding: true
         )
         copy.state = .clean
         copy.advanceMutation()

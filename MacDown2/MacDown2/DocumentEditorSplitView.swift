@@ -1,11 +1,13 @@
 import EditorCore
 import FileCore
 import Highlighting
+import JSONSupport
 import MarkdownEngine
 import OutlineUI
 import Preview
 import SwiftUI
 import Themes
+import UniformTypeIdentifiers
 import WebKit
 import Workspace
 
@@ -20,6 +22,7 @@ struct DocumentEditorSplitView: View {
     let editorStore: EditorTextSystemStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
+    let jsonAnalysisStore: JSONAnalysisStore
     let themeController: ThemeController
     let scrollController: ScrollSyncController
     let outlineController: OutlineController
@@ -34,11 +37,21 @@ struct DocumentEditorSplitView: View {
         parseStore.session(for: identity)
     }
 
+    private var jsonSession: JSONAnalysisSession {
+        jsonAnalysisStore.session(for: identity)
+    }
+
     /// D7: gates the outline on format, not just its label — a Python or
     /// shell file's `# comment` lines are still parsed as Markdown headings
     /// by `parseSession`, and this is what keeps them out of the sidebar.
     private var isMarkdown: Bool {
         PreviewRouter.previewKind(for: document.format) == .markdown
+    }
+
+    /// D7/E11: the JSON outline channel is gated on the exact JSON format id,
+    /// mirroring the Markdown gate above.
+    private var isJSON: Bool {
+        document.format.id == "json"
     }
 
     private var previewLayout: PreviewLayoutMode {
@@ -65,6 +78,35 @@ struct DocumentEditorSplitView: View {
     }
 
     var body: some View {
+        splitContent
+            .task(id: identity) {
+                await loadInitialContent()
+            }
+            .onChange(of: text) { _, newText in
+                parseSession.textDidChange(newText)
+                jsonSession.textDidChange(newText)
+            }
+            .onChange(of: document.format.id) { _, _ in
+                // Save As format transitions re-gate both outline channels so
+                // a stale Markdown outline never survives a move to JSON (and
+                // vice versa), and invalidate a persisted preview mode the new
+                // format cannot display.
+                refreshOutline()
+                refreshJSONOutline()
+                resetInvalidPreviewMode()
+            }
+            .onChange(of: parseSession.document) { _, _ in
+                refreshPreviewBlocks()
+                refreshOutline()
+            }
+            .onChange(of: jsonSession.result) { _, _ in
+                refreshJSONOutline()
+            }
+    }
+
+    /// The editor/preview split. Split from `body` (and the observation
+    /// modifiers kept in `body`) so the compiler can type-check each chain.
+    private var splitContent: some View {
         GeometryReader { geometry in
             HStack(spacing: 0) {
                 if previewLayout.showsEditor {
@@ -83,18 +125,6 @@ struct DocumentEditorSplitView: View {
                 }
             }
         }
-        .task(id: identity) {
-            await parseSession.parseNow(text)
-            refreshPreviewBlocks()
-            refreshOutline()
-        }
-        .onChange(of: text) { _, newText in
-            parseSession.textDidChange(newText)
-        }
-        .onChange(of: parseSession.document) { _, _ in
-            refreshPreviewBlocks()
-            refreshOutline()
-        }
         .onChange(of: scrollController.targetSourceLine) { _, line in
             guard let line, let sourceMap = parseSession.document?.sourceMap else { return }
             let range = sourceMap.utf16Range(ofLines: line ... line)
@@ -112,6 +142,23 @@ struct DocumentEditorSplitView: View {
             editorStore.existingSystem(for: identity)?.revealSelection(utf16Range: range, flash: true, animated: true)
             outlineController.pendingJumpLineRange = nil
         }
+        .onChange(of: outlineController.pendingJSONJumpSourceRange) { _, sourceRange in
+            guard let sourceRange else { return }
+            let nsRange = NSRange(sourceRange)
+            editorStore.existingSystem(for: identity)?.revealSelection(utf16Range: nsRange, flash: true, animated: true)
+            outlineController.pendingJSONJumpSourceRange = nil
+        }
+    }
+
+    /// Initial content load: parse both sessions immediately (bypassing the
+    /// debounce) and refresh both outline channels. Split out of `.task(id:)`
+    /// so the compiler can type-check the view body.
+    private func loadInitialContent() async {
+        await parseSession.parseNow(text)
+        refreshPreviewBlocks()
+        refreshOutline()
+        await jsonSession.analyzeNow(text)
+        refreshJSONOutline()
     }
 
     private func refreshPreviewBlocks() {
@@ -131,6 +178,16 @@ struct DocumentEditorSplitView: View {
             document: parseSession.document,
             isMarkdown: isMarkdown,
             formatName: document.format.name
+        )
+    }
+
+    /// E11: a pure readout of the JSON analysis session. The format gate
+    /// lives in the controller (`formatID == "json"`), so a Save As away
+    /// from JSON clears the channel.
+    private func refreshJSONOutline() {
+        outlineController.updateJSON(
+            result: jsonSession.result,
+            formatID: document.format.id
         )
     }
 
@@ -161,8 +218,12 @@ struct DocumentEditorSplitView: View {
             store: editorStore,
             onSelectionChange: { range in
                 outlineController.referenceOffsetDidChange(range.location)
+                outlineController.jsonReferenceOffsetDidChange(range.location)
             },
-            onScrollChange: handleEditorScroll
+            onScrollChange: { offset in
+                handleEditorScroll(utf16Offset: offset)
+                outlineController.jsonReferenceOffsetDidChange(offset)
+            }
         )
         .accessibilityIdentifier("editorPane")
         .task(id: identity) {
@@ -184,10 +245,26 @@ struct DocumentEditorSplitView: View {
                 linkDefinitions: previewLinkDefinitions
             )
         case .html:
-            HTMLPreviewView(text: $text)
+            HTMLPreviewPane(model: model, tab: tab, document: document, text: text)
+        case .jsonOutline:
+            // The JSON preview mode IS the outline: the same format-neutral
+            // tree the sidebar shows, with collapse/selection/jump state
+            // shared through `outlineController`. The leaf-level identifiers
+            // (`jsonOutlinePreviewPane`, `jsonInvalidState`) live inside
+            // `JSONOutlinePreviewView`.
+            JSONOutlinePreviewView(outlineController: outlineController)
         case .none:
             NoPreviewView(formatName: document.format.name)
         }
+    }
+
+    /// Save As invalidation: a persisted preview mode the new format cannot
+    /// display is dropped (back to the format default) and the session is
+    /// re-saved so the stale mode is not restored after relaunch.
+    private func resetInvalidPreviewMode() {
+        guard let mode = tab.previewMode, !PreviewRouter.supports(mode, for: document.format) else { return }
+        model.tabStore.setPreviewMode(nil, for: tab.id)
+        coordinator?.scheduleSaveSession()
     }
 
     private func divider(in geometry: GeometryProxy) -> some View {
@@ -232,83 +309,6 @@ struct DocumentEditorSplitView: View {
     }
 }
 
-// MARK: - HTML preview
-
-private struct HTMLPreviewView: NSViewRepresentable {
-    @Binding var text: String
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeNSView(context _: Context) -> WKWebView {
-        let configuration = WKWebViewConfiguration()
-        // Disable content JavaScript for every navigation. `preferences.javaScriptEnabled`
-        // is deprecated (macOS 11+); the per-configuration replacement is
-        // `defaultWebpagePreferences.allowsContentJavaScript`. This is defence-in-depth
-        // on top of the CSP injected by `PreviewSecurity.hardenedHTMLDocument(from:)`.
-        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
-        return WKWebView(frame: .zero, configuration: configuration)
-    }
-
-    func updateNSView(_ webView: WKWebView, context: Context) {
-        context.coordinator.scheduleReload(of: text, in: webView)
-    }
-
-    static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
-        coordinator.cancelPendingReload()
-        webView.stopLoading()
-    }
-
-    @MainActor
-    final class Coordinator {
-        private static let reloadDelay: Duration = .milliseconds(150)
-
-        private var pendingSource: String?
-        private var loadedSource: String?
-        private var reloadTask: Task<Void, Never>?
-
-        func scheduleReload(of source: String, in webView: WKWebView) {
-            // SwiftUI updates this representable for unrelated view changes
-            // (split resizing, selection, theme propagation, etc.). Avoid both
-            // rebuilding the hardened document and restarting WebKit unless
-            // the source actually changed.
-            if source == loadedSource {
-                reloadTask?.cancel()
-                reloadTask = nil
-                pendingSource = nil
-                return
-            }
-            guard source != pendingSource else { return }
-
-            reloadTask?.cancel()
-            pendingSource = source
-            reloadTask = Task { @MainActor [weak self, weak webView] in
-                do {
-                    try await Task.sleep(for: Self.reloadDelay)
-                } catch is CancellationError {
-                    return
-                } catch {
-                    return
-                }
-
-                guard let self, let webView, pendingSource == source else { return }
-                pendingSource = nil
-                loadedSource = source
-                // Inject a restrictive CSP so a previewed file cannot load
-                // remote resources (defence-in-depth on top of disabled JS).
-                webView.loadHTMLString(PreviewSecurity.hardenedHTMLDocument(from: source), baseURL: nil)
-            }
-        }
-
-        func cancelPendingReload() {
-            reloadTask?.cancel()
-            reloadTask = nil
-            pendingSource = nil
-        }
-    }
-}
-
 // MARK: - No preview
 
 private struct NoPreviewView: View {
@@ -323,5 +323,6 @@ private struct NoPreviewView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("noPreviewPane")
     }
 }

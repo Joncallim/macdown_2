@@ -235,6 +235,23 @@ struct WorkspaceCommands: Commands {
                 .keyboardShortcut("0", modifiers: [.control, .command])
                 .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
             }
+
+            Divider()
+
+            // E11 Gate 2: deterministic JSON formatting. Disabled for
+            // non-JSON documents and for invalid JSON (the analysis session
+            // must verify the current text is a valid document first).
+            Button("Format JSON") {
+                Task { await coordinator?.performJSONFormatting(sortKeys: false) }
+            }
+            .keyboardShortcut("f", modifiers: [.option, .command])
+            .disabled(coordinator?.canPerformJSONFormatting != true)
+
+            Button("Format JSON with Sorted Keys") {
+                Task { await coordinator?.performJSONFormatting(sortKeys: true) }
+            }
+            .keyboardShortcut("f", modifiers: [.option, .shift, .command])
+            .disabled(coordinator?.canPerformJSONFormatting != true)
         }
 
         #if DEBUG
