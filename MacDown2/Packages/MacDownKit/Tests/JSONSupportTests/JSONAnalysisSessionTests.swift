@@ -7,6 +7,21 @@ import Testing
 @MainActor
 @Suite("JSONAnalysisSession")
 struct JSONAnalysisSessionTests {
+    /// Waits (bounded) until the session stops analyzing. Fixed sleeps make
+    /// these assertions load-sensitive on virtualized CI runners, where
+    /// `ContinuousClock` sleeps can stretch and `.utility` detached tasks can
+    /// be starved; polling keeps the assertions intact without a timing
+    /// budget.
+    private func waitUntilIdle(
+        _ session: JSONAnalysisSession,
+        timeout: Duration = .seconds(2)
+    ) async throws {
+        let deadline = ContinuousClock.now + timeout
+        while session.isAnalyzing, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+    }
+
     @Test func immediateAnalysisOfValidJSONPublishesItems() async {
         let session = JSONAnalysisSession(debounce: .milliseconds(1))
         let result = await session.analyzeNow(#"{"a":1}"#)
@@ -31,7 +46,7 @@ struct JSONAnalysisSessionTests {
         session.textDidChange("{\"a\": 1}")
         session.textDidChange("{\"a\": 2}")
         session.textDidChange("{\"a\": 3}")
-        try await Task.sleep(for: .milliseconds(150))
+        try await waitUntilIdle(session)
         // The intermediate invalid states never publish: only the latest text.
         #expect(session.result?.text == "{\"a\": 3}")
         #expect(session.result?.isValid == true)
@@ -42,14 +57,14 @@ struct JSONAnalysisSessionTests {
     @Test func validToInvalidToValidPublishesOnlyLatest() async throws {
         let session = JSONAnalysisSession(debounce: .milliseconds(20))
         session.textDidChange("{\"a\": 1}")
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntilIdle(session)
         #expect(session.result?.isValid == true)
 
         // A valid→invalid→valid burst: the invalid intermediate state never
         // replaces the last published outline.
         session.textDidChange("not json")
         session.textDidChange("{\"a\": 2}")
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntilIdle(session)
         #expect(session.result?.text == "{\"a\": 2}")
         #expect(session.result?.isValid == true)
         #expect(session.result?.diagnostic == nil)
@@ -60,7 +75,7 @@ struct JSONAnalysisSessionTests {
         let session = JSONAnalysisSession(debounce: .milliseconds(20))
         session.textDidChange("{\"a\": 1}")
         session.cancelPending()
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntilIdle(session)
         #expect(session.result == nil)
         #expect(session.isAnalyzing == false)
         #expect(session.completedAnalysisCount == 0)
@@ -71,7 +86,7 @@ struct JSONAnalysisSessionTests {
         session.textDidChange("stale")
         let result = await session.analyzeNow("42")
         #expect(result.isValid)
-        try await Task.sleep(for: .milliseconds(150))
+        try await waitUntilIdle(session)
         // The stale debounced analysis was cancelled; the latest result wins.
         #expect(session.result?.text == "42")
         #expect(session.completedAnalysisCount == 1)
@@ -82,7 +97,7 @@ struct JSONAnalysisSessionTests {
         #expect(!session.isAnalyzing)
         session.textDidChange("{\"a\": 1}")
         #expect(session.isAnalyzing)
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntilIdle(session)
         #expect(!session.isAnalyzing)
     }
 

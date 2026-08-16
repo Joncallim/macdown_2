@@ -23,7 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
-        run: brew install swiftlint swiftformat
+        run: |
+          # Runner images can ship an untrusted tap (e.g. aws/tap) that makes
+          # Homebrew refuse to install; untap defensively.
+          brew untap aws/tap 2>/dev/null || true
+          brew install swiftlint swiftformat
       - name: SwiftFormat (lint)
         run: swiftformat --lint MacDown2
       - name: SwiftLint (strict)
@@ -46,7 +50,11 @@ jobs:
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          # Runner images can ship an untrusted tap (e.g. aws/tap) that makes
+          # Homebrew refuse to install; untap defensively.
+          brew untap aws/tap 2>/dev/null || true
+          brew install xcodegen
       - name: Package build + tests
         working-directory: MacDown2/Packages/MacDownKit
         run: |
