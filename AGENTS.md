@@ -19,6 +19,8 @@ as a read-only porting source in `legacy-reference/`.
   `Joncallim/macdown_2` (milestones M1–M5).
 - `planning/EPIC_STANDARD.md` — mandatory Definition of Ready, architecture,
   slice, Definition of Done, and human-readability rules for new epic work.
+- `planning/RELEASE_HARDENING.md` — binding cross-epic macOS 1.0 integration,
+  identity, evidence, offline/privacy, fidelity, localisation and release gates.
 
 ## Commands (from repo root)
 
@@ -40,6 +42,9 @@ as a read-only porting source in `legacy-reference/`.
 - One branch per epic (`epic/NN-name`) → PR into `master`.
 - Before starting or materially revising an epic, read and follow
   `planning/EPIC_STANDARD.md`.
+- For any remaining macOS 1.0 epic or release-gate work, also read and reconcile
+  `planning/RELEASE_HARDENING.md`. An older architecture document is not
+  grandfathered in when the product/release contract has changed.
 - An epic must satisfy the Definition of Ready before broad implementation
   begins. The implementation architecture is written from the current live
   `master` state, not copied blindly from an older issue.
@@ -51,6 +56,10 @@ as a read-only porting source in `legacy-reference/`.
   they are not by themselves the Definition of Done. Release-build evidence,
   required dogfood paths, documentation reconciliation and residual risks must
   also be recorded where applicable.
+- First-party opening/editing/preview/math/diagram/export functionality is local
+  and offline by default. Do not introduce a hosted renderer or transmit
+  document content as an implementation shortcut without an explicit new
+  product/security decision.
 - Tabs are **native `NSWindow` tabs** (as-built E03): one window = one
   document; `WindowCoordinator` owns the pool. Do not reintroduce an in-app
   tab bar.
