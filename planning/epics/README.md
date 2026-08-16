@@ -50,7 +50,7 @@ E20 proves one diagram renderer and the shared rendering/caching/diagnostic/expo
 | E08 | Content browser (document outline) | M3 — Markdown core | E06, E02 | ✅ done (issue #9 closed completed; follow-up issues tracked separately) |
 | E09 | Folder browser | M4 — Workspace & formats | E01, E02, E03 | ✅ done |
 | E10 | Editing assists | M2 — Editor | E04 | ✅ done (issue #11 closed completed; dogfood evidence remains part of release confidence) |
-| E11 | Multi-format: JSON, HTML, LaTeX source + language registry | M4 — Workspace & formats | E05, E07 | open; existing architecture PR must be reconciled to current contract before implementation |
+| E11 | Multi-format: JSON, HTML, LaTeX source + language registry | M4 — Workspace & formats | E05, E07 | ✅ done (issue #12; JSON tooling, HTML preview toggle, language registry completion. LaTeX/TeX source recognition from the amended scope was **not** implemented in this merge — tracked as a follow-up) |
 | E12 | Export: HTML/PDF + shared derived-content destination | M4 — Workspace & formats | E06, E11 | open |
 | E13 | Settings | M4 — Workspace & formats | E02 | open |
 | E14 | Renderer-neutral first-party contributions + text filters | M5 — feature completion | E07, E12 export contract | open |

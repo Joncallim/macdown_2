@@ -2,6 +2,7 @@ import AppKit
 import EditorCore
 import FileCore
 import Highlighting
+import JSONSupport
 import MarkdownEngine
 import OutlineUI
 import Preview
@@ -14,6 +15,7 @@ struct ContentAreaView: View {
     let editorStore: EditorTextSystemStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
+    let jsonAnalysisStore: JSONAnalysisStore
     let themeController: ThemeController
     let outlineController: OutlineController
     let externalFileController: ExternalFileController
@@ -104,6 +106,7 @@ struct ContentAreaView: View {
                 editorStore: editorStore,
                 highlightStore: highlightStore,
                 parseStore: parseStore,
+                jsonAnalysisStore: jsonAnalysisStore,
                 themeController: themeController,
                 scrollController: scrollController,
                 outlineController: outlineController

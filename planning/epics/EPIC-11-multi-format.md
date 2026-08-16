@@ -1,6 +1,15 @@
 > **Title:** [EPIC-11] Multi-format support: JSON tools, HTML preview, LaTeX source and language registry
 > **Labels:** `epic`, `formats` · **Milestone:** M4 — Workspace & formats · **Depends on:** E05, E07
 
+> **As-built status:** Implemented and merged (issue #12). The delivered scope
+> covers JSON tooling (strict parser with UTF-16 diagnostics and a 64-level
+> depth policy, deterministic formatting, source-neutral outline), the
+> hardened HTML source ↔ rendered preview (CSP header enforcement, scoped
+> subresources), and completion of the language/highlighting registry (16
+> formats). LaTeX/TeX source recognition in this document's amended scope was
+> **not** implemented in the merge and is tracked as a follow-up; the binding
+> engineering contract is `../epic-11-implementation.md`.
+
 ## Owner summary
 
 MacDown 2 should be a good text editor even when the active file is not Markdown. E11 completes that baseline: JSON gets useful structured tooling, HTML gets an explicit rendered view, LaTeX/TeX source becomes a recognised technical text format, and the remaining supported code/text extensions get correct syntax highlighting and a clear no-preview state.

@@ -1,6 +1,7 @@
 import EditorCore
 import FileTree
 import Highlighting
+import JSONSupport
 import MarkdownEngine
 import OutlineUI
 import SwiftUI
@@ -18,6 +19,7 @@ struct WorkspaceShellView: View {
     let editorStore: EditorTextSystemStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
+    let jsonAnalysisStore: JSONAnalysisStore
     let themeController: ThemeController
     let outlineController: OutlineController
     let fileTreeModel: FileTreeModel
@@ -28,6 +30,7 @@ struct WorkspaceShellView: View {
         editorStore: EditorTextSystemStore,
         highlightStore: SyntaxHighlightStore,
         parseStore: MarkdownParseStore,
+        jsonAnalysisStore: JSONAnalysisStore,
         themeController: ThemeController,
         outlineController: OutlineController,
         fileTreeModel: FileTreeModel,
@@ -37,6 +40,7 @@ struct WorkspaceShellView: View {
         self.editorStore = editorStore
         self.highlightStore = highlightStore
         self.parseStore = parseStore
+        self.jsonAnalysisStore = jsonAnalysisStore
         self.themeController = themeController
         self.outlineController = outlineController
         self.fileTreeModel = fileTreeModel
@@ -52,6 +56,7 @@ struct WorkspaceShellView: View {
                 editorStore: editorStore,
                 highlightStore: highlightStore,
                 parseStore: parseStore,
+                jsonAnalysisStore: jsonAnalysisStore,
                 themeController: themeController,
                 outlineController: outlineController,
                 externalFileController: externalFileController

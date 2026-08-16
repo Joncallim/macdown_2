@@ -25,16 +25,30 @@ public struct FileRevision: Sendable, Equatable {
 public struct FileSnapshot: Sendable, Equatable {
     public let text: String
     public let encodingRawValue: UInt
+    public let bom: FileBOM
     public let revision: FileRevision
 
     public var encoding: String.Encoding {
         String.Encoding(rawValue: encodingRawValue)
     }
 
-    public init(text: String, encoding: String.Encoding, revision: FileRevision) {
+    /// The decoding metadata carried by this snapshot.
+    public var encodingMetadata: FileEncodingMetadata {
+        FileEncodingMetadata(encodingRawValue: encodingRawValue, bom: bom)
+    }
+
+    public init(text: String, encoding: String.Encoding, bom: FileBOM, revision: FileRevision) {
         self.text = text
         encodingRawValue = encoding.rawValue
+        self.bom = bom
         self.revision = revision
+    }
+
+    /// Compatibility projection for callers that predate the BOM contract.
+    /// Decodes without BOM knowledge; prefer `encodingMetadata` for round
+    /// trips that must preserve the byte prefix.
+    public init(text: String, encoding: String.Encoding, revision: FileRevision) {
+        self.init(text: text, encoding: encoding, bom: .none, revision: revision)
     }
 }
 

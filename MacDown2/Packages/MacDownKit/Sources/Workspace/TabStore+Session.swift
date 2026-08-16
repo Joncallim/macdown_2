@@ -21,6 +21,8 @@ extension TabStore {
                 selectionLength: nil,
                 scrollOffset: nil,
                 previewLayout: tab.previewLayout,
+                previewMode: tab.previewMode,
+                encoding: tab.document.encoding,
                 folderRootBookmark: tab.folderRootBookmark,
                 folderRootAlias: tab.folderRootAlias
             )
@@ -38,6 +40,7 @@ extension TabStore {
             ) else { return nil }
             var document = FileDocument(
                 text: "",
+                encoding: record.encoding ?? .utf8Default,
                 recoveryBuffer: recoveryBuffer,
                 documentID: untitledID,
                 recoveryEpoch: record.documentRecoveryEpoch
@@ -51,6 +54,7 @@ extension TabStore {
                 selectionLength: record.selectionLength,
                 scrollOffset: record.scrollOffset,
                 previewLayout: record.previewLayout,
+                previewMode: record.previewMode,
                 folderRootBookmark: record.folderRootBookmark,
                 folderRootAlias: record.folderRootAlias
             )
@@ -65,6 +69,7 @@ extension TabStore {
         let recoveryEpoch = record.documentRecoveryEpoch
         let document = FileDocument(
             fileURL: fileURL,
+            encoding: record.encoding ?? .utf8Default,
             recoveryBuffer: recoveryBuffer,
             recoveryEpoch: recoveryEpoch
         )
@@ -101,7 +106,7 @@ extension TabStore {
         case .permissionDenied: .permissionDenied
         case .notRegularFile: .notRegularFile
         case .readFailed, .writeFailed, .invalidURL, .encodingDetectionFailed, .fileChangedDuringRead,
-             .conditionalPublicationRecoveryRequired:
+             .decodingFailed, .conditionalPublicationRecoveryRequired:
             .readFailed(String(describing: error))
         }
     }
@@ -115,6 +120,7 @@ extension TabStore {
             selectionLength: record.selectionLength,
             scrollOffset: record.scrollOffset,
             previewLayout: record.previewLayout,
+            previewMode: record.previewMode,
             folderRootBookmark: record.folderRootBookmark,
             folderRootAlias: record.folderRootAlias
         )

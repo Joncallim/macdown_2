@@ -1,3 +1,4 @@
+import FileCore
 import Foundation
 
 /// Persistent representation of an open tab session.
@@ -42,6 +43,13 @@ public struct TabRecord: Codable, Sendable, Equatable {
 
     public var scrollOffset: Double?
     public var previewLayout: PreviewLayoutMode?
+    /// The preview pane's display mode, or `nil` for the format's default.
+    /// Optional so sessions written before EPIC-11 still decode.
+    public var previewMode: PreviewMode?
+    /// Decoding metadata needed to interpret the restored text. Optional so
+    /// sessions written before EPIC-11 still decode; absent metadata uses the
+    /// documented default (UTF-8, no BOM). Raw bytes are never persisted.
+    public var encoding: FileEncodingMetadata?
     /// Optional so sessions written before the folder browser still decode.
     public var folderRootBookmark: Data?
     /// Lexical spelling paired with the physical security-scoped bookmark.
@@ -57,6 +65,8 @@ public struct TabRecord: Codable, Sendable, Equatable {
         selectionLength: Int? = nil,
         scrollOffset: Double? = nil,
         previewLayout: PreviewLayoutMode? = nil,
+        previewMode: PreviewMode? = nil,
+        encoding: FileEncodingMetadata? = nil,
         folderRootBookmark: Data? = nil,
         folderRootAlias: URL? = nil
     ) {
@@ -69,6 +79,8 @@ public struct TabRecord: Codable, Sendable, Equatable {
         self.selectionLength = selectionLength
         self.scrollOffset = scrollOffset
         self.previewLayout = previewLayout
+        self.previewMode = previewMode
+        self.encoding = encoding
         self.folderRootBookmark = folderRootBookmark
         self.folderRootAlias = folderRootAlias
     }

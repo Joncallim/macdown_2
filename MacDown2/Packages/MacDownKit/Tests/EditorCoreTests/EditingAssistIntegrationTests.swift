@@ -7,7 +7,7 @@ import Testing
 /// Mounted helpers: a real `NSWindow` is required for AppKit to post
 /// `textDidChange` notifications and register undo items (shipping conditions).
 @MainActor
-private enum EditingAssistIntegrationSupport {
+enum EditingAssistIntegrationSupport {
     static func makeSystem(
         text: String = "",
         configuration: EditorConfiguration = .default

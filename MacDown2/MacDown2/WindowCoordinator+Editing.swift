@@ -1,5 +1,6 @@
 import AppKit
 import EditorCore
+import JSONSupport
 
 // MARK: - Markdown formatting command bridge
 
@@ -50,10 +51,101 @@ extension WindowCoordinator {
     }
 }
 
+// MARK: - JSON formatting command bridge
+
+/// E11 Gate 2 command seam: `Format JSON` and `Format JSON with Sorted Keys`.
+///
+/// The computation runs off the main actor against an immutable snapshot;
+/// the result is applied only when the document and editor still match the
+/// command-time baseline (an edit, external reload, or any document
+/// transition during formatting discards the stale result).
+extension WindowCoordinator {
+    /// `true` when the key window's active document is JSON and its editor
+    /// text system exists, and the analysis session's latest verdict covers
+    /// the current text and is valid. Invalid JSON disables the commands —
+    /// they would have nothing to format.
+    var canPerformJSONFormatting: Bool {
+        _ = commandStateRevision
+        guard let controller = keyJSONController,
+              let document = controller.model.activeDocument
+        else { return false }
+        guard let session = controller.jsonAnalysisSessionForActiveTab else { return false }
+        guard let result = session.result else { return false }
+        return result.isValid && result.text == document.text
+    }
+
+    /// Formats the key window's active JSON document.
+    /// Returns `false` when any guard fails or the document is invalid.
+    @discardableResult
+    func performJSONFormatting(sortKeys: Bool) async -> Bool {
+        guard let controller = keyJSONController,
+              let document = controller.model.activeDocument,
+              let textSystem = controller.activeEditorTextSystem
+        else { return false }
+
+        let snapshotText = textSystem.text
+        let baseline = JSONFormattingBaseline(
+            text: snapshotText,
+            documentGeneration: document.mutationGeneration,
+            editorContentRevision: textSystem.contentRevision,
+            options: JSONFormatOptions(sortKeys: sortKeys)
+        )
+
+        // Compute off the main actor; the result is pure and Sendable.
+        let outcome = await Task.detached(priority: .userInitiated) {
+            JSONFormatter.format(snapshotText, options: baseline.options)
+        }.value
+
+        // Reject stale completions: the document or editor moved past the
+        // baseline while formatting ran.
+        guard let currentDocument = controller.model.activeDocument,
+              let currentSystem = controller.activeEditorTextSystem,
+              baseline.accepts(
+                  text: currentSystem.text,
+                  documentGeneration: currentDocument.mutationGeneration,
+                  editorContentRevision: currentSystem.contentRevision
+              )
+        else { return false }
+
+        switch outcome {
+        case .invalid:
+            // Invalid JSON produces a diagnostic and no formatting; the
+            // commands are disabled in this state anyway.
+            return false
+        case let .formatted(formattedText):
+            // Deterministic formatting of an already-formatted document
+            // changes nothing: skip the edit so no undo entry, binding
+            // publication, or dirty transition occurs.
+            guard formattedText != snapshotText else { return true }
+            currentSystem.applyDocumentReplacement(
+                formattedText,
+                undoActionName: sortKeys ? "Format JSON with Sorted Keys" : "Format JSON"
+            )
+            return true
+        }
+    }
+
+    /// The key window's controller whose active document is JSON and whose
+    /// editor text system exists.
+    private var keyJSONController: WindowController? {
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
+              controller.model.activeDocument?.format.id == "json",
+              controller.activeEditorTextSystem != nil
+        else { return nil }
+        return controller
+    }
+}
+
 private extension WindowController {
     /// The editor text system of the active tab, if one exists yet.
     var activeEditorTextSystem: EditorTextSystem? {
         guard let activeTab = model.tabStore.activeTab else { return nil }
         return editorStore.existingSystem(for: activeTab.id.uuidString)
+    }
+
+    /// The JSON analysis session of the active tab, if one exists yet.
+    var jsonAnalysisSessionForActiveTab: JSONAnalysisSession? {
+        guard let activeTab = model.tabStore.activeTab else { return nil }
+        return jsonAnalysisStore.existingSession(for: activeTab.id.uuidString)
     }
 }

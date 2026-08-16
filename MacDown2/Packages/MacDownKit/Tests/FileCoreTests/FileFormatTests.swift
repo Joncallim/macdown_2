@@ -8,14 +8,26 @@ import UniformTypeIdentifiers
     let format = registry.formats.first { $0.id == "markdown" }
     #expect(format != nil)
     #expect(format?.extensions.contains("md") == true)
-    #expect(format?.previewCapability == .rendered)
+    #expect(format?.previewCapability == .markdown)
+    #expect(format?.defaultPreviewMode == .rendered)
     #expect(format?.utType == UTType(filenameExtension: "md"))
 }
 
 @Test func registryIncludesHTMLAndJSON() {
     let registry = FileFormatRegistry()
-    #expect(registry.formats.first { $0.id == "html" }?.previewCapability == .rendered)
-    #expect(registry.formats.first { $0.id == "json" }?.previewCapability == .toggleable)
+    #expect(registry.formats.first { $0.id == "html" }?.previewCapability == .htmlSourceAndRendered)
+    #expect(registry.formats.first { $0.id == "html" }?.supportedPreviewModes == [.source, .rendered])
+    #expect(registry.formats.first { $0.id == "json" }?.previewCapability == .jsonOutline)
+    #expect(registry.formats.first { $0.id == "json" }?.defaultPreviewMode == .outline)
+}
+
+@Test func sourceOnlyFormatsDeclareNoCapability() {
+    let registry = FileFormatRegistry()
+    for format in registry.formats where !["markdown", "html", "json"].contains(format.id) {
+        #expect(format.previewCapability == .none, "\(format.id) must not inherit a renderer")
+        #expect(format.defaultPreviewMode == nil)
+        #expect(format.supportedPreviewModes.isEmpty)
+    }
 }
 
 @Test func formatForURLUsesPathExtension() {

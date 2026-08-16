@@ -1,5 +1,6 @@
 import EditorCore
 import Highlighting
+import JSONSupport
 import MarkdownEngine
 import OutlineUI
 import Preview
@@ -52,6 +53,7 @@ private func contentAreaPreview(
         editorStore: EditorTextSystemStore(),
         highlightStore: SyntaxHighlightStore(),
         parseStore: MarkdownParseStore(),
+        jsonAnalysisStore: JSONAnalysisStore(),
         themeController: ThemeController(),
         outlineController: OutlineController(),
         externalFileController: ExternalFileController(

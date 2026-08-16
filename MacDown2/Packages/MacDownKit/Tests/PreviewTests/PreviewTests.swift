@@ -25,11 +25,24 @@ struct PreviewRouterTests {
         #expect(PreviewRouter.previewKind(for: html ?? plaintextFallback()) == .html)
     }
 
-    @Test func jsonPreviewIsToggleable() {
+    @Test func jsonRoutesToOutline() {
         let formats = FileFormatRegistry.defaultFormats
         let json = formats.first { $0.id == "json" }
         #expect(json != nil)
-        #expect(PreviewRouter.previewKind(for: json ?? plaintextFallback()) == .none)
+        #expect(PreviewRouter.previewKind(for: json ?? plaintextFallback()) == .jsonOutline)
+        #expect(PreviewRouter.defaultPreviewMode(for: json ?? plaintextFallback()) == .outline)
+    }
+
+    @Test func htmlDefaultModeIsRenderedAndSourceIsSupported() {
+        let formats = FileFormatRegistry.defaultFormats
+        let html = formats.first { $0.id == "html" }
+        #expect(html != nil)
+        let htmlFormat = html ?? plaintextFallback()
+        #expect(PreviewRouter.previewKind(for: htmlFormat) == .html)
+        #expect(PreviewRouter.defaultPreviewMode(for: htmlFormat) == .rendered)
+        #expect(PreviewRouter.supports(.source, for: htmlFormat))
+        #expect(PreviewRouter.supports(.rendered, for: htmlFormat))
+        #expect(!PreviewRouter.supports(.outline, for: htmlFormat))
     }
 
     @Test func plaintextHasNoPreview() {
@@ -37,6 +50,7 @@ struct PreviewRouterTests {
         let plaintext = formats.first { $0.id == "plaintext" }
         #expect(plaintext != nil)
         #expect(PreviewRouter.previewKind(for: plaintext ?? plaintextFallback()) == .none)
+        #expect(PreviewRouter.defaultPreviewMode(for: plaintext ?? plaintextFallback()) == nil)
     }
 }
 

@@ -3,4 +3,8 @@
 --commas always
 # --commas always keeps SwiftFormat aligned with .swiftlint.yml's
 # `trailing_comma: mandatory_comma: true` rule.
+# SwiftLint's `opening_brace` requires same-line braces; SwiftFormat's
+# `wrapMultilineStatementBraces` would move them to the next line, so disable
+# it to keep the two tools agreeing.
+--disable wrapMultilineStatementBraces
 --exclude MacDown2/MacDown2.xcodeproj,MacDown2/Packages/MacDownKit/.build

@@ -32,7 +32,9 @@ struct GrammarRegistryTests {
 
     @Test func languageProviderReturnsNilForUnknown() {
         let provider = registry.languageProvider
-        #expect(provider("swift") == nil)
+        // "swift" is a shipped grammar since EPIC-11 Gate 5; use a genuinely
+        // unregistered id.
+        #expect(provider("klingon") == nil)
     }
 
     @Test func supportedLanguageIDsAreTracked() {

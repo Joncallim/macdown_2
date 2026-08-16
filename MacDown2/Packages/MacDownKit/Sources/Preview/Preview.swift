@@ -17,19 +17,46 @@ public enum PreviewModule {
 public enum PreviewKind: Sendable, Equatable {
     case markdown
     case html
+    case jsonOutline
     case none
 }
 
-/// Routes `FileFormat` to the preview kind used by the content area.
+/// Routes `FileFormat`'s typed `PreviewCapability` to the preview kind used
+/// by the content area. A format never silently inherits another format's
+/// renderer: capabilities without a registered kind degrade to `.none`.
 public enum PreviewRouter {
     public static func previewKind(for format: FileFormat) -> PreviewKind {
-        switch format.id {
-        case "markdown":
+        switch format.previewCapability {
+        case .markdown:
             .markdown
-        case "html":
+        case .htmlSourceAndRendered:
             .html
-        default:
-            format.previewCapability == .rendered ? .markdown : .none
+        case .jsonOutline:
+            .jsonOutline
+        case .none:
+            .none
         }
+    }
+
+    /// The mode the preview pane should start in for this format. Falls back
+    /// to `.rendered` for rendered capabilities when the format omits an
+    /// explicit default.
+    public static func defaultPreviewMode(for format: FileFormat) -> PreviewMode? {
+        if let defaultPreviewMode = format.defaultPreviewMode {
+            return defaultPreviewMode
+        }
+        switch format.previewCapability {
+        case .markdown, .htmlSourceAndRendered:
+            return .rendered
+        case .jsonOutline:
+            return .outline
+        case .none:
+            return nil
+        }
+    }
+
+    /// Whether `mode` is a valid preview display mode for this format.
+    public static func supports(_ mode: PreviewMode, for format: FileFormat) -> Bool {
+        format.supportedPreviewModes.contains(mode)
     }
 }
