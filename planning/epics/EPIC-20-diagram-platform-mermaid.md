@@ -3,70 +3,75 @@
 
 ## Owner summary
 
-MacDown 2 should let a user describe a diagram as clean text inside Markdown and see a polished vector diagram in preview. The Markdown file remains readable, diffable and source-control friendly; the visual result is derived by the app.
+MacDown 2 should let a user describe a diagram as clean text inside Markdown and see a polished vector diagram in preview. The Markdown file remains readable, diffable and source-control friendly; the visual result is locally derived by the app.
 
 This epic builds the reusable diagram platform and proves it with one production-quality renderer: Mermaid. Later diagram languages must plug into this platform rather than inventing separate rendering systems.
 
+Mermaid rendering is a first-party local/offline capability. Difficulty integrating a local renderer is not permission to upload document/diagram source to a hosted service.
+
 ## Problem
 
-Technical documents often need architecture, process, sequence and state diagrams. Today those diagrams are usually created in another app and pasted in as opaque images, which separates the visual from its source and makes review/version control worse.
+Technical documents often need architecture, process, sequence and state diagrams. External drawing tools separate the visual from its source and make review/version control worse. A hosted renderer would preserve text source but weaken the product's local-first/privacy model.
 
 ## Intended outcome
 
-A user can write a fenced Mermaid block, see a high-quality SVG diagram in preview, receive useful errors when the diagram source is invalid, navigate between source and rendered output, and export the same diagram cleanly to HTML/PDF or as a standalone vector asset.
+A user can write a fenced Mermaid block, see a high-quality SVG diagram in preview, receive useful local errors, navigate between source and rendered output, and export the same diagram through the E12/E14 shared derived-content path to HTML/PDF or as a standalone vector asset — all without requiring a network connection.
 
 ## Representative user journeys
 
-1. **Create:** type a `mermaid` fenced block for a flowchart and see the rendered diagram update in the preview.
-2. **Correct an error:** introduce invalid Mermaid syntax, see a local diagnostic associated with that block, fix the text, and see the diagram recover automatically.
-3. **Navigate:** click/select the rendered diagram and jump to its source block; edit the block and retain stable source ↔ preview identity where possible.
-4. **Reuse:** copy/export the diagram as SVG and use it outside MacDown 2 without rasterisation.
-5. **Export:** export the whole Markdown document to HTML/PDF and preserve the rendered diagram.
-6. **Edit at scale:** type elsewhere in a document containing many unchanged diagrams without re-rendering every block or blocking the main thread.
+1. **Create:** type a `mermaid` fenced block and see it update in preview.
+2. **Work offline:** disconnect networking and retain first-party Mermaid preview/copy/export behaviour.
+3. **Correct an error:** invalid Mermaid syntax yields a block-local diagnostic; fixing source restores the diagram.
+4. **Navigate:** click/select the rendered diagram and jump to its source block with stable identity across nearby edits where possible.
+5. **Reuse:** copy/export SVG without rasterisation.
+6. **Export:** export the whole Markdown document to HTML/PDF through the same derived-content result used by Preview.
+7. **Edit at scale:** type elsewhere in a document containing many unchanged diagrams without re-rendering every block or blocking the main actor.
 
 ## Scope
 
-- A first-class diagram block model for supported fenced code blocks.
-- A renderer abstraction with explicit inputs, outputs, diagnostics, cancellation and capability metadata.
+- First-class diagram block model for supported fenced code blocks.
+- Renderer abstraction with explicit inputs, renderer-neutral outputs, diagnostics, cancellation and capability metadata aligned with E14.
 - Mermaid as the first production renderer.
-- Derived SVG as the canonical rendered artefact for preview/export where the selected renderer permits it.
+- Local/offline Mermaid execution; no document/diagram upload for first-party rendering.
+- Derived SVG as canonical rendered artefact where supported, consumed by Preview/Export adapters rather than separate renderer implementations.
 - Off-main rendering, cancellation/stale-result suppression and lifecycle teardown.
-- Cache by stable inputs such as source + renderer version + theme/options; cache policy/limits are fixed during architecture.
-- Local error UI that degrades only the affected diagram block.
+- Cache keyed by stable inputs such as source + renderer version + theme/options; architecture fixes limits/eviction.
+- Local error UI that degrades only the affected block.
 - Source-range identity and source ↔ preview navigation.
 - Focused/larger diagram preview for detailed diagrams.
-- Copy/export SVG; raster export may be included only if it falls out cleanly from the same pipeline.
-- Theme-aware diagram rendering where Mermaid supports it without compromising source fidelity.
-- HTML/PDF export integration.
-- Accessibility labelling for rendered diagrams and useful source fallback.
-- Adversarial fixtures including malformed syntax, deeply nested graphs, very large diagrams and rapid source changes.
+- Copy/export SVG; raster export only if it falls out cleanly from the same pipeline.
+- Theme-aware rendering where Mermaid supports it without source-fidelity compromise.
+- HTML/PDF export through E12's destination contract.
+- Accessibility labelling/useful source fallback.
+- Adversarial fixtures: malformed syntax, deeply nested/very large diagrams, rapid source changes, renderer failure/timeout and cache corruption.
 
 ## Explicit non-goals
 
-- D2, Graphviz/DOT or WaveDrom; those are E21 after this architecture is proven.
-- Drag-and-drop visual diagram authoring.
-- A Figma/Visio-style canvas.
-- Full electronic design automation (EDA), PCB capture or simulation.
+- D2, Graphviz/DOT or WaveDrom; E21 evaluates those after this platform is proven.
+- Drag-and-drop visual authoring or a Figma/Visio-style canvas.
+- Full EDA/PCB capture/simulation.
 - PlantUML or TikZ in v1.
-- A generic third-party renderer marketplace; E14 owns the extension design and later releases may expose more of the internal seam.
+- Generic third-party renderer marketplace.
+- Hosted/cloud Mermaid rendering.
 
 ## User-visible acceptance criteria
 
-- [ ] `mermaid` fenced blocks render as diagrams in the native Markdown preview without turning the Markdown preview into a web view.
-- [ ] Rendered output is crisp vector output at arbitrary preview/export scale where Mermaid permits it.
-- [ ] Invalid source produces a useful block-local diagnostic and does not break the rest of the document.
+- [ ] `mermaid` fences render in native Markdown preview without turning Markdown preview into a web page.
+- [ ] First-party Mermaid preview/export works with networking unavailable and transmits no document/diagram source externally.
+- [ ] Output is crisp vector content at preview/export scale where Mermaid permits it.
+- [ ] Invalid source produces a useful block-local diagnostic without breaking the document.
 - [ ] Fixing invalid source automatically restores the diagram.
-- [ ] Source ↔ preview navigation continues to identify the correct diagram after nearby edits.
-- [ ] Repeated edits cancel or supersede stale work; an old render never replaces a newer diagram.
+- [ ] Source ↔ preview navigation remains correct after nearby edits.
+- [ ] Repeated edits cancel/supersede stale work; old output never replaces newer source.
 - [ ] Unchanged diagrams are not unnecessarily re-rendered during ordinary typing.
-- [ ] A user can copy/export a rendered diagram as SVG.
-- [ ] HTML and PDF exports preserve diagrams with visually reviewed output.
-- [ ] The durable document representation remains ordinary Markdown text; cached SVG is disposable derived data.
+- [ ] User can copy/export SVG.
+- [ ] HTML/PDF export consumes the shared E12/E14 derived result rather than a parallel Mermaid exporter.
+- [ ] Durable document remains ordinary Markdown text; cached SVG is disposable.
 
 ## Release placement
 
-E20 runs after E14 provides the contribution seam and after E12 establishes export. It establishes the diagram architecture before E21 adds further technical languages. Both E20 and E21 complete before E15's whole-app polish.
+E20 runs after E12/E14 establish export/contribution seams. It proves the diagram architecture before E21 evaluates additional renderers. Both complete before the feature-complete/E15 gate.
 
 ## Architecture gate
 
-Implementation must not begin until `planning/EPIC_STANDARD.md`'s Definition of Ready is satisfied and a current-master `planning/epic-20-implementation.md` has been reviewed. The architecture pass must verify the Mermaid execution model, security boundary, renderer protocol, SVG handling, cache limits, stale-result rules, source identity, export integration and real-app performance budget.
+Implementation must not begin until `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md` are satisfied and a current-master `planning/epic-20-implementation.md` is reviewed. Architecture must verify Mermaid's local execution model, licensing/security boundary, renderer protocol, SVG handling, cache limits, stale-result rules, source identity, shared export integration and real-app Release performance.
