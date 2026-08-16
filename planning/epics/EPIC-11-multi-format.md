@@ -27,6 +27,7 @@ The app already presents itself as a workspace-style Markdown **and code** edito
 - **Other languages**: complete the grammar/format registry for the supported v1 set. The implementation architecture must reconcile the actual E05 registry and dependency state before choosing exact grammar packages.
 - **Preview routing**: format capability decides Markdown preview, HTML rendered view, JSON outline/no-preview, or clean no-preview information. Non-Markdown files must not be fully Markdown-parsed merely because the parser is already present.
 - **Save As / format transition** behaviour updates highlighting, editing capabilities and preview routing without reopening the document.
+- Preserve the text-fidelity/local-offline invariants in `planning/RELEASE_HARDENING.md`; HTML preview must not turn ordinary local editing into an external network requirement.
 
 ## Explicit non-goals
 
@@ -41,16 +42,21 @@ The app already presents itself as a workspace-style Markdown **and code** edito
 
 - [ ] Invalid JSON shows a useful line/column diagnostic and fixing the source clears it promptly.
 - [ ] JSON pretty-print is one undoable edit and the JSON outline navigates correctly.
-- [ ] HTML source can be switched to a deliberately sandboxed rendered view with documented local-resource behaviour.
+- [ ] HTML source can be switched to a deliberately sandboxed rendered view with documented local-resource/network behaviour.
 - [ ] `.tex`/`.latex` files are recognised as LaTeX/TeX source, receive appropriate highlighting and never enter the Markdown preview/parser path accidentally.
 - [ ] Every registered extension opens with its intended highlighting/capabilities or a clear no-preview state containing useful format information.
 - [ ] Save As between formats updates active behaviour without requiring app restart/reopen.
 - [ ] Large non-Markdown files do not perform a full Markdown parse on every edit when no Markdown-derived feature consumes that result.
+- [ ] Format editing/Save As does not gratuitously normalise unrelated encoding/line-ending/final-newline state outside the explicit file-format contract.
 
 ## Release placement
 
 E11 completes general format behaviour before E12 export and before the technical-writing feature epics. `.tex` editing is intentionally lightweight; E19 adds equation rendering to Markdown without waiting for a full TeX compiler.
 
+## Architecture reconciliation requirement
+
+The open E11 architecture PR (#43) predates the 2026-08-16 product/release-contract changes. It is **not binding for implementation until refreshed** against the current `master`, this revised E11 contract, `planning/EPIC_STANDARD.md`, `planning/RELEASE_HARDENING.md`, issue #35 and any other relevant live follow-ups.
+
 ## Architecture gate
 
-E11 must satisfy `planning/EPIC_STANDARD.md` before implementation begins. Its current-master architecture pass must reconcile issue #35 (non-Markdown files being unnecessarily Markdown-parsed), verify the exact v1 format/grammar set and pin the security/lifecycle contract for the HTML `WKWebView`.
+E11 must satisfy both `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md` before implementation begins. The refreshed current-master architecture must verify the exact v1 format/grammar set, text-fidelity behaviour and HTML `WKWebView` security/resource/navigation/lifecycle contract.
