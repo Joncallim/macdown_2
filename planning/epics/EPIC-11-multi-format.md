@@ -1,87 +1,71 @@
-> **Title:** [EPIC-11] Multi-format support: JSON tools, HTML preview toggle, language registry completion
+> **Title:** [EPIC-11] Multi-format support: JSON tools, HTML preview, LaTeX source and language registry
 > **Labels:** `epic`, `formats` · **Milestone:** M4 — Workspace & formats · **Depends on:** E05, E07
 
-## Context
+> **As-built status:** Implemented and merged (issue #12). The delivered scope
+> covers JSON tooling (strict parser with UTF-16 diagnostics and a 64-level
+> depth policy, deterministic formatting, source-neutral outline), the
+> hardened HTML source ↔ rendered preview (CSP header enforcement, scoped
+> subresources), and completion of the language/highlighting registry (16
+> formats). LaTeX/TeX source recognition in this document's amended scope was
+> **not** implemented in the merge and is tracked as a follow-up; the binding
+> engineering contract is `../epic-11-implementation.md`.
 
-> **As-built status:** A thorough orthogonal planning pass is recorded in
-> [`../epic-11-implementation.md`](../epic-11-implementation.md). Epic 11 has
-> no production implementation PR yet; implementation must follow its
-> sequential gates and security contracts.
+## Owner summary
 
-Beyond Markdown (user requirement): JSON gets real tooling, HTML gets a
-rendered view, and all remaining registered languages get a polished
-highlight-only experience.
+MacDown 2 should be a good text editor even when the active file is not Markdown. E11 completes that baseline: JSON gets useful structured tooling, HTML gets an explicit rendered view, LaTeX/TeX source becomes a recognised technical text format, and the remaining supported code/text extensions get correct syntax highlighting and a clear no-preview state.
+
+This epic does **not** compile full LaTeX documents. First-class mathematical notation inside Markdown is E19.
+
+## Problem
+
+The app already presents itself as a workspace-style Markdown **and code** editor, but partial format registration is not enough. A user opening JSON, HTML, TeX or common source files should receive deliberate behaviour rather than accidental Markdown parsing or an ambiguous empty preview.
+
+## Representative user journeys
+
+1. **JSON:** open invalid JSON, see the exact error location, fix it, pretty-print it as one undoable edit, and navigate its outline.
+2. **HTML:** edit an HTML file and explicitly switch between source and its sandboxed rendered view.
+3. **LaTeX source:** open `.tex`/`.latex` source, receive correct format recognition and syntax highlighting, edit commands/comments/braces as text, and see a clear "no native document preview" state rather than Markdown behaviour.
+4. **Other source:** open a registered Python/YAML/Swift/etc. file and receive the correct language highlighting and format information without paying for an unused Markdown parse path.
+5. **Save As:** change a document extension/format and have the active parser/highlighter/preview capabilities update consistently.
 
 ## Scope
 
-- **JSON**: validation on debounce with typed diagnostics, UTF-16 editor
-  ranges, and malformed-byte diagnostics; pretty-print/format command;
-  collapsible outline in the content browser (reuses the E08 slot through a
-  format-neutral outline adapter); sort-keys option on format. Duplicate
-  keys are rejected with a stable diagnostic and never silently merged.
-- **Encoding**: `FileStore`/`FileSnapshot` capture immutable text plus the
-  transient raw bytes used to derive the existing `FileRevision.sha256` string,
-  typed BOM, encoding metadata, and revision atomically; raw bytes are not
-  retained in `FileSnapshot`/`FileDocument`. Malformed
-  bytes return `FileStoreError.decodingFailed([FileDecodingDiagnostic])` with
-  zero-based offsets and preserve the prior document/recovery state. Markdown,
-  JSON, HTML, and source-only formats preserve detected encoding/BOM and use
-  UTF-8 without BOM for new documents. Ordinary save, recovery, external
-  replacement, and Save As preserve that metadata; Save As changes it only
-  through an explicit destination encoding override.
-- **HTML**: source ↔ rendered toggle in the preview pane. The existing
-  app-owned `WKWebView` host remains in `DocumentEditorSplitView` for this
-  Epic; `Preview` owns policy/request types. v1 disables scripts and denies
-  network access, navigation, popups, downloads, forms, storage, and bridges;
-  live-ish reload occurs on save, not per keystroke.
-- **Other languages**: complete the grammar registry. *Amended at #28: E05
-  shipped `markdown`, `markdown_inline`, `json`, `html` only. The remaining
-  planned grammars (css, javascript, typescript, python, yaml, toml, swift,
-  bash, sql, xml, ruby, c, cpp) land here — each is one `case` in
-  `GrammarRegistry.buildConfiguration(for:)` + `knownLanguageIDs` and one
-  pinned SPM package (or a vendored local package with canonical-capture
-  queries, following the `Packages/TreeSitterMarkdown` pattern when upstream
-  SPM packaging is missing/broken).* Ensure the preview pane shows a clean
-  "no preview" state with format info (line count, language, encoding)
-- Preview router generalizes: per-format `PreviewCapability` honored in UI
+- **JSON**: validation on debounce with useful line/column diagnostics, pretty-print/format command, collapsible outline in the content browser, optional sort-keys behaviour if retained by the implementation architecture.
+- **HTML**: source ↔ rendered toggle in the preview pane. Rendered HTML uses a sandboxed `WKWebView`; HTML is the deliberate web-preview exception and does not change D4 for Markdown.
+- **LaTeX/TeX source**: register `.tex` and `.latex` (plus any additional conventional extension only if verified during architecture), add appropriate syntax highlighting, and expose format metadata/no-preview behaviour. Editor pairing/indent behaviour may reuse safe generic text editing behaviour but E11 does not build a TeX language server or compiler.
+- **Other languages**: complete the grammar/format registry for the supported v1 set. The implementation architecture must reconcile the actual E05 registry and dependency state before choosing exact grammar packages.
+- **Preview routing**: format capability decides Markdown preview, HTML rendered view, JSON outline/no-preview, or clean no-preview information. Non-Markdown files must not be fully Markdown-parsed merely because the parser is already present.
+- **Save As / format transition** behaviour updates highlighting, editing capabilities and preview routing without reopening the document.
+- Preserve the text-fidelity/local-offline invariants in `planning/RELEASE_HARDENING.md`; HTML preview must not turn ordinary local editing into an external network requirement.
 
-## Deliverables
+## Explicit non-goals
 
-1. JSON validator + formatter + outline model, unit-tested (incl. ports of
-   `MPHTMLTabularizeTests` ideas → JSON outline tests)
-2. HTML preview toggle and security policy using the existing app-owned
-   WKWebView host; `Preview` owns typed policy/request contracts
-3. Format registry completeness check + snapshot tests per format
+- Full LaTeX compilation or PDF generation from `.tex` source.
+- TeX distribution/package management, BibTeX/Biber, `\documentclass` workflow or Overleaf-style projects.
+- First-class Markdown math rendering (E19).
+- JSON Schema validation.
+- HTML-specific editing assists beyond safe general text editing.
+- Language-server-protocol integrations.
 
-## Acceptance criteria
+## User-visible acceptance criteria
 
-- [ ] Invalid JSON shows typed error line/column and UTF-16 range within the
-      150 ms debounce; malformed UTF-8 reports a byte-offset decoding diagnostic
-- [ ] UTF-16 ranges match editor selections at astral, combining-mark, and CRLF
-      boundaries
-- [ ] Pretty-print is a single undo-able edit
-- [ ] JSON outline collapses/expands and jumps like the MD outline; duplicate
-      keys reject without publishing an outline
-- [ ] HTML toggle renders approved local relative resources through the
-      app-owned WKWebView; scripts, network/navigation, popups, downloads, and
-      bridges are denied
-- [ ] BOM/encoding metadata survives load, edit, recovery, ordinary save, and
-      Save As; only an explicit destination encoding override changes it
-- [ ] Every registered extension opens with correct highlighting or a clean
-      no-preview state
+- [ ] Invalid JSON shows a useful line/column diagnostic and fixing the source clears it promptly.
+- [ ] JSON pretty-print is one undoable edit and the JSON outline navigates correctly.
+- [ ] HTML source can be switched to a deliberately sandboxed rendered view with documented local-resource/network behaviour.
+- [ ] `.tex`/`.latex` files are recognised as LaTeX/TeX source, receive appropriate highlighting and never enter the Markdown preview/parser path accidentally.
+- [ ] Every registered extension opens with its intended highlighting/capabilities or a clear no-preview state containing useful format information.
+- [ ] Save As between formats updates active behaviour without requiring app restart/reopen.
+- [ ] Large non-Markdown files do not perform a full Markdown parse on every edit when no Markdown-derived feature consumes that result.
+- [ ] Format editing/Save As does not gratuitously normalise unrelated encoding/line-ending/final-newline state outside the explicit file-format contract.
 
-The acceptance criteria are gated by the implementation plan. JSON formatting
-must use the native one-edit/undo/publication path; HTML resource and
-navigation policy must be explicit and tested; grammar packages must be pinned
-and proven individually; and all asynchronous results must be generation-
-checked before publication.
+## Release placement
 
-## Out of scope
+E11 completes general format behaviour before E12 export and before the technical-writing feature epics. `.tex` editing is intentionally lightweight; E19 adds equation rendering to Markdown without waiting for a full TeX compiler.
 
-JSON Schema validation, HTML source editing assists (v1.x).
+## Architecture reconciliation requirement
 
-## Notes
+The open E11 architecture PR (#43) predates the 2026-08-16 product/release-contract changes. It is **not binding for implementation until refreshed** against the current `master`, this revised E11 contract, `planning/EPIC_STANDARD.md`, `planning/RELEASE_HARDENING.md`, issue #35 and any other relevant live follow-ups.
 
-The WKWebView remains deliberate and scoped to HTML — Markdown never touches
-it (D4), and the host remains app-owned for this Epic rather than moving into
-the `Preview` package.
+## Architecture gate
+
+E11 must satisfy both `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md` before implementation begins. The refreshed current-master architecture must verify the exact v1 format/grammar set, text-fidelity behaviour and HTML `WKWebView` security/resource/navigation/lifecycle contract.
