@@ -4,30 +4,31 @@
 > **Epic:** #13 — `[EPIC-12] Export: HTML + PDF, templates, themes and derived-content contract`
 > **Baseline:** `master` at `8d22f0e740a31b1d0afb64c5b781f7e983df50a1`
 > **Architecture date:** 2026-08-17
-> **Review status:** Final adversarial architecture pass incorporated; no production E12 implementation may precede Slice 0
+> **Review status:** Final adversarial pass complete; implementation begins with Slice 0 only
 
 ## Owner summary
 
-Epic 12 will implement one local/offline export composition pipeline for Markdown. The pipeline prepares one complete HTML document, then either writes that document as HTML or prints that same document to PDF through a narrowly isolated macOS adapter. PDF does not get a second Markdown renderer.
+Epic 12 implements one local/offline Markdown export pipeline. It prepares one complete HTML document, then either writes that document as HTML or prints that **same prepared document** to PDF through an isolated macOS adapter. PDF does not get a second Markdown renderer.
 
-The architecture deliberately keeps policy in a small number of owners and removes caller choices that do not exist in the product. In particular:
+The final pass deliberately removes choices that the product does not need and fixes every implementation decision at one owner:
 
-- the app supplies the current editor text, current `FileDocument.mutationGeneration`, file URL, parse options, selected theme, destination and any renderer-neutral derived results;
-- `ExportService` derives metadata policy, resource root, template selection, output layout, cmark configuration and production resource limits internally;
-- `swift-cmark` is the only Markdown-to-HTML engine used by E12, behind one internal adapter;
-- themes remain theme data; E12 derives CSS from existing theme tokens rather than storing per-theme export stylesheets;
-- resource references are resolved once through one manifest, one containment policy and one content-addressing policy;
-- future E14/E19-E21 output enters through one generic source-range contract. It supports both **inline** and **block** replacements, so inline math does not force a later E12 redesign;
-- derived source coordinates use the original document's UTF-16 coordinate space and `UInt` document generation. cmark source positions are not treated as document identity;
-- successful derived ranges are replaced with deterministic sentinels before cmark parses the Markdown, then converted to cmark custom nodes. This prevents future math/diagram syntax from being accidentally interpreted as Markdown and lets the normal cmark renderer remain the only HTML renderer;
-- companion resources use full SHA-256 content addresses. Output ownership is recorded in one versioned manifest. New resources are materialised before the primary HTML is replaced; cleanup can delete only resources explicitly owned by the previous manifest;
-- self-contained HTML is a real closure guarantee. It embeds managed CSS/assets and refuses authored raw HTML or unresolved resource-bearing references that E12 cannot prove self-contained;
-- PDF uses the same prepared HTML and managed resources through a locked-down local URL scheme. JavaScript, network loading, navigation, downloads and popups are disabled;
-- there are no language-name switches for math, Mermaid, Graphviz, D2, WaveDrom or any future renderer in E12.
+- the app supplies current editor text, saved file URL if any, `FileDocument.mutationGeneration`, parse options, selected theme, target and renderer-neutral derived results;
+- `ExportService` derives resource root, metadata behaviour, output layout, built-in template, cmark configuration and production budgets;
+- `swift-cmark` 0.8.0 is the sole Markdown-to-HTML engine in E12 and is hidden behind one adapter;
+- cmark GFM extensions are configured **before parser feed/finish**; render policy is configured separately;
+- authored raw HTML is preserved for ordinary HTML/PDF with cmark `UNSAFE + tagfilter`, but Markdown link/image nodes receive an explicit centralized dangerous-URL policy because `CMARK_OPT_UNSAFE` also disables cmark's normal dangerous-link scrub;
+- themes stay as theme data; E12 maps existing theme tokens to CSS variables and one bundled structural stylesheet;
+- resources use one resolver, one transient manifest builder and one immutable final `ExportManifest`;
+- durable companion filenames are exactly `<full-sha256>.<canonical-extension>` and resource identity is `(sha256(bytes), canonical media type)` so MIME handling never depends on first-seen order;
+- a valid ownership marker makes `report.assets` an E12-managed directory and reserves the content-address filename namespace; files outside that reserved namespace are never touched;
+- future E14/E19-E21 output enters through one generic source-range seam supporting **inline and block** placement. E19 inline math therefore does not require redesigning E12;
+- derived identity uses the original source's UTF-16 coordinate space plus the source `UInt` generation. cmark source-position metadata is not used as durable identity;
+- successful derived source is replaced by deterministic sentinels before cmark parses it, then sentinels become cmark custom inline/block nodes. This prevents future TeX/diagram syntax from being accidentally reparsed as Markdown while preserving the one-renderer rule;
+- self-contained HTML is a real closure contract for E12-visible resources: managed CSS/assets are embedded, authored raw HTML is rejected, and unresolved/remote resource-bearing references are rejected;
+- PDF uses the same prepared HTML/resources through a manifest-only local URL scheme in locked-down WebKit with JavaScript/network/navigation/download/popups disabled;
+- E12 contains no math/Mermaid/Graphviz/D2/WaveDrom branch, no global export singleton and no caller-supplied arbitrary layout/policy object.
 
-The final architecture pass removed four avoidable sources of implementation ambiguity from the previous draft: caller-supplied output layouts/budgets/metadata policy, an `Int` revision disconnected from `FileDocument.mutationGeneration`, duplicate resource state in `PreparedExportDocument`, and a complete-block-only derived contract that was incompatible with E19 inline math.
-
-This document follows `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md`. Where this document says **must**, implementation workers should treat the statement as a contract rather than a suggestion.
+This document is the implementation contract required by `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md`. A worker should not make a new architectural choice where this document already fixes one.
 
 ---
 
@@ -35,87 +36,68 @@ This document follows `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENIN
 
 ### Binding current-master facts
 
-1. `MarkdownEngine.ParseEngine` is the only package implementation allowed to import `Markdown`/`Yams` for the app's renderer-neutral parse snapshot. Export must keep using `ParseExecuting` for the fresh E06 parse and must not leak `swift-markdown` types outside `MarkdownEngine`.
-2. `MarkdownDocument` contains the body without front matter, `bodyLineOffset`, original-source `SourceMap`, block ranges, front matter, the parse revision and the actual `MarkdownParseOptions` used for that parse.
-3. `FileDocument.mutationGeneration` is `UInt`. E12 must preserve this type at the app/export boundary rather than inventing an unrelated `Int` revision. Only the call into `ParseExecuting` converts it to `Int`, using an exact conversion.
-4. `ThemeController`/`Theme` are the current theme source of truth. E12 must not add a parallel export-theme model.
-5. E11's WebKit security policy demonstrates the required local/offline posture but belongs to Preview. Export must not depend on the Preview module. E12 owns an export-specific resource scope and the app-owned PDF host owns the PDF WebKit policy.
-6. `ExportService` already exists as a MacDownKit target and currently depends on `MarkdownEngine` and `Themes`.
-7. The migration plan deliberately selected `swiftlang/swift-cmark` 0.8.x for cmark HTML export. Slice 0 pins **exactly 0.8.0** and proves the C API/lifetime surface before any HTML composition work.
-8. `swift-cmark`/cmark-gfm custom inline/block nodes are the intended AST post-processing seam for non-CommonMark derived output. E12 uses them only internally after parsing; no dynamic cmark plugin registry is introduced.
-9. E14 owns contribution discovery/lifecycle/isolation. E12 owns only the export destination contract. E19 explicitly requires inline and display math; E20 requires block-oriented SVG diagrams. Therefore the E12 destination must support both source placements without knowing their languages.
-10. Open issue #35 allows non-Markdown formats into the Markdown parse path. E12 does not fix that issue. The E12 export command is enabled only for Markdown documents until each other format owns an export adapter.
+1. `MarkdownEngine.ParseEngine` owns the app's renderer-neutral Markdown/front-matter parse. Export continues to call injected `ParseExecuting`; it does not leak `swift-markdown` types outside `MarkdownEngine`.
+2. `MarkdownDocument` already contains `body`, `bodyLineOffset`, original-source `SourceMap`, blocks, front matter, parse revision and the actual `MarkdownParseOptions` used for the parse.
+3. `FileDocument.mutationGeneration` is `UInt`. E12 preserves that type at its boundary and exact-converts only at the `ParseExecuting` call, whose current revision parameter is `Int`.
+4. `ThemeController`/`Theme` are the theme source of truth. E12 must not add export-theme models or duplicated palettes.
+5. E11 demonstrates a local/offline WebKit posture, but Preview owns its implementation. `ExportService -> Preview` is forbidden.
+6. `ExportService` already exists in MacDownKit and currently depends on `MarkdownEngine` and `Themes`.
+7. The migration plan deliberately selected `swiftlang/swift-cmark` 0.8.x for HTML export. E12 pins exact 0.8.0 and verifies the C surface in Slice 0.
+8. E14 owns contribution discovery/lifecycle/isolation; E12 owns only the export destination. E19 explicitly requires inline/display math and E20 block SVG diagrams, so the destination contract must support inline and block source ranges without knowing renderer languages.
+9. Open issue #35 still allows non-Markdown formats into the Markdown path. E12 does not absorb that work; export UI is Markdown-only until another format owns an adapter.
 
-### Dependency additions
+### Dependency change
 
-`MacDown2/Packages/MacDownKit/Package.swift` must add a direct exact dependency on:
+`MacDown2/Packages/MacDownKit/Package.swift` must add:
 
 ```swift
 .package(url: "https://github.com/swiftlang/swift-cmark.git", exact: "0.8.0")
 ```
 
-Only the `ExportService` target receives the required cmark products (`cmark-gfm` and `cmark-gfm-extensions`). No app target, Preview target or other package target may import those products.
+Only `ExportService` receives the required cmark products (`cmark-gfm`, `cmark-gfm-extensions`). No app/Preview/other package target imports them.
 
-Do not add another Markdown parser, another templating dependency, an HTML parser, a PDF library, a hashing package or a network client for E12.
-
-System frameworks/modules (`Foundation`, `CryptoKit`, `UniformTypeIdentifiers`, and app-side `AppKit`, `WebKit`, `PDFKit`) are sufficient for the remaining work.
+Do not add another Markdown parser, templating engine, HTML parser, PDF library, hashing library or network client for E12. System modules/frameworks are sufficient: `Foundation`, `CryptoKit`, `UniformTypeIdentifiers`, plus app-side `AppKit`, `WebKit` and `PDFKit`.
 
 ### Legacy migration rule
 
-The concrete legacy `MPAsset` implementation is not available in the current MacDown 2 tree. E12 therefore ports useful tested **behavioural concepts**, not the obsolete class hierarchy:
+No reliable concrete `MPAsset` implementation contract is present in current MacDown 2. Port behaviour, not obsolete class shape:
 
-- logical asset identity;
-- source bytes + media type;
-- deterministic lookup;
-- embedding/bundling behaviour;
-- template context concepts: title, style, content and assets;
+- logical resource identity;
+- bytes + media type;
+- deterministic lookup/deduplication;
+- embed/bundle behaviour;
+- template concepts `title`, `style`, `content`, `assets`;
 - explicit default/fallback behaviour.
 
-If implementation later discovers a material legacy contract that changes current acceptance behaviour, stop and revise this architecture. Do not recreate an old class solely because the name existed.
+If a material legacy contract is later found that changes current acceptance behaviour, stop and revise this architecture. Do not recreate a legacy type because of its name alone.
 
 ---
 
 ## 3.2 Representative user journeys
 
-### Journey A — self-contained HTML
+### A. Self-contained HTML
 
-1. User edits a Markdown document and immediately chooses Export → HTML.
-2. The app captures the current unsaved editor text and generation at that moment.
-3. User chooses Self-contained.
-4. E12 performs a fresh parse of that exact snapshot, resolves local images, derives CSS from the selected theme and embeds managed resources.
-5. A complete UTF-8 HTML5 file is atomically promoted to the chosen destination.
-6. The file opens without MacDown 2 and without requiring resource files beside it.
+User exports current dirty Markdown as self-contained HTML. The app snapshots current text/generation, E12 freshly parses it, resolves all E12-visible local resources under the document root, embeds CSS/resources and atomically promotes one HTML file. It opens without MacDown 2 or companion files.
 
-### Journey B — companion-file HTML
+### B. Companion HTML
 
-1. User chooses HTML with companion files and either embedded or linked CSS.
-2. Local resources are copied to one deterministic sibling asset directory using content-addressed filenames.
-3. Resource files are written before the primary HTML references them.
-4. Existing unknown user files are never adopted or deleted.
-5. Re-export replaces the primary HTML and only cleans stale files proved to be owned by the previous MacDown export manifest.
+User exports HTML with companion resources and embedded or linked CSS. E12 writes content-addressed resources into `report.assets`, then atomically replaces `report.html`. A valid E12 marker owns the directory's reserved content-address namespace; arbitrary other files in that directory survive untouched.
 
-### Journey C — PDF
+### C. PDF
 
-1. User chooses PDF.
-2. E12 prepares the same HTML document used by HTML export, with managed resources addressed through the export-local URL scheme.
-3. An app-owned isolated `WKWebView` loads only that prepared document/resources.
-4. The app prints through the macOS print system using a frozen `PDFPageLayout` derived from `NSPrintInfo`, validates the temporary PDF with PDFKit, then atomically promotes it.
-5. Text remains searchable/selectable and networking is never used to render first-party content.
+E12 prepares the same HTML as above using local-scheme resource references. App-side locked-down WebKit loads only the prepared document/manifest resources, prints with the macOS print system, validates the temporary PDF with PDFKit and atomically promotes it. Text remains searchable/selectable.
 
-### Journey D — future inline math
+### D. Future inline math
 
-1. E19 later returns renderer-neutral output for `$E = mc^2$` with a stable source identity/range and the document generation that produced it.
-2. E14 adapts that result into E12's `DerivedExportResolution` with placement `.inline`.
-3. E12 validates the original UTF-16 range against the current export snapshot, substitutes a deterministic sentinel, lets cmark parse surrounding Markdown normally, then replaces only the sentinel with a cmark custom-inline node.
-4. The same normal HTML/PDF pipeline continues; E12 contains no math branch.
+E19 later supplies renderer-neutral output for a source range such as `$E = mc^2$`. E14 maps it to E12 placement `.inline`. E12 substitutes that range with a deterministic sentinel before cmark parsing, then swaps the sentinel for a cmark custom-inline node. No math branch or second renderer is added.
 
-### Journey E — future block diagram
+### E. Future diagram block
 
-The same path applies to a Mermaid fenced block with placement `.block`; E12 installs a custom-block node inside the existing cmark container structure. Diagram resources use the same manifest as ordinary Markdown images.
+A Mermaid fenced block follows the same path with `.block`; the custom block replaces only the derived source while list/quote containers remain cmark-owned. SVG/resources enter the ordinary manifest path.
 
-### Journey F — derived failure/staleness
+### F. Derived failure/staleness
 
-If a contribution failed, is stale, overlaps another contribution, has an invalid range or cannot be safely injected, its authored source is left in the Markdown presented to cmark and a diagnostic is surfaced. Silent omission is prohibited.
+Failed, stale, overlapping or structurally unusable derived output is not substituted. Its authored Markdown reaches cmark unchanged and the export records a diagnostic. Silent omission is forbidden.
 
 ---
 
@@ -123,42 +105,42 @@ If a contribution failed, is stale, overlaps another contribution, has an invali
 
 ### Invariants
 
-1. **Current text wins.** Export snapshots the live editor, not the last disk save and not the debounced preview parse.
-2. **Fresh parse.** Every export request performs a fresh `ParseExecuting.parse` for that immutable snapshot.
-3. **One Markdown HTML renderer.** cmark-gfm is the only Markdown-to-HTML renderer in E12.
-4. **One prepared document.** PDF prints the same prepared HTML model used by HTML export.
-5. **No caller-built layout.** Callers choose a typed target URL/options; `ExportService` derives `ExportOutputLayout` internally.
-6. **No caller-built production policy.** Metadata rules, template selection and production budgets are service configuration, not request fields.
-7. **No invented revision domain.** Snapshot and derived result generation are `UInt`, matching `FileDocument.mutationGeneration`.
-8. **Original-source coordinates.** Derived ranges are absolute UTF-16 half-open ranges into the original source snapshot, front matter included. cmark line/column positions are not identity.
-9. **No overlapping successful derived replacements.** Overlapping rendered ranges fall back to authored source with diagnostics.
-10. **Derived failure preserves source.** A failed/stale/invalid derived result never deletes source and never crashes export.
-11. **No renderer-language branching.** E12 knows only inline/block placement, source identity, HTML fragment, diagnostics and resources.
-12. **Local/offline first-party operation.** Export never fetches a network resource and never uploads source.
-13. **Self-contained means closed.** All E12-managed resource-bearing references are embedded; authored raw HTML is rejected because E12 cannot prove arbitrary HTML closure without adding an HTML crawler/sanitizer.
-14. **Path containment.** A Markdown relative file reference may read only a regular file whose canonical resolved path is under the saved Markdown file's canonical parent directory.
-15. **Unsaved documents have no implicit resource root.** Relative local resources in an untitled/unsaved document cannot be resolved and are handled according to destination failure policy; E12 does not guess a working directory.
-16. **Content-addressed resources.** Managed resource identity is full SHA-256 of snapshotted bytes; names are deterministic.
-17. **Single resource owner.** `ExportManifest` is the only collection of prepared resources. `PreparedExportDocument` does not duplicate a second resource array.
-18. **Primary-last HTML commit.** Companion resources required by new HTML exist before the new primary HTML becomes visible.
-19. **Owned cleanup only.** E12 deletes only filenames listed in the previous valid E12 ownership manifest and no longer referenced by the new manifest.
-20. **Byte determinism.** Identical complete `ExportRequest` + identical configured template/stylesheet/budget version produce identical prepared HTML and resource names. Timestamps, random UUIDs and process IDs must not enter durable output.
-21. **No global export singleton.** Different windows may export concurrently. Export service state is immutable/injected; cmark trees are invocation-local.
-22. **No `@unchecked Sendable` as a shortcut.** Actor/main-actor boundaries and C lifetime ownership must be real.
-23. **No source mutation.** Export cannot save, reformat or edit the source document.
-24. **No hand-edited Xcode project.** Use XcodeGen inputs and regenerate.
+1. **Current text wins:** export snapshots live editor text, not last save or debounced preview output.
+2. **Fresh parse:** every request calls `ParseExecuting.parse` on that immutable snapshot.
+3. **One Markdown HTML renderer:** cmark-gfm only.
+4. **One prepared document:** PDF consumes the same prepared HTML model as HTML export.
+5. **No caller-built layout/policy:** request chooses target/options; service derives layout/root/template/metadata/budget policy.
+6. **Generation stays `UInt`:** no unrelated public `Int revision` domain.
+7. **Original-source coordinates:** derived ranges are half-open UTF-16 offsets into the original snapshot, front matter included.
+8. **No cmark source-position identity:** cmark source positions may aid diagnostics only, never stable source identity.
+9. **No overlapping rendered ranges:** overlapping successful contributions fall back to source with diagnostics.
+10. **Derived failure preserves source.**
+11. **No renderer-language branching:** E12 knows source ID/range/generation, inline vs block placement, passive HTML, diagnostics and resources only.
+12. **Offline first-party operation:** no export fetch/upload.
+13. **Self-contained means closed:** every E12-visible rendering resource is embedded; authored raw HTML is rejected.
+14. **Path containment:** relative local resources may read only regular files canonically inside the saved Markdown file's parent directory.
+15. **Unsaved means no implicit resource root:** E12 never guesses the process working directory.
+16. **Typed content address:** final resource key is full SHA-256 bytes digest + canonical media type.
+17. **One immutable final resource source:** `PreparedExportDocument` contains one `ExportManifest`, not duplicate resource arrays.
+18. **Resources before primary:** new companion HTML is never visible before resources it references exist.
+19. **Managed-directory namespace:** an E12 ownership marker is required before E12 may modify `report.assets`; within that managed directory only exact reserved marker/temp/content-address names are app-owned. Other names are never adopted/deleted.
+20. **Determinism:** same complete request + same built-in stylesheet/template/config version yields byte-identical prepared HTML and resource names. No timestamps/random UUIDs/process IDs in durable output.
+21. **Concurrent windows:** no global export singleton/actor; invocation state is local.
+22. **No `@unchecked Sendable` shortcut.**
+23. **No source mutation:** export never saves/reformats/edits Markdown.
+24. **No hand-edited `.xcodeproj`:** use XcodeGen.
 
-### Explicit non-goals
+### Non-goals
 
-- production math, Mermaid, D2, Graphviz or WaveDrom rendering;
-- custom per-user template UI;
+- production math/diagram rendering;
+- custom user template UI/loader;
 - ePub/DOCX;
 - hosted rendering;
-- reusing SwiftUI preview views as export content;
-- building a generic third-party plugin system;
-- crawling/sanitising arbitrary raw HTML;
-- solving non-Markdown export for issue #35;
-- inventing custom paper sizes or a bespoke PDF paginator.
+- SwiftUI preview-view export;
+- generic third-party plugin host;
+- arbitrary HTML crawler/sanitizer;
+- issue #35/non-Markdown export;
+- custom paper-size/pagination engine.
 
 ---
 
@@ -166,67 +148,58 @@ If a contribution failed, is stale, overlaps another contribution, has an invali
 
 ### `MarkdownEngine`
 
-Owns Markdown/front-matter parsing and original-source map. No E12 export policy enters this module.
+Owns Markdown/front-matter parse and original-source map only. No export policy moves into it.
 
 ### `Themes`
 
-Owns theme data. No CSS strings, HTML templates or PDF rules enter this module.
+Owns theme values only. No CSS/template/PDF rules move into it.
 
 ### `ExportService`
 
-Owns all platform-neutral export composition:
+Owns platform-neutral composition:
 
-- request/result contracts;
-- exact conversion from `UInt` generation to parser `Int` revision;
-- cmark configuration, AST mutation and HTML body render;
+- public request/result/derived contracts;
+- `UInt -> Int` exact parser conversion;
+- cmark parser/extension/render configuration and AST mutation;
+- Markdown URL safety policy;
 - fixed metadata rules;
-- built-in template contract/catalog;
-- base export stylesheet + theme-token-to-CSS mapping;
-- local resource containment/snapshot/hash/media-type rules;
-- resource reference generation;
-- derived source-range validation/sentinel/custom-node adaptation;
+- one built-in template;
+- one structural stylesheet + Theme→CSS variables;
+- source-root/resource containment/snapshot/hash/media type;
+- transient manifest builder → immutable manifest;
+- destination resource references;
+- derived range/sentinel/custom-node adaptation;
 - output-layout derivation;
-- companion ownership manifest;
-- Foundation-only atomic file promotion and HTML artifact writing;
-- deterministic diagnostics and configured resource budgets.
+- companion directory ownership/write protocol;
+- Foundation-only atomic single-file promotion;
+- diagnostics and budgets.
 
-`ExportService` must not import `AppKit`, `WebKit`, `PDFKit`, `Preview` or future renderer modules.
+Must not import `AppKit`, `WebKit`, `PDFKit`, `Preview` or E14/E19-E21.
 
 ### App target
 
-Owns:
+Owns export command/panel, FileDocument/editor snapshot, ThemeController selection, save panels, per-window task/progress/cancel, localised presentation, `WebKitPDFRenderer`, `PDFPageLayout`, scheme handler, PDFKit validation and composition-root wiring.
 
-- Export commands/menu/panel;
-- `FileDocument`/editor snapshot capture;
-- current `ThemeController` selection;
-- save panels and target URLs;
-- one task per window + progress/cancel UI;
-- app-localised diagnostic presentation;
-- `WebKitPDFRenderer` and `PDFPageLayout`;
-- locked-down transient WebKit host + URL scheme handler;
-- PDFKit validation;
-- app composition root wiring.
+### Future contribution modules
 
-### E14/E19-E21 later
-
-These modules own contribution discovery, rendering, caching, cancellation and language-specific recognition. They adapt renderer-neutral results into E12 `DerivedExportResolution`. They do not get alternate Markdown export pipelines.
+E14/E19-E21 own recognition/rendering/cache/lifecycle and adapt their renderer-neutral results into E12 types. They do not own a parallel document exporter.
 
 ### Forbidden dependency directions
 
-- `ExportService -> Preview`: forbidden.
-- `ExportService -> FileCore`: not required for E12; app maps `mutationGeneration` and `fileURL` into the request.
-- `ExportService -> E14/E19/E20/E21`: forbidden.
-- `Themes -> ExportService`: forbidden.
-- `MarkdownEngine -> ExportService`: forbidden.
-- direct app/Preview imports of cmark: forbidden.
+- `ExportService -> Preview`
+- `ExportService -> FileCore` (not needed; app maps current values)
+- `ExportService -> E14/E19/E20/E21`
+- `Themes -> ExportService`
+- `MarkdownEngine -> ExportService`
+- app/Preview direct cmark imports
 
 ---
 
 ## 3.5 Interfaces and data contracts
 
-The exact spelling may change for Swift style during implementation, but the **shape, ownership and invalid-state guarantees below are binding**.
+The names may receive normal Swift-style adjustments, but shape/ownership/invalid-state guarantees are binding.
 
-### Request contracts
+### Request
 
 ```swift
 public struct ExportSourceSnapshot: Sendable {
@@ -267,19 +240,9 @@ public struct ExportRequest: Sendable {
 }
 ```
 
-There is deliberately no request field for:
+Request deliberately has no `resourceRootURL`, `suggestedTitle`, `Int revision`, metadata policy, resource budget, output layout or template ID. Those are service-owned or derived; callers cannot construct contradictory combinations.
 
-- `resourceRootURL` — derived only from saved `fileURL.parent`;
-- `suggestedTitle` — fixed metadata fallback is derived from front matter/file URL;
-- `revision: Int` — generation remains `UInt` at this boundary;
-- `ExportMetadataPolicy` — there is one E12 policy;
-- `ExportResourceBudget` — service configuration owns policy;
-- `ExportOutputLayout` — target URL/options derive it;
-- template ID — macOS 1.0 has one built-in template; custom template selection is out of scope.
-
-This is intentional. Call sites must not be able to assemble contradictory destination/layout/policy states.
-
-### Derived-content contracts
+### Derived destination
 
 ```swift
 public struct DerivedSourceID: Hashable, Sendable {
@@ -320,40 +283,33 @@ public enum DerivedExportResolution: Sendable {
 }
 ```
 
-`ExportSourceRange` initialisation must reject negative offsets, inverted/empty ranges and integer overflow. The service additionally validates upper bounds against the current snapshot and verifies that both UTF-16 boundaries map to valid Swift `String.Index` boundaries.
+`ExportSourceRange` constructor rejects negative, empty/inverted and overflowing ranges. `ExportService` additionally checks current-source bounds and that both UTF-16 offsets map to valid `String.Index` boundaries.
 
-`DerivedSourceID` is opaque identity. It is never interpreted as a renderer/language name.
+`DerivedSourceID` is opaque; never parse renderer/language information from it.
 
-`DerivedExportFragment.html` is **trusted first-party destination HTML**, not arbitrary third-party/user plugin input. E14 remains responsible for admitting first-party contributions. E12 does not add an HTML sanitizer. Derived fragments must be passive/offline output: no script requirement, no remote-fetch requirement, and no complete `<html>`, `<head>`, `<body>` or `<base>` document wrapper.
+`DerivedExportFragment.html` is trusted **first-party destination HTML**, not user/third-party plugin HTML. E14 later owns first-party admission. It must be passive/offline and must not require scripts/network or contain complete `<html>`, `<head>`, `<body>` or `<base>` wrappers.
 
-A derived fragment may refer to its declared resources only through the canonical string returned by one E12 helper (`DerivedExportResourceReference.reference(for:)`). The implementation may use an internal `macdown-derived-resource:` URL form, but that literal exists in exactly one helper. E12 rewrites only those declared references to the destination-specific managed reference and rejects a rendered contribution if:
+Derived resources may be referenced only through `DerivedExportResourceReference.reference(for:)`. That helper owns the one internal logical reference literal. Before a custom cmark node is created E12 rewrites every declared logical reference to the destination-managed reference. Duplicate IDs, unresolved canonical prefixes or budget violations reject that contribution and preserve source.
 
-- resource IDs duplicate within the fragment;
-- a declared resource has no canonical reference in the fragment when the contract requires one;
-- a canonical derived-resource prefix remains unresolved after rewriting;
-- a resource exceeds the central budget.
+For self-contained closure, the first-party derived contract additionally requires that resource-bearing attributes inside `html` use only those declared canonical references; E14/E19-E21 adapter tests must enforce that producer contract. E12 does not add an HTML parser solely to distrust its own first-party adapter.
 
-The adapter does **not** let a future renderer choose companion filenames or PDF scheme paths.
+### Sentinel/custom-node algorithm
 
-### Sentinel/custom-node contract
+For all statically valid `.rendered` candidates:
 
-E12 must support inline and block derived ranges without teaching cmark a new Markdown extension and without maintaining a second Markdown renderer.
+1. Sort deterministically by `(range.lower, range.upper, sourceID.rawValue)`.
+2. Reject stale generation, front-matter ranges, invalid UTF-16 boundaries, duplicate identity/range and overlapping rendered ranges; rejected source remains untouched.
+3. Build deterministic ASCII sentinel from `sourceID + range + generation` using SHA-256. If source already contains it, append the smallest deterministic numeric suffix not already present.
+4. Map absolute source UTF-16 offsets to `MarkdownDocument.body` offsets using `bodyLineOffset` + `SourceMap`.
+5. Substitute accepted ranges from highest offset to lowest.
+6. cmark parses that transformed body.
+7. Locate each sentinel exactly once.
+8. `.inline`: it must occur in replaceable inline literal text; split text node around sentinel and insert `CMARK_NODE_CUSTOM_INLINE` with rewritten fragment as `on_enter`, empty `on_exit`.
+9. `.block`: choose nearest replaceable block whose semantic content is only that sentinel; replace it with `CMARK_NODE_CUSTOM_BLOCK`, preserving outer list/quote/container nodes.
+10. If a candidate fails structural injection, remove those failed candidates and reparse once so their authored source returns.
+11. If that second pass is structurally unstable, perform one final parse with **no derived substitutions** and emit diagnostics for all derived candidates. No unbounded reparse loop.
 
-For each valid successful derived range:
-
-1. Build a deterministic ASCII sentinel from source ID + range + generation using SHA-256. No random UUID.
-2. If that exact sentinel already exists in source, deterministically append the smallest numeric collision suffix not present in source.
-3. Convert the original-source UTF-16 range to the `MarkdownDocument.body` UTF-16 coordinate space using `bodyLineOffset`/`SourceMap`.
-4. Apply all non-overlapping substitutions from highest source offset to lowest so earlier offsets do not shift.
-5. Parse the transformed body with cmark.
-6. Locate each sentinel exactly once in the cmark tree.
-7. `.inline`: sentinel must be reachable as replaceable inline literal text. Split the text node if necessary and insert `CMARK_NODE_CUSTOM_INLINE` whose `on_enter` is the rewritten derived fragment and whose `on_exit` is empty.
-8. `.block`: find the nearest replaceable block ancestor for which the sentinel is the only semantic content contributed by that derived source position, replace that block with `CMARK_NODE_CUSTOM_BLOCK`, and preserve outer list/quote/container structure.
-9. If a candidate cannot satisfy the structural rule, remove that candidate from substitution and reparse so authored source remains. If a second structural pass becomes unstable, do one final ordinary-source parse with all derived candidates preserved as source and emit diagnostics. Export must never loop indefinitely trying to inject contributions.
-
-The cmark custom-node seam is internal to `CMarkHTMLBodyRenderer`. It is not exposed as a public extension API.
-
-This pre-parse sentinel design is deliberate: future inline math syntax is removed before cmark can misinterpret TeX characters as Markdown, while surrounding Markdown still parses normally.
+This design intentionally removes successful inline technical syntax before cmark can interpret its characters as Markdown while retaining cmark as the sole Markdown renderer.
 
 ### cmark adapter
 
@@ -363,30 +319,82 @@ protocol MarkdownHTMLBodyRendering: Sendable {
         document: MarkdownDocument,
         originalSource: String,
         derived: [DerivedExportResolution],
-        resources: ExportResourceResolver,
+        resolutionContext: ExportResourceResolutionContext,
         referenceMode: ExportResourceReferenceMode,
         budget: ExportResourceBudget
     ) async throws -> RenderedHTMLBody
 }
+
+struct RenderedHTMLBody: Sendable {
+    let html: String
+    let resources: [ExportResource]
+    let diagnostics: [ExportDiagnostic]
+}
 ```
 
-The renderer takes `MarkdownDocument.options` from the fresh parse; call sites do not pass a second potentially divergent option value.
+`CMarkHTMLBodyRenderer` has no shared mutable state. It creates per-call C parser/tree state and returns transient resources to the service for final manifest construction.
 
-`CMarkConfiguration.swift` is the **only** file that maps `MarkdownParseOptions` to cmark option bits/extensions and the **only** file that names cmark GFM extensions. No extension names/options appear in tests or call sites except through that configuration API.
+`CMarkConfiguration.swift` alone maps `MarkdownDocument.options` to parser option bits/extensions and render option bits/extensions.
 
-Normal authored raw HTML policy is exactly:
+**Required cmark ordering:**
 
-- render with `CMARK_OPT_UNSAFE` so ordinary authored HTML is retained;
-- attach cmark-gfm `tagfilter` so its filtered dangerous tag set is still applied;
-- do not build an independent sanitizer.
+1. ensure built-in cmark-gfm extensions are registered through the bounded one-time seam;
+2. create parser with configured parser options;
+3. find/attach every enabled syntax extension to that parser;
+4. feed the complete transformed body;
+5. finish to obtain the tree;
+6. apply E12 AST policies/mutations;
+7. render with the configured render options/extensions;
+8. free iterator/tree/parser/rendered C strings on all paths.
 
-Self-contained HTML adds one stricter rule: after cmark parses the transformed source but before derived custom nodes are installed, any remaining authored `CMARK_NODE_HTML_BLOCK` or `CMARK_NODE_HTML_INLINE` is a fatal `selfContainedRawHTMLUnsupported` error.
+Do not parse first and attach table/tasklist/etc extensions afterward.
 
-The dependency's one-time core extension registration is accepted only behind `CMarkConfiguration`. E12 may call `cmark_gfm_core_extensions_ensure_registered()` through a small once-wrapper if needed. Do not create a MacDown dynamic/global registry.
+### Raw HTML and Markdown URL security
 
-Every parser tree, iterator and renderer-owned C string is freed on every success/error path. Slice 0 proves repeated render lifetime behaviour before other work builds on it.
+Ordinary HTML/PDF must preserve authored raw HTML for fidelity, so render options include `CMARK_OPT_UNSAFE` and GFM `tagfilter`. `tagfilter` is not claimed to be a complete HTML sanitizer.
 
-### Prepared document — one source of resource truth
+Because `CMARK_OPT_UNSAFE` also permits cmark-dangerous Markdown link schemes, E12 must traverse **authored cmark link/image nodes before render** through one `ExportURLPolicy`:
+
+- case-insensitive explicit schemes `javascript:`, `vbscript:`, `data:` and `file:` are rejected for authored Markdown nodes;
+- relative URLs/fragments and other non-dangerous authored navigation schemes remain available;
+- E12-generated embedded `data:` image/CSS references are created only **after** authored URL validation and are not reclassified as authored links;
+- image/resource nodes then pass through the stricter destination resource policy in §3.8.
+
+These four dangerous-scheme literals exist only in `ExportURLPolicy.swift`. Do not scatter URL checks through cmark/resource/UI code.
+
+Self-contained HTML additionally fails if the transformed cmark tree contains any remaining authored `CMARK_NODE_HTML_BLOCK` or `CMARK_NODE_HTML_INLINE` before derived custom nodes are installed. This is what makes closure auditable without an HTML crawler.
+
+### Resource types
+
+```swift
+public struct ExportResourceID: Hashable, Sendable {
+    public let sha256: String       // 64 lowercase hex
+    public let mediaType: String    // canonical normalized MIME
+}
+
+public struct ExportResource: Sendable {
+    public let id: ExportResourceID
+    public let filename: String
+    public let data: Data
+}
+
+public struct ExportManifest: Sendable {
+    public let resources: [ExportResource]
+    public func resource(for id: ExportResourceID) -> ExportResource?
+}
+```
+
+Resource identity is `(sha256(bytes), canonical media type)`, not bytes alone. Same bytes + same media type dedupe; same bytes intentionally supplied under different canonical media types remain separate typed resources instead of letting first-seen order choose browser/PDF MIME behaviour.
+
+Companion filename is exactly:
+
+`<64-lowercase-hex-sha256>.<canonical-extension>`
+
+Canonical extension comes from the normalized media type through `UTType.preferredFilenameExtension`; if unavailable use exactly `bin`. CSS has canonical media type `text/css` and therefore `.css`. No original user filename enters durable companion names.
+
+`ExportManifestBuilder` is an **internal per-request mutable builder**, used sequentially by `ExportService` to merge/dedupe body resources and optional linked stylesheet resource. It freezes once into the immutable `ExportManifest`. No builder escapes the request and no second resource array lives in `PreparedExportDocument`.
+
+### Prepared document
 
 ```swift
 public struct PreparedExportDocument: Sendable {
@@ -395,28 +403,11 @@ public struct PreparedExportDocument: Sendable {
     public let diagnostics: [ExportDiagnostic]
     public let outputLayout: ExportOutputLayout
 }
-
-public struct ExportManifest: Sendable {
-    public let resources: [ExportResource]
-
-    public func resource(for id: ExportResourceID) -> ExportResource?
-}
 ```
 
-`PreparedExportDocument` must **not** also contain `[ExportResource]`, `isSelfContained`, a second target URL or any other state derivable from `outputLayout`/`manifest`.
+`ExportOutputLayout` has no public general initializer. `make(for: ExportTarget)` validates target and derives all paths/reference modes. `PreparedExportDocument` does not separately store `resources`, `isSelfContained`, a duplicate target URL or other derivable state.
 
-`ExportOutputLayout` has no public general-purpose initializer. It is constructed only by `ExportOutputLayout.make(for: ExportTarget)` after validating the target URL. It owns:
-
-- primary target URL;
-- output kind (`html`/`pdf`);
-- HTML packaging/reference mode when applicable;
-- deterministic companion directory URL/prefix when applicable.
-
-### Result and diagnostic contracts
-
-Fatal preparation/write errors are typed `ExportError` values. Non-fatal conditions are typed `ExportDiagnostic` values containing a machine-readable code, severity and structured context; localised prose is created in the app target.
-
-Package tests assert codes/context, never English error sentences.
+Fatal errors are typed `ExportError`. Non-fatal `ExportDiagnostic` stores machine code/severity/structured context; app target creates localized prose. Package tests never assert English strings.
 
 ---
 
@@ -424,88 +415,71 @@ Package tests assert codes/context, never English error sentences.
 
 ### Phase 0 — app snapshot
 
-Immediately before work starts, `ExportCoordinator` on the main actor captures:
+On `@MainActor`, immediately before starting work, `ExportCoordinator` captures current text, file URL if saved, `mutationGeneration`, parse options, selected theme, save-panel target/options and latest compatible derived results. Request is then immutable.
 
-- current editor text;
-- current saved file URL if any;
-- current `FileDocument.mutationGeneration` (`UInt`);
-- current Markdown parse options;
-- selected theme;
-- target URL/options from the save/export panel;
-- latest E14-compatible derived resolutions available for that same document.
+### Phase 1 — target/generation validation
 
-The request becomes immutable. Later editor changes do not mutate an in-flight export.
-
-### Phase 1 — validate target and generation
-
-1. `ExportOutputLayout.make(for:)` requires a file URL and the correct output extension (`.html` for HTML, `.pdf` for PDF, case-insensitive).
-2. HTML companion directory for `/dir/report.html` is **exactly** `/dir/report.assets`.
-3. Convert generation to parser revision with `Int(exactly: generation)`. Failure is a typed `generationOverflow` error; never clamp/wrap.
-4. Enforce source-size budget before entering cmark.
+- target must be file URL with case-insensitive `.html` or `.pdf` matching target case;
+- companion `/dir/report.html` maps exactly to `/dir/report.assets`;
+- `Int(exactly: generation)` must succeed for `ParseExecuting`; never wrap/clamp;
+- source-size budget checked before parse.
 
 ### Phase 2 — fresh MarkdownEngine parse
 
-Call the injected `ParseExecuting` instance with the immutable source text/options/exact revision. Do not reuse preview state.
+Call injected parser on immutable text/options/exact revision. Never use preview's debounced `MarkdownDocument`.
 
-Metadata policy is fixed:
+Fixed metadata policy:
 
-- front-matter `title` that resolves to a non-empty scalar string becomes browser `<title>` and the default template's visible document `<h1>` exactly once;
-- no front-matter title: browser `<title>` falls back to the saved Markdown filename stem if available;
-- no front-matter title: **do not** synthesize a visible `<h1>` from filename;
-- untitled unsaved source without front-matter title uses an empty `<title>`;
-- unsupported/non-scalar title values emit a warning and behave as absent;
-- unknown front-matter keys are ignored by E12.
+- non-empty scalar front-matter `title` → escaped browser `<title>` and one visible default-template `<h1>`;
+- no front-matter title → browser title from saved Markdown filename stem only;
+- filename fallback never synthesizes visible `<h1>`;
+- unsaved/no front-matter title → empty browser title;
+- invalid/non-scalar title → warning + absent behaviour;
+- unknown front-matter keys ignored by E12.
 
-### Phase 3 — derive output/resource policy
+### Phase 3 — output/resource context
 
-`ExportService` maps target to one internal `ExportResourceReferenceMode`:
+Internal reference mode:
 
-- HTML self-contained → `.embeddedData`;
-- HTML companion → `.relativeCompanion`;
+- self-contained HTML → `.embeddedData`;
+- companion HTML → `.relativeCompanion`;
 - PDF → `.localScheme`.
 
-The source resource root is computed only when `fileURL` exists and is a file URL: canonical parent directory of that saved file. No current working directory fallback exists.
+Resource root is only the canonical parent of a saved file URL. Unsaved source has no root.
 
-### Phase 4 — validate derived results and substitute sentinels
+### Phase 4 — derived validation/substitution
 
-1. Sort rendered candidates deterministically by `(range.lower, range.upper, sourceID.rawValue)`.
-2. Failed resolutions become diagnostics and remain source.
-3. Reject stale generation, invalid/out-of-bounds/non-String-boundary ranges, front-matter ranges, duplicate identities/ranges and overlapping rendered ranges. Rejected entries remain source.
-4. Rewrite declared derived-resource references through `ExportResourceResolver` and the same manifest/budget used for normal assets.
-5. Apply deterministic sentinel substitution to the body, back-to-front.
+Apply §3.5 derived rules, rewrite declared derived-resource logical references through the same destination/resource rules, then substitute deterministic sentinels back-to-front. Failed/rejected contributions remain source.
 
-No renderer language is consulted.
+### Phase 5 — cmark parse and AST policies
 
-### Phase 5 — cmark parse/mutation/render
+In this exact order:
 
-1. Register built-in cmark-gfm extensions through the bounded one-time configuration seam.
-2. Parse transformed body.
-3. Apply the central GFM option/extension mapping.
-4. Enforce self-contained raw HTML rule before custom derived nodes are installed.
-5. Resolve/rewrite ordinary Markdown image/resource URLs through the manifest policy.
-6. Replace derived sentinels with cmark custom inline/block nodes using the bounded fallback algorithm.
-7. Render with cmark HTML renderer + exact raw-HTML/tagfilter policy.
-8. Free all C ownership.
+1. register/configure enabled extensions;
+2. create parser + attach enabled syntax extensions;
+3. feed/finish transformed body;
+4. enforce authored dangerous-URL policy on Markdown link/image nodes;
+5. enforce self-contained authored-raw-HTML rejection when applicable;
+6. resolve/rewrite ordinary Markdown image resources;
+7. replace derived sentinels with custom nodes, using bounded fallback/reparse if needed;
+8. render using configured render extensions/options (`UNSAFE + tagfilter` for ordinary authored raw-HTML fidelity);
+9. free all C ownership.
 
-The produced body HTML is renderer output, not input to an ad-hoc string Markdown renderer.
+### Phase 6 — CSS/template
 
-### Phase 6 — stylesheet and template
-
-`ExportStyleSheetBuilder` loads one bundled structural stylesheet from:
+`ExportService` SwiftPM target processes exactly one structural asset:
 
 `Sources/ExportService/Resources/default-export.css`
 
-The `ExportService` SwiftPM target declares it as a processed resource. Structural layout/print rules live there, not scattered through Swift strings.
-
-Theme-derived values are emitted as CSS custom properties in one deterministic `:root` block by one mapper. Theme values are not copied into template conditionals.
+Structural/print rules live there. Theme values become deterministic CSS custom properties through one mapper; never duplicate a stylesheet per theme and never interpolate theme display names/user text into CSS.
 
 Packaging:
 
-- self-contained: generated stylesheet embedded in `<style>`;
-- companion + embedded stylesheet: same embedded `<style>`;
-- companion + linked stylesheet: full generated stylesheet becomes one content-addressed manifest resource and template receives its relative managed reference.
+- self-contained → full generated CSS inline `<style>`;
+- companion + embedded CSS → same inline `<style>`;
+- companion + linked CSS → generated CSS becomes one managed `text/css` resource and template gets its managed relative reference.
 
-There is one built-in Swift template/catalog for macOS 1.0. It consumes a typed context, never `[String: Any]`:
+macOS 1.0 has exactly one pure Swift `BuiltInExportTemplate`. No catalog, template ID, protocol hierarchy or discovery mechanism is required yet. It consumes a typed context:
 
 ```swift
 struct ExportTemplateContext: Sendable {
@@ -516,188 +490,168 @@ struct ExportTemplateContext: Sendable {
 }
 ```
 
-The template is responsible only for complete HTML5 document structure/escaping the text/title slots and placing already-rendered body/style content. Do not add Handlebars or user template discovery.
+It only builds complete HTML5 structure and escapes text/attribute slots; `bodyHTML`/generated CSS are already trusted pipeline products. No Handlebars.
 
-### Phase 7 — produce `PreparedExportDocument`
+### Phase 7 — manifest freeze/prepared document
 
-The prepared value contains exactly:
+Merge body + linked stylesheet resources into one transient `ExportManifestBuilder`, enforce budgets/deduplication, freeze immutable manifest, compose complete HTML, then validate:
 
-- complete UTF-8 HTML5 string;
-- one manifest of snapshotted managed resource bytes;
-- non-fatal diagnostics;
-- derived output layout.
+- prepared HTML budget;
+- unique/sorted resource IDs/filenames;
+- no unresolved derived-resource logical marker;
+- self-contained has no managed external/local-scheme reference;
+- deterministic ordering.
 
-Before returning:
+Return one `PreparedExportDocument`.
 
-- enforce prepared-HTML budget;
-- ensure manifest resource IDs/names are unique and sorted deterministically;
-- assert no unresolved derived-resource marker remains;
-- for self-contained HTML, assert the manifest has no external file/local-scheme references and no managed resource-bearing reference remains unembedded.
-
-### Phase 8A — HTML writer
+### Phase 8A — HTML write
 
 `HTMLExportArtifactWriter` is Foundation-only and package-owned.
 
-For self-contained HTML or companion HTML with no companion resources, atomically promote the primary HTML file. Do not delete a stale sibling `.assets` directory merely because a new export no longer references it.
+For self-contained or companion HTML with zero companion resources, atomically promote primary HTML and do not opportunistically touch any old sibling asset directory.
 
-For companion resources:
+If companion resources exist:
 
-1. Derive `/dir/report.assets` only from `ExportOutputLayout`.
-2. Ownership marker filename is exactly `.macdown-export-manifest.json`.
-3. Marker schema v1 is deterministic JSON containing only:
-   - integer schema version `1`;
-   - producer string `MacDown2.ExportService`;
-   - sorted list of resource filenames owned by that export.
-   No timestamps, UUIDs or machine paths.
-4. If directory does not exist, create it and atomically create an empty valid ownership marker before writing resource files.
-5. If directory already exists, it is manageable only if its marker parses, has producer/version above and every listed owned filename is a simple child filename. Otherwise fail **before changing the directory**. Never adopt an unknown directory.
-6. Materialise every new content-addressed resource first. If a destination filename already exists, verify its bytes hash to the expected digest; otherwise fail rather than overwrite an unexpected collision.
-7. Write primary HTML to sibling temporary file and atomically replace/promote the target HTML.
-8. Atomically replace ownership marker with the new sorted owned-resource list.
-9. Only after step 8 succeeds, best-effort delete prior-manifest filenames that are absent from the new manifest and still satisfy the content-address filename grammar. Never delete unknown/unlisted files. Cleanup failure becomes a warning; primary output stays successful.
-10. If the process dies after step 7 but before step 8, the primary remains valid because new resources already exist. A later export may leave an orphaned content-address file rather than guessing ownership. Durability wins over aggressive cleanup.
+1. asset directory is exactly `report.assets` from layout;
+2. marker filename is exactly `.macdown-export-manifest.json`;
+3. marker v1 deterministic JSON fields are only:
+   - `schema: 1`
+   - `producer: "MacDown2.ExportService"`
+   - `resources: [sorted current content-address filenames]`
+4. existing directory without a valid matching marker is **unknown**: fail before modification;
+5. if directory is new, create it and an empty valid marker before resource writes; on failure before primary promotion, best-effort remove only the newly-created managed directory if it still contains no non-E12 names;
+6. a valid marker establishes the directory as E12-managed. The reserved managed filename namespace is:
+   - the marker itself;
+   - writer temporary names generated by `AtomicArtifactWriter` under one fixed hidden prefix;
+   - exact `<64hex>.<canonical-extension>` content-address names.
+   Every other filename is user/unknown and is never modified/deleted;
+7. materialise every new resource first. Existing expected content-address filename inside a managed directory may be reused only after bytes hash and canonical extension/type agree; mismatch is `managedResourceCorrupt` and is not overwritten silently;
+8. write new primary HTML to sibling temporary file and atomically promote it;
+9. atomically replace marker with new sorted current resource list;
+10. after marker commit, best-effort remove reserved content-address files not listed in the new marker. Non-reserved names survive. Cleanup failure is warning only.
 
-Do not describe companion export as a multi-entry atomic transaction; filesystems do not provide that contract here.
+A crash may leave reserved orphan content-address/temp files; a later successful companion export may clean only that reserved managed namespace. Do not claim multi-file filesystem atomicity.
 
-### Phase 8B — PDF writer
+### Phase 8B — PDF write
 
-The app-owned `WebKitPDFRenderer` consumes the same `PreparedExportDocument`:
+App-side `WebKitPDFRenderer`:
 
-1. Create an ephemeral `WKWebViewConfiguration` on `@MainActor`.
-2. JavaScript disabled; non-persistent website data store; no service workers or injected scripts.
-3. Register exactly one E12 local resource scheme handler. It maps a managed resource URL to bytes/media type from `PreparedExportDocument.manifest` only.
-4. Block all network schemes, external navigation, downloads, new windows and popups.
-5. Load the prepared document and wait for terminal navigation completion/cancellation.
-6. Freeze `PDFPageLayout` from a copied `NSPrintInfo`; do not hard-code A4/Letter dimensions.
-7. Use `WKWebView.printOperation(with:)` / `NSPrintOperation` rather than screenshots/viewport capture.
-8. Print to a sibling temporary PDF.
-9. Open the temporary result with PDFKit; require a non-zero page count and readable document object. Fidelity corpus additionally asserts searchable text.
-10. Atomically promote the validated PDF to the target.
-11. Tear down WebKit state/scheme handler on every path.
+1. `@MainActor`, ephemeral `WKWebViewConfiguration`;
+2. JavaScript disabled, non-persistent data store, no injected scripts/service workers;
+3. register exactly one E12 scheme handler mapping only manifest IDs → bytes/media type;
+4. block network schemes, external navigation, downloads, popups/new windows;
+5. load prepared HTML and await terminal load/cancel;
+6. freeze `PDFPageLayout` from a copied `NSPrintInfo`; no A4/Letter literals;
+7. use `WKWebView.printOperation(with:)` / `NSPrintOperation`, never screenshot/viewport rasterisation;
+8. write sibling temporary PDF;
+9. PDFKit validate readable document + page count > 0; corpus separately proves searchable text;
+10. atomically promote target;
+11. teardown web view/scheme state on all paths.
 
-If macOS 26 WebKit printing cannot meet readable/searchable pagination acceptance, stop Slice 4 and change only the PDF adapter. Do not fork Markdown composition and do not rasterise the document as a workaround.
+If macOS 26 printing cannot meet searchable/readable pagination, stop Slice 4 and replace only the PDF adapter. Never fork Markdown composition or rasterize as a shortcut.
 
 ---
 
 ## 3.7 State ownership, concurrency and cancellation
 
-### Service shape
+`ExportService` is an immutable `Sendable` value/final type with injected parser, resource/file-system seams needed for deterministic tests and `ExportResourceBudget.standard`. It is not a singleton or global actor. Per-request builders/C trees do not escape calls.
 
-`ExportService` is an immutable `Sendable` value (or equivalent immutable final type) with injected dependencies/configuration. It is **not** a global actor/singleton and does not serialise exports across windows.
+Each document window owns at most one export task; starting a replacement cancels prior task for that window; closing window cancels it; other windows export concurrently.
 
-Recommended production construction:
+Only UI snapshot/save-panel state and WebKit/AppKit/PDFKit work are main-actor. Parse/cmark/hash/resource read/Foundation writes run off main actor.
 
-- injected `ParseExecuting`;
-- internal/default `CMarkHTMLBodyRenderer`;
-- built-in template catalog;
-- resource resolver factory/filesystem dependency if tests need fault injection;
-- `ExportResourceBudget.standard`.
+Cancellation checkpoints at minimum:
 
-Tests may inject smaller budgets/fakes. `ExportRequest` never changes budgets.
-
-### Window task ownership
-
-Each document window owns at most one export task. Starting a replacement export cancels the previous task for that window. Closing the window cancels its task. Other windows may continue independently.
-
-### Main actor
-
-Only UI state, snapshot capture, save panels and WebKit/AppKit/PDFKit work are `@MainActor`.
-
-Markdown parsing, cmark composition, hashing/resource reads and Foundation file writing must not be forced onto the main actor.
-
-### Cancellation checkpoints
-
-Check `Task.checkCancellation()` at minimum:
-
-- before parse;
-- after fresh parse;
-- before/after derived transformation;
+- before/after fresh parse;
+- before/after derived substitution;
 - before/after cmark render;
 - between resource reads/hashes;
-- before template composition;
+- before template/manifest freeze;
 - before each companion resource write;
 - before primary promotion;
 - before PDF load/print/promotion.
 
-A single cmark C call cannot necessarily be interrupted mid-call. Source/prepared-resource budgets plus Release performance evidence bound that synchronous interval.
+A single C parse/render cannot necessarily be interrupted mid-call; source/output budgets plus Release evidence bound that interval.
 
-Cancellation before primary promotion leaves existing primary output untouched. Cancellation after primary promotion but during best-effort companion cleanup may leave stale owned resources; it must not roll back/delete the valid primary.
+Cancel before primary promotion leaves old primary untouched. Cancel after primary promotion during marker/cleanup cannot roll back a valid new primary; it may leave managed orphan files and warning state.
 
 ---
 
-## 3.8 Failure semantics
+## 3.8 Failure semantics and resource policy
 
-### Fatal preparation/write errors
+### Fatal
 
-Fatal errors include:
-
-- invalid/non-file target URL or wrong target extension;
-- generation cannot convert exactly to parser revision;
+- invalid/non-file/wrong-extension target;
+- generation cannot exact-convert;
 - fresh parse failure;
-- source/prepared output exceeds configured hard budget;
+- source/prepared/resource hard budget exceeded;
 - self-contained authored raw HTML;
-- self-contained unresolved/remote resource-bearing reference;
-- PDF remote/unresolved resource-bearing reference that would make the printed result knowingly incomplete;
-- companion asset directory exists but lacks a valid E12 ownership marker when E12 needs to write there;
-- filesystem read/write/hash/atomic-promotion failure;
+- self-contained remote/missing/out-of-root/unsupported rendering resource;
+- PDF remote/missing/out-of-root rendering resource that would make output knowingly incomplete;
+- unknown/unowned required companion directory;
+- invalid ownership marker;
+- managed content-address corruption;
+- filesystem/hash/atomic-promotion failure before commit;
 - cmark lifecycle/invariant failure;
-- PDF navigation/print/validation failure.
+- PDF load/print/validation failure.
 
-Fatal errors do not replace the existing destination.
+Fatal failure never replaces existing primary target.
 
 ### Non-fatal diagnostics
 
-Non-fatal conditions include:
+- invalid front-matter title;
+- failed/stale/invalid/overlapping/structurally rejected derived contribution, with source preserved;
+- companion HTML remote or unresolved local rendering reference preserved without fetching;
+- ordinary HTML raw authored HTML present;
+- PDF raw authored HTML present (locked-down host may omit unsupported remote/script-dependent behaviour);
+- post-primary marker/cleanup issue that does not invalidate already-written primary/resources.
 
-- invalid/non-scalar front-matter title;
-- failed/stale/invalid/overlapping derived contribution (source preserved);
-- companion HTML remote image/resource reference preserved without fetching;
-- ordinary HTML authored raw HTML retained under cmark raw-HTML policy;
-- post-commit stale companion cleanup failure;
-- PDF authored raw HTML warning (the locked-down print host blocks network/script behaviour it cannot support).
+### Authored Markdown URL policy
 
-### Resource-bearing reference policy
+Before destination resource logic, cmark Markdown link/image nodes pass `ExportURLPolicy`: authored `javascript`, `vbscript`, `data`, `file` explicit schemes are rejected. Generated resource references are not authored nodes and are created later.
 
-E12 distinguishes navigation from fetched rendering resources:
+### Navigation vs rendering resources
 
-- ordinary hyperlinks (`<a href>`) may remain local/remote authored navigation targets; exporter never follows them;
-- Markdown image/resource references are rendering resources and follow the rules below.
+- ordinary links are navigation and are never fetched by exporter;
+- Markdown images/resources are rendering dependencies.
 
-**HTML companion:** local in-root resources are packaged. Remote resource URLs are preserved exactly but never fetched and generate a warning. Missing/out-of-root local resource references generate a warning and remain authored references; E12 does not copy them.
+**Companion HTML:** in-root local resource packages. Remote resource URL is preserved semantically but never fetched and warns. Missing/out-of-root local resource remains authored reference and warns.
 
-**HTML self-contained:** every E12-visible resource-bearing reference must resolve to managed bytes and be embedded. Remote, missing, out-of-root or unsupported references are fatal. Authored raw HTML is fatal because its arbitrary resource references cannot be proven closed.
+**Self-contained HTML:** every E12-visible rendering reference must resolve to managed bytes and embed. Remote/missing/out-of-root/unsupported is fatal. Authored raw HTML fatal because arbitrary resource-bearing attributes cannot be proven closed.
 
-**PDF:** every E12-visible resource-bearing reference required for rendering must resolve to managed local bytes. Remote, missing or out-of-root references are fatal. Hyperlinks remain navigation annotations where the print system preserves them. Authored raw HTML is rendered best-effort under the locked-down host and produces a warning because E12 does not add an HTML crawler in this epic.
+**PDF:** every E12-visible rendering dependency must resolve to managed local bytes; remote/missing/out-of-root is fatal. Links remain navigation annotations where print stack supports. Authored raw HTML is best-effort under locked-down WebKit and warns.
 
-### Derived fallback
+### Derived failure
 
-A `.failed` resolution or rejected `.rendered` resolution never makes export fatal by itself. The original authored range remains in source and a diagnostic identifies the source ID/range/reason. This is the E12 contract E14/E19-E21 can rely on.
+A failed/rejected derived result is never fatal by itself. Preserve exact authored source and emit source-ID/range/reason diagnostic.
 
 ---
 
 ## 3.9 Security, privacy and trust boundaries
 
-1. No `URLSession`, `WKWebsiteDataStore.default()`, hosted renderer or network fetch is permitted in first-party export.
-2. Companion/PDF resource reads begin only from the saved Markdown file's canonical parent directory.
-3. Canonicalise/standardise file URL and resolve symlinks before containment comparison.
-4. Reject directories/non-regular files as resource bytes.
-5. Snapshot accepted file bytes immediately after validation; hashes/output use the snapshot, not a later path reread.
-6. The containment policy protects path traversal/symlink escape in the normal local-file threat model. Like the current Preview seam, it does not claim race-free protection against a hostile process mutating the local filesystem between validation and read; this remains a documented local TOCTOU residual risk rather than an excuse to weaken containment.
-7. Content address is SHA-256 via CryptoKit, full 64 lowercase hexadecimal characters. Never truncate the digest for durable filenames.
-8. Media type comes from validated `UTType`/system knowledge with one deterministic binary fallback (`application/octet-stream`); do not scatter extension switches.
-9. cmark raw authored HTML is trusted authored document content, not app UI HTML. `tagfilter` remains attached; E12 does not claim a sanitizer.
-10. Derived HTML is trusted first-party output admitted by E14's later contribution boundary. It bypasses authored-raw-HTML filtering through cmark custom nodes and therefore must remain passive/offline by contract.
-11. PDF WebKit is a hostile-output containment boundary anyway: no JS/network/navigation/download/popups and only manifest-backed local scheme responses.
-12. Never expose arbitrary filesystem paths through the PDF local scheme. URLs identify only manifest resource IDs.
-13. Ownership marker parsing treats path separators, `..`, absolute paths, unsupported schema/producer and duplicate owned filenames as invalid; invalid marker means do not modify that directory.
+1. No `URLSession`, hosted renderer, default persistent WebKit store or network fetch in first-party export.
+2. Local resource root is saved Markdown file's canonical parent only.
+3. Standardize/canonicalize URLs and resolve symlinks before containment comparison.
+4. Read only regular files; reject directory resources.
+5. Snapshot accepted bytes immediately; digest/output use snapshot, not a later path reread.
+6. This protects normal traversal/symlink escapes but, like current Preview, does not claim adversarial race-free local filesystem semantics between validation/read; record TOCTOU as residual risk.
+7. SHA-256 uses CryptoKit full 64 lowercase hex; never truncate durable names.
+8. Normalize media type centrally; canonical extension via `UTType`, fallback `bin`; no scattered extension/MIME switches.
+9. `ExportURLPolicy` owns the four dangerous authored Markdown schemes because `CMARK_OPT_UNSAFE` removes cmark's safe-default scrub.
+10. Authored raw HTML is trusted authored export content, not app UI; `tagfilter` is retained but not misrepresented as sanitizer.
+11. Derived HTML is trusted first-party output admitted later by E14 and must be passive/offline by contract.
+12. PDF WebKit independently blocks JS/network/navigation/download/popups and serves only manifest resources.
+13. PDF resource URLs never expose arbitrary filesystem paths.
+14. Ownership marker parser rejects path separators, `..`, absolute names, duplicate names, unsupported schema/producer and noncanonical listed resource filenames.
+15. Unknown directory means no modification. In a marked E12 directory, only reserved managed namespace is mutable; other entries survive.
 
 ---
 
 ## 3.10 Resource and performance budgets
 
-All implementation limits live in one `ExportResourceBudget` value. No call-site literals.
+One `ExportResourceBudget`; no request/call-site literals.
 
-Initial `.standard` policy:
+Initial `.standard`:
 
 ```swift
 public struct ExportResourceBudget: Sendable, Equatable {
@@ -711,55 +665,29 @@ public struct ExportResourceBudget: Sendable, Equatable {
 }
 ```
 
-The numeric values are initial safety gates, not product semantics. Slice 6 may change them **only from measured Release evidence**, in this one definition, with the final values documented in the PR. No API/call-site changes should be required to tune them.
+These are initial safety gates, not product semantics. Slice 6 may tune only this definition from measured Release evidence and must record final values. No API/caller changes to tune them.
 
-Rules:
+- count unique `(digest, media type)` resource keys after dedupe;
+- overflow-checked byte accumulation;
+- derived resources consume ordinary resource budgets;
+- derived HTML has own count/aggregate bound;
+- no hard-coded PDF page-count limit;
+- performance thresholds are Release evidence gates, not normal runtime timeouts;
+- tests inject tiny budgets for boundary cases.
 
-- count each unique content-addressed resource once after deduplication;
-- validate individual size before accumulating total using overflow-checked arithmetic;
-- derived resources consume the same resource count/byte budgets as Markdown assets;
-- derived HTML count/aggregate size are additional bounds;
-- do not add a hard-coded PDF page-count limit;
-- performance gates are measured in Release on the documented reference Mac, not encoded as arbitrary runtime timeouts for normal local export;
-- test budgets may be tiny injected values to cover boundaries without huge fixtures.
-
-Slice 6 records Release evidence for at least:
-
-- ordinary medium document;
-- asset-heavy document near practical expected usage;
-- 100+ page PDF corpus;
-- many derived fake contributions;
-- cancellation during expensive phases;
-- peak memory observation for the asset-heavy/PDF cases.
-
-If evidence shows the in-memory resource snapshot model is unsafe at approved limits, stop and revise the resource representation rather than silently increasing limits or adding unbounded reads.
+Slice 6 records Release evidence for medium document, asset-heavy document, 100+ page PDF, many fake derived contributions, cancellation and peak-memory observation. If in-memory resource snapshot is unsafe at approved limits, stop/revise representation; do not silently unbound reads.
 
 ---
 
 ## 3.11 Accessibility and localisation
 
-### Export UI
+Export UI must be keyboard reachable, VoiceOver-labelled, cancellable and localised. Self-contained selection structurally removes/disables linked-CSS choice; no contradictory hidden state. Progress/cancel uses normal SwiftUI accessibility semantics.
 
-- Export command/panel is fully keyboard reachable.
-- Standard controls receive useful labels/VoiceOver names.
-- Self-contained selection removes/disables the linked-CSS choice structurally; do not leave contradictory hidden state.
-- Progress/cancel state is announced using normal SwiftUI accessibility semantics.
-- All user-visible strings are in app localisation resources before E16 string freeze.
+Default HTML template uses semantic HTML5. Front-matter visible title is real `<h1>`, cmark heading/list/table/code/link semantics remain, images retain alt text, CSS preserves visible focus/print contrast. Do not invent language metadata from machine locale.
 
-### Exported document
+Derived output may provide accessibility metadata but E12 does not invent renderer-specific labels. PDF acceptance requires searchable/selectable text.
 
-The default template uses semantic HTML5 structure:
-
-- one document language fallback only if the app has an authoritative value; do not invent a locale metadata field from machine locale;
-- visible front-matter title is a real `<h1>`;
-- cmark heading/list/table/code/link semantics remain intact;
-- images retain cmark-generated alt text;
-- CSS preserves visible focus indication and printable contrast;
-- derived output may add accessibility metadata but E12 does not invent language-specific labels.
-
-PDF acceptance includes selectable/searchable text, not raster-only pages.
-
-Package diagnostics remain machine-readable; app maps them to localised prose.
+Package diagnostics are machine-readable; app localises prose.
 
 ---
 
@@ -767,157 +695,130 @@ Package diagnostics remain machine-readable; app maps them to localised prose.
 
 ### E14
 
-E14 may define richer renderer-neutral lifecycle/capability types, but its Export adapter must map them into E12's narrow destination types rather than importing E12 implementation details into the contribution core.
+E14 may own richer renderer-neutral lifecycle/capability models, but Export adapter maps them into E12's narrow contract. Shared information required: source identity, original UTF-16 range, `UInt` generation, inline/block placement, passive representation, diagnostics/resources.
 
-Required common information is already represented generically:
+### E19
 
-- stable source identity;
-- original-source UTF-16 range;
-- `UInt` source generation;
-- inline vs block placement;
-- passive derived representation;
-- diagnostics;
-- resources.
+Inline math maps to `.inline`; display math uses `.block` only when its recognized source owns a standalone structural block, otherwise its adapter chooses the placement matching actual range. E12 never recognizes TeX delimiters. Sentinel-before-cmark prevents successful TeX source from being reparsed as Markdown.
 
-### E19 math
+### E20/E21
 
-Inline `$...$` maps to `.inline`; display math can map to `.block` when its recognised source range owns a block, otherwise the E19/E14 adapter selects the structural placement that matches its actual range. E12 never parses TeX delimiters.
+Diagram fences map to `.block` and normally contribute SVG/passive resources. E12 never inspects fence language. Hosted URLs are not a resource escape hatch.
 
-The sentinel-before-cmark rule ensures TeX characters inside a successful math range are not reparsed as Markdown.
+### E11
 
-### E20/E21 diagrams
+Do not import Preview to reuse `HTMLPreviewResourceScope`; export owns its boundary. Parity fixtures may use the same traversal/symlink cases.
 
-Fenced diagrams map to `.block` and normally supply SVG as renderer-neutral derived bytes/HTML. E12 never inspects fence language names. SVG resources/embedded dependencies must be represented through the same derived-resource contract; hosted URLs are not an escape hatch.
+### E06
 
-### E11 Preview
-
-Preview and Export deliberately do not share a WebKit host. They share architectural security principles only. E12 must not import Preview just to reuse `HTMLPreviewResourceScope`.
-
-### E06 MarkdownEngine
-
-E12 consumes immutable `MarkdownDocument` + `SourceMap`; it does not add export fields to MarkdownEngine. If later source identity needs richer column APIs, E14 can own a source-range type or a narrowly reusable source mapping utility can be proposed then. E12 does not broaden MarkdownEngine pre-emptively.
+Consume `MarkdownDocument`/`SourceMap` without adding export fields to MarkdownEngine. If E14 later proves a cross-module richer range utility is needed, design it there from actual need rather than pre-emptively expanding E06 now.
 
 ---
 
 ## 3.13 Automated test strategy
 
-Use Swift Testing for MacDownKit tests and the current app test conventions for app-owned components.
+Use Swift Testing for MacDownKit and current app test conventions for app-owned code.
 
-### Contract/type tests
+### Type/contract
 
-- `HTMLPackagingMode` makes self-contained + linked CSS unrepresentable.
-- PDF target cannot carry HTML options.
-- request has no public layout/budget/metadata/template override.
-- output layout derives correct target/asset directory and rejects wrong extensions/non-file URLs.
-- `UInt` generation exact conversion and overflow path.
-- source range validation including surrogate-pair boundaries.
+- self-contained + linked CSS unrepresentable;
+- PDF cannot carry HTML options;
+- no public request layout/budget/metadata/root/template override;
+- layout derives `.html/.pdf` and `report.assets` exactly;
+- `UInt -> Int` exact overflow path;
+- UTF-16 source-range boundary/surrogate cases.
 
-### cmark adapter tests
+### cmark/config/security
 
-Permanent parity/golden corpus for:
+Golden/parity corpus: headings/prose/emphasis/code/quotes/lists, tables/tasks/strikethrough/autolinks/footnotes, links/images, Unicode, raw HTML/tagfilter, options, directives source preservation.
 
-- paragraphs/headings/emphasis/strong/code/quotes/lists;
-- GFM table/task/strikethrough/autolink/footnote options used by the app;
-- links/images and URL escaping;
-- raw HTML + tagfilter behaviour;
-- Unicode/emoji/CJK/combining/non-BMP;
-- repeated render/free lifecycle;
-- option combinations;
-- block directives preserve authored source rather than inventing export semantics.
+Specific structural tests:
 
-Only `CMarkConfiguration` tests assert configured extension identifiers.
+- parser extensions attached before feed/finish and syntax actually parses;
+- only `CMarkConfiguration` tests know extension identifiers;
+- repeated parse/render/free stress;
+- authored Markdown `javascript:`, `vbscript:`, `data:`, `file:` rejected even while raw HTML is rendered with `UNSAFE`;
+- relative/http/https/mailto/fragment navigation behaviour remains intentional;
+- generated embedded resource data URI remains permitted because it is generated after authored-node validation.
 
-### Derived injection tests
+### Derived
 
-Must prove both placements before E14 exists:
-
-- inline fake inside plain paragraph;
+- inline fake plain paragraph;
 - inline fake inside emphasis/link text;
-- inline fake whose source contains Markdown-significant characters, proving successful source is shielded before cmark parse;
-- block fake at top level;
-- block fake nested in list/blockquote where outer container survives;
-- deterministic token collision with authored sentinel-like text;
+- inline source containing Markdown-significant characters proves pre-parse shielding;
+- block fake top-level;
+- block fake nested list/blockquote preserves outer container;
+- deterministic sentinel collision;
 - stale generation;
-- out-of-bounds/invalid UTF-16 boundary;
-- front-matter range;
+- invalid/out-of-bounds/surrogate/front-matter range;
 - duplicate/overlap;
-- failed result;
-- custom-node structural rejection and bounded fallback to authored source;
-- resource reference rewrite/deduping;
-- unresolved derived resource marker;
-- deterministic order independent of input array order.
+- failed result source preservation;
+- structural injection rejection + bounded fallback;
+- derived-resource rewrite/dedupe/unresolved marker;
+- input array order does not change output.
 
-No fixture names a future language as an E12 implementation condition; math/diagram-shaped source is only test data.
+### Metadata/theme/template
 
-### Template/metadata/theme tests
+- valid title → escaped `<title>` + one `<h1>`;
+- absent title → filename browser fallback only;
+- unsaved absent → empty title;
+- invalid title warning;
+- all bundled themes use same mapper/base CSS;
+- template/CSS byte determinism;
+- linked stylesheet is one typed content-addressed `.css` resource.
 
-- front-matter title -> escaped `<title>` + one visible `<h1>`;
-- absent title -> saved filename browser-title fallback, no invented visible heading;
-- unsaved absent title -> empty browser title;
-- invalid title diagnostic;
-- every bundled theme maps through the same CSS builder;
-- generated CSS/template output byte-stable;
-- linked CSS is one content-addressed managed resource.
+### Resources
 
-### Resource tests
+Temporary dirs + real symlinks:
 
-Use temporary directories and real symlinks:
-
-- in-root relative image;
-- Unicode/spaces path;
-- `..` escape;
-- symlink escape;
-- absolute/out-of-root path;
-- missing file;
-- directory instead of file;
-- remote URL sentinel proving zero network call;
-- media type fallback;
-- duplicate identical bytes dedupe to one SHA-256 resource;
-- single/count/aggregate budget boundaries;
-- unsaved document relative asset;
-- self-contained closure failure;
-- companion remote/missing warning behaviour;
+- in-root relative asset;
+- Unicode/spaces;
+- `..`, symlink, absolute/file URL escape;
+- missing/directory;
+- remote zero-network sentinel;
+- media type canonicalization + `bin` fallback;
+- same bytes/same MIME dedupe;
+- same bytes/different MIME deterministic distinct typed resources;
+- filename exactly 64hex + canonical extension;
+- count/single/aggregate budget boundaries;
+- unsaved relative asset;
+- self-contained closure failures;
+- companion warn/preserve behaviour;
 - PDF remote/missing fatal behaviour.
 
-### Companion writer tests
+### Companion writer
 
-- new directory + empty ownership marker then resources/HTML/new marker;
-- valid prior ownership marker;
-- unknown directory rejection before mutation;
-- malformed/unsupported marker rejection;
-- content-address collision bytes mismatch rejection;
-- fault before first resource;
-- fault mid-resource set;
-- fault before primary promotion;
-- fault after primary before marker update;
-- marker update failure leaves valid primary/resources and skips cleanup;
-- cleanup deletes only previous manifest-owned stale names;
-- unknown files survive;
+- new managed directory/marker;
+- valid existing marker;
+- unknown directory rejected before mutation;
+- malformed/unsupported marker;
+- nonreserved user files survive;
+- reserved orphan content file cleaned only after successful new marker commit;
+- expected existing resource verifies hash/type and reuses;
+- mismatched reserved resource fails without overwrite;
+- fault before resource, mid-resource, before primary, after primary, marker update, cleanup;
+- new-dir best-effort rollback before primary;
 - cancellation boundaries.
 
-### PDF adapter tests
+### PDF
 
-At app/integration level:
-
-- local resource scheme serves only manifest IDs;
-- http/https requests fail and network sentinel observes zero requests;
+- scheme serves manifest IDs only;
+- http/https requests blocked with zero-network sentinel;
 - JS disabled;
 - navigation/download/new-window blocked;
-- copied `NSPrintInfo` maps to `PDFPageLayout` without paper-size literals;
-- generated PDF opens in PDFKit, page count > 0;
+- copied `NSPrintInfo` → layout without paper-size literals;
+- PDFKit opens page count > 0;
 - representative text searchable;
-- local image present;
-- 100+ page fixture paginates;
-- long code/table fixtures remain usable;
-- cancellation tears down transient web view and does not replace old target.
+- local image rendered;
+- 100+ pages;
+- long code/table usability;
+- cancel tears down and preserves old target.
 
 ---
 
 ## 3.14 Verification and evidence plan
 
-Architecture/code inspection is not acceptance evidence by itself.
-
-From repository root, final implementation must run:
+Run from repository root:
 
 ```bash
 (cd MacDown2 && xcodegen generate)
@@ -928,340 +829,247 @@ swiftlint lint --strict MacDown2
 swiftformat --lint MacDown2
 ```
 
-The PR must additionally record:
+PR evidence must include:
 
-1. package dependency resolution proving direct `swift-cmark` 0.8.0 compatibility;
-2. Debug and Release app build evidence;
-3. full package test summary;
-4. automated offline/network sentinel result;
-5. HTML self-contained browser dogfood for representative docs/assets/themes;
-6. companion HTML dogfood including re-export/ownership behaviour;
-7. PDF Preview.app/PDFKit dogfood, pagination and searchable text;
-8. Release performance/resource evidence required by §3.10;
+1. dependency resolution proving direct exact cmark 0.8.0;
+2. package tests;
+3. Debug/Release app builds;
+4. zero-network sentinel;
+5. self-contained browser dogfood;
+6. companion re-export/ownership dogfood;
+7. PDF Preview.app/PDFKit visual + searchable-text review;
+8. Release performance/memory evidence from §3.10;
 9. keyboard/VoiceOver/export-panel review;
 10. localisation/string review;
-11. remaining known limitations linked to issues where appropriate.
+11. residual limitations/issues.
 
-Do not mark PR ready merely because generated fixtures “look plausible” to an agent. Human visual review is required for representative HTML/PDF output.
+Architecture/code inspection alone is not completion; representative HTML/PDF requires human visual review.
 
 ---
 
 ## 3.15 Adversarial fidelity corpus
 
-The corpus must cover at least these categories. Small cases may share fixture files, but every behaviour needs an explicit assertion/evidence row.
+At minimum:
 
 1. empty document;
-2. ASCII prose/headings;
+2. ASCII headings/prose;
 3. emoji/CJK/combining/non-BMP;
-4. HTML text escapables;
-5. very long code line/block;
+4. HTML escapables;
+5. very long code;
 6. nested lists/quotes;
-7. tables/tasks/strikethrough/autolinks/footnotes;
-8. duplicate/reference links and unusual valid URLs;
-9. authored inline/block raw HTML;
-10. dangerous raw tags covered by tagfilter;
-11. dangerous link schemes as handled by cmark policy;
-12. front-matter title valid/empty/non-string/escaped;
-13. local images including Unicode filenames;
+7. GFM tables/tasks/strikethrough/autolinks/footnotes;
+8. duplicate/reference links/unusual URLs;
+9. raw inline/block HTML;
+10. tagfilter dangerous tags;
+11. dangerous Markdown schemes with `UNSAFE` enabled;
+12. front-matter title variants;
+13. Unicode local images;
 14. missing image;
 15. `..` traversal;
 16. symlink escape;
-17. absolute local path;
-18. remote image with zero-network sentinel;
-19. single/aggregate resource budget edge;
-20. resource count exactly 512 and 513 using tiny injected/generative fixtures as appropriate rather than committing huge blobs;
-21. content deduplication;
-22. raw HTML + self-contained rejection;
-23. inline fake derived success;
-24. block fake derived success + resource;
-25. derived failure preserves source;
-26. stale generation;
-27. duplicate/overlap/invalid UTF-16 derived anchors;
-28. derived sentinel collision;
-29. nested block derived placement;
+17. absolute/file URL;
+18. remote image zero-network sentinel;
+19. resource budget edges;
+20. resource count 512/513 using generated tiny fixtures;
+21. same bytes/same MIME dedupe;
+22. same bytes/different MIME;
+23. self-contained raw HTML rejection;
+24. inline fake derived success;
+25. block fake + resource;
+26. derived failure source fallback;
+27. stale/duplicate/overlap/invalid UTF-16;
+28. sentinel collision;
+29. nested block placement;
 30. directives enabled/disabled;
-31. untitled dirty document with relative image;
+31. untitled dirty doc + relative image;
 32. every bundled theme;
-33. companion linked stylesheet dedupe;
-34. existing known/unknown companion directory;
-35. write fault injection at each commit stage;
-36. 100+ page PDF;
-37. PDF local image + remote-block sentinel;
-38. cancellation during parse/resource/hash/PDF phases;
-39. repeated/cancelled cmark render lifetime stress;
-40. same complete request repeated -> byte-identical prepared HTML/resource names.
+33. linked stylesheet typed `.css` resource;
+34. known/unknown companion directories + nonreserved user file;
+35. write fault injection stages;
+36. managed orphan cleanup;
+37. 100+ page PDF;
+38. PDF local image/remote block;
+39. cancellation parse/resource/hash/PDF;
+40. cmark lifetime stress;
+41. identical complete request repeated → byte-identical prepared HTML/resource names.
 
 ---
 
 ## 3.16 Expected files and symbol ownership
 
-The implementation worker should create/edit this shape. Do not collapse it into one giant `ExportService.swift`.
+Do not build a giant `ExportService.swift`.
 
-### MacDownKit manifest
+### `MacDown2/Packages/MacDownKit/Package.swift`
 
-`MacDown2/Packages/MacDownKit/Package.swift`
-
-- direct exact `swift-cmark` 0.8.0;
-- cmark products only on `ExportService`;
-- `ExportService` processes `Sources/ExportService/Resources`.
+- direct exact cmark 0.8.0;
+- cmark products only on ExportService;
+- process `Sources/ExportService/Resources`.
 
 ### `Sources/ExportService/`
 
 - `ExportService.swift` — orchestration/prepare only.
-- `ExportRequest.swift` — source/target/options request contracts.
-- `ExportResult.swift` — prepared/result value types if not small enough to colocate cleanly.
-- `ExportDiagnostic.swift` — typed codes/context/errors.
-- `ExportResourceBudget.swift` — all central hard limits.
-- `ExportOutputLayout.swift` — internal construction from typed target; exact companion naming.
-- `Metadata/ExportMetadataResolver.swift` — fixed title policy.
-- `Templates/ExportTemplate.swift` — typed template/context protocol/value.
-- `Templates/BuiltInExportTemplateCatalog.swift` — one default template and no user discovery.
-- `HTML/CMarkHTMLBodyRenderer.swift` — cmark tree lifecycle/render only.
-- `HTML/CMarkConfiguration.swift` — sole cmark options/extensions/registration owner.
-- `HTML/DerivedCMarkInjector.swift` — source-range validation, deterministic sentinels, custom-node mutation/fallback.
-- `HTML/ExportStyleSheetBuilder.swift` — base CSS + Theme -> CSS variables.
-- `HTML/HTMLTextEscaper.swift` — generated template text/attribute slots only; not a Markdown renderer/sanitizer.
-- `Resources/default-export.css` — one structural/print stylesheet.
-- `Assets/ExportResource.swift` — ID/content/media type.
-- `Assets/ExportManifest.swift` — sole resource collection/index.
-- `Assets/ExportResourceResolver.swift` — root containment/snapshot/hash/dedupe/budget.
-- `Assets/ExportResourceReference.swift` — all embedded/relative/local-scheme/derived logical reference literals.
-- `Derived/DerivedExportDestination.swift` — public generic anchor/placement/fragment contracts.
-- `Writing/AtomicArtifactWriter.swift` — single-file sibling-temp promotion utility reusable by HTML/PDF app adapter.
-- `Writing/HTMLExportArtifactWriter.swift` — companion ownership/write sequencing.
-- `Writing/ExportOwnershipManifest.swift` — exact v1 marker encode/decode/validation.
+- `ExportRequest.swift` — source/target/options.
+- `ExportResult.swift` — prepared/result if useful.
+- `ExportDiagnostic.swift` — errors/codes/context.
+- `ExportResourceBudget.swift` — every hard limit.
+- `ExportOutputLayout.swift` — target validation/path/reference mode; no public arbitrary initializer.
+- `Metadata/ExportMetadataResolver.swift` — fixed title rules.
+- `Templates/BuiltInExportTemplate.swift` — one pure typed template; **no catalog**.
+- `HTML/CMarkHTMLBodyRenderer.swift` — C parser/tree/render lifecycle only.
+- `HTML/CMarkConfiguration.swift` — sole cmark option/extension/registration owner.
+- `HTML/ExportURLPolicy.swift` — sole authored dangerous-scheme owner.
+- `HTML/DerivedCMarkInjector.swift` — UTF-16 validation, sentinels, custom-node fallback.
+- `HTML/ExportStyleSheetBuilder.swift` — base CSS + Theme variables.
+- `HTML/HTMLTextEscaper.swift` — template text/attribute slots only.
+- `Resources/default-export.css` — structural/print CSS.
+- `Assets/ExportResource.swift` — typed digest/media/filename/data.
+- `Assets/ExportManifest.swift` — immutable manifest + internal builder.
+- `Assets/ExportResourceResolver.swift` — root containment/snapshot/hash/media/budget.
+- `Assets/ExportResourceReference.swift` — all generated embedded/relative/local/derived reference literals.
+- `Derived/DerivedExportDestination.swift` — generic public destination types.
+- `Writing/AtomicArtifactWriter.swift` — single-file atomic promotion + reserved temp prefix.
+- `Writing/HTMLExportArtifactWriter.swift` — managed companion/primary sequence.
+- `Writing/ExportOwnershipManifest.swift` — exact v1 marker/namespace validation.
+- optional `Writing/ExportFileSystem.swift` **only if** the narrow seam is required to deterministically inject filesystem faults in writer/resource tests; do not create a broad virtual filesystem.
 
-If one of these files would contain only a trivial wrapper, it may be colocated with its direct owner, but ownership must not migrate into unrelated layers.
+Small one-purpose types may colocate with their direct owner if a separate file would be empty ceremony, but ownership must remain as above.
 
-### `Tests/ExportServiceTests/`
+### Tests
 
-Mirror the production units plus:
-
-- `Fixtures/Markdown/`
-- `Fixtures/ExpectedHTML/`
-- generated temporary resource fixtures rather than committing huge binary limits.
+`Tests/ExportServiceTests/` mirrors components plus Markdown/expected-HTML fixtures. Generate large/budget binary cases in temporary dirs; do not commit huge blobs.
 
 ### App target
 
-- `ExportCoordinator.swift` — main-actor snapshot/task/UI orchestration only.
-- `ExportPanelView.swift` — destination/theme/package options.
-- `WebKitPDFRenderer.swift` — isolated print adapter.
-- `PDFPageLayout.swift` — immutable captured system print geometry.
-- app composition root wiring to construct standard service/writers.
-- workspace command/menu routing edits.
-- localisation strings.
-- XcodeGen source inputs if required; regenerate project, never hand-edit `.xcodeproj`.
+- `ExportCoordinator.swift`
+- `ExportPanelView.swift`
+- `WebKitPDFRenderer.swift`
+- `PDFPageLayout.swift`
+- composition-root/menu/window/localisation edits
+- XcodeGen inputs; never hand-edit project.
 
-### Symbols that must not exist
+### Symbols/structures that must not exist
 
 - `MathExporter`, `MermaidExporter`, `DiagramExporter` in E12;
-- renderer-language enum/switch in E12;
-- global `ExportManager.shared`;
-- a second resource list beside `ExportManifest`;
-- public arbitrary `ExportOutputLayout(...)` initializer;
-- request-level resource budgets/metadata policy/resource root;
-- Handlebars/custom template loader;
-- network-fetch helper;
+- renderer-language enum/switch;
+- `ExportManager.shared`;
+- second prepared resource list beside manifest;
+- public arbitrary `ExportOutputLayout(...)`;
+- request budget/metadata/resource-root/template selection;
+- template catalog/Handlebars/custom template loader;
+- network fetch helper;
 - screenshot/raster PDF exporter.
 
 ---
 
 ## 3.17 Serial implementation slices and stop conditions
 
-Implementation is deliberately serial. A lower-tier worker should implement **only the current slice**, make its verification green, then review before advancing.
+Workers implement one slice, make its gate green, then review before next.
 
-### Slice 0 — dependency and type-contract gate
+### Slice 0 — dependency + contracts
 
-**Goal:** prove dependency/lifetime feasibility and freeze invalid-state-free public contracts before real composition.
+**Implement only:** direct cmark dependency/products; request/target/options; diagnostic minimum; budget; output layout; derived destination types; minimal cmark config/lifetime/custom-node smoke.
 
-**Implement only:**
+**Must prove:**
 
-- `Package.swift` direct exact cmark dependency/products/resource declaration if needed for build structure;
-- `ExportRequest.swift`;
-- `ExportDiagnostic.swift` minimal codes/errors needed by slice;
-- `ExportResourceBudget.swift`;
-- `ExportOutputLayout.swift`;
-- `Derived/DerivedExportDestination.swift`;
-- minimal `CMarkConfiguration` + C lifetime smoke wrapper/test.
-
-**Exact acceptance:**
-
-1. package resolves exactly cmark 0.8.0 without conflicting duplicate graph;
-2. only ExportService imports cmark products;
-3. built-in extension registration + parse + render + free succeeds repeatedly;
-4. request has `UInt generation`; no public `Int revision`;
-5. target owns URL and HTML-only options; contradictory target/layout states cannot compile;
-6. request contains no budget/metadata/resource-root/output-layout/template override;
-7. inline and block derived anchors compile with original-source UTF-16 range + `UInt generation`;
-8. output-layout builder derives `report.assets` and rejects arbitrary/wrong paths.
-
-**Verify:**
+- exact cmark 0.8.0 resolves with current swift-markdown graph;
+- only ExportService imports products;
+- extension registration, attach-before-parse, render/free repeat safely;
+- `CMARK_NODE_CUSTOM_INLINE/BLOCK` and required mutation APIs are available;
+- `UInt generation`, no public `Int revision`;
+- target owns URL/options, invalid destination states unrepresentable;
+- no request layout/budget/metadata/root/template override;
+- inline+block anchors compile with UTF-16 range/generation;
+- output layout derives `report.assets` and rejects arbitrary/wrong target paths.
 
 ```bash
 (cd MacDown2/Packages/MacDownKit && swift build && swift test)
 ```
 
-**Stop/revise if:**
+**Stop/revise:** incompatible cmark graph/API/lifetime, unavailable custom nodes, need for another dependency. Do not add second Markdown library.
 
-- direct cmark 0.8.0 resolution conflicts with current swift-markdown graph;
-- required GFM/custom-node/lifetime APIs are unavailable from the pinned products;
-- C ownership cannot be contained without unsafe shared mutable state;
-- another dependency appears necessary.
+### Slice 1 — ordinary deterministic HTML
 
-Do not advance by adding a second Markdown library.
+Implement fresh parse, exact generation conversion, attach-before-parse GFM config, `ExportURLPolicy`, raw HTML policy, metadata, base CSS/theme variables, one built-in template, complete HTML with empty/simple manifest.
 
-### Slice 1 — deterministic ordinary HTML composition
+Must prove ordinary GFM/Unicode/front-matter/theme corpus, dangerous Markdown links remain scrubbed despite `UNSAFE`, deterministic bytes.
 
-**Depends on:** Slice 0 green.
+**Stop:** material Markdown divergence cannot be fixed centrally; do not syntax-patch templates.
 
-**Implement:**
+### Slice 2 — resources + durable HTML
 
-- fresh parser orchestration;
-- generation exact conversion;
-- central cmark GFM/raw HTML mapping;
-- metadata resolver;
-- default CSS resource/theme variable builder;
-- typed built-in template;
-- complete prepared document with empty/simple manifest;
-- no filesystem companion writes yet beyond test-safe primary if needed.
+Implement root/containment/snapshot, typed `(digest,MIME)` resources, canonical extensions, manifest builder, self-contained/companion/linked CSS refs, marker namespace, writer sequence, faults/budgets.
 
-**Acceptance:** ordinary Markdown/GFM/front matter/theme corpus produces deterministic complete HTML5; raw HTML policy exact; every export uses fresh parse; no app/WebKit dependency.
+**Stop:** requires out-of-root read/network/unknown-directory adoption/nonreserved deletion/truncated hash or new primary can reference unwritten resources.
 
-**Stop/revise if:** material ordinary Markdown divergence cannot be fixed in `CMarkConfiguration`/central AST handling. Do not patch individual syntax in templates.
+### Slice 3 — generic derived destination
 
-### Slice 2 — resource manifest, packaging and durable HTML writer
+Implement range validation, deterministic sentinel substitution, custom inline/block injection, same resource manifest, bounded fallback. Test fake only.
 
-**Depends on:** Slice 1 green.
+**Stop:** requires E14 import, math/diagram parsing, renderer-language switch or second Markdown renderer. Inline support is mandatory now because E19 requires it.
 
-**Implement:**
+### Slice 4 — PDF adapter
 
-- canonical source root derivation;
-- containment/symlink/regular-file checks;
-- byte snapshot + SHA-256 + UTType media type;
-- single manifest and destination reference builder;
-- self-contained data references;
-- companion relative resources/linked CSS;
-- exact ownership manifest and write/cleanup sequence;
-- resource/fault/budget tests.
+Implement app-side locked WebKit, manifest scheme, system print geometry, print operation, temp PDF, PDFKit validation, network/cancel/100+ page tests.
 
-**Acceptance:** full resource matrix in §§3.8/3.13, content dedupe, self-contained closure, primary-last durability and unknown-file preservation.
+**Stop:** if macOS 26 print cannot meet searchable/readable pagination; change PDF adapter only.
 
-**Stop/revise if:** implementation needs reads outside source root, network access, adoption/deletion of unknown files, truncated content hashes or cannot keep the new primary from referencing not-yet-written resources.
+### Slice 5 — UI/window integration
 
-### Slice 3 — generic inline/block derived destination
+Implement Markdown-only command, save panel, ThemeController selection, typed packaging controls, current live snapshot at invocation, one task/window, progress/cancel, localized diagnostics.
 
-**Depends on:** Slices 1-2 green.
+**Stop:** if implementation requires global current document/export singleton or unowned format.
 
-**Implement:**
+### Slice 6 — hardening/evidence
 
-- deterministic source-range validation/sort/overlap policy;
-- UTF-16/body mapping;
-- deterministic sentinel generation/collision handling;
-- pre-cmark substitution;
-- cmark custom-inline/custom-block mutation;
-- derived-resource rewrite through same manifest;
-- bounded structural fallback/reparse;
-- fake inline + block contributions only.
+Run complete corpus and §3.14 commands/evidence, Release performance/memory, browser/PDF dogfood, offline, a11y/localisation, residual-risk review.
 
-**Acceptance:** all derived tests in §3.13 pass, including inline Markdown-significant source, nested block, stale/overlap/failure and deterministic input-order independence. Failed/rejected contribution source remains visible in output.
-
-**Stop/revise if:** implementation needs to import E14 types, parse math/diagram syntax, switch on renderer language, or build a second Markdown renderer. Do not defer inline support; E19 requires it.
-
-### Slice 4 — macOS PDF adapter
-
-**Depends on:** Slices 1-3 green.
-
-**Implement in app target:**
-
-- immutable `PDFPageLayout` from copied `NSPrintInfo`;
-- locked-down transient WebKit config/scheme handler;
-- prepared-document load;
-- `WKWebView.printOperation(with:)` / `NSPrintOperation`;
-- temp PDF + PDFKit validation + atomic promotion;
-- network/JS/navigation/cancellation tests and 100+ page corpus.
-
-**Stop/revise if:** macOS 26 print path cannot reliably preserve searchable text/pagination. Change the PDF adapter only; no composition fork, no screenshot PDF.
-
-### Slice 5 — export UI/window integration
-
-**Depends on:** Slices 1-4 green.
-
-**Implement:**
-
-- Markdown-only command enablement;
-- save panels with HTML/PDF allowed types;
-- selected theme from ThemeController;
-- typed HTML packaging controls;
-- current live text/fileURL/generation/options captured immediately before request creation;
-- one task per window, progress/cancel, replacement cancellation;
-- localised diagnostics;
-- no source/save mutation.
-
-**Acceptance:** dirty immediate export proves current editor snapshot, package/theme choices work, HTML/PDF success/failure/cancel states are accessible/localised, non-Markdown export remains disabled.
-
-**Stop/revise if:** integration requires a global current document, global export singleton or makes an unowned format use Markdown export.
-
-### Slice 6 — release hardening and evidence
-
-**Depends on:** all functional slices green.
-
-**Run/record:**
-
-- full adversarial corpus;
-- package/build/lint/format commands from §3.14;
-- Debug + Release app builds;
-- browser HTML dogfood;
-- Preview.app/PDFKit dogfood;
-- network sentinel/offline test;
-- Release performance/memory evidence;
-- accessibility/localisation review;
-- remaining-risk review;
-- owner-readable PR summary.
-
-**Stop:** issue #13/PR implementation is not done if acceptance relies only on code inspection, synthetic assertions or agent judgement without required evidence.
+**Stop:** #13 is not complete if acceptance rests on code inspection/agent assertion rather than evidence.
 
 ---
 
 ## 3.18 Definition of Done and residual risks
 
-Epic 12 implementation is done only when all of the following are true:
+Done only when:
 
-- [ ] Markdown HTML export uses a fresh immutable current-editor snapshot.
-- [ ] `UInt` document generation is preserved at the boundary and exact-converted only for `ParseExecuting`.
-- [ ] typed target/options make contradictory destination states unrepresentable.
-- [ ] request does not expose output layout, production budget, metadata policy, resource root or template selection.
-- [ ] direct exact cmark 0.8.0 dependency is isolated to ExportService and lifetime tests pass.
-- [ ] ordinary Markdown/GFM fidelity corpus is reviewed and deterministic.
-- [ ] front-matter title policy is implemented exactly.
-- [ ] all bundled themes flow through one CSS variable mapper + one structural stylesheet.
-- [ ] self-contained HTML embeds all E12-managed resources and rejects cases it cannot prove closed.
-- [ ] companion resources use full SHA-256 names and exact ownership-manifest/write ordering.
-- [ ] unknown companion files/directories are never adopted/deleted.
-- [ ] export performs no network fetch/upload.
-- [ ] local resource containment/symlink/budget tests pass.
-- [ ] `ExportManifest` is the only prepared resource collection.
-- [ ] fake `.inline` and `.block` derived output use one language-neutral source-range/sentinel/custom-node path.
-- [ ] derived failure/staleness/invalidity/overlap preserves authored source.
-- [ ] derived resources use the same manifest/reference/budget path as Markdown assets.
-- [ ] E12 contains no production math/diagram logic and no renderer-language switch.
-- [ ] PDF consumes the same prepared HTML, blocks network/JS and uses system print geometry.
-- [ ] PDF corpus is searchable/selectable and visually reviewed, including 100+ pages/local images.
-- [ ] Export UI snapshots dirty text at invocation, is Markdown-only, cancellable, keyboard accessible and localised.
-- [ ] source document is never mutated by export.
-- [ ] XcodeGen + package tests + Debug/Release builds + strict lint/format are green.
-- [ ] Release performance/memory and offline evidence are recorded in the PR.
-- [ ] owner-readable PR sections explain changes, why, how, test steps, risks and verification.
+- [ ] live current editor snapshot + fresh parse used every export;
+- [ ] `UInt` generation preserved/exact-converted only at parser call;
+- [ ] typed targets make contradictory states unrepresentable;
+- [ ] request excludes layout/budget/metadata/root/template policy;
+- [ ] exact cmark 0.8.0 isolated to ExportService and lifetime/custom-node tests pass;
+- [ ] GFM extensions attach before parser feed/finish;
+- [ ] ordinary HTML parity corpus reviewed/deterministic;
+- [ ] raw authored HTML policy exact and dangerous Markdown schemes remain blocked despite `UNSAFE`;
+- [ ] title policy exact;
+- [ ] all themes flow through one CSS mapper/base stylesheet;
+- [ ] self-contained closure enforced for E12-visible resources;
+- [ ] resource identity `(full SHA-256, MIME)` and canonical extension deterministic;
+- [ ] one immutable final manifest only;
+- [ ] companion directory requires marker; reserved namespace only is mutable; nonreserved files survive;
+- [ ] resources exist before primary HTML commit;
+- [ ] zero network fetch/upload;
+- [ ] traversal/symlink/budget tests green;
+- [ ] fake inline+block derived output uses one generic sentinel/custom-node path;
+- [ ] derived failure/stale/overlap/structural rejection preserves source;
+- [ ] derived resources use ordinary manifest/budget path;
+- [ ] no production renderer language logic in E12;
+- [ ] PDF consumes same prepared HTML, blocks JS/network and uses system geometry;
+- [ ] PDF corpus searchable/selectable, local images and 100+ pages visually reviewed;
+- [ ] Markdown-only UI snapshots dirty text, cancels correctly, is keyboard/VoiceOver accessible/localised;
+- [ ] source never mutated;
+- [ ] XcodeGen/package tests/Debug+Release/strict lint+format green;
+- [ ] Release performance/memory/offline evidence recorded;
+- [ ] owner-readable PR explains changes/test/risk/evidence.
 
-### Residual risks accepted by this architecture
+### Residual risks explicitly accepted
 
-1. **cmark dialect parity.** E06 uses swift-markdown while E12 directly uses the underlying cmark-gfm path. The permanent parity corpus is the upgrade gate; individual drift must not be patched with a second renderer.
-2. **Block directives.** cmark may not reproduce swift-markdown block-directive interpretation. E12 preserves authored directive source rather than inventing export semantics until a dedicated owner exists.
-3. **Authored raw HTML.** Normal HTML preserves authored raw HTML under cmark `UNSAFE + tagfilter`; tagfilter is not a full sanitizer. Self-contained rejects raw HTML. PDF locks down JavaScript/network but cannot statically crawl every resource reference inside arbitrary raw HTML without a new HTML parser; it warns and renders best-effort.
-4. **Legacy MPAsset evidence.** Useful behaviour is migrated from available concepts/tests, but no current concrete MPAsset source contract was found. Material later discovery is an architecture stop condition.
-5. **Issue #35.** Non-Markdown files entering the Markdown parse path remains outside E12; export stays Markdown-only.
-6. **System PDF stack.** WebKit/AppKit print behaviour is platform-owned. The adapter is intentionally isolated so a verified replacement does not fork composition.
-7. **Local filesystem TOCTOU.** Canonical containment + immediate byte snapshot protects normal path traversal/symlink cases but does not claim adversarial race-free filesystem semantics.
-8. **Crash or marker-update orphan resources.** Primary correctness is prioritised over aggressive cleanup. Content-addressed orphan files can remain after a crash; E12 never guesses ownership to remove them.
-9. **Initial resource limits.** `.standard` values are safety defaults pending Slice 6 Release evidence. They are centralised so evidence-based tuning does not alter architecture or callers.
+1. **cmark parity:** E06 wraps swift-markdown while E12 directly wraps cmark-gfm. Permanent parity corpus is upgrade gate; do not add a second renderer to patch drift.
+2. **Block directives:** cmark may not reproduce swift-markdown directive semantics. Preserve authored directive source; do not invent semantics in E12.
+3. **Raw HTML trust:** ordinary export preserves authored raw HTML with `UNSAFE + tagfilter`; tagfilter is not a full sanitizer. Markdown-node dangerous schemes are separately blocked. Self-contained rejects raw HTML; PDF locks JS/network. A future stronger raw-HTML sanitization product decision would require its own architecture/dependency review.
+4. **Legacy MPAsset:** concrete source contract unavailable; behavioural migration only. Material later evidence is a stop condition.
+5. **Issue #35:** non-Markdown parse routing remains separate; export stays Markdown-only.
+6. **System PDF stack:** isolated adapter contains WebKit/AppKit variability.
+7. **Local filesystem TOCTOU:** canonical containment + immediate snapshot is not a claim of adversarial race-free local filesystem semantics.
+8. **Crash orphans:** a crash can leave reserved files in an E12-managed asset directory. Later successful companion export may clean only reserved managed names; correctness takes priority over rollback theatre.
+9. **Initial resource limits:** central `.standard` values are provisional safety gates until Slice 6 measured evidence; tuning stays in one definition.
 
-No residual risk above is permission to weaken the invariant that first-party export remains local/offline, source-preserving and single-pipeline.
+No residual risk permits weakening local/offline operation, source preservation, one-pipeline composition or unknown-user-file protection.
