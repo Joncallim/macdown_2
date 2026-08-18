@@ -29,8 +29,8 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
     public var description: String {
         switch self {
         case let .unresolvedResources(diagnostics):
-            let messages = diagnostics.map(\.message).joined(separator: "\n")
-            return "This export must embed every image, but some could not be resolved:\n\(messages)"
+            return "This export must embed every image, but some could not be resolved:\n"
+                + Self.summarise(diagnostics)
         case .rawHTMLNotEmbeddable:
             return "This document contains raw HTML, which cannot be embedded in a self-contained file. "
                 + "Export it as HTML instead."
@@ -48,6 +48,16 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
     }
 
     public var errorDescription: String? { description }
+
+    /// How many unresolved resources one message lists before it counts the
+    /// rest. A document with two hundred broken images is still one alert.
+    private static let listedAtMost = 5
+
+    private static func summarise(_ diagnostics: [ExportDiagnostic]) -> String {
+        let listed = diagnostics.prefix(listedAtMost).map(\.message).joined(separator: "\n")
+        guard diagnostics.count > listedAtMost else { return listed }
+        return listed + "\n…and \(diagnostics.count - listedAtMost) more."
+    }
 
     /// The actionable next step, shown under the message in the app's alert.
     public var recoverySuggestion: String? {

@@ -48,7 +48,7 @@ struct ExportCoordinator {
             // Warnings are read before Finder takes focus, so the report is not
             // left sitting behind another app's window.
             await presentWarningsIfNeeded(result.diagnostics)
-            reveal(result.files)
+            reveal(result.primaryFile)
         } catch is CancellationError {
             // The user withdrew the export; there is nothing to report.
         } catch {
@@ -127,7 +127,7 @@ struct ExportCoordinator {
     // MARK: - Execution
 
     private struct ExportOutcome {
-        let files: [URL]
+        let primaryFile: URL
         let diagnostics: [ExportDiagnostic]
     }
 
@@ -148,21 +148,21 @@ struct ExportCoordinator {
                 ? .selfContained
                 : .standalone(style: selection.style)
             let result = try await ExportService.exportHTML(request, to: .html(url: selection.url, mode: mode))
-            return ExportOutcome(
-                files: [result.primaryFile] + result.companionFiles,
-                diagnostics: result.diagnostics
-            )
+            return ExportOutcome(primaryFile: result.primaryFile, diagnostics: result.diagnostics)
         case .pdf:
             let prepared = try await ExportService.prepare(request, target: .pdf(url: selection.url))
             try await PDFExportAdapter.export(prepared, to: selection.url)
-            return ExportOutcome(files: [selection.url], diagnostics: prepared.diagnostics)
+            return ExportOutcome(primaryFile: selection.url, diagnostics: prepared.diagnostics)
         }
     }
 
     // MARK: - Feedback
 
-    private func reveal(_ files: [URL]) {
-        NSWorkspace.shared.activateFileViewerSelecting(files)
+    /// Selects the exported document in Finder. Companion files are deliberately
+    /// not selected: an image-heavy export would otherwise open Finder with two
+    /// dozen items highlighted across two folders.
+    private func reveal(_ file: URL) {
+        NSWorkspace.shared.activateFileViewerSelecting([file])
     }
 
     /// Composition warnings are reported, never dropped: an export that quietly
