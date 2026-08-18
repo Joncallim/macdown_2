@@ -105,10 +105,12 @@ final class ExportResourceResolver {
             return .keep
         }
 
-        // `.isRegularFileKey` follows symlinks to their target by default (the
-        // `stat`, not `lstat`, view), so a symlink to a regular file inside the
-        // root is accepted while a directory, device, socket or FIFO is not —
-        // only ordinary file bytes are ever handed to `Data(contentsOf:)`.
+        // `fileURL` is already the fully symlink-resolved target (see
+        // `containedFileURL`), so `.isRegularFileKey` reports on the real file
+        // a symlink points to, not on the symlink itself — a symlink to a
+        // regular file inside the root is accepted, a directory, device,
+        // socket or FIFO is not, and only ordinary file bytes are ever handed
+        // to `Data(contentsOf:)`.
         guard let isRegularFile = try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile,
               isRegularFile else {
             return handleUnresolved(url: url, reason: "resource is not a readable file at \(fileURL.lastPathComponent)")
@@ -137,8 +139,14 @@ final class ExportResourceResolver {
         return .rewrite(companionReference(for: resource))
     }
 
-    /// The file an authored reference points at, or `nil` (with a diagnostic
-    /// recorded) when it cannot be resolved inside the document's own folder.
+    /// The file an authored reference points at, fully symlink-resolved, or
+    /// `nil` (with a diagnostic recorded) when it cannot be resolved inside
+    /// the document's own folder.
+    ///
+    /// The resolved URL — not the as-authored one — is what containment is
+    /// checked against and what every later step (`isRegularFile`, size, the
+    /// actual read) operates on, so there is exactly one notion of "the file"
+    /// a reference names, not two that could disagree across a symlink hop.
     private func containedFileURL(for url: String) -> URL? {
         guard let documentDirectory, let resourceRootPrefix else {
             _ = handleUnresolved(url: url, reason: "untitled document has no directory to resolve resources from")
@@ -149,15 +157,17 @@ final class ExportResourceResolver {
             return nil
         }
 
-        let fileURL = documentDirectory.appendingPathComponent(relativePath).standardizedFileURL
+        let candidate = documentDirectory.appendingPathComponent(relativePath).standardizedFileURL
+        let resolved = candidate.resolvingSymlinksInPath()
         // Root containment: the resource root is the document's own directory.
-        // A reference that climbs out of it (`../../.ssh/id_rsa`) is never read,
-        // so an export can only ever carry files from the document's folder.
-        guard fileURL.resolvingSymlinksInPath().path.hasPrefix(resourceRootPrefix) else {
+        // A reference that climbs out of it (`../../.ssh/id_rsa`), directly or
+        // through a symlink hop, is never read, so an export can only ever
+        // carry files from the document's folder.
+        guard resolved.path.hasPrefix(resourceRootPrefix) else {
             _ = handleUnresolved(url: url, reason: "resource is outside the document's folder")
             return nil
         }
-        return fileURL
+        return resolved
     }
 
     /// Admits a resource against the count and aggregate budgets, returning a
