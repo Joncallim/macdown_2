@@ -12,13 +12,13 @@ public enum BuiltInExportTemplate {
     ///
     /// - Parameters:
     ///   - title: the plain-text document title (HTML-escaped here).
+    ///   - visibleTitle: the heading rendered above the body, when front matter
+    ///     supplied a title. `nil` emits no heading.
     ///   - headExtras: raw markup emitted first inside `<head>`, before the
     ///     title and stylesheet. The PDF adapter uses it for a
     ///     Content-Security-Policy that must govern the whole document.
     ///   - styleElement: the complete `<style>…</style>` block or
     ///     `<link rel="stylesheet" …>` element for the head.
-    ///   - visibleTitle: the heading rendered above the body, when front matter
-    ///     supplied a title. `nil` emits no heading.
     ///   - body: the rendered body fragment.
     public static func document(
         title: String,

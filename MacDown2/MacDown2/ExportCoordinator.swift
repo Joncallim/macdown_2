@@ -23,8 +23,8 @@ struct ExportCoordinator {
         self.themeController = themeController
     }
 
-    /// How many warnings one alert lists before it summarises the rest.
-    private let warningsShownAtMost = 6
+    /// How many diagnostics one alert lists before it summarises the rest.
+    private let diagnosticsShownAtMost = 6
 
     /// Whether the key window's active document is exportable Markdown.
     var canExportActiveDocument: Bool {
@@ -45,9 +45,9 @@ struct ExportCoordinator {
 
         do {
             let result = try await performExport(document: document, selection: selection)
-            // Warnings are read before Finder takes focus, so the report is not
-            // left sitting behind another app's window.
-            await presentWarningsIfNeeded(result.diagnostics)
+            // Diagnostics are read before Finder takes focus, so the report is
+            // not left sitting behind another app's window.
+            await presentDiagnosticsIfNeeded(result.diagnostics)
             reveal(result.primaryFile)
         } catch is CancellationError {
             // The user withdrew the export; there is nothing to report.
@@ -165,23 +165,27 @@ struct ExportCoordinator {
         NSWorkspace.shared.activateFileViewerSelecting([file])
     }
 
-    /// Composition warnings are reported, never dropped: an export that quietly
-    /// left images unresolved would look successful and open broken.
-    private func presentWarningsIfNeeded(_ diagnostics: [ExportDiagnostic]) async {
-        let warnings = diagnostics.filter { $0.severity == .warning }
-        guard !warnings.isEmpty else { return }
+    /// Composition diagnostics are reported, never dropped: an export that
+    /// quietly left images unresolved, or a derived contribution broken, would
+    /// look successful and open wrong. This runs only after a successful
+    /// export, so an `.error` diagnostic here means one part of the document
+    /// did not resolve, not that the export failed — resolution failures that
+    /// are fatal to the export itself are thrown from `performExport` and never
+    /// reach this point.
+    private func presentDiagnosticsIfNeeded(_ diagnostics: [ExportDiagnostic]) async {
+        guard !diagnostics.isEmpty else { return }
 
-        let shown = warnings.prefix(warningsShownAtMost).map(\.message)
+        let shown = diagnostics.prefix(diagnosticsShownAtMost).map(\.message)
         var text = shown.joined(separator: "\n")
-        if warnings.count > shown.count {
-            text += "\n…and \(warnings.count - shown.count) more."
+        if diagnostics.count > shown.count {
+            text += "\n…and \(diagnostics.count - shown.count) more."
         }
 
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = warnings.count == 1
-            ? "Exported with 1 warning"
-            : "Exported with \(warnings.count) warnings"
+        alert.messageText = diagnostics.count == 1
+            ? "Exported with 1 issue"
+            : "Exported with \(diagnostics.count) issues"
         alert.informativeText = text
         await present(alert)
     }

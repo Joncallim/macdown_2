@@ -13,7 +13,8 @@ public struct PreparedExportDocument: Sendable, Equatable {
     public let title: String
 
     /// The heading rendered at the top of the document. Present only when front
-    /// matter supplied a title; a filename fallback is never a visible heading.
+    /// matter supplied a title AND the body does not already open with its own
+    /// heading; a filename fallback is never a visible heading.
     public let visibleTitle: String?
 
     /// The rendered Markdown body, with derived content and resource references
