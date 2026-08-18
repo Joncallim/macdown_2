@@ -1,0 +1,56 @@
+import Foundation
+
+/// The single built-in export template.
+///
+/// macOS 1.0 ships exactly one pure-Swift template; there is no template
+/// catalog, no Handlebars dependency, and no custom-template loader. The
+/// template variables keep the useful legacy concepts — title, style, content —
+/// so migration guidance from old MacDown remains possible, but the layer is a
+/// fixed function rather than a pluggable abstraction.
+public enum BuiltInExportTemplate {
+    /// Renders the complete standalone HTML document shell.
+    ///
+    /// - Parameters:
+    ///   - title: the plain-text document title (HTML-escaped here).
+    ///   - styleElement: the complete `<style>…</style>` block or
+    ///     `<link rel="stylesheet" …>` element for the head.
+    ///   - body: the rendered body fragment.
+    public static func document(title: String, styleElement: String, body: String) -> String {
+        let titleTag = title.isEmpty ? "" : "<title>\(HTMLEscaping.escape(title))</title>\n"
+
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+        \(titleTag)\(styleElement)
+        </head>
+        <body>
+        \(body)
+        </body>
+        </html>
+        """
+    }
+}
+
+/// Minimal HTML attribute/text escaping for the few template values E12 owns
+/// (title text and generated attribute values). Body and stylesheet bytes are
+/// produced by cmark / the bundled stylesheet and are not passed through here.
+public enum HTMLEscaping {
+    public static func escape(_ text: String) -> String {
+        var result = ""
+        result.reserveCapacity(text.utf8.count)
+        for character in text {
+            switch character {
+            case "&": result += "&amp;"
+            case "<": result += "&lt;"
+            case ">": result += "&gt;"
+            case "\"": result += "&quot;"
+            case "'": result += "&#39;"
+            default: result.append(character)
+            }
+        }
+        return result
+    }
+}

@@ -42,7 +42,7 @@ This initial table is deliberately conservative. It captures implementation stat
 | E09 folder browser | done | existing package/Release benchmark records exist; reconcile exact gate | unverified | unverified | reconcile | unverified |
 | E10 editing assists | done | substantial package/UI smoke evidence exists | Release dogfood must be reconciled | manual Release matrix previously remained a confidence gate | reconcile | unverified |
 | E11 multi-format/TeX source | open | — | — | — | architecture refresh required (#43) | blocked until implemented |
-| E12 export/shared destination | open | — | — | — | — | blocked until implemented |
+| E12 export/shared destination | done | 53 ExportService package tests pass: cmark lifecycle, composer, resources/URL policy, file writer, derived-content fallback, fidelity corpus, offline/no-hosted-renderer | unverified — Release build passes; no executed UI test of Export… | unverified — PDF pagination and Export… menu need Release dogfood | none known; residual risks recorded in `epic-12-implementation.md` §18 | unverified — package evidence only |
 | E13 settings | open | — | — | — | — | blocked until implemented |
 | E14 contribution seam/text filters | open | — | — | — | — | blocked until implemented |
 | E18 external-file reconciliation | implementation/issue completed | reconcile package/app records | hosted/real-app evidence must be reconciled | sustained dogfood evidence previously remained a publication gate | reconcile | unverified |
