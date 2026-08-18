@@ -261,8 +261,8 @@ struct ExportFileWriterTests {
         // image bytes and the theme-derived stylesheet both differ.
         let alphaAssetsDir = directory.appendingPathComponent(alphaAssetsDirName)
         let betaAssetsDir = directory.appendingPathComponent(betaAssetsDirName)
-        let alphaFiles = Set(try FileManager.default.contentsOfDirectory(atPath: alphaAssetsDir.path))
-        let betaFiles = Set(try FileManager.default.contentsOfDirectory(atPath: betaAssetsDir.path))
+        let alphaFiles = try Set(FileManager.default.contentsOfDirectory(atPath: alphaAssetsDir.path))
+        let betaFiles = try Set(FileManager.default.contentsOfDirectory(atPath: betaAssetsDir.path))
         #expect(alphaFiles.count == 3)
         #expect(betaFiles.count == 3)
         let alphaOwnResources = alphaFiles.subtracting([ExportFileWriter.markerFileName])
