@@ -29,8 +29,8 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
     public var description: String {
         switch self {
         case let .unresolvedResources(diagnostics):
-            return "This export must embed every image, but some could not be resolved:\n"
-                + Self.summarise(diagnostics)
+            let listed = Self.summarise(diagnostics)
+            return "This export must embed every image, but some could not be resolved:\n\(listed)"
         case .rawHTMLNotEmbeddable:
             return "This document contains raw HTML, which cannot be embedded in a self-contained file. "
                 + "Export it as HTML instead."
