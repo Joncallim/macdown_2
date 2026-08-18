@@ -44,7 +44,25 @@ enum CMarkGFM {
         }
     }
 
+    /// What one render produced: the HTML fragment plus the structural facts the
+    /// composer needs in order to apply its target policy. Reported from the same
+    /// tree walk that does the substitutions, so no extra pass is needed.
+    struct Rendered {
+        let html: String
+        /// `true` when the source contained an authored raw-HTML block or inline
+        /// span. Self-contained export treats this as fatal; PDF warns.
+        let containsRawHTML: Bool
+    }
+
     private static let coreExtensionNames = ["table", "strikethrough", "autolink", "tagfilter", "tasklist"]
+
+    /// cmark-gfm's `ensure_registered` mutates a process-global registry behind a
+    /// plain `int` guard, so concurrent exports must not race it. A `static let`
+    /// initialiser is run exactly once under the Swift runtime's own lock, which
+    /// is the guarantee cmark itself does not provide.
+    private static let extensionsRegistered: Void = {
+        cmark_gfm_core_extensions_ensure_registered()
+    }()
 
     /// Parses `text`, applies `customNodes` and `urlTransformer`, and renders an
     /// HTML fragment.
@@ -55,13 +73,16 @@ enum CMarkGFM {
     ///
     /// `urlTransformer` is called for every image/link URL; it runs on the
     /// caller's thread during the single tree walk.
-    static func renderHTML(
+    static func render(
         _ text: String,
         options: Int32,
         customNodes: [CustomNodeSpec] = [],
         urlTransformer: ((String, Bool) -> URLDisposition)? = nil
-    ) throws -> String {
-        cmark_gfm_core_extensions_ensure_registered()
+    ) throws -> Rendered {
+        // Reading the `static let` runs its initialiser exactly once under the
+        // Swift runtime's own lock. `precondition` is not used here because it
+        // is stripped in `-Ounchecked` builds, which would drop registration.
+        _ = extensionsRegistered
 
         guard let parser = cmark_parser_new(options) else {
             throw CMarkError.parserCreationFailed
@@ -73,8 +94,15 @@ enum CMarkGFM {
             cmark_parser_attach_syntax_extension(parser, extensionPointer)
         }
 
-        text.withCString { buffer in
-            cmark_parser_feed(parser, buffer, text.utf8.count)
+        // Feed from the string's own contiguous UTF-8 storage. `withCString`
+        // would copy the whole document to append a NUL terminator that
+        // `cmark_parser_feed` never reads, since the length is explicit.
+        var source = text
+        source.withUTF8 { buffer in
+            guard let base = buffer.baseAddress, !buffer.isEmpty else { return }
+            base.withMemoryRebound(to: CChar.self, capacity: buffer.count) { chars in
+                cmark_parser_feed(parser, chars, buffer.count)
+            }
         }
 
         guard let root = cmark_parser_finish(parser) else {
@@ -82,7 +110,8 @@ enum CMarkGFM {
         }
         defer { cmark_node_free(root) }
 
-        transform(root, customNodes: customNodes, urlTransformer: urlTransformer)
+        var walkResult = WalkResult()
+        transform(root, customNodes: customNodes, urlTransformer: urlTransformer, result: &walkResult)
 
         // tagfilter/table/tasklist rendering reads the parser's extension list,
         // so it must be taken from the parser while it is still alive.
@@ -92,10 +121,26 @@ enum CMarkGFM {
         }
         defer { free(rendered) }
 
-        return String(cString: rendered)
+        return Rendered(html: String(cString: rendered), containsRawHTML: walkResult.sawRawHTML)
+    }
+
+    /// Convenience for callers that only need the HTML fragment.
+    static func renderHTML(
+        _ text: String,
+        options: Int32,
+        customNodes: [CustomNodeSpec] = [],
+        urlTransformer: ((String, Bool) -> URLDisposition)? = nil
+    ) throws -> String {
+        try render(text, options: options, customNodes: customNodes, urlTransformer: urlTransformer).html
     }
 
     // MARK: - Tree transformation
+
+    /// Facts gathered while walking the tree, so the composer never needs a
+    /// second pass over the document to learn them.
+    private struct WalkResult {
+        var sawRawHTML = false
+    }
 
     /// A manual recursive walk (not a cmark iterator) so that leaf nodes — in
     /// particular `TEXT`, which the iterator never exits — can be mutated
@@ -105,52 +150,76 @@ enum CMarkGFM {
     private static func transform(
         _ root: UnsafeMutablePointer<cmark_node>,
         customNodes: [CustomNodeSpec],
-        urlTransformer: ((String, Bool) -> URLDisposition)?
+        urlTransformer: ((String, Bool) -> URLDisposition)?,
+        result: inout WalkResult
     ) {
         let blockSpecs = Dictionary(uniqueKeysWithValues: customNodes.filter(\.isBlock).map { ($0.sentinel, $0) })
-        let inlineSpecs = Dictionary(uniqueKeysWithValues: customNodes.filter { !$0.isBlock }.map { ($0.sentinel, $0) })
-        walk(root, blockSpecs: blockSpecs, inlineSpecs: inlineSpecs, urlTransformer: urlTransformer)
+        let inlineSpecs = InlineSentinelIndex(customNodes.filter { !$0.isBlock })
+        walk(root, blockSpecs: blockSpecs, inlineSpecs: inlineSpecs, urlTransformer: urlTransformer, result: &result)
     }
 
     private static func walk(
         _ node: UnsafeMutablePointer<cmark_node>,
         blockSpecs: [String: CustomNodeSpec],
-        inlineSpecs: [String: CustomNodeSpec],
-        urlTransformer: ((String, Bool) -> URLDisposition)?
+        inlineSpecs: InlineSentinelIndex,
+        urlTransformer: ((String, Bool) -> URLDisposition)?,
+        result: inout WalkResult
     ) {
-        // Rewrite the node's own URL when it is an image or link.
-        let kind = typeString(node)
-        if kind == "image" || kind == "link", let urlTransformer, let url = cmark_node_get_url(node) {
-            let original = String(cString: url)
-            switch urlTransformer(original, kind == "image") {
-            case .keep:
-                break
-            case let .rewrite(replacement):
-                _ = replacement.withCString { cmark_node_set_url(node, $0) }
-            case .blank:
-                _ = "".withCString { cmark_node_set_url(node, $0) }
-            }
-        }
+        applyNodePolicy(node, urlTransformer: urlTransformer, result: &result)
 
         var child = cmark_node_first_child(node)
         while let current = child {
             let next = cmark_node_next(current)
-            let childKind = typeString(current)
+            let childKind = cmark_node_get_type(current)
 
-            if childKind == "text", !inlineSpecs.isEmpty, let literal = cmark_node_get_literal(current) {
-                let value = String(cString: literal)
-                if let spec = inlineSpecs[value] {
-                    replace(current, withCustom: spec)
-                } else if containsAnySentinel(value, inlineSpecs) {
-                    splitTextNode(current, inlineSpecs: inlineSpecs)
-                }
-            } else if childKind == "paragraph", let spec = blockSpec(for: current, bySentinel: blockSpecs) {
+            if childKind == CMARK_NODE_TEXT {
+                // Text nodes are leaves; there is nothing below them to walk.
+                substituteInlineSentinels(current, inlineSpecs: inlineSpecs)
+            } else if childKind == CMARK_NODE_PARAGRAPH,
+                      let spec = blockSpec(for: current, bySentinel: blockSpecs) {
                 replace(current, withCustom: spec)
             } else {
-                walk(current, blockSpecs: blockSpecs, inlineSpecs: inlineSpecs, urlTransformer: urlTransformer)
+                walk(
+                    current,
+                    blockSpecs: blockSpecs,
+                    inlineSpecs: inlineSpecs,
+                    urlTransformer: urlTransformer,
+                    result: &result
+                )
             }
 
             child = next
+        }
+    }
+
+    /// Rewrites one node's URL when it is an image or link, and notes authored
+    /// raw HTML when it is not.
+    ///
+    /// The node type is read as the cmark enum rather than its string name: the
+    /// string form allocates a Swift `String` for every node in the document,
+    /// which is the hot path of a large export.
+    private static func applyNodePolicy(
+        _ node: UnsafeMutablePointer<cmark_node>,
+        urlTransformer: ((String, Bool) -> URLDisposition)?,
+        result: inout WalkResult
+    ) {
+        let kind = cmark_node_get_type(node)
+        if kind == CMARK_NODE_HTML_BLOCK || kind == CMARK_NODE_HTML_INLINE {
+            result.sawRawHTML = true
+            return
+        }
+        guard kind == CMARK_NODE_IMAGE || kind == CMARK_NODE_LINK,
+              let urlTransformer, let url = cmark_node_get_url(node) else {
+            return
+        }
+
+        switch urlTransformer(String(cString: url), kind == CMARK_NODE_IMAGE) {
+        case .keep:
+            break
+        case let .rewrite(replacement):
+            _ = replacement.withCString { cmark_node_set_url(node, $0) }
+        case .blank:
+            _ = "".withCString { cmark_node_set_url(node, $0) }
         }
     }
 
@@ -160,46 +229,46 @@ enum CMarkGFM {
         for node: UnsafeMutablePointer<cmark_node>,
         bySentinel: [String: CustomNodeSpec]
     ) -> CustomNodeSpec? {
+        guard !bySentinel.isEmpty else { return nil }
         guard let firstChild = cmark_node_first_child(node) else { return nil }
         guard cmark_node_next(firstChild) == nil else { return nil }
-        guard typeString(firstChild) == "text" else { return nil }
+        guard cmark_node_get_type(firstChild) == CMARK_NODE_TEXT else { return nil }
         guard let literal = cmark_node_get_literal(firstChild) else { return nil }
         guard let spec = bySentinel[String(cString: literal)] else { return nil }
         return spec
     }
 
-    /// Whether any inline sentinel token occurs in `value`.
-    private static func containsAnySentinel(_ value: String, _ inlineSpecs: [String: CustomNodeSpec]) -> Bool {
-        inlineSpecs.keys.contains { value.contains($0) }
-    }
-
-    /// Splits a text node that contains inline sentinels into a sequence of
-    /// text nodes and custom inline nodes.
-    private static func splitTextNode(_ node: UnsafeMutablePointer<cmark_node>, inlineSpecs: [String: CustomNodeSpec]) {
-        guard let literal = cmark_node_get_literal(node) else { return }
+    /// Replaces every inline sentinel inside a text node, splitting the node into
+    /// a sequence of text nodes and custom inline nodes. A no-op when the text
+    /// holds no sentinel.
+    private static func substituteInlineSentinels(
+        _ node: UnsafeMutablePointer<cmark_node>,
+        inlineSpecs: InlineSentinelIndex
+    ) {
+        guard !inlineSpecs.isEmpty, let literal = cmark_node_get_literal(node) else { return }
         let value = String(cString: literal)
 
+        if let spec = inlineSpecs.specsBySentinel[value] {
+            replace(node, withCustom: spec)
+            return
+        }
+
+        // `pending` is the start of the text run not yet emitted; every match
+        // ends strictly after it starts, so the walk always advances.
         var pieces: [Piece] = []
-        var remaining = Substring(value)
-        while !remaining.isEmpty {
-            var earliest: (spec: CustomNodeSpec, range: Range<String.Index>)?
-            for (token, spec) in inlineSpecs {
-                guard let range = remaining.range(of: token) else { continue }
-                if earliest.map({ range.lowerBound < $0.range.lowerBound }) ?? true {
-                    earliest = (spec, range)
-                }
+        var pending = value.startIndex
+        while let found = inlineSpecs.firstMatch(in: value, from: pending) {
+            if pending < found.range.lowerBound {
+                pieces.append(.text(String(value[pending ..< found.range.lowerBound])))
             }
-            if let found = earliest {
-                let before = String(remaining[remaining.startIndex ..< found.range.lowerBound])
-                if !before.isEmpty {
-                    pieces.append(.text(before))
-                }
-                pieces.append(.custom(found.spec))
-                remaining = remaining[found.range.upperBound...]
-            } else {
-                pieces.append(.text(String(remaining)))
-                remaining = Substring()
-            }
+            pieces.append(.custom(found.spec))
+            pending = found.range.upperBound
+        }
+
+        // No sentinel matched: leave the node exactly as parsed.
+        guard !pieces.isEmpty else { return }
+        if pending < value.endIndex {
+            pieces.append(.text(String(value[pending...])))
         }
 
         guard let firstSpec = pieces.first else { return }
@@ -231,10 +300,7 @@ enum CMarkGFM {
             guard let node = cmark_node_new(CMARK_NODE_CUSTOM_INLINE) else {
                 fatalError("cmark node allocation failed")
             }
-            spec.html.withCString { buffer in
-                cmark_node_set_on_enter(node, buffer)
-                cmark_node_set_on_exit(node, "")
-            }
+            setCustomHTML(spec.html, on: node)
             return node
         }
     }
@@ -242,10 +308,7 @@ enum CMarkGFM {
     private static func replace(_ node: UnsafeMutablePointer<cmark_node>, withCustom spec: CustomNodeSpec) {
         let nodeType: cmark_node_type = spec.isBlock ? CMARK_NODE_CUSTOM_BLOCK : CMARK_NODE_CUSTOM_INLINE
         guard let custom = cmark_node_new(nodeType) else { return }
-        spec.html.withCString { buffer in
-            cmark_node_set_on_enter(custom, buffer)
-            cmark_node_set_on_exit(custom, "")
-        }
+        setCustomHTML(spec.html, on: custom)
         cmark_node_replace(node, custom)
         // `cmark_node_replace` unlinks `node` but does not free it; the node
         // tree is freed wholesale by the root's `cmark_node_free`, which will
@@ -253,12 +316,10 @@ enum CMarkGFM {
         cmark_node_free(node)
     }
 
-    /// The node type as its cmark string name ("text", "paragraph", …). Used
-    /// instead of the raw `cmark_node_type` enum so the code is robust to the
-    /// importer's case naming and to extension-added node types.
-    private static func typeString(_ node: UnsafeMutablePointer<cmark_node>) -> String {
-        guard let string = cmark_node_get_type_string(node) else { return "" }
-        return String(cString: string)
+    /// cmark copies both strings, so the C buffers only need to outlive the call.
+    private static func setCustomHTML(_ html: String, on node: UnsafeMutablePointer<cmark_node>) {
+        _ = html.withCString { cmark_node_set_on_enter(node, $0) }
+        _ = "".withCString { cmark_node_set_on_exit(node, $0) }
     }
 
     private enum Piece {
@@ -266,7 +327,7 @@ enum CMarkGFM {
         case custom(CustomNodeSpec)
     }
 
-    enum CMarkError: Error, CustomStringConvertible {
+    enum CMarkError: Error, LocalizedError, CustomStringConvertible {
         case parserCreationFailed
         case parseProducedNoDocument
         case renderFailed
@@ -278,5 +339,7 @@ enum CMarkGFM {
             case .renderFailed: "cmark could not render HTML"
             }
         }
+
+        var errorDescription: String? { description }
     }
 }

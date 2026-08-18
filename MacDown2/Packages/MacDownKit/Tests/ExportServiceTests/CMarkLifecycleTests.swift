@@ -128,4 +128,46 @@ struct CMarkLifecycleTests {
             #expect(html.contains("<h1>h</h1>"))
         }
     }
+
+    @Test func reportsAuthoredRawHTML() throws {
+        let block = try CMarkGFM.render("<div>x</div>", options: CMarkGFM.optUnsafe)
+        #expect(block.containsRawHTML)
+
+        let inline = try CMarkGFM.render("text <b>x</b> more", options: CMarkGFM.optUnsafe)
+        #expect(inline.containsRawHTML)
+
+        // Detection reads the tree, so it holds even when the render option
+        // strips the markup back out again.
+        let stripped = try CMarkGFM.render("<div>x</div>", options: CMarkGFM.optDefault)
+        #expect(stripped.containsRawHTML)
+
+        let plain = try CMarkGFM.render("# just markdown\n\n- a\n", options: CMarkGFM.optUnsafe)
+        #expect(!plain.containsRawHTML)
+    }
+
+    @Test func longerSentinelsWinOverTheirOwnPrefixes() throws {
+        // `E12INLINE1Z` must not be matched inside `E12INLINE10Z`.
+        let specs = [
+            CMarkGFM.CustomNodeSpec(sentinel: "E12INLINE1Z", isBlock: false, html: "<i>one</i>"),
+            CMarkGFM.CustomNodeSpec(sentinel: "E12INLINE10Z", isBlock: false, html: "<i>ten</i>"),
+        ]
+        let html = try CMarkGFM.renderHTML(
+            "a E12INLINE1Z b E12INLINE10Z c",
+            options: CMarkGFM.optUnsafe,
+            customNodes: specs
+        )
+        #expect(html.contains("<i>one</i>"))
+        #expect(html.contains("<i>ten</i>"))
+        #expect(!html.contains("E12INLINE"))
+    }
+
+    @Test func textThatOnlyLooksLikeASentinelIsUntouched() throws {
+        let html = try CMarkGFM.renderHTML(
+            "prefix E12INLINE but not a sentinel, and E12INLINE0Z is",
+            options: CMarkGFM.optUnsafe,
+            customNodes: [CMarkGFM.CustomNodeSpec(sentinel: "E12INLINE0Z", isBlock: false, html: "<i>hit</i>")]
+        )
+        #expect(html.contains("<i>hit</i>"))
+        #expect(html.contains("E12INLINE but not a sentinel"))
+    }
 }

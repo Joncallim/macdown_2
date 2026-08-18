@@ -121,4 +121,40 @@ struct ExportFileWriterTests {
             try ExportFileWriter.writeHTML(prepared, to: .pdf(url: directory.appendingPathComponent("out.pdf")))
         }
     }
+
+    @Test func everyResourceIsEmbeddedInOnePass() throws {
+        // One scan must place every data URI: an image-heavy document is where a
+        // per-resource rescan would quietly turn into quadratic work.
+        let resources = (0 ..< 5).map { index -> ExportResource in
+            let bytes = Data([0x89, 0x50, UInt8(index)])
+            return ExportResource(
+                identity: ExportResourceIdentity(bytes: bytes, mimeType: "image/png"),
+                bytes: bytes
+            )
+        }
+        let body = resources
+            .map { "<img src=\"\(ExportHTMLWriter.assetsDirectoryName)/\($0.identity.fileName)\" alt=\"x\">" }
+            .joined(separator: "\n")
+        let prepared = makePrepared(bodyHTML: body, resources: resources)
+
+        let html = ExportHTMLWriter.selfContainedHTML(from: prepared)
+
+        #expect(!html.contains("\(ExportHTMLWriter.assetsDirectoryName)/"))
+        for resource in resources {
+            let uri = "data:image/png;base64,\(resource.bytes.base64EncodedString())"
+            #expect(html.contains(uri), "missing data URI for \(resource.identity.fileName)")
+        }
+        // Surrounding markup is preserved exactly.
+        #expect(html.contains("alt=\"x\""))
+    }
+
+    @Test func unknownCompanionReferencesAreLeftAlone() throws {
+        let resource = pngResource()
+        let body = "<img src=\"\(ExportHTMLWriter.assetsDirectoryName)/not-a-resource.png\">"
+        let prepared = makePrepared(bodyHTML: body, resources: [resource])
+
+        let html = ExportHTMLWriter.selfContainedHTML(from: prepared)
+
+        #expect(html.contains("\(ExportHTMLWriter.assetsDirectoryName)/not-a-resource.png"))
+    }
 }

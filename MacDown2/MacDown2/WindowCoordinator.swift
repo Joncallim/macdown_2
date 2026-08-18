@@ -47,8 +47,8 @@ final class WindowCoordinator {
     private var restoreTask: Task<Void, Never>?
     @ObservationIgnored private var pendingNewDocumentTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
     /// Stateless export orchestrator for the active document (E12). A computed
-    /// property keeps it outside `@Observable` tracking and avoids a strong
-    /// coordinator↔coordinator reference cycle.
+    /// property keeps it outside `@Observable` tracking; the value type means
+    /// menu validation, which reads it on every evaluation, allocates nothing.
     var exportCoordinator: ExportCoordinator {
         ExportCoordinator(coordinator: self, themeController: themeController)
     }
