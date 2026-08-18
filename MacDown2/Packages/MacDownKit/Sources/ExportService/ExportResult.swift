@@ -6,8 +6,9 @@ public struct ExportResult: Sendable, Equatable {
     /// The primary output file (the `.html` or `.pdf`).
     public let primaryFile: URL
 
-    /// Companion files written next to the primary file: `report.assets/*`
-    /// resources and, for linked-CSS exports, `report.css`.
+    /// Companion files written next to the primary file, inside the
+    /// document's own `<name>.assets/` directory: image resources and, for
+    /// linked-CSS exports, the stylesheet.
     public let companionFiles: [URL]
 
     /// Composition diagnostics. Always a superset of what the caller can see on

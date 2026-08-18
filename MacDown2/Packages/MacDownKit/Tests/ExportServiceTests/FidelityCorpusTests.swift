@@ -123,7 +123,9 @@ struct FidelityCorpusTests {
             target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
         )
         let html = ExportHTMLWriter.selfContainedHTML(from: prepared)
-        #expect(!html.contains("report.assets/"))
+        // No `<name>.assets/…` companion reference of any kind should survive
+        // self-contained embedding, whatever the per-document directory name.
+        #expect(!html.contains(".assets/"))
         #expect(html.contains("data:image/png;base64,"))
     }
 }

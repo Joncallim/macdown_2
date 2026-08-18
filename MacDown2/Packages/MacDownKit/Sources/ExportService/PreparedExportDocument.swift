@@ -5,8 +5,8 @@ import Foundation
 ///
 /// `bodyHTML` is the cmark-rendered body fragment. Resource references in it
 /// have already been rewritten to their content-addressed companion form
-/// (`report.assets/<64hex>.<ext>`); the HTML writers either keep that form
-/// (companion output) or embed the bytes as data URIs (self-contained/PDF).
+/// (`<assetsDirectoryName>/<64hex>.<ext>`); the HTML writers either keep that
+/// form (companion output) or embed the bytes as data URIs (self-contained/PDF).
 public struct PreparedExportDocument: Sendable, Equatable {
     /// The browser title: front matter's `title`, else the saved filename stem,
     /// else empty (in which case no `<title>` element is emitted).
@@ -19,6 +19,14 @@ public struct PreparedExportDocument: Sendable, Equatable {
     /// The rendered Markdown body, with derived content and resource references
     /// resolved to companion form.
     public let bodyHTML: String
+
+    /// The companion directory name baked into every `<assetsDirectoryName>/…`
+    /// reference in `bodyHTML`: the primary file's own basename, so exports
+    /// sharing a folder never share a companion directory. Fixed at composition
+    /// time (`ExportComposer`) because it must match exactly what was already
+    /// written into the body — the HTML writers cannot choose a different name
+    /// after the fact.
+    public let assetsDirectoryName: String
 
     /// The combined stylesheet: structural CSS + the theme variable block.
     public let stylesheet: String
@@ -39,6 +47,7 @@ public struct PreparedExportDocument: Sendable, Equatable {
         title: String,
         visibleTitle: String? = nil,
         bodyHTML: String,
+        assetsDirectoryName: String = ExportHTMLWriter.defaultAssetsDirectoryName,
         stylesheet: String,
         manifest: ExportManifest,
         diagnostics: [ExportDiagnostic],
@@ -48,6 +57,7 @@ public struct PreparedExportDocument: Sendable, Equatable {
         self.title = title
         self.visibleTitle = visibleTitle
         self.bodyHTML = bodyHTML
+        self.assetsDirectoryName = assetsDirectoryName
         self.stylesheet = stylesheet
         self.manifest = manifest
         self.diagnostics = diagnostics

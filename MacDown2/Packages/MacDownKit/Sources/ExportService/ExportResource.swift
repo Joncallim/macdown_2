@@ -26,7 +26,7 @@ public struct ExportResourceIdentity: Sendable, Equatable, Hashable {
         self.mimeType = mimeType
     }
 
-    /// `<64hex>.<extension>` — the companion filename under `report.assets`.
+    /// `<64hex>.<extension>` — the companion filename under the document's assets directory.
     public var fileName: String {
         "\(sha256).\(canonicalExtension)"
     }

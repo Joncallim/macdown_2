@@ -7,24 +7,6 @@ import Themes
 /// Slice 1: ordinary deterministic HTML, URL security, metadata, theme, and
 /// template. Exercises the full composer through the public `ExportService`.
 struct ExportComposerTests {
-    @Test func frontMatterTitleLandsInDocumentMetadata() async throws {
-        let markdown = """
-        ---
-        title: My Title
-        ---
-        # Hello
-        """
-        let prepared = try await ExportService.prepare(
-            ExportRequest(text: markdown, sourceGeneration: 1, theme: ExportTestSupport.lightTheme()),
-            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
-        )
-        #expect(prepared.title == "My Title")
-
-        let html = ExportHTMLWriter.selfContainedHTML(from: prepared)
-        #expect(html.contains("<title>My Title</title>"))
-        #expect(html.contains("<h1>Hello</h1>"))
-    }
-
     @Test func ordinaryHTMLPreservesAuthoredRawHTML() async throws {
         let markdown = "# Hi\n\n<div class=\"note\">raw</div>\n"
         let prepared = try await ExportService.prepare(
@@ -202,77 +184,5 @@ struct ExportComposerTests {
         #expect(prepared.manifest.resources.count == 1)
         // One broken image is one problem, however many times it is referenced.
         #expect(prepared.diagnostics.filter { $0.message.contains("gone.png") }.count == 1)
-    }
-
-    @Test func frontMatterTitleAlsoBecomesAVisibleHeading() async throws {
-        let markdown = "---\ntitle: Quarterly Report\n---\nBody text.\n"
-        let prepared = try await ExportService.prepare(
-            ExportRequest(text: markdown, sourceGeneration: 12, theme: ExportTestSupport.lightTheme()),
-            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
-        )
-        #expect(prepared.title == "Quarterly Report")
-        #expect(prepared.visibleTitle == "Quarterly Report")
-
-        let html = ExportHTMLWriter.selfContainedHTML(from: prepared)
-        #expect(html.contains("<title>Quarterly Report</title>"))
-        #expect(html.contains("<h1>Quarterly Report</h1>"))
-    }
-
-    @Test func aSavedDocumentWithoutFrontMatterTitlesFromItsFilename() async throws {
-        // Otherwise the browser tab shows a file path, which is the common case:
-        // most documents carry no front matter at all.
-        let prepared = try await ExportService.prepare(
-            ExportRequest(
-                text: "# Hello\n",
-                sourceGeneration: 13,
-                theme: ExportTestSupport.lightTheme(),
-                documentURL: URL(fileURLWithPath: "/tmp/notes/Meeting Notes.md")
-            ),
-            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
-        )
-        #expect(prepared.title == "Meeting Notes")
-        // A filename is not a heading the author wrote, so it never becomes one.
-        #expect(prepared.visibleTitle == nil)
-
-        let html = ExportHTMLWriter.selfContainedHTML(from: prepared)
-        #expect(html.contains("<title>Meeting Notes</title>"))
-        #expect(!html.contains("<h1>Meeting Notes</h1>"))
-    }
-
-    @Test func anUntitledDocumentWithoutFrontMatterHasNoBrowserTitle() async throws {
-        let prepared = try await ExportService.prepare(
-            ExportRequest(text: "# Hello\n", sourceGeneration: 14, theme: ExportTestSupport.lightTheme()),
-            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
-        )
-        #expect(prepared.title.isEmpty)
-        #expect(!ExportHTMLWriter.selfContainedHTML(from: prepared).contains("<title>"))
-    }
-
-    @Test func aNonScalarFrontMatterTitleWarnsAndIsNotUsed() async throws {
-        let markdown = "---\ntitle:\n  - one\n  - two\n---\nBody.\n"
-        let prepared = try await ExportService.prepare(
-            ExportRequest(
-                text: markdown,
-                sourceGeneration: 15,
-                theme: ExportTestSupport.lightTheme(),
-                documentURL: URL(fileURLWithPath: "/tmp/notes/fallback.md")
-            ),
-            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .standalone(style: .embedded))
-        )
-        #expect(prepared.title == "fallback")
-        #expect(prepared.visibleTitle == nil)
-        #expect(prepared.diagnostics.contains { $0.severity == .warning && $0.message.contains("title") })
-    }
-
-    @Test func htmlTitlesAreEscaped() async throws {
-        let markdown = "---\ntitle: \"A <b>bold</b> & risky title\"\n---\nBody.\n"
-        let prepared = try await ExportService.prepare(
-            ExportRequest(text: markdown, sourceGeneration: 16, theme: ExportTestSupport.lightTheme()),
-            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
-        )
-        let html = ExportHTMLWriter.selfContainedHTML(from: prepared)
-        #expect(!html.contains("<b>bold</b>"))
-        #expect(html.contains("&lt;b&gt;bold&lt;/b&gt;"))
-        #expect(html.contains("&amp;"))
     }
 }

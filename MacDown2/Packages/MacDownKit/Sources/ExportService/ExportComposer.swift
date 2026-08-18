@@ -57,6 +57,12 @@ enum ExportComposer {
         let policy = policy(for: target)
         try checkSourceBudget(bytes: request.text.utf8.count, budget: budget)
 
+        // Derived once, up front: every rewritten resource/stylesheet reference
+        // in the body and the directory the file writer later creates must
+        // agree on this exact name, or a companion file would be written to a
+        // path the HTML never points at.
+        let assetsDirName = ExportHTMLWriter.assetsDirectoryName(for: primaryURL(of: target))
+
         let sourceUTF16Length = request.text.utf16.count
         let parsed = try await parse(request: request, engine: engine)
         try Task.checkCancellation()
@@ -73,7 +79,8 @@ enum ExportComposer {
         let resolver = ExportResourceResolver(
             documentDirectory: request.documentDirectory,
             unresolvedIsFatal: policy.unresolvedResourcesAreFatal,
-            budget: budget
+            budget: budget,
+            assetsDirectoryName: assetsDirName
         )
         let rendered = try renderBody(derived: derived, policy: policy, resolver: resolver)
         try Task.checkCancellation()
@@ -90,12 +97,24 @@ enum ExportComposer {
             title: parsed.metadata.browserTitle,
             visibleTitle: parsed.metadata.visibleTitle,
             bodyHTML: rendered.html,
+            assetsDirectoryName: assetsDirName,
             stylesheet: stylesheet(for: request.theme),
             manifest: resolver.frozenManifest(),
             diagnostics: diagnostics,
             sourceGeneration: request.sourceGeneration,
             preservesRawHTML: policy.preservesRawHTML
         )
+    }
+
+    /// The primary destination URL for either target shape. PDF composition
+    /// always ends up self-contained, so this name is inert there today — but
+    /// deriving it uniformly means a future companion-producing PDF path
+    /// inherits per-document isolation for free instead of needing its own fix.
+    private static func primaryURL(of target: ExportTarget) -> URL {
+        switch target {
+        case let .html(url, _): url
+        case let .pdf(url): url
+        }
     }
 
     /// The theme block is emitted first and the structural sheet last.
@@ -190,11 +209,21 @@ enum ExportComposer {
         return ParsedSource(
             metadata: ExportMetadataResolver.resolve(
                 frontMatter: document.frontMatter?.values,
-                fileNameStem: request.fileNameStem
+                fileNameStem: request.fileNameStem,
+                authoredFirstBlockIsHeading: startsWithHeading(document.blocks.first)
             ),
             bodyText: bodyText,
             bodyStartOffset: bodyStartOffset
         )
+    }
+
+    /// Whether the document's own first top-level block is a level-1 heading —
+    /// meaning the author already wrote the title as visible content. Front
+    /// matter's `title` still owns the browser `<title>`, but injecting a
+    /// second `<h1>` above one the author wrote would show the title twice.
+    private static func startsWithHeading(_ block: MarkdownBlock?) -> Bool {
+        guard case let .heading(level) = block?.kind else { return false }
+        return level == 1
     }
 
     private static func renderBody(

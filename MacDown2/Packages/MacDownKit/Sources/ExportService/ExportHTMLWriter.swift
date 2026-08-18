@@ -5,14 +5,38 @@ import Foundation
 /// Two output shapes exist:
 /// - **Self-contained** — CSS and every resource are embedded in one file
 ///   (data URIs). Used for the `.selfContained` target and as the PDF input.
-/// - **Companion** — resources are referenced as `report.assets/<file>` (written
+/// - **Companion** — resources are referenced as `<name>.assets/<file>` (written
 ///   separately), and CSS is either embedded or linked.
 public enum ExportHTMLWriter {
-    /// The fixed companion directory name for exported resources.
-    public static let assetsDirectoryName = "report.assets"
+    /// The companion directory name used when no primary URL is available to
+    /// derive one from (a `PreparedExportDocument` built directly by a test, or
+    /// any future caller that composes without a destination in hand).
+    public static let defaultAssetsDirectoryName = "report.assets"
 
-    /// The name of the linked stylesheet companion file.
-    public static let linkedStylesheetName = "report.css"
+    /// The per-document companion directory name: the primary file's own
+    /// basename.
+    ///
+    /// Two documents exported into the same folder must never share a
+    /// companion directory — sharing one means exporting the second can
+    /// overwrite the first's linked stylesheet or leave its resources exposed
+    /// to the other's cleanup. Naming the directory after the document it
+    /// belongs to makes every export's companions exclusively its own.
+    public static func assetsDirectoryName(for primaryURL: URL) -> String {
+        let stem = primaryURL.deletingPathExtension().lastPathComponent
+        return stem.isEmpty ? defaultAssetsDirectoryName : "\(stem).assets"
+    }
+
+    /// The content-addressed resource for the combined stylesheet, used for the
+    /// `.linked` CSS delivery.
+    ///
+    /// Computed fresh from the stylesheet text rather than cached on
+    /// `PreparedExportDocument`, so the HTML body's `<link>` reference and the
+    /// bytes `ExportFileWriter` writes to disk are always computed the same
+    /// way and can never name two different files.
+    static func linkedStylesheetResource(for stylesheet: String) -> ExportResource {
+        let bytes = Data(stylesheet.utf8)
+        return ExportResource(identity: ExportResourceIdentity(bytes: bytes, mimeType: "text/css"), bytes: bytes)
+    }
 
     /// A complete self-contained HTML document: embedded stylesheet and
     /// resources as data URIs.
@@ -25,7 +49,11 @@ public enum ExportHTMLWriter {
         from prepared: PreparedExportDocument,
         additionalHead: String = ""
     ) -> String {
-        let body = embedResources(in: prepared.bodyHTML, manifest: prepared.manifest)
+        let body = embedResources(
+            in: prepared.bodyHTML,
+            manifest: prepared.manifest,
+            assetsDirectoryName: prepared.assetsDirectoryName
+        )
         let style = embeddedStyleElement(prepared.stylesheet)
         return BuiltInExportTemplate.document(
             title: prepared.title,
@@ -37,13 +65,13 @@ public enum ExportHTMLWriter {
     }
 
     /// A companion HTML document. `style` selects embedded (`<style>`) or linked
-    /// (`<link rel="stylesheet" href="report.css">`) CSS.
+    /// (`<link rel="stylesheet" href="<name>.assets/<hash>.css">`) CSS.
     public static func companionHTML(from prepared: PreparedExportDocument, style: ExportStyleEmbedding) -> String {
         let styleElement: String = switch style {
         case .embedded:
             embeddedStyleElement(prepared.stylesheet)
         case .linked:
-            "<link rel=\"stylesheet\" href=\"\(linkedStylesheetName)\">"
+            linkedStyleElement(prepared)
         }
         return BuiltInExportTemplate.document(
             title: prepared.title,
@@ -60,7 +88,13 @@ public enum ExportHTMLWriter {
         "<style>\n\(stylesheet)\n</style>"
     }
 
-    /// Replaces every `report.assets/<file>` companion reference with its data
+    private static func linkedStyleElement(_ prepared: PreparedExportDocument) -> String {
+        let resource = linkedStylesheetResource(for: prepared.stylesheet)
+        let href = "\(prepared.assetsDirectoryName)/\(resource.identity.fileName)"
+        return "<link rel=\"stylesheet\" href=\"\(href)\">"
+    }
+
+    /// Replaces every `<name>.assets/<file>` companion reference with its data
     /// URI (`data:<mime>;base64,<bytes>`). Content-addressed filenames are
     /// `<64hex>.<ext>`, so an exact match is deterministic and cannot collide
     /// with authored text.
@@ -69,7 +103,7 @@ public enum ExportHTMLWriter {
     /// would rescan and recopy the whole document per image — and because each
     /// substitution grows the document by a base64-inflated payload, that copy
     /// gets more expensive with every image an export carries.
-    static func embedResources(in body: String, manifest: ExportManifest) -> String {
+    static func embedResources(in body: String, manifest: ExportManifest, assetsDirectoryName: String) -> String {
         guard !manifest.resources.isEmpty else { return body }
 
         var dataURIs: [String: String] = [:]

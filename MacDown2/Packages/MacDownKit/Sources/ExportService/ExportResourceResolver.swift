@@ -27,14 +27,24 @@ final class ExportResourceResolver {
     /// authored. Applies to self-contained HTML and PDF.
     private let unresolvedIsFatal: Bool
     private let budget: ExportResourceBudget
+    /// The per-document companion directory name every rewritten reference is
+    /// placed under. Supplied by the composer (from the primary output URL) so
+    /// two documents exported into the same folder never share one.
+    private let assetsDirectoryName: String
 
     private var aggregateResourceBytes = 0
     private var packagedIdentities: Set<ExportResourceIdentity> = []
 
-    init(documentDirectory: URL?, unresolvedIsFatal: Bool, budget: ExportResourceBudget = .standard) {
+    init(
+        documentDirectory: URL?,
+        unresolvedIsFatal: Bool,
+        budget: ExportResourceBudget = .standard,
+        assetsDirectoryName: String = ExportHTMLWriter.defaultAssetsDirectoryName
+    ) {
         self.documentDirectory = documentDirectory
         self.unresolvedIsFatal = unresolvedIsFatal
         self.budget = budget
+        self.assetsDirectoryName = assetsDirectoryName
         if let documentDirectory {
             let root = documentDirectory.standardizedFileURL.resolvingSymlinksInPath().path
             resourceRootPrefix = root.hasSuffix("/") ? root : root + "/"
@@ -95,10 +105,13 @@ final class ExportResourceResolver {
             return .keep
         }
 
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory),
-              !isDirectory.boolValue else {
-            return handleUnresolved(url: url, reason: "resource does not exist at \(fileURL.lastPathComponent)")
+        // `.isRegularFileKey` follows symlinks to their target by default (the
+        // `stat`, not `lstat`, view), so a symlink to a regular file inside the
+        // root is accepted while a directory, device, socket or FIFO is not —
+        // only ordinary file bytes are ever handed to `Data(contentsOf:)`.
+        guard let isRegularFile = try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile,
+              isRegularFile else {
+            return handleUnresolved(url: url, reason: "resource is not a readable file at \(fileURL.lastPathComponent)")
         }
 
         // Size is read from the file's metadata first, so an oversized file is
@@ -179,7 +192,7 @@ final class ExportResourceResolver {
     }
 
     private func companionReference(for resource: ExportResource) -> String {
-        "\(ExportHTMLWriter.assetsDirectoryName)/\(resource.identity.fileName)"
+        "\(assetsDirectoryName)/\(resource.identity.fileName)"
     }
 
     /// The filesystem-relative path an authored reference points at: query and

@@ -142,4 +142,33 @@ struct ExportResourceResolverTests {
         #expect(subject.diagnostics.count == 2)
         #expect(subject.diagnostics.allSatisfy { $0.severity == .warning })
     }
+
+    @Test func rejectsAReferenceThatIsActuallyADirectory() throws {
+        let directory = try ExportTestSupport.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(
+            at: directory.appendingPathComponent("images"),
+            withIntermediateDirectories: true
+        )
+
+        let subject = resolver(root: directory, fatal: true)
+        #expect(subject.disposition(for: "images", isImage: true) == .keep)
+        #expect(subject.diagnostics.contains { $0.severity == .error })
+        #expect(subject.frozenManifest().resources.isEmpty)
+    }
+
+    @Test func resolvesASymlinkToARegularFileInsideTheRoot() throws {
+        // A symlink is not itself a directory/device/socket, and its resolved
+        // target is still inside the root, so it must read like any other file.
+        let directory = try ExportTestSupport.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let target = try ExportTestSupport.writeFixture(named: "real.png", in: directory, bytes: Data([0x89, 0x50]))
+        let link = directory.appendingPathComponent("linked.png")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+        let subject = resolver(root: directory)
+        #expect(subject.disposition(for: "linked.png", isImage: true) != .keep)
+        #expect(subject.diagnostics.isEmpty)
+        #expect(subject.frozenManifest().resources.count == 1)
+    }
 }
