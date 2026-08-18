@@ -139,7 +139,7 @@ struct ExportCoordinator {
             text: document.text,
             sourceGeneration: document.mutationGeneration,
             theme: themeController.current,
-            documentDirectory: document.fileURL?.deletingLastPathComponent()
+            documentURL: document.fileURL
         )
 
         switch selection.format {

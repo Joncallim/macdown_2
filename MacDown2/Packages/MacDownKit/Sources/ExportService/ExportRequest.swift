@@ -15,10 +15,13 @@ public struct ExportRequest: Sendable, Equatable {
     /// The preview/export theme. Supplies the CSS variable block.
     public let theme: Theme
 
-    /// The directory of the source document, used only to resolve relative
-    /// resource references (e.g. `![alt](images/foo.png)`). `nil` for untitled
-    /// documents, for which no local resource is resolvable.
-    public let documentDirectory: URL?
+    /// The saved document's own file URL, or `nil` for an untitled document.
+    ///
+    /// One URL is the single source of truth for two derived facts: the
+    /// resource root (its parent directory) and the browser-title fallback (its
+    /// filename stem). Neither may be supplied separately, so they cannot
+    /// disagree.
+    public let documentURL: URL?
 
     /// Renderer-neutral derived-content contributions (E19 inline math,
     /// E20 block diagrams) that this export must place. Empty for ordinary
@@ -29,13 +32,28 @@ public struct ExportRequest: Sendable, Equatable {
         text: String,
         sourceGeneration: UInt,
         theme: Theme,
-        documentDirectory: URL? = nil,
+        documentURL: URL? = nil,
         contributions: [ExportDerivedContribution] = []
     ) {
         self.text = text
         self.sourceGeneration = sourceGeneration
         self.theme = theme
-        self.documentDirectory = documentDirectory
+        self.documentURL = documentURL
         self.contributions = contributions
+    }
+
+    /// The directory relative resource references resolve against. An untitled
+    /// document has no root: E12 never guesses the process working directory.
+    var documentDirectory: URL? {
+        documentURL?.deletingLastPathComponent()
+    }
+
+    /// The saved filename without its extension, used only as the browser-title
+    /// fallback when front matter carries no usable title.
+    var fileNameStem: String? {
+        guard let stem = documentURL?.deletingPathExtension().lastPathComponent, !stem.isEmpty else {
+            return nil
+        }
+        return stem
     }
 }

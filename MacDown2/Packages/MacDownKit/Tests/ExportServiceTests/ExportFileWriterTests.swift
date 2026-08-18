@@ -157,4 +157,21 @@ struct ExportFileWriterTests {
 
         #expect(html.contains("\(ExportHTMLWriter.assetsDirectoryName)/not-a-resource.png"))
     }
+
+    @Test func aDocumentWithoutResourcesWritesNoCompanionDirectory() throws {
+        // An empty `report.assets` folder beside every export is litter.
+        let directory = try ExportTestSupport.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let prepared = makePrepared(bodyHTML: "<p>no images here</p>")
+        let target = ExportTarget.html(
+            url: directory.appendingPathComponent("doc.html"),
+            mode: .standalone(style: .embedded)
+        )
+
+        let result = try ExportFileWriter.writeHTML(prepared, to: target)
+
+        #expect(result.companionFiles.isEmpty)
+        let assetsDir = directory.appendingPathComponent(ExportHTMLWriter.assetsDirectoryName)
+        #expect(!FileManager.default.fileExists(atPath: assetsDir.path))
+    }
 }

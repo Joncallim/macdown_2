@@ -118,7 +118,7 @@ struct FidelityCorpusTests {
                 text: markdown,
                 sourceGeneration: 2,
                 theme: ExportTestSupport.lightTheme(),
-                documentDirectory: directory
+                documentURL: directory.appendingPathComponent("doc.md")
             ),
             target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
         )

@@ -80,14 +80,15 @@ enum ExportComposer {
         try checkPreparedBudget(bytes: rendered.html.utf8.count, budget: budget)
 
         let diagnostics = try resolve(
-            derived: derived.diagnostics,
+            derived: parsed.metadata.diagnostics + derived.diagnostics,
             resources: resolver.diagnostics,
             rendered: rendered,
             policy: policy
         )
 
         return PreparedExportDocument(
-            title: parsed.title,
+            title: parsed.metadata.browserTitle,
+            visibleTitle: parsed.metadata.visibleTitle,
             bodyHTML: rendered.html,
             stylesheet: stylesheet(for: request.theme),
             manifest: resolver.frozenManifest(),
@@ -131,11 +132,12 @@ enum ExportComposer {
         guard rendered.containsRawHTML, case .preserveWithWarning = policy.rawHTML else {
             return derived + resources
         }
-        return derived + resources + [ExportDiagnostic(
+        let bestEffort = ExportDiagnostic(
             severity: .warning,
             message: "Authored raw HTML is rendered best-effort by the print system; "
                 + "it cannot load scripts or remote resources."
-        )]
+        )
+        return derived + resources + [bestEffort]
     }
 
     /// The source gate runs before the parse so a pathological document is
@@ -156,10 +158,11 @@ enum ExportComposer {
         )
     }
 
-    /// The parsed source: front-matter title, the body text (front matter
-    /// stripped), and the body's exact UTF-16 offset within the original text.
+    /// The parsed source: resolved document metadata, the body text (front
+    /// matter stripped), and the body's exact UTF-16 offset within the original
+    /// text.
     private struct ParsedSource {
-        let title: String
+        let metadata: ExportMetadata
         let bodyText: String
         let bodyStartOffset: Int
     }
@@ -183,7 +186,10 @@ enum ExportComposer {
         // matter stripped), so the body start offset is exact.
         let bodyStartOffset = request.text.utf16.count - bodyText.utf16.count
         return ParsedSource(
-            title: title(from: document),
+            metadata: ExportMetadataResolver.resolve(
+                frontMatter: document.frontMatter?.values,
+                fileNameStem: request.fileNameStem
+            ),
             bodyText: bodyText,
             bodyStartOffset: bodyStartOffset
         )
@@ -212,13 +218,5 @@ enum ExportComposer {
         } catch {
             throw ExportError.renderFailed(underlying: error)
         }
-    }
-
-    private static func title(from document: MarkdownDocument) -> String {
-        guard let values = document.frontMatter?.values,
-              case let .string(title) = values["title"] else {
-            return ""
-        }
-        return title
     }
 }

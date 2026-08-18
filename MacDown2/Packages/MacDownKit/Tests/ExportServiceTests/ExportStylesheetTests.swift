@@ -10,7 +10,7 @@ struct ExportStylesheetTests {
         // is the one place the structural sheet may override the theme.
         let css = ExportThemeStylesheet.structural
         let firstDeclaration = try #require(css.range(of: "color-scheme:"))
-        let printBlock = try #require(css.range(of: "@media print"))
+        let printBlock = try #require(css.range(of: "@media print {"))
         #expect(printBlock.lowerBound < firstDeclaration.lowerBound)
     }
 

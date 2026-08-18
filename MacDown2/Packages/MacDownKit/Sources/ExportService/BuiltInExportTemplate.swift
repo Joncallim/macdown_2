@@ -17,15 +17,19 @@ public enum BuiltInExportTemplate {
     ///     Content-Security-Policy that must govern the whole document.
     ///   - styleElement: the complete `<style>…</style>` block or
     ///     `<link rel="stylesheet" …>` element for the head.
+    ///   - visibleTitle: the heading rendered above the body, when front matter
+    ///     supplied a title. `nil` emits no heading.
     ///   - body: the rendered body fragment.
     public static func document(
         title: String,
+        visibleTitle: String? = nil,
         headExtras: String = "",
         styleElement: String,
         body: String
     ) -> String {
         let titleTag = title.isEmpty ? "" : "<title>\(HTMLEscaping.escape(title))</title>\n"
         let extras = headExtras.isEmpty ? "" : headExtras + "\n"
+        let heading = visibleTitle.map { "<h1>\(HTMLEscaping.escape($0))</h1>\n" } ?? ""
 
         return """
         <!DOCTYPE html>
@@ -36,7 +40,7 @@ public enum BuiltInExportTemplate {
         \(titleTag)\(styleElement)
         </head>
         <body>
-        \(body)
+        \(heading)\(body)
         </body>
         </html>
         """

@@ -8,8 +8,13 @@ import Foundation
 /// (`report.assets/<64hex>.<ext>`); the HTML writers either keep that form
 /// (companion output) or embed the bytes as data URIs (self-contained/PDF).
 public struct PreparedExportDocument: Sendable, Equatable {
-    /// The document title, taken from front matter (`title`) or empty.
+    /// The browser title: front matter's `title`, else the saved filename stem,
+    /// else empty (in which case no `<title>` element is emitted).
     public let title: String
+
+    /// The heading rendered at the top of the document. Present only when front
+    /// matter supplied a title; a filename fallback is never a visible heading.
+    public let visibleTitle: String?
 
     /// The rendered Markdown body, with derived content and resource references
     /// resolved to companion form.
@@ -32,6 +37,7 @@ public struct PreparedExportDocument: Sendable, Equatable {
 
     public init(
         title: String,
+        visibleTitle: String? = nil,
         bodyHTML: String,
         stylesheet: String,
         manifest: ExportManifest,
@@ -40,6 +46,7 @@ public struct PreparedExportDocument: Sendable, Equatable {
         preservesRawHTML: Bool
     ) {
         self.title = title
+        self.visibleTitle = visibleTitle
         self.bodyHTML = bodyHTML
         self.stylesheet = stylesheet
         self.manifest = manifest

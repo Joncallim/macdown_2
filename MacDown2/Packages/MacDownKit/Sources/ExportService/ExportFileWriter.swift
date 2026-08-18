@@ -54,8 +54,12 @@ enum ExportFileWriter {
         return ExportResult(primaryFile: url, companionFiles: companionFiles, diagnostics: prepared.diagnostics)
     }
 
-    /// Writes the resource manifest into `report.assets`, marker first.
+    /// Writes the resource manifest into `report.assets`, marker first. A
+    /// document with no resources gets no companion directory: an empty
+    /// `report.assets` folder beside every export is litter, not output.
     private static func writeAssets(_ prepared: PreparedExportDocument, nextTo url: URL) throws -> [URL] {
+        guard !prepared.manifest.resources.isEmpty else { return [] }
+
         let directory = url.deletingLastPathComponent()
         let assetsDir = directory.appendingPathComponent(assetsDirectoryName, isDirectory: true)
         try ensureDirectory(assetsDir)

@@ -29,6 +29,7 @@ public enum ExportHTMLWriter {
         let style = embeddedStyleElement(prepared.stylesheet)
         return BuiltInExportTemplate.document(
             title: prepared.title,
+            visibleTitle: prepared.visibleTitle,
             headExtras: additionalHead,
             styleElement: style,
             body: body
@@ -46,7 +47,7 @@ public enum ExportHTMLWriter {
         }
         return BuiltInExportTemplate.document(
             title: prepared.title,
-            headExtras: "",
+            visibleTitle: prepared.visibleTitle,
             styleElement: styleElement,
             body: prepared.bodyHTML
         )
