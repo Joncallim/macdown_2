@@ -241,17 +241,18 @@ struct DerivedContentTests {
         // to pick a family that does not collide with it.
         let markdown = "Note E12INLINE0Z here, then $x$ ends.\n"
         let range = utf16Range(of: "$x$", in: markdown)
+        let contribution = ExportDerivedContribution(
+            sourceRange: range,
+            placement: .inline,
+            html: "<span>X</span>",
+            sourceGeneration: 9
+        )
         let prepared = try await ExportService.prepare(
             ExportRequest(
                 text: markdown,
                 sourceGeneration: 9,
                 theme: ExportTestSupport.lightTheme(),
-                contributions: [ExportDerivedContribution(
-                    sourceRange: range,
-                    placement: .inline,
-                    html: "<span>X</span>",
-                    sourceGeneration: 9
-                )]
+                contributions: [contribution]
             ),
             target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .standalone(style: .embedded))
         )
