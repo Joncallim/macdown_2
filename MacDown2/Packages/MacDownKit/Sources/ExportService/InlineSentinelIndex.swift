@@ -16,7 +16,9 @@ struct InlineSentinelIndex {
     /// The prefix shared by every sentinel, or empty when they share none.
     let searchPrefix: String
 
-    var isEmpty: Bool { specsBySentinel.isEmpty }
+    var isEmpty: Bool {
+        specsBySentinel.isEmpty
+    }
 
     init(_ specs: [CMarkGFM.CustomNodeSpec]) {
         // An empty sentinel would match everywhere and never advance.
@@ -66,7 +68,9 @@ struct InlineSentinelIndex {
         guard var prefix = sentinels.first else { return "" }
         for sentinel in sentinels.dropFirst() {
             prefix = prefix.commonPrefix(with: sentinel)
-            if prefix.isEmpty { break }
+            if prefix.isEmpty {
+                break
+            }
         }
         return prefix
     }

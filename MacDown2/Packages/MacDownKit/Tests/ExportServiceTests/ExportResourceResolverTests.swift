@@ -134,7 +134,7 @@ struct ExportResourceResolverTests {
         #expect(subject.frozenManifest().resources.isEmpty)
     }
 
-    @Test func blankedSchemesAreReported() throws {
+    @Test func blankedSchemesAreReported() {
         // A neutralised link must not just silently lose its target.
         let subject = resolver(root: nil, fatal: true)
         #expect(subject.disposition(for: "javascript:alert(1)", isImage: false) == .blank)

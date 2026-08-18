@@ -340,6 +340,8 @@ enum CMarkGFM {
             }
         }
 
-        var errorDescription: String? { description }
+        var errorDescription: String? {
+            description
+        }
     }
 }

@@ -47,7 +47,9 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
         }
     }
 
-    public var errorDescription: String? { description }
+    public var errorDescription: String? {
+        description
+    }
 
     /// How many unresolved resources one message lists before it counts the
     /// rest. A document with two hundred broken images is still one alert.

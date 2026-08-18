@@ -47,7 +47,9 @@ public enum ExportURLPolicy {
             if isStripped(scalar) {
                 // Leading whitespace, and tab/newline/return anywhere in the
                 // scheme, are removed by URL parsers before the scheme is read.
-                if !started || isIgnoredInScheme(scalar) { continue }
+                if !started || isIgnoredInScheme(scalar) {
+                    continue
+                }
                 return nil
             }
             guard isSchemeCharacter(scalar, isFirst: !started) else { return nil }

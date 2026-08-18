@@ -177,7 +177,9 @@ enum ExportComposer {
         do {
             document = try await engine.parse(request.text, options: .default, revision: revision)
         } catch {
-            if error is CancellationError { throw error }
+            if error is CancellationError {
+                throw error
+            }
             throw ExportError.parseFailed(underlying: error)
         }
 

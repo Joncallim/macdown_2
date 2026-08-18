@@ -122,7 +122,7 @@ struct ExportFileWriterTests {
         }
     }
 
-    @Test func everyResourceIsEmbeddedInOnePass() throws {
+    @Test func everyResourceIsEmbeddedInOnePass() {
         // One scan must place every data URI: an image-heavy document is where a
         // per-resource rescan would quietly turn into quadratic work.
         let resources = (0 ..< 5).map { index -> ExportResource in
@@ -148,7 +148,7 @@ struct ExportFileWriterTests {
         #expect(html.contains("alt=\"x\""))
     }
 
-    @Test func unknownCompanionReferencesAreLeftAlone() throws {
+    @Test func unknownCompanionReferencesAreLeftAlone() {
         let resource = pngResource()
         let body = "<img src=\"\(ExportHTMLWriter.assetsDirectoryName)/not-a-resource.png\">"
         let prepared = makePrepared(bodyHTML: body, resources: [resource])
