@@ -54,6 +54,7 @@ let package = Package(
         .package(url: "https://github.com/tree-sitter-grammars/tree-sitter-xml", exact: "0.7.0"),
         .package(path: "../TreeSitterMarkdown"),
         .package(url: "https://github.com/swiftlang/swift-markdown", exact: "0.8.0"),
+        .package(url: "https://github.com/swiftlang/swift-cmark", exact: "0.8.0"),
         .package(url: "https://github.com/jpsim/Yams", exact: "6.2.2"),
         .package(url: "https://github.com/gonzalezreal/textual", exact: "0.5.0"),
     ],
@@ -107,7 +108,16 @@ let package = Package(
         ),
         .target(name: "OutlineUI", dependencies: ["MarkdownEngine", "JSONSupport"]),
         .target(name: "JSONSupport", dependencies: []),
-        .target(name: "ExportService", dependencies: ["MarkdownEngine", "Themes"]),
+        .target(
+            name: "ExportService",
+            dependencies: [
+                "MarkdownEngine",
+                "Themes",
+                .product(name: "cmark-gfm", package: "swift-cmark"),
+                .product(name: "cmark-gfm-extensions", package: "swift-cmark"),
+            ],
+            resources: [.process("Resources")]
+        ),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),

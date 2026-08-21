@@ -1,0 +1,236 @@
+/*
+ MacDown 2 export structural stylesheet.
+
+ This is the single bundled structural stylesheet shared by every export theme.
+ It defines document layout, typography, and the layout of Markdown block
+ elements (headings, paragraphs, lists, tables, code blocks, block quotes,
+ images, thematic breaks). Colour and typeface identity come from the Theme →
+ CSS variables emitted by `ExportThemeStylesheet`, so one stylesheet serves
+ every bundled theme without per-theme copies.
+
+ The `var(--md-…)` custom properties referenced here are defined on `:root` by
+ the theme variables block; structural rules never hard-code a colour so that
+ a theme change is a variables-only change.
+ */
+
+/* `color-scheme` is not set for screen here: the theme variable block owns it.
+   A structural default would sit later in the cascade than the theme block and
+   win, making a dark export render light-mode UA widgets. The one exception is
+   `@media print` at the end of this file, which must override the theme. */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0 auto;
+  max-width: 46rem;
+  padding: 2rem 2.5rem 4rem;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--md-foreground, #2d2d2d);
+  background-color: var(--md-background, #ffffff);
+  overflow-wrap: break-word;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 1.6em 0 0.6em;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--md-heading, var(--md-foreground, #2d2d2d));
+}
+
+h1 { font-size: 2em; border-bottom: 1px solid var(--md-rule, #e0e0e0); padding-bottom: 0.3em; }
+h2 { font-size: 1.5em; border-bottom: 1px solid var(--md-rule, #e0e0e0); padding-bottom: 0.3em; }
+h3 { font-size: 1.25em; }
+h4 { font-size: 1.05em; }
+h5 { font-size: 0.95em; }
+h6 { font-size: 0.85em; color: var(--md-muted, #767676); }
+
+p { margin: 0 0 1em; }
+
+a {
+  color: var(--md-link, #2f5b9c);
+  text-decoration: none;
+}
+
+a:hover { text-decoration: underline; }
+
+/* Keyboard navigation must stay visible in the exported document. */
+:focus-visible {
+  outline: 2px solid var(--md-link, #2f5b9c);
+  outline-offset: 2px;
+}
+
+strong { font-weight: 600; }
+em { font-style: italic; }
+del { color: var(--md-muted, #767676); }
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+code {
+  font-family: "SF Mono", "Menlo", Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+  background-color: var(--md-code-bg, rgba(0, 0, 0, 0.06));
+  border-radius: 3px;
+  padding: 0.15em 0.4em;
+}
+
+pre {
+  background-color: var(--md-code-bg, rgba(0, 0, 0, 0.06));
+  border: 1px solid var(--md-rule, #e0e0e0);
+  border-radius: 6px;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+  page-break-inside: avoid;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.875em;
+  line-height: 1.5;
+}
+
+blockquote {
+  margin: 0 0 1em;
+  padding: 0.2em 1em;
+  border-left: 4px solid var(--md-rule, #e0e0e0);
+  color: var(--md-muted, #767676);
+}
+
+ul, ol {
+  margin: 0 0 1em;
+  padding-left: 2em;
+}
+
+li { margin: 0.2em 0; }
+
+/* cmark-gfm's tasklist extension emits a bare `<li>` with a leading disabled
+   checkbox and no class, so the item is matched by what it contains. */
+li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.4em;
+}
+
+li > input[type="checkbox"] {
+  margin: 0 0.4em 0 0;
+  vertical-align: baseline;
+}
+
+hr {
+  border: none;
+  border-top: 2px solid var(--md-rule, #e0e0e0);
+  margin: 2em 0;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 0 0 1em;
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+}
+
+th, td {
+  border: 1px solid var(--md-rule, #e0e0e0);
+  padding: 0.4em 0.8em;
+}
+
+th {
+  background-color: var(--md-code-bg, rgba(0, 0, 0, 0.06));
+  font-weight: 600;
+}
+
+/* Derived first-party content (E19 inline math, E20 diagrams) renders inside
+   these containers; the classes are owned by the exporters of those features,
+   not by E12. They exist here only so block-level derived output keeps the
+   document's vertical rhythm. */
+.md-derived-inline { display: inline; }
+.md-derived-block { display: block; margin: 1em 0; }
+
+/* Print / PDF.
+
+   The PDF adapter prints this same document through the macOS print system,
+   which supplies the page margins itself. The screen layout's centred column
+   and outer padding would sit *inside* those margins, so the printed text
+   block is released to the full page and the pagination rules that keep a
+   document readable are applied here rather than on screen. */
+@media print {
+  /* Paper is white. A dark theme's foreground would print as light text on a
+     white page, because the print stack drops page backgrounds — so print gets
+     its own readable palette, and it wins because the structural sheet is
+     emitted after the theme block. */
+  :root {
+    color-scheme: light;
+    --md-background: #ffffff;
+    --md-foreground: #1a1a1a;
+    --md-heading: #000000;
+    --md-link: #0b3d91;
+    --md-muted: #555555;
+    --md-rule: #cfcfcf;
+    --md-code-bg: #f4f4f4;
+  }
+
+  body {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+
+  /* Headings stay with the content they introduce. */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+    break-inside: avoid;
+    margin-top: 1.2em;
+  }
+
+  h1 { font-size: 1.7em; }
+  h2 { font-size: 1.35em; }
+
+  /* Blocks that lose their meaning when split across a page boundary. */
+  pre, blockquote, table, figure, img, .md-derived-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: visible;
+  }
+
+  /* Keep the surfaces that carry meaning; the print stack drops backgrounds
+     unless a page asks for them explicitly. */
+  pre, code, th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* A scroll container cannot scroll on paper. */
+  table {
+    display: table;
+    overflow-x: visible;
+  }
+
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Colour alone does not identify a link on paper. */
+  a { text-decoration: underline; }
+
+  /* Avoid a single trailing or leading line stranded on its own page. */
+  p, li { orphans: 3; widows: 3; }
+}

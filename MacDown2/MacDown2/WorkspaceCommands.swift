@@ -69,6 +69,14 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("w", modifiers: .command)
             .disabled(coordinator?.keyModel?.canClose != true)
+
+            Divider()
+
+            Button("Export…") {
+                Task { await coordinator?.exportCoordinator.exportActiveDocument() }
+            }
+            .keyboardShortcut("e", modifiers: [.command, .shift])
+            .disabled(coordinator?.exportCoordinator.canExportActiveDocument != true)
         }
 
         CommandMenu("Folder") {
