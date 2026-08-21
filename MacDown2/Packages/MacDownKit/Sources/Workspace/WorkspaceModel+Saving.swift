@@ -54,6 +54,15 @@ extension WorkspaceModel {
         if reconciliation.document.state == .conflict {
             _ = await reconciliation.document.persistRecovery()
             lastError = .unresolvedExternalConflict
+            return
+        }
+        // The write failed only because the on-disk baseline had moved, not
+        // because its content actually diverged (a real divergence lands in
+        // `.conflict` above). Reconciliation just brought the baseline
+        // current, so retry the save the user actually asked for instead of
+        // leaving it dirty with no error and no indication anything failed.
+        if reconciliation.document.state == .dirty {
+            await save()
         }
     }
 
