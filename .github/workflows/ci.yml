@@ -72,4 +72,15 @@ jobs:
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' build
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme macdown2 -destination 'platform=macOS' build
       - name: Build UI tests (run requires macOS 26+)
-        run: xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' build-for-testing
+        # -enableCodeCoverage NO: documented in planning/epic-10-implementation.md
+        # ("Local build-for-testing coverage quirk"). Xcode 26's build-for-testing
+        # injects -fprofile-instr-generate into every target for the scheme's Test
+        # action regardless of the scheme's own coverage setting, and the profiling
+        # runtime never gets linked into the pure-C SwiftPM targets (tree-sitter,
+        # cmark, Yams), so linking fails with an undefined ___llvm_profile_runtime
+        # symbol. That epic's evidence table assumed CI's macos-26 runner might not
+        # hit this; it reproducibly does, so the flag now applies here too, not just
+        # locally. No coverage report is consumed anywhere in this pipeline.
+        run: |
+          xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 \
+            -destination 'platform=macOS' -enableCodeCoverage NO build-for-testing

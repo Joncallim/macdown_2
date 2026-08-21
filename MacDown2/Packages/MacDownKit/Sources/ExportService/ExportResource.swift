@@ -26,7 +26,7 @@ public struct ExportResourceIdentity: Sendable, Equatable, Hashable {
         self.mimeType = mimeType
     }
 
-    /// `<64hex>.<extension>` — the companion filename under `report.assets`.
+    /// `<64hex>.<extension>` — the companion filename under the document's assets directory.
     public var fileName: String {
         "\(sha256).\(canonicalExtension)"
     }
@@ -41,8 +41,16 @@ public struct ExportResourceIdentity: Sendable, Equatable, Hashable {
         return "bin"
     }
 
+    private static let hexDigits = Array("0123456789abcdef")
+
     static func sha256Hex(of data: Data) -> String {
-        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        var characters = [Character]()
+        characters.reserveCapacity(64)
+        for byte in SHA256.hash(data: data) {
+            characters.append(hexDigits[Int(byte >> 4)])
+            characters.append(hexDigits[Int(byte & 0x0F)])
+        }
+        return String(characters)
     }
 }
 

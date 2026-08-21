@@ -13,9 +13,10 @@
  a theme change is a variables-only change.
  */
 
-:root {
-  color-scheme: light dark;
-}
+/* `color-scheme` is not set for screen here: the theme variable block owns it.
+   A structural default would sit later in the cascade than the theme block and
+   win, making a dark export render light-mode UA widgets. The one exception is
+   `@media print` at the end of this file, which must override the theme. */
 
 * {
   box-sizing: border-box;
@@ -60,6 +61,12 @@ a {
 }
 
 a:hover { text-decoration: underline; }
+
+/* Keyboard navigation must stay visible in the exported document. */
+:focus-visible {
+  outline: 2px solid var(--md-link, #2f5b9c);
+  outline-offset: 2px;
+}
 
 strong { font-weight: 600; }
 em { font-style: italic; }
@@ -108,7 +115,17 @@ ul, ol {
 
 li { margin: 0.2em 0; }
 
-li.task-list-item { list-style: none; margin-left: -1.4em; }
+/* cmark-gfm's tasklist extension emits a bare `<li>` with a leading disabled
+   checkbox and no class, so the item is matched by what it contains. */
+li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.4em;
+}
+
+li > input[type="checkbox"] {
+  margin: 0 0.4em 0 0;
+  vertical-align: baseline;
+}
 
 hr {
   border: none;
@@ -140,3 +157,80 @@ th {
    document's vertical rhythm. */
 .md-derived-inline { display: inline; }
 .md-derived-block { display: block; margin: 1em 0; }
+
+/* Print / PDF.
+
+   The PDF adapter prints this same document through the macOS print system,
+   which supplies the page margins itself. The screen layout's centred column
+   and outer padding would sit *inside* those margins, so the printed text
+   block is released to the full page and the pagination rules that keep a
+   document readable are applied here rather than on screen. */
+@media print {
+  /* Paper is white. A dark theme's foreground would print as light text on a
+     white page, because the print stack drops page backgrounds — so print gets
+     its own readable palette, and it wins because the structural sheet is
+     emitted after the theme block. */
+  :root {
+    color-scheme: light;
+    --md-background: #ffffff;
+    --md-foreground: #1a1a1a;
+    --md-heading: #000000;
+    --md-link: #0b3d91;
+    --md-muted: #555555;
+    --md-rule: #cfcfcf;
+    --md-code-bg: #f4f4f4;
+  }
+
+  body {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+
+  /* Headings stay with the content they introduce. */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+    break-inside: avoid;
+    margin-top: 1.2em;
+  }
+
+  h1 { font-size: 1.7em; }
+  h2 { font-size: 1.35em; }
+
+  /* Blocks that lose their meaning when split across a page boundary. */
+  pre, blockquote, table, figure, img, .md-derived-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: visible;
+  }
+
+  /* Keep the surfaces that carry meaning; the print stack drops backgrounds
+     unless a page asks for them explicitly. */
+  pre, code, th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* A scroll container cannot scroll on paper. */
+  table {
+    display: table;
+    overflow-x: visible;
+  }
+
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Colour alone does not identify a link on paper. */
+  a { text-decoration: underline; }
+
+  /* Avoid a single trailing or leading line stranded on its own page. */
+  p, li { orphans: 3; widows: 3; }
+}

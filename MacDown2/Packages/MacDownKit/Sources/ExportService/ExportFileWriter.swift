@@ -4,13 +4,17 @@ import Foundation
 /// durability (issue #49).
 ///
 /// Ownership contract:
-/// - The companion directory is exactly `report.assets` next to the primary
-///   file; callers cannot redirect it.
-/// - A versioned marker (`report.assets/.macdown-export-marker`) is written
+/// - The companion directory is exactly `prepared.assetsDirectoryName` — the
+///   primary file's own basename — next to the primary file; callers cannot
+///   redirect it, and two documents exported into the same folder never share
+///   one, so exporting one document can never overwrite or expose another's
+///   companions.
+/// - A versioned marker (`<name>.assets/.macdown-export-marker`) is written
 ///   before any resource is written, establishing the reserved namespace.
 /// - Only the reserved namespace is mutated: the marker, `.tmp` scratch files,
-///   and content-addressed `<64hex>.<ext>` resources. Non-reserved user files
-///   are never deleted or overwritten.
+///   and content-addressed `<64hex>.<ext>` resources (images and, for linked
+///   CSS, the stylesheet itself). Non-reserved user files are never deleted or
+///   overwritten.
 ///
 /// Durability contract:
 /// - Required resources are written before the primary HTML is atomically
@@ -18,7 +22,6 @@ import Foundation
 /// - There is no claim of multi-file atomicity; each file is written atomically
 ///   on its own.
 enum ExportFileWriter {
-    static let assetsDirectoryName = ExportHTMLWriter.assetsDirectoryName
     static let markerFileName = ".macdown-export-marker"
     static let markerContent = "macdown-export-v1\n"
 
@@ -40,12 +43,7 @@ enum ExportFileWriter {
             html = ExportHTMLWriter.selfContainedHTML(from: prepared)
         case let .standalone(style):
             html = ExportHTMLWriter.companionHTML(from: prepared, style: style)
-            companionFiles = try writeAssets(prepared, nextTo: url)
-            if case .linked = style {
-                let cssURL = directory.appendingPathComponent(ExportHTMLWriter.linkedStylesheetName)
-                try writeAtomically(Data(prepared.stylesheet.utf8), to: cssURL)
-                companionFiles.append(cssURL)
-            }
+            companionFiles = try writeCompanions(prepared, style: style, nextTo: url)
         }
 
         // Primary-last: promote the HTML only after its resources exist.
@@ -54,22 +52,51 @@ enum ExportFileWriter {
         return ExportResult(primaryFile: url, companionFiles: companionFiles, diagnostics: prepared.diagnostics)
     }
 
-    /// Writes the resource manifest into `report.assets`, marker first.
-    private static func writeAssets(_ prepared: PreparedExportDocument, nextTo url: URL) throws -> [URL] {
-        let directory = url.deletingLastPathComponent()
-        let assetsDir = directory.appendingPathComponent(assetsDirectoryName, isDirectory: true)
-        try ensureDirectory(assetsDir)
+    /// Writes every companion file a `.standalone` export needs: the resource
+    /// manifest (marker first) when there are images, and the linked
+    /// stylesheet when `style` calls for one. Both share one assets directory,
+    /// created at most once.
+    ///
+    /// A document with neither — no images and embedded CSS — gets no
+    /// companion directory at all: an empty folder beside every export would
+    /// be litter, not output.
+    private static func writeCompanions(
+        _ prepared: PreparedExportDocument,
+        style: ExportStyleEmbedding,
+        nextTo url: URL
+    ) throws -> [URL] {
+        let needsAssetsDirectory = !prepared.manifest.resources.isEmpty || style == .linked
+        guard needsAssetsDirectory else { return [] }
 
-        let markerURL = assetsDir.appendingPathComponent(markerFileName)
-        try ensureMarker(at: markerURL)
+        let assetsDir = try ensureAssetsDirectory(prepared.assetsDirectoryName, nextTo: url)
+        var written = [assetsDir.appendingPathComponent(markerFileName)]
 
-        var written: [URL] = [markerURL]
         for resource in prepared.manifest.resources {
             let fileURL = assetsDir.appendingPathComponent(resource.identity.fileName)
             try writeAtomically(resource.bytes, to: fileURL)
             written.append(fileURL)
         }
+
+        if case .linked = style {
+            // The same computation `companionHTML` used for the `<link>` href,
+            // so the file this writes always exists at the reference the body
+            // actually points to.
+            let resource = ExportHTMLWriter.linkedStylesheetResource(for: prepared.stylesheet)
+            let cssURL = assetsDir.appendingPathComponent(resource.identity.fileName)
+            try writeAtomically(resource.bytes, to: cssURL)
+            written.append(cssURL)
+        }
+
         return written
+    }
+
+    /// Creates `<name>` next to the primary file (if needed) and ensures its
+    /// ownership marker is in place, before any resource is written into it.
+    private static func ensureAssetsDirectory(_ name: String, nextTo url: URL) throws -> URL {
+        let assetsDir = url.deletingLastPathComponent().appendingPathComponent(name, isDirectory: true)
+        try ensureDirectory(assetsDir)
+        try ensureMarker(at: assetsDir.appendingPathComponent(markerFileName))
+        return assetsDir
     }
 
     private static func ensureMarker(at url: URL) throws {

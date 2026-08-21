@@ -1,6 +1,7 @@
 import AppKit
 import ExportService
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The selectable export format in the export panel.
 enum ExportFormatOption: String, CaseIterable, Identifiable {
@@ -19,6 +20,31 @@ enum ExportFormatOption: String, CaseIterable, Identifiable {
         case .pdf: "PDF"
         }
     }
+
+    /// The content type the save panel must enforce for this format, so the
+    /// saved file's extension always matches what was actually written.
+    var contentType: UTType {
+        switch self {
+        case .standaloneHTML, .selfContainedHTML: .html
+        case .pdf: .pdf
+        }
+    }
+
+    var fileExtension: String {
+        contentType.preferredFilenameExtension ?? (self == .pdf ? "pdf" : "html")
+    }
+
+    /// Every extension the panel may have appended for some other format, so
+    /// switching format replaces the extension instead of appending to it.
+    static let knownExtensions = ["html", "htm", "pdf"]
+
+    var explanation: String? {
+        switch self {
+        case .standaloneHTML: nil
+        case .selfContainedHTML: "Embeds the stylesheet and every image into one file that opens anywhere."
+        case .pdf: "Embeds every image and prints through the macOS render system."
+        }
+    }
 }
 
 /// The user's in-panel export choices. Held by reference so the coordinator can
@@ -35,6 +61,9 @@ final class ExportSelectionModel {
 /// export panel accessory without importing any of its Objective-C.
 struct ExportPanelView: View {
     @Bindable var model: ExportSelectionModel
+    /// Called when the format changes so the save panel's filename extension and
+    /// allowed content type can follow the selection.
+    var onFormatChange: (ExportFormatOption) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -45,6 +74,7 @@ struct ExportPanelView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .accessibilityLabel("Export format")
 
             if model.format == .standaloneHTML {
                 Picker("Style", selection: $model.style) {
@@ -52,18 +82,19 @@ struct ExportPanelView: View {
                     Text("Linked CSS").tag(ExportStyleEmbedding.linked)
                 }
                 .pickerStyle(.radioGroup)
-            } else {
-                Text(
-                    model.format == .pdf
-                        ? "PDF embeds all resources and prints through the macOS render system."
-                        : "Self-contained HTML embeds CSS and images into one file."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel("Stylesheet delivery")
+            } else if let explanation = model.format.explanation {
+                Text(explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.vertical, 12)
-        .frame(minWidth: 280)
+        .padding(.horizontal, 20)
+        .frame(width: 380, alignment: .leading)
+        .onChange(of: model.format) { _, newValue in
+            onFormatChange(newValue)
+        }
     }
 }

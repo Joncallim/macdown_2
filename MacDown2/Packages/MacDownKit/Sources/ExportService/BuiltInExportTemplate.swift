@@ -12,22 +12,35 @@ public enum BuiltInExportTemplate {
     ///
     /// - Parameters:
     ///   - title: the plain-text document title (HTML-escaped here).
+    ///   - visibleTitle: the heading rendered above the body, when front matter
+    ///     supplied a title. `nil` emits no heading.
+    ///   - headExtras: raw markup emitted first inside `<head>`, before the
+    ///     title and stylesheet. The PDF adapter uses it for a
+    ///     Content-Security-Policy that must govern the whole document.
     ///   - styleElement: the complete `<style>…</style>` block or
     ///     `<link rel="stylesheet" …>` element for the head.
     ///   - body: the rendered body fragment.
-    public static func document(title: String, styleElement: String, body: String) -> String {
+    public static func document(
+        title: String,
+        visibleTitle: String? = nil,
+        headExtras: String = "",
+        styleElement: String,
+        body: String
+    ) -> String {
         let titleTag = title.isEmpty ? "" : "<title>\(HTMLEscaping.escape(title))</title>\n"
+        let extras = headExtras.isEmpty ? "" : headExtras + "\n"
+        let heading = visibleTitle.map { "<h1>\(HTMLEscaping.escape($0))</h1>\n" } ?? ""
 
         return """
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+        \(extras)<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
         \(titleTag)\(styleElement)
         </head>
         <body>
-        \(body)
+        \(heading)\(body)
         </body>
         </html>
         """
@@ -38,7 +51,10 @@ public enum BuiltInExportTemplate {
 /// (title text and generated attribute values). Body and stylesheet bytes are
 /// produced by cmark / the bundled stylesheet and are not passed through here.
 public enum HTMLEscaping {
+    private static let escaped: Set<Character> = ["&", "<", ">", "\"", "'"]
+
     public static func escape(_ text: String) -> String {
+        guard text.contains(where: escaped.contains) else { return text }
         var result = ""
         result.reserveCapacity(text.utf8.count)
         for character in text {

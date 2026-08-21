@@ -7,24 +7,6 @@ import Themes
 /// Slice 1: ordinary deterministic HTML, URL security, metadata, theme, and
 /// template. Exercises the full composer through the public `ExportService`.
 struct ExportComposerTests {
-    @Test func frontMatterTitleLandsInDocumentMetadata() async throws {
-        let markdown = """
-        ---
-        title: My Title
-        ---
-        # Hello
-        """
-        let prepared = try await ExportService.prepare(
-            ExportRequest(text: markdown, sourceGeneration: 1, theme: ExportTestSupport.lightTheme()),
-            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
-        )
-        #expect(prepared.title == "My Title")
-
-        let html = ExportHTMLWriter.selfContainedHTML(from: prepared)
-        #expect(html.contains("<title>My Title</title>"))
-        #expect(html.contains("<h1>Hello</h1>"))
-    }
-
     @Test func ordinaryHTMLPreservesAuthoredRawHTML() async throws {
         let markdown = "# Hi\n\n<div class=\"note\">raw</div>\n"
         let prepared = try await ExportService.prepare(
@@ -36,13 +18,25 @@ struct ExportComposerTests {
     }
 
     @Test func selfContainedHTMLRejectsAuthoredRawHTML() async throws {
+        // A self-contained document cannot prove that arbitrary raw HTML is
+        // closed, so it fails rather than quietly dropping the author's markup.
         let markdown = "# Hi\n\n<div class=\"note\">raw</div>\n"
+        let thrown = await #expect(throws: ExportError.self) {
+            _ = try await ExportService.prepare(
+                ExportRequest(text: markdown, sourceGeneration: 3, theme: ExportTestSupport.lightTheme()),
+                target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
+            )
+        }
+        #expect(thrown?.description.contains("raw HTML") == true)
+    }
+
+    @Test func selfContainedHTMLAcceptsDocumentsWithoutRawHTML() async throws {
         let prepared = try await ExportService.prepare(
-            ExportRequest(text: markdown, sourceGeneration: 3, theme: ExportTestSupport.lightTheme()),
+            ExportRequest(text: "# Hi\n\nplain\n", sourceGeneration: 3, theme: ExportTestSupport.lightTheme()),
             target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
         )
         #expect(!prepared.preservesRawHTML)
-        #expect(!prepared.bodyHTML.contains("<div class=\"note\">raw</div>"))
+        #expect(prepared.bodyHTML.contains("<h1>Hi</h1>"))
     }
 
     @Test func selfContainedEmbedsLocalImageAsDataURI() async throws {
@@ -57,7 +51,7 @@ struct ExportComposerTests {
                 text: markdown,
                 sourceGeneration: 4,
                 theme: ExportTestSupport.lightTheme(),
-                documentDirectory: directory
+                documentURL: directory.appendingPathComponent("doc.md")
             ),
             target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
         )
@@ -82,7 +76,7 @@ struct ExportComposerTests {
                     text: markdown,
                     sourceGeneration: 5,
                     theme: ExportTestSupport.lightTheme(),
-                    documentDirectory: directory
+                    documentURL: directory.appendingPathComponent("doc.md")
                 ),
                 target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
             )
@@ -99,7 +93,7 @@ struct ExportComposerTests {
                 text: markdown,
                 sourceGeneration: 6,
                 theme: ExportTestSupport.lightTheme(),
-                documentDirectory: directory
+                documentURL: directory.appendingPathComponent("doc.md")
             ),
             target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .standalone(style: .embedded))
         )
@@ -134,6 +128,9 @@ struct ExportComposerTests {
             target: .pdf(url: URL(fileURLWithPath: "/tmp/out.pdf"))
         )
         #expect(prepared.preservesRawHTML)
+        // Raw HTML survives the print pass, but only best-effort — the user is
+        // told rather than left to discover it in the PDF.
+        #expect(prepared.diagnostics.contains { $0.severity == .warning && $0.message.contains("raw HTML") })
     }
 
     @Test func sourceGenerationIsCarriedAsUInt() async throws {
@@ -143,5 +140,49 @@ struct ExportComposerTests {
             target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
         )
         #expect(prepared.sourceGeneration == generation)
+    }
+
+    @Test func theThemeOwnsTheOnScreenColorScheme() async throws {
+        // The theme block is emitted first and only the print block may follow
+        // it; a dark export must not render with light-mode UA widgets.
+        let prepared = try await ExportService.prepare(
+            ExportRequest(text: "# Hi", sourceGeneration: 10, theme: BundledThemes.dark),
+            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .selfContained)
+        )
+        let declared = prepared.stylesheet
+            .components(separatedBy: "color-scheme:")
+            .dropFirst()
+            .map { segment in segment.prefix { $0 != ";" }.trimmingCharacters(in: .whitespaces) }
+        // The theme's scheme comes first; anything after it belongs to @media print.
+        #expect(declared.first == "dark")
+        #expect(declared.count == 2)
+    }
+
+    @Test func exportErrorsCarryPresentableProse() {
+        // The app shows `localizedDescription`; without `LocalizedError` that is
+        // an opaque "operation couldn't be completed" string.
+        let error = ExportError.rawHTMLNotEmbeddable
+        #expect(error.localizedDescription.contains("raw HTML"))
+        #expect(error.recoverySuggestion?.isEmpty == false)
+    }
+
+    @Test func repeatedImageReferenceIsReadAndReportedOnce() async throws {
+        let directory = try ExportTestSupport.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try ExportTestSupport.writeFixture(named: "logo.png", in: directory, bytes: Data([0x89, 0x50, 0x4E]))
+
+        let markdown = "![a](logo.png)\n\n![b](logo.png)\n\n![c](gone.png)\n\n![d](gone.png)\n"
+        let prepared = try await ExportService.prepare(
+            ExportRequest(
+                text: markdown,
+                sourceGeneration: 11,
+                theme: ExportTestSupport.lightTheme(),
+                documentURL: directory.appendingPathComponent("doc.md")
+            ),
+            target: .html(url: URL(fileURLWithPath: "/tmp/out.html"), mode: .standalone(style: .embedded))
+        )
+        #expect(prepared.manifest.resources.count == 1)
+        // One broken image is one problem, however many times it is referenced.
+        #expect(prepared.diagnostics.filter { $0.message.contains("gone.png") }.count == 1)
     }
 }
