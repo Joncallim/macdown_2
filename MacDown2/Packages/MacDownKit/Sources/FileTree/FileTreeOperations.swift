@@ -92,17 +92,6 @@ public enum FileTreeNaming {
     }
 }
 
-public enum FileTreeMoveValidation {
-    public static func validate(source: URL, intoDirectory destination: URL) -> FileTreeOperationError? {
-        let sourceComponents = source.standardizedFileURL.pathComponents
-        let destinationComponents = destination.standardizedFileURL.pathComponents
-        if destinationComponents.starts(with: sourceComponents) {
-            return .moveIntoOwnSubtree
-        }
-        return nil
-    }
-}
-
 public enum FileTreeCopySafety {
     public static func validateDirectoryCopy(
         source: URL,
