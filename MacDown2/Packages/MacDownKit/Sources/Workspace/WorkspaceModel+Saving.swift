@@ -65,7 +65,15 @@ extension WorkspaceModel {
             lastError = .unresolvedExternalConflict
             return
         }
-        guard reconciliation.document.state == .dirty else { return }
+        // `.promptingClose` reconciles the same as `.dirty` here (E18: a
+        // metadata-only change preserves both states rather than collapsing
+        // them). Excluding it would let `saveInternalForClose()` return
+        // without ever reaching `.clean`; the close flow then treats that as
+        // a failed save and silently reverts to `.dirty` with the prompt
+        // dismissed — save-and-close would do nothing and say nothing.
+        guard reconciliation.document.state == .dirty || reconciliation.document.state == .promptingClose else {
+            return
+        }
         guard !isRetry else {
             // Something is touching this file's metadata faster than one
             // retry can keep up with. Stop instead of recursing indefinitely,
