@@ -1,3 +1,4 @@
+import AppSettings
 import EditorCore
 import FileCore
 import FileTree
@@ -28,7 +29,8 @@ struct WindowCoordinatorSaveAsPublicationTests {
             themeController: ThemeController(),
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
-            recentFolderRoots: RecentFolderRoots(preferences: preferences)
+            recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            appSettings: AppSettingsModel()
         )
         let panel = FakeFilePanelProvider()
         panel.nextSaveURL = destinationURL
@@ -63,7 +65,8 @@ struct WindowCoordinatorSaveAsPublicationTests {
             themeController: ThemeController(),
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
-            recentFolderRoots: RecentFolderRoots(preferences: preferences)
+            recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            appSettings: AppSettingsModel()
         )
 
         let result = await coordinator.saveSessionResult()

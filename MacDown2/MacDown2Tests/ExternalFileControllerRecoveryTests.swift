@@ -1,3 +1,4 @@
+import AppSettings
 import EditorCore
 import FileCore
 import FileTree
@@ -28,6 +29,7 @@ struct ExternalFileControllerRecoveryTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),
             workspaceStateStore: WorkspaceStateStore(defaults: defaults)
         )
 
@@ -308,6 +310,7 @@ extension ExternalFileControllerRecoveryTests {
             recentFolderRoots: RecentFolderRoots(preferences: FileTreePreferences(
                 store: UserDefaultsFileTreePreferenceStore(defaults: defaults)
             )),
+            appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),
             workspaceStateStore: WorkspaceStateStore(defaults: defaults)
         )
     }
