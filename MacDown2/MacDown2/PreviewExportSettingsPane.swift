@@ -26,7 +26,7 @@ private struct PreviewExportSettingsForm: View {
                 }
             }
 
-            Section("Export") {
+            Section {
                 Picker("Default format", selection: $appSettings.previewExport.defaultExportFormat) {
                     Text("HTML").tag(PreviewExportSettings.DefaultExportFormat.standaloneHTML)
                     Text("Self-contained HTML").tag(PreviewExportSettings.DefaultExportFormat.selfContainedHTML)
@@ -39,6 +39,8 @@ private struct PreviewExportSettingsForm: View {
                         Text("Linked CSS").tag(PreviewExportSettings.DefaultExportStyle.linked)
                     }
                 }
+            } header: {
+                Text("Export")
             } footer: {
                 Text("These are starting points for the export panel — every export can still change them.")
                     .font(.caption)
