@@ -52,8 +52,13 @@ enum ExportFormatOption: String, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class ExportSelectionModel {
-    var format: ExportFormatOption = .standaloneHTML
-    var style: ExportStyleEmbedding = .embedded
+    var format: ExportFormatOption
+    var style: ExportStyleEmbedding
+
+    init(format: ExportFormatOption = .standaloneHTML, style: ExportStyleEmbedding = .embedded) {
+        self.format = format
+        self.style = style
+    }
 }
 
 /// The export panel (Slice 5): format and, for standalone HTML, CSS style. It is

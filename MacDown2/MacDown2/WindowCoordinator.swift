@@ -43,6 +43,7 @@ final class WindowCoordinator {
     let grammarRegistry: GrammarRegistry
     let fileTreePreferences: FileTreePreferences
     let recentFolderRoots: RecentFolderRoots
+    let appSettings: AppSettingsModel
     private let workspaceStateStore: any WorkspaceStateStoring
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
@@ -52,7 +53,7 @@ final class WindowCoordinator {
     /// property keeps it outside `@Observable` tracking; the value type means
     /// menu validation, which reads it on every evaluation, allocates nothing.
     var exportCoordinator: ExportCoordinator {
-        ExportCoordinator(coordinator: self, themeController: themeController)
+        ExportCoordinator(coordinator: self, themeController: themeController, appSettings: appSettings)
     }
 
     /// Changes whenever AppKit focus/input can have changed the responder used
@@ -72,6 +73,7 @@ final class WindowCoordinator {
         grammarRegistry: GrammarRegistry,
         fileTreePreferences: FileTreePreferences,
         recentFolderRoots: RecentFolderRoots,
+        appSettings: AppSettingsModel,
         workspaceStateStore: any WorkspaceStateStoring = WorkspaceStateStore()
     ) {
         self.sessionStore = sessionStore
@@ -81,6 +83,7 @@ final class WindowCoordinator {
         self.grammarRegistry = grammarRegistry
         self.fileTreePreferences = fileTreePreferences
         self.recentFolderRoots = recentFolderRoots
+        self.appSettings = appSettings
         self.workspaceStateStore = workspaceStateStore
     }
 

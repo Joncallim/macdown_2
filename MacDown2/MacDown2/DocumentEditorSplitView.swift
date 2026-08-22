@@ -58,7 +58,20 @@ struct DocumentEditorSplitView: View {
     }
 
     private var previewLayout: PreviewLayoutMode {
-        tab.previewLayout ?? .defaultMode
+        tab.previewLayout ?? Self.defaultPreviewLayout(from: appSettings?.previewExport)
+    }
+
+    /// The default for a tab with no persisted layout of its own (a newly
+    /// opened document). Kept as one shared conversion so this call site,
+    /// `WorkspaceShellView`'s focused-value publisher, and
+    /// `WorkspaceCommands`' Layout-menu fallback cannot drift apart and show
+    /// a checkmark next to a mode that isn't what actually rendered.
+    static func defaultPreviewLayout(from previewExport: PreviewExportSettings?) -> PreviewLayoutMode {
+        switch previewExport?.defaultPreviewLayout {
+        case .editorOnly: .editorOnly
+        case .split, nil: .defaultMode
+        case .previewOnly: .previewOnly
+        }
     }
 
     private var currentSplitFraction: Double? {
@@ -103,7 +116,15 @@ struct DocumentEditorSplitView: View {
         ) ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
     }
 
-    private static func assistConfiguration(from editorSettings: EditorSettings?) -> EditingAssistConfiguration {
+    /// Only `blockDirectives` is wired to a real swift-markdown parse flag
+    /// today; the other five `MarkdownParseOptions` fields stay at their
+    /// documented always-on default regardless of settings
+    /// (epic-13-implementation.md §2.1/§9 — verified against `ParseEngine`).
+    static func markdownParseOptions(from markdownSettings: MarkdownSettings?) -> MarkdownParseOptions {
+        MarkdownParseOptions(blockDirectives: markdownSettings?.parsesBlockDirectives ?? true)
+    }
+
+    static func assistConfiguration(from editorSettings: EditorSettings?) -> EditingAssistConfiguration {
         guard let editorSettings else { return .markdownDefault }
         return EditingAssistConfiguration(
             isEnabled: editorSettings.assistsEnabled,
@@ -140,6 +161,9 @@ struct DocumentEditorSplitView: View {
             }
             .onChange(of: jsonSession.result) { _, _ in
                 refreshJSONOutline()
+            }
+            .onChange(of: appSettings?.markdown) { _, newValue in
+                parseSession.setOptions(Self.markdownParseOptions(from: newValue))
             }
     }
 
@@ -193,6 +217,7 @@ struct DocumentEditorSplitView: View {
     /// debounce) and refresh both outline channels. Split out of `.task(id:)`
     /// so the compiler can type-check the view body.
     private func loadInitialContent() async {
+        parseSession.setOptions(Self.markdownParseOptions(from: appSettings?.markdown))
         await parseSession.parseNow(text)
         refreshPreviewBlocks()
         refreshOutline()

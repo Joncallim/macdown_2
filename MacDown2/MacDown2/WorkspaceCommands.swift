@@ -1,4 +1,5 @@
 import AppKit
+import AppSettings
 import EditorCore
 import SwiftUI
 import Themes
@@ -6,6 +7,7 @@ import Workspace
 
 struct WorkspaceCommands: Commands {
     @Environment(\.windowCoordinator) private var coordinator
+    @Environment(\.appSettings) private var appSettings
     @FocusedValue(\.previewLayout) private var previewLayout
     private let themeController: ThemeController
 
@@ -123,7 +125,8 @@ struct WorkspaceCommands: Commands {
 
         CommandGroup(before: .sidebar) {
             Menu("Layout") {
-                let layout = previewLayout ?? .defaultMode
+                let layout = previewLayout
+                    ?? DocumentEditorSplitView.defaultPreviewLayout(from: appSettings?.previewExport)
 
                 Button(
                     action: { setPreviewLayout(.editorOnly) },

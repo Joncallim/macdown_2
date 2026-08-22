@@ -1,3 +1,4 @@
+import AppSettings
 import EditorCore
 import FileTree
 import Highlighting
@@ -25,6 +26,8 @@ struct WorkspaceShellView: View {
     let fileTreeModel: FileTreeModel
     let externalFileController: ExternalFileController
 
+    @Environment(\.appSettings) private var appSettings
+
     init(
         model: WorkspaceModel,
         editorStore: EditorTextSystemStore,
@@ -47,6 +50,11 @@ struct WorkspaceShellView: View {
         self.externalFileController = externalFileController
     }
 
+    private var activePreviewLayout: PreviewLayoutMode {
+        model.tabStore.activeTab?.previewLayout
+            ?? DocumentEditorSplitView.defaultPreviewLayout(from: appSettings?.previewExport)
+    }
+
     var body: some View {
         NavigationSplitView(columnVisibility: sidebarVisibilityBinding) {
             SidebarView(model: model, outlineController: outlineController, fileTreeModel: fileTreeModel)
@@ -63,7 +71,7 @@ struct WorkspaceShellView: View {
             )
         }
         .navigationSplitViewStyle(.balanced)
-        .focusedSceneValue(\.previewLayout, model.tabStore.activeTab?.previewLayout ?? .defaultMode)
+        .focusedSceneValue(\.previewLayout, activePreviewLayout)
         .task(id: themeController.current) {
             highlightStore.applyThemeToAll(themeController.current)
         }

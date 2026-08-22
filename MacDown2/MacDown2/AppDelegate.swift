@@ -62,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             grammarRegistry: grammarRegistry,
             fileTreePreferences: fileTreePreferences,
             recentFolderRoots: recentFolderRoots,
+            appSettings: appSettings,
             workspaceStateStore: workspaceStateStore
         )
     }
