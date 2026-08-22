@@ -1,4 +1,5 @@
 import AppKit
+import AppSettings
 import EditorCore
 import FileCore
 import FileTree
@@ -12,6 +13,7 @@ import Workspace
 extension EnvironmentValues {
     @Entry var windowCoordinator: WindowCoordinator?
     @Entry var themeController: ThemeController?
+    @Entry var appSettings: AppSettingsModel?
 }
 
 // MARK: - Coordinator

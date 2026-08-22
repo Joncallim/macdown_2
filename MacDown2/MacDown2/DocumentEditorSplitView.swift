@@ -1,3 +1,5 @@
+import AppKit
+import AppSettings
 import EditorCore
 import FileCore
 import Highlighting
@@ -28,6 +30,7 @@ struct DocumentEditorSplitView: View {
     let outlineController: OutlineController
 
     @Environment(\.windowCoordinator) private var coordinator
+    @Environment(\.appSettings) private var appSettings
 
     @State private var dragOriginFraction: Double?
     @State private var previewBlocks: [PreviewBlock]?
@@ -67,14 +70,50 @@ struct DocumentEditorSplitView: View {
 
     private var editorConfiguration: EditorConfiguration {
         var config = EditorConfiguration.default
+        if let editorSettings = appSettings?.editor {
+            config.font = Self.resolvedFont(from: editorSettings.font)
+            config.wrapsLines = editorSettings.wrapsLines
+            config.showsInvisibles = editorSettings.showsInvisibles
+        }
         config.scrollsPastEnd = false
         // E10 is Markdown-only and fails closed: the default is disabled, and
         // only the exact Markdown format id receives the Markdown assists.
         // `WindowController` eagerly creates a text system with `.default`
         // before this format-specific configuration arrives, so a JSON/HTML/
         // source file can never receive a transient Markdown assist.
-        config.editingAssists = document.format.id == "markdown" ? .markdownDefault : .disabled
+        config.editingAssists = document.format.id == "markdown"
+            ? Self.assistConfiguration(from: appSettings?.editor)
+            : .disabled
         return config
+    }
+
+    /// `FontDescriptor.familyName` is a font *family* (what the Editor
+    /// settings pane's picker offers via `NSFontManager.availableFontFamilies`),
+    /// not a PostScript name, so resolution goes through `NSFontManager`
+    /// rather than `NSFont(name:size:)`. A family the system no longer has —
+    /// deleted, or a preference synced from another Mac — falls back to the
+    /// same system monospaced font `EditorConfiguration.default` already
+    /// uses, without touching the stored preference (epic-13-implementation.md §9).
+    private static func resolvedFont(from descriptor: FontDescriptor) -> NSFont {
+        NSFontManager.shared.font(
+            withFamily: descriptor.familyName,
+            traits: [],
+            weight: 5,
+            size: descriptor.size
+        ) ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+    }
+
+    private static func assistConfiguration(from editorSettings: EditorSettings?) -> EditingAssistConfiguration {
+        guard let editorSettings else { return .markdownDefault }
+        return EditingAssistConfiguration(
+            isEnabled: editorSettings.assistsEnabled,
+            continuesMarkdownPrefixes: editorSettings.continuesMarkdownPrefixes,
+            completesMatchingCharacters: editorSettings.completesMatchingCharacters,
+            convertsTabsToSpaces: editorSettings.convertsTabsToSpaces,
+            smartHome: editorSettings.smartHome,
+            autoIncrementOrderedLists: editorSettings.autoIncrementOrderedLists,
+            indentationWidth: editorSettings.indentationWidth
+        )
     }
 
     var body: some View {
