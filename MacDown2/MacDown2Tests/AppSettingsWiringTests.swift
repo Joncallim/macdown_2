@@ -11,11 +11,13 @@ struct AppSettingsWiringTests {
     // MARK: - Markdown
 
     @Test func markdownParseOptionsReflectsThePreference() {
-        let on = DocumentEditorSplitView.markdownParseOptions(from: MarkdownSettings(parsesBlockDirectives: true))
-        #expect(on.blockDirectives)
+        let enabled = DocumentEditorSplitView.markdownParseOptions(from: MarkdownSettings(parsesBlockDirectives: true))
+        #expect(enabled.blockDirectives)
 
-        let off = DocumentEditorSplitView.markdownParseOptions(from: MarkdownSettings(parsesBlockDirectives: false))
-        #expect(!off.blockDirectives)
+        let disabled = DocumentEditorSplitView.markdownParseOptions(
+            from: MarkdownSettings(parsesBlockDirectives: false)
+        )
+        #expect(!disabled.blockDirectives)
     }
 
     @Test func markdownParseOptionsLeavesTheInertFieldsAlwaysOn() {
