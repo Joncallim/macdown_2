@@ -206,33 +206,60 @@ that target.
 
 ### 2.2 Stale assumptions reconciled
 
-- **`legacy-reference/` does not exist on this branch.** `MIGRATION_PLAN.md`
-  §7 states "the legacy ObjC app survives only as read-only porting source
-  in `legacy-reference/`", and `.gitignore` carries a note that the
-  directory was un-ignored specifically so E05's theme/colour porting
-  source would sync into the repo. A filesystem search of the repository
-  root at the recorded baseline found no such directory. Whatever theme/CSS
-  subset E05 may once have used is not present now, and no ObjC
-  `MPPreferences`/`PAPreferences`/`MASPreferences` source is available to
-  inspect. **Reconciliation:** the "~50 MPPreferences keys need triage"
-  framing in issue #14 cannot be executed as a literal key-by-key migration
-  table in this pass — there is nothing in this repository to triage
-  against. This epic instead builds the settings model from (a) what the
-  live MacDown 2 codebase actually has as configurable, present behaviour
-  (enumerated throughout §2.1), and (b) sensible defaults that reproduce
-  MacDown 2's own current behaviour unchanged (so shipping this epic is
-  behaviour-preserving by construction — every default matches what the
-  hard-coded constant was). Building a real legacy-key migration table
-  remains possible later if `legacy-reference/` (or the original MacDown
-  repository) becomes available, and is recorded as a follow-up rather than
-  silently dropped (§18).
-- **Open decision O3** ("Import old MacDown prefs/themes on first run?")
-  cannot be resolved as "yes, importing these specific keys" without the
-  source above. This epic ships the detection half only — on first launch,
-  check whether `UserDefaults(suiteName: "com.uranusjr.macdown")` (the
-  original MacDown's bundle ID) has a persistent domain at all — and if so,
-  record that fact for a future epic to act on, rather than silently doing
-  nothing and rather than guessing at key names. Full detail in §18.
+- **`legacy-reference/` does not exist on this branch, but the source it
+  would have held is reachable and has since been inspected directly.**
+  `MIGRATION_PLAN.md` §7 states "the legacy ObjC app survives only as
+  read-only porting source in `legacy-reference/`", and a filesystem search
+  of this repository at the recorded baseline found no such directory.
+  Mid-review, the original app's public repository
+  (`github.com/MacDownApp/macdown`) was cloned read-only
+  (`/home/user/macdownapp/macdown` in the session that wrote this doc) and
+  `MacDown/Code/Preferences/MPPreferences.h` — the actual ~45-property
+  `PAPreferences` subclass issue #14 refers to — was read directly.
+  **Reconciliation:** this confirms the domain boundaries chosen in §2.1/§6
+  independently (every field this epic scoped in has a real legacy
+  counterpart: `editorConvertTabs`, `editorCompleteMatchingCharacters`,
+  `editorSmartHome`, `editorAutoIncrementNumberedLists` ↔
+  `EditorSettings`'s assist toggles; `supressesUntitledDocumentOnLaunch` ↔
+  `GeneralSettings.launchBehavior`; `extensionTables`/`extensionFootnotes`/
+  `extensionStrikethough`/`extensionAutolink` ↔ the four inert
+  `MarkdownParseOptions` fields). It also surfaces legacy preferences this
+  epic does **not** scope in, each with a real, already-typed-but-unexposed
+  counterpart already living in MacDownKit: `editorSyncScrolling` (no
+  toggle exists anywhere in `Preview.ScrollSyncController` today),
+  `editorHorizontalInset`/`editorVerticalInset`/`editorLineSpacing` (map
+  directly to `EditorConfiguration.textInsets`/`.lineHeightMultiple`, typed
+  and constructed but never settings-driven), `editorScrollsPastEnd` (typed
+  on `EditorConfiguration` but currently force-set to `false` at the one
+  call site, §2.1), `editorEnsuresNewlineAtEndOfFile`,
+  `editorUnorderedListMarkerType`, `editorShowWordCount`/
+  `editorWordCountType`, and `htmlDefaultDirectoryUrl` (a default export
+  destination folder). None of these were part of issue #14's five named
+  panes or this epic's five implementation slices (§17), and the decision
+  discussed in this review round is to leave the epic's scope exactly as
+  written rather than reopen it for these — they are recorded here, with
+  their real legacy property names, specifically so a later small
+  slice/epic does not have to re-derive this list from scratch. The old
+  Hoedown-era extension flags with no GFM equivalent at all
+  (`extensionUnderline`, `extensionSuperscript`, `extensionHighlight`,
+  `extensionQuote`, `extensionSmartyPants`) and everything math/diagram/
+  update-channel-scoped (`htmlMathJax*`, `htmlGraphviz`, `htmlMermaid`,
+  `updateIncludesPreReleases`) are out of scope for a different reason —
+  they belong to E19/E20/E21/E17 respectively, not to a source-availability
+  gap.
+- **Open decision O3** ("Import old MacDown prefs/themes on first run?") is
+  no longer blocked on source availability (the key list above exists), but
+  actually mapping and importing ~45 legacy keys — several of which
+  (`editorStyleName`, `htmlHighlightingThemeName`, `htmlTemplateName`) name
+  concepts (themes, templates) that do not correspond 1:1 to MacDown 2's
+  current, deliberately-narrowed equivalents — is real, separate work this
+  review round chose to keep out of this epic. This epic ships the
+  detection half only — on first launch, check whether
+  `UserDefaults(suiteName: "com.uranusjr.macdown")` (the original MacDown's
+  bundle ID) has a persistent domain at all — and if so, record that fact
+  for a future epic to act on, rather than silently doing nothing and
+  rather than guessing at key names under time pressure. Full detail in
+  §18.
 - **Issue #14's "Font/theme pickers integrate with the theme system
   (E05/E07)" acceptance criterion** is satisfied by the Theme pane
   presenting the *existing* `ThemeController`, not by Settings owning a new
@@ -1146,18 +1173,29 @@ attempt to wire them).
 domain at all (`UserDefaults(suiteName:).dictionaryRepresentation()`
 non-empty). If so, it reports that fact; this epic does nothing further
 with it — no key is read, no value is imported, no UI prompts the user.
-Actually importing specific preferences requires a real key inventory this
-repository does not currently have (§2.2) and is explicitly deferred to a
-follow-up issue, to be picked up if/when `legacy-reference/` (or the
-original MacDown source) becomes available. This keeps O3 "resolved" in
-the sense `EPIC_STANDARD.md` requires (a decision was made, not silently
-skipped) without inventing behaviour this session cannot verify.
+The real key inventory needed to actually import specific preferences is
+no longer unavailable (§2.2 — `MPPreferences.h` was read directly from
+`github.com/MacDownApp/macdown`), but building and testing a ~45-key
+import/migration map is separate, real work this review round explicitly
+chose to defer rather than fold into an already-five-slice epic. This
+keeps O3 "resolved" in the sense `EPIC_STANDARD.md` requires (a decision
+was made, not silently skipped) while keeping this epic's scope the one
+agreed on, not one that grew mid-flight because new information arrived.
 
 **Consciously deferred (residual risk), each to become its own follow-up
 issue:**
 
-1. Full old-MacDown preference import (see above) — blocked on source
-   availability, not on effort.
+1. Full old-MacDown preference import (see above) — the source is
+   available (`github.com/MacDownApp/macdown`, `MPPreferences.h`/`.m`); the
+   work deferred is building the actual key-by-key migration map (several
+   legacy keys, e.g. `editorStyleName`/`htmlTemplateName`, name concepts —
+   multiple themes, multiple export templates — that don't correspond 1:1
+   to MacDown 2's current, deliberately narrower equivalents and need real
+   design thought, not just a mechanical copy), plus the handful of small,
+   independent preferences the legacy header exposes that this epic's five
+   slices don't cover (sync-scroll toggle, editor insets/line-spacing,
+   final-newline-on-save, unordered-list marker character, word-count
+   display, default export directory — full list in §2.2).
 2. The five non-functional `MarkdownParseOptions` fields
    (`tables`/`taskLists`/`strikethrough`/`autolinks`/`footnotes`) remain
    unwired and without UI. Revisit if/when swift-markdown (or a successor
