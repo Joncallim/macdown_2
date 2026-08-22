@@ -21,21 +21,31 @@ public protocol AppSettingsDomain: Codable, Equatable {
 }
 
 extension GeneralSettings: AppSettingsDomain {
-    public static var defaultValue: Self { .default }
+    public static var defaultValue: Self {
+        .default
+    }
 }
 
 extension EditorSettings: AppSettingsDomain {
-    public static var defaultValue: Self { .default }
+    public static var defaultValue: Self {
+        .default
+    }
 }
 
 extension MarkdownSettings: AppSettingsDomain {
-    public static var defaultValue: Self { .default }
+    public static var defaultValue: Self {
+        .default
+    }
 }
 
 extension PreviewExportSettings: AppSettingsDomain {
-    public static var defaultValue: Self { .default }
+    public static var defaultValue: Self {
+        .default
+    }
 }
 
 extension FormatSettings: AppSettingsDomain {
-    public static var defaultValue: Self { .default }
+    public static var defaultValue: Self {
+        .default
+    }
 }

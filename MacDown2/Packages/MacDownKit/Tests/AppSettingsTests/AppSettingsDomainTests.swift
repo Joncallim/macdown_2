@@ -1,6 +1,6 @@
+@testable import AppSettings
 import Foundation
 import Testing
-@testable import AppSettings
 
 @Suite("AppSettings domain types")
 struct AppSettingsDomainTests {

@@ -1,6 +1,6 @@
+@testable import AppSettings
 import Foundation
 import Testing
-@testable import AppSettings
 
 /// `AppSettingsStoring` is `@MainActor`, so (unlike `Themes`'
 /// `FakeThemePreferenceStore`, whose protocol is not actor-isolated) this

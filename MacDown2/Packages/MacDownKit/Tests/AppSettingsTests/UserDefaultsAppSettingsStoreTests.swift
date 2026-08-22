@@ -1,6 +1,6 @@
+@testable import AppSettings
 import Foundation
 import Testing
-@testable import AppSettings
 
 @MainActor
 @Suite("UserDefaultsAppSettingsStore")
