@@ -992,8 +992,19 @@ isolated-suite pattern to copy).
   currently hard-codes `MarkdownParseOptions.default` (exact file to be
   confirmed during Slice 4 — not yet inspected in this pass) — reads
   `appSettings.markdown.parsesBlockDirectives`.
-- The `FileStore.defaultEncoding` call site used for a brand-new untitled
-  document's first save (exact call site to be confirmed during Slice 5).
+- The brand-new-untitled-document call site (confirmed during Slice 4):
+  `FileStore.defaultEncoding` itself is dead in production — every real
+  write call site (`FileDocument.saving`/`saveAs`) already passes its own
+  `encoding.encoding` explicitly. The actual default lives in
+  `FileDocument.init`'s `encoding: FileEncodingMetadata = .utf8Default`
+  parameter, reached only via `TabStore.newTab`'s blank-document branch. The
+  real chain threaded through instead: `FileDocument.create` and
+  `WorkspaceModel.newManagedDocument` both gained an `encoding:` parameter
+  (default `.utf8Default`, so every other caller is unaffected), and
+  `WindowCoordinator.newDocument(addAsTab:)` — the only production caller of
+  `newManagedDocument` — resolves `appSettings.formats` through the new
+  `WindowCoordinator.defaultEncoding(from:)` helper
+  (`WindowCoordinator+AppSettings.swift`) before calling it.
 
 **Must not change:** `ThemeController`/`ThemePreferenceStore`
 (Theme pane presents it, does not modify it), `FileTreePreferences`'

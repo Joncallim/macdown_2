@@ -216,10 +216,17 @@ public final class WorkspaceModel {
     /// Production new-document path. It observes the durable recovery ledger
     /// before publishing the untitled lifetime, unlike the synchronous
     /// compatibility helper retained for pure state tests and previews.
+    ///
+    /// `encoding` seeds the new document's `FileEncodingMetadata` — the App
+    /// target passes the Formats pane's preference here; every other caller
+    /// (tests, the synchronous `newDocument()`) keeps today's UTF-8 default.
     @discardableResult
-    public func newManagedDocument(shouldPublish: @escaping @MainActor () -> Bool = { true }) async -> Bool {
+    public func newManagedDocument(
+        encoding: FileEncodingMetadata = .utf8Default,
+        shouldPublish: @escaping @MainActor () -> Bool = { true }
+    ) async -> Bool {
         do {
-            let document = try await FileDocument.create(recoveryBuffer: tabStore.recoveryBuffer)
+            let document = try await FileDocument.create(encoding: encoding, recoveryBuffer: tabStore.recoveryBuffer)
             await onManagedDocumentLifetimePrepared?()
             guard !Task.isCancelled, shouldPublish() else { return false }
             tabStore.newTab(document: document)

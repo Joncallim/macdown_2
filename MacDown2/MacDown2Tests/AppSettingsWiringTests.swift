@@ -1,5 +1,6 @@
 import AppSettings
 import EditorCore
+import FileCore
 @testable import MacDown2
 import MarkdownEngine
 import Testing
@@ -94,5 +95,24 @@ struct AppSettingsWiringTests {
     @Test func exportStyleEmbeddingMapsEachPreference() {
         #expect(ExportCoordinator.exportStyleEmbedding(from: .embedded) == .embedded)
         #expect(ExportCoordinator.exportStyleEmbedding(from: .linked) == .linked)
+    }
+
+    // MARK: - Format encoding
+
+    @Test func defaultEncodingMapsUTF16ToTheLittleEndianBOMForm() {
+        let resolved = WindowCoordinator.defaultEncoding(from: FormatSettings(defaultEncodingForNewDocuments: "utf-16"))
+        #expect(resolved == FileEncodingMetadata(encoding: .utf16LittleEndian, bom: .utf16LittleEndian))
+    }
+
+    @Test func defaultEncodingMapsUTF8ToTheDocumentedDefault() {
+        let resolved = WindowCoordinator.defaultEncoding(from: FormatSettings(defaultEncodingForNewDocuments: "utf-8"))
+        #expect(resolved == .utf8Default)
+    }
+
+    @Test func defaultEncodingFallsBackToUTF8ForAnUnrecognisedValue() {
+        let resolved = WindowCoordinator.defaultEncoding(
+            from: FormatSettings(defaultEncodingForNewDocuments: "shift-jis")
+        )
+        #expect(resolved == .utf8Default)
     }
 }

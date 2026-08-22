@@ -107,10 +107,11 @@ final class WindowCoordinator {
         model.onManagedDocumentLifetimePrepared = { [weak self] in
             await self?.onNewDocumentLifetimePrepared?()
         }
+        let encoding = Self.defaultEncoding(from: appSettings.formats)
         pendingNewDocumentTasks[key] = Task { @MainActor [weak self, weak controller] in
             defer { self?.pendingNewDocumentTasks[key] = nil }
             guard let self, let controller else { return }
-            _ = await model.newManagedDocument {
+            _ = await model.newManagedDocument(encoding: encoding) {
                 !Task.isCancelled && self.controllers.contains { $0 === controller }
             }
         }
