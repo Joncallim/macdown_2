@@ -15,8 +15,14 @@ public enum LegacyPreferencesDetector {
     /// Whether `suiteName` has any persisted value at all. `suiteName` is
     /// overridable so tests can point this at an isolated suite instead of
     /// the real legacy domain (epic-13-implementation.md §14).
+    ///
+    /// Reads `persistentDomain(forName:)` — the named domain's own contents
+    /// — rather than `UserDefaults(suiteName:).dictionaryRepresentation()`:
+    /// the latter merges the entire search list (`NSArgumentDomain`,
+    /// `NSGlobalDomain`, …), so it is non-empty even for a suite name that
+    /// was never created, making the check always report `true`.
     public static func detect(suiteName: String = legacySuiteName) -> Bool {
-        guard let defaults = UserDefaults(suiteName: suiteName) else { return false }
-        return !defaults.dictionaryRepresentation().isEmpty
+        guard let domain = UserDefaults.standard.persistentDomain(forName: suiteName) else { return false }
+        return !domain.isEmpty
     }
 }

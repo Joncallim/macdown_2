@@ -1181,9 +1181,13 @@ attempt to wire them).
 **O3 — old MacDown preferences import, final scope for this epic.**
 `LegacyPreferencesDetector` checks, once, whether
 `UserDefaults(suiteName: "com.uranusjr.macdown")` has any persistent
-domain at all (`UserDefaults(suiteName:).dictionaryRepresentation()`
-non-empty). If so, it reports that fact; this epic does nothing further
-with it — no key is read, no value is imported, no UI prompts the user.
+domain at all (`UserDefaults.standard.persistentDomain(forName:)`
+non-nil and non-empty — not `dictionaryRepresentation()`, which merges the
+entire search list, including `NSArgumentDomain`/`NSGlobalDomain`, so it is
+non-empty even for a suite name that was never created; caught by
+`LegacyPreferencesDetectorTests` failing in CI during Slice 5). If so, it
+reports that fact; this epic does nothing further with it — no key is
+read, no value is imported, no UI prompts the user.
 The real key inventory needed to actually import specific preferences is
 no longer unavailable (§2.2 — `MPPreferences.h` was read directly from
 `github.com/MacDownApp/macdown`), but building and testing a ~45-key
