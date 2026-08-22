@@ -93,6 +93,11 @@ public enum FileTreeNaming {
 }
 
 public enum FileTreeMoveValidation {
+    /// Path-COMPONENT containment, not string prefix (D10). Part of the
+    /// documented public API contract (`planning/epic-09-implementation.md`
+    /// §4.2) even though the model's own `move()` uses the stronger,
+    /// symlink-aware `FileTreeCopySafety.validateDirectoryCopy` internally —
+    /// this lexical check is the one package clients are specified to call.
     public static func validate(source: URL, intoDirectory destination: URL) -> FileTreeOperationError? {
         let sourceComponents = source.standardizedFileURL.pathComponents
         let destinationComponents = destination.standardizedFileURL.pathComponents

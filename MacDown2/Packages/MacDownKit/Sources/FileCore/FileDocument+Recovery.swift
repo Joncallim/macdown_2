@@ -10,19 +10,7 @@ public extension FileDocument {
     /// document dirty. For user edits, use `edited(text:)` instead.
     func updatingText(_ newText: String) -> FileDocument {
         guard newText != text else { return self }
-        var copy = self
-        copy.text = newText
-        switch copy.state {
-        case .clean:
-            copy.state = .dirty
-        case .dirty, .conflict:
-            break
-        case .promptingClose:
-            // If the user edits while being prompted, return to dirty.
-            copy.state = .dirty
-        }
-        copy.advanceMutation()
-        return copy
+        return edited(text: newText)
     }
 
     /// Persists the current text under the document identity immediately.

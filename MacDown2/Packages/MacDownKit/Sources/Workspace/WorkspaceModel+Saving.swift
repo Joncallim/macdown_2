@@ -5,6 +5,15 @@ import Foundation
 extension WorkspaceModel {
     /// Saves the active document. Untitled documents prompt for a location.
     public func save() async {
+        await save(isRetry: false)
+    }
+
+    /// - Parameter isRetry: `true` for the single automatic retry
+    ///   `reconcileSaveConflict` makes after a metadata-only external change.
+    ///   Bounds that retry to exactly one attempt so a file whose metadata
+    ///   keeps changing (a misbehaving sync client, for example) cannot
+    ///   recurse indefinitely.
+    private func save(isRetry: Bool) async {
         guard let document = tabStore.activeDocument else {
             lastError = .noActiveDocument
             return
@@ -32,7 +41,7 @@ extension WorkspaceModel {
             await documentWriter.acknowledge(result)
         } catch {
             if case FileStoreError.fileChangedDuringRead = error {
-                await reconcileSaveConflict(for: document)
+                await reconcileSaveConflict(for: document, isRetry: isRetry)
                 return
             }
             guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return }
@@ -40,7 +49,7 @@ extension WorkspaceModel {
         }
     }
 
-    private func reconcileSaveConflict(for document: FileDocument) async {
+    private func reconcileSaveConflict(for document: FileDocument, isRetry: Bool) async {
         guard let current = tabStore.activeDocument,
               isSameDocumentLifetime(current, document),
               let url = current.fileURL,
@@ -54,7 +63,34 @@ extension WorkspaceModel {
         if reconciliation.document.state == .conflict {
             _ = await reconciliation.document.persistRecovery()
             lastError = .unresolvedExternalConflict
+            return
         }
+        // `.promptingClose` reconciles the same as `.dirty` here (E18: a
+        // metadata-only change preserves both states rather than collapsing
+        // them). Excluding it would let `saveInternalForClose()` return
+        // without ever reaching `.clean`; the close flow then treats that as
+        // a failed save and silently reverts to `.dirty` with the prompt
+        // dismissed — save-and-close would do nothing and say nothing.
+        guard reconciliation.document.state == .dirty || reconciliation.document.state == .promptingClose else {
+            return
+        }
+        guard !isRetry else {
+            // Something is touching this file's metadata faster than one
+            // retry can keep up with. Stop instead of recursing indefinitely,
+            // and say so rather than leaving the document dirty with no
+            // explanation.
+            lastError = workspaceError(for: FileStoreError.fileChangedDuringRead)
+            return
+        }
+        // The write failed only because the on-disk baseline had moved, not
+        // because its content actually diverged (a real divergence lands in
+        // `.conflict` above). Reconciliation just brought the baseline
+        // current, so retry the save the user actually asked for instead of
+        // leaving it dirty with no error and no indication anything failed —
+        // but only once: a second consecutive metadata-only change means
+        // something external is outpacing us, and that deserves a real error
+        // rather than another silent attempt.
+        await save(isRetry: true)
     }
 
     /// Saves the active document to a user-chosen location.

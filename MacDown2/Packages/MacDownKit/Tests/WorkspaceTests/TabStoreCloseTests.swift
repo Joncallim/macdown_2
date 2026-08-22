@@ -70,6 +70,25 @@ struct TabStoreCloseTests {
         #expect(store.tabs.count == 1)
     }
 
+    @Test func saveSessionPersistsRecoveryForTabAwaitingCloseResolution() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recoveryBuffer)
+        store.newTab()
+        let id = store.tabs[0].id
+        store.updateActiveDocument { $0.updatingText("dirty before close prompt") }
+
+        store.requestClose(id)
+
+        #expect(store.pendingCloseTabID == id)
+        #expect(store.activeDocument?.state == .promptingClose)
+        #expect(await store.saveSession())
+        let document = try #require(store.activeDocument)
+        let recovered = try await recoveryBuffer.load(for: document.id, epoch: document.recoveryEpoch)
+        #expect(recovered == "dirty before close prompt")
+    }
+
     @Test func resolveCloseCancelKeepsDirtyTab() async {
         let store = TabStore(sessionStore: FakeSessionStore())
         store.newTab()

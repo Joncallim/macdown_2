@@ -269,11 +269,17 @@ public final class TabStore {
     }
 
     /// Autosaves every dirty tab's text before publishing session identities.
+    /// `.promptingClose` counts as dirty here too — `requestClose(_:)` calls
+    /// `persist()` the moment a tab enters that state, so this is the
+    /// autosave that is supposed to protect its edits while the close prompt
+    /// is up and undecided.
     /// If recovery cannot be verified, the prior on-disk session remains the
     /// last-good session rather than pointing at an unrecoverable lifetime.
     @discardableResult
     public func saveSession() async -> Bool {
-        for tab in tabs where tab.document.state == .dirty || tab.document.state == .conflict {
+        for tab in tabs
+            where tab.document.state == .dirty || tab.document.state == .conflict
+            || tab.document.state == .promptingClose {
             // Snapshot before suspension. Besides keeping recovery I/O off the
             // observed main-actor store, this prevents a borrowed array entry
             // from crossing the actor hop while a later edit replaces it.
