@@ -115,7 +115,24 @@ extension WindowCoordinator {
                     version: entry.tab.documentGeneration,
                     epoch: entry.tab.documentRecoveryEpoch
                 )
-                guard persisted else { return entry.controller }
+                if !persisted {
+                    // A rejection at this exact version is not necessarily a
+                    // failure: an earlier debounced save (TabStore.persist)
+                    // may already have written this identical snapshot, and
+                    // the buffer correctly refuses to re-apply an
+                    // already-recorded version (RecoveryBuffer.canApply).
+                    // Only a write whose recorded content actually matches
+                    // what we tried to save counts as secured; anything else
+                    // (a stale/rejected write, or no record at all) is a real
+                    // failure. Matches TabStore.saveSession()'s identical
+                    // fallback for the same race.
+                    guard let recovered = try? await recoveryBuffer.load(
+                        for: entry.tab.documentID,
+                        epoch: entry.tab.documentRecoveryEpoch
+                    ), recovered == entry.tab.documentText else {
+                        return entry.controller
+                    }
+                }
             } catch {
                 return entry.controller
             }

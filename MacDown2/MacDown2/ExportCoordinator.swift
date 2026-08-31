@@ -29,15 +29,29 @@ struct ExportCoordinator {
     /// How many diagnostics one alert lists before it summarises the rest.
     private let diagnosticsShownAtMost = 6
 
-    /// Whether the key window's active document is exportable Markdown.
+    /// Whether the key window's active document is exportable Markdown and
+    /// does not already have an export in flight.
     var canExportActiveDocument: Bool {
-        coordinator.keyModel?.activeDocument?.format.id == "markdown"
+        guard let model = coordinator.keyModel, model.activeDocument?.format.id == "markdown" else {
+            return false
+        }
+        return !coordinator.isExporting(model)
     }
 
     /// Presents the export panel and performs the requested export.
+    ///
+    /// Re-entrancy guard: two ⌘⇧E while a save panel or a slow PDF render is
+    /// still in flight must not start two exports of the same document
+    /// racing the same destination file. Scoped to `model` (one per window),
+    /// set for the whole call including panel presentation — cancelling the
+    /// panel already exits through the same `defer`.
     func exportActiveDocument() async {
         guard let model = coordinator.keyModel, let document = model.activeDocument else { return }
         guard document.format.id == "markdown" else { return }
+        guard !coordinator.isExporting(model) else { return }
+
+        coordinator.setExporting(true, for: model)
+        defer { coordinator.setExporting(false, for: model) }
 
         let baseName = document.fileURL?.deletingPathExtension().lastPathComponent ?? "Untitled"
         let directory = document.fileURL?.deletingLastPathComponent()

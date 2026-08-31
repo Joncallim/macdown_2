@@ -1,3 +1,4 @@
+import AppKit
 import EditorCore
 import Themes
 
@@ -56,6 +57,13 @@ public final class SyntaxHighlightStore {
     public func applyThemeToAll(_ theme: Theme) {
         for highlighter in highlighters.values {
             highlighter.applyTheme(theme)
+        }
+    }
+
+    /// Restyle every live highlighter for a new base font.
+    public func applyFontToAll(_ font: NSFont) {
+        for highlighter in highlighters.values {
+            highlighter.applyFont(font)
         }
     }
 

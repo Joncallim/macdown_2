@@ -49,6 +49,10 @@ final class WindowCoordinator {
     private var saveTask: Task<Void, Never>?
     private var restoreTask: Task<Void, Never>?
     @ObservationIgnored private var pendingNewDocumentTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
+    /// Documents with an export currently in flight. Not `@ObservationIgnored`
+    /// — `ExportCoordinator.canExportActiveDocument` reads this on every menu
+    /// validation, and the menu item must grey out while its export runs.
+    var exportingModels: Set<ObjectIdentifier> = []
     /// Stateless export orchestrator for the active document (E12). A computed
     /// property keeps it outside `@Observable` tracking; the value type means
     /// menu validation, which reads it on every evaluation, allocates nothing.
@@ -141,10 +145,15 @@ final class WindowCoordinator {
         let keyWindow = NSApp.keyWindow
 
         let model = makeWindowModel()
-        _ = await model.tabStore.openFileInTab(url)
+        let outcome = await model.tabStore.openFileInTab(url)
         model.setFolderRoot(folderRoot)
 
-        guard !model.tabStore.tabs.isEmpty else { return }
+        guard !model.tabStore.tabs.isEmpty else {
+            if case let .failure(error) = outcome {
+                presentOpenFailure(error, url: url)
+            }
+            return
+        }
         let controller = WindowController(
             model: model,
             coordinator: self,

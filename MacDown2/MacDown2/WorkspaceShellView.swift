@@ -1,3 +1,4 @@
+import AppKit
 import AppSettings
 import EditorCore
 import FileTree
@@ -74,6 +75,10 @@ struct WorkspaceShellView: View {
         .focusedSceneValue(\.previewLayout, activePreviewLayout)
         .task(id: themeController.current) {
             highlightStore.applyThemeToAll(themeController.current)
+        }
+        .task(id: appSettings?.editor.font) {
+            guard let appSettings else { return }
+            highlightStore.applyFontToAll(DocumentEditorSplitView.resolvedFont(from: appSettings.editor.font))
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

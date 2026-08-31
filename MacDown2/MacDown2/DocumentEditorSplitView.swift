@@ -258,6 +258,7 @@ struct DocumentEditorSplitView: View {
                 blocks: previewBlocks,
                 linkDefinitions: previewLinkDefinitions
             )
+            .overlay(alignment: .topTrailing) { PreviewBusyIndicator(isVisible: parseSession.isParsing) }
         case .html:
             HTMLPreviewPane(model: model, tab: tab, document: document, text: text)
         case .jsonOutline:
@@ -267,6 +268,7 @@ struct DocumentEditorSplitView: View {
             // (`jsonOutlinePreviewPane`, `jsonInvalidState`) live inside
             // `JSONOutlinePreviewView`.
             JSONOutlinePreviewView(outlineController: outlineController)
+                .overlay(alignment: .topTrailing) { PreviewBusyIndicator(isVisible: jsonSession.isAnalyzing) }
         case .none:
             NoPreviewView(formatName: document.format.name)
         }
