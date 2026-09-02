@@ -1,5 +1,6 @@
 import AppKit
 import AppSettings
+import Contributions
 import EditorCore
 import FileCore
 import Highlighting
@@ -29,12 +30,16 @@ struct DocumentEditorSplitView: View {
     let scrollController: ScrollSyncController
     let outlineController: OutlineController
 
-    @Environment(\.windowCoordinator) private var coordinator
+    @Environment(\.windowCoordinator) var coordinator
     @Environment(\.appSettings) private var appSettings
 
-    @State private var dragOriginFraction: Double?
+    // Not `private`: read by DocumentEditorSplitView+Divider.swift, split
+    // out to stay under the type-body-length lint budget (matches
+    // DocumentEditorSplitView+AppSettings.swift's same reason).
+    @State var dragOriginFraction: Double?
     @State private var previewBlocks: [PreviewBlock]?
     @State private var previewLinkDefinitions: [String] = []
+    @State private var contributionResults: [ContributionResult] = []
 
     private var parseSession: MarkdownParseSession {
         parseStore.session(for: identity)
@@ -61,7 +66,7 @@ struct DocumentEditorSplitView: View {
         tab.previewLayout ?? Self.defaultPreviewLayout(from: appSettings?.previewExport)
     }
 
-    private var currentSplitFraction: Double? {
+    var currentSplitFraction: Double? {
         switch previewLayout {
         case let .split(fraction): fraction
         case .editorOnly, .previewOnly: nil
@@ -108,6 +113,13 @@ struct DocumentEditorSplitView: View {
             .onChange(of: parseSession.document) { _, _ in
                 refreshPreviewBlocks()
                 refreshOutline()
+            }
+            .task(id: parseSession.document) {
+                contributionResults = await PreviewContributionAdapter.results(
+                    document: parseSession.document,
+                    text: parseSession.publishedText,
+                    generation: document.mutationGeneration
+                )
             }
             .onChange(of: jsonSession.result) { _, _ in
                 refreshJSONOutline()
@@ -255,7 +267,12 @@ struct DocumentEditorSplitView: View {
                 theme: PreviewTheme(theme: themeController.current),
                 linkResolver: PreviewLinkResolver(baseURL: document.fileURL),
                 controller: scrollController,
-                blocks: previewBlocks,
+                blocks: PreviewContributionAdapter.merged(
+                    base: previewBlocks,
+                    contributions: contributionResults,
+                    sourceMap: parseSession.document?.sourceMap,
+                    currentGeneration: document.mutationGeneration
+                ),
                 linkDefinitions: previewLinkDefinitions
             )
             .overlay(alignment: .topTrailing) { PreviewBusyIndicator(isVisible: parseSession.isParsing) }
@@ -281,37 +298,6 @@ struct DocumentEditorSplitView: View {
         guard let mode = tab.previewMode, !PreviewRouter.supports(mode, for: document.format) else { return }
         model.tabStore.setPreviewMode(nil, for: tab.id)
         coordinator?.scheduleSaveSession()
-    }
-
-    private func divider(in geometry: GeometryProxy) -> some View {
-        Rectangle()
-            .fill(.separator)
-            .frame(width: dividerWidth)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        let total = geometry.size.width
-                        guard total > 0 else { return }
-                        if dragOriginFraction == nil {
-                            guard let currentSplitFraction else {
-                                assertionFailure("Drag origin captured in non-split layout")
-                                return
-                            }
-                            dragOriginFraction = currentSplitFraction
-                        }
-                        let fraction = (dragOriginFraction ?? 0.5) + value.translation.width / total
-                        model.tabStore.setPreviewLayout(
-                            .split(fraction: fraction),
-                            for: tab.id
-                        )
-                        coordinator?.scheduleSaveSession()
-                    }
-                    .onEnded { _ in
-                        dragOriginFraction = nil
-                    }
-            )
-            .accessibilityLabel("Resize editor and preview")
     }
 
     private func attachHighlighter() {
