@@ -180,9 +180,11 @@ public final class TabStore {
 
     /// Opens a file into a tab. If a tab for the same standardized file URL
     /// already exists, that tab is activated and no new tab is created.
-    /// Returns the resulting tab, or `nil` if the file could not be loaded.
+    /// Returns the resulting tab, or the real reason the file could not be
+    /// loaded — never fabricated, so a permission error is not misreported
+    /// as "file not found."
     @discardableResult
-    public func openFileInTab(_ url: URL) async -> WorkspaceTab? {
+    public func openFileInTab(_ url: URL) async -> Result<WorkspaceTab, FileStoreError> {
         let standardized = url.standardizedFileURL
         openRequestGeneration &+= 1
         let requestGeneration = openRequestGeneration
@@ -192,14 +194,14 @@ public final class TabStore {
                 activeTabID = existing.id
             }
             persist()
-            return existing
+            return .success(existing)
         }
 
         let document: FileDocument
         do {
             document = try await FileDocument.create(fileURL: url, recoveryBuffer: recoveryBuffer)
         } catch {
-            return nil
+            return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
         }
         do {
             let loaded = try await Task.detached(priority: .userInitiated) {
@@ -212,7 +214,7 @@ public final class TabStore {
                     activeTabID = existing.id
                 }
                 persist()
-                return existing
+                return .success(existing)
             }
             let tab = WorkspaceTab(document: loaded)
             tabs.append(tab)
@@ -220,9 +222,9 @@ public final class TabStore {
                 activeTabID = tab.id
             }
             persist()
-            return tab
+            return .success(tab)
         } catch {
-            return nil
+            return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
         }
     }
 

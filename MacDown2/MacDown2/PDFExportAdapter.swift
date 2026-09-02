@@ -55,7 +55,11 @@ enum PDFExportAdapter {
 
         let operation = webView.printOperation(with: printInfo)
         operation.showsPrintPanel = false
-        operation.showsProgressPanel = false
+        // `run()` below blocks synchronously until pagination/rendering
+        // finishes; AppKit's own progress panel (with Cancel) is the only
+        // feedback available for that stretch, so it stays on even though
+        // the print panel itself is suppressed.
+        operation.showsProgressPanel = true
         operation.printInfo.jobDisposition = .save
 
         let savingKey = NSPrintInfo.AttributeKey(rawValue: "NSPrintJobSavingURL")

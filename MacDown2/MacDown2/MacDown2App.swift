@@ -1,3 +1,4 @@
+import AppSettings
 import SwiftUI
 import Themes
 
@@ -14,5 +15,13 @@ struct MacDown2App: App {
         }
         .environment(\.windowCoordinator, appDelegate.coordinator)
         .environment(\.themeController, appDelegate.themeController)
+        .environment(\.appSettings, appDelegate.appSettings)
+
+        Settings {
+            SettingsView()
+                .environment(\.appSettings, appDelegate.appSettings)
+                .environment(\.windowCoordinator, appDelegate.coordinator)
+                .environment(\.themeController, appDelegate.themeController)
+        }
     }
 }

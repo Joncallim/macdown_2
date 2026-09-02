@@ -171,6 +171,12 @@ targets:
       product: Themes
     - package: MacDownKit
       product: Highlighting
+    - package: MacDownKit
+      product: AppSettings
+    - package: MacDownKit
+      product: MarkdownEngine
+    - package: MacDownKit
+      product: ExportService
     settings:
       base:
         GENERATE_INFOPLIST_FILE: 'YES'

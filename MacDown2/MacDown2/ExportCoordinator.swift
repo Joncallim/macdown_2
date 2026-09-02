@@ -1,4 +1,5 @@
 import AppKit
+import AppSettings
 import ExportService
 import FileCore
 import Foundation
@@ -17,24 +18,40 @@ import Workspace
 struct ExportCoordinator {
     private let coordinator: WindowCoordinator
     private let themeController: ThemeController
+    private let appSettings: AppSettingsModel
 
-    init(coordinator: WindowCoordinator, themeController: ThemeController) {
+    init(coordinator: WindowCoordinator, themeController: ThemeController, appSettings: AppSettingsModel) {
         self.coordinator = coordinator
         self.themeController = themeController
+        self.appSettings = appSettings
     }
 
     /// How many diagnostics one alert lists before it summarises the rest.
     private let diagnosticsShownAtMost = 6
 
-    /// Whether the key window's active document is exportable Markdown.
+    /// Whether the key window's active document is exportable Markdown and
+    /// does not already have an export in flight.
     var canExportActiveDocument: Bool {
-        coordinator.keyModel?.activeDocument?.format.id == "markdown"
+        guard let model = coordinator.keyModel, model.activeDocument?.format.id == "markdown" else {
+            return false
+        }
+        return !coordinator.isExporting(model)
     }
 
     /// Presents the export panel and performs the requested export.
+    ///
+    /// Re-entrancy guard: two ⌘⇧E while a save panel or a slow PDF render is
+    /// still in flight must not start two exports of the same document
+    /// racing the same destination file. Scoped to `model` (one per window),
+    /// set for the whole call including panel presentation — cancelling the
+    /// panel already exits through the same `defer`.
     func exportActiveDocument() async {
         guard let model = coordinator.keyModel, let document = model.activeDocument else { return }
         guard document.format.id == "markdown" else { return }
+        guard !coordinator.isExporting(model) else { return }
+
+        coordinator.setExporting(true, for: model)
+        defer { coordinator.setExporting(false, for: model) }
 
         let baseName = document.fileURL?.deletingPathExtension().lastPathComponent ?? "Untitled"
         let directory = document.fileURL?.deletingLastPathComponent()
@@ -78,7 +95,10 @@ struct ExportCoordinator {
             panel.directoryURL = directory
         }
 
-        let selectionModel = ExportSelectionModel()
+        let selectionModel = ExportSelectionModel(
+            format: Self.exportFormatOption(from: appSettings.previewExport.defaultExportFormat),
+            style: Self.exportStyleEmbedding(from: appSettings.previewExport.defaultExportStyle)
+        )
         Self.apply(selectionModel.format, to: panel, defaultBaseName: defaultName)
 
         let panelView = ExportPanelView(model: selectionModel) { [weak panel] format in
@@ -122,6 +142,30 @@ struct ExportCoordinator {
             base = defaultBaseName
         }
         panel.nameFieldStringValue = "\(base).\(format.fileExtension)"
+    }
+
+    /// Seeds the panel's initial choice only — the panel itself remains fully
+    /// user-editable per export. Does not touch `ExportRequest`/
+    /// `ExportComposer`, whose template/layout/resource-root/budget/
+    /// metadata-policy are fixed by the composer regardless of preferences
+    /// (epic-13-implementation.md §4, invariant 4).
+    static func exportFormatOption(
+        from preference: PreviewExportSettings.DefaultExportFormat
+    ) -> ExportFormatOption {
+        switch preference {
+        case .standaloneHTML: .standaloneHTML
+        case .selfContainedHTML: .selfContainedHTML
+        case .pdf: .pdf
+        }
+    }
+
+    static func exportStyleEmbedding(
+        from preference: PreviewExportSettings.DefaultExportStyle
+    ) -> ExportStyleEmbedding {
+        switch preference {
+        case .embedded: .embedded
+        case .linked: .linked
+        }
     }
 
     // MARK: - Execution

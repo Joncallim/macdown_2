@@ -1,4 +1,5 @@
 import AppKit
+import AppSettings
 import FileCore
 import FileTree
 import Foundation
@@ -13,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var grammarRegistry: GrammarRegistry!
     private(set) var fileTreePreferences: FileTreePreferences!
     private(set) var recentFolderRoots: RecentFolderRoots!
+    private(set) var appSettings: AppSettingsModel!
     private let sessionStore: WorkspaceSessionStoring
     private let recoveryBuffer: RecoveryBuffer
     private let workspaceStateStore: any WorkspaceStateStoring
@@ -49,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         grammarRegistry = GrammarRegistry()
         fileTreePreferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
         recentFolderRoots = RecentFolderRoots(preferences: fileTreePreferences)
+        appSettings = AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults))
         super.init()
 
         coordinator = WindowCoordinator(
@@ -59,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             grammarRegistry: grammarRegistry,
             fileTreePreferences: fileTreePreferences,
             recentFolderRoots: recentFolderRoots,
+            appSettings: appSettings,
             workspaceStateStore: workspaceStateStore
         )
     }
@@ -98,6 +102,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await coordinator.ensureWindowExistsForReopen()
                 coordinator.openFolder(launchFolderURL)
             }
+        } else if appSettings.general.launchBehavior == .startWithNewDocument {
+            coordinator.newDocument()
         } else {
             // Scheduled synchronously so the tracked restore task exists before
             // any reopen event can be handled; the grace delay inside gives

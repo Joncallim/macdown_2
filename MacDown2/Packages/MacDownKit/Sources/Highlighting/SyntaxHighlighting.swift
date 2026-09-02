@@ -1,3 +1,4 @@
+import AppKit
 import Themes
 
 /// The internal seam the app talks to. One instance per open document/text system.
@@ -8,6 +9,11 @@ public protocol SyntaxHighlighting: AnyObject {
 
     /// Recolour the visible range for a new theme WITHOUT reparsing.
     func applyTheme(_ theme: Theme)
+
+    /// Restyle every token for a new base font WITHOUT reparsing. Bold/italic
+    /// tokens are re-derived from this font's descriptor, matching the base
+    /// text view font the Editor settings pane controls.
+    func applyFont(_ font: NSFont)
 
     /// Swap language (e.g. after Save As changes the format). Rebuilds the parser.
     func setLanguage(_ highlightLanguageID: String?)

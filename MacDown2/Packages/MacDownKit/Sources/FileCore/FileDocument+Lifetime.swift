@@ -7,6 +7,7 @@ public extension FileDocument {
     static func create(
         fileURL: URL? = nil,
         text: String = "",
+        encoding: FileEncodingMetadata = .utf8Default,
         format: FileFormat? = nil,
         fileStore: FileStore = FileStore(),
         recoveryBuffer: RecoveryBuffer = .shared,
@@ -22,6 +23,7 @@ public extension FileDocument {
             fileURL: fileURL,
             text: text,
             format: format,
+            encoding: encoding,
             fileStore: fileStore,
             recoveryBuffer: recoveryBuffer,
             documentID: documentID,

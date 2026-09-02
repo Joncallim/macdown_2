@@ -136,6 +136,13 @@ public final class WorkspaceModel {
     /// The most recent error surfaced to the user. Views may present this.
     public internal(set) var lastError: WorkspaceError?
 
+    /// True from the moment `newManagedDocument` starts until its tab is
+    /// published. The window is shown before this resolves (`WindowCoordinator
+    /// .newDocument(addAsTab:)` adds the controller synchronously, before
+    /// awaiting), so without this a view has no way to distinguish "no
+    /// document, press ⌘N" from "the ⌘N you just pressed hasn't landed yet."
+    public internal(set) var isCreatingDocument = false
+
     /// Whether the sidebar column is visible. Persisted via `stateStore`.
     public var sidebarVisible: Bool {
         didSet {
@@ -216,10 +223,19 @@ public final class WorkspaceModel {
     /// Production new-document path. It observes the durable recovery ledger
     /// before publishing the untitled lifetime, unlike the synchronous
     /// compatibility helper retained for pure state tests and previews.
+    ///
+    /// `encoding` seeds the new document's `FileEncodingMetadata` — the App
+    /// target passes the Formats pane's preference here; every other caller
+    /// (tests, the synchronous `newDocument()`) keeps today's UTF-8 default.
     @discardableResult
-    public func newManagedDocument(shouldPublish: @escaping @MainActor () -> Bool = { true }) async -> Bool {
+    public func newManagedDocument(
+        encoding: FileEncodingMetadata = .utf8Default,
+        shouldPublish: @escaping @MainActor () -> Bool = { true }
+    ) async -> Bool {
+        isCreatingDocument = true
+        defer { isCreatingDocument = false }
         do {
-            let document = try await FileDocument.create(recoveryBuffer: tabStore.recoveryBuffer)
+            let document = try await FileDocument.create(encoding: encoding, recoveryBuffer: tabStore.recoveryBuffer)
             await onManagedDocumentLifetimePrepared?()
             guard !Task.isCancelled, shouldPublish() else { return false }
             tabStore.newTab(document: document)
@@ -235,11 +251,11 @@ public final class WorkspaceModel {
     /// the existing tab if the file is already open.
     public func openFile() async {
         guard let url = await panel.chooseFile() else { return }
-        let tab = await tabStore.openFileInTab(url)
-        if tab == nil {
-            lastError = .openFailed(underlying: .readFailed(underlying: CocoaError(.fileReadNoSuchFile)))
-        } else {
+        switch await tabStore.openFileInTab(url) {
+        case .success:
             lastError = nil
+        case let .failure(underlying):
+            lastError = .openFailed(underlying: underlying)
         }
     }
 

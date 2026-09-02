@@ -1,4 +1,5 @@
 import AppKit
+import AppSettings
 import EditorCore
 import FileCore
 import FileTree
@@ -12,6 +13,7 @@ import Workspace
 extension EnvironmentValues {
     @Entry var windowCoordinator: WindowCoordinator?
     @Entry var themeController: ThemeController?
+    @Entry var appSettings: AppSettingsModel?
 }
 
 // MARK: - Coordinator
@@ -41,16 +43,21 @@ final class WindowCoordinator {
     let grammarRegistry: GrammarRegistry
     let fileTreePreferences: FileTreePreferences
     let recentFolderRoots: RecentFolderRoots
+    let appSettings: AppSettingsModel
     private let workspaceStateStore: any WorkspaceStateStoring
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
     private var restoreTask: Task<Void, Never>?
     @ObservationIgnored private var pendingNewDocumentTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
+    /// Documents with an export currently in flight. Not `@ObservationIgnored`
+    /// — `ExportCoordinator.canExportActiveDocument` reads this on every menu
+    /// validation, and the menu item must grey out while its export runs.
+    var exportingModels: Set<ObjectIdentifier> = []
     /// Stateless export orchestrator for the active document (E12). A computed
     /// property keeps it outside `@Observable` tracking; the value type means
     /// menu validation, which reads it on every evaluation, allocates nothing.
     var exportCoordinator: ExportCoordinator {
-        ExportCoordinator(coordinator: self, themeController: themeController)
+        ExportCoordinator(coordinator: self, themeController: themeController, appSettings: appSettings)
     }
 
     /// Changes whenever AppKit focus/input can have changed the responder used
@@ -70,6 +77,7 @@ final class WindowCoordinator {
         grammarRegistry: GrammarRegistry,
         fileTreePreferences: FileTreePreferences,
         recentFolderRoots: RecentFolderRoots,
+        appSettings: AppSettingsModel,
         workspaceStateStore: any WorkspaceStateStoring = WorkspaceStateStore()
     ) {
         self.sessionStore = sessionStore
@@ -79,6 +87,7 @@ final class WindowCoordinator {
         self.grammarRegistry = grammarRegistry
         self.fileTreePreferences = fileTreePreferences
         self.recentFolderRoots = recentFolderRoots
+        self.appSettings = appSettings
         self.workspaceStateStore = workspaceStateStore
     }
 
@@ -102,10 +111,11 @@ final class WindowCoordinator {
         model.onManagedDocumentLifetimePrepared = { [weak self] in
             await self?.onNewDocumentLifetimePrepared?()
         }
+        let encoding = Self.defaultEncoding(from: appSettings.formats)
         pendingNewDocumentTasks[key] = Task { @MainActor [weak self, weak controller] in
             defer { self?.pendingNewDocumentTasks[key] = nil }
             guard let self, let controller else { return }
-            _ = await model.newManagedDocument {
+            _ = await model.newManagedDocument(encoding: encoding) {
                 !Task.isCancelled && self.controllers.contains { $0 === controller }
             }
         }
@@ -135,10 +145,15 @@ final class WindowCoordinator {
         let keyWindow = NSApp.keyWindow
 
         let model = makeWindowModel()
-        _ = await model.tabStore.openFileInTab(url)
+        let outcome = await model.tabStore.openFileInTab(url)
         model.setFolderRoot(folderRoot)
 
-        guard !model.tabStore.tabs.isEmpty else { return }
+        guard !model.tabStore.tabs.isEmpty else {
+            if case let .failure(error) = outcome {
+                presentOpenFailure(error, url: url)
+            }
+            return
+        }
         let controller = WindowController(
             model: model,
             coordinator: self,

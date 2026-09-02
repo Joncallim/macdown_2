@@ -14,7 +14,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     private var currentTheme: Theme
     private var highlighter: TextViewHighlighter?
     public private(set) var languageID: String?
-    private let baseFont: NSFont
+    private var baseFont: NSFont
 
     /// - textSystem: the E04 system whose `.textView` we attach to.
     /// - languageID: `FileFormat.highlightLanguageID` (nil / unknown ⇒ plain text + chrome only).
@@ -42,6 +42,12 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     public func applyTheme(_ theme: Theme) {
         currentTheme = theme
         applyChrome(theme: theme)
+        highlighter?.invalidate(.all)
+    }
+
+    public func applyFont(_ font: NSFont) {
+        guard font != baseFont else { return }
+        baseFont = font
         highlighter?.invalidate(.all)
     }
 

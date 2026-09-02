@@ -1,3 +1,5 @@
+import AppKit
+import AppSettings
 import EditorCore
 import FileCore
 import Highlighting
@@ -28,6 +30,7 @@ struct DocumentEditorSplitView: View {
     let outlineController: OutlineController
 
     @Environment(\.windowCoordinator) private var coordinator
+    @Environment(\.appSettings) private var appSettings
 
     @State private var dragOriginFraction: Double?
     @State private var previewBlocks: [PreviewBlock]?
@@ -55,7 +58,7 @@ struct DocumentEditorSplitView: View {
     }
 
     private var previewLayout: PreviewLayoutMode {
-        tab.previewLayout ?? .defaultMode
+        tab.previewLayout ?? Self.defaultPreviewLayout(from: appSettings?.previewExport)
     }
 
     private var currentSplitFraction: Double? {
@@ -67,13 +70,20 @@ struct DocumentEditorSplitView: View {
 
     private var editorConfiguration: EditorConfiguration {
         var config = EditorConfiguration.default
+        if let editorSettings = appSettings?.editor {
+            config.font = Self.resolvedFont(from: editorSettings.font)
+            config.wrapsLines = editorSettings.wrapsLines
+            config.showsInvisibles = editorSettings.showsInvisibles
+        }
         config.scrollsPastEnd = false
         // E10 is Markdown-only and fails closed: the default is disabled, and
         // only the exact Markdown format id receives the Markdown assists.
         // `WindowController` eagerly creates a text system with `.default`
         // before this format-specific configuration arrives, so a JSON/HTML/
         // source file can never receive a transient Markdown assist.
-        config.editingAssists = document.format.id == "markdown" ? .markdownDefault : .disabled
+        config.editingAssists = document.format.id == "markdown"
+            ? Self.assistConfiguration(from: appSettings?.editor)
+            : .disabled
         return config
     }
 
@@ -101,6 +111,9 @@ struct DocumentEditorSplitView: View {
             }
             .onChange(of: jsonSession.result) { _, _ in
                 refreshJSONOutline()
+            }
+            .onChange(of: appSettings?.markdown) { _, newValue in
+                parseSession.setOptions(Self.markdownParseOptions(from: newValue))
             }
     }
 
@@ -154,6 +167,7 @@ struct DocumentEditorSplitView: View {
     /// debounce) and refresh both outline channels. Split out of `.task(id:)`
     /// so the compiler can type-check the view body.
     private func loadInitialContent() async {
+        parseSession.setOptions(Self.markdownParseOptions(from: appSettings?.markdown))
         await parseSession.parseNow(text)
         refreshPreviewBlocks()
         refreshOutline()
@@ -244,6 +258,7 @@ struct DocumentEditorSplitView: View {
                 blocks: previewBlocks,
                 linkDefinitions: previewLinkDefinitions
             )
+            .overlay(alignment: .topTrailing) { PreviewBusyIndicator(isVisible: parseSession.isParsing) }
         case .html:
             HTMLPreviewPane(model: model, tab: tab, document: document, text: text)
         case .jsonOutline:
@@ -253,6 +268,7 @@ struct DocumentEditorSplitView: View {
             // (`jsonOutlinePreviewPane`, `jsonInvalidState`) live inside
             // `JSONOutlinePreviewView`.
             JSONOutlinePreviewView(outlineController: outlineController)
+                .overlay(alignment: .topTrailing) { PreviewBusyIndicator(isVisible: jsonSession.isAnalyzing) }
         case .none:
             NoPreviewView(formatName: document.format.name)
         }

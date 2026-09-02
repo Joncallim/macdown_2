@@ -1,3 +1,4 @@
+import AppSettings
 import EditorCore
 import FileCore
 import FileTree
@@ -28,6 +29,7 @@ struct ExternalFileControllerRecoveryTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),
             workspaceStateStore: WorkspaceStateStore(defaults: defaults)
         )
 
@@ -308,6 +310,7 @@ extension ExternalFileControllerRecoveryTests {
             recentFolderRoots: RecentFolderRoots(preferences: FileTreePreferences(
                 store: UserDefaultsFileTreePreferenceStore(defaults: defaults)
             )),
+            appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),
             workspaceStateStore: WorkspaceStateStore(defaults: defaults)
         )
     }
@@ -346,53 +349,5 @@ extension ExternalFileControllerRecoveryTests {
 
         #expect(controller.recoveryRetryKind == nil)
         #expect(controller.notice == .none)
-    }
-}
-
-actor ScriptedRecoveryExecutor: RecoveryActionExecuting {
-    private var failures: Set<ExternalFileController.RecoveryRetryKind> = []
-    private(set) var calls: [ExternalFileController.RecoveryRetryKind] = []
-
-    func failNext(_ kind: ExternalFileController.RecoveryRetryKind) {
-        failures.insert(kind)
-    }
-
-    func persist(_: FileDocument) -> Bool {
-        calls.append(.persist)
-        return failures.remove(.persist) == nil
-    }
-
-    func remove(
-        _: RecoveryBuffer,
-        id: String,
-        version _: UInt,
-        epoch _: UUID
-    ) -> RecoveryCleanupResult {
-        calls.append(.remove)
-        if failures.remove(.remove) != nil {
-            return .failed(.removalFailed(URL(fileURLWithPath: id), 13))
-        }
-        return .removed
-    }
-
-    func migrate(
-        _: RecoveryBuffer,
-        oldID: String,
-        sourceEpoch _: UUID,
-        document _: FileDocument
-    ) -> RecoveryMigrationOutcome {
-        calls.append(.migrate)
-        if failures.remove(.migrate) != nil {
-            return .failed(.removalFailed(URL(fileURLWithPath: oldID), 13))
-        }
-        return .migrated
-    }
-
-    func retire(_: RecoveryBuffer, id: String, epoch _: UUID) -> RecoveryCleanupResult {
-        calls.append(.retire)
-        if failures.remove(.retire) != nil {
-            return .failed(.removalFailed(URL(fileURLWithPath: id), 13))
-        }
-        return .removed
     }
 }

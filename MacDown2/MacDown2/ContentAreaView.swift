@@ -114,19 +114,49 @@ struct ContentAreaView: View {
         }
     }
 
+    @ViewBuilder
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "doc.text")
-                .font(.system(size: 56, weight: .light))
-                .foregroundStyle(.quaternary)
+        if model.isCreatingDocument {
+            VStack(spacing: 16) {
+                ProgressView()
+                    .controlSize(.small)
 
-            Text("No Document")
-                .font(.title2)
-                .foregroundStyle(.secondary)
+                Text("Creating Document…")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityIdentifier("creatingDocumentNotice")
+        } else if case let .openFailed(underlying) = model.lastError {
+            VStack(spacing: 16) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 56, weight: .light))
+                    .foregroundStyle(.orange)
 
-            VStack(spacing: 6) {
-                ShortcutHint(shortcut: "⌘N", label: "New File")
-                ShortcutHint(shortcut: "⌘O", label: "Open File")
+                Text("Couldn't Open File")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+
+                Text(FileOpenFailurePresentation.message(for: underlying))
+                    .font(.callout)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            .accessibilityIdentifier("openFailedNotice")
+        } else {
+            VStack(spacing: 16) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 56, weight: .light))
+                    .foregroundStyle(.quaternary)
+
+                Text("No Document")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+
+                VStack(spacing: 6) {
+                    ShortcutHint(shortcut: "⌘N", label: "New File")
+                    ShortcutHint(shortcut: "⌘O", label: "Open File")
+                }
             }
         }
     }

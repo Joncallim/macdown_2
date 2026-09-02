@@ -56,7 +56,7 @@ struct TabStoreCoreTests {
         _ = try? FileStore().write("# Hello", to: url)
 
         let store = TabStore(sessionStore: FakeSessionStore())
-        let tab = await store.openFileInTab(url)
+        let tab = try? await store.openFileInTab(url).get()
 
         #expect(tab != nil)
         #expect(store.tabs.count == 1)
@@ -71,9 +71,9 @@ struct TabStoreCoreTests {
         _ = try? FileStore().write("content", to: url)
 
         let store = TabStore(sessionStore: FakeSessionStore())
-        let first = await store.openFileInTab(url)
+        let first = try? await store.openFileInTab(url).get()
         store.newTab()
-        let second = await store.openFileInTab(url)
+        let second = try? await store.openFileInTab(url).get()
 
         #expect(store.tabs.count == 2)
         #expect(first?.id == second?.id)
@@ -102,9 +102,12 @@ struct TabStoreCoreTests {
         let url = directory.appendingPathComponent("missing.md")
 
         let store = TabStore(sessionStore: FakeSessionStore())
-        let tab = await store.openFileInTab(url)
+        let outcome = await store.openFileInTab(url)
 
-        #expect(tab == nil)
+        guard case .failure = outcome else {
+            Issue.record("Expected a failure for a missing file")
+            return
+        }
         #expect(store.tabs.isEmpty)
     }
 
