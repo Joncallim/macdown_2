@@ -38,9 +38,9 @@ public struct DeterministicTestContribution: Contributing {
     ) async throws -> [ContributionResult] {
         switch behavior {
         case let .succeeds(content):
-            [ContributionResult(contributionID: id, content: content, sourceGeneration: sourceGeneration)]
+            return [ContributionResult(contributionID: id, content: content, sourceGeneration: sourceGeneration)]
         case .producesNothing:
-            []
+            return []
         case let .fails(message):
             throw DeterministicTestContributionError(message: message)
         case .hangs:
@@ -52,5 +52,7 @@ public struct DeterministicTestContribution: Contributing {
 
 struct DeterministicTestContributionError: Error, LocalizedError, Equatable {
     let message: String
-    var errorDescription: String? { message }
+    var errorDescription: String? {
+        message
+    }
 }
