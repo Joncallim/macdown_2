@@ -13,9 +13,8 @@ public struct ContributionRegistry: Sendable {
         self.contributions = contributions
     }
 
-    /// The first-party contributions MacDown 2 ships. Empty until a later
-    /// slice registers a real contribution (TOC).
-    public static let standard = ContributionRegistry(contributions: [])
+    /// The first-party contributions MacDown 2 ships.
+    public static let standard = ContributionRegistry(contributions: [TOCContribution()])
 
     /// Runs every registered contribution against one document snapshot
     /// and aggregates their results.

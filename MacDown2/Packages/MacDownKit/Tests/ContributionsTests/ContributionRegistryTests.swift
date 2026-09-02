@@ -4,9 +4,13 @@ import Testing
 
 @Suite("ContributionRegistry")
 struct ContributionRegistryTests {
-    @Test func standardRegistryContributesNothingYet() async throws {
+    /// `.standard` now registers `TOCContribution` (Slice 2); a document
+    /// with no `[TOC]` marker still contributes nothing, exercised here at
+    /// the registry level rather than duplicating `TOCContributionTests`.
+    @Test func standardRegistryContributesNothingWithoutATOCMarker() async throws {
+        let text = "no marker here"
         let results = try await ContributionRegistry.standard.run(
-            document: Self.emptyDocument(), sourceText: "", sourceGeneration: 0
+            document: MarkdownDocumentFixtures.document(sourceText: text), sourceText: text, sourceGeneration: 0
         )
         #expect(results.isEmpty)
     }
@@ -17,7 +21,9 @@ struct ContributionRegistryTests {
             DeterministicTestContribution(behavior: .succeeds(content)),
         ])
 
-        let results = try await registry.run(document: Self.emptyDocument(), sourceText: "[TOC]", sourceGeneration: 1)
+        let results = try await registry.run(
+            document: MarkdownDocumentFixtures.document(sourceText: ""), sourceText: "[TOC]", sourceGeneration: 1
+        )
 
         #expect(results.count == 1)
         #expect(results.first?.content == content)
@@ -30,7 +36,9 @@ struct ContributionRegistryTests {
             DeterministicTestContribution(behavior: .producesNothing),
         ])
 
-        let results = try await registry.run(document: Self.emptyDocument(), sourceText: "", sourceGeneration: 0)
+        let results = try await registry.run(
+            document: MarkdownDocumentFixtures.document(sourceText: ""), sourceText: "", sourceGeneration: 0
+        )
 
         #expect(results.isEmpty)
     }
@@ -46,7 +54,9 @@ struct ContributionRegistryTests {
             DeterministicTestContribution(id: "fine", behavior: .succeeds(content)),
         ])
 
-        let results = try await registry.run(document: Self.emptyDocument(), sourceText: "", sourceGeneration: 0)
+        let results = try await registry.run(
+            document: MarkdownDocumentFixtures.document(sourceText: ""), sourceText: "", sourceGeneration: 0
+        )
 
         #expect(results.count == 2)
 
@@ -69,7 +79,9 @@ struct ContributionRegistryTests {
         ])
 
         let task = Task {
-            try await registry.run(document: Self.emptyDocument(), sourceText: "", sourceGeneration: 0)
+            try await registry.run(
+                document: MarkdownDocumentFixtures.document(sourceText: ""), sourceText: "", sourceGeneration: 0
+            )
         }
         task.cancel()
 
@@ -81,18 +93,5 @@ struct ContributionRegistryTests {
         } catch {
             Issue.record("expected CancellationError, got \(error)")
         }
-    }
-
-    static func emptyDocument() -> MarkdownDocument {
-        MarkdownDocument(
-            body: "",
-            bodyLineOffset: 0,
-            blocks: [],
-            headings: [],
-            frontMatter: nil,
-            sourceMap: SourceMap(text: ""),
-            revision: 0,
-            options: .default
-        )
     }
 }

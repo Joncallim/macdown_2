@@ -322,9 +322,14 @@ disk still contains the literal text `[TOC]` — nothing rewrites the source.
 
 **J2 — Export a document containing `[TOC]`.** The user exports the same
 document to self-contained HTML. The exported file's table of contents
-matches what Preview showed, built from the same headings, as real HTML
-links to each section's generated anchor — not a picture of the preview,
-not a second, differently-coded implementation of "list the headings."
+matches what Preview showed, built from the same headings, nested the same
+way — not a picture of the preview, not a second, differently-coded
+implementation of "list the headings." The list entries are plain text in
+this epic, not clickable links (§6.2, §13) — no part of the export
+pipeline generates a stable `id` for a heading today, and inventing one
+correctly (matching cmark-gfm's actual rendered output, not just this
+epic's own assumption about it) is real, separable work this epic does not
+attempt speculatively. §18 names this as explicit follow-up scope.
 
 **J3 — `[TOC]` with no headings, or no `[TOC]` at all.** A document with a
 `[TOC]` line but zero headings renders that line as an empty list rather
@@ -1171,12 +1176,17 @@ same reparse cadence Preview already has, at the cost above.
   that removed this contribution would show the literal, still-valid
   Markdown text `[TOC]` — a graceful, unsurprising degradation, not a
   broken document.
-- HTML/PDF export produces real anchor links for each heading (the same
-  anchors the browser's native heading navigation would use), not an
-  inert list — this is a direct consequence of rendering through the
-  standard cmark-gfm pipeline (`ExportService.renderMarkdownFragment` and
-  the main body both go through the same renderer) rather than a
-  hand-built HTML string.
+- TOC's generated list is plain text, not clickable links, in this epic
+  (§1, §6.2, §18) — confirmed by reading `ExportService` directly, no part
+  of today's export pipeline generates a stable `id` attribute for a
+  heading, and cmark-gfm does not do this on its own. Claiming an anchor
+  link that goes nowhere would be worse than a plain list; building a
+  correct heading-id generator (and reconciling it with Preview, which —
+  also confirmed by reading `TextualMarkdownPreview` directly — hands
+  every link, including a same-document `#fragment` link, to
+  `NSWorkspace.shared.open` today, so a TOC link would not scroll Preview
+  to the heading even if it resolved) is real, separable work, named as
+  follow-up scope in §18 rather than attempted speculatively here.
 - A document containing a `[TOC]` marker but opened in a build where
   `Contributions` is unavailable for any reason is unreachable in
   practice (the App target always links `Contributions`), so no
@@ -1203,7 +1213,7 @@ same reparse cadence Preview already has, at the cost above.
 | TOC with multiple markers produces one independent result per marker | Unit test |
 | TOC works through the contribution path, not a parallel special case (deliverable 1 / acceptance criterion, direct) | Satisfied by construction — `TOCContribution` is the only thing that knows about `[TOC]`; neither `Preview` nor `ExportService` gained any TOC-specific code (§5) — verified by review, not a runnable test |
 | `ExportService.renderMarkdownFragment` renders a fragment without raw-HTML passthrough | Unit test, `ExportServiceTests`, asserting an embedded `<script>` in the fragment is not preserved verbatim |
-| Export's `contributions:` wiring places a TOC result into real exported HTML with correct anchor links | Package-level integration test in `ExportServiceTests` or a new App-target test exercising `ExportContributionAdapter` + `ExportService.exportHTML` end-to-end on a fixture document |
+| Export's `contributions:` wiring places a TOC result into real exported HTML, correctly nested by heading level | Package-level integration test in `ExportServiceTests` or a new App-target test exercising `ExportContributionAdapter` + `ExportService.exportHTML` end-to-end on a fixture document |
 | Preview's merged blocks correctly substitute the base block at the marker's position, leaving every other block unchanged | Unit test, `PreviewContributionAdapter` given a fixture `[PreviewBlock]` + `[ContributionResult]` |
 | Preview caps merged contribution results at 64 (§11) | Unit test |
 | A local text filter can uppercase a selection end-to-end as one successful editor mutation (deliverable 3 / acceptance criterion, direct) | `TextFiltersTests` covering `TextFilterRunner.run` against a real bundled example script fixture, plus an App-target-level test of the replacement-range/undo-step logic; the actual keystroke-to-replacement UI journey is an XCUITest, subject to the same macOS-runtime caveat below |
@@ -1556,17 +1566,29 @@ satisfied. For E14 specifically:
    not attempt, and E19/E20's own architecture documents must scope it
    before either epic can ship a contribution whose result cannot be
    expressed as Markdown.
-2. **Export performs one extra parse per export** (§1 risk 2, §7.1, §11) —
+2. **TOC's list entries are plain text, not clickable links** (§3 J2, §13)
+   — discovered during Slice 2 implementation, not anticipated when this
+   document was first drafted: no part of today's export pipeline
+   generates a stable `id` attribute for a heading, and Preview hands
+   every link, anchor or not, to `NSWorkspace.shared.open` rather than
+   scrolling to it. Both are real, pre-existing gaps a correct clickable
+   TOC would need to close — a heading-anchor-id generator agreed between
+   `Contributions` and `ExportService` (most plausibly a small addition to
+   `MarkdownEngine`, which both already depend on), and, separately,
+   in-preview anchor-link handling that does not exist for *any* link
+   today, TOC-generated or hand-authored. Filed as follow-up rather than
+   built speculatively inside this epic.
+3. **Export performs one extra parse per export** (§1 risk 2, §7.1, §11) —
    accepted as proportionally negligible next to export's existing costs,
    but a real, measurable inefficiency that a future performance pass
    could remove by threading a shared parse through both `ExportCoordinator`
    and `ExportComposer`, at the cost of a new coupling between them this
    epic deliberately avoided introducing without a proven need.
-3. **Text-filter commands are unsandboxed automation, not a security
+4. **Text-filter commands are unsandboxed automation, not a security
    boundary against a malicious script** (§10) — an accepted, explicit
    consequence of D7 and the issue's own scope, not a gap this epic failed
    to close.
-4. **The command palette's app-commands list is a small, hand-maintained
+5. **The command palette's app-commands list is a small, hand-maintained
    array** (§5) that will drift out of sync with `WorkspaceCommands.swift`'s
    real command set unless a future change remembers to update both. No
    automated consistency check (mirroring `FormatRegistryConsistencyTests`,
@@ -1574,13 +1596,13 @@ satisfied. For E14 specifically:
    palette's initial app-command set is intentionally small (§1) and the
    drift risk is judged acceptable at that size; a follow-up issue is
    filed if this list grows enough to justify one.
-5. **Sample script coverage is minimal** (an uppercase example and
+6. **Sample script coverage is minimal** (an uppercase example and
    possibly one more, §1/§9/§17 Slice 6) — enough to prove and dogfood the
    mechanism, not a curated library of useful filters. A richer example
    set is reasonable follow-up work, not required for this epic's own
    acceptance criteria.
 
-Residual risks 1 and 2 are significant enough to warrant their own
-follow-up GitHub issues at the close of this epic, filed against E19/E20's
-own dependency chain rather than left implicit in this document, per
-`EPIC_STANDARD.md` §3.18.
+Residual risks 1, 2, and 3 are significant enough to warrant their own
+follow-up GitHub issues at the close of this epic — 1 against E19/E20's own
+dependency chain, 2 and 3 as standalone polish/performance follow-ups —
+rather than left implicit in this document, per `EPIC_STANDARD.md` §3.18.
