@@ -181,12 +181,13 @@ struct ExportCoordinator {
         document: FileCore.FileDocument,
         selection: ExportSelection
     ) async throws -> ExportOutcome {
+        let contributions = try await exportContributions(for: document)
         let request = ExportRequest(
             text: document.text,
             sourceGeneration: document.mutationGeneration,
             theme: themeController.current,
             documentURL: document.fileURL,
-            contributions: try await exportContributions(for: document)
+            contributions: contributions
         )
 
         switch selection.format {
