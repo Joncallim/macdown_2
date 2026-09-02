@@ -23,9 +23,13 @@ enum PreviewContributionAdapter {
     /// that cannot `throws` from a `.task(id:)` closure.
     static func results(document: MarkdownDocument?, text: String?, generation: UInt) async -> [ContributionResult] {
         guard let document, let text else { return [] }
-        return (try? await ContributionRegistry.standard.run(
-            document: document, sourceText: text, sourceGeneration: generation
-        )) ?? []
+        do {
+            return try await ContributionRegistry.standard.run(
+                document: document, sourceText: text, sourceGeneration: generation
+            )
+        } catch {
+            return []
+        }
     }
 
     /// Substitutes the base block containing each placeable contribution's

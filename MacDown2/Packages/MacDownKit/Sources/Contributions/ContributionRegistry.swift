@@ -46,14 +46,15 @@ public struct ContributionRegistry: Sendable {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                let diagnostic = ContributionDiagnostic(
+                    severity: .error,
+                    message: "\(contribution.id) failed: \(error.localizedDescription)"
+                )
                 results.append(ContributionResult(
                     contributionID: contribution.id,
                     content: nil,
                     sourceGeneration: sourceGeneration,
-                    diagnostics: [ContributionDiagnostic(
-                        severity: .error,
-                        message: "\(contribution.id) failed: \(error.localizedDescription)"
-                    )]
+                    diagnostics: [diagnostic]
                 ))
             }
         }
