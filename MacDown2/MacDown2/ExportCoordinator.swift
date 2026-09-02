@@ -1,8 +1,10 @@
 import AppKit
 import AppSettings
+import Contributions
 import ExportService
 import FileCore
 import Foundation
+import MarkdownEngine
 import SwiftUI
 import Themes
 import UniformTypeIdentifiers
@@ -183,7 +185,8 @@ struct ExportCoordinator {
             text: document.text,
             sourceGeneration: document.mutationGeneration,
             theme: themeController.current,
-            documentURL: document.fileURL
+            documentURL: document.fileURL,
+            contributions: try await exportContributions(for: document)
         )
 
         switch selection.format {
@@ -198,6 +201,22 @@ struct ExportCoordinator {
             try await PDFExportAdapter.export(prepared, to: selection.url)
             return ExportOutcome(primaryFile: selection.url, diagnostics: prepared.diagnostics)
         }
+    }
+
+    /// Computes contribution placements for `document` via a fresh parse,
+    /// independent of whatever Preview's own parse session is doing for the
+    /// same document at the same moment — matching how
+    /// `ExportComposer.prepare` already parses `request.text` independently
+    /// of Preview, today, before this epic (epic-14-implementation.md §7.1).
+    /// One extra parse per export, accepted as proportionally negligible
+    /// next to export's other costs (§1 risk 2, §11).
+    private func exportContributions(for document: FileCore.FileDocument) async throws -> [ExportDerivedContribution] {
+        let revision = Int(exactly: document.mutationGeneration) ?? Int.max
+        let parsed = try await ParseEngine().parse(document.text, revision: revision)
+        let results = try await ContributionRegistry.standard.run(
+            document: parsed, sourceText: document.text, sourceGeneration: document.mutationGeneration
+        )
+        return ExportContributionAdapter.exportContributions(from: results)
     }
 
     // MARK: - Feedback
