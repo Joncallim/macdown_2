@@ -39,7 +39,7 @@ struct DocumentEditorSplitView: View {
     @State var dragOriginFraction: Double?
     @State private var previewBlocks: [PreviewBlock]?
     @State private var previewLinkDefinitions: [String] = []
-    @State private var contributionResults: [ContributionResult] = []
+    @State private var previewContributionSession = PreviewContributionSession()
 
     private var parseSession: MarkdownParseSession {
         parseStore.session(for: identity)
@@ -114,12 +114,8 @@ struct DocumentEditorSplitView: View {
                 refreshPreviewBlocks()
                 refreshOutline()
             }
-            .task(id: parseSession.document) {
-                contributionResults = await PreviewContributionAdapter.results(
-                    document: parseSession.document,
-                    text: parseSession.publishedText,
-                    generation: document.mutationGeneration
-                )
+            .task(id: contributionTaskID) {
+                await refreshPreviewContributions()
             }
             .onChange(of: jsonSession.result) { _, _ in
                 refreshJSONOutline()
@@ -197,6 +193,24 @@ struct DocumentEditorSplitView: View {
         previewLinkDefinitions = PreviewLinkDefinitions.extract(from: text)
     }
 
+    /// Keyed to document/tab identity + parsed revision only — never save
+    /// state, dirty state, URL, or encoding — so a non-text `FileDocument`
+    /// mutation neither restarts this task nor invalidates a valid composed
+    /// TOC (architecture takeover, pass 1/10).
+    private var contributionTaskID: PreviewContributionTaskID {
+        PreviewContributionTaskID(
+            documentIdentity: ObjectIdentifier(parseSession), parsedRevision: parseSession.document?.revision
+        )
+    }
+
+    private func refreshPreviewContributions() async {
+        guard let document = parseSession.document, let text = parseSession.publishedText else { return }
+        await previewContributionSession.refresh(
+            taskID: contributionTaskID, document: document, text: text,
+            baseBlocks: previewBlocks ?? PreviewBlock.blocks(from: document, text: text)
+        )
+    }
+
     /// D2: no parse of its own — a pure readout of the same `parseSession`
     /// the preview already reads.
     private func refreshOutline() {
@@ -267,15 +281,21 @@ struct DocumentEditorSplitView: View {
                 theme: PreviewTheme(theme: themeController.current),
                 linkResolver: PreviewLinkResolver(baseURL: document.fileURL),
                 controller: scrollController,
-                blocks: PreviewContributionAdapter.merged(
-                    base: previewBlocks,
-                    contributions: contributionResults,
-                    sourceMap: parseSession.document?.sourceMap,
-                    currentGeneration: document.mutationGeneration
+                blocks: previewContributionSession.displayedBlocks(
+                    baseBlocks: previewBlocks, currentRevision: parseSession.document?.revision
                 ),
                 linkDefinitions: previewLinkDefinitions
             )
-            .overlay(alignment: .topTrailing) { PreviewBusyIndicator(isVisible: parseSession.isParsing) }
+            .overlay(alignment: .topTrailing) {
+                HStack(spacing: 4) {
+                    PreviewContributionDiagnosticsBadge(
+                        diagnostics: previewContributionSession.displayedDiagnostics(
+                            currentRevision: parseSession.document?.revision
+                        )
+                    )
+                    PreviewBusyIndicator(isVisible: parseSession.isParsing)
+                }
+            }
         case .html:
             HTMLPreviewPane(model: model, tab: tab, document: document, text: text)
         case .jsonOutline:
