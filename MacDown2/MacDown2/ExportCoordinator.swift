@@ -181,13 +181,13 @@ struct ExportCoordinator {
         document: FileCore.FileDocument,
         selection: ExportSelection
     ) async throws -> ExportOutcome {
-        let contributions = try await exportContributions(for: document)
+        let adaptation = try await exportContributionAdaptation(for: document)
         let request = ExportRequest(
             text: document.text,
             sourceGeneration: document.mutationGeneration,
             theme: themeController.current,
             documentURL: document.fileURL,
-            contributions: contributions
+            contributions: adaptation.contributions
         )
 
         switch selection.format {
@@ -196,12 +196,29 @@ struct ExportCoordinator {
                 ? .selfContained
                 : .standalone(style: selection.style)
             let result = try await ExportService.exportHTML(request, to: .html(url: selection.url, mode: mode))
-            return ExportOutcome(primaryFile: result.primaryFile, diagnostics: result.diagnostics)
+            return ExportOutcome(
+                primaryFile: result.primaryFile,
+                diagnostics: Self.combinedDiagnostics(adaptation, result.diagnostics)
+            )
         case .pdf:
             let prepared = try await ExportService.prepare(request, target: .pdf(url: selection.url))
             try await PDFExportAdapter.export(prepared, to: selection.url)
-            return ExportOutcome(primaryFile: selection.url, diagnostics: prepared.diagnostics)
+            return ExportOutcome(
+                primaryFile: selection.url,
+                diagnostics: Self.combinedDiagnostics(adaptation, prepared.diagnostics)
+            )
         }
+    }
+
+    /// Standalone (anchorless) diagnostics first, then the export service's
+    /// own — the exact same order for both the HTML and PDF paths above, so
+    /// the two cannot drift through independently copy-pasted merge logic
+    /// (architecture takeover, pass 9/10).
+    nonisolated static func combinedDiagnostics(
+        _ adaptation: ExportContributionAdapter.Adaptation,
+        _ serviceDiagnostics: [ExportDiagnostic]
+    ) -> [ExportDiagnostic] {
+        adaptation.standaloneDiagnostics + serviceDiagnostics
     }
 
     /// Computes contribution placements for `document` via a fresh parse,
@@ -211,13 +228,15 @@ struct ExportCoordinator {
     /// of Preview, today, before this epic (epic-14-implementation.md §7.1).
     /// One extra parse per export, accepted as proportionally negligible
     /// next to export's other costs (§1 risk 2, §11).
-    private func exportContributions(for document: FileCore.FileDocument) async throws -> [ExportDerivedContribution] {
+    private func exportContributionAdaptation(
+        for document: FileCore.FileDocument
+    ) async throws -> ExportContributionAdapter.Adaptation {
         let revision = Int(exactly: document.mutationGeneration) ?? Int.max
         let parsed = try await ParseEngine().parse(document.text, revision: revision)
         let results = try await ContributionRegistry.standard.run(
             document: parsed, sourceText: document.text, sourceGeneration: document.mutationGeneration
         )
-        return ExportContributionAdapter.exportContributions(from: results)
+        return ExportContributionAdapter.adapt(results)
     }
 
     // MARK: - Feedback

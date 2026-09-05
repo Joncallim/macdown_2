@@ -7,6 +7,17 @@ import ExportService
 /// extension on `ExportCoordinator`, so it stays trivially unit-testable
 /// without constructing a real coordinator.
 enum ExportContributionAdapter {
+    /// The result of adapting one contribution run for Export: anchored
+    /// contributions `DerivedContentComposer` can place, plus diagnostics
+    /// from results that had nothing to anchor to at all (architecture
+    /// takeover, pass 9/10). Kept separate from `ExportDerivedContribution`
+    /// rather than widening E12's public type — a diagnostic-only result has
+    /// no `sourceRange` to attach one to.
+    struct Adaptation {
+        let contributions: [ExportDerivedContribution]
+        let standaloneDiagnostics: [ExportDiagnostic]
+    }
+
     /// Renders each placeable result's `.markdown` representation via
     /// `ExportService.renderMarkdownFragment`. `.html` is a real, typed
     /// case no adapter in this epic handles yet
@@ -21,14 +32,20 @@ enum ExportContributionAdapter {
     /// adapter is updated to decide what it means.
     ///
     /// A `content == nil` result (nothing to do, or a registry-caught
-    /// thrown failure, §6.1) is dropped entirely: `ExportDerivedContribution`
-    /// requires a `sourceRange` to anchor to, and E12 built no facility for
-    /// an anchorless diagnostic. A designed failure — a contribution that
-    /// anchored real content but reported an `.error` diagnostic on it — is
-    /// still fully visible, since that result keeps its `content`.
-    static func exportContributions(from results: [ContributionResult]) -> [ExportDerivedContribution] {
-        results.compactMap { result in
-            guard let content = result.content else { return nil }
+    /// thrown failure, §6.1) carries no `sourceRange` to anchor to, so its
+    /// diagnostics — if any — become `standaloneDiagnostics` instead of
+    /// being dropped. A designed failure — a contribution that anchored
+    /// real content but reported an `.error` diagnostic on it — stays
+    /// attached to that contribution, since that result keeps its content
+    /// and `DerivedContentComposer` already fails it closed.
+    static func adapt(_ results: [ContributionResult]) -> Adaptation {
+        var contributions: [ExportDerivedContribution] = []
+        var standaloneDiagnostics: [ExportDiagnostic] = []
+        for result in results {
+            guard let content = result.content else {
+                standaloneDiagnostics.append(contentsOf: result.diagnostics.map(exportDiagnostic))
+                continue
+            }
 
             let html: String
             var diagnostics = result.diagnostics.map(exportDiagnostic)
@@ -44,14 +61,15 @@ enum ExportContributionAdapter {
                 ))
             }
 
-            return ExportDerivedContribution(
+            contributions.append(ExportDerivedContribution(
                 sourceRange: content.sourceRange,
                 placement: exportPlacement(for: content.placement),
                 html: html,
                 sourceGeneration: result.sourceGeneration,
                 diagnostics: diagnostics
-            )
+            ))
         }
+        return Adaptation(contributions: contributions, standaloneDiagnostics: standaloneDiagnostics)
     }
 
     private static func exportPlacement(for placement: ContributionPlacement) -> ExportDerivedPlacement {
