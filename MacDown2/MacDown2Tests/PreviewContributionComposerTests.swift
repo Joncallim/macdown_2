@@ -304,7 +304,7 @@ struct PreviewContributionComposerTests {
         #expect(composition.diagnostics.contains { $0.contributionID == "preview-budget" })
     }
 
-    @Test func anOversizedCandidateFollowedByASmallValidCandidateStillFitsTheSmallOne() throws {
+    @Test func anOversizedCandidateFollowedByASmallValidCandidateStillFitsTheSmallOne() {
         let text = "abc"
         let base = [PreviewBlock(kind: .paragraph, source: text, lineRange: 1 ... 1)]
         let huge = String(
@@ -318,6 +318,6 @@ struct PreviewContributionComposerTests {
 
         let blocks = composition.blocks ?? []
         #expect(blocks.first?.source.contains("Y") == true)
-        #expect(try !(#require(blocks.first?.source.contains("z"))))
+        #expect(blocks.first?.source.contains("z") == false)
     }
 }
