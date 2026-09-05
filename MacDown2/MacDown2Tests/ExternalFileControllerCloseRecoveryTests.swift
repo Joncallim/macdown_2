@@ -182,6 +182,11 @@ struct ExternalFileControllerCloseRecoveryTests {
         let model = WorkspaceModel(tabStore: store)
         await model.save()
         #expect(model.hasPendingRecoveryCleanup)
+        // `TabStore.updateActiveDocument` only schedules a 300ms-debounced
+        // session save; publish synchronously so callers that assert on the
+        // "last published session" right after this fixture returns don't
+        // race that background timer.
+        #expect(await store.saveSession())
         return PendingCleanupFixture(
             directory: directory,
             recoveryDirectory: recoveryDirectory,

@@ -42,6 +42,16 @@ extension RecoveryBuffer {
             guard let lifetime = lifetime(forFenceKey: key),
                   RecoveryLifetimeEpoch.generation(for: lifetime.epoch) == nil
             else { continue }
+            // A legacy (non-generation) lifetime that is still the recorded
+            // current owner for its document has not actually been retired —
+            // `authorizeLifetime` records every successful write's epoch in
+            // `currentByDocument` regardless of scheme. Sweeping it into
+            // `retired` here would make `isRetired` reject its own live
+            // recovery snapshot the moment a fresh actor (e.g. next launch)
+            // loads this ledger, discarding still-current crash-recovery
+            // content outright.
+            let documentKey = documentDigest(lifetime.documentID)
+            guard ledger.currentByDocument[documentKey] != lifetime.epoch else { continue }
             ledger.retired.insert(key)
         }
         ledger.knownLifetimes.removeAll()
