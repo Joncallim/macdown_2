@@ -5,13 +5,15 @@ import Testing
 
 @Suite("TOCContribution")
 struct TOCContributionTests {
-    // MARK: - findMarkers
+    // MARK: - findMarkers (lexical + semantic admission)
 
-    @Test func findMarkersLocatesASingleMarkerLine() throws {
+    private static func document(_ text: String) async throws -> MarkdownDocument {
+        try await ParseEngine().parse(text, revision: 0)
+    }
+
+    @Test func findMarkersLocatesASingleMarkerLine() async throws {
         let text = "# Title\n\n[TOC]\n\nBody."
-        let sourceMap = SourceMap(text: text)
-
-        let ranges = TOCContribution.findMarkers(in: text, sourceMap: sourceMap)
+        let ranges = try await TOCContribution.findMarkers(in: text, document: Self.document(text))
 
         #expect(ranges.count == 1)
         let range = try #require(ranges.first)
@@ -19,39 +21,99 @@ struct TOCContributionTests {
         #expect((text as NSString).substring(with: nsRange) == "[TOC]")
     }
 
-    @Test func findMarkersIgnoresATextWithNoMarker() {
+    @Test func findMarkersIgnoresATextWithNoMarker() async throws {
         let text = "# Title\n\nJust a paragraph.\n"
-        let sourceMap = SourceMap(text: text)
-
-        #expect(TOCContribution.findMarkers(in: text, sourceMap: sourceMap).isEmpty)
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
     }
 
-    @Test func findMarkersTrimsSurroundingWhitespace() {
+    @Test func findMarkersTrimsSurroundingWhitespace() async throws {
         let text = "  [TOC]  \n"
-        let sourceMap = SourceMap(text: text)
-
-        #expect(TOCContribution.findMarkers(in: text, sourceMap: sourceMap).count == 1)
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).count == 1)
     }
 
-    @Test func findMarkersHandlesACRLFTerminatedMarkerLine() {
+    @Test func findMarkersHandlesACRLFTerminatedMarkerLine() async throws {
         let text = "Intro\r\n[TOC]\r\nMore\r\n"
-        let sourceMap = SourceMap(text: text)
-
-        #expect(TOCContribution.findMarkers(in: text, sourceMap: sourceMap).count == 1)
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).count == 1)
     }
 
-    @Test func findMarkersRequiresTheWholeLineNotAnEmbeddedOccurrence() {
+    @Test func findMarkersRequiresTheWholeLineNotAnEmbeddedOccurrence() async throws {
         let text = "See [TOC] below for a table.\n"
-        let sourceMap = SourceMap(text: text)
-
-        #expect(TOCContribution.findMarkers(in: text, sourceMap: sourceMap).isEmpty)
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
     }
 
-    @Test func findMarkersLocatesEveryOccurrence() {
+    @Test func findMarkersLocatesEveryOccurrence() async throws {
         let text = "[TOC]\n\nSection\n\n[TOC]\n"
-        let sourceMap = SourceMap(text: text)
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).count == 2)
+    }
 
-        #expect(TOCContribution.findMarkers(in: text, sourceMap: sourceMap).count == 2)
+    @Test func findMarkersAcceptsAMarkerInsideAMultiLineTopLevelParagraph() async throws {
+        let text = "before\n[TOC]\nafter\n"
+        let ranges = try await TOCContribution.findMarkers(in: text, document: Self.document(text))
+        #expect(ranges.count == 1)
+    }
+
+    @Test func findMarkersRejectsFencedCodeBackticks() async throws {
+        let text = "```\n[TOC]\n```\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsFencedCodeTildes() async throws {
+        let text = "~~~\n[TOC]\n~~~\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsIndentedCode() async throws {
+        let text = "Para.\n\n    [TOC]\n\nMore.\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsAnUnorderedListItem() async throws {
+        let text = "- [TOC]\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsAnOrderedListItem() async throws {
+        let text = "1. [TOC]\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsALazyListContinuation() async throws {
+        let text = "- Item\n[TOC]\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsABlockQuote() async throws {
+        let text = "> [TOC]\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsALazyBlockQuoteContinuation() async throws {
+        let text = "> Quoted\n[TOC]\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsASetextHeading() async throws {
+        let text = "[TOC]\n===\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsFrontMatter() async throws {
+        let text = "---\n[TOC]\n---\n\nBody.\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersRejectsAnHTMLBlock() async throws {
+        let text = "<div>\n[TOC]\n</div>\n"
+        #expect(try await TOCContribution.findMarkers(in: text, document: Self.document(text)).isEmpty)
+    }
+
+    @Test func findMarkersHandlesCRLFAcceptedRangesExactly() async throws {
+        let text = "Intro\r\n[TOC]\r\nMore\r\n"
+        let document = try await Self.document(text)
+        let ranges = TOCContribution.findMarkers(in: text, document: document)
+        let range = try #require(ranges.first)
+        let nsRange = NSRange(location: range.lowerBound, length: range.count)
+        #expect((text as NSString).substring(with: nsRange) == "[TOC]\r")
     }
 
     // MARK: - markdownList

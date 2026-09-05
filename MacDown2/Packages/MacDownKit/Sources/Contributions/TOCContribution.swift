@@ -22,7 +22,7 @@ public struct TOCContribution: Contributing {
         sourceText: String,
         sourceGeneration: UInt
     ) async throws -> [ContributionResult] {
-        let markers = Self.findMarkers(in: sourceText, sourceMap: document.sourceMap)
+        let markers = Self.findMarkers(in: sourceText, document: document)
         guard !markers.isEmpty else { return [] }
 
         let list = Self.markdownList(for: document.headings)
@@ -35,21 +35,43 @@ public struct TOCContribution: Contributing {
         }
     }
 
-    /// Every line whose trimmed content is exactly `[TOC]`, as the UTF-16
-    /// range of the whole physical line (trailing `\r` included, on a
-    /// CRLF-terminated line) — never a zero-width point, since `[TOC]`
-    /// itself is non-empty, satisfying `DerivedContentComposer`'s existing
-    /// non-empty-range requirement by construction.
-    static func findMarkers(in text: String, sourceMap: SourceMap) -> [Range<Int>] {
+    /// Every line whose trimmed content is exactly `[TOC]` AND that is
+    /// semantically a top-level CommonMark paragraph, as the UTF-16 range of
+    /// the whole physical line (trailing `\r` included, on a CRLF-terminated
+    /// line) — never a zero-width point, since `[TOC]` itself is non-empty,
+    /// satisfying `DerivedContentComposer`'s existing non-empty-range
+    /// requirement by construction.
+    ///
+    /// A line lexically matching `[TOC]` inside fenced/indented code, a
+    /// list item, a block quote, a heading, front matter, or an HTML block
+    /// is literal text, not this contribution's syntax — checked against
+    /// `document.blocks` (top-level parse blocks only) rather than a text
+    /// scan, so Preview and Export can never disagree about which markers
+    /// are "real" (epic-14-implementation.md architecture pass 3/10).
+    static func findMarkers(in text: String, document: MarkdownDocument) -> [Range<Int>] {
+        let sourceMap = document.sourceMap
         let nsText = text as NSString
         var ranges: [Range<Int>] = []
         for line in 1 ... sourceMap.lineCount {
             let nsRange = sourceMap.utf16Range(ofLines: line ... line)
             let lineText = nsText.substring(with: nsRange)
             guard lineText.trimmingCharacters(in: .whitespacesAndNewlines) == "[TOC]" else { continue }
+            guard isTopLevelParagraphLine(line, in: document.blocks) else { continue }
             ranges.append(nsRange.location ..< (nsRange.location + nsRange.length))
         }
         return ranges
+    }
+
+    /// `true` only when exactly one TOP-LEVEL block (no recursion into
+    /// `children`) contains `line` and that block's kind is `.paragraph`.
+    /// Deliberately not `document.block(atLine:)`: that helper recurses into
+    /// children and would accept a paragraph nested inside a list item or
+    /// block quote, both still literal/unsupported placement contexts for
+    /// this first-party contribution.
+    private static func isTopLevelParagraphLine(_ line: Int, in topLevelBlocks: [MarkdownBlock]) -> Bool {
+        let containing = topLevelBlocks.filter { $0.lineRange.contains(line) }
+        guard containing.count == 1, case .paragraph = containing[0].kind else { return false }
+        return true
     }
 
     /// Nests by heading level using 2-space Markdown list indentation (the

@@ -42,6 +42,7 @@ public struct ContributionRegistry: Sendable {
                     sourceText: sourceText,
                     sourceGeneration: sourceGeneration
                 )
+                try Task.checkCancellation()
                 results.append(contentsOf: contributed)
             } catch is CancellationError {
                 throw CancellationError()
@@ -58,6 +59,7 @@ public struct ContributionRegistry: Sendable {
                 ))
             }
         }
+        try Task.checkCancellation()
         return results
     }
 }

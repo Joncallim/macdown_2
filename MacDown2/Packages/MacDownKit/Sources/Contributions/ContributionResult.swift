@@ -12,9 +12,12 @@ public struct ContributionResult: Sendable, Equatable {
     public let contributionID: String
     public let content: ContributionContent?
 
-    /// The `FileDocument.mutationGeneration` this result was computed from.
-    /// Used by callers to reject a result that has gone stale by the time
-    /// it would be placed (epic-14-implementation.md §7, §9).
+    /// An opaque, caller-selected snapshot token this result was computed
+    /// from — compared only for equality, never interpreted. Preview keys
+    /// it to `MarkdownDocument.revision`; Export keys it to the captured
+    /// `FileDocument.mutationGeneration` of the snapshot its request was
+    /// built from. Used by callers to reject a result that has gone stale
+    /// by the time it would be placed (epic-14-implementation.md §7, §9).
     public let sourceGeneration: UInt
 
     public let diagnostics: [ContributionDiagnostic]

@@ -21,6 +21,11 @@ public struct DeterministicTestContribution: Contributing {
         /// `Task.sleep` itself throw `CancellationError` before this case
         /// can produce anything.
         case hangs
+        /// Deliberately non-cooperative: catches its own `Task.sleep`
+        /// cancellation and returns a normal successful result anyway,
+        /// proving `ContributionRegistry.run`'s own post-await cancellation
+        /// check catches what an individual contribution failed to.
+        case ignoresCancellationAndSucceeds(ContributionContent)
     }
 
     public let id: String
@@ -46,6 +51,14 @@ public struct DeterministicTestContribution: Contributing {
         case .hangs:
             try await Task.sleep(for: .seconds(3600))
             return []
+        case let .ignoresCancellationAndSucceeds(content):
+            do {
+                try await Task.sleep(for: .seconds(3600))
+            } catch is CancellationError {
+                // Deliberately swallowed: this behavior exists to prove the
+                // registry's own cancellation check does not depend on it.
+            }
+            return [ContributionResult(contributionID: id, content: content, sourceGeneration: sourceGeneration)]
         }
     }
 }

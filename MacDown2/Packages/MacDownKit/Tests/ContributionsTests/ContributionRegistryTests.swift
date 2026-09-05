@@ -94,4 +94,52 @@ struct ContributionRegistryTests {
             Issue.record("expected CancellationError, got \(error)")
         }
     }
+
+    /// The registry's own post-await check must catch cancellation even when
+    /// a contribution does not cooperate with it itself.
+    @Test func aNonCooperativeContributionCannotPublishAfterCancellation() async {
+        let content = ContributionContent(sourceRange: 0 ..< 3, placement: .inline, representation: .markdown("x"))
+        let registry = ContributionRegistry(contributions: [
+            DeterministicTestContribution(behavior: .ignoresCancellationAndSucceeds(content)),
+        ])
+
+        let task = Task {
+            try await registry.run(
+                document: MarkdownDocumentFixtures.document(sourceText: ""), sourceText: "", sourceGeneration: 0
+            )
+        }
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("expected cancellation to propagate even though the contribution swallowed it")
+        } catch is CancellationError {
+            // expected
+        } catch {
+            Issue.record("expected CancellationError, got \(error)")
+        }
+    }
+
+    /// Cancellation must be honored even when there is no contribution to
+    /// iterate — the final post-loop check must not be skippable by having
+    /// nothing to run.
+    @Test func anEmptyRegistryCalledByAnAlreadyCancelledTaskThrows() async {
+        let registry = ContributionRegistry(contributions: [])
+
+        let task = Task {
+            try await registry.run(
+                document: MarkdownDocumentFixtures.document(sourceText: ""), sourceText: "", sourceGeneration: 0
+            )
+        }
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("expected cancellation to propagate")
+        } catch is CancellationError {
+            // expected
+        } catch {
+            Issue.record("expected CancellationError, got \(error)")
+        }
+    }
 }
