@@ -1606,3 +1606,72 @@ Residual risks 1, 2, and 3 are significant enough to warrant their own
 follow-up GitHub issues at the close of this epic — 1 against E19/E20's own
 dependency chain, 2 and 3 as standalone polish/performance follow-ups —
 rather than left implicit in this document, per `EPIC_STANDARD.md` §3.18.
+
+## 19. Post-review remediation (PR #54 adversarial review)
+
+An adversarial review of the Slice 1–4 implementation against this document
+found ten contract defects (four P1, five P2, one CI-only) before the
+Preview/Export integration shipped. The authoritative coding hand-off
+(PR #54, "Architecture takeover — implementation lock") is the binding
+record of each finding and its remediation; this section reconciles this
+document with what actually shipped rather than restating that comment.
+
+**What changed from the shape originally described in §6.6/§7.1:**
+
+- `PreviewContributionAdapter.merged(...)` (whole-block substitution) is
+  replaced by `PreviewContributionAdapter.compose(...)`: a pure,
+  fully-parameterized admission → overlap/budget resolution → source-ordered
+  composition pipeline, split across `PreviewContributionAdmission.swift`
+  and `PreviewContributionComposer.swift`. It performs exact UTF-16 splicing
+  — `.inline` in place, `.block` as either a whole-block or
+  complete-physical-line partial-paragraph replacement — instead of
+  replacing an entire base block for any placement kind.
+- `sourceGeneration` (`ContributionResult`, `ExportDerivedContribution`) is
+  now documented as an opaque, caller-selected snapshot token compared only
+  for equality — not a synonym for `FileDocument.mutationGeneration`.
+  Preview keys it to `MarkdownDocument.revision`; Export is unchanged
+  (`FileDocument.mutationGeneration` of its captured export snapshot).
+- `TOCContribution.findMarkers` now requires the marker line to be the
+  entire content of exactly one **top-level, `.paragraph`** parse block
+  (`document.blocks`, non-recursive) — not merely a lexical `[TOC]` line
+  — so a marker inside fenced/indented code, a list item, or a block quote
+  is literal text in both Preview and Export, which share this one
+  discovery path.
+- A new `PreviewContributionSession` (`@Observable`, mirrors
+  `MarkdownParseSession`'s shape) owns one atomic
+  `PreviewContributionComposition` and a `PreviewContributionTaskID`
+  (document/tab identity + parsed revision) publish guard, so a superseded
+  or cancelled refresh can never publish, and a non-text `FileDocument`
+  mutation (save, rename, encoding) can no longer invalidate a valid
+  composed TOC the way reading `document.mutationGeneration` at render time
+  once could.
+- `ContributionRegistry.run` adds a post-await and a final cancellation
+  check (the pre-await check from §8 is unchanged);
+  `PreviewContributionAdapter.results` is `async throws` and no longer
+  collapses cancellation (or any other error) into `[]`.
+- Preview diagnostics (producer-reported and adapter-raised) are visible via
+  a new compact, non-modal `PreviewContributionDiagnosticsBadge` beside the
+  existing busy indicator, gated to the currently displayed parsed revision.
+- `ExportContributionAdapter.exportContributions(from:)` is replaced by
+  `adapt(_:) -> Adaptation` (`contributions`, `standaloneDiagnostics`): a
+  diagnostic-only result (no anchor to attach to) is no longer dropped.
+  `ExportCoordinator.combinedDiagnostics(_:_:)` merges
+  `standaloneDiagnostics` before the export service's own diagnostics,
+  identically for the HTML and PDF paths.
+- Preview's budget (`PreviewContributionBudget.standard`: 64 accepted
+  placements, 64 KiB generated Markdown) is now explicit and observable —
+  an omitted candidate leaves its source visible and produces one aggregate
+  warning — replacing a silent `prefix(64)`. It remains intentionally
+  smaller than, and independent of, `ExportResourceBudget`.
+
+**Unchanged:** the `Contributions` module's public types
+(`Contributing`, `ContributionResult`, `ContributionContent`,
+`ContributionPlacement`, `ContributionRepresentation`,
+`ContributionDiagnostic`), `ContributionRegistry.standard`'s membership,
+`DerivedContentComposer`, `ExportResourceBudget`, and both residual risks in
+§18 (the unhandled `.html` representation and TOC's plain-text-only list
+entries) — neither this remediation nor its scope touches them.
+
+No new SPM dependency, target, or public `ExportService` API was added;
+`CryptoKit` (Preview's deterministic-ID scheme, mirrored here) is a system
+framework, used only by the app-target adapter.
