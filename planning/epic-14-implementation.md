@@ -26,6 +26,14 @@ E14.
 > superseded by what `git show 86a2431 --stat` actually touched; a future
 > reader should not use them to scope new work.
 
+> **As-built note (E14B implementation pass, same branch):** Slices 5–8
+> are now also done, implemented essentially as specified in §6.5/§7.2/§9/
+> §10/§17 below — see §20 for the small, deliberate deviations (a
+> `documentURL` parameter `TextFilterRunner.run` needed that the §6.5
+> sketch omitted; the palette and Commands-menu presentation layer,
+> necessarily more concrete than "TBD at implementation"). The Definition
+> of Done in §18 is current as of this pass.
+
 ---
 
 ## 1. Owner summary
@@ -1460,7 +1468,7 @@ never imported, §5).
   slice must be strictly additive for every document without a `[TOC]`
   marker.
 
-### Slice 5 — Text-filter command runner (process safety core) — 🔲 not started; first slice of E14B
+### Slice 5 — Text-filter command runner (process safety core) — ✅ done (E14B)
 
 - **Goal:** `TextFilters` target: `TextFilterCommand`, `TextFilterRunner`
   (with the full §10 safety contract), `TextFilterError`,
@@ -1482,7 +1490,7 @@ never imported, §5).
   concrete failure mode rather than shipping a timeout that does not
   actually bound execution.
 
-### Slice 6 — Text-filter editor integration + Commands menu — 🔲 not started
+### Slice 6 — Text-filter editor integration + Commands menu — ✅ done (E14B)
 
 - **Goal:** selection-or-document → `TextFilterRunner` → one-mutation
   editor replacement (§7.2, reusing `applyAssistOutcome`'s idiom, §2.1);
@@ -1506,7 +1514,7 @@ never imported, §5).
   public surface beyond what §16 anticipates, stop and report the specific
   gap rather than inventing a second, parallel undo mechanism.
 
-### Slice 7 — Command palette (⌘⇧P) — 🔲 not started
+### Slice 7 — Command palette (⌘⇧P) — ✅ done (E14B)
 
 - **Goal:** `CommandPaletteView` — type-to-filter list combining discovered
   text filters (Slice 6) and a small, explicit array of app commands
@@ -1524,7 +1532,7 @@ never imported, §5).
   specific SwiftUI context), stop and report rather than widening access
   speculatively.
 
-### Slice 8 — Extension API design document — 🔲 not started
+### Slice 8 — Extension API design document — ✅ done (E14B): `planning/extension-api-design.md`
 
 - **Goal:** `planning/extension-api-design.md` — a design-only document
   (issue #15 deliverable 4) describing a possible post-1.0
@@ -1695,3 +1703,69 @@ entries) — neither this remediation nor its scope touches them.
 No new SPM dependency, target, or public `ExportService` API was added;
 `CryptoKit` (Preview's deterministic-ID scheme, mirrored here) is a system
 framework, used only by the app-target adapter.
+
+## 20. E14B implementation record (Slices 5–8)
+
+Text-filter commands and the command palette, implemented as specified in
+§6.5/§7.2/§9/§10/§11/§14/§16/§17 with the following concrete decisions
+where those sections were illustrative rather than exact:
+
+- **`TextFilterRunner.run` takes `documentURL: URL? = nil`**, not shown in
+  §6.5's sketch — needed to build `TextFilterLaunchContext`'s working
+  directory and `MACDOWN_DOCUMENT_PATH` (§10). Additive, defaulted, no
+  behavior change for a call site that omits it.
+- **`TextFilterProcessSession`** is the process-execution engine
+  `TextFilterRunner` delegates to (split into its own file per this
+  package's existing convention of factoring a type once it holds
+  non-trivial synchronized state). It mirrors
+  `PDFNavigationDelegate`'s watchdog-vs-continuation race exactly (§8):
+  normal exit, timeout, and cancellation all resolve through one
+  lock-guarded "first resolution wins" path. `SIGPIPE` is ignored
+  process-wide (a standard, necessary mitigation for `Process`/`Pipe` use
+  not named explicitly in §10 — without it, a script that never reads
+  stdin can crash the whole app) and stdout/stderr are read via
+  readability handlers concurrently with writing stdin, avoiding the
+  classic pipe-buffer deadlock the §15 adversarial corpus's
+  tight-output-loop case exercises.
+- **Bundled example scripts are Swift string literals**
+  (`BundledExampleScripts.swift`), not resource files as §16 anticipated —
+  a handful of shell-script lines does not justify giving a plain-text,
+  no-extension resource a bundle build rule. "Add Example Scripts" never
+  overwrites a filename the user already has.
+- **The range-replacement idiom for a non-empty selection is written
+  directly in `TextFilterCoordinator`** using `EditorTextSystem`'s already-
+  public `textView`/`undoManager`, rather than adding a new public
+  `EditorCore` API — `applyAssistOutcome`'s exact function is
+  package-internal to `EditorCore` and cannot be called across the module
+  boundary (Slice 6's own stop condition). The whole-document case (no
+  selection) reuses the existing public `applyDocumentReplacement`
+  directly. Both are the same `breakUndoCoalescing` → `insertText` →
+  `breakUndoCoalescing` idiom §7.2 specifies; neither widens `EditorCore`'s
+  public surface nor invents a second mechanism.
+- **The command palette is a small floating `NSPanel`** created per
+  invocation and found again (to close it) by scanning `NSApp.windows`
+  rather than a stored coordinator property — `WindowCoordinator`'s class
+  body was already near its lint budget (as `WindowCoordinator+
+  SessionRestore.swift`'s existing comment notes); `WindowCoordinator+
+  CommandPalette.swift` and `WindowCoordinator+TextFilters.swift` follow
+  that same established split-file convention rather than growing the
+  main class body further.
+- **`CommandPaletteModel`/`AppPaletteCommand` are `@MainActor`** (Swift 6
+  strict concurrency requires this for a type holding a closure over the
+  also-`@MainActor` `WindowCoordinator`); `CommandPaletteModel`'s row-
+  filtering/selection/dispatch logic is `static`/pure where possible
+  specifically so it stays unit-testable without presenting UI, per §17
+  Slice 7's own testing note.
+
+**Verified:** `MacDownKit` package suite (1080 tests), the complete
+`MacDown2Tests` app-target suite (88 tests, run with
+`-parallel-testing-enabled NO` — this specific app-test target is flaky
+under `xcodebuild`'s default test parallelism for reasons unrelated to
+E14B, see the PR description), SwiftFormat/SwiftLint --strict, and
+app/CLI/Release builds, all green.
+
+**Not verified in this pass:** the two on-device journeys §14 names
+(palette keystroke path, text-filter replacement keystroke-to-undo-step
+path) were not driven interactively — recorded here as unverified per
+§14's own note, not inferred passed, pending a human (or an interactive
+session) confirming them in the running app.
