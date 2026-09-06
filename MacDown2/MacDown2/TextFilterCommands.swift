@@ -14,6 +14,13 @@ struct TextFilterCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Commands") {
+            Button("Command Palette…") {
+                coordinator?.toggleCommandPalette()
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+
+            Divider()
+
             let commands = TextFilterCommandDiscovery.discoverCommands()
             if commands.isEmpty {
                 Text("No Commands Installed")
