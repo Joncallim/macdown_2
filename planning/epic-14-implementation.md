@@ -6,6 +6,26 @@ Baseline `master` SHA: `bbfb010074fbe44201ab6a8b1c4d6244c51ecf18` (merge of #52,
 this baseline on the working branch; it is pre-epic housekeeping, not part of
 E14.
 
+> **As-built note (E14B pass, baseline `86a2431` — squash-merge of PR #54,
+> 2026-09-06):** **Slices 1–4 (the contribution SPI, `TOCContribution`, and
+> the Preview/Export integration) are done and merged**, including a
+> 10-finding adversarial-review remediation not anticipated when this
+> document was first drafted. §19 is the authoritative record of the final
+> shipped shape; where §6.6/§7.1/§16 below describe
+> `PreviewContributionAdapter.merged(...)` or
+> `ExportContributionAdapter.exportContributions(from:)`, those were replaced
+> during remediation by `PreviewContributionAdapter.compose(...)` (with
+> `PreviewContributionAdmission.swift`/`PreviewContributionComposer.swift`,
+> a `PreviewContributionSession` task-ownership type, and a
+> `PreviewContributionDiagnosticsBadge`) and
+> `ExportContributionAdapter.adapt(_:) -> Adaptation` respectively — see §19
+> for the full reconciliation. **This E14B pass changes nothing about
+> Slices 5–8 (text filters)** — §6.5, §7.2, §9's text-filter rows, §10, and
+> the Slice 5–8 definitions below remain the current, unimplemented, binding
+> scope for the next PR. Slice 3/4's "allowed files" lists below are
+> superseded by what `git show 86a2431 --stat` actually touched; a future
+> reader should not use them to scope new work.
+
 ---
 
 ## 1. Owner summary
@@ -1354,7 +1374,7 @@ never imported, §5).
 
 ## 17. Implementation slices
 
-### Slice 1 — Contribution protocol, registry, and the deterministic test contribution (package-only)
+### Slice 1 — Contribution protocol, registry, and the deterministic test contribution (package-only) — ✅ done (PR #54)
 
 - **Goal:** `Contributions` target holds the renderer-neutral result types,
   `Contributing`, `ContributionRegistry`, and `DeterministicTestContribution`
@@ -1375,7 +1395,7 @@ never imported, §5).
   a real need to change them is a false assumption in this architecture,
   not a judgement call for the slice to make alone.
 
-### Slice 2 — TOC contribution
+### Slice 2 — TOC contribution — ✅ done (PR #54)
 
 - **Goal:** `TOCContribution` scans for `[TOC]` markers and produces the
   Markdown list content described in §6.2, §9 (including the zero-heading
@@ -1391,7 +1411,7 @@ never imported, §5).
   about already-shipped `MarkdownEngine` behaviour), stop rather than
   silently adding TOC-specific workaround logic.
 
-### Slice 3 — Preview adapter
+### Slice 3 — Preview adapter — ✅ done (PR #54; final shape in §19, not as originally specified below)
 
 - **Goal:** `DocumentEditorSplitView` merges contribution results into
   `previewBlocks` via `PreviewContributionAdapter`, using
@@ -1419,7 +1439,7 @@ never imported, §5).
   from `document`/`text` even when `blocks` is non-nil), stop — that is a
   false assumption about existing, unmodified `Preview` module behaviour.
 
-### Slice 4 — Export adapter
+### Slice 4 — Export adapter — ✅ done (PR #54; final shape in §19, not as originally specified below)
 
 - **Goal:** `ExportService.renderMarkdownFragment` exists; `ExportCoordinator
   .performExport` computes contributions via an extra parse and passes them
@@ -1440,7 +1460,7 @@ never imported, §5).
   slice must be strictly additive for every document without a `[TOC]`
   marker.
 
-### Slice 5 — Text-filter command runner (process safety core)
+### Slice 5 — Text-filter command runner (process safety core) — 🔲 not started; first slice of E14B
 
 - **Goal:** `TextFilters` target: `TextFilterCommand`, `TextFilterRunner`
   (with the full §10 safety contract), `TextFilterError`,
@@ -1462,7 +1482,7 @@ never imported, §5).
   concrete failure mode rather than shipping a timeout that does not
   actually bound execution.
 
-### Slice 6 — Text-filter editor integration + Commands menu
+### Slice 6 — Text-filter editor integration + Commands menu — 🔲 not started
 
 - **Goal:** selection-or-document → `TextFilterRunner` → one-mutation
   editor replacement (§7.2, reusing `applyAssistOutcome`'s idiom, §2.1);
@@ -1486,7 +1506,7 @@ never imported, §5).
   public surface beyond what §16 anticipates, stop and report the specific
   gap rather than inventing a second, parallel undo mechanism.
 
-### Slice 7 — Command palette (⌘⇧P)
+### Slice 7 — Command palette (⌘⇧P) — 🔲 not started
 
 - **Goal:** `CommandPaletteView` — type-to-filter list combining discovered
   text filters (Slice 6) and a small, explicit array of app commands
@@ -1504,7 +1524,7 @@ never imported, §5).
   specific SwiftUI context), stop and report rather than widening access
   speculatively.
 
-### Slice 8 — Extension API design document
+### Slice 8 — Extension API design document — 🔲 not started
 
 - **Goal:** `planning/extension-api-design.md` — a design-only document
   (issue #15 deliverable 4) describing a possible post-1.0
