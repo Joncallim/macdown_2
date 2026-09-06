@@ -40,6 +40,8 @@ targets:
       product: OutlineUI
     - package: MacDownKit
       product: ExportService
+    - package: MacDownKit
+      product: Contributions
     settings:
       configs:
         Release:
@@ -177,6 +179,10 @@ targets:
       product: MarkdownEngine
     - package: MacDownKit
       product: ExportService
+    - package: MacDownKit
+      product: Contributions
+    - package: MacDownKit
+      product: Preview
     settings:
       base:
         GENERATE_INFOPLIST_FILE: 'YES'

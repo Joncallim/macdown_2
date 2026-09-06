@@ -52,7 +52,7 @@ E20 proves one diagram renderer and the shared rendering/caching/diagnostic/expo
 | E10 | Editing assists | M2 — Editor | E04 | ✅ done (issue #11 closed completed; dogfood evidence remains part of release confidence) |
 | E11 | Multi-format: JSON, HTML, LaTeX source + language registry | M4 — Workspace & formats | E05, E07 | ✅ done (issue #12; JSON tooling, HTML preview toggle, language registry completion. LaTeX/TeX source recognition from the amended scope was **not** implemented in this merge — tracked as a follow-up) |
 | E12 | Export: HTML/PDF + shared derived-content destination | M4 — Workspace & formats | E06, E11 | implementation present; Release/PDF dogfood evidence in release ledger (`epic-12-implementation.md`) |
-| E13 | Settings | M4 — Workspace & formats | E02 | open |
+| E13 | Settings | M4 — Workspace & formats | E02 | ✅ done (issue #14; PR #52. Legacy-key migration map and full O3 import deferred to #53) |
 | E14 | Renderer-neutral first-party contributions + text filters | M5 — feature completion | E07, E12 export contract | open |
 | E19 | First-class math and scientific notation | M5 — feature completion | E10, E12, E14 | open — issue #44 |
 | E20 | Native diagram platform + Mermaid | M5 — feature completion | E12, E14 | open — issue #45 |

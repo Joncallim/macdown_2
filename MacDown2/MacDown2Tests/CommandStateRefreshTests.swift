@@ -14,7 +14,7 @@ struct CommandStateRefreshTests {
     @Test("focus transitions and Find opening refresh command state")
     func focusTransitionsRefresh() throws {
         let mouseDown = try #require(mouseEvent(type: .leftMouseDown))
-        let appKitEvent = try #require(mouseEvent(type: .appKitDefined))
+        let appKitEvent = try #require(systemDefinedEvent(type: .appKitDefined))
         #expect(DocumentWindow.shouldRefreshCommandState(for: mouseDown))
         #expect(DocumentWindow.shouldRefreshCommandState(for: appKitEvent))
         let find = try #require(keyEvent(characters: "f", modifiers: .command))
@@ -47,6 +47,24 @@ struct CommandStateRefreshTests {
             eventNumber: 0,
             clickCount: 1,
             pressure: 0
+        )
+    }
+
+    /// `NSEvent.mouseEvent(with:...)` asserts its `type` is an actual mouse
+    /// event; `.appKitDefined` is a system-defined type and must go through
+    /// `otherEvent(with:...)` instead (macOS 26's AppKit enforces this
+    /// assertion strictly — a prior macOS silently tolerated the mismatch).
+    private func systemDefinedEvent(type: NSEvent.EventType) -> NSEvent? {
+        NSEvent.otherEvent(
+            with: type,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            subtype: 0,
+            data1: 0,
+            data2: 0
         )
     }
 }

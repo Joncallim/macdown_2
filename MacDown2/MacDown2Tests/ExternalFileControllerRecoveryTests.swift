@@ -126,8 +126,13 @@ struct ExternalFileControllerRecoveryTests {
         let dirtySource = FileDocument(fileURL: sourceURL, recoveryBuffer: buffer).updatingText("draft")
         let store = TabStore(sessionStore: WorkspaceSessionStore(fileURL: directory.appendingPathComponent("session")))
         store.newTab(document: dirtySource)
+        // `ExternalFileController.model` is `weak`; a real window controller
+        // keeps the `WorkspaceModel` alive. Without a local `let` here the
+        // model is deallocated as soon as `init` returns, so every
+        // `isCurrentRecoveryAction` check below silently sees `model == nil`.
+        let model = WorkspaceModel(tabStore: store)
         let controller = ExternalFileController(
-            model: WorkspaceModel(tabStore: store),
+            model: model,
             editorStore: EditorTextSystemStore(),
             identity: "move-retry-test",
             recoveryExecutor: executor

@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "OutlineUI", targets: ["OutlineUI"]),
         .library(name: "JSONSupport", targets: ["JSONSupport"]),
         .library(name: "ExportService", targets: ["ExportService"]),
+        .library(name: "Contributions", targets: ["Contributions"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
@@ -118,6 +119,7 @@ let package = Package(
             ],
             resources: [.process("Resources")]
         ),
+        .target(name: "Contributions", dependencies: ["MarkdownEngine"]),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),
@@ -131,5 +133,6 @@ let package = Package(
         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
         .testTarget(name: "JSONSupportTests", dependencies: ["JSONSupport"]),
         .testTarget(name: "ExportServiceTests", dependencies: ["ExportService"]),
+        .testTarget(name: "ContributionsTests", dependencies: ["Contributions", "MarkdownEngine"]),
     ]
 )
