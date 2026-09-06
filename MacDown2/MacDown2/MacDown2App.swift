@@ -12,6 +12,7 @@ struct MacDown2App: App {
         }
         .commands {
             WorkspaceCommands(themeController: appDelegate.themeController)
+            TextFilterCommands()
         }
         .environment(\.windowCoordinator, appDelegate.coordinator)
         .environment(\.themeController, appDelegate.themeController)
