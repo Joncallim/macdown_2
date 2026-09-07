@@ -230,6 +230,23 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         updateTitleAndEditedState()
     }
 
+    /// Explicit-target variant of `saveDocument()`: if the active document
+    /// already has a valid backing destination, this is identical to
+    /// `saveDocument()`. Otherwise — an untitled document, or one whose
+    /// backing file is no longer available — `WorkspaceModel.save()`
+    /// itself would fall back to its own ambient, `NSApp.keyWindow`-
+    /// relative `saveAs()`, exactly the leak finding #4 fixed for every
+    /// *other* palette command. This checks that ahead of time and routes
+    /// to the explicit-origin destination flow instead
+    /// (third-adversarial-pass finding #5).
+    func saveDocumentFromExplicitOrigin() async {
+        if model.requiresDestinationToSave {
+            await saveDocumentAsFromExplicitOrigin()
+        } else {
+            await saveDocument()
+        }
+    }
+
     func saveDocumentAs() async {
         await externalFileController.drainRecovery()
         await model.saveAs()

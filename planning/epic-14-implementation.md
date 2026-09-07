@@ -2007,3 +2007,97 @@ description for the full manual matrix.
 **PR status:** this PR remains a **Draft**. Nothing in this pass marks it
 ready for review or merges it — that is explicitly deferred to a human
 completing the manual matrix and to another independent review pass.
+
+## 23. Third adversarial remediation (PR #56 merge-gate review)
+
+An independent third adversarial pass — explicitly re-reading the whole
+process/palette implementation from scratch rather than only re-checking
+§22's seven items — reviewed head
+`d40d3ee5b6abdfe03ba52e02712726d737b51e0b` and found **10 further
+findings (3 P0, 4 P2, 3 P3)** in the second pass's own new process
+machinery and in palette edge cases §22 did not cover. All ten are
+disposed below; §21/§22 are left as their own passes' historical record
+and are superseded wherever this section disagrees with them — most
+notably: process-group emptiness is no longer checked via `kill(-pgid,
+0)`, the group leader is deliberately never reaped until this session is
+completely done with it, and every `posix_spawn` setup call is checked.
+
+| # | Sev | Finding | Disposition |
+|---|-----|---------|--------------|
+| 1 | P0 | Forced post-exit containment could create real EOF and turn a deliberately killed partial stdout stream into a successful document replacement | **Fixed by reordering, not by a new state-machine feature.** `TextFilterProcessSession.observeExitAndDrainage()` now commits `.incompleteOutput` *before* it ever contains the group — containing is what closes a still-writing descendant's fd and produces the "real" EOF that used to be able to satisfy `.exited` afterward. `TextFilterTerminalState`'s existing one-shot commit gate (§21/§22 finding #3) is what makes that EOF unable to retroactively change the verdict once fail-closed has already won. Regression evidence: a real-process reproducer (`aStillWritingBackgroundDescendantNeverLaundersItsPartialOutputIntoSuccess`) with a backgrounded writer that emits `PREFIX`, sleeps past the drain threshold, and would emit `SUFFIX` — the only acceptable result is `.outputIncomplete`, never `"PREFIX"`; plus a pure state test (`incompleteOutputThenLateZeroExitPlusEOFsStaysIncompleteOutput`) proving a committed `.incompleteOutput` cannot become `.exited` no matter what facts arrive after. |
+| 2 | P0 | `TextFilterProcessGroup` reaped the group leader before later PGID probes/signals, so a recycled PGID could make MacDown signal an unrelated process group | **Redesigned.** The leader's exit is now observed via `waitid(P_PID, pid, &info, WEXITED \| WNOWAIT)` — reporting the same exit/signal information `wait(2)` would, but leaving the zombie in the process table so the pid/pgid number cannot be reassigned. `reapLeader()` is a new, separate, explicit, idempotent step called exactly once (via `defer` in `TextFilterProcessSession.run()`) only after every group-lifetime operation this invocation will ever perform is complete. Because `kill(-pgid, 0)` cannot distinguish a deliberately-held zombie leader from a real live member (it reports "exists" for either, forever, while the zombie is held), `groupStillExists()` is replaced by `groupHasLiveMembers()`, which enumerates real process-group membership via `sysctl(KERN_PROC_PGRP)` and inspects each member's actual state (`SZOMB` vs. not). Regression evidence: `TextFilterProcessGroupTests` — `leaderExitIsObservedWithoutReapingUntilReapLeaderIsCalled` (deterministic ordering: exit observed → still a held zombie → `reapLeader()` → actually gone), `groupHasLiveMembersIgnoresAHeldZombieLeaderWithNoLiveDescendant`, `groupHasLiveMembersDetectsALiveDescendantAlongsideAHeldZombieLeader` (a live descendant is correctly reported even while the unrelated leader is simultaneously a held zombie — the exact distinction `kill(-pgid, 0)` cannot make), `reapLeaderIsIdempotentAndSafeToCallMoreThanOnce`. |
+| 3 | P0 | The hand-written `posix_spawn` setup ignored every setup/error return code; partial stdio/cwd/containment configuration could fail open | **Fixed.** Every fallible call in `TextFilterProcessGroup.spawn()` — `posix_spawn_file_actions_init`/`_addchdir`/`_adddup2` ×3/`posix_spawnattr_init`/`_setflags`/`_setpgroup`/`_setsigdefault`, both `strdup` allocations, and `posix_spawn` itself — is now checked via a shared `Self.checked(_:step:)` helper, throwing a new `SpawnError.posixError(_:step:)`/`.allocationFailed(step:)` (naming which step failed) before `posix_spawn` ever runs on a partially-configured actions/attributes object. Regression evidence (real, triggerable failures — no syscall-mocking seam was built; see the note below): `TextFilterProcessGroupTests.aNonexistentWorkingDirectoryFailsTheSpawnRatherThanSilentlyLaunching` (a real ENOENT `addchdir` target) and `.aClosedSourceDescriptorFailsTheSpawnRatherThanSilentlyLaunching` (a real EBADF source fd for the stdin `adddup2`) both assert `spawn()` throws rather than silently launching. |
+| 4 | P2 | Concurrent sessions still had an FD-inheritance race because `CLOEXEC` was applied after `Pipe` creation instead of Darwin's atomic `POSIX_SPAWN_CLOEXEC_DEFAULT` policy | **Fixed.** The parent-side `fcntl(FD_CLOEXEC)` loop and the `addclose` actions for every non-stdio descriptor are both removed; `POSIX_SPAWN_CLOEXEC_DEFAULT` is now part of `spawn()`'s attribute flags, closing everything not named by an explicit `adddup2` atomically as part of the spawn itself — there is no longer a window, between one session's pipe creation and its own `fcntl` call, during which a concurrently-spawning session's `fork()` could inherit them. Verified directly against a real process (see this pass's implementation notes) before landing; the pre-existing `concurrentInvocationsOfTheSameScriptDoNotCorruptEachOthersOutput` integration test continues to pass against the new mechanism. |
+| 5 | P2 | Palette `Save` still lost its explicit origin for an untitled/unavailable-backed document, because it fell through to `WorkspaceModel`'s own ambient `saveAs()` | **Fixed.** New `WorkspaceModel.requiresDestinationToSave` (package/Workspace layer, no AppKit) exposes the same test `save()` makes internally before falling back to `saveAs()`. New `WindowController.saveDocumentFromExplicitOrigin()` (AppKit layer) checks it first: an already-backed document takes the plain `saveDocument()` path unchanged; one that would need a destination routes to the existing explicit-origin `saveDocumentAsFromExplicitOrigin()` instead of ever reaching the ambient fallback. `WindowCoordinator.saveDocument(in:)` now calls this for both the real menu and the palette (mirroring `saveDocumentAs(in:)`'s existing precedent). Regression evidence: `RequiresDestinationToSaveTests` (Workspace package) covers the condition itself for all three cases (no document / untitled / unavailable-backed — each `true` — and an ordinary backed document — `false`); the already-backed, two-window, A/B-targeted case is covered end-to-end through the real dispatcher by `PaletteOriginTargetingTests.saveFromAnExplicitOriginSavesOnlyThatOriginsDocument` (App target). The untitled/unavailable-backed cases' actual destination panel cannot be driven headlessly (same constraint as Save As/Open/Open Folder in §22) and remain manual-only — added to the manual matrix. |
+| 6 | P2 | A palette opened with no document origin (`originController == nil`) still exposed New Tab/Open…/Open Folder…, each falling back to `NSApp.keyWindow` — the palette panel itself — deeper in its async chain | **Fixed via the recommended "smallest safe" option: hide, don't rework.** `newTab`/`open`/`openFolder` in `AppPaletteCommand.standard` each gained `isAvailable: { _, controller in controller != nil }`. Regression evidence: `CommandPaletteStaleOriginTests.newTabOpenAndOpenFolderAreUnavailableWithNoDocumentOrigin` / `...AreAvailableWithALiveDocumentOrigin` (App target). |
+| 7 | P2 | "Whole process tree" was a stronger claim than the implementation delivers: a descendant that calls `setsid()`/`setpgid()` can leave the initial process group and escape `killpg` | **Documented as the explicit, accepted boundary (the review's recommended option 1), not implemented further.** `TextFilterProcessSession`'s class doc and this document's own prose no longer say "whole process tree" — containment is scoped to the invocation's *initial process group*; a trusted local script that deliberately re-groups itself is explicitly outside E14's containment contract. Regression evidence: `aDescendantThatDetachesItsOwnSessionSurvivesContainmentByDesign` spawns a real descendant that calls `setsid()` (via system Perl's `POSIX::setsid`, verified to actually leave the group) and asserts it survives full containment — making the documented boundary executable, not only rhetorical, per the finding's own request. |
+| 8 | P3 | Every filter permanently changed the app-wide `SIGPIPE` disposition (`signal(SIGPIPE, SIG_IGN)`, never restored) even though Darwin provides descriptor-scoped `F_SETNOSIGPIPE` | **Fixed.** The process-wide `signal(SIGPIPE, SIG_IGN)` call is removed; `fcntl(stdinPipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)` is applied to just the one descriptor that can legitimately hit `EPIPE` (a command that never reads stdin). The spawned child's own `SIGPIPE` handling is unaffected — still reset to default via `POSIX_SPAWN_SETSIGDEF`/`posix_spawnattr_setsigdefault`, independent of MacDown's own disposition. Regression evidence: `runningATextFilterNeverChangesTheAppsOwnSigpipeDisposition` reads `sigaction(SIGPIPE, ...)` before and after a run (including one large enough to actually hit `EPIPE`) and asserts it is byte-for-byte unchanged. |
+| 9 | P3 | The direct-parent-exits/background-grandchild regression test still recorded `$$` inside a `(...)` subshell, so it verified the already-dead direct child's pid, not the grandchild's | **Fixed**, and §22's claim that process tests no longer use bare `$$` is acknowledged here as having been inaccurate for this one test at the time it was written — this section corrects it rather than silently editing §22's own historical record. `containsABackgroundedGrandchildRatherThanLettingItSurvive`'s fixture now backgrounds `sleep 30` directly in the top-level script (no subshell) and reads its pid back via `$!`, computed dynamically after the fork. The test's own outcome assertion also changed, per finding #1 above: it now expects `.outputIncomplete`, not a successful `"done"`. |
+| 10 | P3 | Issue #15's safety contract and acceptance criteria still said text-filter cancellation must surface a useful error, contradicting the shipped, owner-approved silent-withdrawal behavior (§9's amendment) | **Fixed by amending the issue, not the behavior.** Issue #15 is updated: its safety-contract bullet and acceptance-criteria checklist now list launch failure/non-zero exit/timeout/oversized-or-unusable output as the cases that preserve text *and* show an error, and cancellation (originating window closed, or superseded by a newer run on the same tab) as its own bullet — preserves text, but is a **silent withdrawal**, no alert, per the EPIC-14B §9 amendment. Issue #15 is not closed by this PR regardless; this only makes its own acceptance checklist internally consistent with what actually shipped. |
+
+**A deliberate scope decision, stated plainly:** finding #3's own required
+remediation suggested "a small syscall/spawn-operations seam so tests can
+deterministically inject failures" for every individual `posix_spawn_*`
+call. That was assessed and not built — most of those calls essentially
+never fail outside OOM, a full dependency-injection seam across ten C API
+calls is a substantial and independently-risky change, and two of the
+calls' failure paths (`addchdir`, the stdin `adddup2`) are triggerable
+with a **real**, deterministic condition (a nonexistent directory; a
+closed source descriptor) without mocking anything. Both are covered by
+real regression tests above. The remaining calls are covered by code
+review and the shared `checked(_:step:)` pattern applying uniformly to
+all of them, not by individual fault-injection tests.
+
+**Preserved from §21/§22, not regressed:** every fix from both prior
+passes remains in place; the full existing `TextFiltersTests`,
+`WorkspaceTests`, and App-target suites all still pass against the
+redesigned process layer.
+
+**Tests added this pass:** `TextFilterProcessGroupTests` (6, new file),
+`TextFilterRunnerAdversarialTests` (6 — split out of
+`TextFilterRunnerTests` to stay under the file-length budget; 3 of the 6
+are new this pass: the finding #1 reproducer, the finding #7 `setsid`
+fixture, the finding #8 SIGPIPE-disposition test), 1 new test in
+`TextFilterTerminalStateTests`, `RequiresDestinationToSaveTests` (4, new
+file, Workspace package), 2 new tests in `CommandPaletteStaleOriginTests`
+(App target).
+
+**Commands run and real, current results** (baseline
+`d40d3ee5b6abdfe03ba52e02712726d737b51e0b` → this pass's head — see this
+PR's third-remediation comment for the exact head SHA these were run
+against):
+
+```text
+swiftformat --lint MacDown2         → 0/423 files require formatting (5 skipped)
+swiftlint lint --strict MacDown2    → 0 violations, 0 serious, 423 files
+
+cd MacDown2/Packages/MacDownKit && swift build && swift test --no-parallel
+  → Build complete; 1121 tests in 124 suites passed
+
+xcodegen generate
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' build                          → BUILD SUCCEEDED
+xcodebuild -scheme macdown2 -destination 'platform=macOS' build                          → BUILD SUCCEEDED
+xcodebuild -scheme MacDown2 -configuration Release -destination 'platform=macOS' build   → BUILD SUCCEEDED
+xcodebuild -scheme macdown2 -configuration Release -destination 'platform=macOS' build   → BUILD SUCCEEDED
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' -enableCodeCoverage NO build-for-testing
+  → TEST BUILD SUCCEEDED
+
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' -enableCodeCoverage NO \
+  -parallel-testing-enabled NO -only-testing:MacDown2Tests test-without-building
+  → Test run with 113 tests in 15 suites passed (was 111 before this pass)
+```
+
+Real counts from the runs actually executed against this pass's head, not
+copied forward from §22.
+
+**Not verified in this pass, same as §21/§22:** the manual UI journeys —
+including the destination-panel path for palette Save on an
+untitled/unavailable-backed document (finding #5) — were not driven
+interactively. Recorded here as unverified, not inferred passed. See this
+PR's description for the full, current manual matrix.
+
+**PR status:** this PR remains a **Draft**. This pass's own review
+explicitly called for *another* independent hostile pass afterward, not
+only a re-check of these ten items — that has not happened yet, and
+nothing here claims it has. Zero findings is not being claimed anywhere
+in this record.

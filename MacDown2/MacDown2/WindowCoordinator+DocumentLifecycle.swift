@@ -41,8 +41,17 @@ extension WindowCoordinator {
         saveDocumentAs(in: controller)
     }
 
+    /// Uses `saveDocumentFromExplicitOrigin()`, not the plain
+    /// `saveDocument()`, so a destination panel — needed whenever the
+    /// active document is untitled or its backing file has become
+    /// unavailable — is always bound to `controller`'s own window
+    /// explicitly. Correct for both the real Save menu item (where that
+    /// window already is the key window) and the command palette (where,
+    /// by the time this resolves, it may no longer be —
+    /// third-adversarial-pass finding #5, mirroring `saveDocumentAs(in:)`
+    /// just below).
     func saveDocument(in controller: WindowController) {
-        Task { await controller.saveDocument() }
+        Task { await controller.saveDocumentFromExplicitOrigin() }
     }
 
     /// Uses `saveDocumentAsFromExplicitOrigin()`, not the plain

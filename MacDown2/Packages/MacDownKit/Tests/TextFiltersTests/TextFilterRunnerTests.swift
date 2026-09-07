@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Testing
 @testable import TextFilters
@@ -183,78 +184,13 @@ struct TextFilterRunnerTests {
         #expect(resolvedOutput == resolvedDirectory)
     }
 
-    // MARK: - Adversarial corpus (§15)
-
-    /// Second-adversarial-pass finding #2: the direct-child-only policy
-    /// this test originally codified ("MacDown never waits on a
-    /// backgrounded grandchild") independently caused finding #1's
-    /// fake-EOF bug, because the grandchild kept inheriting the pipe open
-    /// past the direct child's own exit. The bounded-invocation contract
-    /// replaces "never waits on it" with "actively contains it": the
-    /// grandchild is confirmed killed, not merely ignored, and MacDown
-    /// still returns promptly because containment is bounded, not because
-    /// it stopped looking.
-    @Test func containsABackgroundedGrandchildRatherThanLettingItSurvive() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let pidFile = directory.appendingPathComponent("grandchild-pid")
-        let command = try Self.command(
-            """
-            #!/bin/sh
-            (echo $$ > "\(pidFile.path)"; sleep 30) &
-            echo done
-            """,
-            in: directory
-        )
-
-        let start = ContinuousClock.now
-        let output = try await TextFilterRunner().run(command, input: "")
-
-        #expect(output.trimmingCharacters(in: .whitespacesAndNewlines) == "done")
-        // Bounded by containment (drain grace + SIGTERM/SIGKILL grace),
-        // not by waiting out the grandchild's own 30s sleep.
-        #expect(start.duration(to: .now) < .seconds(3))
-
-        var grandchildPID: pid_t?
-        for _ in 0 ..< 100 {
-            if let contents = try? String(contentsOf: pidFile, encoding: .utf8),
-               let value = pid_t(contents.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                grandchildPID = value
-                break
-            }
-            try await Task.sleep(for: .milliseconds(20))
-        }
-        let recordedPID = try #require(grandchildPID, "the grandchild fixture never reported its pid")
-        #expect(kill(recordedPID, 0) != 0, "the backgrounded grandchild must have been contained, not left running")
-    }
-
-    @Test func concurrentInvocationsOfTheSameScriptDoNotCorruptEachOthersOutput() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let command = try Self.command(TextFilterFixtures.uppercase, in: directory)
-
-        async let first = TextFilterRunner().run(command, input: "first")
-        async let second = TextFilterRunner().run(command, input: "second")
-        let (firstResult, secondResult) = try await (first, second)
-
-        #expect(firstResult == "FIRST")
-        #expect(secondResult == "SECOND")
-    }
-
-    @Test func aMixOfExecutableAndNonExecutableEntriesOnlyRunsTheExecutableOne() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        try TextFilterFixtures.makeNonExecutableFile(named: "readme.txt", in: directory)
-        let command = try Self.command(TextFilterFixtures.echoStdin, named: "run.sh", in: directory)
-
-        let discovered = TextFilterCommandDiscovery.discoverCommands(in: directory)
-        #expect(discovered.map(\.id) == ["run.sh"])
-
-        let output = try await TextFilterRunner().run(command, input: "ok")
-        #expect(output == "ok")
-    }
-
     // MARK: - Cannot block the main actor (§8)
+
+    //
+    // The rest of §15's adversarial corpus, and the second/third
+    // adversarial-pass process-lifetime regression tests it grew, live in
+    // `TextFilterRunnerAdversarialTests.swift` (split out to stay under
+    // the project's file-length budget).
 
     @Test @MainActor
     func runningATextFilterDoesNotBlockConcurrentMainActorWork() async throws {

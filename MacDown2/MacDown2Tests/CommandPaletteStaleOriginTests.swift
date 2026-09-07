@@ -154,4 +154,30 @@ struct CommandPaletteStaleOriginTests {
 
         #expect(!command.isAvailable(coordinator, controller))
     }
+
+    // MARK: - No document origin at all (third-adversarial-pass finding #6)
+
+    /// The palette can be opened with `originController == nil` (invoked
+    /// while no document window is key). New Tab/Open…/Open Folder… used
+    /// to have no availability guard of their own in that state, and each
+    /// falls back to resolving its target from `NSApp.keyWindow` deeper in
+    /// its own async chain when given a `nil` explicit target — which, by
+    /// the time that resolves, is the palette panel itself. These must be
+    /// hidden, not merely no-ops, whenever there is no live document
+    /// origin to act on.
+    @Test func newTabOpenAndOpenFolderAreUnavailableWithNoDocumentOrigin() throws {
+        let (coordinator, _) = Self.makeCoordinatorAndController()
+        for id in ["newTab", "open", "openFolder"] {
+            let command = try #require(AppPaletteCommand.standard.first { $0.id == id })
+            #expect(!command.isAvailable(coordinator, nil), "\(id) must be unavailable with no document origin")
+        }
+    }
+
+    @Test func newTabOpenAndOpenFolderAreAvailableWithALiveDocumentOrigin() throws {
+        let (coordinator, controller) = Self.makeCoordinatorAndController()
+        for id in ["newTab", "open", "openFolder"] {
+            let command = try #require(AppPaletteCommand.standard.first { $0.id == id })
+            #expect(command.isAvailable(coordinator, controller), "\(id) must be available with a live document origin")
+        }
+    }
 }

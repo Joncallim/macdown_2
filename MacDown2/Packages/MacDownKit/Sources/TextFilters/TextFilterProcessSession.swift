@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Runs one text-filter process to completion, bounded by
@@ -10,22 +11,36 @@ import Foundation
 /// `TextFilterTerminalState`, which owns its own synchronization. One
 /// instance runs exactly one process; it is not reused.
 ///
-/// ## Process-lifetime architecture (second adversarial pass)
+/// ## Process-lifetime architecture (second and third adversarial passes)
 ///
-/// The invocation is bounded as a **process group**, not just the one
-/// interpreter MacDown directly launches (`TextFilterProcessGroup` spawns
-/// it as the leader of a brand-new group). A successful result requires:
+/// The invocation is bounded as a **process group** — the one interpreter
+/// MacDown directly launches, plus any live descendant still inside that
+/// same group when this session contains it. That is a real, non-trivial
+/// safety property (it defeats a plain backgrounded `&` job or an ordinary
+/// pipeline stage that outlives the shell that started it), but it is
+/// **not** "every descendant process, however deeply nested or regrouped"
+/// — a descendant that calls `setpgid`/`setsid` to leave the group can
+/// escape it. E14's contract is containment of the invocation's initial
+/// process group; a trusted local script deliberately re-grouping itself
+/// is outside that contract (third-adversarial-pass finding #7). A
+/// successful result requires:
 ///
 ///   no forced verdict AND direct child exited AND stdout real EOF AND stderr real EOF
 ///
-/// never weaker than that. If the direct child exits but a descendant
-/// (e.g. a backgrounded `&` job, or an ordinary pipeline stage that
-/// outlived it) is still holding a pipe open, the fix is to **contain the
-/// group** — terminate it so EOF becomes real — never to fabricate EOF
-/// after some fixed timer elapses (finding #1 on the first remediation's
-/// own drain-grace timer). If real EOF still cannot be established even
-/// after the group is confirmed dead, `finalize()` fails closed with
-/// `.outputIncomplete` rather than returning a prefix.
+/// never weaker than that, and — critically — **never satisfied by an EOF
+/// this session itself caused by forcibly killing a still-producing
+/// process**. If the direct child exits but a descendant is still holding
+/// a pipe open, `observeExitAndDrainage()` commits a fail-closed
+/// `.incompleteOutput` verdict *before* containing the group, not after:
+/// killing the group is guaranteed to make any remaining writer's fd
+/// close and its reader observe "real" EOF, and that EOF must never be
+/// able to retroactively turn a deliberately-killed partial stream into a
+/// successful document replacement (third-adversarial-pass finding #1,
+/// on the second remediation's own contain-then-maybe-still-succeed
+/// ordering). Fabricating EOF via a timer, which is what the *first*
+/// remediation did, is a different and already-fixed bug — this is about
+/// a timer-triggered *action* being able to launder its own side effect
+/// into a success fact after the fact.
 ///
 /// `TextFilterTerminalState` commits its verdict exactly once; a watchdog
 /// or cancellation racing in after a normal completion has already
@@ -33,7 +48,11 @@ import Foundation
 /// verdict itself — is responsible for actually containing the process
 /// group and confirming its death before turning a forced verdict into the
 /// corresponding thrown error (finding #2's confirmation-not-discarded
-/// requirement).
+/// requirement). `TextFilterProcessGroup` never reaps its group leader
+/// until this session is completely done needing to address the group by
+/// its pid/pgid number, so that number can never be reused by an
+/// unrelated process while this session might still signal it
+/// (third-adversarial-pass finding #2).
 final class TextFilterProcessSession: @unchecked Sendable {
     /// Caps how much stderr this session retains for an error message —
     /// independent of `maxOutputBytes`, since stderr is only ever used for
@@ -52,11 +71,6 @@ final class TextFilterProcessSession: @unchecked Sendable {
     /// escalating to `SIGKILL`, and how long `SIGKILL` is given to be
     /// reaped, in `containGroup()`.
     private static let terminationGracePeriod = Duration.milliseconds(500)
-
-    /// After a confirmed group kill, how long the readability handlers get
-    /// to observe the resulting real EOF before this session concludes
-    /// drainage genuinely cannot be completed (`.outputIncomplete`).
-    private static let postContainmentDrainWindow = Duration.milliseconds(200)
 
     private let stdinPipe = Pipe()
     private let stdoutPipe = Pipe()
@@ -85,11 +99,12 @@ final class TextFilterProcessSession: @unchecked Sendable {
         context: TextFilterLaunchContext,
         timeout: Duration
     ) async throws -> String {
-        // A script that never reads stdin (or exits before doing so) makes
-        // writing to its pipe raise SIGPIPE, fatal to the whole app by
-        // default. Ignoring it process-wide is the standard, harmless
-        // mitigation for `Pipe` use — idempotent, safe to call on every run.
-        signal(SIGPIPE, SIG_IGN)
+        // Reap the group leader only once this whole invocation is
+        // completely done needing to address it by pid/pgid — on every
+        // exit path, success or throw (third-adversarial-pass finding
+        // #2's identity-safety requirement; see `TextFilterProcessGroup`'s
+        // doc comment).
+        defer { processGroup.reapLeader() }
 
         installReadabilityHandlers()
 
@@ -108,6 +123,17 @@ final class TextFilterProcessSession: @unchecked Sendable {
             teardownHandlers()
             throw TextFilterError.launchFailed(underlying: "\(error)")
         }
+
+        // A script that never reads stdin (or exits before doing so) makes
+        // writing to its pipe raise SIGPIPE. This applies Darwin's
+        // descriptor-scoped `F_SETNOSIGPIPE` to just this pipe's write end
+        // instead of MacDown's earlier `signal(SIGPIPE, SIG_IGN)`, which
+        // mutated the whole app's signal disposition for its entire
+        // remaining lifetime after the first filter ever ran and never
+        // restored it (third-adversarial-pass finding #8). A failed write
+        // still returns `EPIPE` rather than raising a signal either way —
+        // only the blast radius changes.
+        _ = fcntl(stdinPipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
 
         // The child now owns dup'd copies of the ends it needs; MacDown's
         // own copies of the *other* ends must close now, or this process
@@ -140,10 +166,23 @@ final class TextFilterProcessSession: @unchecked Sendable {
 
     /// Watches for the direct child's exit and, if real EOF has not
     /// already arrived on both streams by then, gives it one bounded grace
-    /// period before actively containing the process group to force it
-    /// (finding #1). This is the one place a "timer" appears in the whole
-    /// design, and its job is strictly to trigger a real action (killing
-    /// whatever is left) — never to fabricate a fact.
+    /// period before committing a fail-closed verdict and containing the
+    /// process group to force real EOF. This is the one place a "timer"
+    /// appears in the whole design, and its job is strictly to trigger a
+    /// real action — never to fabricate a fact.
+    ///
+    /// The verdict commits **before** `finalize()`'s containment call
+    /// (via `requireContainment()`), not after (third-adversarial-pass
+    /// finding #1): containing the group is guaranteed to close any
+    /// remaining writer's fd and produce real stdout/stderr EOF, and
+    /// `TextFilterTerminalState`'s one-shot commit gate (finding #3) is
+    /// what actually makes that EOF unable to retroactively satisfy
+    /// `.exited` — but only if something has already claimed the verdict
+    /// before that EOF can arrive. Requesting `.incompleteOutput` here,
+    /// then containing, is that ordering; containing first and requesting
+    /// only if containment failed (the second remediation's shape) leaves
+    /// exactly the window a still-producing killed descendant needs to
+    /// turn its partial output into a false "success".
     private func observeExitAndDrainage() {
         Task {
             let status = await processGroup.waitForExit()
@@ -154,21 +193,12 @@ final class TextFilterProcessSession: @unchecked Sendable {
             guard terminalState.committedVerdict == nil else { return }
 
             // Something is still holding a pipe open past the direct
-            // child's own exit. Force real EOF by containing the whole
-            // group rather than waiting on — or fabricating the end of —
-            // a process this session never gets to observe individually.
-            let confirmed = await containGroup()
-            guard confirmed else {
-                terminalState.requestVerdict(.incompleteOutput)
-                return
-            }
-
-            try? await Task.sleep(for: Self.postContainmentDrainWindow)
-            guard terminalState.committedVerdict == nil else { return }
-            // The group is confirmed dead, which closes every fd it held,
-            // yet the readability handlers still haven't seen EOF. That
-            // should not be reachable in practice; fail closed rather than
-            // ever guessing.
+            // child's own exit. Commit fail-closed now, before this
+            // session ever sends a signal — see the doc comment above for
+            // why the order matters. `finalize()` performs the actual
+            // containment for every non-`.exited` verdict via
+            // `requireContainment()`, so this Task's job ends at the
+            // commit; it does not need to contain the group itself too.
             terminalState.requestVerdict(.incompleteOutput)
         }
     }
@@ -184,7 +214,7 @@ final class TextFilterProcessSession: @unchecked Sendable {
             // that before declaring success: "no filter-owned process
             // left running" applies to normal completion too, not only to
             // forced shutdowns.
-            if processGroup.groupStillExists() {
+            if processGroup.groupHasLiveMembers() {
                 try await requireContainment()
             }
             return try decodeSuccess(status: status)
@@ -249,7 +279,7 @@ final class TextFilterProcessSession: @unchecked Sendable {
     /// calls this decides between the intended error and
     /// `.terminationUnconfirmed` based on what it returns.
     private func containGroup() async -> Bool {
-        guard processGroup.groupStillExists() else { return true }
+        guard processGroup.groupHasLiveMembers() else { return true }
         processGroup.terminateGroup(SIGTERM)
         if await waitForGroupExit(timeout: Self.terminationGracePeriod) {
             return true
@@ -260,7 +290,7 @@ final class TextFilterProcessSession: @unchecked Sendable {
 
     private func waitForGroupExit(timeout: Duration) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: timeout)
-        while processGroup.groupStillExists() {
+        while processGroup.groupHasLiveMembers() {
             if ContinuousClock.now >= deadline {
                 return false
             }

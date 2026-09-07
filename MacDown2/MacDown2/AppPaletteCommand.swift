@@ -51,17 +51,42 @@ extension AppPaletteCommand {
                 coordinator.createInFolder(isDirectory: false, controller: controller)
             }
         ),
-        AppPaletteCommand(id: "newTab", title: "New Tab") { coordinator, controller in
-            coordinator.newDocument(addAsTab: true, relativeTo: controller?.window)
-        },
+        // `isAvailable: controller != nil` on these three (third-adversarial
+        // -pass finding #6): the palette can open with no document window
+        // at all as its origin (e.g. invoked while a non-document window
+        // is key), and every one of these otherwise falls back to
+        // resolving its target from `NSApp.keyWindow` deeper in its own
+        // async chain when given a `nil` explicit target — which, by the
+        // time that `await` resumes, is the palette panel itself. Hiding
+        // the row is the deliberate no-origin policy: never let one of
+        // these silently target the palette/settings panel as a document
+        // window or tab host.
+        AppPaletteCommand(
+            id: "newTab",
+            title: "New Tab",
+            isAvailable: { _, controller in controller != nil },
+            action: { coordinator, controller in
+                coordinator.newDocument(addAsTab: true, relativeTo: controller?.window)
+            }
+        ),
         // `relativeTo`/`in`: explicit target, not `NSApp.keyWindow` (which
         // is the palette itself while these run) — post-review finding #4.
-        AppPaletteCommand(id: "open", title: "Open…") { coordinator, controller in
-            coordinator.openFile(relativeTo: controller)
-        },
-        AppPaletteCommand(id: "openFolder", title: "Open Folder…") { coordinator, controller in
-            coordinator.chooseFolder(relativeTo: controller)
-        },
+        AppPaletteCommand(
+            id: "open",
+            title: "Open…",
+            isAvailable: { _, controller in controller != nil },
+            action: { coordinator, controller in
+                coordinator.openFile(relativeTo: controller)
+            }
+        ),
+        AppPaletteCommand(
+            id: "openFolder",
+            title: "Open Folder…",
+            isAvailable: { _, controller in controller != nil },
+            action: { coordinator, controller in
+                coordinator.chooseFolder(relativeTo: controller)
+            }
+        ),
         AppPaletteCommand(
             id: "save",
             title: "Save",

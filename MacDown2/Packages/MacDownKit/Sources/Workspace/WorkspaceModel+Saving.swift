@@ -8,6 +8,23 @@ extension WorkspaceModel {
         await save(isRetry: false)
     }
 
+    /// `true` if calling `save()` right now would need to prompt for a
+    /// destination (no active document, an untitled one, or one whose
+    /// backing file is no longer available) rather than writing directly
+    /// — the same test `save(isRetry:)` makes internally before falling
+    /// back to `saveAs()`, exposed so a caller with its own explicit
+    /// origin (the command palette) can make that same decision itself
+    /// and route to its own explicit-origin destination flow instead of
+    /// this model's ambient one (third-adversarial-pass finding #5:
+    /// `save()`'s internal fallback used the ambient, `NSApp.keyWindow`-
+    /// relative `saveAs()`, undoing finding #4's explicit-origin fix for
+    /// exactly the untitled/unavailable-backed documents where Save is
+    /// visible in the palette at all).
+    public var requiresDestinationToSave: Bool {
+        guard let document = tabStore.activeDocument else { return false }
+        return document.fileURL == nil || isBackingUnavailable(document)
+    }
+
     /// - Parameter isRetry: `true` for the single automatic retry
     ///   `reconcileSaveConflict` makes after a metadata-only external change.
     ///   Bounds that retry to exactly one attempt so a file whose metadata

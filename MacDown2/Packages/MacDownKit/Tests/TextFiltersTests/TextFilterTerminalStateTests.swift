@@ -127,6 +127,27 @@ struct TextFilterTerminalStateTests {
         #expect(state.committedVerdict == .oversized, "oversize → later exit 0 must remain oversize")
     }
 
+    /// Third-adversarial-pass finding #1: this is the exact ordering the
+    /// fix depends on — `TextFilterProcessSession.observeExitAndDrainage()`
+    /// now requests `.incompleteOutput` *before* it ever contains the
+    /// process group, and containing the group is what can produce real
+    /// (but MacDown-caused) EOF on both streams afterward. This proves
+    /// that once `.incompleteOutput` has committed, no fact recorded
+    /// later — however "real" — can still turn the result into `.exited`.
+    @Test func incompleteOutputThenLateZeroExitPlusEOFsStaysIncompleteOutput() {
+        let state = TextFilterTerminalState()
+        #expect(state.requestVerdict(.incompleteOutput) == true)
+
+        state.recordChildExited(0)
+        state.recordStdoutEOF()
+        state.recordStderrEOF()
+
+        #expect(
+            state.committedVerdict == .incompleteOutput,
+            "incompleteOutput → later exit 0 + real EOFs (caused by this session's own forced kill) must never succeed"
+        )
+    }
+
     @Test func onlyTheFirstOfTwoRacingForcedRequestsCommits() {
         let state = TextFilterTerminalState()
         #expect(state.requestVerdict(.timedOut) == true)
