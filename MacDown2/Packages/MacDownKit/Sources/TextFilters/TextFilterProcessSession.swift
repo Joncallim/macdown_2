@@ -10,9 +10,23 @@ import Foundation
 /// and termination handler Foundation invokes on its own background
 /// queues — so this class is the one place that owns that synchronization.
 /// One instance runs exactly one process; it is not reused.
+///
+/// State machine (post-remediation review finding #2): a direct process
+/// exiting does **not** by itself mean its output has been fully delivered
+/// — Foundation's asynchronous `readabilityHandler` callbacks can still be
+/// queued behind the termination callback, so treating exit as completion
+/// let a zero-exit filter's stdout be silently truncated. Normal completion
+/// now requires the process to have exited **and** both stdout and stderr
+/// to have reached EOF. A forced outcome (timeout/cancellation/oversized
+/// output) is allowed to short-circuit that wait, since its output is
+/// discarded anyway, but once recorded it permanently dominates: a later
+/// zero exit can no longer resurrect an already-oversized run (the other
+/// half of finding #2).
 final class TextFilterProcessSession: @unchecked Sendable {
-    private enum Outcome {
-        case exited(Int32)
+    /// A terminal condition the runner forces rather than one the process
+    /// reached on its own. Once set, this dominates the final result even
+    /// if the process goes on to exit 0 — see the type's doc comment.
+    private enum ForcedOutcome {
         case timedOut
         case cancelled
         case oversized
@@ -23,6 +37,11 @@ final class TextFilterProcessSession: @unchecked Sendable {
     /// a human-readable diagnostic, never placed in the document.
     private static let maxStderrBytes = 64 * 1024
 
+    /// Bounds how long a graceful `SIGTERM` is given to take effect before
+    /// escalating to `SIGKILL`, and how long `SIGKILL` is given to be
+    /// reaped, in `confirmTermination()` (finding #4).
+    private static let terminationGracePeriod = Duration.milliseconds(500)
+
     private let process = Process()
     private let stdinPipe = Pipe()
     private let stdoutPipe = Pipe()
@@ -31,8 +50,12 @@ final class TextFilterProcessSession: @unchecked Sendable {
     private let lock = NSLock()
     private var stdoutBuffer = Data()
     private var stderrBuffer = Data()
-    private var outcome: Outcome?
+    private var stdoutDone = false
+    private var stderrDone = false
+    private var exitStatus: Int32?
+    private var forcedOutcome: ForcedOutcome?
     private var continuation: CheckedContinuation<Void, Never>?
+    private var resumed = false
 
     private let maxOutputBytes: Int
 
@@ -68,7 +91,7 @@ final class TextFilterProcessSession: @unchecked Sendable {
 
         installReadabilityHandlers()
         process.terminationHandler = { [weak self] proc in
-            self?.resolve(.exited(proc.terminationStatus))
+            self?.recordExit(proc.terminationStatus)
         }
 
         do {
@@ -83,83 +106,196 @@ final class TextFilterProcessSession: @unchecked Sendable {
         let watchdog = Task {
             try? await Task.sleep(for: timeout)
             guard !Task.isCancelled else { return }
-            self.resolve(.timedOut)
+            self.forceOutcome(.timedOut)
         }
         defer { watchdog.cancel() }
 
         await withTaskCancellationHandler {
             await waitForOutcome()
         } onCancel: {
-            self.resolve(.cancelled)
+            self.forceOutcome(.cancelled)
         }
 
         teardownHandlers()
-        return try finalize()
+        return try await finalize()
     }
 
     // MARK: - Completion
 
-    /// Mirrors `PDFNavigationDelegate`'s watchdog-vs-continuation race
-    /// (epic-14-implementation.md §8): only the *first* call to `resolve`
-    /// after this wins, exactly like that delegate's `resume` guard.
+    /// Suspends until `readyToResumeLocked()` decides the run is over —
+    /// either a forced outcome was recorded, or the process has exited and
+    /// both pipes have reached EOF.
     private func waitForOutcome() async {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             lock.lock()
-            if outcome != nil {
-                lock.unlock()
-                continuation.resume()
-                return
-            }
             self.continuation = continuation
+            let toResume = readyToResumeLocked()
             lock.unlock()
+            toResume?.resume()
         }
     }
 
-    private func resolve(_ newOutcome: Outcome) {
+    /// Must be called while holding `lock`. Returns the waiter's
+    /// continuation exactly once, the moment the run's terminal state is
+    /// fully known — never before, and never more than once.
+    private func readyToResumeLocked() -> CheckedContinuation<Void, Never>? {
+        guard !resumed, let pending = continuation else { return nil }
+        let ready = forcedOutcome != nil || (exitStatus != nil && stdoutDone && stderrDone)
+        guard ready else { return nil }
+        resumed = true
+        continuation = nil
+        return pending
+    }
+
+    /// Records a forced terminal condition. The *first* one wins — once a
+    /// timeout/cancellation/oversized verdict is recorded, a later exit
+    /// status can no longer overwrite it, closing the race where a
+    /// still-running process happens to exit 0 immediately after being
+    /// asked to stop.
+    private func forceOutcome(_ outcome: ForcedOutcome) {
         lock.lock()
-        guard outcome == nil else {
+        guard forcedOutcome == nil else {
             lock.unlock()
             return
         }
-        outcome = newOutcome
-        let pending = continuation
-        continuation = nil
+        forcedOutcome = outcome
+        let toResume = readyToResumeLocked()
         lock.unlock()
-        pending?.resume()
+        toResume?.resume()
     }
 
-    private func finalize() throws -> String {
+    private func recordExit(_ status: Int32) {
         lock.lock()
-        let resolvedOutcome = outcome
-        let stdout = stdoutBuffer
-        let stderrData = stderrBuffer
+        exitStatus = status
+        let stillDraining = !(stdoutDone && stderrDone)
+        let toResume = readyToResumeLocked()
         lock.unlock()
+        toResume?.resume()
+        if stillDraining {
+            scheduleDrainGracePeriod()
+        }
+    }
 
-        switch resolvedOutcome {
-        case let .exited(status):
-            guard status == 0 else {
-                let stderrText = String(data: stderrData, encoding: .utf8)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                throw TextFilterError.nonZeroExit(code: status, stderr: stderrText)
+    /// Descendant-process-tree policy (post-review finding #4, documented
+    /// rather than left implicit): only the *direct* child's own I/O is
+    /// waited on. A shell idiom like `(sleep 5 &)` backgrounds a grandchild
+    /// that inherits the stdout/stderr pipe's write end; that grandchild
+    /// keeps the read end from ever seeing EOF for as long as it lives,
+    /// which is unrelated to whether the direct child produced its output
+    /// correctly. Requiring true EOF unconditionally (the fix for
+    /// finding #2's truncation race) would otherwise make MacDown wait on —
+    /// or misreport as timed out — a process it never spawned and holds no
+    /// reference to. A bounded grace period after the direct child exits
+    /// accepts whatever has been captured so far if the pipes are still
+    /// open once it elapses, exactly mirroring `confirmTermination()`'s own
+    /// grace-period-then-proceed shape.
+    private func scheduleDrainGracePeriod() {
+        Task {
+            try? await Task.sleep(for: Self.terminationGracePeriod)
+            self.forceDrainCompletion()
+        }
+    }
+
+    private func forceDrainCompletion() {
+        lock.lock()
+        stdoutDone = true
+        stderrDone = true
+        let toResume = readyToResumeLocked()
+        lock.unlock()
+        toResume?.resume()
+    }
+
+    private struct FinalState {
+        let forced: ForcedOutcome?
+        let exit: Int32?
+        let stdout: Data
+        let stderr: Data
+    }
+
+    /// A snapshot of the terminal state, read under `lock`. Factored into a
+    /// synchronous method because `NSLock.lock()`/`unlock()` are unavailable
+    /// from `async` contexts (Swift 6 strict concurrency) — `finalize()`
+    /// itself must be `async` to `await confirmTermination()`.
+    private func snapshotFinalState() -> FinalState {
+        lock.lock()
+        defer { lock.unlock() }
+        return FinalState(forced: forcedOutcome, exit: exitStatus, stdout: stdoutBuffer, stderr: stderrBuffer)
+    }
+
+    private func finalize() async throws -> String {
+        let state = snapshotFinalState()
+
+        if let forced = state.forced {
+            // The process may still be alive (a forced outcome does not
+            // wait for it to exit): confirm it is actually stopped before
+            // reporting completion (finding #4), rather than merely having
+            // sent a signal it might ignore.
+            await confirmTermination()
+            switch forced {
+            case .timedOut:
+                throw TextFilterError.timedOut
+            case .cancelled:
+                throw TextFilterError.cancelled
+            case .oversized:
+                throw TextFilterError.outputTooLarge
             }
-            guard let text = String(data: stdout, encoding: .utf8) else {
-                throw TextFilterError.outputNotDecodable
-            }
-            return text
-        case .timedOut:
-            terminateIfRunning()
-            throw TextFilterError.timedOut
-        case .cancelled:
-            terminateIfRunning()
-            throw TextFilterError.cancelled
-        case .oversized:
-            terminateIfRunning()
-            throw TextFilterError.outputTooLarge
-        case nil:
-            // Unreachable: `waitForOutcome` never returns before `resolve`
-            // has set `outcome`. Fails closed rather than force-unwrapping.
+        }
+
+        guard let exit = state.exit else {
+            // Unreachable: `waitForOutcome` never returns before either a
+            // forced outcome or a real exit status is recorded. Fails
+            // closed rather than force-unwrapping.
             throw TextFilterError.launchFailed(underlying: "the command finished with no recorded outcome")
         }
+        guard exit == 0 else {
+            // Lossy decode: a diagnostic truncated at an arbitrary byte
+            // boundary may end mid-UTF-8-sequence. Preserving the valid
+            // prefix is more useful than discarding the whole message, so
+            // this deliberately does not use the failable
+            // `String(bytes:encoding:)` the lint rule below otherwise
+            // prefers (post-review finding #16).
+            // swiftlint:disable:next optional_data_string_conversion
+            let stderrText = String(decoding: state.stderr, as: UTF8.self)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw TextFilterError.nonZeroExit(code: exit, stderr: stderrText)
+        }
+        guard let text = String(bytes: state.stdout, encoding: .utf8) else {
+            throw TextFilterError.outputNotDecodable
+        }
+        return text
+    }
+
+    // MARK: - Termination (finding #4)
+
+    /// Only the direct child process's lifetime is guaranteed bounded by
+    /// this method. A script that daemonizes a detached grandchild before
+    /// responding to `SIGTERM`/`SIGKILL` can leave that grandchild running
+    /// — this is an explicit, documented limitation (not a silent gap):
+    /// text-filter commands are the user's own trusted local automation
+    /// (epic-14-implementation.md §10), and `doesNotWaitOnAForkedGrandchildProcess`
+    /// in `TextFilterRunnerTests` already codifies "MacDown only waits on
+    /// the direct child" as the chosen policy.
+    private func confirmTermination() async {
+        guard process.isRunning else { return }
+        process.terminate()
+        if await waitUntilNotRunning(timeout: Self.terminationGracePeriod) {
+            return
+        }
+        // The direct child ignored SIGTERM (e.g. `trap '' TERM`). Escalate
+        // rather than reporting a stop that did not actually happen.
+        kill(process.processIdentifier, SIGKILL)
+        _ = await waitUntilNotRunning(timeout: Self.terminationGracePeriod)
+    }
+
+    private func waitUntilNotRunning(timeout: Duration) async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while process.isRunning {
+            if ContinuousClock.now >= deadline {
+                return false
+            }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        return true
     }
 
     // MARK: - I/O
@@ -176,29 +312,50 @@ final class TextFilterProcessSession: @unchecked Sendable {
     private func handleStdout(_ chunk: Data, handle: FileHandle) {
         guard !chunk.isEmpty else {
             handle.readabilityHandler = nil
+            lock.lock()
+            stdoutDone = true
+            let toResume = readyToResumeLocked()
+            lock.unlock()
+            toResume?.resume()
             return
         }
         lock.lock()
-        guard outcome == nil else {
+        // Once a forced outcome has been recorded, further bytes are
+        // discarded rather than grown without bound, and there is no
+        // further need for this handler to keep firing.
+        guard forcedOutcome == nil else {
             lock.unlock()
+            handle.readabilityHandler = nil
             return
         }
         stdoutBuffer.append(chunk)
-        let overflowed = stdoutBuffer.count > maxOutputBytes
-        lock.unlock()
-        if overflowed {
-            resolve(.oversized)
+        if stdoutBuffer.count > maxOutputBytes {
+            // Decided and recorded atomically in the same critical section
+            // as the append that crossed the cap, so a termination handler
+            // racing in on another queue cannot observe a state where the
+            // buffer is over-cap but no outcome has been recorded yet
+            // (the other half of finding #2).
+            forcedOutcome = .oversized
         }
+        let toResume = readyToResumeLocked()
+        lock.unlock()
+        toResume?.resume()
     }
 
     private func handleStderr(_ chunk: Data, handle: FileHandle) {
         guard !chunk.isEmpty else {
             handle.readabilityHandler = nil
+            lock.lock()
+            stderrDone = true
+            let toResume = readyToResumeLocked()
+            lock.unlock()
+            toResume?.resume()
             return
         }
         lock.lock()
-        if stderrBuffer.count < Self.maxStderrBytes {
-            stderrBuffer.append(chunk)
+        let remaining = Self.maxStderrBytes - stderrBuffer.count
+        if remaining > 0 {
+            stderrBuffer.append(chunk.prefix(remaining))
         }
         lock.unlock()
     }
@@ -217,10 +374,5 @@ final class TextFilterProcessSession: @unchecked Sendable {
             }
             try? handle.close()
         }
-    }
-
-    private func terminateIfRunning() {
-        guard process.isRunning else { return }
-        process.terminate()
     }
 }

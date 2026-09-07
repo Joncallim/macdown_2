@@ -35,7 +35,7 @@ struct TextFilterLaunchContextTests {
             "MACDOWN_DOCUMENT_PATH",
             "MACDOWN_SELECTION_LENGTH",
         ])
-        #expect(context.environment["PATH"] == "/usr/bin:/bin:/usr/local/bin")
+        #expect(context.environment["PATH"] == "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin")
         #expect(context.environment["HOME"] == Self.home.path)
         #expect(context.environment["TMPDIR"] == Self.tmp.path)
         #expect(context.environment["MACDOWN_DOCUMENT_PATH"] == documentURL.path)

@@ -1048,6 +1048,27 @@ range-clamping behavior elsewhere, not a new invariant this epic invents.
 
 ## 9. Failure model
 
+> **Amended in the E14B post-review remediation (adversarial-review finding
+> #13):** issue #15's original acceptance criterion and §14's evidence table
+> below both said cancellation must "surface a useful error," in tension
+> with this section's own row (`Caller cancels...`) and the shipped
+> implementation, which are silent by design. This amendment resolves that
+> in favor of silence, for every cancellation source this epic actually
+> has: `TextFilterCoordinator` cancels a running filter only when its
+> originating window closes (`WindowController.windowWillClose`) or a newer
+> filter run supersedes it on the same tab
+> (`WindowController.registerTextFilterTask`) — never from a user-facing
+> "Cancel" affordance. Both are the caller withdrawing the action on the
+> user's behalf, with no live window/selection left to attach an alert to
+> in the first case and a superseding result already in flight in the
+> second, so there is nothing a cancellation alert could usefully tell the
+> user that the (silent) JSON-formatting and export cancellation paths this
+> epic already mirrors (§2.1) don't already treat the same way. If a future
+> epic ever adds an explicit user-facing "Cancel" button for a running
+> filter, that is a *new* cancellation source this amendment does not
+> cover, and its visibility should be decided then rather than assumed
+> silent by this note.
+
 | Failure | Response |
 |---|---|
 | Document has a `[TOC]` marker but zero headings (J3) | TOC still replaces the marker, with an empty Markdown list — never leaves the literal `[TOC]` text on screen once a marker was found |
@@ -1245,7 +1266,7 @@ same reparse cadence Preview already has, at the cost above.
 | Preview's merged blocks correctly substitute the base block at the marker's position, leaving every other block unchanged | Unit test, `PreviewContributionAdapter` given a fixture `[PreviewBlock]` + `[ContributionResult]` |
 | Preview caps merged contribution results at 64 (§11) | Unit test |
 | A local text filter can uppercase a selection end-to-end as one successful editor mutation (deliverable 3 / acceptance criterion, direct) | `TextFiltersTests` covering `TextFilterRunner.run` against a real bundled example script fixture, plus an App-target-level test of the replacement-range/undo-step logic; the actual keystroke-to-replacement UI journey is an XCUITest, subject to the same macOS-runtime caveat below |
-| Launch failure, non-zero exit, timeout, cancellation, oversized output, and non-UTF-8 output each preserve original text and surface a useful error (acceptance criterion, direct) | `TextFiltersTests` — real `Process` launches against small fixture scripts (a non-executable file, `exit 1`, `sleep 60`, a script writing >4 MB, a script writing invalid UTF-8 bytes); these run for real in CI (the `xcodebuild`/`swift test` runner is macOS, so real subprocess launches are not subject to the "unverified in this session" caveat that applies to on-device UI journeys, §14 note below) |
+| Launch failure, non-zero exit, timeout, oversized output, and non-UTF-8 output each preserve original text and surface a useful error; cancellation preserves original text silently, per the §9 amendment below (acceptance criterion, amended) | `TextFiltersTests` — real `Process` launches against small fixture scripts (a non-executable file, `exit 1`, `sleep 60`, a script writing >4 MB, a script writing invalid UTF-8 bytes); these run for real in CI (the `xcodebuild`/`swift test` runner is macOS, so real subprocess launches are not subject to the "unverified in this session" caveat that applies to on-device UI journeys, §14 note below). Cancellation's silence is covered by an App-target test asserting no alert and no mutation |
 | No shell interpolation path exists (acceptance criterion, direct) | Satisfied by construction — `Process.arguments` is always `[]`, no string concatenation feeds a shell anywhere in `TextFilterRunner` (§10) — verified by code review plus a unit test asserting a maliciously-named "selection" containing shell metacharacters (`` ` ``, `$()`, `;`) passed as *stdin content* has no special effect (proves input never reaches argument/shell parsing) |
 | Text-filter execution cannot block the main actor (acceptance criterion, direct) | `TextFilterRunner` carries no `@MainActor` annotation (§8) — verified by code review; a unit test drives a slow (but under-timeout) script from a background `Task` and asserts the calling test's own main-actor work is not blocked while it runs |
 | Command palette invokes both app commands and discovered text filters (acceptance criterion, direct) | App-target unit test on the palette's row-building logic (pure data, testable without presenting UI) + XCUITest for the actual `⌘⇧P` journey (same runtime caveat) |
@@ -1763,6 +1784,145 @@ where those sections were illustrative rather than exact:
 under `xcodebuild`'s default test parallelism for reasons unrelated to
 E14B, see the PR description), SwiftFormat/SwiftLint --strict, and
 app/CLI/Release builds, all green.
+
+## 21. Post-review remediation (PR #56 adversarial review)
+
+An adversarial review of the E14B implementation (head `aacf824`) found 17
+contract defects (2 P0, 5 P1, 6 P2, 4 P3) — the consolidated review comment
+on PR #56 is the authoritative record of each finding's proof and
+recommended fix; this section reconciles this document with what actually
+shipped rather than restating that comment in full.
+
+**P0 — data corruption (both fixed by construction, not by patching the
+symptom):**
+
+- **Stale filter completions could corrupt live text (#1).**
+  `TextFilterCoordinator.run(_:against:)` now captures a
+  `TextFilterBaseline` (tab identity, `FileDocument.mutationGeneration`,
+  `EditorTextSystem.contentRevision`) before launching, and
+  `applyIfStillCurrent` re-resolves the tab/editor and requires an exact
+  baseline match before mutating — discarding a stale completion silently,
+  exactly like `WindowCoordinator.performJSONFormatting`'s existing
+  precedent (§ "Applying a successful result" in
+  `TextFilterCoordinator.swift`). A stale range is no longer clamped into
+  unrelated live text.
+- **Process exit was treated as I/O completion, truncating output (#2).**
+  `TextFilterProcessSession` was rewritten around independent completion
+  signals — process exit, stdout EOF, stderr EOF — plus a dominant forced
+  outcome (timeout/cancelled/oversized). Normal completion now requires
+  exit **and** both streams drained; the stdout-cap decision is made and
+  recorded atomically in the same locked critical section as the append
+  that crossed it, closing the race where a concurrent exit could win
+  first. A bounded drain grace period after exit (documented as the
+  descendant-process-tree policy, see #4 below) prevents this fix from
+  hanging on a backgrounded grandchild that inherited the pipe.
+
+**P1:**
+
+- **Filter output could be reinterpreted by Markdown editing assists (#3).**
+  New `EditorTextSystem.applyExternalReplacement(_:in:undoActionName:)`
+  (`EditorCore`) raises the same `isPerformingEditingAssist` reentrancy
+  guard `applyAssistOutcome`'s `.edit` case already uses, so a filter's
+  literal structural-character output (`*`, `` ` ``, ...) reaches the
+  document verbatim instead of being expanded by
+  `MarkdownEditingAssistEngine`. Both the selection and whole-document
+  paths in `TextFilterCoordinator` now go through this one seam.
+- **Timeout/cancellation did not confirm the process actually stopped (#4).**
+  `TextFilterProcessSession.confirmTermination()` now sends `SIGTERM`,
+  waits a bounded grace period, escalates to `SIGKILL` if still alive, and
+  waits again — never reporting completion before the direct child is
+  confirmed dead. Descendant-process-tree policy is explicit and
+  documented rather than assumed: only the *direct* child's lifetime is
+  bounded; a backgrounded grandchild (`(sleep 5 &)`) is not waited on or
+  killed, matching the pre-existing `doesNotWaitOnAForkedGrandchildProcess`
+  fixture's intent, and is exercised by the same bounded drain grace period
+  that resolves #2.
+- **Filter tasks were unowned; closing the window did not cancel them (#5).**
+  `WindowController+TextFilterTasks.swift` adds a per-tab
+  `TextFilterTaskHandle` registry: starting a filter registers (and, for
+  the same tab, cancels-and-supersedes) a task handle;
+  `windowWillClose` cancels every handle. `TextFilterCoordinator` resolves
+  its target through the registering `WindowController` (never
+  rediscovering it from `NSApp.keyWindow` later), and presents failures
+  sheeted on that same controller's window.
+- **The command-palette panel leaked via a retain cycle (#6).**
+  `CommandPalettePanel` no longer self-retains through a local-variable
+  `onDismiss` closure; `WindowCoordinator.commandPalette` is the single
+  strong owner, released in `commandPaletteDidClose` (itself invoked from
+  the panel's own `NSWindowDelegate.windowWillClose`, reached via a `weak`
+  coordinator reference on the panel — no cycle).
+- **Palette app commands resolved against the palette itself (#7).**
+  `toggleCommandPalette()` captures the origin `WindowController` (whatever
+  is key *before* the palette is created) once, and threads it through
+  `AppPaletteCommand.action`/`isAvailable` and a new
+  `TextFilterCoordinator.editingTarget(for:)` seam, rather than any command
+  resolving `NSApp.keyWindow` at invocation time (when the palette itself
+  is key). New explicit-target coordinator methods
+  (`saveDocument(in:)`, `saveDocumentAs(in:)`, `closeTab(in:)`,
+  `createInFolder(isDirectory:controller:)`,
+  `newDocument(addAsTab:relativeTo:)`) back the palette's Save/Save
+  As/Close Tab/New File/New Tab rows; the real menu commands are
+  unchanged thin wrappers around the same bodies. `Export…` is **not**
+  given an explicit-target seam in this pass — `ExportCoordinator` still
+  resolves `NSApp.keyWindow` internally, carrying the same latent risk;
+  left as a follow-up rather than reworking already-shipped E12 export
+  code here.
+
+**P2:**
+
+- **Palette command semantics/enablement had already drifted (#8).** "New
+  File" now calls the real `createInFolder(isDirectory: false, controller:)`
+  path (mirroring `WorkspaceCommands`) instead of duplicating "New Tab".
+  `CommandPaletteModel` gained an `isAppCommandAvailable` predicate and a
+  `textFiltersAvailable` flag; unavailable rows are omitted rather than
+  shown as silent no-ops.
+- **Palette rediscovery turned a launch failure into a silent no-op (#9).**
+  `CommandPaletteModel` now discovers text filters once per palette opening
+  (`refreshRows()`, called from `onAppear`) and both renders rows from and
+  invokes against that one snapshot — typing no longer rescans disk, and a
+  file that vanishes after discovery still reaches `TextFilterRunner` and
+  produces a visible `.launchFailed`.
+- **The bounded `PATH` omitted Apple-Silicon Homebrew (#10).**
+  `TextFilterLaunchContext`'s fixed `PATH` is now
+  `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin`.
+- **Colliding humanized names were indistinguishable (#11).**
+  `TextFilterCommandDiscovery` disambiguates a collision by appending the
+  real filename to the display name, and sorts with the filename as an
+  explicit deterministic tie-breaker.
+- **App-adapter/undo/lifecycle evidence was missing; app tests were
+  build-only in CI (#12).** `TextFilterCoordinatorTests` was rewritten
+  against a real `WindowController`/`EditorTextSystem` (mutation, undo,
+  editing-assist fidelity, stale-completion rejection, window-close
+  cancellation, supersession); `.github/workflows/ci.yml` now runs
+  `MacDown2Tests` (not just `build-for-testing`), serialized, with
+  `MacDown2UITests` remaining build-only and tracked as manual/unverified.
+- **Cancellation's visibility contradicted the acceptance criterion (#13).**
+  Reconciled by explicit amendment — see §9's amendment block above.
+
+**P3:**
+
+- **The manual matrix contradicted the empty-stdout-on-zero-exit semantics
+  (#14).** The PR description's manual steps are corrected to match the
+  implemented (and tested) "empty stdout deletes the selection" behavior;
+  `zeroExitEmptyStdoutDeletesSelectionAsOneUndoableEdit` is the explicit
+  regression test the finding asked for.
+- **Discovery accepted executable symlinks despite claiming "regular files
+  only" (#15).** `isExecutableRegularFile` now checks
+  `URLResourceValues.isRegularFile`/`isSymbolicLink` directly instead of
+  inferring from `isExecutableFile` (which follows symlinks).
+- **The 64 KiB stderr cap was not actually a hard cap (#16).**
+  `handleStderr` now appends at most the remaining capacity, and the
+  non-zero-exit diagnostic is lossily decoded (`String(decoding:as:)`)
+  rather than discarded outright on a truncated multibyte boundary.
+- **Example installation had a check-then-overwrite race and miscounted
+  chmod failures as success (#17).** `BundledExampleScripts.install` uses
+  `open(O_CREAT | O_EXCL | O_WRONLY)` + `fchmod`, removing the partial file
+  on any failure and counting a script as installed only once it is
+  confirmed written and executable.
+
+**Unchanged:** `TextFilterCommand`, `TextFilterError`, `TextFilterRunner`'s
+public signature, and the Commands-menu/CLI-adjacent discovery contract —
+none of the seventeen findings required a public-API break.
 
 **Not verified in this pass:** the two on-device journeys §14 names
 (palette keystroke path, text-filter replacement keystroke-to-undo-step

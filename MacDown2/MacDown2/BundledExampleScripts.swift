@@ -43,14 +43,37 @@ enum BundledExampleScripts {
             try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         }
 
-        var installedCount = 0
-        for script in all {
-            let url = directory.appendingPathComponent(script.filename)
-            guard !fileManager.fileExists(atPath: url.path) else { continue }
-            guard (try? script.contents.write(to: url, atomically: true, encoding: .utf8)) != nil else { continue }
-            try? fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
-            installedCount += 1
+        return all.reduce(into: 0) { count, script in
+            if createExclusively(script, in: directory) {
+                count += 1
+            }
         }
-        return installedCount
+    }
+
+    /// Creates `script`'s file with exclusive-create semantics (`O_CREAT |
+    /// O_EXCL`) so a file that appears at this path between an earlier
+    /// existence check and the write can never be silently replaced — the
+    /// "never overwrite" invariant this installer promises (post-review
+    /// finding #17). The file counts as installed only once it has been
+    /// written *and* made executable; a write or `chmod` failure removes
+    /// the partial file rather than leaving a non-executable script
+    /// occupying the name, which would make every future install skip it
+    /// while discovery never shows it.
+    private static func createExclusively(_ script: Script, in directory: URL) -> Bool {
+        let path = directory.appendingPathComponent(script.filename).path
+        let descriptor = path.withCString { open($0, O_CREAT | O_EXCL | O_WRONLY, 0o755) }
+        guard descriptor >= 0 else { return false }
+        defer { close(descriptor) }
+
+        let data = Data(script.contents.utf8)
+        let wrote = data.withUnsafeBytes { buffer -> Bool in
+            guard let base = buffer.baseAddress, !buffer.isEmpty else { return true }
+            return write(descriptor, base, buffer.count) == buffer.count
+        }
+        guard wrote, fchmod(descriptor, 0o755) == 0 else {
+            try? FileManager.default.removeItem(atPath: path)
+            return false
+        }
+        return true
     }
 }

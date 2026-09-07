@@ -54,8 +54,16 @@ extension WindowCoordinator {
     }
 
     func createInKeyFolder(isDirectory: Bool) {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
-              let root = controller.fileTreeModel.root else { return }
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        createInFolder(isDirectory: isDirectory, controller: controller)
+    }
+
+    /// Explicit-target variant of `createInKeyFolder(isDirectory:)`, used by
+    /// the command palette so "New File" targets the window the palette was
+    /// opened from (post-review finding #7) instead of resolving
+    /// `NSApp.keyWindow` — the palette itself — at invocation time.
+    func createInFolder(isDirectory: Bool, controller: WindowController) {
+        guard let root = controller.fileTreeModel.root else { return }
         let context = controller.fileTreeModel.beginOperation()
         Task { @MainActor in
             do {

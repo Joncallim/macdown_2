@@ -29,9 +29,14 @@ struct TextFilterLaunchContext: Equatable {
 
         // A fixed, minimal PATH — never the app process's own inherited
         // PATH, which could carry unrelated, unaudited entries into a
-        // script the user did not ask to run with them (§10).
+        // script the user did not ask to run with them (§10). Includes
+        // both Apple-Silicon (`/opt/homebrew`) and Intel (`/usr/local`)
+        // Homebrew prefixes so a `#!/usr/bin/env`-style filter invoking a
+        // normally-installed tool (`node`, `jq`, `pandoc`, ...) resolves on
+        // either architecture — omitting shell-profile/custom PATH entries
+        // remains intentional, not an oversight (post-review finding #10).
         var env: [String: String] = [
-            "PATH": "/usr/bin:/bin:/usr/local/bin",
+            "PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin",
             "HOME": homeDirectoryURL.path,
             "TMPDIR": temporaryDirectoryURL.path,
             "MACDOWN_SELECTION_LENGTH": String(selectionLength),

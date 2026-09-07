@@ -8,6 +8,11 @@ import SwiftUI
 struct CommandPaletteView: View {
     @Bindable var model: CommandPaletteModel
     let coordinator: WindowCoordinator
+    /// The document window the palette was opened from, captured before
+    /// presentation. Commands target this explicitly rather than
+    /// `NSApp.keyWindow`, which is the palette panel itself while this view
+    /// is on screen (post-review finding #7).
+    let originController: WindowController?
     let onDismiss: () -> Void
 
     @FocusState private var searchFieldFocused: Bool
@@ -76,8 +81,18 @@ struct CommandPaletteView: View {
     private func invokeSelectedAndDismiss() {
         model.invokeSelected(
             coordinator: coordinator,
-            appHandler: { command, coordinator in command.action(coordinator) },
-            filterHandler: { command in Task { await coordinator.textFilterCoordinator.run(command) } }
+            originController: originController,
+            appHandler: { command, coordinator, controller in command.action(coordinator, controller) },
+            filterHandler: { command in
+                // Resolved against the captured origin controller, not
+                // `NSApp.keyWindow` — by the time this `Task` runs, the
+                // palette may already be the key window (post-review
+                // finding #7).
+                guard let originController,
+                      let target = coordinator.textFilterCoordinator.editingTarget(for: originController)
+                else { return }
+                Task { await coordinator.textFilterCoordinator.run(command, against: target) }
+            }
         )
         onDismiss()
     }

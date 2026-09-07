@@ -4,12 +4,16 @@ import Foundation
 import TextFilters
 import Workspace
 
-/// Orchestrates running one discovered text-filter command against the key
-/// window's active editor (epic-14-implementation.md §7.2, §17 Slice 6).
+/// Orchestrates running one discovered text-filter command against a
+/// document's active editor (epic-14-implementation.md §7.2, §17 Slice 6).
 ///
 /// A value type with no stored state of its own, mirroring
 /// `ExportCoordinator`'s shape: the window coordinator hands one out per
-/// menu/palette evaluation, and nothing must survive between them.
+/// menu/palette evaluation, and nothing must survive between them. The
+/// running command's own lifetime is owned by the originating
+/// `WindowController` (`registerTextFilterTask`/`clearTextFilterTask`), not
+/// by this struct or by an unstructured `Task` the caller forgets to keep a
+/// handle to (post-review finding #5).
 @MainActor
 struct TextFilterCoordinator {
     private let coordinator: WindowCoordinator
@@ -26,83 +30,108 @@ struct TextFilterCoordinator {
         keyEditingTarget != nil
     }
 
-    /// Runs `command` against the key window's active editor: the current
-    /// selection when non-empty, else the whole document (§7.2, J4/J6).
-    /// Applies the output as exactly one undoable edit on success; shows
-    /// an alert naming the command on failure, except cancellation, which
-    /// is a deliberate withdrawal, not an error (§9).
+    /// Runs `command` against the key window's active editor — the entry
+    /// point used by the Commands menu, where "key window" is exactly the
+    /// window the user is looking at.
     func run(_ command: TextFilterCommand) async {
         guard let target = keyEditingTarget else { return }
+        await run(command, against: target)
+    }
 
+    /// Runs `command` against an explicit `target` rather than resolving
+    /// one from `NSApp.keyWindow`.
+    ///
+    /// This is the seam the command palette uses: the palette itself
+    /// becomes the key window while it is open, so a filter it invokes
+    /// must target the document window the palette was opened *from*,
+    /// captured before presentation — not whatever window happens to be
+    /// key by the time this async command completes (post-review
+    /// finding #7). It also lets tests drive the full mutation/undo/
+    /// staleness path against a real `EditorTextSystem` without depending
+    /// on real window-server key-window state (finding #12).
+    ///
+    /// Applies the output as exactly one undoable edit on success; shows
+    /// an alert naming the command on failure, except cancellation, which
+    /// is a deliberate withdrawal, not an error (§9). A completion that
+    /// arrives after the originating document changed (a live edit,
+    /// external reload, tab close, ...) is discarded without mutating
+    /// anything — mirroring `WindowCoordinator.performJSONFormatting`'s
+    /// same stale-completion policy (post-review finding #1).
+    func run(_ command: TextFilterCommand, against target: TextFilterEditingTarget) async {
         let selection = target.textSystem.textView.selectedRange()
         let liveText = target.textSystem.textView.string as NSString
-        let usesWholeDocument = selection.length == 0
-        let input = usesWholeDocument ? (liveText as String) : liveText.substring(with: selection)
+        let scope: ReplacementScope = selection.length == 0 ? .wholeDocument : .selection(selection)
+        let input = scope.isWholeDocument ? (liveText as String) : liveText.substring(with: selection)
 
-        do {
-            let output = try await TextFilterRunner().run(
-                command, input: input, documentURL: target.documentURL
-            )
-            apply(output, usesWholeDocument: usesWholeDocument, range: selection, to: target, named: command.name)
-        } catch TextFilterError.cancelled {
-            // The user withdrew the action (e.g. closed the window mid-run);
-            // there is nothing to report (§9).
-        } catch {
-            await presentFailure(error, commandName: command.name)
+        let baseline = TextFilterBaseline(
+            tabID: target.tabID,
+            documentGeneration: target.documentGeneration,
+            editorContentRevision: target.textSystem.contentRevision,
+            scope: scope
+        )
+        let controller = target.controller
+        let documentURL = target.documentURL
+
+        let task = Task { @MainActor in
+            do {
+                let output = try await TextFilterRunner().run(command, input: input, documentURL: documentURL)
+                applyIfStillCurrent(output, baseline: baseline, controller: controller, commandName: command.name)
+            } catch TextFilterError.cancelled {
+                // The user withdrew the action (e.g. closed the window mid-run);
+                // there is nothing to report (§9).
+            } catch {
+                await presentFailure(error, commandName: command.name, controller: controller)
+            }
         }
+        let token = controller.registerTextFilterTask(task, forTab: target.tabID)
+        await task.value
+        controller.clearTextFilterTask(forTab: target.tabID, token: token)
     }
 
     // MARK: - Applying a successful result
 
-    private func apply(
+    /// Rejects the result unless `controller`'s tab `baseline.tabID` still
+    /// exists, its document generation and its editor's content revision
+    /// exactly match the command-time baseline. Any mismatch means an
+    /// incompatible change happened while the command ran (or the tab/
+    /// window is gone) — the live text is left untouched rather than
+    /// having a stale range/snapshot spliced or overwritten into it
+    /// (post-review finding #1).
+    private func applyIfStillCurrent(
         _ output: String,
-        usesWholeDocument: Bool,
-        range: NSRange,
-        to target: TextFilterEditingTarget,
-        named commandName: String
+        baseline: TextFilterBaseline,
+        controller: WindowController,
+        commandName: String
     ) {
-        let undoActionName = commandName
-        if usesWholeDocument {
-            target.textSystem.applyDocumentReplacement(output, undoActionName: undoActionName)
+        guard !Task.isCancelled,
+              let tab = controller.model.tabStore.tabs.first(where: { $0.id == baseline.tabID }),
+              let textSystem = controller.editorStore.existingSystem(for: baseline.tabID.uuidString),
+              tab.document.mutationGeneration == baseline.documentGeneration,
+              textSystem.contentRevision == baseline.editorContentRevision
+        else {
             return
         }
 
-        let textView = target.textSystem.textView
-        let liveLength = (textView.string as NSString).length
-        // The document may have changed while the command ran (§8): the
-        // captured range is clamped to the live text rather than rejected,
-        // exactly like `applyDocumentReplacement`'s own selection handling.
-        let clampedRange = Self.clampedRange(range, toLength: liveLength)
-        let location = clampedRange.location
-
-        textView.breakUndoCoalescing()
-        textView.insertText(output, replacementRange: clampedRange)
-        let caret = location + (output as NSString).length
-        textView.setSelectedRange(NSRange(location: caret, length: 0))
-        if target.textSystem.undoManager.canUndo {
-            target.textSystem.undoManager.setActionName(undoActionName)
+        let liveLength = (textSystem.textView.string as NSString).length
+        let targetRange: NSRange = if case let .selection(range) = baseline.scope {
+            range
+        } else {
+            NSRange(location: 0, length: liveLength)
         }
-        textView.breakUndoCoalescing()
-    }
-
-    /// Clamps `range` against the live text length rather than rejecting
-    /// it outright — a stale selection (an incompatible edit happened
-    /// while the command ran) becomes a fresh insertion at the nearest
-    /// valid position instead of a silently dropped result (§8).
-    nonisolated static func clampedRange(_ range: NSRange, toLength liveLength: Int) -> NSRange {
-        let location = min(max(0, range.location), liveLength)
-        let length = min(max(0, range.length), liveLength - location)
-        return NSRange(location: location, length: length)
+        textSystem.applyExternalReplacement(output, in: targetRange, undoActionName: commandName)
     }
 
     // MARK: - Failure presentation
 
-    private func presentFailure(_ error: Error, commandName: String) async {
+    /// Presents the failure sheeted on `controller`'s own window — the
+    /// originating document, never whatever window happens to be key when
+    /// the alert is about to show (post-review finding #5/#7).
+    private func presentFailure(_ error: Error, commandName: String, controller: WindowController) async {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = "\"\(commandName)\" Failed"
         alert.informativeText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        if let window = NSApp.keyWindow {
+        if let window = controller.window {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 alert.beginSheetModal(for: window) { _ in continuation.resume() }
             }
@@ -113,18 +142,70 @@ struct TextFilterCoordinator {
 
     // MARK: - Target resolution
 
-    private struct TextFilterEditingTarget {
+    /// Everything a filter run needs to know about the document it targets,
+    /// captured once at invocation time. Not `private` — the command
+    /// palette builds one via `editingTarget(for:)` from an explicit
+    /// origin controller, and app-target tests build one directly against
+    /// a real `WindowController`/`EditorTextSystem` (finding #12).
+    struct TextFilterEditingTarget {
+        let controller: WindowController
+        let tabID: UUID
         let textSystem: EditorTextSystem
         let documentURL: URL?
+        let documentGeneration: UInt
+    }
+
+    /// Whether a run targets the current selection or the whole document —
+    /// folded together with the selection range itself so the baseline and
+    /// the later replacement carry one value instead of two correlated ones.
+    private enum ReplacementScope {
+        case selection(NSRange)
+        case wholeDocument
+
+        var isWholeDocument: Bool {
+            if case .wholeDocument = self {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private struct TextFilterBaseline {
+        let tabID: UUID
+        let documentGeneration: UInt
+        let editorContentRevision: UInt64
+        let scope: ReplacementScope
     }
 
     private var keyEditingTarget: TextFilterEditingTarget? {
-        guard let controller = coordinator.controllers.first(where: { $0.window == NSApp.keyWindow }),
-              let activeTab = controller.model.tabStore.activeTab,
+        guard let controller = coordinator.controllers.first(where: { $0.window == NSApp.keyWindow }) else {
+            return nil
+        }
+        return Self.editingTarget(for: controller)
+    }
+
+    /// Builds an editing target for `controller`'s active tab, if it has a
+    /// live editor — independent of `NSApp.keyWindow`, so the command
+    /// palette can resolve the window it was opened from rather than
+    /// whatever window is key once its async command completes
+    /// (post-review finding #7).
+    func editingTarget(for controller: WindowController) -> TextFilterEditingTarget? {
+        Self.editingTarget(for: controller)
+    }
+
+    private static func editingTarget(for controller: WindowController) -> TextFilterEditingTarget? {
+        guard let activeTab = controller.model.tabStore.activeTab,
               let textSystem = controller.editorStore.existingSystem(for: activeTab.id.uuidString)
         else {
             return nil
         }
-        return TextFilterEditingTarget(textSystem: textSystem, documentURL: controller.model.activeDocument?.fileURL)
+        return TextFilterEditingTarget(
+            controller: controller,
+            tabID: activeTab.id,
+            textSystem: textSystem,
+            documentURL: activeTab.document.fileURL,
+            documentGeneration: activeTab.document.mutationGeneration
+        )
     }
 }

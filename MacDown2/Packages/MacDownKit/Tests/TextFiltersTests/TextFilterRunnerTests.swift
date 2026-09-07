@@ -163,7 +163,7 @@ struct TextFilterRunnerTests {
         let documentURL = directory.appendingPathComponent("doc.md")
         let output = try await TextFilterRunner().run(command, input: "hi", documentURL: documentURL)
 
-        #expect(output.contains("PATH=/usr/bin:/bin:/usr/local/bin"))
+        #expect(output.contains("PATH=/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin"))
         #expect(output.contains("DOC=\(documentURL.path)"))
         #expect(output.contains("SEL=2"))
         #expect(output.contains("SECRET=\n") || output.hasSuffix("SECRET="))

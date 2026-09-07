@@ -23,7 +23,7 @@ struct CommandPaletteRow: Identifiable, Equatable {
 @Observable
 final class CommandPaletteModel {
     var query = "" {
-        didSet { refreshRows() }
+        didSet { applyFilter() }
     }
 
     private(set) var selectedIndex = 0
@@ -31,30 +31,74 @@ final class CommandPaletteModel {
 
     private let appCommands: [AppPaletteCommand]
     private let discoverTextFilters: () -> [TextFilterCommand]
+    private let isAppCommandAvailable: (AppPaletteCommand) -> Bool
+    private let textFiltersAvailable: Bool
+
+    /// The filter list rows are currently built from. Invocation
+    /// (`invokeSelected`) looks a chosen row up here — the *same* snapshot
+    /// the row was rendered from — rather than rescanning disk, so a file
+    /// that vanishes between discovery and Return still reaches
+    /// `filterHandler` and becomes the ordinary, visible `.launchFailed`
+    /// `TextFilterRunner` already produces for that case, instead of
+    /// silently doing nothing (post-review finding #9).
+    private var discoveredTextFilters: [TextFilterCommand] = []
 
     init(
         appCommands: [AppPaletteCommand] = AppPaletteCommand.standard,
-        discoverTextFilters: @escaping () -> [TextFilterCommand] = { TextFilterCommandDiscovery.discoverCommands() }
+        discoverTextFilters: @escaping () -> [TextFilterCommand] = { TextFilterCommandDiscovery.discoverCommands() },
+        isAppCommandAvailable: @escaping (AppPaletteCommand) -> Bool = { _ in true },
+        textFiltersAvailable: Bool = true
     ) {
         self.appCommands = appCommands
         self.discoverTextFilters = discoverTextFilters
+        self.isAppCommandAvailable = isAppCommandAvailable
+        self.textFiltersAvailable = textFiltersAvailable
         refreshRows()
     }
 
-    /// Re-scans for text filters and re-applies the current query —
-    /// discovered commands can change between two palette openings (§7.2).
+    /// Re-scans for text filters and re-applies the current query. Intended
+    /// to be called once per palette opening (its one call site is
+    /// `CommandPaletteView.onAppear`) — a filesystem change is picked up
+    /// the next time the palette opens, not on every keystroke while it is
+    /// open, which previously synchronously rescanned the Commands
+    /// directory on the main actor for every character typed
+    /// (post-review finding #9).
     func refreshRows() {
-        rows = Self.filteredRows(query: query, appCommands: appCommands, textFilters: discoverTextFilters())
+        discoveredTextFilters = discoverTextFilters()
+        applyFilter()
+    }
+
+    private func applyFilter() {
+        rows = Self.filteredRows(
+            query: query,
+            appCommands: appCommands,
+            isAppCommandAvailable: isAppCommandAvailable,
+            textFilters: discoveredTextFilters,
+            textFiltersAvailable: textFiltersAvailable
+        )
         selectedIndex = rows.isEmpty ? 0 : min(selectedIndex, rows.count - 1)
     }
 
+    /// - Parameters:
+    ///   - isAppCommandAvailable: filters out app commands that would be a
+    ///     silent no-op in the current context — e.g. Save with nothing
+    ///     dirty, Close Tab with no closable tab (post-review finding #8).
+    ///   - textFiltersAvailable: `false` omits every discovered filter row
+    ///     rather than showing commands that would do nothing for lack of
+    ///     an active editor.
     static func filteredRows(
         query: String,
         appCommands: [AppPaletteCommand],
-        textFilters: [TextFilterCommand]
+        isAppCommandAvailable: (AppPaletteCommand) -> Bool = { _ in true },
+        textFilters: [TextFilterCommand],
+        textFiltersAvailable: Bool = true
     ) -> [CommandPaletteRow] {
-        let appRows = appCommands.map { CommandPaletteRow(id: "app.\($0.id)", title: $0.title, kind: .appCommand) }
-        let filterRows = textFilters.map { CommandPaletteRow(id: "filter.\($0.id)", title: $0.name, kind: .textFilter) }
+        let appRows = appCommands
+            .filter(isAppCommandAvailable)
+            .map { CommandPaletteRow(id: "app.\($0.id)", title: $0.title, kind: .appCommand) }
+        let filterRows = textFiltersAvailable
+            ? textFilters.map { CommandPaletteRow(id: "filter.\($0.id)", title: $0.name, kind: .textFilter) }
+            : []
         let all = appRows + filterRows
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return all }
@@ -73,16 +117,17 @@ final class CommandPaletteModel {
     /// `CommandPaletteRow` a plain, `Equatable` value for testing.
     func invokeSelected(
         coordinator: WindowCoordinator,
-        appHandler: (AppPaletteCommand, WindowCoordinator) -> Void,
+        originController: WindowController?,
+        appHandler: (AppPaletteCommand, WindowCoordinator, WindowController?) -> Void,
         filterHandler: (TextFilterCommand) -> Void
     ) {
         guard let row = rows[safe: selectedIndex] else { return }
         switch row.kind {
         case .appCommand:
             guard let command = appCommands.first(where: { row.id == "app.\($0.id)" }) else { return }
-            appHandler(command, coordinator)
+            appHandler(command, coordinator, originController)
         case .textFilter:
-            guard let command = discoverTextFilters().first(where: { row.id == "filter.\($0.id)" }) else { return }
+            guard let command = discoveredTextFilters.first(where: { row.id == "filter.\($0.id)" }) else { return }
             filterHandler(command)
         }
     }

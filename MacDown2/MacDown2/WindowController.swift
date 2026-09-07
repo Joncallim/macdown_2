@@ -26,6 +26,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let externalFileController: ExternalFileController
     weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
+    /// Running text-filter commands, keyed by tab — see
+    /// `WindowController+TextFilterTasks.swift`.
+    var textFilterTaskHandles: [UUID: TextFilterTaskHandle] = [:]
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
     private var lastObservedURL: URL?
@@ -205,6 +208,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         parseStore.evictAll()
         jsonAnalysisStore.evictAll()
         fileTreeModel.dispose()
+        cancelAllTextFilterTasks()
     }
 
     func windowDidBecomeKey(_: Notification) {

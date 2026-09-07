@@ -37,19 +37,31 @@ public enum TextFilterCommandDiscovery {
             return []
         }
 
-        return entries
+        let commands = entries
             .filter(isExecutableRegularFile)
-            .map { url in
+            .map { url -> TextFilterCommand in
                 let id = url.lastPathComponent
                 return TextFilterCommand(id: id, name: humanizedName(for: id), executableURL: url)
             }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        return disambiguated(commands)
+            .sorted {
+                let order = $0.name.localizedStandardCompare($1.name)
+                // `id` (the real filename) is a deterministic tie-breaker:
+                // two commands with the same humanized name would otherwise
+                // have no stable relative order across scans (finding #11).
+                return order == .orderedSame ? $0.id < $1.id : order == .orderedAscending
+            }
     }
 
+    /// Rejects symlinks explicitly rather than relying on `isExecutableFile`
+    /// (which follows them): the discovery contract is "executable regular
+    /// files," and `.isRegularFileKey`/`isExecutableFile` alone silently
+    /// admit an executable symlink, contradicting that contract
+    /// (post-review finding #15).
     private static func isExecutableRegularFile(_ url: URL) -> Bool {
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
-              !isDirectory.boolValue
+        guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
+              values.isRegularFile == true,
+              values.isSymbolicLink != true
         else {
             return false
         }
@@ -64,5 +76,24 @@ public enum TextFilterCommandDiscovery {
         let words = normalized.split(separator: " ").filter { !$0.isEmpty }
         guard !words.isEmpty else { return base }
         return words.map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
+    }
+
+    /// Appends the real filename to the display name of any command whose
+    /// humanized name collides with another's, so two distinct executables
+    /// (`foo.sh` / `foo.py`) never render as visually indistinguishable
+    /// menu/palette rows (post-review finding #11).
+    private static func disambiguated(_ commands: [TextFilterCommand]) -> [TextFilterCommand] {
+        var countsByName: [String: Int] = [:]
+        for command in commands {
+            countsByName[command.name, default: 0] += 1
+        }
+        return commands.map { command in
+            guard countsByName[command.name, default: 0] > 1 else { return command }
+            return TextFilterCommand(
+                id: command.id,
+                name: "\(command.name) (\(command.id))",
+                executableURL: command.executableURL
+            )
+        }
     }
 }
