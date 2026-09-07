@@ -17,9 +17,20 @@ import Workspace
 @MainActor
 struct TextFilterCoordinator {
     private let coordinator: WindowCoordinator
+    /// Presents one failure alert. A real `NSAlert` sheet by default;
+    /// overridable so tests can deterministically assert *whether* a
+    /// failure would have been presented (and to whom) without driving
+    /// real UI (post-review finding #7's own suggestion — "introduce a
+    /// small alert-presenter/test seam rather than making the UI behavior
+    /// untestable").
+    private let alertPresenter: (Error, String, NSWindow) async -> Void
 
-    init(coordinator: WindowCoordinator) {
+    init(
+        coordinator: WindowCoordinator,
+        alertPresenter: @escaping (Error, String, NSWindow) async -> Void = TextFilterCoordinator.presentAlert
+    ) {
         self.coordinator = coordinator
+        self.alertPresenter = alertPresenter
     }
 
     /// `true` when the key window has an active document with a live
@@ -80,7 +91,20 @@ struct TextFilterCoordinator {
                 // The user withdrew the action (e.g. closed the window mid-run);
                 // there is nothing to report (§9).
             } catch {
-                await presentFailure(error, commandName: command.name, controller: controller)
+                // A genuine failure (launch/nonzero-exit/timeout/...) can
+                // race a supersession or window close: the task backing
+                // this run may already be cancelled, or its originating
+                // window may already be gone, by the time the error
+                // reaches here. Either way withdrawal wins — surfacing an
+                // alert for a run the user (or a newer run) already
+                // withdrew would contradict the same "cancellation is
+                // silent" policy this catches TextFilterError.cancelled
+                // for, and falling back to a global `runModal()` alert
+                // when the origin is gone would turn a window-owned
+                // operation into an app-wide interruption
+                // (second-adversarial-pass finding #7).
+                guard !Task.isCancelled, let window = controller.window else { return }
+                await alertPresenter(error, command.name, window)
             }
         }
         let token = controller.registerTextFilterTask(task, forTab: target.tabID)
@@ -123,20 +147,19 @@ struct TextFilterCoordinator {
 
     // MARK: - Failure presentation
 
-    /// Presents the failure sheeted on `controller`'s own window — the
-    /// originating document, never whatever window happens to be key when
-    /// the alert is about to show (post-review finding #5/#7).
-    private func presentFailure(_ error: Error, commandName: String, controller: WindowController) async {
+    /// Presents the failure sheeted on the originating document's own
+    /// window — never whatever window happens to be key when the alert is
+    /// about to show (post-review finding #5/#7) — and never as a global
+    /// `runModal()` fallback: a live `window` is a precondition the one
+    /// caller above already checked, not something this method falls back
+    /// around (finding #7).
+    private static func presentAlert(_ error: Error, commandName: String, on window: NSWindow) async {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = "\"\(commandName)\" Failed"
         alert.informativeText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        if let window = controller.window {
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                alert.beginSheetModal(for: window) { _ in continuation.resume() }
-            }
-        } else {
-            alert.runModal()
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            alert.beginSheetModal(for: window) { _ in continuation.resume() }
         }
     }
 

@@ -50,4 +50,14 @@ extension WindowCoordinator {
         guard commandPalette === panel else { return }
         commandPalette = nil
     }
+
+    /// `true` if `controller` is still a controller this coordinator owns
+    /// — i.e. its window has not been closed. Distinct from merely
+    /// non-`nil`: a closed `WindowController` can still be alive in memory
+    /// (something else may hold a reference to it) without being a live
+    /// destination for any command (post-review finding #5).
+    func isLiveController(_ controller: WindowController?) -> Bool {
+        guard let controller else { return false }
+        return controllers.contains { $0 === controller }
+    }
 }

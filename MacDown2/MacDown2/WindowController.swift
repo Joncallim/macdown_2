@@ -236,4 +236,26 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         externalFileController.synchronize(with: model.activeDocument)
         updateTitleAndEditedState()
     }
+
+    /// Explicit-target variant of `saveDocumentAs()`: presents the
+    /// destination panel itself, bound explicitly to `self.window`, rather
+    /// than going through `WorkspaceModel.saveAs()`'s own ambient,
+    /// `NSApp.keyWindow`-relative panel provider. The real menu/shortcut
+    /// path (`saveDocumentAs()` above) is invoked *from* the key window, so
+    /// that ambient resolution is already correct there; a caller — like
+    /// the command palette — that captured this window as an origin
+    /// earlier cannot assume it is still key by the time this `await`
+    /// resolves (post-review finding #4).
+    func saveDocumentAsFromExplicitOrigin() async {
+        await externalFileController.drainRecovery()
+        guard let document = model.activeDocument else { return }
+        let provider = NSFilePanelProvider(window: window)
+        guard let url = await provider.chooseSaveLocation(
+            defaultName: WorkspaceModel.defaultSaveAsName(for: document),
+            format: document.format
+        ) else { return }
+        await model.saveAs(to: url)
+        externalFileController.synchronize(with: model.activeDocument)
+        updateTitleAndEditedState()
+    }
 }

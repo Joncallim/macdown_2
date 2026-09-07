@@ -19,6 +19,11 @@ import TextFilters
 @MainActor
 final class CommandPalettePanel: NSPanel, NSWindowDelegate {
     private weak var coordinator: WindowCoordinator?
+    /// The window this palette was opened from, so `WindowCoordinator` can
+    /// close this panel the instant that window closes rather than leaving
+    /// it open with a now-stale, no-longer-`controllers`-member origin
+    /// (post-review finding #5) — see `removeController(_:)`.
+    private(set) weak var originController: WindowController?
 
     convenience init(
         coordinator: WindowCoordinator,
@@ -33,6 +38,7 @@ final class CommandPalettePanel: NSPanel, NSWindowDelegate {
             defer: false
         )
         self.coordinator = coordinator
+        self.originController = originController
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         isMovableByWindowBackground = true
@@ -42,13 +48,20 @@ final class CommandPalettePanel: NSPanel, NSWindowDelegate {
         let model = CommandPaletteModel(
             appCommands: appCommands,
             discoverTextFilters: discoverTextFilters,
-            isAppCommandAvailable: { [weak coordinator] command in
+            isAppCommandAvailable: { [weak coordinator, weak originController] command in
                 guard let coordinator else { return false }
                 return command.isAvailable(coordinator, originController)
             },
-            textFiltersAvailable: originController.map {
-                coordinator.textFilterCoordinator.editingTarget(for: $0) != nil
-            } ?? false
+            // A live closure, not a value captured once at panel-open
+            // (post-review finding #5): the origin's editing target can
+            // stop existing while the palette stays open (its window
+            // closing, or the active tab losing its editor), and this must
+            // reflect that on every row rebuild rather than keep showing
+            // filter rows that would silently no-op.
+            textFiltersAvailable: { [weak coordinator, weak originController] in
+                guard let coordinator, let originController else { return false }
+                return coordinator.textFilterCoordinator.editingTarget(for: originController) != nil
+            }
         )
         let view = CommandPaletteView(
             model: model,

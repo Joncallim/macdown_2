@@ -43,7 +43,6 @@ enum TextFilterFixtures {
     static let sleepLong = "#!/bin/sh\nsleep 5\n"
     static let invalidUTF8Output = "#!/bin/sh\nprintf '\\377\\376'\n"
     static let printWorkingDirectory = "#!/bin/sh\npwd\n"
-    static let forksAndExitsImmediately = "#!/bin/sh\n(sleep 5 &)\necho done\n"
 
     static func oversizedOutput(bytes: Int) -> String {
         "#!/bin/sh\nyes A | head -c \(bytes)\n"

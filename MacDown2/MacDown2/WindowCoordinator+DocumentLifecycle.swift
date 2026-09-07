@@ -45,7 +45,13 @@ extension WindowCoordinator {
         Task { await controller.saveDocument() }
     }
 
+    /// Uses `saveDocumentAsFromExplicitOrigin()`, not the plain
+    /// `saveDocumentAs()`, so the destination panel is always bound to
+    /// `controller`'s own window explicitly — correct for both the real
+    /// Save As menu item (where that window already is the key window) and
+    /// the command palette (where, by the time this resolves, it may no
+    /// longer be — post-review finding #4).
     func saveDocumentAs(in controller: WindowController) {
-        Task { await controller.saveDocumentAs() }
+        Task { await controller.saveDocumentAsFromExplicitOrigin() }
     }
 }

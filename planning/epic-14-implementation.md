@@ -1929,3 +1929,81 @@ none of the seventeen findings required a public-API break.
 path) were not driven interactively — recorded here as unverified per
 §14's own note, not inferred passed, pending a human (or an interactive
 session) confirming them in the running app.
+
+## 22. Second adversarial remediation (PR #56 second-pass review)
+
+An independent second adversarial review of §21's remediation (baseline
+head `1f4660946fa97c1b25e1b515478e387f12806abb`) found that pass's own
+fixes for findings #2/#4 (process containment) and #7 (palette targeting)
+were incomplete, plus one required change this review treats as binding
+regardless of finding severity: removing `Export…` from the command
+palette rather than extending an explicit-target fix to it. This section
+is the finding-by-finding record for that second pass; §21 above is left
+as the first pass's historical record and is superseded wherever the two
+disagree.
+
+| # | Severity | Finding | Disposition |
+|---|----------|---------|--------------|
+| Required Change A | — | `Export…` `AppPaletteCommand` still present in `AppPaletteCommand.standard`, carrying `ExportCoordinator`'s `NSApp.keyWindow` risk into the palette | **Removed.** `AppPaletteCommand.standard` no longer has an `export` entry; `ExportCoordinator` and the real app Export menu are untouched; `standardCommandsContainNoExportRow` asserts its absence. |
+| 1 (P0) | Fixed | The first remediation's 500ms drain-grace *timer* could still fabricate an EOF verdict and return truncated stdout as success | **Redesigned.** `TextFilterTerminalState` is a new pure, process/IO-free one-shot verdict state machine: `.exited` commits only when child-exit + real stdout EOF + real stderr EOF have all three actually been recorded — no timer or any other code path can produce it otherwise. 13 deterministic ordering tests in `TextFilterTerminalStateTests` cover every permutation of the three facts, including "exit alone never commits" and "no timer can fabricate EOF." |
+| 2 (P1) | Fixed | Timeout/cancellation bounded only the direct child PID, not its process tree — the root cause enabling #1 | **Redesigned.** New `TextFilterProcessGroup` spawns the command as the atomic leader of its own process group (`posix_spawn` + `POSIX_SPAWN_SETPGROUP`, established before the child's first instruction, closing the race a parent-side `setpgid` would leave open) and confirms group-emptiness via `kill(-pid, 0)`, correctly distinguishing `ESRCH` (truly gone) from `EPERM`/other failures (fail closed — still there). Timeout/cancellation/post-exit cleanup all `SIGTERM` → bounded grace → `SIGKILL` the whole group and require confirmed emptiness before completing; an unconfirmed result throws the new `TextFilterError.terminationUnconfirmed` rather than being silently discarded. A PID-based regression matrix in `TextFilterProcessLifecycleTests` (`timeoutContainsEveryProcessInAForegroundPipeline`, `cancellationContainsEveryProcessInABackgroundedDescendant`, `termIgnoringDescendantIsEscalatedToSigkill`, `ordinaryPipelineLeavesNoSurvivor`, `containsABackgroundedGrandchildRatherThanLettingItSurvive`) replaces the old "grandchild survives" contract with real `sh -c '...'`/`$!`-captured PIDs (not bare `$` inside a subshell, which is fixed at shell-startup and does not report a genuinely new PID) verified gone via `ps`. |
+| 3 (P2) | Fixed | A late watchdog/cancellation could overwrite an already-committed normal verdict — the old `resumed` flag only protected the continuation, not the verdict | **Fixed as part of the same redesign as #1/#2.** `TextFilterTerminalState.requestVerdict(_:)` commits at most once, under lock; `normalCompletionThenLateTimeoutRequestKeepsSuccess`/`...LateCancellationRequestKeepsSuccess`/`timeoutThenLateZeroExitPlusEOFsStaysTimedOut`/`cancellationThenLateZeroExitPlusEOFsStaysCancelled`/`oversizedThenLateZeroExitPlusEOFsStaysOversized`/`onlyTheFirstOfTwoRacingForcedRequestsCommits` are deterministic (no sleep races) ordering tests, not timing-dependent. |
+| 4 (P2) | Fixed | Palette origin targeting still leaked to ambient `NSApp.keyWindow` deeper in async chains: Open…, Open Folder…, New File's post-creation open, Save As's destination panel | **Fixed.** `openFile(relativeTo:)`/`openDocument(at:relativeTo:)`/`chooseFolder(relativeTo:)`/`openFolder(_:in:)` now thread an explicit window/controller through their entire async chain instead of re-resolving `NSApp.keyWindow` after an `await`. Save As is split at the Workspace/AppKit boundary: `WorkspaceModel.saveAs(to: URL)` is a new AppKit-window-agnostic Workspace-layer intent (no `NSApp.keyWindow`, no panel), and a new `WindowController.saveDocumentAsFromExplicitOrigin()` binds the destination panel to `self.window` explicitly before calling it. `PaletteOriginTargetingTests` (new file) is a two-window (A/B) regression suite covering all eight palette-invocable operations (New File, Open…, Open Folder…, Save As, New Tab, Save, Close Tab, Toggle Sidebar) with an explicit A origin while B sits in the coordinator as a candidate wrong-target — see that file's header comment for why it doesn't depend on real `NSApp.keyWindow`/WindowServer focus state to prove the point. |
+| 5 (P2) | Fixed | The palette could retain and invoke against a stale, closed origin controller: no dismissal on origin close, `invokeSelected` didn't revalidate availability, `textFiltersAvailable` was a frozen `Bool`, Toggle Sidebar had no live-origin guard | **Fixed.** `WindowCoordinator.removeController(_:)` — the one function every real close path already funnels through — now also closes the open palette if it is that controller's origin. `CommandPaletteModel.invokeSelected` re-checks `isAppCommandAvailable`/`textFiltersAvailable` immediately before dispatch, not just at the last row rebuild. `textFiltersAvailable` is now a live closure, re-evaluated on every row rebuild, not a value frozen at panel-open time. `toggleSidebar` gained an explicit `isAvailable` requiring a live origin (`WindowCoordinator.isLiveController(_:)`). `CommandPaletteStaleOriginTests` (new file) covers origin-close-while-open (including that it doesn't block the panel's own deallocation), stale-app-command-availability-before-Return, stale-text-filter-availability-before-Return, and the new Toggle Sidebar liveness guard. |
+| 6 (P2) | Fixed | CLI Release build wasn't actually demonstrated in DoD evidence; CI's build step lacked `-configuration Release`; §21 overclaimed "app/CLI/Release all green" | **Fixed.** Both the app and CLI Release builds were actually run this pass (see the commands-run block below and this PR's second-remediation comment for the real, current output) and are now a durable CI gate — `.github/workflows/ci.yml`'s "Build app + CLI (Release)" step runs both `xcodebuild ... -configuration Release build` invocations after the existing Debug step. |
+| 7 (P3) | Fixed | A cancelled/superseded filter task could still surface a stale failure alert; the `runModal()` fallback when the origin window was gone turned a withdrawn operation into a global modal | **Fixed.** `TextFilterCoordinator`'s failure path now checks `!Task.isCancelled` before presenting anything and never falls back to `runModal()` — if the origin window is gone, the withdrawal wins and nothing is presented — through a new injectable `alertPresenter` seam. `genuineFailureOnALiveUncancelledTaskStillPresentsTheAlert` (control case), `aFailureOnATaskCancelledByWindowCloseSurfacesNoAlert`, `aFailureOnATaskCancelledBySupersessionSurfacesNoAlert` cover it. |
+
+**Preserved from the first pass, not regressed:** every fix listed in §21
+remains in place and covered by its original tests, which all still pass;
+none of this pass's changes touch `TextFilterCommand`, `TextFilterError`,
+`TextFilterRunner`'s public signature, or the Commands-menu/CLI-adjacent
+discovery contract.
+
+**Tests added this pass:** `TextFilterTerminalStateTests` (13, new file),
+4 new/replaced tests in `TextFilterProcessLifecycleTests` (net; one old
+contract test removed, five real-PID containment tests added),
+`PaletteOriginTargetingTests` (8, new file), `CommandPaletteStaleOriginTests`
+(5, new file), 3 new tests in `TextFilterCoordinatorTests` (finding #7),
+1 new test in `CommandPaletteModelTests` (Required Change A).
+
+**Commands run and real, current results** (baseline
+`1f4660946fa97c1b25e1b515478e387f12806abb` → this pass's head — see this
+PR's second-remediation comment for the exact head SHA these were run
+against):
+
+```text
+swiftformat --lint MacDown2         → 0/420 files require formatting (5 skipped)
+swiftlint lint --strict MacDown2    → 0 violations, 0 serious, 420 files
+
+cd MacDown2/Packages/MacDownKit && swift build && swift test --no-parallel
+  → Build complete; 1107 tests in 121 suites passed
+
+xcodegen generate
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' build                          → BUILD SUCCEEDED
+xcodebuild -scheme macdown2 -destination 'platform=macOS' build                          → BUILD SUCCEEDED
+xcodebuild -scheme MacDown2 -configuration Release -destination 'platform=macOS' build   → BUILD SUCCEEDED
+xcodebuild -scheme macdown2 -configuration Release -destination 'platform=macOS' build   → BUILD SUCCEEDED
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' -enableCodeCoverage NO build-for-testing
+  → TEST BUILD SUCCEEDED
+
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' -enableCodeCoverage NO \
+  -parallel-testing-enabled NO -only-testing:MacDown2Tests test-without-building
+  → Test run with 111 tests in 15 suites passed (was 94 before this pass)
+```
+
+These are real counts from the runs actually executed this pass, not
+copied forward from §21 (which recorded 1090/94 for the same two suites
+before this pass's tests were added).
+
+**Not verified in this pass, same as §21:** the manual UI journeys —
+including the two new ones this pass's fixes make relevant, "`Export…` is
+absent from the palette while the normal app Export menu still works" and
+the two-window (A/B) origin-targeting check across all eight palette
+commands — were not driven interactively. Recorded here as unverified,
+not inferred passed, per this task's own explicit instruction not to fake
+manual verification in a non-interactive session. See this PR's
+description for the full manual matrix.
+
+**PR status:** this PR remains a **Draft**. Nothing in this pass marks it
+ready for review or merges it — that is explicitly deferred to a human
+completing the manual matrix and to another independent review pass.

@@ -261,4 +261,92 @@ struct TextFilterCoordinatorTests {
         // have landed a second, redundant mutation on top of the winner's.
         #expect(textSystem.text == "ONE TWO")
     }
+
+    // MARK: - No stale alert on a cancelled/superseded task (finding #7)
+
+    private actor AlertSpy {
+        private(set) var invocations: [(message: String, window: NSWindow)] = []
+
+        func record(_: Error, _ commandName: String, _ window: NSWindow) {
+            invocations.append((message: commandName, window: window))
+        }
+
+        var count: Int {
+            invocations.count
+        }
+
+        var isEmpty: Bool {
+            invocations.isEmpty
+        }
+    }
+
+    /// The control case: a genuine failure on a task nobody cancelled must
+    /// still surface the alert, sheeted on the *originating* window.
+    @Test func genuineFailureOnALiveUncancelledTaskStillPresentsTheAlert() async throws {
+        let directory = try Self.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fixture = try Self.makeController(text: "one two")
+        let command = try Self.makeCommand("#!/bin/sh\nexit 7\n", in: directory)
+        let target = try Self.target(controller: fixture.controller, tabID: fixture.tabID)
+        let spy = AlertSpy()
+        let coordinator = TextFilterCoordinator(coordinator: fixture.coordinator) { error, name, window in
+            await spy.record(error, name, window)
+        }
+
+        await coordinator.run(command, against: target)
+
+        #expect(await spy.count == 1)
+        let window = try #require(fixture.controller.window)
+        #expect(await spy.invocations.first?.window === window)
+    }
+
+    /// finding #7: a real, already-determined failure (not a
+    /// `TextFilterError.cancelled` itself) racing a supersession/window
+    /// close must not surface an alert — `Task.isCancelled` is checked
+    /// immediately before presenting, independent of which error the
+    /// underlying runner happened to throw.
+    @Test func aFailureOnATaskCancelledByWindowCloseSurfacesNoAlert() async throws {
+        let directory = try Self.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fixture = try Self.makeController(text: "one two")
+        let command = try Self.makeCommand("#!/bin/sh\nexit 7\n", in: directory)
+        let target = try Self.target(controller: fixture.controller, tabID: fixture.tabID)
+        let spy = AlertSpy()
+        let coordinator = TextFilterCoordinator(coordinator: fixture.coordinator) { error, name, window in
+            await spy.record(error, name, window)
+        }
+
+        let runTask = Task { await coordinator.run(command, against: target) }
+        // Give the run a chance to register itself as the tab's owned
+        // task before simulating the window closing mid-run.
+        try await Task.sleep(for: .milliseconds(50))
+        fixture.controller.cancelAllTextFilterTasks()
+        await runTask.value
+
+        #expect(await spy.isEmpty, "a failure on a window-closed/cancelled task must not surface an alert")
+    }
+
+    /// Same guarantee for the other real cancellation source: a newer run
+    /// superseding an older one on the same tab.
+    @Test func aFailureOnATaskCancelledBySupersessionSurfacesNoAlert() async throws {
+        let directory = try Self.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fixture = try Self.makeController(text: "one two")
+        let failingCommand = try Self.makeCommand("#!/bin/sh\nexit 7\n", in: directory)
+        let supersedingCommand = try Self.makeCommand("#!/bin/sh\ncat\n", in: directory)
+        let target = try Self.target(controller: fixture.controller, tabID: fixture.tabID)
+        let spy = AlertSpy()
+        let coordinator = TextFilterCoordinator(coordinator: fixture.coordinator) { error, name, window in
+            await spy.record(error, name, window)
+        }
+
+        let firstRun = Task { await coordinator.run(failingCommand, against: target) }
+        try await Task.sleep(for: .milliseconds(50))
+        // A second run on the same tab supersedes (cancels) the first via
+        // the normal `registerTextFilterTask` path.
+        await coordinator.run(supersedingCommand, against: target)
+        await firstRun.value
+
+        #expect(await spy.isEmpty, "a failure on a superseded task must not surface an alert")
+    }
 }

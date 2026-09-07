@@ -21,6 +21,19 @@ public enum TextFilterError: Error, LocalizedError, Sendable, Equatable {
     case cancelled
     case outputTooLarge
     case outputNotDecodable
+    /// The process group was terminated to force real EOF (e.g. a
+    /// backgrounded descendant was holding a pipe open) but real EOF still
+    /// could not be observed afterward. Second-adversarial-pass finding
+    /// #1: this exists so an unexplained drain failure fails closed rather
+    /// than ever being able to return a fabricated-EOF prefix as if it
+    /// were complete, successful output.
+    case outputIncomplete
+    /// A forced shutdown (timeout/cancellation/oversized/incomplete
+    /// output) could not be confirmed to have actually stopped every
+    /// process in the filter's process group. Second-adversarial-pass
+    /// finding #2: surfaced explicitly rather than silently claiming
+    /// "stopped" when the confirmation step itself failed.
+    case terminationUnconfirmed
 
     public var errorDescription: String? {
         switch self {
@@ -38,6 +51,10 @@ public enum TextFilterError: Error, LocalizedError, Sendable, Equatable {
             "The command produced more output than MacDown 2 will accept."
         case .outputNotDecodable:
             "The command's output wasn't valid text."
+        case .outputIncomplete:
+            "The command's output could not be fully read."
+        case .terminationUnconfirmed:
+            "The command could not be confirmed stopped."
         }
     }
 }

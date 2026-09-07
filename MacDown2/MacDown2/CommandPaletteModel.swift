@@ -32,7 +32,11 @@ final class CommandPaletteModel {
     private let appCommands: [AppPaletteCommand]
     private let discoverTextFilters: () -> [TextFilterCommand]
     private let isAppCommandAvailable: (AppPaletteCommand) -> Bool
-    private let textFiltersAvailable: Bool
+    /// A live closure, not a snapshot — see `CommandPalettePanel`'s init
+    /// (post-review finding #5): whether text filters are available can
+    /// change while the palette stays open, so this is re-evaluated on
+    /// every row rebuild instead of being fixed at palette-open time.
+    private let textFiltersAvailable: () -> Bool
 
     /// The filter list rows are currently built from. Invocation
     /// (`invokeSelected`) looks a chosen row up here — the *same* snapshot
@@ -47,7 +51,7 @@ final class CommandPaletteModel {
         appCommands: [AppPaletteCommand] = AppPaletteCommand.standard,
         discoverTextFilters: @escaping () -> [TextFilterCommand] = { TextFilterCommandDiscovery.discoverCommands() },
         isAppCommandAvailable: @escaping (AppPaletteCommand) -> Bool = { _ in true },
-        textFiltersAvailable: Bool = true
+        textFiltersAvailable: @escaping () -> Bool = { true }
     ) {
         self.appCommands = appCommands
         self.discoverTextFilters = discoverTextFilters
@@ -74,7 +78,7 @@ final class CommandPaletteModel {
             appCommands: appCommands,
             isAppCommandAvailable: isAppCommandAvailable,
             textFilters: discoveredTextFilters,
-            textFiltersAvailable: textFiltersAvailable
+            textFiltersAvailable: textFiltersAvailable()
         )
         selectedIndex = rows.isEmpty ? 0 : min(selectedIndex, rows.count - 1)
     }
@@ -125,8 +129,15 @@ final class CommandPaletteModel {
         switch row.kind {
         case .appCommand:
             guard let command = appCommands.first(where: { row.id == "app.\($0.id)" }) else { return }
+            // Re-check availability now, not just at the last row rebuild
+            // (post-review finding #5): the row the user is about to
+            // invoke may have gone stale — its origin closed, or whatever
+            // made it available stopped being true — in the interval
+            // between that rebuild and this keystroke.
+            guard isAppCommandAvailable(command) else { return }
             appHandler(command, coordinator, originController)
         case .textFilter:
+            guard textFiltersAvailable() else { return }
             guard let command = discoveredTextFilters.first(where: { row.id == "filter.\($0.id)" }) else { return }
             filterHandler(command)
         }

@@ -179,4 +179,11 @@ struct CommandPaletteModelTests {
 
         #expect(invokedFilterID == command.id)
     }
+
+    // MARK: - Second-adversarial-pass required change A: no palette Export
+
+    @Test func standardCommandsContainNoExportRow() {
+        #expect(AppPaletteCommand.standard.contains { $0.id == "export" } == false)
+        #expect(AppPaletteCommand.standard.contains { $0.title.contains("Export") } == false)
+    }
 }

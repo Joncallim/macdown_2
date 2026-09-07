@@ -100,8 +100,147 @@ struct TextFilterProcessLifecycleTests {
         let recordedPID = try #require(pid, "the fixture process never reported its pid")
         #expect(kill(recordedPID, 0) == 0, "the fixture process must be running before the timeout fires")
 
-        await outcome.value
+        _ = await outcome.value
         #expect(kill(recordedPID, 0) != 0, "the TERM-ignoring process must have been force-killed")
+    }
+
+    // MARK: - Whole-process-group containment (second-adversarial-pass finding #2)
+
+    /// A timeout must bound the whole filter invocation, not merely the
+    /// interpreter MacDown directly launched: an ordinary pipeline's later
+    /// stages are descendants, not the direct child.
+    ///
+    /// Each stage is spawned via `sh -c '...'` rather than a bare `(...)`
+    /// subshell so `$$` reports that stage's own *real* forked pid — POSIX
+    /// `$$` is fixed at shell-startup and is otherwise simply inherited,
+    /// unchanged, across a `(...)` subshell's `fork()`, so a bare `$$`
+    /// inside one silently reports the *top-level* shell's pid instead
+    /// (the mistake an earlier version of this test made, which is why it
+    /// appeared to pass while actually re-checking the already-verified
+    /// direct child instead of a real descendant).
+    @Test func timeoutContainsEveryProcessInAForegroundPipeline() async throws {
+        let directory = try TextFilterFixtures.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pidFile = directory.appendingPathComponent("pids")
+        let command = try Self.command(
+            """
+            #!/bin/sh
+            sh -c 'echo "a=$$" >> "\(pidFile.path)"; exec sleep 30' | sh -c 'echo "b=$$" >> "\(pidFile.path)"; exec cat'
+            """,
+            in: directory
+        )
+        let runner = TextFilterRunner(limits: .init(timeout: .milliseconds(300), maxOutputBytes: 4 << 20))
+
+        await #expect(throws: TextFilterError.timedOut) {
+            _ = try await runner.run(command, input: "")
+        }
+
+        let pids = try await Self.waitForReportedPIDs(at: pidFile, expectedCount: 2)
+        for pid in pids {
+            #expect(kill(pid, 0) != 0, "every process the timed-out pipeline spawned must be contained")
+        }
+    }
+
+    /// Same containment guarantee for explicit `Task` cancellation as for
+    /// timeout — cancellation must not leave descendants running either.
+    /// `$!` (not `$$` inside the backgrounded subshell) captures the
+    /// background job's own real pid — see the doc comment above.
+    @Test func cancellationContainsEveryProcessInABackgroundedDescendant() async throws {
+        let directory = try TextFilterFixtures.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pidFile = directory.appendingPathComponent("pid")
+        let command = try Self.command(
+            """
+            #!/bin/sh
+            sleep 30 &
+            echo $! > "\(pidFile.path)"
+            sleep 30
+            """,
+            in: directory
+        )
+
+        let task = Task {
+            try await TextFilterRunner().run(command, input: "")
+        }
+        let recordedPID = try await Self.waitForReportedPIDs(at: pidFile, expectedCount: 1)[0]
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("expected cancelled")
+        } catch TextFilterError.cancelled {
+            // expected
+        }
+        #expect(kill(recordedPID, 0) != 0, "the backgrounded descendant must be contained on cancellation too")
+    }
+
+    /// Finding #2 explicitly calls out that TERM-ignoring behavior is not
+    /// limited to the direct child — a descendant can ignore it too, and
+    /// containment still has to finish the job with `SIGKILL`.
+    @Test func termIgnoringDescendantIsEscalatedToSigkill() async throws {
+        let directory = try TextFilterFixtures.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pidFile = directory.appendingPathComponent("pid")
+        let command = try Self.command(
+            """
+            #!/bin/sh
+            sh -c 'trap "" TERM; exec sleep 30' &
+            echo $! > "\(pidFile.path)"
+            sleep 30
+            """,
+            in: directory
+        )
+        let runner = TextFilterRunner(limits: .init(timeout: .milliseconds(300), maxOutputBytes: 4 << 20))
+
+        await #expect(throws: TextFilterError.timedOut) {
+            _ = try await runner.run(command, input: "")
+        }
+
+        let recordedPID = try await Self.waitForReportedPIDs(at: pidFile, expectedCount: 1)[0]
+        #expect(kill(recordedPID, 0) != 0, "a TERM-ignoring descendant must still be force-killed")
+    }
+
+    /// The ordinary, non-adversarial case: an ordinary two-stage pipeline
+    /// leaves no survivor once it completes normally — containment's
+    /// bookkeeping does not accidentally create a leak of its own.
+    @Test func ordinaryPipelineLeavesNoSurvivor() async throws {
+        let directory = try TextFilterFixtures.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pidFile = directory.appendingPathComponent("pids")
+        let command = try Self.command(
+            """
+            #!/bin/sh
+            sh -c 'echo "a=$$" >> "\(pidFile.path)"; exec cat' | sh -c 'echo "b=$$" >> "\(pidFile
+                .path)"; exec tr "a-z" "A-Z"'
+            """,
+            in: directory
+        )
+
+        let output = try await TextFilterRunner().run(command, input: "hi")
+        #expect(output == "HI")
+
+        let pids = try await Self.waitForReportedPIDs(at: pidFile, expectedCount: 2)
+        for pid in pids {
+            #expect(kill(pid, 0) != 0, "an ordinary completed pipeline must leave no survivor")
+        }
+    }
+
+    /// Reads however many `label=pid` lines the fixture script has written
+    /// so far, polling until at least `expectedCount` are present.
+    private static func waitForReportedPIDs(at url: URL, expectedCount: Int) async throws -> [pid_t] {
+        for _ in 0 ..< 150 {
+            if let contents = try? String(contentsOf: url, encoding: .utf8) {
+                let pids = contents
+                    .split(separator: "\n")
+                    .compactMap { line in line.split(separator: "=").last.flatMap { pid_t($0) } }
+                if pids.count >= expectedCount {
+                    return pids
+                }
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        Issue.record("fixture never reported \(expectedCount) pid(s) at \(url.path)")
+        return []
     }
 
     // MARK: - Stderr cap (post-review finding #16)

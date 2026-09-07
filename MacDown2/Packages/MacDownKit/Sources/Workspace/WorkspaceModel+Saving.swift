@@ -93,20 +93,45 @@ extension WorkspaceModel {
         await save(isRetry: true)
     }
 
-    /// Saves the active document to a user-chosen location.
+    /// Saves the active document to a user-chosen location, prompted via
+    /// this model's own `panel` — which resolves against `NSApp.keyWindow`
+    /// at presentation time unless the caller bound it to a fixed window.
+    /// That is exactly right for the real Save As menu item/shortcut
+    /// (invoked *from* the key window), but not for a caller — like the
+    /// command palette — that captured a specific origin window earlier
+    /// and cannot guarantee it is still key by the time this `await`
+    /// resolves. Such a caller should use `saveAs(to:)` instead, having
+    /// already presented its own panel explicitly against that window
+    /// (post-review finding #4).
     public func saveAs() async {
         guard let document = tabStore.activeDocument else {
             lastError = .noActiveDocument
             return
         }
-        let defaultName = document.fileURL?.lastPathComponent
-            ?? "Untitled.\(document.format.extensions.first ?? "md")"
         guard let url = await panel.chooseSaveLocation(
-            defaultName: defaultName,
+            defaultName: Self.defaultSaveAsName(for: document),
             format: document.format
-        ), isCurrent(document)
+        )
         else { return }
+        await saveAs(to: url)
+    }
+
+    /// Saves the active document to an already-chosen `url` — the caller
+    /// having already presented (and dismissed) whatever panel it used to
+    /// obtain it, explicitly against whichever window it considers the
+    /// operation's origin. `Workspace` has no AppKit window type to accept
+    /// here; the caller keeps that context and only hands over the result
+    /// (post-review finding #4).
+    public func saveAs(to url: URL) async {
+        guard let document = tabStore.activeDocument, isCurrent(document) else { return }
         await publishSaveAs(document, to: url)
+    }
+
+    /// The filename `saveAs()`'s own panel prompt defaults to — exposed so
+    /// a caller presenting its own panel (via `saveAs(to:)`) can offer the
+    /// same default without duplicating the fallback-extension logic.
+    public static func defaultSaveAsName(for document: FileDocument) -> String {
+        document.fileURL?.lastPathComponent ?? "Untitled.\(document.format.extensions.first ?? "md")"
     }
 
     func saveInternalForClose() async {

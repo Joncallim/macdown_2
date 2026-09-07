@@ -54,8 +54,14 @@ extension AppPaletteCommand {
         AppPaletteCommand(id: "newTab", title: "New Tab") { coordinator, controller in
             coordinator.newDocument(addAsTab: true, relativeTo: controller?.window)
         },
-        AppPaletteCommand(id: "open", title: "Open…") { coordinator, _ in coordinator.openFile() },
-        AppPaletteCommand(id: "openFolder", title: "Open Folder…") { coordinator, _ in coordinator.chooseFolder() },
+        // `relativeTo`/`in`: explicit target, not `NSApp.keyWindow` (which
+        // is the palette itself while these run) — post-review finding #4.
+        AppPaletteCommand(id: "open", title: "Open…") { coordinator, controller in
+            coordinator.openFile(relativeTo: controller)
+        },
+        AppPaletteCommand(id: "openFolder", title: "Open Folder…") { coordinator, controller in
+            coordinator.chooseFolder(relativeTo: controller)
+        },
         AppPaletteCommand(
             id: "save",
             title: "Save",
@@ -83,18 +89,16 @@ extension AppPaletteCommand {
                 coordinator.closeTab(in: controller)
             }
         ),
-        AppPaletteCommand(id: "export", title: "Export…") { coordinator, _ in
-            // Not yet given an explicit-target seam (unlike the commands
-            // above): `ExportCoordinator` resolves its target from
-            // `NSApp.keyWindow` internally, so invoking it from the palette
-            // carries the same class of risk finding #7 identified for
-            // Save/Save As/Close Tab/New Tab. Tracked as a follow-up rather
-            // than reworking already-shipped E12 export code in this pass.
-            Task { await coordinator.exportCoordinator.exportActiveDocument() }
-        },
-        AppPaletteCommand(id: "toggleSidebar", title: "Toggle Sidebar") { _, controller in
-            controller?.model.sidebarVisible.toggle()
-        },
+        AppPaletteCommand(
+            id: "toggleSidebar",
+            title: "Toggle Sidebar",
+            // Unlike the other commands above, toggling the sidebar has no
+            // other precondition of its own to fall back on — without this,
+            // it would stay "available" (and invocable) against an origin
+            // whose window has already closed (post-review finding #5).
+            isAvailable: { coordinator, controller in coordinator.isLiveController(controller) },
+            action: { _, controller in controller?.model.sidebarVisible.toggle() }
+        ),
         AppPaletteCommand(id: "showCommandsFolder", title: "Show Commands Folder") { _, _ in
             let directory = TextFilterCommandDiscovery.commandsDirectory
             _ = TextFilterCommandDiscovery.discoverCommands(in: directory)
