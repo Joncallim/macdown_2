@@ -37,6 +37,17 @@ final class TextFilterTerminalState: @unchecked Sendable {
         case incompleteOutput
     }
 
+    /// Result of atomically admitting one stdout chunk against the terminal
+    /// verdict. The caller performs its bounded-buffer mutation inside the
+    /// supplied closure while this state's lock is held, so exit/EOF facts
+    /// cannot commit `.exited` between "this chunk crosses the cap" and the
+    /// `.oversized` verdict that must dominate it.
+    enum StdoutChunkDisposition: Equatable {
+        case accepted
+        case oversized
+        case discardedAfterVerdict
+    }
+
     private let lock = NSLock()
     private var childExitStatus: Int32?
     private var stdoutEOF = false
@@ -82,6 +93,37 @@ final class TextFilterTerminalState: @unchecked Sendable {
 
     func recordStderrEOF() {
         applyFactAndResume { self.stderrEOF = true }
+    }
+
+    /// Runs one stdout-buffer admission decision while the same lock that
+    /// protects terminal completion is held. `mutateBuffer` returns `true`
+    /// when admitting the chunk would exceed the output cap; in that case
+    /// `.oversized` commits before this lock is released. If it returns
+    /// `false`, it must have appended the accepted chunk before returning.
+    ///
+    /// This couples only the *ordering* of the buffer mutation to terminal
+    /// state; the buffer itself remains owned by `TextFilterProcessSession`.
+    /// The closure must not call back into this object.
+    func processStdoutChunk(_ mutateBuffer: () -> Bool) -> StdoutChunkDisposition {
+        lock.lock()
+        guard verdict == nil else {
+            lock.unlock()
+            return .discardedAfterVerdict
+        }
+
+        let oversized = mutateBuffer()
+        guard oversized else {
+            lock.unlock()
+            return .accepted
+        }
+
+        let resolved = Verdict.oversized
+        verdict = resolved
+        let pending = continuation
+        continuation = nil
+        lock.unlock()
+        pending?.resume(returning: resolved)
+        return .oversized
     }
 
     /// Requests an externally-forced verdict (timeout/cancellation/
