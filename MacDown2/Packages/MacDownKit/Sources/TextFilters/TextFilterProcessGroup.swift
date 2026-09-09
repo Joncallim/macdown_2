@@ -2,51 +2,40 @@ import Darwin
 import Dispatch
 import Foundation
 
-/// Low-level process-group spawn/termination/existence mechanics, isolated
-/// from `TextFilterProcessSession`'s I/O and verdict orchestration so each
-/// can be reasoned about independently (second-adversarial-pass finding
-/// #2, redesigned again for third-adversarial-pass findings #2/#3/#4/#8).
+/// Low-level process-group spawn/termination/exit mechanics, isolated from
+/// `TextFilterProcessSession`'s I/O and verdict orchestration so each can be
+/// reasoned about independently (second through fourth adversarial passes).
 ///
 /// `Foundation.Process` has no API to place a child into its own process
 /// group **before** it execs. That containment has to be established
 /// atomically as part of the spawn itself — a parent-side `setpgid` call
 /// issued after `Process.run()` returns is already too late if the child
-/// forks a grandchild in the window before the parent gets scheduled again,
-/// and Foundation exposes no hook to run one in between. So this spawns via
-/// `posix_spawn` directly with `POSIX_SPAWN_SETPGROUP`/`posix_spawnattr_setpgroup(_:0)`,
-/// which the kernel applies before the child's first instruction executes.
+/// forks a grandchild in the window before the parent gets scheduled again.
+/// This therefore spawns via `posix_spawn` with
+/// `POSIX_SPAWN_SETPGROUP`/`posix_spawnattr_setpgroup(_:0)`.
 ///
-/// Once spawned this way, the child's own pid **is** its process group id
-/// (POSIX: `pgroup == 0` with `POSIX_SPAWN_SETPGROUP` means "become the
-/// leader of a new group named after yourself"), so every method here
-/// after `spawn()` addresses the whole group via `-pid`, not just the one
-/// process MacDown directly launched.
+/// Once spawned this way, the child's pid is also its process-group id, so
+/// every group-lifetime operation addresses the whole initial invocation
+/// group by that pinned identity.
 ///
-/// ## PID/PGID identity safety (third-adversarial-pass finding #2)
+/// ## PID/PGID identity and exit-observation safety
 ///
-/// The direct child (the group leader)'s exit is observed via
-/// `waitid(..., WNOWAIT)`, **not** `waitpid`: the leader is deliberately
-/// left as an un-reaped zombie for as long as this session might still
-/// need to address the group by its pid/pgid number. A reaped pid is
-/// eligible for immediate reuse by the kernel; if this type reaped the
-/// leader and then later called `killpg(oldPID, ...)` after that number
-/// had been reassigned to an unrelated process group, it would signal the
-/// wrong processes. Holding the zombie pins the identity. `reapLeader()`
-/// must be called exactly once, only after every group-lifetime operation
-/// (containment, membership checks) this invocation will ever perform is
-/// complete.
+/// The group leader's exit is observed with `waitid(..., WNOWAIT)`, not
+/// `waitpid`, so the zombie deliberately remains in the process table while
+/// this session might still signal or inspect its group. A reaped pid is
+/// eligible for reuse; holding the zombie prevents this invocation from ever
+/// signalling an unrelated, later process group with the same numeric id.
 ///
-/// One consequence: `kill(-pgid, 0)`, the obvious "does this group still
-/// have anyone in it" check, is unusable once the zombie leader is held —
-/// it reports the group as existing purely because of that zombie,
-/// indefinitely. `groupHasLiveMembers()` instead enumerates real group
-/// membership via `sysctl(KERN_PROC_PGRP)` and looks at each member's
-/// actual process state.
+/// Fourth-pass hardening adds the inverse ordering requirement: before
+/// `reapLeader()` releases that pinned identity, it performs its own
+/// non-blocking `waitid(..., WNOWAIT | WNOHANG)` observation and records the
+/// exit status. This guarantees any `waitForExit()` continuation is resumed
+/// even when process-table containment confirmation beats the asynchronous
+/// DispatchSource exit callback. Reaping can no longer strand that observer
+/// forever with a later `ECHILD`.
 final class TextFilterProcessGroup: @unchecked Sendable {
     enum SpawnError: Error, CustomStringConvertible {
-        /// A POSIX setup/spawn call returned a non-zero error code
-        /// (third-adversarial-pass finding #3: every fallible call in
-        /// `spawn()` is checked, none are best-effort).
+        /// A POSIX setup/spawn call returned an error.
         case posixError(Int32, step: String)
         /// A `strdup` allocation for `argv`/the environment failed.
         case allocationFailed(step: String)
@@ -62,8 +51,8 @@ final class TextFilterProcessGroup: @unchecked Sendable {
     }
 
     /// Bundles the three standard-stream pipes so `spawn(executableURL:
-    /// workingDirectoryURL:environment:pipes:)` stays within the
-    /// project's function-parameter-count budget.
+    /// workingDirectoryURL:environment:pipes:)` stays within the project's
+    /// function-parameter-count budget.
     struct StandardStreamPipes {
         let stdin: Pipe
         let stdout: Pipe
@@ -76,22 +65,24 @@ final class TextFilterProcessGroup: @unchecked Sendable {
     private var exitStatus: Int32?
     private var exitContinuation: CheckedContinuation<Int32, Never>?
     private var leaderReaped = false
+    private let installsExitSource: Bool
+
+    /// `installsExitSource` is a deterministic test seam for the fourth-pass
+    /// reap/observation race. Production always uses the default `true`.
+    init(installsExitSource: Bool = true) {
+        self.installsExitSource = installsExitSource
+    }
 
     /// Spawns `executableURL` as the leader of a brand-new process group,
-    /// with the three pipes wired to its standard streams. The pipes'
-    /// "other" ends (the ones MacDown itself will read/write) are left
-    /// untouched here — the caller closes its own now-unneeded copies of
-    /// the child's ends after this returns.
+    /// with the three pipes wired to its standard streams. The pipes' "other"
+    /// ends (the ones MacDown itself will read/write) are left untouched here;
+    /// the caller closes its now-unneeded copies after this returns.
     ///
-    /// Every fallible setup call is checked (finding #3): a failure at any
-    /// step throws before `posix_spawn` itself runs, rather than
-    /// continuing with a partially-configured file-actions/attributes
-    /// object. A silently-dropped `adddup2` for stdout, for instance,
-    /// could let a command run with the app's own inherited stdout instead
-    /// of MacDown's capture pipe — which would then read empty and,
-    /// per this feature's own zero-exit/empty-stdout-is-success contract,
-    /// turn a launch-configuration failure into "successful" deletion of
-    /// the user's text.
+    /// Every fallible setup call is checked. A failure at any step throws
+    /// before launch rather than continuing with partially configured file
+    /// actions/attributes — a dropped stdout `dup2`, for example, could
+    /// otherwise turn a launch-configuration defect into a successful empty
+    /// replacement of the user's text.
     func spawn(
         executableURL: URL,
         workingDirectoryURL: URL,
@@ -113,17 +104,9 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         try Self.checked(posix_spawn_file_actions_adddup2(&fileActions, stdinRead, 0), step: "adddup2(stdin)")
         try Self.checked(posix_spawn_file_actions_adddup2(&fileActions, stdoutWrite, 1), step: "adddup2(stdout)")
         try Self.checked(posix_spawn_file_actions_adddup2(&fileActions, stderrWrite, 2), step: "adddup2(stderr)")
-        // No explicit `addclose` for every other descriptor, and no
-        // parent-side `fcntl(FD_CLOEXEC)` loop, either: `POSIX_SPAWN_
-        // CLOEXEC_DEFAULT` below closes everything not named by a dup2
-        // action above, atomically, as part of the spawn itself
-        // (third-adversarial-pass finding #4). A `fcntl` loop run after
-        // `Pipe` has already created its descriptors leaves a real window,
-        // between one session's pipe creation and its own `fcntl` call,
-        // during which a *concurrently spawning* session's `fork()` can
-        // still inherit them; this policy has no such window because
-        // nothing is CLOEXEC-eligible until the kernel says so as part of
-        // the same spawn.
+        // `POSIX_SPAWN_CLOEXEC_DEFAULT` closes every non-stdio descriptor in
+        // the child atomically as part of spawn, avoiding the cross-session
+        // inheritance window a parent-side FD_CLOEXEC loop would create.
 
         var attr: posix_spawnattr_t?
         try Self.checked(posix_spawnattr_init(&attr), step: "attr_init")
@@ -131,21 +114,16 @@ final class TextFilterProcessGroup: @unchecked Sendable {
 
         let flags = POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_CLOEXEC_DEFAULT
         try Self.checked(posix_spawnattr_setflags(&attr, Int16(flags)), step: "setflags")
-        // `0` is POSIX shorthand for "make the new process its own group
-        // leader" — the group id becomes whatever pid the kernel assigns.
+        // `0` means the child becomes leader of a new group named after its
+        // kernel-assigned pid.
         try Self.checked(posix_spawnattr_setpgroup(&attr, 0), step: "setpgroup")
-        // `TextFilterProcessSession` no longer mutates the app-wide SIGPIPE
-        // disposition (third-adversarial-pass finding #8); this attribute
-        // alone is what keeps the spawned tree's own SIGPIPE handling at
-        // its normal default regardless of MacDown's own process state —
-        // matching what `Foundation.Process` already does internally, and
-        // restoring normal pipeline semantics (e.g. `tr` in
-        // `yes | tr -d '\n' | head -c N` terminating on a closed
-        // downstream reader) even though nothing in MacDown's own process
-        // ignores SIGPIPE anymore.
+
+        // MacDown no longer mutates its own SIGPIPE disposition. Reset only
+        // the spawned invocation to the normal default so pipeline semantics
+        // remain conventional inside the filter process group.
         var resetSignals = sigset_t()
-        sigemptyset(&resetSignals)
-        sigaddset(&resetSignals, SIGPIPE)
+        try Self.checkedErrno(sigemptyset(&resetSignals), step: "sigemptyset")
+        try Self.checkedErrno(sigaddset(&resetSignals, SIGPIPE), step: "sigaddset(SIGPIPE)")
         try Self.checked(posix_spawnattr_setsigdefault(&attr, &resetSignals), step: "setsigdefault")
 
         let path = executableURL.path
@@ -153,9 +131,11 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         defer { free(argv0) }
 
         var envPointers: [UnsafeMutablePointer<CChar>?] = []
-        defer { for pointer in envPointers {
-            free(pointer)
-        } }
+        defer {
+            for pointer in envPointers {
+                free(pointer)
+            }
+        }
         for (key, value) in environment {
             guard let pointer = strdup("\(key)=\(value)") else {
                 throw SpawnError.allocationFailed(step: "strdup(environment)")
@@ -176,11 +156,19 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         lock.lock()
         pid = childPID
         lock.unlock()
-        installExitSource(pid: childPID)
+        if installsExitSource {
+            installExitSource(pid: childPID)
+        }
     }
 
     private static func checked(_ result: Int32, step: String) throws {
         guard result == 0 else { throw SpawnError.posixError(result, step: step) }
+    }
+
+    /// `sigemptyset`/`sigaddset` use the errno convention (`-1` + errno),
+    /// unlike the `posix_spawn*` family which returns its error code directly.
+    private static func checkedErrno(_ result: Int32, step: String) throws {
+        guard result == 0 else { throw SpawnError.posixError(errno, step: step) }
     }
 
     private func installExitSource(pid: pid_t) {
@@ -194,26 +182,35 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         lock.unlock()
     }
 
-    /// Records the direct child's exit status **without reaping it** —
-    /// `waitid(P_PID, pid, ..., WEXITED | WNOWAIT)` reports the same
-    /// `siginfo_t` exit/signal information `wait(2)` would, but leaves the
-    /// zombie present in the process table so `pid` (which is also this
-    /// invocation's process-group id) cannot be reassigned to an unrelated
-    /// process until `reapLeader()` explicitly releases it
-    /// (third-adversarial-pass finding #2).
+    /// Records the direct child's exit status without reaping it. `WNOHANG`
+    /// makes this safe both from the DispatchSource exit callback and from
+    /// `reapLeader()`'s synchronous pre-reap observation. `EINTR` is retried;
+    /// any other failure remains fail-closed and is never invented as a zero
+    /// exit status.
     private func recordExitFact(pid: pid_t) {
+        guard let code = observedExitStatus(pid: pid) else { return }
+        recordExitStatus(code)
+    }
+
+    private func observedExitStatus(pid: pid_t) -> Int32? {
         var info = siginfo_t()
-        guard waitid(P_PID, id_t(pid), &info, WEXITED | WNOWAIT) == 0 else { return }
-        // `si_status` already holds the right magnitude for either case —
-        // the exit code when `si_code == CLD_EXITED`, the terminating
-        // signal number otherwise — with no packed encoding to unpack,
-        // unlike a raw `wait(2)` status word. Collapsing both into one
-        // `Int32` without a case discriminator matches `Foundation.
-        // Process.terminationStatus`'s own dual-purpose meaning: callers
-        // only ever check `status == 0` for success and otherwise report
-        // whatever non-zero value they got.
-        let code = info.si_status
+        while true {
+            if waitid(P_PID, id_t(pid), &info, WEXITED | WNOWAIT | WNOHANG) == 0 {
+                // POSIX specifies si_pid == 0 when WNOHANG finds no child in
+                // a waitable state. Never interpret that as exit status 0.
+                guard info.si_pid == pid else { return nil }
+                return info.si_status
+            }
+            guard errno == EINTR else { return nil }
+        }
+    }
+
+    private func recordExitStatus(_ code: Int32) {
         lock.lock()
+        if exitStatus != nil {
+            lock.unlock()
+            return
+        }
         exitStatus = code
         let pending = exitContinuation
         exitContinuation = nil
@@ -223,8 +220,8 @@ final class TextFilterProcessGroup: @unchecked Sendable {
 
     /// Suspends until the direct child has exited, returning its exit code
     /// (or, if it died from an uncaught signal, the terminating signal
-    /// number — the two cases are not distinguished, matching
-    /// `Foundation.Process.terminationStatus`'s own dual-purpose meaning).
+    /// number — matching `Foundation.Process.terminationStatus`'s
+    /// dual-purpose meaning).
     func waitForExit() async -> Int32 {
         await withCheckedContinuation { continuation in
             lock.lock()
@@ -238,52 +235,24 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         }
     }
 
-    /// `true` if the process group has any member that is not a zombie.
-    /// Deliberately does **not** use `kill(-pgid, 0)`: once
-    /// `recordExitFact` starts holding the leader as an un-reaped zombie,
-    /// `kill(-pgid, 0)` reports the group as "existing" purely because of
-    /// that zombie, for as long as this session holds it — every
-    /// emptiness check built on it would be vacuously true regardless of
-    /// whether any real descendant is still alive (third-adversarial-pass
-    /// finding #2). This enumerates real membership via
-    /// `sysctl(KERN_PROC_PGRP)` and inspects each member's actual state.
-    func groupHasLiveMembers() -> Bool {
-        guard let pid = currentPID else { return false }
-        return Self.processGroupMembers(pid).contains { $0.stat != SZOMB }
-    }
-
-    /// Sends `signal` to every process currently in the group. Never
-    /// signals MacDown's own process group: `pid` is always the *child's*
-    /// pid, established as a distinct new group by `spawn`, never `0`/our
-    /// own pid, so `-pid` can never resolve to the caller's own group.
-    /// Safe to call while the leader is a held zombie — its pid/pgid
-    /// number is pinned (not eligible for reuse) for as long as this
-    /// session has not yet reaped it.
+    /// Sends `signal` to every process currently in the group. Never signals
+    /// MacDown's own process group: `pid` is always the spawned child's pid,
+    /// established as a distinct group before exec.
     func terminateGroup(_ signal: Int32) {
         guard let pid = currentPID else { return }
         _ = killpg(pid, signal)
     }
 
-    /// Reaps the group leader. Call exactly once, only after every
-    /// group-lifetime operation this invocation will ever perform
-    /// (`groupHasLiveMembers()`/`terminateGroup(_:)`) is complete — this
-    /// is the point at which the pid/pgid number stops being pinned to
-    /// this invocation and becomes eligible for kernel reuse
-    /// (third-adversarial-pass finding #2). Idempotent; a no-op if `spawn`
-    /// never succeeded or this was already called.
+    /// Reaps the group leader only after the session has finished every
+    /// group-lifetime operation. Before releasing the pid/pgid identity, it
+    /// synchronously records an already-exited leader with `waitid(WNOWAIT |
+    /// WNOHANG)`. This closes a fourth-pass race where containment could see
+    /// only a zombie, return, and reap it before the asynchronous exit source
+    /// had resumed `waitForExit()`; that later callback then received ECHILD
+    /// and left the observer task suspended indefinitely.
     ///
-    /// Non-blocking (`WNOHANG`): every caller already confirmed
-    /// `groupHasLiveMembers() == false`, kernel-level truth that the
-    /// leader is already a zombie, so reaping should never need to wait —
-    /// deliberately not gated on this instance's own `exitStatus` already
-    /// being recorded by its own async exit-detection handler, which is
-    /// independent of and can race behind that kernel-level fact. In the
-    /// rare case containment could not actually be confirmed (this
-    /// session already reported `.terminationUnconfirmed` for that), this
-    /// is a safe no-op rather than a hang: leaving an unreaped zombie
-    /// behind is a bounded resource leak, not a signal-identity hazard —
-    /// its pid/pgid stays pinned to this invocation for exactly the same
-    /// reason not reaping is the safety property finding #2 wants.
+    /// Still non-blocking: on a genuinely live/unconfirmed process this does
+    /// not reap anything, preserving identity safety.
     func reapLeader() {
         lock.lock()
         guard let pid, !leaderReaped else {
@@ -291,8 +260,21 @@ final class TextFilterProcessGroup: @unchecked Sendable {
             return
         }
         lock.unlock()
+
+        // If the leader is already a zombie, guarantee the exit continuation
+        // observes it before waitpid can make it disappear from the table.
+        recordExitFact(pid: pid)
+
         var status: Int32 = 0
-        guard waitpid(pid, &status, WNOHANG) == pid else { return }
+        let reaped: pid_t
+        while true {
+            reaped = waitpid(pid, &status, WNOHANG)
+            if reaped != -1 || errno != EINTR {
+                break
+            }
+        }
+        guard reaped == pid else { return }
+
         lock.lock()
         leaderReaped = true
         lock.unlock()
@@ -302,39 +284,5 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return pid
-    }
-
-    // MARK: - Process-group membership enumeration
-
-    /// Lists every process currently in group `pgid` via
-    /// `sysctl(CTL_KERN, KERN_PROC, KERN_PROC_PGRP, pgid)`, each with its
-    /// `p_stat` (`SZOMB` for a zombie). The group can gain members between
-    /// the size query and the data query, so this retries a bounded
-    /// number of times with slack padding rather than trusting one
-    /// snapshot's exact size.
-    private static func processGroupMembers(_ pgid: pid_t) -> [(pid: pid_t, stat: Int8)] {
-        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PGRP, pgid]
-        let stride = MemoryLayout<kinfo_proc>.stride
-        for _ in 0 ..< 4 {
-            var querySize = 0
-            guard sysctl(&mib, u_int(mib.count), nil, &querySize, nil, 0) == 0, querySize > 0 else {
-                return []
-            }
-            let capacity = querySize / stride + 8
-            var buffer = [kinfo_proc](repeating: kinfo_proc(), count: capacity)
-            var bufferSize = capacity * stride
-            let result = buffer.withUnsafeMutableBytes { raw in
-                sysctl(&mib, u_int(mib.count), raw.baseAddress, &bufferSize, nil, 0)
-            }
-            guard result == 0 else {
-                if errno == ENOMEM {
-                    continue
-                }
-                return []
-            }
-            let count = bufferSize / stride
-            return (0 ..< count).map { (buffer[$0].kp_proc.p_pid, buffer[$0].kp_proc.p_stat) }
-        }
-        return []
     }
 }
