@@ -58,14 +58,47 @@ struct TextFilterTerminalStateTests {
     }
 
     @Test func noTimerOrRequestCanFabricateAnExitedVerdictWithoutRealEOF() async {
-        // The whole point of finding #1: nothing except the three real
-        // facts can ever produce `.exited`. Simulate a "timer fired" by
-        // simply doing nothing — there is no API on this type that lets a
-        // caller assert EOF without it actually having happened.
         let state = TextFilterTerminalState()
         state.recordChildExited(0)
         try? await Task.sleep(for: .milliseconds(50))
         #expect(state.committedVerdict == nil)
+    }
+
+    // MARK: - Fourth pass: stdout cap and exit share one atomic gate
+
+    @Test func stdoutChunkCrossingTheCapCommitsOversizedBeforeLateEOFCouldResolveExit() {
+        let state = TextFilterTerminalState()
+        // Direct exit and stderr EOF have already arrived. In the broken
+        // implementation, the stdout callback could decide it was over the
+        // cap, release its separate buffer lock, and lose to stdout EOF here.
+        state.recordChildExited(0)
+        state.recordStderrEOF()
+
+        let disposition = state.processStdoutChunk { true }
+        #expect(disposition == .oversized)
+        #expect(state.committedVerdict == .oversized)
+
+        state.recordStdoutEOF()
+        #expect(state.committedVerdict == .oversized)
+    }
+
+    @Test func acceptedStdoutChunkMutationFinishesBeforeStdoutEOFCouldResolveExit() {
+        let state = TextFilterTerminalState()
+        state.recordChildExited(0)
+        state.recordStderrEOF()
+        var appended = false
+
+        let disposition = state.processStdoutChunk {
+            appended = true
+            return false
+        }
+
+        #expect(disposition == .accepted)
+        #expect(appended)
+        #expect(state.committedVerdict == nil)
+
+        state.recordStdoutEOF()
+        #expect(state.committedVerdict == .exited(0))
     }
 
     // MARK: - Finding #3: one-shot commit, first verdict wins permanently
@@ -96,8 +129,6 @@ struct TextFilterTerminalStateTests {
         let state = TextFilterTerminalState()
         #expect(state.requestVerdict(.timedOut) == true)
 
-        // The watchdog "won" the race, but the process happens to still
-        // report a clean exit and drain shortly after.
         state.recordChildExited(0)
         state.recordStdoutEOF()
         state.recordStderrEOF()
@@ -131,9 +162,7 @@ struct TextFilterTerminalStateTests {
     /// fix depends on — `TextFilterProcessSession.observeExitAndDrainage()`
     /// now requests `.incompleteOutput` *before* it ever contains the
     /// process group, and containing the group is what can produce real
-    /// (but MacDown-caused) EOF on both streams afterward. This proves
-    /// that once `.incompleteOutput` has committed, no fact recorded
-    /// later — however "real" — can still turn the result into `.exited`.
+    /// (but MacDown-caused) EOF on both streams afterward.
     @Test func incompleteOutputThenLateZeroExitPlusEOFsStaysIncompleteOutput() {
         let state = TextFilterTerminalState()
         #expect(state.requestVerdict(.incompleteOutput) == true)
