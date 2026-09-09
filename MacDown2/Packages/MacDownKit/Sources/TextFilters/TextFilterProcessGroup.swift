@@ -266,13 +266,10 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         recordExitFact(pid: pid)
 
         var status: Int32 = 0
-        let reaped: pid_t
-        while true {
+        var reaped: pid_t = 0
+        repeat {
             reaped = waitpid(pid, &status, WNOHANG)
-            if reaped != -1 || errno != EINTR {
-                break
-            }
-        }
+        } while reaped == -1 && errno == EINTR
         guard reaped == pid else { return }
 
         lock.lock()
