@@ -118,14 +118,7 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         // `0` means the child becomes leader of a new group named after its
         // kernel-assigned pid.
         try Self.checked(posix_spawnattr_setpgroup(&attr, 0), step: "setpgroup")
-
-        // MacDown no longer mutates its own SIGPIPE disposition. Reset only
-        // the spawned invocation to the normal default so pipeline semantics
-        // remain conventional inside the filter process group.
-        var resetSignals = sigset_t()
-        try Self.checkedErrno(sigemptyset(&resetSignals), step: "sigemptyset")
-        try Self.checkedErrno(sigaddset(&resetSignals, SIGPIPE), step: "sigaddset(SIGPIPE)")
-        try Self.checked(posix_spawnattr_setsigdefault(&attr, &resetSignals), step: "setsigdefault")
+        try Self.configureSpawnSignalDefaults(&attr)
 
         let path = executableURL.path
         guard let argv0 = strdup(path) else { throw SpawnError.allocationFailed(step: "strdup(argv0)") }
@@ -160,6 +153,16 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         if installsExitSource {
             installExitSource(pid: childPID)
         }
+    }
+
+    private static func configureSpawnSignalDefaults(_ attr: inout posix_spawnattr_t?) throws {
+        // MacDown does not mutate its own SIGPIPE disposition. Reset only the
+        // spawned invocation so pipeline semantics remain conventional inside
+        // the filter process group.
+        var resetSignals = sigset_t()
+        try checkedErrno(sigemptyset(&resetSignals), step: "sigemptyset")
+        try checkedErrno(sigaddset(&resetSignals, SIGPIPE), step: "sigaddset(SIGPIPE)")
+        try checked(posix_spawnattr_setsigdefault(&attr, &resetSignals), step: "setsigdefault")
     }
 
     private static func checked(_ result: Int32, step: String) throws {
@@ -198,9 +201,16 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         while true {
             if waitid(P_PID, id_t(pid), &info, WEXITED | WNOWAIT | WNOHANG) == 0 {
                 // POSIX specifies si_pid == 0 when WNOHANG finds no child in
-                // a waitable state. Never interpret that as exit status 0.
+                // a waitable state. Darwin has historically had edge cases
+                // around waitid event filtering, so also accept only terminal
+                // CLD_* states here; a stop/continue fact is never an exit.
                 guard info.si_pid == pid else { return nil }
-                return info.si_status
+                switch info.si_code {
+                case CLD_EXITED, CLD_KILLED, CLD_DUMPED:
+                    return info.si_status
+                default:
+                    return nil
+                }
             }
             guard errno == EINTR else { return nil }
         }
