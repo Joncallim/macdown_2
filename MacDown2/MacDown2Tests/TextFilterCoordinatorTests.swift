@@ -300,16 +300,16 @@ struct TextFilterCoordinatorTests {
         #expect(await spy.invocations.first?.window === window)
     }
 
-    /// finding #7: a real, already-determined failure (not a
-    /// `TextFilterError.cancelled` itself) racing a supersession/window
-    /// close must not surface an alert — `Task.isCancelled` is checked
-    /// immediately before presenting, independent of which error the
-    /// underlying runner happened to throw.
-    @Test func aFailureOnATaskCancelledByWindowCloseSurfacesNoAlert() async throws {
+    /// Cancellation is a deliberate withdrawal and must stay silent. Use a
+    /// gated command so this test cancels a run that is definitely still in
+    /// flight instead of racing an immediate `exit 7` process that may have
+    /// legitimately presented its failure before cancellation happens.
+    @Test func windowCloseCancellationSurfacesNoAlert() async throws {
         let directory = try Self.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
+        let gate = directory.appendingPathComponent("window-close-alert-gate")
         let fixture = try Self.makeController(text: "one two")
-        let command = try Self.makeCommand("#!/bin/sh\nexit 7\n", in: directory)
+        let command = try Self.makeGatedCommand(gate: gate, in: directory)
         let target = try Self.target(controller: fixture.controller, tabID: fixture.tabID)
         let spy = AlertSpy()
         let coordinator = TextFilterCoordinator(coordinator: fixture.coordinator) { error, name, window in
@@ -317,22 +317,24 @@ struct TextFilterCoordinatorTests {
         }
 
         let runTask = Task { await coordinator.run(command, against: target) }
-        // Give the run a chance to register itself as the tab's owned
-        // task before simulating the window closing mid-run.
         try await Task.sleep(for: .milliseconds(50))
+        #expect(!fixture.controller.textFilterTaskHandles.isEmpty)
         fixture.controller.cancelAllTextFilterTasks()
         await runTask.value
 
-        #expect(await spy.isEmpty, "a failure on a window-closed/cancelled task must not surface an alert")
+        #expect(await spy.isEmpty, "a window-close cancellation must not surface an alert")
     }
 
-    /// Same guarantee for the other real cancellation source: a newer run
-    /// superseding an older one on the same tab.
-    @Test func aFailureOnATaskCancelledBySupersessionSurfacesNoAlert() async throws {
+    /// Same silent-withdrawal guarantee for supersession. The first command
+    /// is held behind a gate, so the second run necessarily cancels an active
+    /// predecessor rather than sometimes arriving after a fast failure has
+    /// already completed and correctly presented its alert.
+    @Test func supersedingAnInFlightRunSurfacesNoAlert() async throws {
         let directory = try Self.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
+        let gate = directory.appendingPathComponent("supersession-alert-gate")
         let fixture = try Self.makeController(text: "one two")
-        let failingCommand = try Self.makeCommand("#!/bin/sh\nexit 7\n", in: directory)
+        let slowCommand = try Self.makeGatedCommand(gate: gate, in: directory)
         let supersedingCommand = try Self.makeCommand("#!/bin/sh\ncat\n", in: directory)
         let target = try Self.target(controller: fixture.controller, tabID: fixture.tabID)
         let spy = AlertSpy()
@@ -340,13 +342,14 @@ struct TextFilterCoordinatorTests {
             await spy.record(error, name, window)
         }
 
-        let firstRun = Task { await coordinator.run(failingCommand, against: target) }
+        let firstRun = Task { await coordinator.run(slowCommand, against: target) }
         try await Task.sleep(for: .milliseconds(50))
+        #expect(!fixture.controller.textFilterTaskHandles.isEmpty)
         // A second run on the same tab supersedes (cancels) the first via
         // the normal `registerTextFilterTask` path.
         await coordinator.run(supersedingCommand, against: target)
         await firstRun.value
 
-        #expect(await spy.isEmpty, "a failure on a superseded task must not surface an alert")
+        #expect(await spy.isEmpty, "a superseded in-flight task must not surface an alert")
     }
 }
