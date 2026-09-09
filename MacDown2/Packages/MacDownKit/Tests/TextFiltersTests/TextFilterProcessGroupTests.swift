@@ -78,16 +78,44 @@ struct TextFilterProcessGroupTests {
         #expect(kill(pid, 0) == -1 && errno == ESRCH, "reapLeader() must actually release the pid")
     }
 
-    /// Fourth-pass race regression: process-table containment can observe the
-    /// zombie leader before the asynchronous DispatchSource callback runs. A
-    /// reap at that point used to make the callback's later waitid return
-    /// ECHILD, leaving `waitForExit()` suspended forever. Disable the exit
-    /// source deterministically: `reapLeader()` itself must record the exit
-    /// before removing the zombie, so a subsequent waiter returns immediately.
-    @Test func reapRecordsAnExitedLeaderBeforeRemovingItEvenWithoutTheAsyncExitSource() async throws {
+    /// Fifth-pass race regression: the direct child is allowed to become a
+    /// zombie *before* exit observation begins. Darwin's EVFILT_PROC attach
+    /// path cannot safely guarantee that late registration sees this state;
+    /// a direct `waitid(WNOWAIT)` on our child must still return status 0.
+    @Test func exitObservationStartedAfterTheLeaderAlreadyExitedStillReportsItsStatus() async throws {
         let directory = try TextFilterFixtures.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let group = TextFilterProcessGroup(installsExitSource: false)
+        let group = TextFilterProcessGroup(startsExitObserverAutomatically: false)
+        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+        try group.spawn(
+            executableURL: Self.exitZeroScript(in: directory),
+            workingDirectoryURL: directory,
+            environment: [:],
+            pipes: pipes
+        )
+
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while group.verifiedMembershipState() == .live, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(group.verifiedMembershipState() == .empty, "the leader must already be a held zombie")
+
+        group.startExitObservation()
+
+        #expect(await group.waitForExit() == 0, "late observation must not miss an already-exited child")
+        group.reapLeader()
+    }
+
+    /// Fourth-pass race regression: process-table containment can observe the
+    /// zombie leader before the worker-queue observer resumes. A reap at that
+    /// point used to be capable of removing the leader before the observer had
+    /// preserved the exit fact. Disable automatic observation deterministically:
+    /// `reapLeader()` itself must record the exit before removing the zombie,
+    /// so a subsequent waiter returns immediately.
+    @Test func reapRecordsAnExitedLeaderBeforeRemovingItEvenWithoutTheAsyncObserver() async throws {
+        let directory = try TextFilterFixtures.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let group = TextFilterProcessGroup(startsExitObserverAutomatically: false)
         let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
         try group.spawn(
             executableURL: Self.exitZeroScript(in: directory),
