@@ -4,7 +4,7 @@ import Foundation
 
 /// Low-level process-group spawn/termination/exit mechanics, isolated from
 /// `TextFilterProcessSession`'s I/O and verdict orchestration so each can be
-/// reasoned about independently (second through fourth adversarial passes).
+/// reasoned about independently (second through fifth adversarial passes).
 ///
 /// `Foundation.Process` has no API to place a child into its own process
 /// group **before** it execs. That containment has to be established
@@ -26,13 +26,21 @@ import Foundation
 /// eligible for reuse; holding the zombie prevents this invocation from ever
 /// signalling an unrelated, later process group with the same numeric id.
 ///
-/// Fourth-pass hardening adds the inverse ordering requirement: before
-/// `reapLeader()` releases that pinned identity, it performs its own
+/// Exit observation deliberately uses a blocking `waitid(WNOWAIT)` on a
+/// worker queue rather than `DispatchSourceProcess`. Darwin's EVFILT_PROC
+/// registration is edge-triggered and `proc_find` rejects a process once it
+/// has become a zombie, so a child that exits between `posix_spawn` and
+/// dispatch-source attachment can otherwise be missed entirely. A wait on
+/// our own child remains valid when the child has already exited, making the
+/// observation race-free; the process is still left unreaped for identity
+/// safety.
+///
+/// Before `reapLeader()` releases that pinned identity, it performs its own
 /// non-blocking `waitid(..., WNOWAIT | WNOHANG)` observation and records the
 /// exit status. This guarantees any `waitForExit()` continuation is resumed
-/// even when process-table containment confirmation beats the asynchronous
-/// DispatchSource exit callback. Reaping can no longer strand that observer
-/// forever with a later `ECHILD`.
+/// even when process-table containment confirmation beats the worker-queue
+/// observer. Reaping can therefore never strand that observer with a later
+/// `ECHILD`.
 final class TextFilterProcessGroup: @unchecked Sendable {
     enum SpawnError: Error, CustomStringConvertible {
         /// A POSIX setup/spawn call returned an error.
@@ -61,17 +69,18 @@ final class TextFilterProcessGroup: @unchecked Sendable {
 
     private let lock = NSLock()
     private(set) var pid: pid_t?
-    private var exitSource: DispatchSourceProcess?
     private var exitStatus: Int32?
     private var exitContinuation: CheckedContinuation<Int32, Never>?
+    private var exitObservationStarted = false
     private var leaderReaped = false
     private var leaderReapInProgress = false
-    private let installsExitSource: Bool
+    private let startsExitObserverAutomatically: Bool
 
-    /// `installsExitSource` is a deterministic test seam for the fourth-pass
+    /// `startsExitObserverAutomatically` is a deterministic test seam for
+    /// the fifth-pass already-exited observation case and the fourth-pass
     /// reap/observation race. Production always uses the default `true`.
-    init(installsExitSource: Bool = true) {
-        self.installsExitSource = installsExitSource
+    init(startsExitObserverAutomatically: Bool = true) {
+        self.startsExitObserverAutomatically = startsExitObserverAutomatically
     }
 
     /// Spawns `executableURL` as the leader of a brand-new process group,
@@ -150,8 +159,8 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         lock.lock()
         pid = childPID
         lock.unlock()
-        if installsExitSource {
-            installExitSource(pid: childPID)
+        if startsExitObserverAutomatically {
+            startExitObservation()
         }
     }
 
@@ -175,35 +184,41 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         guard result == 0 else { throw SpawnError.posixError(errno, step: step) }
     }
 
-    private func installExitSource(pid: pid_t) {
-        let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit, queue: .global())
-        source.setEventHandler { [weak self] in
-            self?.recordExitFact(pid: pid)
-        }
-        source.resume()
+    /// Begins exactly one worker-queue wait for the direct child. This is
+    /// internal rather than private only so a regression test can deliberately
+    /// start observation *after* the child is already a zombie and prove that
+    /// the fifth-pass race is closed.
+    func startExitObservation() {
         lock.lock()
-        exitSource = source
+        guard let pid, !exitObservationStarted else {
+            lock.unlock()
+            return
+        }
+        exitObservationStarted = true
         lock.unlock()
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.recordExitFact(pid: pid, blocking: true)
+        }
     }
 
-    /// Records the direct child's exit status without reaping it. `WNOHANG`
-    /// makes this safe both from the DispatchSource exit callback and from
-    /// `reapLeader()`'s synchronous pre-reap observation. `EINTR` is retried;
-    /// any other failure remains fail-closed and is never invented as a zero
-    /// exit status.
-    private func recordExitFact(pid: pid_t) {
-        guard let code = observedExitStatus(pid: pid) else { return }
+    /// Records the direct child's exit status without reaping it. Blocking
+    /// mode is the production observer; non-blocking mode is used immediately
+    /// before an explicit reap. `EINTR` is retried; any other failure remains
+    /// fail-closed and is never invented as a zero exit status.
+    private func recordExitFact(pid: pid_t, blocking: Bool) {
+        guard let code = observedExitStatus(pid: pid, blocking: blocking) else { return }
         recordExitStatus(code)
     }
 
-    private func observedExitStatus(pid: pid_t) -> Int32? {
+    private func observedExitStatus(pid: pid_t, blocking: Bool) -> Int32? {
         var info = siginfo_t()
+        let options = WEXITED | WNOWAIT | (blocking ? 0 : WNOHANG)
         while true {
-            if waitid(P_PID, id_t(pid), &info, WEXITED | WNOWAIT | WNOHANG) == 0 {
-                // POSIX specifies si_pid == 0 when WNOHANG finds no child in
-                // a waitable state. Darwin has historically had edge cases
-                // around waitid event filtering, so also accept only terminal
-                // CLD_* states here; a stop/continue fact is never an exit.
+            if waitid(P_PID, id_t(pid), &info, options) == 0 {
+                // POSIX specifies si_pid == 0 only for a WNOHANG call that
+                // found no child in a waitable state. Also accept only
+                // terminal CLD_* states; a stop/continue fact is never exit.
                 guard info.si_pid == pid else { return nil }
                 switch info.si_code {
                 case CLD_EXITED, CLD_KILLED, CLD_DUMPED:
@@ -257,10 +272,9 @@ final class TextFilterProcessGroup: @unchecked Sendable {
     /// Reaps the group leader only after the session has finished every
     /// group-lifetime operation. Before releasing the pid/pgid identity, it
     /// synchronously records an already-exited leader with `waitid(WNOWAIT |
-    /// WNOHANG)`. This closes a fourth-pass race where containment could see
-    /// only a zombie, return, and reap it before the asynchronous exit source
-    /// had resumed `waitForExit()`; that later callback then received ECHILD
-    /// and left the observer task suspended indefinitely.
+    /// WNOHANG)`. This closes the fourth-pass race where containment could see
+    /// only a zombie and reach this method before the asynchronous observer
+    /// had resumed `waitForExit()`.
     ///
     /// Still non-blocking: on a genuinely live/unconfirmed process this does
     /// not reap anything, preserving identity safety. The in-progress flag
@@ -277,7 +291,7 @@ final class TextFilterProcessGroup: @unchecked Sendable {
 
         // If the leader is already a zombie, guarantee the exit continuation
         // observes it before waitpid can make it disappear from the table.
-        recordExitFact(pid: pid)
+        recordExitFact(pid: pid, blocking: false)
 
         var status: Int32 = 0
         var reaped: pid_t = 0
