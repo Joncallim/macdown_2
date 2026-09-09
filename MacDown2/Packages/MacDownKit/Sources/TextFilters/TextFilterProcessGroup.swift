@@ -65,6 +65,7 @@ final class TextFilterProcessGroup: @unchecked Sendable {
     private var exitStatus: Int32?
     private var exitContinuation: CheckedContinuation<Int32, Never>?
     private var leaderReaped = false
+    private var leaderReapInProgress = false
     private let installsExitSource: Bool
 
     /// `installsExitSource` is a deterministic test seam for the fourth-pass
@@ -252,13 +253,16 @@ final class TextFilterProcessGroup: @unchecked Sendable {
     /// and left the observer task suspended indefinitely.
     ///
     /// Still non-blocking: on a genuinely live/unconfirmed process this does
-    /// not reap anything, preserving identity safety.
+    /// not reap anything, preserving identity safety. The in-progress flag
+    /// also makes simultaneous accidental callers safe: only one can ever
+    /// execute `waitpid` against the pinned identity.
     func reapLeader() {
         lock.lock()
-        guard let pid, !leaderReaped else {
+        guard let pid, !leaderReaped, !leaderReapInProgress else {
             lock.unlock()
             return
         }
+        leaderReapInProgress = true
         lock.unlock()
 
         // If the leader is already a zombie, guarantee the exit continuation
@@ -267,13 +271,18 @@ final class TextFilterProcessGroup: @unchecked Sendable {
 
         var status: Int32 = 0
         var reaped: pid_t = 0
-        repeat {
+        while true {
             reaped = waitpid(pid, &status, WNOHANG)
-        } while reaped == -1 && errno == EINTR
-        guard reaped == pid else { return }
+            if reaped != -1 || errno != EINTR {
+                break
+            }
+        }
 
         lock.lock()
-        leaderReaped = true
+        if reaped == pid {
+            leaderReaped = true
+        }
+        leaderReapInProgress = false
         lock.unlock()
     }
 
