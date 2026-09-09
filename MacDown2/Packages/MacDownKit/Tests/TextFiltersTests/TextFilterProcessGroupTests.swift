@@ -4,9 +4,8 @@ import Testing
 @testable import TextFilters
 
 /// Direct, sub-`TextFilterRunner` coverage of `TextFilterProcessGroup`
-/// itself (third-adversarial-pass findings #2/#3): checked spawn setup,
-/// and the leader-not-reaped-until-`reapLeader()` identity-safety
-/// ordering that `groupHasLiveMembers()`/`terminateGroup(_:)` depend on.
+/// itself: checked spawn setup, identity-pinned exit observation/reaping,
+/// and verified process-group membership.
 @Suite("TextFilterProcessGroup")
 struct TextFilterProcessGroupTests {
     /// A leader that exits promptly with status 0. `spawn()` never passes
@@ -17,7 +16,7 @@ struct TextFilterProcessGroupTests {
         try TextFilterFixtures.makeExecutableScript("#!/bin/sh\nexit 0\n", named: "exit0.sh", in: directory)
     }
 
-    // MARK: - Finding #3: every setup/spawn failure is checked, never best-effort
+    // MARK: - Checked setup/spawn failures
 
     @Test func aNonexistentWorkingDirectoryFailsTheSpawnRatherThanSilentlyLaunching() {
         let group = TextFilterProcessGroup()
@@ -35,22 +34,14 @@ struct TextFilterProcessGroupTests {
     }
 
     /// A source descriptor `adddup2` was told to duplicate onto stdin no
-    /// longer exists by the time `spawn()` actually launches. Whether
-    /// this is caught by `adddup2` itself or only surfaces via
-    /// `posix_spawn`'s own return code is a libc implementation detail;
-    /// what this test actually guards is that `spawn()` checks *some*
-    /// call in the chain rather than continuing to launch with fd 0 left
-    /// as whatever it already was — a dropped stdin dup2 could run the
-    /// command connected to something other than the pipe MacDown wired
-    /// up for it.
+    /// longer exists by the time `spawn()` launches. Whether this is caught
+    /// by `adddup2` or only by `posix_spawn` is a libc implementation detail;
+    /// the invariant is that the launch cannot continue with an unintended
+    /// inherited stdin.
     @Test func aClosedSourceDescriptorFailsTheSpawnRatherThanSilentlyLaunching() {
         let group = TextFilterProcessGroup()
         let stdinPipe = Pipe()
         let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: stdinPipe, stdout: Pipe(), stderr: Pipe())
-        // Closed last, immediately before `spawn()`: closing it any
-        // earlier risks the freed fd number being silently reassigned to
-        // one of the *other* pipes created afterward, which would leave
-        // nothing actually invalid by the time `spawn()` runs.
         close(stdinPipe.fileHandleForReading.fileDescriptor)
 
         #expect(throws: TextFilterProcessGroup.SpawnError.self) {
@@ -63,13 +54,8 @@ struct TextFilterProcessGroupTests {
         }
     }
 
-    // MARK: - Finding #2: leader identity stays pinned until reapLeader()
+    // MARK: - Leader identity stays pinned until reapLeader()
 
-    /// Deterministic ordering: the direct child's exit is observable
-    /// (`waitForExit()` resolves) before the leader is reaped, and the
-    /// leader only stops being addressable as a distinct process-table
-    /// entry once `reapLeader()` is explicitly called — never as a side
-    /// effect of merely observing its exit.
     @Test func leaderExitIsObservedWithoutReapingUntilReapLeaderIsCalled() async throws {
         let directory = try TextFilterFixtures.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -85,23 +71,47 @@ struct TextFilterProcessGroupTests {
 
         let status = await group.waitForExit()
         #expect(status == 0)
-
-        // The leader has exited (waitForExit resolved) but must still be
-        // a real, un-reaped zombie -- kill(pid, 0) succeeds for a zombie
-        // (it still occupies a process-table slot) and only starts
-        // failing with ESRCH once the entry is actually released.
-        #expect(kill(pid, 0) == 0, "the leader must still be a held zombie before reapLeader() is called")
+        #expect(kill(pid, 0) == 0, "the leader must remain a held zombie until explicit reap")
 
         group.reapLeader()
 
         #expect(kill(pid, 0) == -1 && errno == ESRCH, "reapLeader() must actually release the pid")
     }
 
-    /// `groupHasLiveMembers()` must not be fooled by the leader's own
-    /// held zombie into reporting the group as non-empty forever: with no
-    /// live descendant, it should read `false` even while this session
-    /// is still deliberately holding the leader un-reaped.
-    @Test func groupHasLiveMembersIgnoresAHeldZombieLeaderWithNoLiveDescendant() async throws {
+    /// Fourth-pass race regression: process-table containment can observe the
+    /// zombie leader before the asynchronous DispatchSource callback runs. A
+    /// reap at that point used to make the callback's later waitid return
+    /// ECHILD, leaving `waitForExit()` suspended forever. Disable the exit
+    /// source deterministically: `reapLeader()` itself must record the exit
+    /// before removing the zombie, so a subsequent waiter returns immediately.
+    @Test func reapRecordsAnExitedLeaderBeforeRemovingItEvenWithoutTheAsyncExitSource() async throws {
+        let directory = try TextFilterFixtures.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let group = TextFilterProcessGroup(installsExitSource: false)
+        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+        try group.spawn(
+            executableURL: Self.exitZeroScript(in: directory),
+            workingDirectoryURL: directory,
+            environment: [:],
+            pipes: pipes
+        )
+        let pid = try #require(group.pid)
+
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while group.verifiedMembershipState() == .live, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(group.verifiedMembershipState() == .empty, "the leader must have reached its held-zombie state")
+
+        group.reapLeader()
+
+        #expect(kill(pid, 0) == -1 && errno == ESRCH)
+        #expect(await group.waitForExit() == 0, "pre-reap observation must preserve the exit fact for late waiters")
+    }
+
+    // MARK: - Verified group membership
+
+    @Test func verifiedMembershipIgnoresAHeldZombieLeaderWithNoLiveDescendant() async throws {
         let directory = try TextFilterFixtures.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let group = TextFilterProcessGroup()
@@ -114,21 +124,14 @@ struct TextFilterProcessGroupTests {
         )
         _ = await group.waitForExit()
 
-        #expect(!group.groupHasLiveMembers())
+        #expect(group.verifiedMembershipState() == .empty)
 
         group.reapLeader()
     }
 
-    /// The inverse: a live descendant in the group is correctly reported
-    /// even though the (unrelated) leader is simultaneously a held
-    /// zombie — this is the exact distinction `kill(-pgid, 0)` cannot
-    /// make once the leader is held.
-    @Test func groupHasLiveMembersDetectsALiveDescendantAlongsideAHeldZombieLeader() async throws {
+    @Test func verifiedMembershipDetectsALiveDescendantAlongsideAHeldZombieLeader() async throws {
         let group = TextFilterProcessGroup()
         let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
-        // The leader script backgrounds a long-lived descendant and exits
-        // immediately, leaving the descendant as the group's only live
-        // member.
         let script = try TextFilterFixtures.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: script) }
         let scriptURL = try TextFilterFixtures.makeExecutableScript(
@@ -142,14 +145,14 @@ struct TextFilterProcessGroupTests {
         )
         _ = await group.waitForExit()
 
-        #expect(group.groupHasLiveMembers(), "the backgrounded sleep must still be reported as a live member")
+        #expect(group.verifiedMembershipState() == .live, "the backgrounded sleep must still be live")
 
         group.terminateGroup(SIGKILL)
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while group.groupHasLiveMembers(), ContinuousClock.now < deadline {
+        while group.verifiedMembershipState() != .empty, ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }
-        #expect(!group.groupHasLiveMembers(), "SIGKILL to the group must reach the live descendant too")
+        #expect(group.verifiedMembershipState() == .empty, "SIGKILL must reach the live descendant")
 
         group.reapLeader()
     }
