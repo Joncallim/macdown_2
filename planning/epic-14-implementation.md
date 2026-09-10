@@ -2122,7 +2122,7 @@ integration time and are fixed here.
 | 1 | **P1** | `saveAs(to:)`'s currency guard was vacuous, so Save As could write a **different document** to the filename the user chose | **Fixed** — `saveAs(to:expecting:)` |
 | 2 | P3 | Containment busy-spun for ~1s of `sysctl` polling on every cancelled filter | **Fixed** — cancellation-immune pause |
 | 3 | P3 | The drain observer captured `self`, pinning the whole session (pipes and buffers) whenever it outlived `run()` | **Fixed** — captures only its two collaborators |
-| 4 | P3 | `terminateGroup` discarded `killpg`'s result, so an unsendable signal was polled over as if delivered | **Fixed** — `SignalOutcome`, fails closed on `.failed` |
+| 4 | P3 | `terminateGroup` discarded `killpg`'s result | **Fixed** — `SignalOutcome` with an `ESRCH` fast path (see the correction below) |
 | 5 | P3 | `applyExternalReplacement` could leave `isPerformingEditingAssist` stuck `true` | **Fixed** — `defer` |
 | 6 | — | Unchecked `fcntl(F_SETNOSIGPIPE)` — the only thing preventing SIGPIPE from killing the app | **Converged** — independently fixed on-branch |
 | 7 | — | `sysctl` failure reported as "group is empty" (fail-open containment) | **Converged** — independently fixed on-branch |
@@ -2162,9 +2162,33 @@ wrong-document case, the replaced-document case, and a control proving
 the guard does not simply abort every save). Verified to fail against the
 pre-fix implementation, both before and after integration.
 
+**Correction — this pass's own regression.** Finding 4's first fix was
+wrong, and CI caught it. It treated *any* failed `killpg` as "cannot
+contain" and failed closed. But Darwin answers `EPERM`, not `ESRCH`, for
+a group whose only remaining member is this invocation's own
+deliberately-unreaped zombie leader — a group that is in fact fully
+contained. Any filter whose child had already exited by containment time
+could therefore be turned into a spurious `.terminationUnconfirmed`,
+discarding a perfectly good transform. It passed locally and failed on
+CI, because whether the producer is still alive when the signal lands is
+pure timing.
+
+The membership snapshot, not the signal's return code, is the only thing
+that can answer whether live members remain — and it already catches a
+genuinely unsignalable *live* group by staying `.live` until the caller's
+deadline. `containGroup` now special-cases only `ESRCH`, and
+`killpgOnAZombieOnlyGroupFailsWithEPERMWhileMembershipReadsEmpty` pins the
+Darwin behaviour in executable form.
+
+This is the same `EPERM`-vs-`ESRCH` distinction an earlier pass had
+already hit with `kill(-pgid, 0)`, re-encountered through a different
+call. Recorded plainly: this pass introduced a regression of exactly the
+kind it was auditing for, which is the argument for the next pass
+reviewing *this* section's code rather than this section's list.
+
 **Verification (real results at this head):** swiftformat 0/426,
 swiftlint 0 violations in 426 files, package `swift test --no-parallel`
-1134 tests in 126 suites passed, app-target `MacDown2Tests` 113 tests in
+1135 tests in 126 suites passed, app-target `MacDown2Tests` 113 tests in
 15 suites passed, and Debug + Release builds of both the app and the
 `macdown2` CLI all succeeded.
 

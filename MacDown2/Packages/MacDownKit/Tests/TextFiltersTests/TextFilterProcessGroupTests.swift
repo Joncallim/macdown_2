@@ -185,6 +185,36 @@ struct TextFilterProcessGroupTests {
         group.reapLeader()
     }
 
+    /// Darwin answers `EPERM`, **not** `ESRCH`, when the only member of a
+    /// process group is this invocation's own deliberately-unreaped zombie
+    /// leader — a group that is in fact fully contained. Containment must
+    /// therefore never read a failed `killpg` as "live members remain":
+    /// doing so turned every filter whose child had already exited by
+    /// containment time into a spurious `.terminationUnconfirmed`, which
+    /// is timing-dependent and so surfaced only on CI. The process-table
+    /// snapshot is the authority; this pins both halves of that.
+    @Test func killpgOnAZombieOnlyGroupFailsWithEPERMWhileMembershipReadsEmpty() async throws {
+        let directory = try TextFilterFixtures.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let group = TextFilterProcessGroup()
+        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+        try group.spawn(
+            executableURL: Self.exitZeroScript(in: directory),
+            workingDirectoryURL: directory,
+            environment: [:],
+            pipes: pipes
+        )
+        _ = await group.waitForExit()
+
+        #expect(group.verifiedMembershipState() == .empty, "a held zombie leader alone is a contained group")
+        #expect(
+            group.terminateGroup(SIGTERM) == .failed(EPERM),
+            "Darwin reports EPERM for a zombie-only group — this must not be read as a containment failure"
+        )
+
+        group.reapLeader()
+    }
+
     @Test func reapLeaderIsIdempotentAndSafeToCallMoreThanOnce() async throws {
         let directory = try TextFilterFixtures.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

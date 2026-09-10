@@ -261,16 +261,23 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         }
     }
 
-    /// The outcome of one `killpg`. Not discarded: "no safety-related call
-    /// is best-effort" applies to signalling too. A signal this process was
-    /// not permitted to send is a real inability to contain the group, and
-    /// must not be polled over as though it had been delivered.
+    /// The outcome of one `killpg`, surfaced rather than discarded so a
+    /// caller can take the `ESRCH` fast path.
+    ///
+    /// `.failed` deliberately does **not** mean "containment failed".
+    /// Darwin returns `EPERM`, not `ESRCH`, for a group whose only
+    /// remaining member is this invocation's own deliberately-unreaped
+    /// zombie leader — a group that is in fact fully contained. A
+    /// process-table snapshot, not the signal's return code, is the only
+    /// thing that can answer whether live members remain; a genuinely
+    /// unsignalable *live* group is caught by that snapshot staying
+    /// `.live` until the caller's deadline expires.
     enum SignalOutcome: Equatable {
         case delivered
         /// `ESRCH`: no such process group — nothing left to signal.
         case groupIsGone
-        /// The signal could not be sent (e.g. `EPERM`), so nothing can be
-        /// concluded about the group from having "terminated" it.
+        /// The signal could not be sent. Commonly `EPERM` for a
+        /// zombie-only group; never by itself evidence of live members.
         case failed(Int32)
     }
 

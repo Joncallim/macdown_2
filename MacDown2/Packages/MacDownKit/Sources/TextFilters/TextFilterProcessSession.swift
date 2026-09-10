@@ -227,17 +227,21 @@ final class TextFilterProcessSession: @unchecked Sendable {
             break
         }
 
-        // A signal that could not be sent at all (e.g. `EPERM`) is not
-        // something to poll over: escalating would fail identically, and
-        // the group would only be watched, never acted on. Fail closed.
-        if case .failed = processGroup.terminateGroup(SIGTERM) {
-            return false
+        // Only `ESRCH` is actionable here. A failed `killpg` is *not*
+        // treated as "cannot contain": Darwin answers `EPERM` for a group
+        // whose sole member is this invocation's own held zombie leader,
+        // which is fully contained. The membership snapshot below remains
+        // the only authority on whether live members remain — and it
+        // still catches a genuinely unsignalable live group, by staying
+        // `.live` until the deadline expires.
+        if processGroup.terminateGroup(SIGTERM) == .groupIsGone {
+            return true
         }
         if await waitForGroupExit(timeout: Self.terminationGracePeriod) {
             return true
         }
-        if case .failed = processGroup.terminateGroup(SIGKILL) {
-            return false
+        if processGroup.terminateGroup(SIGKILL) == .groupIsGone {
+            return true
         }
         return await waitForGroupExit(timeout: Self.terminationGracePeriod)
     }
