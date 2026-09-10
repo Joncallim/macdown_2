@@ -2117,6 +2117,11 @@ admission). Two findings below had independently been fixed by that work
 and are recorded here only as "converged"; the rest were still live at
 integration time and are fixed here.
 
+**Naming note:** that concurrent work's own code comments call it "the
+fourth-pass" and "the fifth-pass" — an independent numbering, assigned
+before this section existed, that this section's title deliberately does
+not claim. §25 documents that work under its own name.
+
 | # | Sev | Finding | Disposition |
 |---|-----|---------|--------------|
 | 1 | **P1** | `saveAs(to:)`'s currency guard was vacuous, so Save As could write a **different document** to the filename the user chose | **Fixed** — `saveAs(to:expecting:)` |
@@ -2198,3 +2203,63 @@ no interactive session has driven it. Not inferred passed.
 **PR status:** still a **Draft**. A pass that found a P1 in code three
 prior adversarial reviews had signed off on is not evidence that the next
 pass will find nothing.
+
+## 25. Undocumented fourth and fifth passes (concurrent hardening, `bff930f`..`b6c286c`)
+
+16 commits landed on this branch between `bff930f` (§23's head) and
+`b6c286c`, concurrently with §24's own review, fixing real races in the
+code §23 shipped and in one of its own fixes. Their code comments cite
+"the fourth-pass" and "the fifth-pass" throughout, but neither pass had a
+corresponding section here — a reader grepping the code for that language
+and then checking this document for it would find nothing. This section
+is that missing record, reconstructed from the commits and the code they
+produced (`git log --oneline bff930f..b6c286c`). It is deliberately
+factual rather than narrated: no reviewer, timeline, or process detail
+beyond what the commits and code themselves show is available to record.
+
+### Fourth pass: four findings
+
+| Finding | Fix |
+|---------|-----|
+| Stdout-cap admission and terminal-verdict commit were not atomic: an over-cap chunk's own buffer lock could release between "this chunk crosses the cap" and requesting `.oversized`, leaving a window where exit + both EOFs could commit `.exited(0)` first | `TextFilterTerminalState.processStdoutChunk(_:)` runs the buffer mutation *inside* the terminal-state lock, so admission and verdict commit as one operation |
+| Process-group membership inspection was binary (`groupHasLiveMembers() -> Bool`), collapsing a failed `sysctl(KERN_PROC_PGRP)` query into the same `false` a genuinely empty group reports | `TextFilterProcessGroup+VerifiedMembership.swift`: a tri-state `MembershipState` (`.empty`/`.live`/`.unconfirmed`); every call site treats `.unconfirmed` as "not yet safe," never as success |
+| `reapLeader()` and the async exit observer could race: process-table containment could observe the zombie leader and call `reapLeader()` before the worker-queue observer had resumed `waitForExit()`, and the old `reapLeader()` did not itself record the exit fact — reaping first could remove the zombie the observer still needed, stranding that waiter with no fact to observe | `reapLeader()` now performs its own synchronous, non-blocking `waitid(WNOWAIT \| WNOHANG)` observation *before* the actual `waitpid` reap, guaranteeing the exit fact is recorded (and any waiter resumed) no matter which side wins the race |
+| A TOCTOU in explicit-origin Save: `saveDocumentFromExplicitOrigin()` checked the advisory `requiresDestinationToSave` snapshot, then called ordinary `save()` — between the check and the call, the document's backing could change, and `save()`'s own internal missing-backing branch falls back to the model's *ambient* `saveAs()`, reopening exactly the leak §23 finding #5 closed | `WorkspaceModel.saveWithoutDestinationPrompt()` performs the backing check *inside* the same save attempt (including its metadata-conflict retry) and never touches the ambient panel provider; only its `.requiresDestination` result routes to the controller's window-bound Save As flow |
+
+### Fifth pass: one finding
+
+`DispatchSourceProcess`'s `EVFILT_PROC` registration is edge-triggered,
+and Darwin's `proc_find` rejects a process once it has already become a
+zombie — so a direct child that exits between `posix_spawn` returning and
+the dispatch source actually attaching could be missed by exit
+observation entirely, permanently stranding `waitForExit()`. Exit
+observation was replaced with a blocking `waitid(P_PID, pid, &info,
+WEXITED | WNOWAIT)` on a dedicated worker queue: a wait on one's own
+child is valid and race-free however late it is issued, whether the
+child is still running or has already exited.
+
+### Verification
+
+Both passes are covered by real, non-vacuous tests —
+`TextFilterProcessGroupTests.exitObservationStartedAfterTheLeaderAlreadyExitedStillReportsItsStatus`
+and `.reapRecordsAnExitedLeaderBeforeRemovingItEvenWithoutTheAsyncObserver`
+disable automatic observation (`startsExitObserverAutomatically: false`)
+and drive each race deterministically rather than by timing;
+`TextFilterTerminalStateTests.stdoutChunkCrossingTheCapCommitsOversizedBeforeLateEOFCouldResolveExit`
+and `TextFilterFourthPassRegressionTests.oneByteOverTheOutputCapNeverWinsTheExitRace`
+cover the cap/verdict race at both the pure-state and real-subprocess
+level; `WorkspaceModelRequiresDestinationToSaveTests` proves the
+non-prompting path never touches the ambient panel via a sentinel URL the
+fake panel would otherwise have consumed.
+
+### Fifth-orthogonal-pass note (this section's own review)
+
+This section was produced by a further review pass, explicitly scoped to
+these 16 commits, run after §24. It found the code sound — spawn/exit/
+reap ordering, lock ordering between the terminal-state and buffer locks,
+and the non-prompting Save's composition with §24's `saveAs(to:
+expecting:)` fix were all checked and hold up — and found no new
+functional defect. The one finding it produced is this section itself:
+the documentation gap it closes. A pass that finds nothing beyond a
+documentation gap is not being reported as "clean" in the sense of "no
+further review needed" — see §24's own closing line.
