@@ -31,8 +31,13 @@ public extension EditorTextSystem {
 
         textView.breakUndoCoalescing()
         isPerformingEditingAssist = true
+        // `defer`, not a plain assignment after the call: this flag
+        // suppresses Markdown editing assists for the whole editor, and an
+        // exception escaping `insertText` (AppKit text handling is
+        // Objective-C and can raise) would otherwise leave it stuck `true`
+        // and silently disable assists for the rest of that editor's life.
+        defer { isPerformingEditingAssist = false }
         textView.insertText(replacement, replacementRange: clamped)
-        isPerformingEditingAssist = false
         let caret = NSRange(location: location + (replacement as NSString).length, length: 0)
         textView.setSelectedRange(caret)
         if undoManager.canUndo {

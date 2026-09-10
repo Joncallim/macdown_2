@@ -261,12 +261,27 @@ final class TextFilterProcessGroup: @unchecked Sendable {
         }
     }
 
+    /// The outcome of one `killpg`. Not discarded: "no safety-related call
+    /// is best-effort" applies to signalling too. A signal this process was
+    /// not permitted to send is a real inability to contain the group, and
+    /// must not be polled over as though it had been delivered.
+    enum SignalOutcome: Equatable {
+        case delivered
+        /// `ESRCH`: no such process group — nothing left to signal.
+        case groupIsGone
+        /// The signal could not be sent (e.g. `EPERM`), so nothing can be
+        /// concluded about the group from having "terminated" it.
+        case failed(Int32)
+    }
+
     /// Sends `signal` to every process currently in the group. Never signals
     /// MacDown's own process group: `pid` is always the spawned child's pid,
     /// established as a distinct group before exec.
-    func terminateGroup(_ signal: Int32) {
-        guard let pid = currentPID else { return }
-        _ = killpg(pid, signal)
+    @discardableResult
+    func terminateGroup(_ signal: Int32) -> SignalOutcome {
+        guard let pid = currentPID else { return .groupIsGone }
+        guard killpg(pid, signal) != 0 else { return .delivered }
+        return errno == ESRCH ? .groupIsGone : .failed(errno)
     }
 
     /// Reaps the group leader only after the session has finished every

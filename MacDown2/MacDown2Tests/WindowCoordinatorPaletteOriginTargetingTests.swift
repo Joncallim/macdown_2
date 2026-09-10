@@ -198,7 +198,8 @@ struct PaletteOriginTargetingTests {
             .load().updatingText("draft-b")
         fixture.controllerB.model.tabStore.newTab(document: documentB)
 
-        await fixture.controllerA.model.saveAs(to: destination)
+        let expectedA = try #require(fixture.controllerA.model.activeDocument)
+        await fixture.controllerA.model.saveAs(to: destination, expecting: expectedA)
 
         #expect(fixture.controllerA.model.activeDocument?.fileURL?.standardizedFileURL == destination
             .standardizedFileURL)

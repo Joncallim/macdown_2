@@ -271,7 +271,14 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             defaultName: WorkspaceModel.defaultSaveAsName(for: document),
             format: document.format
         ) else { return }
-        await model.saveAs(to: url)
+        // `expecting: document` — the one this Save As was started for,
+        // captured above before the panel. The panel stays open as long as
+        // the user takes to answer it, and an external-change reload or a
+        // tab activation can replace this window's active document while
+        // it is up (a sheet blocks neither); without this the save would
+        // write whichever document is active *now* to the name the user
+        // chose for that one.
+        await model.saveAs(to: url, expecting: document)
         externalFileController.synchronize(with: model.activeDocument)
         updateTitleAndEditedState()
     }

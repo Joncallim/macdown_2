@@ -140,7 +140,12 @@ final class TextFilterProcessSession: @unchecked Sendable {
     /// contains the process group. The verdict commits before any signal is
     /// sent so signal-induced EOF can never be laundered into success.
     private func observeExitAndDrainage() {
-        Task {
+        // Captures the two collaborators it needs rather than `self`: this
+        // Task outlives `run()` whenever its drain-grace sleep is still
+        // pending, and capturing the session would keep that whole object
+        // — its pipes and output buffers included — alive for as long as
+        // it did.
+        Task { [processGroup, terminalState] in
             let status = await processGroup.waitForExit()
             terminalState.recordChildExited(status)
             guard terminalState.committedVerdict == nil else { return }
@@ -222,11 +227,18 @@ final class TextFilterProcessSession: @unchecked Sendable {
             break
         }
 
-        processGroup.terminateGroup(SIGTERM)
+        // A signal that could not be sent at all (e.g. `EPERM`) is not
+        // something to poll over: escalating would fail identically, and
+        // the group would only be watched, never acted on. Fail closed.
+        if case .failed = processGroup.terminateGroup(SIGTERM) {
+            return false
+        }
         if await waitForGroupExit(timeout: Self.terminationGracePeriod) {
             return true
         }
-        processGroup.terminateGroup(SIGKILL)
+        if case .failed = processGroup.terminateGroup(SIGKILL) {
+            return false
+        }
         return await waitForGroupExit(timeout: Self.terminationGracePeriod)
     }
 
@@ -236,13 +248,27 @@ final class TextFilterProcessSession: @unchecked Sendable {
             if currentMembershipState() == .empty {
                 return true
             }
-            try? await Task.sleep(for: .milliseconds(20))
+            await Self.uninterruptiblePause(milliseconds: 20)
         }
         return currentMembershipState() == .empty
     }
 
     private func currentMembershipState() -> TextFilterProcessGroup.MembershipState {
         membershipStateOverride?() ?? processGroup.verifiedMembershipState()
+    }
+
+    /// A pause a cancelled task cannot skip. Deliberately **not**
+    /// `Task.sleep`: the `.cancelled` verdict's containment by definition
+    /// runs inside an already-cancelled task, where `Task.sleep` returns
+    /// immediately — collapsing this 20 ms poll into a hot spin over a
+    /// `sysctl` process-table enumeration for the whole grace period,
+    /// twice, every time a window closes while a filter is running.
+    private static func uninterruptiblePause(milliseconds: Int) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(milliseconds)) {
+                continuation.resume()
+            }
+        }
     }
 
     // MARK: - I/O

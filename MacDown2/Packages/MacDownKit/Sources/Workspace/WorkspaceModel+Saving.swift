@@ -162,17 +162,29 @@ extension WorkspaceModel {
             format: document.format
         )
         else { return }
-        await saveAs(to: url)
+        await saveAs(to: url, expecting: document)
     }
 
-    /// Saves the active document to an already-chosen `url` — the caller
-    /// having already presented (and dismissed) whatever panel it used to
-    /// obtain it, explicitly against whichever window it considers the
-    /// operation's origin. `Workspace` has no AppKit window type to accept
-    /// here; the caller keeps that context and only hands over the result.
-    public func saveAs(to url: URL) async {
-        guard let document = tabStore.activeDocument, isCurrent(document) else { return }
-        await publishSaveAs(document, to: url)
+    /// Saves `expected` — the document the caller began Save As *for*,
+    /// captured before it presented its panel — to an already-chosen
+    /// `url`. The caller having already presented (and dismissed) whatever
+    /// panel it used to obtain it, explicitly against whichever window it
+    /// considers the operation's origin. `Workspace` has no AppKit window
+    /// type to accept here; the caller keeps that context and only hands
+    /// over the result.
+    ///
+    /// `expected` is what makes that hand-off safe. A panel stays open for
+    /// as long as the user takes to answer it, and the active document can
+    /// be replaced (an external-change reload) or switched (another tab
+    /// activated) meanwhile — a sheet blocks neither. Saving "whatever is
+    /// active now" would write a *different* document's contents to the
+    /// filename the user chose for `expected`, and rebind that document to
+    /// it. Re-reading `tabStore.activeDocument` here and checking
+    /// `isCurrent` against it cannot express that guard: it compares the
+    /// active document with itself and is always true.
+    public func saveAs(to url: URL, expecting expected: FileDocument) async {
+        guard isCurrent(expected) else { return }
+        await publishSaveAs(expected, to: url)
     }
 
     /// The filename `saveAs()`'s own panel prompt defaults to — exposed so

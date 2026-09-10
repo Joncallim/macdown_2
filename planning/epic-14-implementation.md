@@ -2101,3 +2101,76 @@ explicitly called for *another* independent hostile pass afterward, not
 only a re-check of these ten items — that has not happened yet, and
 nothing here claims it has. Zero findings is not being claimed anywhere
 in this record.
+
+## 24. Orthogonal self-review pass (post-`bff930f`)
+
+§23's remediation order ended with "run another independent hostile pass
+from scratch; do not only re-check these ten." This section records that
+pass. It was run along axes the three prior reviews had not taken, and
+deliberately included the code those remediations *themselves*
+introduced — which is where its most serious finding was.
+
+It landed on top of concurrent hardening work already pushed to this
+branch (tri-state process-group membership, checked
+`F_SETNOSIGPIPE`, exit-observation/reap ordering, atomic stdout-cap
+admission). Two findings below had independently been fixed by that work
+and are recorded here only as "converged"; the rest were still live at
+integration time and are fixed here.
+
+| # | Sev | Finding | Disposition |
+|---|-----|---------|--------------|
+| 1 | **P1** | `saveAs(to:)`'s currency guard was vacuous, so Save As could write a **different document** to the filename the user chose | **Fixed** — `saveAs(to:expecting:)` |
+| 2 | P3 | Containment busy-spun for ~1s of `sysctl` polling on every cancelled filter | **Fixed** — cancellation-immune pause |
+| 3 | P3 | The drain observer captured `self`, pinning the whole session (pipes and buffers) whenever it outlived `run()` | **Fixed** — captures only its two collaborators |
+| 4 | P3 | `terminateGroup` discarded `killpg`'s result, so an unsendable signal was polled over as if delivered | **Fixed** — `SignalOutcome`, fails closed on `.failed` |
+| 5 | P3 | `applyExternalReplacement` could leave `isPerformingEditingAssist` stuck `true` | **Fixed** — `defer` |
+| 6 | — | Unchecked `fcntl(F_SETNOSIGPIPE)` — the only thing preventing SIGPIPE from killing the app | **Converged** — independently fixed on-branch |
+| 7 | — | `sysctl` failure reported as "group is empty" (fail-open containment) | **Converged** — independently fixed on-branch |
+
+**Finding 1 in detail.** §22 split `saveAs()` into a panel-presenting half
+and a URL-taking `saveAs(to:)` so the palette could bind its own panel to
+an explicit origin window. That split dropped a guard `master` had: the
+old code captured the document *before* the panel and required
+`isCurrent(document)` afterwards. The new `saveAs(to:)` instead re-read
+`tabStore.activeDocument` after the panel and checked `isCurrent` against
+*that* — comparing the active document with itself, which is always true.
+
+A save panel blocks neither `ExternalFileController`'s reload path (which
+calls `tabStore.updateActiveDocument` from ~8 async sites) nor
+`tabStore.activate` from an alert completion. So: the user picks a name
+for document A, B becomes active while the panel is up, and B's contents
+are written to the file the user named for A — with B rebound to it.
+Reproduced directly against the pre-fix code, which creates
+`chosen-for-a.md` containing B and rebinds B to it.
+
+This defect was *introduced* by the second remediation and survived the
+third — which reviewed this very Save path for its own finding #5. It is
+the clearest evidence in this record that re-checking a prior pass's
+finding list is not the same as reviewing the code that list produced.
+
+**Method note.** Findings 6 and 7 were settled by running Darwin probes
+rather than by reading, and the probes also established the fact the
+fail-closed membership fix depends on: an empty *or nonexistent* process
+group answers the membership query **successfully with zero rows** (the
+size query is only a padded estimate and never returns 0), so "failed"
+and "empty" are cleanly separable. A probe likewise confirmed that a
+write to a pipe with no reader terminates the process outright
+(exit 141) without `F_SETNOSIGPIPE` and returns `EPIPE` with it.
+
+**Tests added:** `WorkspaceModelSaveAsExpectationTests` (3 — the
+wrong-document case, the replaced-document case, and a control proving
+the guard does not simply abort every save). Verified to fail against the
+pre-fix implementation, both before and after integration.
+
+**Verification (real results at this head):** swiftformat 0/426,
+swiftlint 0 violations in 426 files, package `swift test --no-parallel`
+1134 tests in 126 suites passed, app-target `MacDown2Tests` 113 tests in
+15 suites passed, and Debug + Release builds of both the app and the
+`macdown2` CLI all succeeded.
+
+**Still unverified:** the manual UI matrix, unchanged from §21/§22/§23 —
+no interactive session has driven it. Not inferred passed.
+
+**PR status:** still a **Draft**. A pass that found a P1 in code three
+prior adversarial reviews had signed off on is not evidence that the next
+pass will find nothing.
