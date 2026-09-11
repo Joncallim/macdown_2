@@ -80,6 +80,13 @@ public final class WorkspaceModel {
     /// that interval are deliberately coalesced instead of writing the old
     /// pathname after Save As has selected a destination.
     var inFlightSaveAsByDocumentID: [String: UInt] = [:]
+    /// Document IDs with a save write actually in flight right now (#57):
+    /// covers the real `documentWriter.save`/`saveAs` call and the
+    /// publication bookkeeping around it, not time spent waiting on a Save
+    /// As destination panel. Keyed by document ID, like
+    /// `inFlightSaveAsByDocumentID` above, so switching tabs shows the right
+    /// tab's state.
+    var savingDocumentIDs: Set<String> = []
     /// Test seam for the crash window after destination session publication
     /// and before a dirty Save As acknowledges its source redirect.
     var onSaveAsDestinationSessionPublished: (@MainActor (FileDocument, FileDocument) async -> Void)?
@@ -164,6 +171,15 @@ public final class WorkspaceModel {
     /// `true` if the active document can be saved right now.
     public var canSave: Bool {
         tabStore.canSave
+    }
+
+    /// `true` while a save write for the *active* document is genuinely in
+    /// flight (#57). Views use this to show that Save is working rather than
+    /// looking hung — previously there was no observable signal at all, so a
+    /// save that took a moment looked identical to the app not responding.
+    public var isSavingActiveDocument: Bool {
+        guard let id = tabStore.activeDocument?.id else { return false }
+        return savingDocumentIDs.contains(id)
     }
 
     /// `true` if the active tab exists and is not pinned.

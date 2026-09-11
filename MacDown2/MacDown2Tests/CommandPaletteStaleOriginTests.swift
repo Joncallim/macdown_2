@@ -126,6 +126,9 @@ struct CommandPaletteStaleOriginTests {
             discoverTextFilters: { [filter] },
             textFiltersAvailable: { available }
         )
+        // #57: the real filesystem scan now runs once, from
+        // `CommandPaletteView.onAppear`, not eagerly in `init`.
+        model.refreshRows()
         #expect(model.rows.map(\.id) == ["filter.uppercase.sh"])
 
         // The origin's editing target disappeared (e.g. its window closed,

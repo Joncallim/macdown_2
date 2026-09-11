@@ -37,10 +37,21 @@ extension WindowController {
 
     private func presentDirtyCloseSheet(for sender: NSWindow, context: CloseSheetContext) {
         let alert = NSAlert()
-        alert.messageText = "Unsaved Changes"
         let fileName = context.fileURL?.lastPathComponent ?? "Untitled"
-        alert.informativeText = "Do you want to save changes to \"\(fileName)\"?"
-        alert.addButton(withTitle: "Save")
+        // #57: a document whose backing file was deleted/moved externally is
+        // still just `.dirty` here (`FileDocumentState` has no distinct case
+        // for that — see `FileBackingState.unavailable`), so it used to reach
+        // this exact same "Save / Cancel / Discard Changes" alert with no
+        // hint that "Save" cannot write in place. Labeling the button "Save
+        // As…" and explaining why up front means the destination panel that
+        // follows is expected, not a second, unexplained dialog.
+        let needsDestination = model.requiresDestinationToSave
+        alert.messageText = "Unsaved Changes"
+        alert.informativeText = needsDestination
+            ? "The original file for \"\(fileName)\" is no longer available. "
+            + "Save a copy to close, or discard your changes."
+            : "Do you want to save changes to \"\(fileName)\"?"
+        alert.addButton(withTitle: needsDestination ? "Save As…" : "Save")
         alert.addButton(withTitle: "Cancel")
         alert.addButton(withTitle: "Discard Changes")
         alert.alertStyle = .warning
@@ -56,7 +67,14 @@ extension WindowController {
                 }
                 switch response {
                 case .alertFirstButtonReturn:
-                    await saveDocument()
+                    // Explicit-origin, not the ambient `saveDocument()` this
+                    // used ambiguously resolve its Save As panel against
+                    // `NSApp.keyWindow` — during a close sheet that is
+                    // usually `sender`, but never provably so. Every other
+                    // window-bound save path in this app was already fixed
+                    // to route this way; this alert's Save button was the
+                    // one place that hadn't been (#57).
+                    await saveDocumentFromExplicitOrigin()
                     if model.activeDocument?.state == .clean {
                         if let saved = model.activeDocument {
                             guard await (externalFileController.retireRecovery(
@@ -106,7 +124,10 @@ extension WindowController {
                 switch response {
                 case .alertFirstButtonReturn:
                     await externalFileController.resolveConflict(.keepMine)
-                    await saveDocument()
+                    // Same explicit-origin fix as the dirty-close alert
+                    // above (#57): this button's save should never resolve
+                    // against whatever happens to be `NSApp.keyWindow`.
+                    await saveDocumentFromExplicitOrigin()
                 case .alertSecondButtonReturn:
                     await externalFileController.resolveConflict(.useExternal)
                 default:

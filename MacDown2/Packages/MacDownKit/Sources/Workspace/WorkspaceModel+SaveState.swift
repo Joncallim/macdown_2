@@ -43,4 +43,16 @@ extension WorkspaceModel {
     func tracksSaveGeneration(for document: FileDocument) -> Bool {
         latestSaveGenerationByDocumentID[document.id] != nil
     }
+
+    /// Marks `documentID` as having a save write in flight (#57). Paired with
+    /// `endSavingIndicator`, always via `defer`, so it clears on every exit
+    /// path — success, failure, or a metadata-conflict retry recursing back
+    /// through the same call.
+    func beginSavingIndicator(for documentID: String) {
+        savingDocumentIDs.insert(documentID)
+    }
+
+    func endSavingIndicator(for documentID: String) {
+        savingDocumentIDs.remove(documentID)
+    }
 }
