@@ -54,8 +54,16 @@ extension WindowCoordinator {
     }
 
     func createInKeyFolder(isDirectory: Bool) {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
-              let root = controller.fileTreeModel.root else { return }
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        createInFolder(isDirectory: isDirectory, controller: controller)
+    }
+
+    /// Explicit-target variant of `createInKeyFolder(isDirectory:)`, used by
+    /// the command palette so "New File" targets the window the palette was
+    /// opened from (post-review finding #7) instead of resolving
+    /// `NSApp.keyWindow` — the palette itself — at invocation time.
+    func createInFolder(isDirectory: Bool, controller: WindowController) {
+        guard let root = controller.fileTreeModel.root else { return }
         let context = controller.fileTreeModel.beginOperation()
         Task { @MainActor in
             do {
@@ -68,12 +76,20 @@ extension WindowCoordinator {
                 controller.fileTreeModel.renamingURL = created
                 if !isDirectory {
                     controller.fileTreeModel.pendingOpenURL = created
+                    // Explicit target: without this, `openDocument`'s own
+                    // internal `NSApp.keyWindow` read could resolve to
+                    // whatever is key by the time this `await` completes —
+                    // the command palette, if that's who called
+                    // `createInFolder` (post-review finding #4) — rather
+                    // than `controller`, which this whole operation is
+                    // already scoped to.
                     await openDocument(
                         at: created,
                         folderRoot: root,
                         folderAccessURL: controller.fileTreeModel.rootAccessURL,
                         folderSelectionURL: created,
-                        folderRenameURL: created
+                        folderRenameURL: created,
+                        relativeTo: controller.window
                     )
                     if controller.fileTreeModel.isCurrent(context), controller.fileTreeModel.root == root {
                         controller.fileTreeModel.pendingOpenURL = nil
@@ -87,16 +103,27 @@ extension WindowCoordinator {
         }
     }
 
-    func chooseFolder() {
+    /// - Parameter relativeTo: when non-`nil`, the panel presents against
+    ///   this window explicitly and the chosen folder opens in it — used by
+    ///   the command palette so both the panel and the resulting root
+    ///   target the window the palette was opened from, not whatever
+    ///   window happens to be key once this `await` resolves (post-review
+    ///   finding #4). `nil` (the real menu path) keeps the previous
+    ///   ambient, `NSApp.keyWindow`-relative behavior for both.
+    func chooseFolder(relativeTo controller: WindowController? = nil) {
         Task { @MainActor in
-            guard let url = await panelProvider.chooseFolder() else { return }
-            openFolder(url)
+            let provider = controller.map { NSFilePanelProvider(window: $0.window) } ?? panelProvider
+            guard let url = await provider.chooseFolder() else { return }
+            openFolder(url, in: controller)
         }
     }
 
-    /// Opens a root in the key window only; roots are intentionally per-window.
-    func openFolder(_ url: URL, accessURL: URL? = nil) {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+    /// Opens a root in one window only; roots are intentionally per-window.
+    /// - Parameter in: the window to open the root in, or `nil` to resolve
+    ///   `NSApp.keyWindow` at call time (the real menu/recent-folder path,
+    ///   invoked from that window already).
+    func openFolder(_ url: URL, accessURL: URL? = nil, in controller: WindowController? = nil) {
+        guard let controller = controller ?? controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
         controller.model.setFolderRoot(url)
         recentFolderRoots.record(url)
         Task { await controller.fileTreeModel.setRoot(url, accessURL: accessURL) }

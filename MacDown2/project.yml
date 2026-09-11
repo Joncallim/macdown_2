@@ -42,6 +42,8 @@ targets:
       product: ExportService
     - package: MacDownKit
       product: Contributions
+    - package: MacDownKit
+      product: TextFilters
     settings:
       configs:
         Release:
@@ -183,6 +185,8 @@ targets:
       product: Contributions
     - package: MacDownKit
       product: Preview
+    - package: MacDownKit
+      product: TextFilters
     settings:
       base:
         GENERATE_INFOPLIST_FILE: 'YES'

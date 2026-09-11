@@ -26,6 +26,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let externalFileController: ExternalFileController
     weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
+    /// Running text-filter commands, keyed by tab — see
+    /// `WindowController+TextFilterTasks.swift`.
+    var textFilterTaskHandles: [UUID: TextFilterTaskHandle] = [:]
     private var lastObservedTitle: String = ""
     private var lastObservedDirty: Bool = false
     private var lastObservedURL: URL?
@@ -205,6 +208,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         parseStore.evictAll()
         jsonAnalysisStore.evictAll()
         fileTreeModel.dispose()
+        cancelAllTextFilterTasks()
     }
 
     func windowDidBecomeKey(_: Notification) {
@@ -226,9 +230,55 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         updateTitleAndEditedState()
     }
 
+    /// Explicit-target Save never calls a model method that is permitted to
+    /// present an ambient destination panel. `saveWithoutDestinationPrompt()`
+    /// performs the backing check inside the same Save attempt (including its
+    /// metadata-conflict retry) and either handles the save or reports that a
+    /// destination is required. Only the latter path invokes this controller's
+    /// window-bound Save As flow. This closes the fourth-pass TOCTOU left by
+    /// checking `requiresDestinationToSave` and then calling ordinary `save()`.
+    func saveDocumentFromExplicitOrigin() async {
+        switch await model.saveWithoutDestinationPrompt() {
+        case .handled:
+            externalFileController.synchronize(with: model.activeDocument)
+            updateTitleAndEditedState()
+        case .requiresDestination:
+            await saveDocumentAsFromExplicitOrigin()
+        }
+    }
+
     func saveDocumentAs() async {
         await externalFileController.drainRecovery()
         await model.saveAs()
+        externalFileController.synchronize(with: model.activeDocument)
+        updateTitleAndEditedState()
+    }
+
+    /// Explicit-target variant of `saveDocumentAs()`: presents the
+    /// destination panel itself, bound explicitly to `self.window`, rather
+    /// than going through `WorkspaceModel.saveAs()`'s own ambient,
+    /// `NSApp.keyWindow`-relative panel provider. The real menu/shortcut
+    /// path (`saveDocumentAs()` above) is invoked *from* the key window, so
+    /// that ambient resolution is already correct there; a caller — like
+    /// the command palette — that captured this window as an origin
+    /// earlier cannot assume it is still key by the time this `await`
+    /// resolves (post-review finding #4).
+    func saveDocumentAsFromExplicitOrigin() async {
+        await externalFileController.drainRecovery()
+        guard let document = model.activeDocument else { return }
+        let provider = NSFilePanelProvider(window: window)
+        guard let url = await provider.chooseSaveLocation(
+            defaultName: WorkspaceModel.defaultSaveAsName(for: document),
+            format: document.format
+        ) else { return }
+        // `expecting: document` — the one this Save As was started for,
+        // captured above before the panel. The panel stays open as long as
+        // the user takes to answer it, and an external-change reload or a
+        // tab activation can replace this window's active document while
+        // it is up (a sheet blocks neither); without this the save would
+        // write whichever document is active *now* to the name the user
+        // chose for that one.
+        await model.saveAs(to: url, expecting: document)
         externalFileController.synchronize(with: model.activeDocument)
         updateTitleAndEditedState()
     }

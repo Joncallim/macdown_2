@@ -71,7 +71,20 @@ jobs:
         run: |
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' build
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme macdown2 -destination 'platform=macOS' build
-      - name: Build UI tests (run requires macOS 26+)
+      - name: Build app + CLI (Release)
+        # EPIC-14B second-adversarial-pass finding #6: the DoD evidence
+        # claimed "app/CLI/Release all green" without this ever actually
+        # running anywhere — the step above only ever built Debug. A
+        # Release-only compile error (e.g. an `#if DEBUG`-gated path, or a
+        # warning that is only promoted to an error under Release's
+        # different optimization/whole-module settings) would not fail a
+        # PR without this.
+        run: |
+          xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -configuration Release \
+            -destination 'platform=macOS' build
+          xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme macdown2 -configuration Release \
+            -destination 'platform=macOS' build
+      - name: Build for testing (app + UI tests; UI tests run requires macOS 26+ GUI)
         # -enableCodeCoverage NO: documented in planning/epic-10-implementation.md
         # ("Local build-for-testing coverage quirk"). Xcode 26's build-for-testing
         # injects -fprofile-instr-generate into every target for the scheme's Test
@@ -84,3 +97,19 @@ jobs:
         run: |
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 \
             -destination 'platform=macOS' -enableCodeCoverage NO build-for-testing
+      - name: Run MacDown2Tests (non-UI app-target tests)
+        # EPIC-14B adversarial-review finding #12: app-target adapter/undo/
+        # lifecycle tests (e.g. TextFilterCoordinatorTests) previously had
+        # only build-for-testing evidence in CI — a real regression in them
+        # would not fail a PR. -parallel-testing-enabled NO matches the local
+        # verification convention: this suite's process/save-queue/timing
+        # tests are load-sensitive and flake under XCTest's default
+        # parallelism, on this runner as much as locally.
+        # MacDown2UITests is deliberately excluded: it needs an interactive
+        # macOS 26 GUI session this headless runner does not provide, and
+        # stays build-only (previous step) with its evidence tracked as
+        # manual/unverified in the release ledger, not run here.
+        run: |
+          xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 \
+            -destination 'platform=macOS' -enableCodeCoverage NO -parallel-testing-enabled NO \
+            -only-testing:MacDown2Tests test-without-building

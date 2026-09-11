@@ -3,30 +3,71 @@ import Foundation
 
 @MainActor
 extension WorkspaceModel {
-    /// Saves the active document. Untitled documents prompt for a location.
-    public func save() async {
-        await save(isRetry: false)
+    /// Result of a Save attempt that is forbidden from presenting a
+    /// destination picker. The command palette uses this so its explicit
+    /// origin remains authoritative even if the document becomes untitled
+    /// or its backing disappears immediately before the save starts.
+    public enum NonPromptingSaveResult: Sendable, Equatable {
+        case handled
+        case requiresDestination
     }
 
-    /// - Parameter isRetry: `true` for the single automatic retry
-    ///   `reconcileSaveConflict` makes after a metadata-only external change.
-    ///   Bounds that retry to exactly one attempt so a file whose metadata
-    ///   keeps changing (a misbehaving sync client, for example) cannot
-    ///   recurse indefinitely.
-    private func save(isRetry: Bool) async {
+    private enum SaveDestinationPolicy {
+        case promptIfNeeded
+        case reportRequirement
+    }
+
+    /// Saves the active document. Untitled documents prompt for a location.
+    public func save() async {
+        _ = await save(isRetry: false, destinationPolicy: .promptIfNeeded)
+    }
+
+    /// Saves without ever invoking this model's ambient file-panel provider.
+    /// Returns `.requiresDestination` when the active document has no usable
+    /// backing destination; the caller can then present its own explicitly
+    /// scoped Save As UI. The policy is threaded through the metadata-conflict
+    /// retry too, so no later re-check can silently fall back to an ambient
+    /// panel after the caller chose the non-prompting route.
+    public func saveWithoutDestinationPrompt() async -> NonPromptingSaveResult {
+        await save(isRetry: false, destinationPolicy: .reportRequirement)
+    }
+
+    /// Advisory snapshot of whether a Save *right now* needs a destination.
+    /// Useful for validation/tests, but not an atomic routing boundary: a
+    /// backing file can disappear immediately after this property is read.
+    /// Callers that must guarantee they never prompt ambiently should use
+    /// `saveWithoutDestinationPrompt()` instead.
+    public var requiresDestinationToSave: Bool {
+        guard let document = tabStore.activeDocument else { return false }
+        return document.fileURL == nil || isBackingUnavailable(document)
+    }
+
+    /// - Parameters:
+    ///   - isRetry: `true` for the single automatic retry
+    ///     `reconcileSaveConflict` makes after a metadata-only external change.
+    ///   - destinationPolicy: whether a missing/unavailable destination may
+    ///     invoke the model's ambient Save As panel or must be reported back to
+    ///     an explicit-origin caller instead.
+    private func save(
+        isRetry: Bool,
+        destinationPolicy: SaveDestinationPolicy
+    ) async -> NonPromptingSaveResult {
         guard let document = tabStore.activeDocument else {
             lastError = .noActiveDocument
-            return
+            return .handled
         }
         if document.state == .conflict {
             lastError = .unresolvedExternalConflict
-            return
+            return .handled
         }
         if document.fileURL == nil || isBackingUnavailable(document) {
-            await saveAs()
-            return
+            if destinationPolicy == .promptIfNeeded {
+                await saveAs()
+                return .handled
+            }
+            return .requiresDestination
         }
-        guard inFlightSaveAsByDocumentID[document.id] == nil else { return }
+        guard inFlightSaveAsByDocumentID[document.id] == nil else { return .handled }
 
         let context = beginSave(for: document)
         do {
@@ -41,29 +82,37 @@ extension WorkspaceModel {
             await documentWriter.acknowledge(result)
         } catch {
             if case FileStoreError.fileChangedDuringRead = error {
-                await reconcileSaveConflict(for: document, isRetry: isRetry)
-                return
+                return await reconcileSaveConflict(
+                    for: document,
+                    isRetry: isRetry,
+                    destinationPolicy: destinationPolicy
+                )
             }
-            guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return }
+            guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return .handled }
             lastError = workspaceError(for: error)
         }
+        return .handled
     }
 
-    private func reconcileSaveConflict(for document: FileDocument, isRetry: Bool) async {
+    private func reconcileSaveConflict(
+        for document: FileDocument,
+        isRetry: Bool,
+        destinationPolicy: SaveDestinationPolicy
+    ) async -> NonPromptingSaveResult {
         guard let current = tabStore.activeDocument,
               isSameDocumentLifetime(current, document),
               let url = current.fileURL,
               let snapshot = try? current.fileStore.readSnapshot(from: url)
         else {
             lastError = .unresolvedExternalConflict
-            return
+            return .handled
         }
         let reconciliation = current.reconcilingExternalSnapshot(snapshot)
         tabStore.updateActiveDocument { _ in reconciliation.document }
         if reconciliation.document.state == .conflict {
             _ = await reconciliation.document.persistRecovery()
             lastError = .unresolvedExternalConflict
-            return
+            return .handled
         }
         // `.promptingClose` reconciles the same as `.dirty` here (E18: a
         // metadata-only change preserves both states rather than collapsing
@@ -72,7 +121,7 @@ extension WorkspaceModel {
         // a failed save and silently reverts to `.dirty` with the prompt
         // dismissed — save-and-close would do nothing and say nothing.
         guard reconciliation.document.state == .dirty || reconciliation.document.state == .promptingClose else {
-            return
+            return .handled
         }
         guard !isRetry else {
             // Something is touching this file's metadata faster than one
@@ -80,7 +129,7 @@ extension WorkspaceModel {
             // and say so rather than leaving the document dirty with no
             // explanation.
             lastError = workspaceError(for: FileStoreError.fileChangedDuringRead)
-            return
+            return .handled
         }
         // The write failed only because the on-disk baseline had moved, not
         // because its content actually diverged (a real divergence lands in
@@ -89,24 +138,60 @@ extension WorkspaceModel {
         // leaving it dirty with no error and no indication anything failed —
         // but only once: a second consecutive metadata-only change means
         // something external is outpacing us, and that deserves a real error
-        // rather than another silent attempt.
-        await save(isRetry: true)
+        // rather than another silent attempt. Preserve the caller's
+        // destination policy across that retry.
+        return await save(isRetry: true, destinationPolicy: destinationPolicy)
     }
 
-    /// Saves the active document to a user-chosen location.
+    /// Saves the active document to a user-chosen location, prompted via
+    /// this model's own `panel` — which resolves against `NSApp.keyWindow`
+    /// at presentation time unless the caller bound it to a fixed window.
+    /// That is exactly right for the real Save As menu item/shortcut
+    /// (invoked *from* the key window), but not for a caller — like the
+    /// command palette — that captured a specific origin window earlier
+    /// and cannot guarantee it is still key by the time this `await`
+    /// resolves. Such a caller should use `saveAs(to:)` instead, having
+    /// already presented its own panel explicitly against that window.
     public func saveAs() async {
         guard let document = tabStore.activeDocument else {
             lastError = .noActiveDocument
             return
         }
-        let defaultName = document.fileURL?.lastPathComponent
-            ?? "Untitled.\(document.format.extensions.first ?? "md")"
         guard let url = await panel.chooseSaveLocation(
-            defaultName: defaultName,
+            defaultName: Self.defaultSaveAsName(for: document),
             format: document.format
-        ), isCurrent(document)
+        )
         else { return }
-        await publishSaveAs(document, to: url)
+        await saveAs(to: url, expecting: document)
+    }
+
+    /// Saves `expected` — the document the caller began Save As *for*,
+    /// captured before it presented its panel — to an already-chosen
+    /// `url`. The caller having already presented (and dismissed) whatever
+    /// panel it used to obtain it, explicitly against whichever window it
+    /// considers the operation's origin. `Workspace` has no AppKit window
+    /// type to accept here; the caller keeps that context and only hands
+    /// over the result.
+    ///
+    /// `expected` is what makes that hand-off safe. A panel stays open for
+    /// as long as the user takes to answer it, and the active document can
+    /// be replaced (an external-change reload) or switched (another tab
+    /// activated) meanwhile — a sheet blocks neither. Saving "whatever is
+    /// active now" would write a *different* document's contents to the
+    /// filename the user chose for `expected`, and rebind that document to
+    /// it. Re-reading `tabStore.activeDocument` here and checking
+    /// `isCurrent` against it cannot express that guard: it compares the
+    /// active document with itself and is always true.
+    public func saveAs(to url: URL, expecting expected: FileDocument) async {
+        guard isCurrent(expected) else { return }
+        await publishSaveAs(expected, to: url)
+    }
+
+    /// The filename `saveAs()`'s own panel prompt defaults to — exposed so
+    /// a caller presenting its own panel (via `saveAs(to:)`) can offer the
+    /// same default without duplicating the fallback-extension logic.
+    public static func defaultSaveAsName(for document: FileDocument) -> String {
+        document.fileURL?.lastPathComponent ?? "Untitled.\(document.format.extensions.first ?? "md")"
     }
 
     func saveInternalForClose() async {

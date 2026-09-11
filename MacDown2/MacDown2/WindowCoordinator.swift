@@ -68,6 +68,10 @@ final class WindowCoordinator {
     @ObservationIgnored var onNewDocumentLifetimePrepared: (@MainActor () async -> Void)?
     @ObservationIgnored var terminationRecoveryState: TerminationRecoveryState = .none
     @ObservationIgnored var terminationRecoveryController: WindowController?
+    /// The one currently open command-palette panel, if any — see
+    /// `WindowCoordinator+CommandPalette.swift` and `CommandPalettePanel`'s
+    /// doc comment for why this coordinator must hold it strongly.
+    @ObservationIgnored var commandPalette: CommandPalettePanel?
 
     init(
         sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
@@ -95,8 +99,13 @@ final class WindowCoordinator {
 
     /// Creates a new untitled document window. When `addAsTab` is `true` and a
     /// key window exists, the new window is added as a tab of the key window.
-    func newDocument(addAsTab: Bool = false) {
-        let keyWindow = NSApp.keyWindow
+    /// - Parameter relativeTo: when non-`nil`, used as the tab host instead
+    ///   of `NSApp.keyWindow` — the command palette passes its captured
+    ///   origin window here so "New Tab" targets the window the palette was
+    ///   opened from rather than the palette itself (post-review
+    ///   finding #7).
+    func newDocument(addAsTab: Bool = false, relativeTo overrideKeyWindow: NSWindow? = nil) {
+        let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
 
         let model = makeWindowModel()
         let controller = WindowController(
@@ -123,12 +132,19 @@ final class WindowCoordinator {
 
     /// Opens a file in a new window, or activates the existing window if the
     /// same file is already open.
+    /// - Parameter relativeTo: when non-`nil`, used as the tab host instead
+    ///   of `NSApp.keyWindow` — the command palette (via `createInFolder`,
+    ///   whose "New File" this backs) passes its captured origin window
+    ///   here so the newly created document opens relative to it rather
+    ///   than whatever window is key once this `await` resolves
+    ///   (post-review finding #4).
     func openDocument(
         at url: URL,
         folderRoot: URL? = nil,
         folderAccessURL: URL? = nil,
         folderSelectionURL: URL? = nil,
-        folderRenameURL: URL? = nil
+        folderRenameURL: URL? = nil,
+        relativeTo overrideKeyWindow: NSWindow? = nil
     ) async {
         if let existing = controllerForDocument(url: url), let window = existing.window {
             if let folderRoot, existing.fileTreeModel.root == nil {
@@ -142,7 +158,7 @@ final class WindowCoordinator {
             return
         }
 
-        let keyWindow = NSApp.keyWindow
+        let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
 
         let model = makeWindowModel()
         let outcome = await model.tabStore.openFileInTab(url)
@@ -170,34 +186,16 @@ final class WindowCoordinator {
     }
 
     /// Shows the open panel and opens the chosen file.
-    func openFile() {
+    /// - Parameter relativeTo: when non-`nil`, the panel presents against
+    ///   this window explicitly and the opened document opens relative to
+    ///   it — used by the command palette (post-review finding #4). `nil`
+    ///   (the real menu path) keeps the previous ambient behavior.
+    func openFile(relativeTo controller: WindowController? = nil) {
         Task { @MainActor in
-            guard let url = await panelProvider.chooseFile() else { return }
-            await openDocument(at: url)
+            let provider = controller.map { NSFilePanelProvider(window: $0.window) } ?? panelProvider
+            guard let url = await provider.chooseFile() else { return }
+            await openDocument(at: url, relativeTo: controller?.window)
         }
-    }
-
-    /// Closes the tab/window that is currently key.
-    func closeKeyWindow() {
-        guard let controller = controllers.first(where: { $0.window?.isKeyWindow ?? false }),
-              let window = controller.window else { return }
-        // Call windowShouldClose directly instead of NSWindow.performClose. Under
-        // native tabbing, performClose can trigger tab-group selection changes even
-        // when windowShouldClose returns false (dirty document), causing a sibling
-        // tab to erroneously become key after the sheet is dismissed.
-        if controller.windowShouldClose(window) {
-            controller.close()
-        }
-    }
-
-    func saveKeyDocument() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
-        Task { await controller.saveDocument() }
-    }
-
-    func saveKeyDocumentAs() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
-        Task { await controller.saveDocumentAs() }
     }
 
     /// Selects the next tab in the key window's native tab group.
@@ -322,6 +320,15 @@ final class WindowCoordinator {
     func removeController(_ controller: WindowController) {
         pendingNewDocumentTasks.removeValue(forKey: ObjectIdentifier(controller))?.cancel()
         controllers.removeAll { $0 === controller }
+        // The palette must never keep offering (or being able to invoke)
+        // commands against a controller that is no longer open — closing
+        // it here, rather than merely making it inert, also releases
+        // everything the palette retains about it (post-review finding
+        // #5). `close()` re-enters via `commandPaletteDidClose`, which
+        // clears `commandPalette` itself.
+        if commandPalette?.originController === controller {
+            commandPalette?.close()
+        }
         scheduleSaveSession()
         updateKeyModel()
     }

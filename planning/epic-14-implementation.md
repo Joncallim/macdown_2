@@ -26,6 +26,14 @@ E14.
 > superseded by what `git show 86a2431 --stat` actually touched; a future
 > reader should not use them to scope new work.
 
+> **As-built note (E14B implementation pass, same branch):** Slices 5–8
+> are now also done, implemented essentially as specified in §6.5/§7.2/§9/
+> §10/§17 below — see §20 for the small, deliberate deviations (a
+> `documentURL` parameter `TextFilterRunner.run` needed that the §6.5
+> sketch omitted; the palette and Commands-menu presentation layer,
+> necessarily more concrete than "TBD at implementation"). The Definition
+> of Done in §18 is current as of this pass.
+
 ---
 
 ## 1. Owner summary
@@ -1040,6 +1048,27 @@ range-clamping behavior elsewhere, not a new invariant this epic invents.
 
 ## 9. Failure model
 
+> **Amended in the E14B post-review remediation (adversarial-review finding
+> #13):** issue #15's original acceptance criterion and §14's evidence table
+> below both said cancellation must "surface a useful error," in tension
+> with this section's own row (`Caller cancels...`) and the shipped
+> implementation, which are silent by design. This amendment resolves that
+> in favor of silence, for every cancellation source this epic actually
+> has: `TextFilterCoordinator` cancels a running filter only when its
+> originating window closes (`WindowController.windowWillClose`) or a newer
+> filter run supersedes it on the same tab
+> (`WindowController.registerTextFilterTask`) — never from a user-facing
+> "Cancel" affordance. Both are the caller withdrawing the action on the
+> user's behalf, with no live window/selection left to attach an alert to
+> in the first case and a superseding result already in flight in the
+> second, so there is nothing a cancellation alert could usefully tell the
+> user that the (silent) JSON-formatting and export cancellation paths this
+> epic already mirrors (§2.1) don't already treat the same way. If a future
+> epic ever adds an explicit user-facing "Cancel" button for a running
+> filter, that is a *new* cancellation source this amendment does not
+> cover, and its visibility should be decided then rather than assumed
+> silent by this note.
+
 | Failure | Response |
 |---|---|
 | Document has a `[TOC]` marker but zero headings (J3) | TOC still replaces the marker, with an empty Markdown list — never leaves the literal `[TOC]` text on screen once a marker was found |
@@ -1237,7 +1266,7 @@ same reparse cadence Preview already has, at the cost above.
 | Preview's merged blocks correctly substitute the base block at the marker's position, leaving every other block unchanged | Unit test, `PreviewContributionAdapter` given a fixture `[PreviewBlock]` + `[ContributionResult]` |
 | Preview caps merged contribution results at 64 (§11) | Unit test |
 | A local text filter can uppercase a selection end-to-end as one successful editor mutation (deliverable 3 / acceptance criterion, direct) | `TextFiltersTests` covering `TextFilterRunner.run` against a real bundled example script fixture, plus an App-target-level test of the replacement-range/undo-step logic; the actual keystroke-to-replacement UI journey is an XCUITest, subject to the same macOS-runtime caveat below |
-| Launch failure, non-zero exit, timeout, cancellation, oversized output, and non-UTF-8 output each preserve original text and surface a useful error (acceptance criterion, direct) | `TextFiltersTests` — real `Process` launches against small fixture scripts (a non-executable file, `exit 1`, `sleep 60`, a script writing >4 MB, a script writing invalid UTF-8 bytes); these run for real in CI (the `xcodebuild`/`swift test` runner is macOS, so real subprocess launches are not subject to the "unverified in this session" caveat that applies to on-device UI journeys, §14 note below) |
+| Launch failure, non-zero exit, timeout, oversized output, and non-UTF-8 output each preserve original text and surface a useful error; cancellation preserves original text silently, per the §9 amendment below (acceptance criterion, amended) | `TextFiltersTests` — real `Process` launches against small fixture scripts (a non-executable file, `exit 1`, `sleep 60`, a script writing >4 MB, a script writing invalid UTF-8 bytes); these run for real in CI (the `xcodebuild`/`swift test` runner is macOS, so real subprocess launches are not subject to the "unverified in this session" caveat that applies to on-device UI journeys, §14 note below). Cancellation's silence is covered by an App-target test asserting no alert and no mutation |
 | No shell interpolation path exists (acceptance criterion, direct) | Satisfied by construction — `Process.arguments` is always `[]`, no string concatenation feeds a shell anywhere in `TextFilterRunner` (§10) — verified by code review plus a unit test asserting a maliciously-named "selection" containing shell metacharacters (`` ` ``, `$()`, `;`) passed as *stdin content* has no special effect (proves input never reaches argument/shell parsing) |
 | Text-filter execution cannot block the main actor (acceptance criterion, direct) | `TextFilterRunner` carries no `@MainActor` annotation (§8) — verified by code review; a unit test drives a slow (but under-timeout) script from a background `Task` and asserts the calling test's own main-actor work is not blocked while it runs |
 | Command palette invokes both app commands and discovered text filters (acceptance criterion, direct) | App-target unit test on the palette's row-building logic (pure data, testable without presenting UI) + XCUITest for the actual `⌘⇧P` journey (same runtime caveat) |
@@ -1460,7 +1489,7 @@ never imported, §5).
   slice must be strictly additive for every document without a `[TOC]`
   marker.
 
-### Slice 5 — Text-filter command runner (process safety core) — 🔲 not started; first slice of E14B
+### Slice 5 — Text-filter command runner (process safety core) — ✅ done (E14B)
 
 - **Goal:** `TextFilters` target: `TextFilterCommand`, `TextFilterRunner`
   (with the full §10 safety contract), `TextFilterError`,
@@ -1482,7 +1511,7 @@ never imported, §5).
   concrete failure mode rather than shipping a timeout that does not
   actually bound execution.
 
-### Slice 6 — Text-filter editor integration + Commands menu — 🔲 not started
+### Slice 6 — Text-filter editor integration + Commands menu — ✅ done (E14B)
 
 - **Goal:** selection-or-document → `TextFilterRunner` → one-mutation
   editor replacement (§7.2, reusing `applyAssistOutcome`'s idiom, §2.1);
@@ -1506,7 +1535,7 @@ never imported, §5).
   public surface beyond what §16 anticipates, stop and report the specific
   gap rather than inventing a second, parallel undo mechanism.
 
-### Slice 7 — Command palette (⌘⇧P) — 🔲 not started
+### Slice 7 — Command palette (⌘⇧P) — ✅ done (E14B)
 
 - **Goal:** `CommandPaletteView` — type-to-filter list combining discovered
   text filters (Slice 6) and a small, explicit array of app commands
@@ -1524,7 +1553,7 @@ never imported, §5).
   specific SwiftUI context), stop and report rather than widening access
   speculatively.
 
-### Slice 8 — Extension API design document — 🔲 not started
+### Slice 8 — Extension API design document — ✅ done (E14B): `planning/extension-api-design.md`
 
 - **Goal:** `planning/extension-api-design.md` — a design-only document
   (issue #15 deliverable 4) describing a possible post-1.0
@@ -1695,3 +1724,542 @@ entries) — neither this remediation nor its scope touches them.
 No new SPM dependency, target, or public `ExportService` API was added;
 `CryptoKit` (Preview's deterministic-ID scheme, mirrored here) is a system
 framework, used only by the app-target adapter.
+
+## 20. E14B implementation record (Slices 5–8)
+
+Text-filter commands and the command palette, implemented as specified in
+§6.5/§7.2/§9/§10/§11/§14/§16/§17 with the following concrete decisions
+where those sections were illustrative rather than exact:
+
+- **`TextFilterRunner.run` takes `documentURL: URL? = nil`**, not shown in
+  §6.5's sketch — needed to build `TextFilterLaunchContext`'s working
+  directory and `MACDOWN_DOCUMENT_PATH` (§10). Additive, defaulted, no
+  behavior change for a call site that omits it.
+- **`TextFilterProcessSession`** is the process-execution engine
+  `TextFilterRunner` delegates to (split into its own file per this
+  package's existing convention of factoring a type once it holds
+  non-trivial synchronized state). It mirrors
+  `PDFNavigationDelegate`'s watchdog-vs-continuation race exactly (§8):
+  normal exit, timeout, and cancellation all resolve through one
+  lock-guarded "first resolution wins" path. `SIGPIPE` is ignored
+  process-wide (a standard, necessary mitigation for `Process`/`Pipe` use
+  not named explicitly in §10 — without it, a script that never reads
+  stdin can crash the whole app) and stdout/stderr are read via
+  readability handlers concurrently with writing stdin, avoiding the
+  classic pipe-buffer deadlock the §15 adversarial corpus's
+  tight-output-loop case exercises.
+- **Bundled example scripts are Swift string literals**
+  (`BundledExampleScripts.swift`), not resource files as §16 anticipated —
+  a handful of shell-script lines does not justify giving a plain-text,
+  no-extension resource a bundle build rule. "Add Example Scripts" never
+  overwrites a filename the user already has.
+- **The range-replacement idiom for a non-empty selection is written
+  directly in `TextFilterCoordinator`** using `EditorTextSystem`'s already-
+  public `textView`/`undoManager`, rather than adding a new public
+  `EditorCore` API — `applyAssistOutcome`'s exact function is
+  package-internal to `EditorCore` and cannot be called across the module
+  boundary (Slice 6's own stop condition). The whole-document case (no
+  selection) reuses the existing public `applyDocumentReplacement`
+  directly. Both are the same `breakUndoCoalescing` → `insertText` →
+  `breakUndoCoalescing` idiom §7.2 specifies; neither widens `EditorCore`'s
+  public surface nor invents a second mechanism.
+- **The command palette is a small floating `NSPanel`** created per
+  invocation and found again (to close it) by scanning `NSApp.windows`
+  rather than a stored coordinator property — `WindowCoordinator`'s class
+  body was already near its lint budget (as `WindowCoordinator+
+  SessionRestore.swift`'s existing comment notes); `WindowCoordinator+
+  CommandPalette.swift` and `WindowCoordinator+TextFilters.swift` follow
+  that same established split-file convention rather than growing the
+  main class body further.
+- **`CommandPaletteModel`/`AppPaletteCommand` are `@MainActor`** (Swift 6
+  strict concurrency requires this for a type holding a closure over the
+  also-`@MainActor` `WindowCoordinator`); `CommandPaletteModel`'s row-
+  filtering/selection/dispatch logic is `static`/pure where possible
+  specifically so it stays unit-testable without presenting UI, per §17
+  Slice 7's own testing note.
+
+**Verified:** `MacDownKit` package suite (1080 tests), the complete
+`MacDown2Tests` app-target suite (88 tests, run with
+`-parallel-testing-enabled NO` — this specific app-test target is flaky
+under `xcodebuild`'s default test parallelism for reasons unrelated to
+E14B, see the PR description), SwiftFormat/SwiftLint --strict, and
+app/CLI/Release builds, all green.
+
+## 21. Post-review remediation (PR #56 adversarial review)
+
+An adversarial review of the E14B implementation (head `aacf824`) found 17
+contract defects (2 P0, 5 P1, 6 P2, 4 P3) — the consolidated review comment
+on PR #56 is the authoritative record of each finding's proof and
+recommended fix; this section reconciles this document with what actually
+shipped rather than restating that comment in full.
+
+**P0 — data corruption (both fixed by construction, not by patching the
+symptom):**
+
+- **Stale filter completions could corrupt live text (#1).**
+  `TextFilterCoordinator.run(_:against:)` now captures a
+  `TextFilterBaseline` (tab identity, `FileDocument.mutationGeneration`,
+  `EditorTextSystem.contentRevision`) before launching, and
+  `applyIfStillCurrent` re-resolves the tab/editor and requires an exact
+  baseline match before mutating — discarding a stale completion silently,
+  exactly like `WindowCoordinator.performJSONFormatting`'s existing
+  precedent (§ "Applying a successful result" in
+  `TextFilterCoordinator.swift`). A stale range is no longer clamped into
+  unrelated live text.
+- **Process exit was treated as I/O completion, truncating output (#2).**
+  `TextFilterProcessSession` was rewritten around independent completion
+  signals — process exit, stdout EOF, stderr EOF — plus a dominant forced
+  outcome (timeout/cancelled/oversized). Normal completion now requires
+  exit **and** both streams drained; the stdout-cap decision is made and
+  recorded atomically in the same locked critical section as the append
+  that crossed it, closing the race where a concurrent exit could win
+  first. A bounded drain grace period after exit (documented as the
+  descendant-process-tree policy, see #4 below) prevents this fix from
+  hanging on a backgrounded grandchild that inherited the pipe.
+
+**P1:**
+
+- **Filter output could be reinterpreted by Markdown editing assists (#3).**
+  New `EditorTextSystem.applyExternalReplacement(_:in:undoActionName:)`
+  (`EditorCore`) raises the same `isPerformingEditingAssist` reentrancy
+  guard `applyAssistOutcome`'s `.edit` case already uses, so a filter's
+  literal structural-character output (`*`, `` ` ``, ...) reaches the
+  document verbatim instead of being expanded by
+  `MarkdownEditingAssistEngine`. Both the selection and whole-document
+  paths in `TextFilterCoordinator` now go through this one seam.
+- **Timeout/cancellation did not confirm the process actually stopped (#4).**
+  `TextFilterProcessSession.confirmTermination()` now sends `SIGTERM`,
+  waits a bounded grace period, escalates to `SIGKILL` if still alive, and
+  waits again — never reporting completion before the direct child is
+  confirmed dead. Descendant-process-tree policy is explicit and
+  documented rather than assumed: only the *direct* child's lifetime is
+  bounded; a backgrounded grandchild (`(sleep 5 &)`) is not waited on or
+  killed, matching the pre-existing `doesNotWaitOnAForkedGrandchildProcess`
+  fixture's intent, and is exercised by the same bounded drain grace period
+  that resolves #2.
+- **Filter tasks were unowned; closing the window did not cancel them (#5).**
+  `WindowController+TextFilterTasks.swift` adds a per-tab
+  `TextFilterTaskHandle` registry: starting a filter registers (and, for
+  the same tab, cancels-and-supersedes) a task handle;
+  `windowWillClose` cancels every handle. `TextFilterCoordinator` resolves
+  its target through the registering `WindowController` (never
+  rediscovering it from `NSApp.keyWindow` later), and presents failures
+  sheeted on that same controller's window.
+- **The command-palette panel leaked via a retain cycle (#6).**
+  `CommandPalettePanel` no longer self-retains through a local-variable
+  `onDismiss` closure; `WindowCoordinator.commandPalette` is the single
+  strong owner, released in `commandPaletteDidClose` (itself invoked from
+  the panel's own `NSWindowDelegate.windowWillClose`, reached via a `weak`
+  coordinator reference on the panel — no cycle).
+- **Palette app commands resolved against the palette itself (#7).**
+  `toggleCommandPalette()` captures the origin `WindowController` (whatever
+  is key *before* the palette is created) once, and threads it through
+  `AppPaletteCommand.action`/`isAvailable` and a new
+  `TextFilterCoordinator.editingTarget(for:)` seam, rather than any command
+  resolving `NSApp.keyWindow` at invocation time (when the palette itself
+  is key). New explicit-target coordinator methods
+  (`saveDocument(in:)`, `saveDocumentAs(in:)`, `closeTab(in:)`,
+  `createInFolder(isDirectory:controller:)`,
+  `newDocument(addAsTab:relativeTo:)`) back the palette's Save/Save
+  As/Close Tab/New File/New Tab rows; the real menu commands are
+  unchanged thin wrappers around the same bodies. `Export…` is **not**
+  given an explicit-target seam in this pass — `ExportCoordinator` still
+  resolves `NSApp.keyWindow` internally, carrying the same latent risk;
+  left as a follow-up rather than reworking already-shipped E12 export
+  code here.
+
+**P2:**
+
+- **Palette command semantics/enablement had already drifted (#8).** "New
+  File" now calls the real `createInFolder(isDirectory: false, controller:)`
+  path (mirroring `WorkspaceCommands`) instead of duplicating "New Tab".
+  `CommandPaletteModel` gained an `isAppCommandAvailable` predicate and a
+  `textFiltersAvailable` flag; unavailable rows are omitted rather than
+  shown as silent no-ops.
+- **Palette rediscovery turned a launch failure into a silent no-op (#9).**
+  `CommandPaletteModel` now discovers text filters once per palette opening
+  (`refreshRows()`, called from `onAppear`) and both renders rows from and
+  invokes against that one snapshot — typing no longer rescans disk, and a
+  file that vanishes after discovery still reaches `TextFilterRunner` and
+  produces a visible `.launchFailed`.
+- **The bounded `PATH` omitted Apple-Silicon Homebrew (#10).**
+  `TextFilterLaunchContext`'s fixed `PATH` is now
+  `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin`.
+- **Colliding humanized names were indistinguishable (#11).**
+  `TextFilterCommandDiscovery` disambiguates a collision by appending the
+  real filename to the display name, and sorts with the filename as an
+  explicit deterministic tie-breaker.
+- **App-adapter/undo/lifecycle evidence was missing; app tests were
+  build-only in CI (#12).** `TextFilterCoordinatorTests` was rewritten
+  against a real `WindowController`/`EditorTextSystem` (mutation, undo,
+  editing-assist fidelity, stale-completion rejection, window-close
+  cancellation, supersession); `.github/workflows/ci.yml` now runs
+  `MacDown2Tests` (not just `build-for-testing`), serialized, with
+  `MacDown2UITests` remaining build-only and tracked as manual/unverified.
+- **Cancellation's visibility contradicted the acceptance criterion (#13).**
+  Reconciled by explicit amendment — see §9's amendment block above.
+
+**P3:**
+
+- **The manual matrix contradicted the empty-stdout-on-zero-exit semantics
+  (#14).** The PR description's manual steps are corrected to match the
+  implemented (and tested) "empty stdout deletes the selection" behavior;
+  `zeroExitEmptyStdoutDeletesSelectionAsOneUndoableEdit` is the explicit
+  regression test the finding asked for.
+- **Discovery accepted executable symlinks despite claiming "regular files
+  only" (#15).** `isExecutableRegularFile` now checks
+  `URLResourceValues.isRegularFile`/`isSymbolicLink` directly instead of
+  inferring from `isExecutableFile` (which follows symlinks).
+- **The 64 KiB stderr cap was not actually a hard cap (#16).**
+  `handleStderr` now appends at most the remaining capacity, and the
+  non-zero-exit diagnostic is lossily decoded (`String(decoding:as:)`)
+  rather than discarded outright on a truncated multibyte boundary.
+- **Example installation had a check-then-overwrite race and miscounted
+  chmod failures as success (#17).** `BundledExampleScripts.install` uses
+  `open(O_CREAT | O_EXCL | O_WRONLY)` + `fchmod`, removing the partial file
+  on any failure and counting a script as installed only once it is
+  confirmed written and executable.
+
+**Unchanged:** `TextFilterCommand`, `TextFilterError`, `TextFilterRunner`'s
+public signature, and the Commands-menu/CLI-adjacent discovery contract —
+none of the seventeen findings required a public-API break.
+
+**Not verified in this pass:** the two on-device journeys §14 names
+(palette keystroke path, text-filter replacement keystroke-to-undo-step
+path) were not driven interactively — recorded here as unverified per
+§14's own note, not inferred passed, pending a human (or an interactive
+session) confirming them in the running app.
+
+## 22. Second adversarial remediation (PR #56 second-pass review)
+
+An independent second adversarial review of §21's remediation (baseline
+head `1f4660946fa97c1b25e1b515478e387f12806abb`) found that pass's own
+fixes for findings #2/#4 (process containment) and #7 (palette targeting)
+were incomplete, plus one required change this review treats as binding
+regardless of finding severity: removing `Export…` from the command
+palette rather than extending an explicit-target fix to it. This section
+is the finding-by-finding record for that second pass; §21 above is left
+as the first pass's historical record and is superseded wherever the two
+disagree.
+
+| # | Severity | Finding | Disposition |
+|---|----------|---------|--------------|
+| Required Change A | — | `Export…` `AppPaletteCommand` still present in `AppPaletteCommand.standard`, carrying `ExportCoordinator`'s `NSApp.keyWindow` risk into the palette | **Removed.** `AppPaletteCommand.standard` no longer has an `export` entry; `ExportCoordinator` and the real app Export menu are untouched; `standardCommandsContainNoExportRow` asserts its absence. |
+| 1 (P0) | Fixed | The first remediation's 500ms drain-grace *timer* could still fabricate an EOF verdict and return truncated stdout as success | **Redesigned.** `TextFilterTerminalState` is a new pure, process/IO-free one-shot verdict state machine: `.exited` commits only when child-exit + real stdout EOF + real stderr EOF have all three actually been recorded — no timer or any other code path can produce it otherwise. 13 deterministic ordering tests in `TextFilterTerminalStateTests` cover every permutation of the three facts, including "exit alone never commits" and "no timer can fabricate EOF." |
+| 2 (P1) | Fixed | Timeout/cancellation bounded only the direct child PID, not its process tree — the root cause enabling #1 | **Redesigned.** New `TextFilterProcessGroup` spawns the command as the atomic leader of its own process group (`posix_spawn` + `POSIX_SPAWN_SETPGROUP`, established before the child's first instruction, closing the race a parent-side `setpgid` would leave open) and confirms group-emptiness via `kill(-pid, 0)`, correctly distinguishing `ESRCH` (truly gone) from `EPERM`/other failures (fail closed — still there). Timeout/cancellation/post-exit cleanup all `SIGTERM` → bounded grace → `SIGKILL` the whole group and require confirmed emptiness before completing; an unconfirmed result throws the new `TextFilterError.terminationUnconfirmed` rather than being silently discarded. A PID-based regression matrix in `TextFilterProcessLifecycleTests` (`timeoutContainsEveryProcessInAForegroundPipeline`, `cancellationContainsEveryProcessInABackgroundedDescendant`, `termIgnoringDescendantIsEscalatedToSigkill`, `ordinaryPipelineLeavesNoSurvivor`, `containsABackgroundedGrandchildRatherThanLettingItSurvive`) replaces the old "grandchild survives" contract with real `sh -c '...'`/`$!`-captured PIDs (not bare `$` inside a subshell, which is fixed at shell-startup and does not report a genuinely new PID) verified gone via `ps`. |
+| 3 (P2) | Fixed | A late watchdog/cancellation could overwrite an already-committed normal verdict — the old `resumed` flag only protected the continuation, not the verdict | **Fixed as part of the same redesign as #1/#2.** `TextFilterTerminalState.requestVerdict(_:)` commits at most once, under lock; `normalCompletionThenLateTimeoutRequestKeepsSuccess`/`...LateCancellationRequestKeepsSuccess`/`timeoutThenLateZeroExitPlusEOFsStaysTimedOut`/`cancellationThenLateZeroExitPlusEOFsStaysCancelled`/`oversizedThenLateZeroExitPlusEOFsStaysOversized`/`onlyTheFirstOfTwoRacingForcedRequestsCommits` are deterministic (no sleep races) ordering tests, not timing-dependent. |
+| 4 (P2) | Fixed | Palette origin targeting still leaked to ambient `NSApp.keyWindow` deeper in async chains: Open…, Open Folder…, New File's post-creation open, Save As's destination panel | **Fixed.** `openFile(relativeTo:)`/`openDocument(at:relativeTo:)`/`chooseFolder(relativeTo:)`/`openFolder(_:in:)` now thread an explicit window/controller through their entire async chain instead of re-resolving `NSApp.keyWindow` after an `await`. Save As is split at the Workspace/AppKit boundary: `WorkspaceModel.saveAs(to: URL)` is a new AppKit-window-agnostic Workspace-layer intent (no `NSApp.keyWindow`, no panel), and a new `WindowController.saveDocumentAsFromExplicitOrigin()` binds the destination panel to `self.window` explicitly before calling it. `PaletteOriginTargetingTests` (new file) is a two-window (A/B) regression suite covering all eight palette-invocable operations (New File, Open…, Open Folder…, Save As, New Tab, Save, Close Tab, Toggle Sidebar) with an explicit A origin while B sits in the coordinator as a candidate wrong-target — see that file's header comment for why it doesn't depend on real `NSApp.keyWindow`/WindowServer focus state to prove the point. |
+| 5 (P2) | Fixed | The palette could retain and invoke against a stale, closed origin controller: no dismissal on origin close, `invokeSelected` didn't revalidate availability, `textFiltersAvailable` was a frozen `Bool`, Toggle Sidebar had no live-origin guard | **Fixed.** `WindowCoordinator.removeController(_:)` — the one function every real close path already funnels through — now also closes the open palette if it is that controller's origin. `CommandPaletteModel.invokeSelected` re-checks `isAppCommandAvailable`/`textFiltersAvailable` immediately before dispatch, not just at the last row rebuild. `textFiltersAvailable` is now a live closure, re-evaluated on every row rebuild, not a value frozen at panel-open time. `toggleSidebar` gained an explicit `isAvailable` requiring a live origin (`WindowCoordinator.isLiveController(_:)`). `CommandPaletteStaleOriginTests` (new file) covers origin-close-while-open (including that it doesn't block the panel's own deallocation), stale-app-command-availability-before-Return, stale-text-filter-availability-before-Return, and the new Toggle Sidebar liveness guard. |
+| 6 (P2) | Fixed | CLI Release build wasn't actually demonstrated in DoD evidence; CI's build step lacked `-configuration Release`; §21 overclaimed "app/CLI/Release all green" | **Fixed.** Both the app and CLI Release builds were actually run this pass (see the commands-run block below and this PR's second-remediation comment for the real, current output) and are now a durable CI gate — `.github/workflows/ci.yml`'s "Build app + CLI (Release)" step runs both `xcodebuild ... -configuration Release build` invocations after the existing Debug step. |
+| 7 (P3) | Fixed | A cancelled/superseded filter task could still surface a stale failure alert; the `runModal()` fallback when the origin window was gone turned a withdrawn operation into a global modal | **Fixed.** `TextFilterCoordinator`'s failure path now checks `!Task.isCancelled` before presenting anything and never falls back to `runModal()` — if the origin window is gone, the withdrawal wins and nothing is presented — through a new injectable `alertPresenter` seam. `genuineFailureOnALiveUncancelledTaskStillPresentsTheAlert` (control case), `aFailureOnATaskCancelledByWindowCloseSurfacesNoAlert`, `aFailureOnATaskCancelledBySupersessionSurfacesNoAlert` cover it. |
+
+**Preserved from the first pass, not regressed:** every fix listed in §21
+remains in place and covered by its original tests, which all still pass;
+none of this pass's changes touch `TextFilterCommand`, `TextFilterError`,
+`TextFilterRunner`'s public signature, or the Commands-menu/CLI-adjacent
+discovery contract.
+
+**Tests added this pass:** `TextFilterTerminalStateTests` (13, new file),
+4 new/replaced tests in `TextFilterProcessLifecycleTests` (net; one old
+contract test removed, five real-PID containment tests added),
+`PaletteOriginTargetingTests` (8, new file), `CommandPaletteStaleOriginTests`
+(5, new file), 3 new tests in `TextFilterCoordinatorTests` (finding #7),
+1 new test in `CommandPaletteModelTests` (Required Change A).
+
+**Commands run and real, current results** (baseline
+`1f4660946fa97c1b25e1b515478e387f12806abb` → this pass's head — see this
+PR's second-remediation comment for the exact head SHA these were run
+against):
+
+```text
+swiftformat --lint MacDown2         → 0/420 files require formatting (5 skipped)
+swiftlint lint --strict MacDown2    → 0 violations, 0 serious, 420 files
+
+cd MacDown2/Packages/MacDownKit && swift build && swift test --no-parallel
+  → Build complete; 1107 tests in 121 suites passed
+
+xcodegen generate
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' build                          → BUILD SUCCEEDED
+xcodebuild -scheme macdown2 -destination 'platform=macOS' build                          → BUILD SUCCEEDED
+xcodebuild -scheme MacDown2 -configuration Release -destination 'platform=macOS' build   → BUILD SUCCEEDED
+xcodebuild -scheme macdown2 -configuration Release -destination 'platform=macOS' build   → BUILD SUCCEEDED
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' -enableCodeCoverage NO build-for-testing
+  → TEST BUILD SUCCEEDED
+
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' -enableCodeCoverage NO \
+  -parallel-testing-enabled NO -only-testing:MacDown2Tests test-without-building
+  → Test run with 111 tests in 15 suites passed (was 94 before this pass)
+```
+
+These are real counts from the runs actually executed this pass, not
+copied forward from §21 (which recorded 1090/94 for the same two suites
+before this pass's tests were added).
+
+**Not verified in this pass, same as §21:** the manual UI journeys —
+including the two new ones this pass's fixes make relevant, "`Export…` is
+absent from the palette while the normal app Export menu still works" and
+the two-window (A/B) origin-targeting check across all eight palette
+commands — were not driven interactively. Recorded here as unverified,
+not inferred passed, per this task's own explicit instruction not to fake
+manual verification in a non-interactive session. See this PR's
+description for the full manual matrix.
+
+**PR status:** this PR remains a **Draft**. Nothing in this pass marks it
+ready for review or merges it — that is explicitly deferred to a human
+completing the manual matrix and to another independent review pass.
+
+## 23. Third adversarial remediation (PR #56 merge-gate review)
+
+An independent third adversarial pass — explicitly re-reading the whole
+process/palette implementation from scratch rather than only re-checking
+§22's seven items — reviewed head
+`d40d3ee5b6abdfe03ba52e02712726d737b51e0b` and found **10 further
+findings (3 P0, 4 P2, 3 P3)** in the second pass's own new process
+machinery and in palette edge cases §22 did not cover. All ten are
+disposed below; §21/§22 are left as their own passes' historical record
+and are superseded wherever this section disagrees with them — most
+notably: process-group emptiness is no longer checked via `kill(-pgid,
+0)`, the group leader is deliberately never reaped until this session is
+completely done with it, and every `posix_spawn` setup call is checked.
+
+| # | Sev | Finding | Disposition |
+|---|-----|---------|--------------|
+| 1 | P0 | Forced post-exit containment could create real EOF and turn a deliberately killed partial stdout stream into a successful document replacement | **Fixed by reordering, not by a new state-machine feature.** `TextFilterProcessSession.observeExitAndDrainage()` now commits `.incompleteOutput` *before* it ever contains the group — containing is what closes a still-writing descendant's fd and produces the "real" EOF that used to be able to satisfy `.exited` afterward. `TextFilterTerminalState`'s existing one-shot commit gate (§21/§22 finding #3) is what makes that EOF unable to retroactively change the verdict once fail-closed has already won. Regression evidence: a real-process reproducer (`aStillWritingBackgroundDescendantNeverLaundersItsPartialOutputIntoSuccess`) with a backgrounded writer that emits `PREFIX`, sleeps past the drain threshold, and would emit `SUFFIX` — the only acceptable result is `.outputIncomplete`, never `"PREFIX"`; plus a pure state test (`incompleteOutputThenLateZeroExitPlusEOFsStaysIncompleteOutput`) proving a committed `.incompleteOutput` cannot become `.exited` no matter what facts arrive after. |
+| 2 | P0 | `TextFilterProcessGroup` reaped the group leader before later PGID probes/signals, so a recycled PGID could make MacDown signal an unrelated process group | **Redesigned.** The leader's exit is now observed via `waitid(P_PID, pid, &info, WEXITED \| WNOWAIT)` — reporting the same exit/signal information `wait(2)` would, but leaving the zombie in the process table so the pid/pgid number cannot be reassigned. `reapLeader()` is a new, separate, explicit, idempotent step called exactly once (via `defer` in `TextFilterProcessSession.run()`) only after every group-lifetime operation this invocation will ever perform is complete. Because `kill(-pgid, 0)` cannot distinguish a deliberately-held zombie leader from a real live member (it reports "exists" for either, forever, while the zombie is held), `groupStillExists()` is replaced by `groupHasLiveMembers()`, which enumerates real process-group membership via `sysctl(KERN_PROC_PGRP)` and inspects each member's actual state (`SZOMB` vs. not). Regression evidence: `TextFilterProcessGroupTests` — `leaderExitIsObservedWithoutReapingUntilReapLeaderIsCalled` (deterministic ordering: exit observed → still a held zombie → `reapLeader()` → actually gone), `groupHasLiveMembersIgnoresAHeldZombieLeaderWithNoLiveDescendant`, `groupHasLiveMembersDetectsALiveDescendantAlongsideAHeldZombieLeader` (a live descendant is correctly reported even while the unrelated leader is simultaneously a held zombie — the exact distinction `kill(-pgid, 0)` cannot make), `reapLeaderIsIdempotentAndSafeToCallMoreThanOnce`. |
+| 3 | P0 | The hand-written `posix_spawn` setup ignored every setup/error return code; partial stdio/cwd/containment configuration could fail open | **Fixed.** Every fallible call in `TextFilterProcessGroup.spawn()` — `posix_spawn_file_actions_init`/`_addchdir`/`_adddup2` ×3/`posix_spawnattr_init`/`_setflags`/`_setpgroup`/`_setsigdefault`, both `strdup` allocations, and `posix_spawn` itself — is now checked via a shared `Self.checked(_:step:)` helper, throwing a new `SpawnError.posixError(_:step:)`/`.allocationFailed(step:)` (naming which step failed) before `posix_spawn` ever runs on a partially-configured actions/attributes object. Regression evidence (real, triggerable failures — no syscall-mocking seam was built; see the note below): `TextFilterProcessGroupTests.aNonexistentWorkingDirectoryFailsTheSpawnRatherThanSilentlyLaunching` (a real ENOENT `addchdir` target) and `.aClosedSourceDescriptorFailsTheSpawnRatherThanSilentlyLaunching` (a real EBADF source fd for the stdin `adddup2`) both assert `spawn()` throws rather than silently launching. |
+| 4 | P2 | Concurrent sessions still had an FD-inheritance race because `CLOEXEC` was applied after `Pipe` creation instead of Darwin's atomic `POSIX_SPAWN_CLOEXEC_DEFAULT` policy | **Fixed.** The parent-side `fcntl(FD_CLOEXEC)` loop and the `addclose` actions for every non-stdio descriptor are both removed; `POSIX_SPAWN_CLOEXEC_DEFAULT` is now part of `spawn()`'s attribute flags, closing everything not named by an explicit `adddup2` atomically as part of the spawn itself — there is no longer a window, between one session's pipe creation and its own `fcntl` call, during which a concurrently-spawning session's `fork()` could inherit them. Verified directly against a real process (see this pass's implementation notes) before landing; the pre-existing `concurrentInvocationsOfTheSameScriptDoNotCorruptEachOthersOutput` integration test continues to pass against the new mechanism. |
+| 5 | P2 | Palette `Save` still lost its explicit origin for an untitled/unavailable-backed document, because it fell through to `WorkspaceModel`'s own ambient `saveAs()` | **Fixed.** New `WorkspaceModel.requiresDestinationToSave` (package/Workspace layer, no AppKit) exposes the same test `save()` makes internally before falling back to `saveAs()`. New `WindowController.saveDocumentFromExplicitOrigin()` (AppKit layer) checks it first: an already-backed document takes the plain `saveDocument()` path unchanged; one that would need a destination routes to the existing explicit-origin `saveDocumentAsFromExplicitOrigin()` instead of ever reaching the ambient fallback. `WindowCoordinator.saveDocument(in:)` now calls this for both the real menu and the palette (mirroring `saveDocumentAs(in:)`'s existing precedent). Regression evidence: `RequiresDestinationToSaveTests` (Workspace package) covers the condition itself for all three cases (no document / untitled / unavailable-backed — each `true` — and an ordinary backed document — `false`); the already-backed, two-window, A/B-targeted case is covered end-to-end through the real dispatcher by `PaletteOriginTargetingTests.saveFromAnExplicitOriginSavesOnlyThatOriginsDocument` (App target). The untitled/unavailable-backed cases' actual destination panel cannot be driven headlessly (same constraint as Save As/Open/Open Folder in §22) and remain manual-only — added to the manual matrix. |
+| 6 | P2 | A palette opened with no document origin (`originController == nil`) still exposed New Tab/Open…/Open Folder…, each falling back to `NSApp.keyWindow` — the palette panel itself — deeper in its async chain | **Fixed via the recommended "smallest safe" option: hide, don't rework.** `newTab`/`open`/`openFolder` in `AppPaletteCommand.standard` each gained `isAvailable: { _, controller in controller != nil }`. Regression evidence: `CommandPaletteStaleOriginTests.newTabOpenAndOpenFolderAreUnavailableWithNoDocumentOrigin` / `...AreAvailableWithALiveDocumentOrigin` (App target). |
+| 7 | P2 | "Whole process tree" was a stronger claim than the implementation delivers: a descendant that calls `setsid()`/`setpgid()` can leave the initial process group and escape `killpg` | **Documented as the explicit, accepted boundary (the review's recommended option 1), not implemented further.** `TextFilterProcessSession`'s class doc and this document's own prose no longer say "whole process tree" — containment is scoped to the invocation's *initial process group*; a trusted local script that deliberately re-groups itself is explicitly outside E14's containment contract. Regression evidence: `aDescendantThatDetachesItsOwnSessionSurvivesContainmentByDesign` spawns a real descendant that calls `setsid()` (via system Perl's `POSIX::setsid`, verified to actually leave the group) and asserts it survives full containment — making the documented boundary executable, not only rhetorical, per the finding's own request. |
+| 8 | P3 | Every filter permanently changed the app-wide `SIGPIPE` disposition (`signal(SIGPIPE, SIG_IGN)`, never restored) even though Darwin provides descriptor-scoped `F_SETNOSIGPIPE` | **Fixed.** The process-wide `signal(SIGPIPE, SIG_IGN)` call is removed; `fcntl(stdinPipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)` is applied to just the one descriptor that can legitimately hit `EPIPE` (a command that never reads stdin). The spawned child's own `SIGPIPE` handling is unaffected — still reset to default via `POSIX_SPAWN_SETSIGDEF`/`posix_spawnattr_setsigdefault`, independent of MacDown's own disposition. Regression evidence: `runningATextFilterNeverChangesTheAppsOwnSigpipeDisposition` reads `sigaction(SIGPIPE, ...)` before and after a run (including one large enough to actually hit `EPIPE`) and asserts it is byte-for-byte unchanged. |
+| 9 | P3 | The direct-parent-exits/background-grandchild regression test still recorded `$$` inside a `(...)` subshell, so it verified the already-dead direct child's pid, not the grandchild's | **Fixed**, and §22's claim that process tests no longer use bare `$$` is acknowledged here as having been inaccurate for this one test at the time it was written — this section corrects it rather than silently editing §22's own historical record. `containsABackgroundedGrandchildRatherThanLettingItSurvive`'s fixture now backgrounds `sleep 30` directly in the top-level script (no subshell) and reads its pid back via `$!`, computed dynamically after the fork. The test's own outcome assertion also changed, per finding #1 above: it now expects `.outputIncomplete`, not a successful `"done"`. |
+| 10 | P3 | Issue #15's safety contract and acceptance criteria still said text-filter cancellation must surface a useful error, contradicting the shipped, owner-approved silent-withdrawal behavior (§9's amendment) | **Fixed by amending the issue, not the behavior.** Issue #15 is updated: its safety-contract bullet and acceptance-criteria checklist now list launch failure/non-zero exit/timeout/oversized-or-unusable output as the cases that preserve text *and* show an error, and cancellation (originating window closed, or superseded by a newer run on the same tab) as its own bullet — preserves text, but is a **silent withdrawal**, no alert, per the EPIC-14B §9 amendment. Issue #15 is not closed by this PR regardless; this only makes its own acceptance checklist internally consistent with what actually shipped. |
+
+**A deliberate scope decision, stated plainly:** finding #3's own required
+remediation suggested "a small syscall/spawn-operations seam so tests can
+deterministically inject failures" for every individual `posix_spawn_*`
+call. That was assessed and not built — most of those calls essentially
+never fail outside OOM, a full dependency-injection seam across ten C API
+calls is a substantial and independently-risky change, and two of the
+calls' failure paths (`addchdir`, the stdin `adddup2`) are triggerable
+with a **real**, deterministic condition (a nonexistent directory; a
+closed source descriptor) without mocking anything. Both are covered by
+real regression tests above. The remaining calls are covered by code
+review and the shared `checked(_:step:)` pattern applying uniformly to
+all of them, not by individual fault-injection tests.
+
+**Preserved from §21/§22, not regressed:** every fix from both prior
+passes remains in place; the full existing `TextFiltersTests`,
+`WorkspaceTests`, and App-target suites all still pass against the
+redesigned process layer.
+
+**Tests added this pass:** `TextFilterProcessGroupTests` (6, new file),
+`TextFilterRunnerAdversarialTests` (6 — split out of
+`TextFilterRunnerTests` to stay under the file-length budget; 3 of the 6
+are new this pass: the finding #1 reproducer, the finding #7 `setsid`
+fixture, the finding #8 SIGPIPE-disposition test), 1 new test in
+`TextFilterTerminalStateTests`, `RequiresDestinationToSaveTests` (4, new
+file, Workspace package), 2 new tests in `CommandPaletteStaleOriginTests`
+(App target).
+
+**Commands run and real, current results** (baseline
+`d40d3ee5b6abdfe03ba52e02712726d737b51e0b` → this pass's head — see this
+PR's third-remediation comment for the exact head SHA these were run
+against):
+
+```text
+swiftformat --lint MacDown2         → 0/423 files require formatting (5 skipped)
+swiftlint lint --strict MacDown2    → 0 violations, 0 serious, 423 files
+
+cd MacDown2/Packages/MacDownKit && swift build && swift test --no-parallel
+  → Build complete; 1121 tests in 124 suites passed
+
+xcodegen generate
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' build                          → BUILD SUCCEEDED
+xcodebuild -scheme macdown2 -destination 'platform=macOS' build                          → BUILD SUCCEEDED
+xcodebuild -scheme MacDown2 -configuration Release -destination 'platform=macOS' build   → BUILD SUCCEEDED
+xcodebuild -scheme macdown2 -configuration Release -destination 'platform=macOS' build   → BUILD SUCCEEDED
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' -enableCodeCoverage NO build-for-testing
+  → TEST BUILD SUCCEEDED
+
+xcodebuild -scheme MacDown2 -destination 'platform=macOS' -enableCodeCoverage NO \
+  -parallel-testing-enabled NO -only-testing:MacDown2Tests test-without-building
+  → Test run with 113 tests in 15 suites passed (was 111 before this pass)
+```
+
+Real counts from the runs actually executed against this pass's head, not
+copied forward from §22.
+
+**Not verified in this pass, same as §21/§22:** the manual UI journeys —
+including the destination-panel path for palette Save on an
+untitled/unavailable-backed document (finding #5) — were not driven
+interactively. Recorded here as unverified, not inferred passed. See this
+PR's description for the full, current manual matrix.
+
+**PR status:** this PR remains a **Draft**. This pass's own review
+explicitly called for *another* independent hostile pass afterward, not
+only a re-check of these ten items — that has not happened yet, and
+nothing here claims it has. Zero findings is not being claimed anywhere
+in this record.
+
+## 24. Orthogonal self-review pass (post-`bff930f`)
+
+§23's remediation order ended with "run another independent hostile pass
+from scratch; do not only re-check these ten." This section records that
+pass. It was run along axes the three prior reviews had not taken, and
+deliberately included the code those remediations *themselves*
+introduced — which is where its most serious finding was.
+
+It landed on top of concurrent hardening work already pushed to this
+branch (tri-state process-group membership, checked
+`F_SETNOSIGPIPE`, exit-observation/reap ordering, atomic stdout-cap
+admission). Two findings below had independently been fixed by that work
+and are recorded here only as "converged"; the rest were still live at
+integration time and are fixed here.
+
+**Naming note:** that concurrent work's own code comments call it "the
+fourth-pass" and "the fifth-pass" — an independent numbering, assigned
+before this section existed, that this section's title deliberately does
+not claim. §25 documents that work under its own name.
+
+| # | Sev | Finding | Disposition |
+|---|-----|---------|--------------|
+| 1 | **P1** | `saveAs(to:)`'s currency guard was vacuous, so Save As could write a **different document** to the filename the user chose | **Fixed** — `saveAs(to:expecting:)` |
+| 2 | P3 | Containment busy-spun for ~1s of `sysctl` polling on every cancelled filter | **Fixed** — cancellation-immune pause |
+| 3 | P3 | The drain observer captured `self`, pinning the whole session (pipes and buffers) whenever it outlived `run()` | **Fixed** — captures only its two collaborators |
+| 4 | P3 | `terminateGroup` discarded `killpg`'s result | **Fixed** — `SignalOutcome` with an `ESRCH` fast path (see the correction below) |
+| 5 | P3 | `applyExternalReplacement` could leave `isPerformingEditingAssist` stuck `true` | **Fixed** — `defer` |
+| 6 | — | Unchecked `fcntl(F_SETNOSIGPIPE)` — the only thing preventing SIGPIPE from killing the app | **Converged** — independently fixed on-branch |
+| 7 | — | `sysctl` failure reported as "group is empty" (fail-open containment) | **Converged** — independently fixed on-branch |
+
+**Finding 1 in detail.** §22 split `saveAs()` into a panel-presenting half
+and a URL-taking `saveAs(to:)` so the palette could bind its own panel to
+an explicit origin window. That split dropped a guard `master` had: the
+old code captured the document *before* the panel and required
+`isCurrent(document)` afterwards. The new `saveAs(to:)` instead re-read
+`tabStore.activeDocument` after the panel and checked `isCurrent` against
+*that* — comparing the active document with itself, which is always true.
+
+A save panel blocks neither `ExternalFileController`'s reload path (which
+calls `tabStore.updateActiveDocument` from ~8 async sites) nor
+`tabStore.activate` from an alert completion. So: the user picks a name
+for document A, B becomes active while the panel is up, and B's contents
+are written to the file the user named for A — with B rebound to it.
+Reproduced directly against the pre-fix code, which creates
+`chosen-for-a.md` containing B and rebinds B to it.
+
+This defect was *introduced* by the second remediation and survived the
+third — which reviewed this very Save path for its own finding #5. It is
+the clearest evidence in this record that re-checking a prior pass's
+finding list is not the same as reviewing the code that list produced.
+
+**Method note.** Findings 6 and 7 were settled by running Darwin probes
+rather than by reading, and the probes also established the fact the
+fail-closed membership fix depends on: an empty *or nonexistent* process
+group answers the membership query **successfully with zero rows** (the
+size query is only a padded estimate and never returns 0), so "failed"
+and "empty" are cleanly separable. A probe likewise confirmed that a
+write to a pipe with no reader terminates the process outright
+(exit 141) without `F_SETNOSIGPIPE` and returns `EPIPE` with it.
+
+**Tests added:** `WorkspaceModelSaveAsExpectationTests` (3 — the
+wrong-document case, the replaced-document case, and a control proving
+the guard does not simply abort every save). Verified to fail against the
+pre-fix implementation, both before and after integration.
+
+**Correction — this pass's own regression.** Finding 4's first fix was
+wrong, and CI caught it. It treated *any* failed `killpg` as "cannot
+contain" and failed closed. But Darwin answers `EPERM`, not `ESRCH`, for
+a group whose only remaining member is this invocation's own
+deliberately-unreaped zombie leader — a group that is in fact fully
+contained. Any filter whose child had already exited by containment time
+could therefore be turned into a spurious `.terminationUnconfirmed`,
+discarding a perfectly good transform. It passed locally and failed on
+CI, because whether the producer is still alive when the signal lands is
+pure timing.
+
+The membership snapshot, not the signal's return code, is the only thing
+that can answer whether live members remain — and it already catches a
+genuinely unsignalable *live* group by staying `.live` until the caller's
+deadline. `containGroup` now special-cases only `ESRCH`, and
+`killpgOnAZombieOnlyGroupFailsWithEPERMWhileMembershipReadsEmpty` pins the
+Darwin behaviour in executable form.
+
+This is the same `EPERM`-vs-`ESRCH` distinction an earlier pass had
+already hit with `kill(-pgid, 0)`, re-encountered through a different
+call. Recorded plainly: this pass introduced a regression of exactly the
+kind it was auditing for, which is the argument for the next pass
+reviewing *this* section's code rather than this section's list.
+
+**Verification (real results at this head):** swiftformat 0/426,
+swiftlint 0 violations in 426 files, package `swift test --no-parallel`
+1135 tests in 126 suites passed, app-target `MacDown2Tests` 113 tests in
+15 suites passed, and Debug + Release builds of both the app and the
+`macdown2` CLI all succeeded.
+
+**Still unverified:** the manual UI matrix, unchanged from §21/§22/§23 —
+no interactive session has driven it. Not inferred passed.
+
+**PR status:** still a **Draft**. A pass that found a P1 in code three
+prior adversarial reviews had signed off on is not evidence that the next
+pass will find nothing.
+
+## 25. Undocumented fourth and fifth passes (concurrent hardening, `bff930f`..`b6c286c`)
+
+16 commits landed on this branch between `bff930f` (§23's head) and
+`b6c286c`, concurrently with §24's own review, fixing real races in the
+code §23 shipped and in one of its own fixes. Their code comments cite
+"the fourth-pass" and "the fifth-pass" throughout, but neither pass had a
+corresponding section here — a reader grepping the code for that language
+and then checking this document for it would find nothing. This section
+is that missing record, reconstructed from the commits and the code they
+produced (`git log --oneline bff930f..b6c286c`). It is deliberately
+factual rather than narrated: no reviewer, timeline, or process detail
+beyond what the commits and code themselves show is available to record.
+
+### Fourth pass: four findings
+
+| Finding | Fix |
+|---------|-----|
+| Stdout-cap admission and terminal-verdict commit were not atomic: an over-cap chunk's own buffer lock could release between "this chunk crosses the cap" and requesting `.oversized`, leaving a window where exit + both EOFs could commit `.exited(0)` first | `TextFilterTerminalState.processStdoutChunk(_:)` runs the buffer mutation *inside* the terminal-state lock, so admission and verdict commit as one operation |
+| Process-group membership inspection was binary (`groupHasLiveMembers() -> Bool`), collapsing a failed `sysctl(KERN_PROC_PGRP)` query into the same `false` a genuinely empty group reports | `TextFilterProcessGroup+VerifiedMembership.swift`: a tri-state `MembershipState` (`.empty`/`.live`/`.unconfirmed`); every call site treats `.unconfirmed` as "not yet safe," never as success |
+| `reapLeader()` and the async exit observer could race: process-table containment could observe the zombie leader and call `reapLeader()` before the worker-queue observer had resumed `waitForExit()`, and the old `reapLeader()` did not itself record the exit fact — reaping first could remove the zombie the observer still needed, stranding that waiter with no fact to observe | `reapLeader()` now performs its own synchronous, non-blocking `waitid(WNOWAIT \| WNOHANG)` observation *before* the actual `waitpid` reap, guaranteeing the exit fact is recorded (and any waiter resumed) no matter which side wins the race |
+| A TOCTOU in explicit-origin Save: `saveDocumentFromExplicitOrigin()` checked the advisory `requiresDestinationToSave` snapshot, then called ordinary `save()` — between the check and the call, the document's backing could change, and `save()`'s own internal missing-backing branch falls back to the model's *ambient* `saveAs()`, reopening exactly the leak §23 finding #5 closed | `WorkspaceModel.saveWithoutDestinationPrompt()` performs the backing check *inside* the same save attempt (including its metadata-conflict retry) and never touches the ambient panel provider; only its `.requiresDestination` result routes to the controller's window-bound Save As flow |
+
+### Fifth pass: one finding
+
+`DispatchSourceProcess`'s `EVFILT_PROC` registration is edge-triggered,
+and Darwin's `proc_find` rejects a process once it has already become a
+zombie — so a direct child that exits between `posix_spawn` returning and
+the dispatch source actually attaching could be missed by exit
+observation entirely, permanently stranding `waitForExit()`. Exit
+observation was replaced with a blocking `waitid(P_PID, pid, &info,
+WEXITED | WNOWAIT)` on a dedicated worker queue: a wait on one's own
+child is valid and race-free however late it is issued, whether the
+child is still running or has already exited.
+
+### Verification
+
+Both passes are covered by real, non-vacuous tests —
+`TextFilterProcessGroupTests.exitObservationStartedAfterTheLeaderAlreadyExitedStillReportsItsStatus`
+and `.reapRecordsAnExitedLeaderBeforeRemovingItEvenWithoutTheAsyncObserver`
+disable automatic observation (`startsExitObserverAutomatically: false`)
+and drive each race deterministically rather than by timing;
+`TextFilterTerminalStateTests.stdoutChunkCrossingTheCapCommitsOversizedBeforeLateEOFCouldResolveExit`
+and `TextFilterFourthPassRegressionTests.oneByteOverTheOutputCapNeverWinsTheExitRace`
+cover the cap/verdict race at both the pure-state and real-subprocess
+level; `WorkspaceModelRequiresDestinationToSaveTests` proves the
+non-prompting path never touches the ambient panel via a sentinel URL the
+fake panel would otherwise have consumed.
+
+### Fifth-orthogonal-pass note (this section's own review)
+
+This section was produced by a further review pass, explicitly scoped to
+these 16 commits, run after §24. It found the code sound — spawn/exit/
+reap ordering, lock ordering between the terminal-state and buffer locks,
+and the non-prompting Save's composition with §24's `saveAs(to:
+expecting:)` fix were all checked and hold up — and found no new
+functional defect. The one finding it produced is this section itself:
+the documentation gap it closes. A pass that finds nothing beyond a
+documentation gap is not being reported as "clean" in the sense of "no
+further review needed" — see §24's own closing line.
