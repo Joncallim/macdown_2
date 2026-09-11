@@ -45,8 +45,32 @@ struct TextFilterCommands: Commands {
             }
 
             Button("Add Example Scripts") {
-                BundledExampleScripts.install(into: TextFilterCommandDiscovery.commandsDirectory)
+                let installed = BundledExampleScripts.install(into: TextFilterCommandDiscovery.commandsDirectory)
+                Self.presentAddExampleScriptsResult(installed)
             }
         }
+    }
+
+    /// `install(into:)` runs silently by design (it may run repeatedly as
+    /// the user reopens this menu) but its *result* was never surfaced at
+    /// all — a user clicking this had no way to tell whether it had done
+    /// anything, short of separately opening "Show Commands Folder" to
+    /// check (manual verification finding). A plain, undismissable-window
+    /// `NSAlert` is deliberately not sheeted on any particular document
+    /// window: unlike a text filter's failure, this action has no single
+    /// originating window to sheet against.
+    private static func presentAddExampleScriptsResult(_ installedCount: Int) {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        if installedCount > 0 {
+            alert.messageText = installedCount == 1
+                ? "Added 1 Example Script"
+                : "Added \(installedCount) Example Scripts"
+            alert.informativeText = "They're now listed in the Commands menu."
+        } else {
+            alert.messageText = "Example Scripts Already Installed"
+            alert.informativeText = "Nothing new to add — see \"Show Commands Folder\" for what's there."
+        }
+        alert.runModal()
     }
 }

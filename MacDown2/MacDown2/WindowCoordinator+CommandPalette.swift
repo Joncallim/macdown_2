@@ -38,7 +38,30 @@ extension WindowCoordinator {
         } else {
             created.center()
         }
-        created.makeKeyAndOrderFront(nil)
+        // `makeKeyAndOrderFront` alone was not sufficient (manual
+        // verification finding): the panel opens but does not visibly take
+        // over — not accepting typing/arrow-key navigation, or not truly
+        // frontmost, until manually clicked. `activate(ignoringOtherApps:)`
+        // plus `orderFrontRegardless()` is the combination AppKit apps that
+        // need a floating panel to reliably seize real keyboard focus (a
+        // launcher/palette being the canonical case) use, since either call
+        // alone can be insufficient depending on the app's current
+        // activation state.
+        //
+        // Deferred one run-loop turn: `contentView` was just assigned a
+        // brand-new `NSHostingView` above, and SwiftUI has not yet run its
+        // first update pass — the search field's `@FocusState` is set from
+        // `CommandPaletteView.onAppear`, which fires *during* that first
+        // pass. Ordering the window front synchronously, in the same turn,
+        // races that: the window can become key before `@FocusState` has
+        // anything to attach a first responder to. Deferring gives SwiftUI
+        // that pass first, so the window becoming key already reflects the
+        // field wanting focus, rather than the two racing.
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            created.makeKeyAndOrderFront(nil)
+            created.orderFrontRegardless()
+        }
     }
 
     /// Called by `CommandPalettePanel.windowWillClose`. Releases the

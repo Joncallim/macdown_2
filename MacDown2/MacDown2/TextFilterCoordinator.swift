@@ -69,6 +69,20 @@ struct TextFilterCoordinator {
     /// anything — mirroring `WindowCoordinator.performJSONFormatting`'s
     /// same stale-completion policy (post-review finding #1).
     func run(_ command: TextFilterCommand, against target: TextFilterEditingTarget) async {
+        // Every other explicit-target palette command (New Tab, Save,
+        // Close Tab, ...) visibly returns focus to its target window as a
+        // natural side effect of the AppKit operation it performs. A text
+        // filter has no such side effect of its own — it only ever
+        // mutates a text view — so without this, invoking one from the
+        // palette while a *different* window (B) is ambient silently
+        // mutates A off-screen: the user is left looking at B with no
+        // indication anything happened at all (manual verification
+        // finding). Brought forward immediately, not after the filter
+        // completes, so this matches every other command's synchronous
+        // feel rather than leaving the window dark for however long the
+        // filter takes to run.
+        target.controller.window?.makeKeyAndOrderFront(nil)
+
         let selection = target.textSystem.textView.selectedRange()
         let liveText = target.textSystem.textView.string as NSString
         let scope: ReplacementScope = selection.length == 0 ? .wholeDocument : .selection(selection)
