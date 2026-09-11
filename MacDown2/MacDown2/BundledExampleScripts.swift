@@ -33,21 +33,45 @@ enum BundledExampleScripts {
         ),
     ]
 
+    /// The outcome of installing one script, distinguishing "already there"
+    /// (expected, not a problem) from "a filesystem operation actually
+    /// failed" — collapsing the two into one boolean is what let a
+    /// permission/disk-full/etc. failure masquerade as "nothing to do"
+    /// (Codex review finding, PR #56).
+    struct InstallResult {
+        let installedCount: Int
+        let hadFailure: Bool
+    }
+
+    private enum ScriptOutcome {
+        case installed
+        case alreadyExists
+        case failed
+    }
+
     /// Writes every script in `all` into `directory`, executable, skipping
     /// any filename that already exists there — installing examples must
     /// never silently overwrite a user's own edited copy.
-    @discardableResult
-    static func install(into directory: URL) -> Int {
+    static func install(into directory: URL) -> InstallResult {
         let fileManager = FileManager.default
         if !fileManager.fileExists(atPath: directory.path) {
-            try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        }
-
-        return all.reduce(into: 0) { count, script in
-            if createExclusively(script, in: directory) {
-                count += 1
+            do {
+                try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+            } catch {
+                return InstallResult(installedCount: 0, hadFailure: true)
             }
         }
+
+        var installedCount = 0
+        var hadFailure = false
+        for script in all {
+            switch createExclusively(script, in: directory) {
+            case .installed: installedCount += 1
+            case .alreadyExists: break
+            case .failed: hadFailure = true
+            }
+        }
+        return InstallResult(installedCount: installedCount, hadFailure: hadFailure)
     }
 
     /// Creates `script`'s file with exclusive-create semantics (`O_CREAT |
@@ -58,11 +82,17 @@ enum BundledExampleScripts {
     /// written *and* made executable; a write or `chmod` failure removes
     /// the partial file rather than leaving a non-executable script
     /// occupying the name, which would make every future install skip it
-    /// while discovery never shows it.
-    private static func createExclusively(_ script: Script, in directory: URL) -> Bool {
+    /// while discovery never shows it. `errno` is captured immediately
+    /// after `open` fails, before any other call can clobber it.
+    private static func createExclusively(_ script: Script, in directory: URL) -> ScriptOutcome {
         let path = directory.appendingPathComponent(script.filename).path
-        let descriptor = path.withCString { open($0, O_CREAT | O_EXCL | O_WRONLY, 0o755) }
-        guard descriptor >= 0 else { return false }
+        let (descriptor, openErrno): (Int32, Int32) = path.withCString {
+            let openDescriptor = open($0, O_CREAT | O_EXCL | O_WRONLY, 0o755)
+            return (openDescriptor, errno)
+        }
+        guard descriptor >= 0 else {
+            return openErrno == EEXIST ? .alreadyExists : .failed
+        }
         defer { close(descriptor) }
 
         let data = Data(script.contents.utf8)
@@ -72,8 +102,8 @@ enum BundledExampleScripts {
         }
         guard wrote, fchmod(descriptor, 0o755) == 0 else {
             try? FileManager.default.removeItem(atPath: path)
-            return false
+            return .failed
         }
-        return true
+        return .installed
     }
 }

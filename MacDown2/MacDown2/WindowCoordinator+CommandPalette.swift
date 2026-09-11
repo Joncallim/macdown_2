@@ -57,7 +57,18 @@ extension WindowCoordinator {
         // anything to attach a first responder to. Deferring gives SwiftUI
         // that pass first, so the window becoming key already reflects the
         // field wanting focus, rather than the two racing.
-        DispatchQueue.main.async {
+        //
+        // That same deferral is a window for `created` to already be stale
+        // by the time this runs — closed by the user, superseded by a
+        // second toggle, or closed as a side effect of its origin window
+        // closing (`removeController`, below). Any of those already ran
+        // `close()`, which synchronously clears `commandPalette` via
+        // `commandPaletteDidClose`. Re-checking identity here is what stops
+        // this block from ordering a closed, untracked panel back to the
+        // front — one the next toggle would have no way to find and close
+        // (Codex review finding, PR #56).
+        DispatchQueue.main.async { [weak self] in
+            guard let self, commandPalette === created else { return }
             NSApp.activate(ignoringOtherApps: true)
             created.makeKeyAndOrderFront(nil)
             created.orderFrontRegardless()

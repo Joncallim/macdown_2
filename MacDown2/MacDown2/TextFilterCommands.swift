@@ -45,8 +45,8 @@ struct TextFilterCommands: Commands {
             }
 
             Button("Add Example Scripts") {
-                let installed = BundledExampleScripts.install(into: TextFilterCommandDiscovery.commandsDirectory)
-                Self.presentAddExampleScriptsResult(installed)
+                let result = BundledExampleScripts.install(into: TextFilterCommandDiscovery.commandsDirectory)
+                Self.presentAddExampleScriptsResult(result)
             }
         }
     }
@@ -59,15 +59,28 @@ struct TextFilterCommands: Commands {
     /// `NSAlert` is deliberately not sheeted on any particular document
     /// window: unlike a text filter's failure, this action has no single
     /// originating window to sheet against.
-    private static func presentAddExampleScriptsResult(_ installedCount: Int) {
+    ///
+    /// `hadFailure` is reported as its own case — separate from "zero
+    /// installed" — because a permission, disk-full, or other filesystem
+    /// failure previously collapsed into the exact same "already
+    /// installed" message a genuinely no-op run produces, hiding a real
+    /// error behind a reassuring one (Codex review finding, PR #56).
+    private static func presentAddExampleScriptsResult(_ result: BundledExampleScripts.InstallResult) {
         let alert = NSAlert()
-        alert.alertStyle = .informational
-        if installedCount > 0 {
-            alert.messageText = installedCount == 1
+        if result.hadFailure {
+            alert.alertStyle = .warning
+            alert.messageText = result.installedCount > 0
+                ? "Some Example Scripts Couldn't Be Added"
+                : "Couldn't Add Example Scripts"
+            alert.informativeText = "Check that MacDown 2 can write to the Commands folder, then try again."
+        } else if result.installedCount > 0 {
+            alert.alertStyle = .informational
+            alert.messageText = result.installedCount == 1
                 ? "Added 1 Example Script"
-                : "Added \(installedCount) Example Scripts"
+                : "Added \(result.installedCount) Example Scripts"
             alert.informativeText = "They're now listed in the Commands menu."
         } else {
+            alert.alertStyle = .informational
             alert.messageText = "Example Scripts Already Installed"
             alert.informativeText = "Nothing new to add — see \"Show Commands Folder\" for what's there."
         }
