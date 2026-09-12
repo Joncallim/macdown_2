@@ -9,6 +9,37 @@
 > specifically. Where a fix does touch E14B code or invariants, that is called
 > out below and cross-referenced.
 
+## Merging back into `master`: a squash-merge history trap, and a real bug it caused
+
+Because PR #56 was squash-merged, `master`'s `36cc44c` is not a descendant of
+this branch's own commits — the two share only much older history. GitHub
+correctly reported this PR as `CONFLICTING` against `master` even though the
+actual code is compatible (this branch is a strict superset of what `master`
+already has). Resolving it with `git merge origin/master` surfaced real
+add/add and content conflicts in exactly the files this PR touched
+(`CommandPaletteModel.swift`, `WindowController.swift`,
+`CommandPaletteModelTests.swift`, `CommandPaletteStaleOriginTests.swift`,
+`epic-14-implementation.md`) — all resolved by keeping this branch's content,
+since master's side was, in every case, the pre-fix code these commits
+replace.
+
+**One resolution produced a real bug, caught only by rebuilding.** Git's
+auto-merge (not one of the flagged conflicts) silently duplicated
+`WindowController.saveDocumentFromExplicitOrigin()` — two identical copies of
+the same function, back to back — because the surrounding context differed
+just enough between branches (this branch had already deleted the adjacent
+`saveDocument()`) that git's merge algorithm treated the two sides'
+unchanged-but-differently-positioned copies of the function as independent
+insertions rather than the same code. `swift build`/`xcodebuild build`
+refused to compile ("invalid redeclaration") until the duplicate was removed
+by hand. This is recorded here as a general caution: **a clean `git merge`
+exit code is not proof the result is correct** — every file touched by a
+non-trivial merge was rebuilt and re-tested (package + app-target suites,
+lint, Debug/Release builds) after resolution, precisely because silent
+merge-tool duplication like this compiles fine in languages more permissive
+about redeclaration, and might not have been caught without Swift's strict
+duplicate-symbol error.
+
 ## Owner summary
 
 1. **What changes for the user?** The command palette (⌘⇧P) opens and becomes
