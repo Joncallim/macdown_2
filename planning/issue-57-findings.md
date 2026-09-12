@@ -1,44 +1,54 @@
 # Issue #57 — Open/Save latency, save feedback, and deleted-backing-file recovery
 
-> Baseline: `master` at `36cc44c` (PR #56, EPIC-14B squash-merge), reconciled
-> against `epic/14-text-filters` at `90d3472` (pre-existing, unmerged EPIC-14B
-> post-review hardening — see §24/§25 of `epic-14-implementation.md`). This
-> document is the record for issue #57's own fixes, kept separate from the
-> epic-14 log because the issue itself predates and is broader than E14B: it
-> covers general Open/Save infrastructure, not text-filter/palette behaviour
-> specifically. Where a fix does touch E14B code or invariants, that is called
-> out below and cross-referenced.
+> Baseline: `master` at `36cc44c` (PR #56, EPIC-14B squash-merge). **Corrected
+> baseline note:** an earlier version of this document, and this branch's PR
+> description, claimed `epic/14-text-filters` at `90d3472` carried "post-#56
+> EPIC-14B hardening" (§20-25 of `epic-14-implementation.md`) that had been
+> committed but never merged into `master`. That claim was wrong.
+> `git rev-parse 90d3472^{tree}` and `git rev-parse 36cc44c^{tree}` are the
+> **same tree** (`5b2436e79f2985a3394008d3265afe1669a77675`): PR #56's
+> squash-merge captured `90d3472` exactly, so all of that hardening was
+> already in `master` before this session started. There was no unmerged
+> EPIC-14B work to land. This document covers only issue #57's own fixes,
+> built on top of that already-current baseline.
 
-## Merging back into `master`: a squash-merge history trap, and a real bug it caused
+## Merging back into `master`: a squash-merge ancestry artifact, and a real bug it caused
 
 Because PR #56 was squash-merged, `master`'s `36cc44c` is not a descendant of
-this branch's own commits — the two share only much older history. GitHub
-correctly reported this PR as `CONFLICTING` against `master` even though the
-actual code is compatible (this branch is a strict superset of what `master`
-already has). Resolving it with `git merge origin/master` surfaced real
-add/add and content conflicts in exactly the files this PR touched
-(`CommandPaletteModel.swift`, `WindowController.swift`,
-`CommandPaletteModelTests.swift`, `CommandPaletteStaleOriginTests.swift`,
-`epic-14-implementation.md`) — all resolved by keeping this branch's content,
-since master's side was, in every case, the pre-fix code these commits
-replace.
+`epic/14-text-filters`'s own commits — the two branches' commit graphs share
+only much older history, even though `36cc44c`'s tree is byte-identical to
+this branch's own `90d3472`. `git merge-base origin/master HEAD` therefore
+resolved to that old, real common ancestor rather than recognizing `36cc44c`
+as equivalent to content this branch already had, and GitHub reported the PR
+as `CONFLICTING` against `master` on that basis.
 
-**One resolution produced a real bug, caught only by rebuilding.** Git's
-auto-merge (not one of the flagged conflicts) silently duplicated
-`WindowController.saveDocumentFromExplicitOrigin()` — two identical copies of
-the same function, back to back — because the surrounding context differed
-just enough between branches (this branch had already deleted the adjacent
-`saveDocument()`) that git's merge algorithm treated the two sides'
-unchanged-but-differently-positioned copies of the function as independent
-insertions rather than the same code. `swift build`/`xcodebuild build`
-refused to compile ("invalid redeclaration") until the duplicate was removed
-by hand. This is recorded here as a general caution: **a clean `git merge`
-exit code is not proof the result is correct** — every file touched by a
-non-trivial merge was rebuilt and re-tested (package + app-target suites,
-lint, Debug/Release builds) after resolution, precisely because silent
-merge-tool duplication like this compiles fine in languages more permissive
-about redeclaration, and might not have been caught without Swift's strict
-duplicate-symbol error.
+The conflicts that produced were consequently **not master-vs-branch content
+conflicts at all** — since master's tree already exactly matched this
+branch's pre-#57 state, every conflict was mechanically this branch's own
+`#57`/adversarial-review edits colliding with old lines the stale
+merge-base/`36cc44c` comparison thought had changed. Resolving each by
+keeping this branch's content (`CommandPaletteModel.swift`,
+`WindowController.swift`, `CommandPaletteModelTests.swift`,
+`CommandPaletteStaleOriginTests.swift`, `epic-14-implementation.md`) was
+correct, and the resulting merge commit's tree, net of history, is provably
+identical to the pre-merge branch's own diff against `36cc44c` — confirmed
+by `git diff 36cc44c HEAD --stat` showing exactly the 13 files this PR's own
+two feature commits touch, nothing from the already-present EPIC-14B work.
+
+**One resolution nonetheless produced a real bug, caught only by
+rebuilding.** Git's auto-merge (not one of the flagged conflicts) silently
+duplicated `WindowController.saveDocumentFromExplicitOrigin()` — two
+identical copies of the same function, back to back — because the
+surrounding context differed just enough between the stale merge-base and
+this branch (this branch had already deleted the adjacent `saveDocument()`)
+that git's merge algorithm treated the two sides' copies of the function as
+independent insertions rather than the same code. `swift build`/`xcodebuild
+build` refused to compile ("invalid redeclaration") until the duplicate was
+removed by hand. Recorded here as a general caution: **a clean `git merge`
+exit code is not proof the result is correct**, especially across a
+squash-merge ancestry break — every file touched by the merge was rebuilt
+and re-tested (package + app-target suites, lint, Debug/Release builds)
+after resolution.
 
 ## Owner summary
 
