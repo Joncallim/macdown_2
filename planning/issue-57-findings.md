@@ -301,6 +301,19 @@ Two further findings were confirmed as real but deliberately left unfixed:
   `WindowCoordinator palette origin targeting`,
   `WindowCoordinatorSaveAsPublicationTests`, `CommandPaletteModelTests`,
   `TextFilterCoordinator`), re-run after the adversarial-review fixes.
+- Hosted CI (GitHub Actions, macOS 26 runner): the repo's automatic
+  `pull_request`-triggered check did not fire for this PR for reasons
+  unconfirmed (not reproduced by an empty-commit push either — likely a
+  transient GitHub-side delivery issue, not a `paths`/workflow-file
+  problem, since manual triggers of the identical workflow succeed).
+  Triggered manually via `gh workflow run CI --ref epic/14-text-filters`
+  instead, against the exact final commit: both `lint` and
+  `build-and-test` jobs passed —
+  https://github.com/Joncallim/macdown_2/actions/runs/34661992319. This
+  covers everything the CI workflow runs that a local machine also can
+  (package tests, Debug+Release app/CLI builds, build-for-testing,
+  MacDown2Tests) on a separate, clean, hosted macOS 26 environment,
+  independent of this session's own Mac.
 - `swiftformat --lint` and `swiftlint lint --strict`: 0 violations across
   427 files.
 - `xcodebuild build` for the `MacDown2` app in both Debug and Release
