@@ -80,13 +80,19 @@ public final class WorkspaceModel {
     /// that interval are deliberately coalesced instead of writing the old
     /// pathname after Save As has selected a destination.
     var inFlightSaveAsByDocumentID: [String: UInt] = [:]
-    /// Document IDs with a save write actually in flight right now (#57):
-    /// covers the real `documentWriter.save`/`saveAs` call and the
-    /// publication bookkeeping around it, not time spent waiting on a Save
-    /// As destination panel. Keyed by document ID, like
-    /// `inFlightSaveAsByDocumentID` above, so switching tabs shows the right
-    /// tab's state.
-    var savingDocumentIDs: Set<String> = []
+    /// Reference count of save writes actually in flight right now, per
+    /// document ID (#57): covers the real `documentWriter.save`/`saveAs`
+    /// call and the publication bookkeeping around it, not time spent
+    /// waiting on a Save As destination panel. A count, not a `Set`,
+    /// because two overlapping saves of the *same* document are possible
+    /// (e.g. the user presses ⌘S again before a slow save finishes, or the
+    /// metadata-conflict retry in `reconcileSaveConflict` recurses into a
+    /// nested save while the outer one is still unwinding) — a `Set` would
+    /// let the first save's completion clear the flag while the second is
+    /// still writing, resurfacing the "looks hung" problem this exists to
+    /// solve. Keyed by document ID, like `inFlightSaveAsByDocumentID`
+    /// above, so switching tabs shows the right tab's state.
+    var savingCountByDocumentID: [String: Int] = [:]
     /// Test seam for the crash window after destination session publication
     /// and before a dirty Save As acknowledges its source redirect.
     var onSaveAsDestinationSessionPublished: (@MainActor (FileDocument, FileDocument) async -> Void)?
@@ -179,7 +185,7 @@ public final class WorkspaceModel {
     /// save that took a moment looked identical to the app not responding.
     public var isSavingActiveDocument: Bool {
         guard let id = tabStore.activeDocument?.id else { return false }
-        return savingDocumentIDs.contains(id)
+        return (savingCountByDocumentID[id] ?? 0) > 0
     }
 
     /// `true` if the active tab exists and is not pinned.

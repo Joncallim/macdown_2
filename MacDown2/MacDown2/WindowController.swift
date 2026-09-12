@@ -224,12 +224,6 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         Task { await fileTreeModel.rescanExpandedDirectories() }
     }
 
-    func saveDocument() async {
-        await model.save()
-        externalFileController.synchronize(with: model.activeDocument)
-        updateTitleAndEditedState()
-    }
-
     /// Explicit-target Save never calls a model method that is permitted to
     /// present an ambient destination panel. `saveWithoutDestinationPrompt()`
     /// performs the backing check inside the same Save attempt (including its
@@ -264,6 +258,18 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     /// earlier cannot assume it is still key by the time this `await`
     /// resolves (post-review finding #4).
     func saveDocumentAsFromExplicitOrigin() async {
+        // `saveDocumentAs()` above re-syncs the external-file binding and
+        // title/dirty state unconditionally, including on a no-op. `defer`
+        // gives this one the same guarantee on every exit — no active
+        // document, or the user cancelling the panel — rather than only
+        // after a completed write (#57: the close-dialog's Save routing
+        // started calling this function for a backing-unavailable document
+        // and would otherwise silently skip that resync whenever the user
+        // cancelled its panel).
+        defer {
+            externalFileController.synchronize(with: model.activeDocument)
+            updateTitleAndEditedState()
+        }
         await externalFileController.drainRecovery()
         guard let document = model.activeDocument else { return }
         let provider = NSFilePanelProvider(window: window)
@@ -279,7 +285,5 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // write whichever document is active *now* to the name the user
         // chose for that one.
         await model.saveAs(to: url, expecting: document)
-        externalFileController.synchronize(with: model.activeDocument)
-        updateTitleAndEditedState()
     }
 }

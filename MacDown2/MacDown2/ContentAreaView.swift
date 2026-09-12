@@ -293,11 +293,22 @@ enum FileSaveFailurePresentation {
         case .notRegularFile: "This is not a regular file."
         case .invalidURL: "This is not a valid save location."
         case .fileChangedDuringRead: "The file changed on disk while saving. Try again."
-        case .fileMissing: "The file's folder is no longer available."
+        // Thrown both when the containing folder is gone and when the file
+        // itself was deleted/moved/trashed while its folder is untouched —
+        // exactly issue #57's headline scenario — so this must not name
+        // "folder" specifically (adversarial review finding).
+        case .fileMissing: "The file could not be found. It may have been moved, renamed, or deleted."
         case .encodingDetectionFailed: "The file's text encoding could not be determined."
         case let .decodingFailed(diagnostics):
             diagnostics.first?.message ?? "The file's contents could not be verified after saving."
         case .conditionalPublicationRecoveryRequired:
+            // Unreachable in practice: `workspaceError(for:)`
+            // (`WorkspaceModel+SavingSupport.swift`) intercepts this case
+            // before it ever becomes `.saveFailed(underlying:)`, mapping it
+            // instead to the distinct `WorkspaceError
+            // .conditionalPublicationRecoveryRequired(url)` that
+            // `WorkspaceRecoveryRequiredNotice` renders with the actual
+            // filename. Kept here only for switch exhaustiveness.
             "A competing version was preserved separately."
         case .readFailed:
             "The file could not be verified after saving."

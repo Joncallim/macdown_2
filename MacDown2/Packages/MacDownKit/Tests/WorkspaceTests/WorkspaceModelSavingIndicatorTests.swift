@@ -103,4 +103,40 @@ struct WorkspaceModelSavingIndicatorTests {
         }
         #expect(!model.isSavingActiveDocument)
     }
+
+    /// Adversarial-review finding: `save(isRetry:destinationPolicy:)` has no
+    /// reentrancy guard against a second concurrent `save()` for the same
+    /// document (only `inFlightSaveAsByDocumentID` blocks an overlapping
+    /// *Save As*), and `reconcileSaveConflict` recurses into a nested
+    /// `save(isRetry: true, ...)` call for the same document while the outer
+    /// call is still unwinding. A plain `Set`-backed indicator would let
+    /// whichever overlapping save finishes first clear the flag while the
+    /// other is still genuinely writing — resurfacing the "looks hung"
+    /// problem this feature exists to solve. This drives the reference
+    /// counting directly rather than through the full async save pipeline
+    /// (whose own generation/lineage reconciliation for two divergent
+    /// concurrent saves is separately covered by `DocumentWriter queued
+    /// saves`); `beginSavingIndicator`/`endSavingIndicator` are `internal`
+    /// and reachable here via `@testable import Workspace`.
+    @Test func indicatorStaysTrueWhileASecondOverlappingSaveOfTheSameDocumentIsStillInFlight() {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        let document = FileDocument(recoveryBuffer: recovery)
+        store.newTab(document: document)
+        let model = WorkspaceModel(tabStore: store, stateStore: FakeStateStore())
+
+        model.beginSavingIndicator(for: document.id)
+        #expect(model.isSavingActiveDocument)
+
+        model.beginSavingIndicator(for: document.id)
+        #expect(model.isSavingActiveDocument)
+
+        model.endSavingIndicator(for: document.id)
+        #expect(model.isSavingActiveDocument, "the second overlapping save hasn't finished yet")
+
+        model.endSavingIndicator(for: document.id)
+        #expect(!model.isSavingActiveDocument)
+    }
 }

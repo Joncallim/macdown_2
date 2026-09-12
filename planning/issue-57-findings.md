@@ -166,6 +166,97 @@ coverage without a larger test-seam refactor (an injectable panel provider
 for the close flow) that is out of proportion to a bug fix; it is covered
 instead by the manual checklist below.
 
+## Adversarial review pass
+
+An independent adversarial review (8 finder angles: line-by-line scan,
+removed-behavior audit, cross-file caller/callee tracing, reuse,
+simplification, efficiency, altitude, and repo-conventions) was run against
+the diff above before opening the PR. It found four real, confirmed defects
+in the fix itself, all corrected here:
+
+1. **Saving indicator used a `Set`, not a reference count.**
+   `save(isRetry:destinationPolicy:)` has no reentrancy guard against a
+   second, overlapping `save()` for the same document (only
+   `inFlightSaveAsByDocumentID` blocks an overlapping *Save As*), and the
+   metadata-conflict retry in `reconcileSaveConflict` recurses into a nested
+   `save(isRetry: true, ...)` call for the same document while the outer
+   call is still unwinding. With a `Set`, whichever overlapping save
+   finished first cleared the flag while the other was still genuinely
+   writing — reintroducing the exact "looks hung" problem this feature
+   exists to solve. Fixed: `savingDocumentIDs: Set<String>` became
+   `savingCountByDocumentID: [String: Int]`, incremented/decremented in
+   `beginSavingIndicator`/`endSavingIndicator`. Covered by a new test,
+   `indicatorStaysTrueWhileASecondOverlappingSaveOfTheSameDocumentIsStillInFlight`.
+2. **The close-dialog's explicit-origin routing dropped a resync
+   guarantee.** `saveDocumentAsFromExplicitOrigin()` only called
+   `externalFileController.synchronize`/`updateTitleAndEditedState()` after
+   a completed write — the old ambient `saveDocument()` this replaced called
+   them unconditionally, including on a no-op. Once the close dialog started
+   calling this function for a backing-unavailable document, cancelling its
+   destination panel would skip that resync entirely (no other periodic
+   mechanism backstops `synchronize`, unlike `updateTitleAndEditedState`,
+   which self-heals via the key-window polling loop). Fixed with a `defer`
+   in `saveDocumentAsFromExplicitOrigin()` so every exit path — no active
+   document, a cancelled panel, or a completed write — resyncs, matching
+   every other Save entry point in this file. This also fixes the same
+   latent gap for the palette's pre-existing "Save As…" command, which
+   already called this function.
+3. **`.fileMissing`'s save-failure message named the wrong thing.**
+   `FileStoreError.fileMissing` fires both when the containing folder is
+   gone and when the file itself was deleted/moved while its folder is
+   untouched — issue #57's own headline scenario — but the message said
+   "The file's folder is no longer available." Fixed to name the file, not
+   assume the folder.
+4. **`WindowController.saveDocument()` became dead code.** Once both
+   close-dialog call sites were rerouted to `saveDocumentFromExplicitOrigin()`,
+   a repo-wide grep found zero remaining callers of the ambient
+   `saveDocument()` — the real ⌘S path already went through
+   `saveDocumentFromExplicitOrigin()` via `WindowCoordinator
+   +DocumentLifecycle.swift`. Removed rather than left as a
+   still-compiling, easy-to-reach-for-by-mistake wrapper around the exact
+   window-targeting hazard the rest of this codebase's save paths were
+   hardened against.
+
+Two further findings were confirmed as real but deliberately left unfixed:
+
+- **Save As's spinner can clear a little before its own tail bookkeeping
+  finishes.** `publishSaveAs`'s active-document identity swap
+  (`tabStore.updateActiveDocument` inside `prepareSaveAsDestination`)
+  happens *before* `publishSaveAs`'s own `defer` clears the original
+  document's entry in `savingCountByDocumentID`. Once the swap lands,
+  `isSavingActiveDocument` looks up the *new* (destination-URL-keyed)
+  document's ID, which was never recorded as saving, so the spinner can
+  read `false` slightly before the remaining recovery-cleanup/session-
+  publish/retire-old-lifetime work actually finishes. A correct fix needs
+  the "which document ID is this indicator keyed under right now" to be
+  visible to and updated by `prepareSaveAsDestination`/`applySaveAs`, which
+  are separate functions nested several `await`s deep inside
+  `publishSaveAs` — not a local `defer`-adjacent change. Given the actual
+  disk write (the part users perceive as slow) remains correctly covered
+  and only the fast bookkeeping tail is under-reported, and given this
+  exact call chain already carries `planning/epic-14-implementation.md`'s
+  own history of multiple P0/P1s found by prior adversarial passes,
+  threading that state through by hand was judged a worse risk/reward trade
+  than a few milliseconds of early spinner clearing on the successful path.
+  Left as a known, accepted limitation rather than a rushed structural
+  change to an already extremely delicate pipeline.
+- **The close-dialog's button label has a narrow TOCTOU.**
+  `model.requiresDestinationToSave` is read once when the alert is built;
+  its own doc comment already warns it "is not an atomic routing boundary:
+  a backing file can disappear immediately after this property is read."
+  If the backing file is deleted while the sheet is still on screen, the
+  button can still read "Save" even though clicking it will (correctly and
+  safely) route to Save As. The underlying save routing was already
+  verified atomic at click time (`saveWithoutDestinationPrompt()` re-checks
+  inside the same attempt); only the button's *label* can go stale, and
+  only in the narrow window between the alert appearing and the user
+  clicking it while an external process deletes the file. Not fixed for
+  the same reason `requiresDestinationToSave` itself accepts this
+  non-atomicity elsewhere: closing it completely would need re-deriving
+  the label at click time inside the `NSAlert` completion handler after
+  the fact, which cannot retroactively relabel a button the user already
+  saw.
+
 ## Deliberately unchanged
 
 - `FileStore.writeLocked`'s up-to-three `readSnapshot` (full read + SHA-256)
@@ -192,18 +283,24 @@ instead by the manual checklist below.
 ## Automated evidence (actually executed, this session)
 
 - Package tests: `swift test --no-parallel` (MacDownKit, matching CI's own
-  invocation) — **1139/1139 tests across 127 suites pass**, full suite,
-  single run. `WorkspaceTests` (187/187) and `FileCoreTests` (120/120) were
-  additionally run in isolation and 3× under full-suite concurrency to rule
-  out the pre-existing flakiness documented in CI's own comments in
-  `.github/workflows/ci.yml` (one run flaked on an unrelated test under
-  concurrent scheduling; passed cleanly in isolation and on three full
-  reruns).
+  invocation) — **1140/1140 tests across 127 suites pass**, full suite,
+  after the adversarial-review fixes above (the extra test is the new
+  overlapping-save regression test). `WorkspaceTests` (187/187) and
+  `FileCoreTests` (120/120) were additionally run in isolation and 3× under
+  full-suite concurrency to rule out the pre-existing flakiness documented
+  in CI's own comments in `.github/workflows/ci.yml` (one run flaked on an
+  unrelated test under concurrent scheduling; passed cleanly in isolation
+  and on three full reruns). A hosted CI run separately hit one flake in
+  `recoveryRequiredPublicationErrorSurvivesALaterLocalEdit`
+  (`WorkspaceModelRecoveryTests.swift`, a busy-poll barrier test unrelated
+  to any file this fix touches) that this session's own full-suite run did
+  not reproduce — consistent with the same class of load-sensitive
+  flakiness, not a regression from this change.
 - App-target tests: `xcodebuild ... -only-testing:MacDown2Tests
   test-without-building`, 115/115 passed (includes
   `WindowCoordinator palette origin targeting`,
   `WindowCoordinatorSaveAsPublicationTests`, `CommandPaletteModelTests`,
-  `TextFilterCoordinator`).
+  `TextFilterCoordinator`), re-run after the adversarial-review fixes.
 - `swiftformat --lint` and `swiftlint lint --strict`: 0 violations across
   427 files.
 - `xcodebuild build` for the `MacDown2` app in both Debug and Release
