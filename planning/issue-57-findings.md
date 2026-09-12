@@ -295,7 +295,16 @@ Two further findings were confirmed as real but deliberately left unfixed:
   (`WorkspaceModelRecoveryTests.swift`, a busy-poll barrier test unrelated
   to any file this fix touches) that this session's own full-suite run did
   not reproduce — consistent with the same class of load-sensitive
-  flakiness, not a regression from this change.
+  flakiness, not a regression from this change. A second, later hosted run
+  against a doc-only follow-up commit (no code change from the passing run
+  immediately before it) independently flaked on a third, again unrelated
+  and again previously-seen-flaky test,
+  `replacementWatcherProbesAReappearedFileWithoutAnotherEvent`
+  (`DocumentFileMonitorRecoveryTests.swift`) — two different single-test
+  flakes across two runs of identical code is itself evidence this is
+  runner-load flakiness rather than anything this PR introduced; see the
+  fully green run cited below for the exact commit with all of this PR's
+  code changes.
 - App-target tests: `xcodebuild ... -only-testing:MacDown2Tests
   test-without-building`, 115/115 passed (includes
   `WindowCoordinator palette origin targeting`,
