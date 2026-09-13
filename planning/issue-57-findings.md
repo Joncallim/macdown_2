@@ -529,25 +529,30 @@ fully cleaned up afterward (see "Fixtures and cleanup" below).
    construction itself costs a consistent ~110–140 ms, identical before and
    after this PR, and is the actual dominant, unaddressed latency source.
 
-### Genuine open question — not resolved this session
+### Genuine open question — filed as #59, not fixed here
 
 The external-file-deletion monitor (`ExternalFileController`/
 `DocumentFileMonitor`, E18 code, untouched by this PR) did not visibly
 transition the UI to the "backing unavailable" red banner / "Save As…"
 labeled close-dialog within the ~25 seconds observed in this test session,
 across multiple tab switches (which call `retryMonitoring()` via
-`windowDidBecomeKey`). This is recorded as a genuine, unresolved
-observation from live testing, **not** inferred as a bug and **not**
-claimed as fixed or broken: package-level tests already cover this exact
-transition with synthetic `FileBackingIssue` injection and pass reliably
-(`DocumentFileMonitorMissingFileTests.swift`,
-`ExternalFileControllerRecoveryTests.swift`), so the discrepancy is either
-an FSEvents-latency/coalescing characteristic specific to this shell-driven
-test session, or a real gap between synthetic and live detection that
-package tests cannot see. Either way, it does not indicate a regression in
-this PR (the code path is unchanged by it) and is out of scope to chase
-further here — flagged for whoever next touches E18/`DocumentFileMonitor`
-to investigate with proper Instruments/FSEvents tracing.
+`windowDidBecomeKey`). This was independently reproduced by the repo owner
+in their own real-world use outside this session, confirming it is not a
+one-off automation artifact. A further attempt to root-cause it with live
+instrumentation was inconclusive — see #59's own investigation notes for
+what was traced and ruled out (a code-level review of the intended kqueue-
+based callback chain did not surface an obvious bug, and live reproduction
+was cut short once it became clear the test machine was in concurrent real
+use, which is itself enough to produce spurious "nothing happened" results
+in a screen-automation-driven repro). Package-level tests already cover
+this exact transition with synthetic `FileBackingIssue` injection and pass
+reliably (`DocumentFileMonitorMissingFileTests.swift`,
+`ExternalFileControllerRecoveryTests.swift`), so the gap is specifically
+between synthetic and live detection. Filed as
+[#59](https://github.com/Joncallim/macdown_2/issues/59) rather than fixed
+here: the code path is unchanged by this PR, and this PR's own new
+`.saveFailed` banner already correctly covers the immediate-save-after-
+deletion case regardless of how #59 resolves.
 
 ### Fixtures and cleanup
 
