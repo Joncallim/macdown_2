@@ -407,7 +407,14 @@ Two further findings were confirmed as real but deliberately left unfixed:
   `replacementWatcherProbesAReappearedFileWithoutAnotherEvent`
   (`DocumentFileMonitorRecoveryTests.swift`) — two different single-test
   flakes across two runs of identical code is itself evidence this is
-  runner-load flakiness rather than anything this PR introduced; see the
+  runner-load flakiness rather than anything this PR introduced. A third
+  such flake — `parentVanishedLatchSurvivesAChangedEventDuringDebounce`
+  (`DocumentFileMonitorRecoveryTests.swift` again, same `waitUntil`-polling
+  pattern, and note: this test drives a synthetic in-memory watcher, not
+  the real kqueue-based one #59 is about) — hit the PR's own automatic
+  `pull_request` CI check once it started firing correctly; re-running the
+  job (no code change) was the appropriate fix, matching this repo's own
+  documented convention for this class of test. See the
   fully green run cited below for the exact commit with all of this PR's
   code changes.
 - App-target tests: `xcodebuild ... -only-testing:MacDown2Tests
