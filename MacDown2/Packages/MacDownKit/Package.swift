@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "ExportService", targets: ["ExportService"]),
         .library(name: "Contributions", targets: ["Contributions"]),
         .library(name: "TextFilters", targets: ["TextFilters"]),
+        .library(name: "Math", targets: ["Math"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
@@ -122,6 +123,7 @@ let package = Package(
         ),
         .target(name: "Contributions", dependencies: ["MarkdownEngine"]),
         .target(name: "TextFilters"),
+        .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"]),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),
@@ -137,5 +139,6 @@ let package = Package(
         .testTarget(name: "ExportServiceTests", dependencies: ["ExportService"]),
         .testTarget(name: "ContributionsTests", dependencies: ["Contributions", "MarkdownEngine"]),
         .testTarget(name: "TextFiltersTests", dependencies: ["TextFilters"]),
+        .testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"]),
     ]
 )
