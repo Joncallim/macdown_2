@@ -79,6 +79,21 @@ struct ContentAreaView: View {
 
                 Spacer()
 
+                // Saving indicator (#57): the only signal a save is actually
+                // running. Before this there was no spinner, no disabled
+                // state, nothing — a save that took a moment looked
+                // identical to the app being hung.
+                if model.isSavingActiveDocument {
+                    HStack(spacing: 5) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Saving…")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityIdentifier("savingIndicator")
+                }
+
                 // Format badge
                 Text(document.format.name)
                     .font(.system(size: 10, weight: .medium))
@@ -239,6 +254,64 @@ private struct WorkspaceRecoveryRequiredNotice: View {
             .padding(.vertical, 9)
             .background(.orange.opacity(0.15))
             .accessibilityIdentifier("recoveryCleanupRequiredNotice")
+        } else if case let .saveFailed(underlying) = model.lastError {
+            // #57: previously nothing rendered this case at all. A save
+            // that failed (permission denied, disk full, a write raced by
+            // another process) left the document dirty with no visible
+            // explanation — indistinguishable from Save silently doing
+            // nothing.
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+                Text(FileSaveFailurePresentation.message(for: underlying))
+                    .font(.callout)
+                Spacer()
+                Button("Retry") {
+                    Task { await model.save() }
+                }
+                .accessibilityIdentifier("saveFailedRetryButton")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(.red.opacity(0.12))
+            .accessibilityIdentifier("saveFailedNotice")
+        }
+    }
+}
+
+/// A human-readable description of a failed save. Mirrors
+/// `FileOpenFailurePresentation` (`WindowCoordinator+OpenFailure.swift`):
+/// `FileStoreError` carries no `LocalizedError` conformance of its own, and
+/// the two operations fail for different reasons worded differently ("could
+/// not be read" is wrong for a write that failed), so this is a distinct,
+/// write-flavoured mapping rather than a shared one (#57).
+enum FileSaveFailurePresentation {
+    static func message(for error: FileStoreError) -> String {
+        switch error {
+        case .writeFailed: "The file could not be written."
+        case .permissionDenied: "MacDown does not have permission to write this file."
+        case .notRegularFile: "This is not a regular file."
+        case .invalidURL: "This is not a valid save location."
+        case .fileChangedDuringRead: "The file changed on disk while saving. Try again."
+        // Thrown both when the containing folder is gone and when the file
+        // itself was deleted/moved/trashed while its folder is untouched —
+        // exactly issue #57's headline scenario — so this must not name
+        // "folder" specifically (adversarial review finding).
+        case .fileMissing: "The file could not be found. It may have been moved, renamed, or deleted."
+        case .encodingDetectionFailed: "The file's text encoding could not be determined."
+        case let .decodingFailed(diagnostics):
+            diagnostics.first?.message ?? "The file's contents could not be verified after saving."
+        case .conditionalPublicationRecoveryRequired:
+            // Unreachable in practice: `workspaceError(for:)`
+            // (`WorkspaceModel+SavingSupport.swift`) intercepts this case
+            // before it ever becomes `.saveFailed(underlying:)`, mapping it
+            // instead to the distinct `WorkspaceError
+            // .conditionalPublicationRecoveryRequired(url)` that
+            // `WorkspaceRecoveryRequiredNotice` renders with the actual
+            // filename. Kept here only for switch exhaustiveness.
+            "A competing version was preserved separately."
+        case .readFailed:
+            "The file could not be verified after saving."
         }
     }
 }

@@ -2263,3 +2263,36 @@ functional defect. The one finding it produced is this section itself:
 the documentation gap it closes. A pass that finds nothing beyond a
 documentation gap is not being reported as "clean" in the sense of "no
 further review needed" — see §24's own closing line.
+
+## 26. Issue #57 fixes touching E14B code (command palette, Save routing)
+
+Full findings, root causes and evidence live in `planning/issue-57-findings.md`
+— that issue predates and is broader than E14B (it also covers general
+Open/Save infrastructure this epic never touched), so its record is kept
+there rather than duplicated here. Two of its four fixes touch this epic's
+own code and are cross-referenced for anyone auditing E14B specifically:
+
+- `CommandPaletteModel.init()` was calling `refreshRows()` — a synchronous
+  filesystem scan (`TextFilterCommandDiscovery.discoverCommands()`) — before
+  `CommandPalettePanel` had anything to show, and `CommandPaletteView
+  .onAppear` then repeated the same scan a second time. This was the actual
+  cause of "opening the palette feels slow," not the window-activation gap
+  §17-25 fixed for the palette's own display. Fixed by removing the eager
+  `init`-time scan; the one real scan now runs once, from `onAppear`, as the
+  method's own doc comment already (incorrectly, until now) claimed.
+- The close-dialog's "Save"/"Keep My Changes and Save" buttons
+  (`WindowController+Close.swift`) called the ambient `saveDocument()`,
+  which — for a document with no usable backing — presents its Save As
+  panel against `NSApp.keyWindow` rather than the closing window. Every
+  other save call site in this epic's palette-origin-targeting work
+  (§17-24, `saveDocumentFromExplicitOrigin()`,
+  `saveWithoutDestinationPrompt()`) was already hardened against exactly
+  this ambient-resolution hazard; the close dialog was the one caller that
+  had not been. Fixed by routing both buttons through
+  `saveDocumentFromExplicitOrigin()`, consistent with the rest of the app.
+
+Both fixes are covered by the same automated evidence run recorded in
+`issue-57-findings.md`; that document's "Outstanding gate" section is the
+authoritative record of what manual/Release-app verification remains
+unexecuted for these two fixes specifically, layered on top of this epic's
+own still-unverified manual UI matrix (§24).

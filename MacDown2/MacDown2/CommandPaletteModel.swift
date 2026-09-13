@@ -57,7 +57,22 @@ final class CommandPaletteModel {
         self.discoverTextFilters = discoverTextFilters
         self.isAppCommandAvailable = isAppCommandAvailable
         self.textFiltersAvailable = textFiltersAvailable
-        refreshRows()
+        // Deliberately *not* `refreshRows()` (#57): that rescans the
+        // filesystem (`TextFilterCommandDiscovery.discoverCommands()`),
+        // which does a directory listing plus two stat-family calls per
+        // entry. Doing that here ran it synchronously on the main actor
+        // during `CommandPalettePanel`'s `init` — before the panel exists to
+        // show anything — and `CommandPaletteView.onAppear` immediately
+        // repeated the same scan a second time once the view mounted. That
+        // double, main-actor-blocking scan sat directly between the ⌘⇧P
+        // keypress and the palette becoming visible, which is what made the
+        // palette (and therefore every command inside it, including
+        // "Open…") feel unresponsive. `applyFilter()` alone is pure
+        // in-memory filtering of `appCommands` with `discoveredTextFilters`
+        // still at its `[]` default, so app-command rows are ready
+        // immediately; the one real scan now happens exactly once, from
+        // `CommandPaletteView.onAppear`.
+        applyFilter()
     }
 
     /// Re-scans for text filters and re-applies the current query. Intended

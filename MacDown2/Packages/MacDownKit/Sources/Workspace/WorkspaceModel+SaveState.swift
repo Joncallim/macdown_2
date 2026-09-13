@@ -43,4 +43,29 @@ extension WorkspaceModel {
     func tracksSaveGeneration(for document: FileDocument) -> Bool {
         latestSaveGenerationByDocumentID[document.id] != nil
     }
+
+    /// Marks `documentID` as having a save write in flight (#57). Paired with
+    /// `endSavingIndicator`, always via `defer`, so it clears on every exit
+    /// path — success, failure, or a metadata-conflict retry recursing back
+    /// through the same call. Reference-counted (adversarial review finding):
+    /// `save(isRetry:destinationPolicy:)` has no reentrancy guard against a
+    /// second concurrent `save()` for the same document (only
+    /// `inFlightSaveAsByDocumentID` blocks a *Save As* from overlapping), and
+    /// the metadata-conflict retry in `reconcileSaveConflict` recurses into a
+    /// nested `save(isRetry: true, ...)` call for the same document ID while
+    /// the outer call is still unwinding. A plain `Set` would let whichever
+    /// overlapping call finishes first clear the flag while the other is
+    /// still genuinely writing.
+    func beginSavingIndicator(for documentID: String) {
+        savingCountByDocumentID[documentID, default: 0] += 1
+    }
+
+    func endSavingIndicator(for documentID: String) {
+        guard let count = savingCountByDocumentID[documentID] else { return }
+        if count > 1 {
+            savingCountByDocumentID[documentID] = count - 1
+        } else {
+            savingCountByDocumentID[documentID] = nil
+        }
+    }
 }

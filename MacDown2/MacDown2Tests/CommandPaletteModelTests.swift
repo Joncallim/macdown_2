@@ -90,6 +90,11 @@ struct CommandPaletteModelTests {
     @Test func invokingSelectedTextFilterDispatchesToFilterHandler() {
         let command = Self.filter("Uppercase")
         let model = CommandPaletteModel(appCommands: [], discoverTextFilters: { [command] })
+        // #57: the real filesystem scan now runs once, from
+        // `CommandPaletteView.onAppear`, not eagerly in `init` — simulate
+        // that one call so this test reflects what a user actually sees
+        // before they can select a row.
+        model.refreshRows()
         let coordinator = WindowCoordinator(
             themeController: ThemeController(),
             grammarRegistry: GrammarRegistry(),
@@ -157,6 +162,9 @@ struct CommandPaletteModelTests {
         let command = Self.filter("Uppercase")
         var discoveredCommands = [command]
         let model = CommandPaletteModel(appCommands: [], discoverTextFilters: { discoveredCommands })
+        // #57: simulate the one real onAppear scan so the row exists before
+        // the user could have selected it (see the sibling test above).
+        model.refreshRows()
         // Simulate the file vanishing (or discovery otherwise changing)
         // between the palette opening and Return — invocation must still
         // dispatch the row the user actually saw and selected.

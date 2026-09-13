@@ -70,6 +70,8 @@ extension WorkspaceModel {
         guard inFlightSaveAsByDocumentID[document.id] == nil else { return .handled }
 
         let context = beginSave(for: document)
+        beginSavingIndicator(for: document.id)
+        defer { endSavingIndicator(for: document.id) }
         do {
             let result = try await documentWriter.save(document)
             await applySuccessfulSave(
@@ -202,7 +204,9 @@ extension WorkspaceModel {
     private func publishSaveAs(_ document: FileDocument, to url: URL) async {
         let context = beginSave(for: document)
         inFlightSaveAsByDocumentID[document.id] = context.generation
+        beginSavingIndicator(for: document.id)
         defer {
+            endSavingIndicator(for: document.id)
             if inFlightSaveAsByDocumentID[document.id] == context.generation {
                 inFlightSaveAsByDocumentID[document.id] = nil
             }
