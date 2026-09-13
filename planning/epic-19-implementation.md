@@ -1,0 +1,1245 @@
+# EPIC-19 implementation architecture: First-class math and scientific notation
+
+Baseline `master` SHA: `8ff3206` (docs reconciliation on top of PR #58,
+2026-09-13). Product contract: GitHub issue #44 /
+`planning/epics/EPIC-19-math-scientific-notation.md`. Depends on E10
+(done), E12 export (done, PR #52-era), E14 contribution seam + text filters
+(done, PR #54/#56/#58 — see `planning/epic-14-implementation.md`).
+
+This document is written directly against current `master` source, not
+against the aspirational shapes described in earlier planning prose. Two
+reconciliations from stale planning text are called out explicitly in §2.
+
+---
+
+## 1. Owner summary
+
+**What changes for the user.** Today, writing `$E = mc^2$` or a `$$...$$`
+block in MacDown 2 produces literal dollar-sign text in preview and export,
+identical to typing any other Markdown. After this epic, the same source
+renders as a properly typeset equation in the native preview, exports to
+HTML/PDF as a real image of that equation, and a malformed expression is
+visibly flagged in place instead of silently rendering as garbage or
+breaking the surrounding document.
+
+**Why now.** E12 (export) and E14 (contribution seam) were both built with
+this epic named as their first real consumer — E12's `ExportRequest`
+already carries a `contributions:` field whose doc comment says "E19
+inline math, E20 block diagrams" (`ExportRequest.swift:26-28`), and E14's
+`ContributionRepresentation` already has an `.html(String)` case whose doc
+comment names "a rendered equation" as its motivating example
+(`ContributionRepresentation.swift:15-21`). Building E19 now is completing
+those two seams' first real load, not opening new architecture.
+
+**Main technical approach, in ordinary language.** MacDown 2 already
+depends — transitively, unused — on a small, MIT-licensed, fully offline
+Swift LaTeX-typesetting library (`SwiftUIMath`, pulled in by the `Textual`
+package Preview already uses) that can lay out and draw LaTeX math with no
+network, no JavaScript engine, and no bundled TeX distribution. This epic
+turns that dormant capability on:
+
+- **Preview** enables `Textual`'s already-shipped `.math` syntax
+  extension, so `$...$`/`$$...$$` inside a previewed paragraph is drawn as
+  real math instead of literal text. MacDown 2 adds a small amount of its
+  own pre-processing so a *malformed* expression is visibly flagged rather
+  than silently disappearing (Textual's own extension renders nothing on
+  a parse failure — see §2.1).
+- **Export** ships a new first-party `Contributing` producer (`MathContribution`,
+  matching E14's exact seam) that finds the same `$...$`/`$$...$$` spans in
+  the raw document text, renders each one to a small PNG using the *same*
+  `SwiftUIMath` engine (via SwiftUI's `ImageRenderer`, off the interactive
+  preview path), and hands E12 a self-contained `<img src="data:...">`
+  fragment through the `ExportDerivedContribution.html` field that already
+  exists and is already wired end to end (`ExportContributionAdapter.swift`,
+  currently the one branch that rejects `.html`).
+
+One rendering engine, two consumers, no new external dependency, no
+JavaScriptCore, no hosted renderer.
+
+**Main risks or compromises.**
+
+- `SwiftUIMath`'s public API exposes no parse-error detail and Textual's
+  `.math` syntax extension is a sealed, non-configurable unit (its
+  supporting types are not `public` — confirmed by reading the checked-out
+  package source, §2.1). MacDown 2 cannot get a structured diagnostic
+  message out of either; it can only detect *that* an expression failed to
+  lay out (zero typographic bounds) and can only intervene by rewriting
+  source text before Textual sees it, not by hooking Textual's rendering.
+  The resulting diagnostic is therefore "this expression could not be
+  typeset," not "unexpected token at column 14."
+- The same sealed-extension constraint means MacDown 2 cannot get a
+  per-equation tap target out of Textual's rendering (no attachment
+  carries a source range, and the tokenizer that would need to carry one
+  is not public). Source ↔ preview navigation for math is therefore
+  scoped to the same block-level granularity the existing scroll-sync
+  system already provides for every other content type, not per-equation
+  character precision. This is a deliberate, documented scope reduction
+  from a literal reading of the epic issue's journey 4, not an oversight.
+- Export renders each equation once, at export time, into a static raster
+  image baked with whichever theme foreground color is active then. This
+  is consistent with the epic's own acceptance criteria (light/dark
+  *preview* is the stated requirement; HTML/PDF export only requires
+  "visually reviewed output"), but is worth naming: a previously exported
+  HTML file does not re-theme itself if the *reader's* system appearance
+  changes later, the same way ordinary rendered prose in that same export
+  does not either.
+
+**Deliberately not being built.** Full TeX compilation, `\documentclass`,
+BibTeX, TikZ, hosted rendering, a new math markup language, or
+`\(...\)`/`\[...\]` delimiter support (resolved as unsupported in §3.5 —
+the epic issue's own gate is "only if architecture confirms unambiguous
+compatibility," and it does not).
+
+---
+
+## 2. Baseline and repository reconciliation
+
+### 2.1 What already exists and must be reused, not duplicated
+
+Confirmed directly against `MacDown2/Packages/MacDownKit/Package.swift`
+and the checked-out `.build/checkouts/` sources on this baseline (not from
+planning prose):
+
+- **`gonzalezreal/textual` `0.5.0`** is a direct `Preview` target
+  dependency (`Package.swift:61`, product `Textual`), already used by
+  `TextualMarkdownPreview.swift` to render every `PreviewBlock`.
+- **`gonzalezreal/swiftui-math` `0.1.0`** is a *transitive* dependency,
+  pulled in by `textual`'s own `Package.swift` (product `SwiftUIMath`).
+  It is not declared anywhere in MacDownKit's own `Package.swift` today.
+  MIT-licensed (`Copyright (c) 2026 Guille Gonzalez`, derived from
+  `SwiftMath`/`iosMath`, both MIT); zero non-test dependencies of its own;
+  bundles its own math fonts as a resource bundle; deploys to macOS 14+,
+  comfortably under this package's macOS 26 floor.
+- **Textual already ships a complete, unused `.math` `SyntaxExtension`**
+  (`Sources/Textual/MarkdownParser/SyntaxExtension.swift`): regex-based
+  recognition of `\$\$(.+?)\$\$` (display) and `\$(?!\$)((?:\\\$|[^$\n])+)\$`
+  (inline) (`Internal/MarkdownParser/PatternTokenizer.swift`), each match
+  replaced with a `MathAttachment` drawn by `SwiftUIMath`'s `Math` view.
+  `Preview`'s own `PreviewMarkupParser.swift` already declares and forwards
+  a `syntaxExtensions: [AttributedStringMarkdownParser.SyntaxExtension]`
+  parameter — but every call site (`TextualMarkdownPreview.swift:303`)
+  currently passes none. **Turning Preview math rendering on is, at the
+  rendering level, a one-parameter change** (§6.1); everything else in
+  this epic is about the parts that one parameter change does not cover.
+- **`PatternTokenizer`, `PatternTokenizer.Pattern`, and `PatternTokenizer.Token`
+  are not `public`.** `SyntaxExtension`'s stored `patterns:
+  [PatternTokenizer.Pattern]` therefore cannot be constructed from outside
+  the `Textual` module. MacDown 2 can use `.math` only as the fixed,
+  opaque unit Textual ships — it cannot add source-range tracking, a
+  different delimiter set, or an error callback to it. This is verified by
+  reading the checked-out package source at this baseline, not inferred.
+- **`Math` (the public SwiftUI view) and `Math.typographicBounds(for:...)`
+  (the `@_spi(Textual)` sizing API) both fail silently.** `Math.body`
+  (`Sources/SwiftUIMath/Math.swift`) does `guard let displayNode = ...
+  else { return }` — an unparseable LaTeX string draws nothing, throws
+  nothing, and logs nothing. `SwiftUIMath` does have a rich internal
+  `ParserError` type with categorized cases (`characterNotFound`,
+  `missingRight`, `invalidCommand`, `missingDelimiter`, etc. —
+  `Internal/Syntax/Parser.swift`) but it is not exposed publicly or via any
+  `@_spi`. **Consequence, load-bearing for §9's failure model:** the only
+  signal MacDown 2 can obtain for "this expression is malformed" is "this
+  expression measured to zero size," never a message describing why.
+- **`ExportRequest.contributions: [ExportDerivedContribution]` and the
+  `.html` case of `ContributionRepresentation` are already wired for
+  exactly this feature and already have one rejecting call site to
+  replace**, not a seam to build from scratch:
+  - `ContributionRepresentation.swift:15-21` — the `.html(String)` case's
+    doc comment says (paraphrased, not a verbatim quote): no contribution
+    in E14 produces this case and neither adapter handles it yet
+    (epic-14-implementation.md §18); it exists so a future contribution
+    whose output cannot round-trip through Markdown — the doc comment's
+    own example is literally "a rendered equation" — gets a compiler
+    error at the adapters instead of a silently-ignored case. That
+    compiler error is this epic's actual entry point (§6.2).
+  - `ExportContributionAdapter.swift`'s `adapt(_:)` switch has no
+    `default:` case; its `.html` arm currently sets `html = ""` and
+    appends an `.error` diagnostic, explicitly because no contribution
+    produces `.html` yet. E19 changes only this arm's body.
+  - `PreviewContributionAdmission.swift` explicitly rejects `.html`
+    (*"…which Preview does not support; authored source preserved"*) —
+    this rejection is **correct and stays unchanged**: Preview's math
+    rendering does not go through the contribution/admission pipeline at
+    all (§5, §7).
+  - `ExportDerivedContribution.html: String` (`ExportDerivedContribution.swift`)
+    has no resource/attachment field, only a single HTML string. A
+    self-contained `<img src="data:image/png;base64,...">` fits this
+    field with no contract change — no new resource type, no manifest
+    entry, no change to `ExportManifest`/`ExportResourceBudget`'s
+    resource-array machinery. (This also resolves a mismatch: an earlier
+    export-contract sketch in `epic-12-implementation.md` §3.5 describes a
+    separate `DerivedExportFragment`/`DerivedExportResource` pair with its
+    own resource array. That shape does not exist in shipped code —
+    `ExportDerivedContribution`/`DerivedContentComposer`, as actually
+    implemented by E14 and confirmed by reading
+    `ExportService/ExportDerivedContribution.swift` directly, is the one
+    real, binding contract. Per this doc's own §3.2 rule, live repository
+    behaviour wins; §3.13 of `epic-12-implementation.md` is otherwise
+    accurate and still governs placement semantics.)
+- **`MarkdownEngine` has no inline-node model.** `ParseEngine`/`BlockConverter`
+  only walk swift-markdown's `BlockMarkup` tree (`ParseEngine.swift`); a
+  `MarkdownBlock` carries only `kind` and a line-range, never per-inline
+  spans. `TOCContribution` (E14's only shipped `Contributing`
+  implementation) does not use any inline-span facility either — it scans
+  raw source text line by line via `SourceMap`. E19's math-span detection
+  follows the same precedent: a small, dependency-free text scanner over
+  `sourceText`/`SourceMap`, not a new inline-AST feature in `MarkdownEngine`.
+- **Highlighting has a dormant, unwired hook for LaTeX injection.** The
+  vendored `TreeSitterMarkdown` grammar already parses `$...$` spans into a
+  `latex_block` node and already declares
+  `(#set! injection.language "latex")` in its shipped injections query,
+  but no `"latex"` entry exists in `Highlighting`'s `grammarFactories`
+  table and no LaTeX tree-sitter grammar is vendored/pinned anywhere.
+  **Out of scope for this epic** (§3.5) — E19 is about preview/export
+  rendering of math, not editor syntax highlighting of LaTeX source. Noted
+  here so a future editor-highlighting epic does not have to rediscover
+  it; not a residual risk of this epic, since this epic makes no claim
+  about it.
+
+### 2.2 Stale assumptions reconciled
+
+- `planning/epic-14-implementation.md:71` anticipates E14's architecture
+  needing to "hold up under the added pressure of a real KaTeX or Mermaid
+  integration." KaTeX (a JavaScript library) was a planning-time
+  placeholder, not a decision; it is not what this epic uses. The actual
+  choice — `SwiftUIMath`, already present, already offline, no JS engine —
+  is strictly simpler than what that sentence anticipated and requires no
+  change to E14's shipped contracts, only to one previously-rejecting
+  adapter branch.
+- `planning/epic-13-implementation.md:245-249` correctly defers legacy
+  MacDown 1's `htmlMathJax*` preference keys to E19 and confirms no such
+  settings exist in `AppSettings` yet. This epic introduces no new
+  user-facing settings either (§3.5) — math rendering is unconditional,
+  matching how syntax highlighting and TOC contributions are unconditional
+  today. If a future need for an on/off toggle appears, that is a small,
+  additive E13 follow-up, not a reason to block this epic.
+- `legacy-reference/macdown-legacy/MacDown/Resources/MathJax/` (old
+  MacDown 1's bundled MathJax assets) is pure legacy reference material.
+  It is not built, not referenced by any current target, and contributes
+  nothing to this epic's design.
+
+### 2.3 Dependencies and follow-ups this epic intersects
+
+- **E20/E21** (Mermaid/diagram platform) will be the second real consumer
+  of `ExportDerivedContribution`/`ContributionRepresentation.html` and of
+  whatever `.block`-placement HTML-embedding convention this epic
+  establishes for Export (§6.2). This epic's `ExportContributionAdapter`
+  change must stay generic to `.html` content, not math-specific, exactly
+  as E12's own §3.12 anticipates ("E12 never inspects fence language").
+- **Issue #59** (E18, external-file-change UI not updating) is unrelated,
+  pre-existing, already filed. Not a dependency of this epic.
+- A future editor-highlighting epic can pick up the dormant
+  `latex_block`/`injection.language "latex"` hook noted in §2.1 without
+  needing anything from this epic.
+
+---
+
+## 3. User journeys
+
+Numbered to match the epic issue's own "Representative user journeys."
+
+### J1 — Write and preview
+
+1. User types `The energy is $E = mc^2$.` inside a Markdown document with
+   the preview pane open.
+2. On the next debounced reparse (the same cadence Preview already uses;
+   §8), the paragraph re-renders with `E = mc^2` drawn as typeset inline
+   math, matching the surrounding text's baseline.
+3. User types a display block:
+   ```
+   $$
+   \int_0^1 x^2\,dx = \frac{1}{3}
+   $$
+   ```
+   It renders centered, in display style, as its own visual block.
+4. No preview action is required beyond normal typing — this rides the
+   existing reparse/redraw path (§7, §8), not a new trigger.
+
+### J2 — Work offline
+
+1. User disconnects networking entirely (e.g. Wi-Fi off).
+2. Preview and export of the same document containing equations behave
+   identically to J1/J5 — `SwiftUIMath` never performs I/O of any kind
+   (confirmed: zero non-test dependencies, no networking API in its
+   source) and `Textual`'s math extension is pure in-process computation.
+   This is a property of the chosen library, not a MacDown-2-specific
+   guard that could regress; there is no network code path to disable.
+
+### J3 — Recover from an error
+
+1. User types `$\frac{1}{$` (an unbalanced, malformed expression).
+2. MacDown 2's own pre-processing (§6.1) detects that this span measures
+   to zero typographic bounds via `Math.typographicBounds` and rewrites
+   just that span, before Textual's parser ever sees it, into a visibly
+   flagged inline-code run (`` `⚠ malformed math` `` styling, exact
+   presentation in §6.1) — the rest of the paragraph, and any other
+   equations in the same document, render normally and are unaffected
+   (fault isolation matches E14's `ContributionRegistry.run`'s per-item
+   isolation precedent, §9).
+3. User corrects the expression to `$\frac{1}{2}$`.
+4. On the next reparse, the flagged marker is gone and the corrected
+   equation renders normally — no manual "retry" action, matching how
+   every other Preview content type already recovers on the next
+   keystroke-triggered reparse.
+
+### J4 — Navigate
+
+1. User clicks anywhere inside a previewed paragraph that contains one or
+   more equations.
+2. The editor selection/scroll position moves to that paragraph's source
+   line range — the same granularity `ScrollSyncController`/
+   `PreviewBlockTarget` already provides for every other block kind today.
+3. **Scope boundary, stated plainly:** this journey does not resolve to
+   the *specific* equation among several in one paragraph, and does not
+   resolve to a character offset inside the equation's `$...$` span. §2.1
+   establishes why: no public API surface exists to attach a source range
+   to an individual math attachment inside Textual's sealed `.math`
+   extension. Editing source updates the same block on the next reparse,
+   satisfying the "editing source updates the same derived block" half of
+   the journey; the "select/click a rendered equation" half is satisfied
+   at block granularity, not equation granularity, for macOS 1.0.
+
+### J5 — Export
+
+1. User exports a document containing both inline and display equations
+   to HTML.
+2. The resulting self-contained HTML file renders each equation as an
+   embedded `<img>` (a PNG data URI, §6.2) at the position its source
+   occupied, with no external references and no script — opening it with
+   networking off, in any standards-compliant browser, on another
+   machine, looks the same as at export time.
+3. User exports the same document to PDF.
+4. The same derived HTML feeds PDF export exactly as any other content
+   does today (E12's existing HTML→WebKit→PDF path, unchanged) — no
+   separate math-specific PDF code path.
+
+### J6 — Large document
+
+1. User opens/edits a document containing on the order of 100 equations
+   (a realistic upper bound for a technical document; far below the
+   epic's own residual-risk ceiling in §18).
+2. Typing prose in a section with no equations does not re-render or
+   re-measure unaffected equations — Preview's math rendering rides the
+   same per-block, per-reparse pipeline every other block kind already
+   uses (unchanged blocks are not re-diffed by SwiftUI's `ForEach` identity
+   any more than they are today, §7); MacDown 2's own malformed-math
+   pre-processing (§6.1) is bounded by the same reparse cadence and by a
+   result cap analogous to `PreviewContributionBudget.standard` (§11).
+3. Export of the same document renders each equation once per export
+   request (not once per keystroke) — export is not a hot path (§8).
+
+---
+
+## 4. Non-negotiable invariants
+
+1. **No network access, ever, for math rendering.** Preview and Export
+   math rendering must not call `URLSession` or any hosted service,
+   matching D9/E12 §3.9 rule 1 exactly. (Trivially satisfiable: neither
+   `SwiftUIMath` nor the new MacDown-2 code this epic adds has any
+   networking dependency at all.)
+2. **One malformed equation never breaks surrounding Markdown or other
+   equations.** Both the Preview pre-processing (§6.1) and the Export
+   `MathContribution` (§6.2) must isolate a single span's failure from
+   every other span and from ordinary Markdown rendering, mirroring
+   `ContributionRegistry.run`'s existing per-contribution fault isolation.
+3. **The durable document is unchanged plain Markdown text.** This epic
+   never rewrites the user's saved source to something else (e.g. no
+   auto-conversion of `$...$` to a different marker). Rendered
+   output/cache is disposable derived data, matching the epic's own
+   acceptance criteria and E14's existing "durable source, disposable
+   derived content" model.
+4. **Math rendering never blocks the main actor for a perceptible
+   interval.** Per-equation validity checks and image rendering (§6.1,
+   §6.2) must not stall typing or scrolling; heavy work (Export's
+   `ImageRenderer` calls) happens off the interactive preview path (§8).
+5. **Preview's math rendering does not go through the `Contributions`/
+   `ContributionRegistry` pipeline.** `PreviewContributionAdmission`
+   already, correctly, rejects `.html`, and Textual's `.math` extension
+   operates directly on each block's own literal source text — there is
+   no derived-content splicing step for Preview math (§5, §7). Do not
+   route Preview math through `ContributionRegistry` "for consistency
+   with Export" — that would be solving a problem that does not exist and
+   would violate EPIC_STANDARD.md's "do not create an abstraction solely
+   because a possible future feature might use it."
+6. **Export's math rendering uses the existing `Contributing`/
+   `ExportDerivedContribution` seam unmodified in shape.** No new public
+   type is added to `ExportService` or `Contributions`; the only contract
+   change is `ExportContributionAdapter`'s `.html` arm switching from
+   "reject" to "handle" (§6.2). E12 continues to never call a math
+   renderer directly (E12 §3.12's own invariant).
+7. **Unsupported delimiters fail closed, not silently.** `\(...\)` and
+   `\[...\]` are not recognized by this epic (§3.5) — text containing them
+   remains ordinary literal Markdown, exactly as it does today. This epic
+   must not partially recognize them in one path (e.g. Export) and not
+   the other (Preview), which would be a worse, inconsistent regression
+   from today's uniform non-recognition.
+8. **A rendered equation image is deterministic for the same input.**
+   Given the same LaTeX string, font, style, and theme foreground color,
+   `MathContribution`'s rendered PNG bytes must be reproducible — required
+   for `DerivedContentComposer`'s existing duplicate/overlap detection to
+   behave sanely and for tests to assert exact output.
+
+---
+
+## 5. Ownership and dependency boundaries
+
+New Swift package target: **`Math`**, under `MacDown2/Packages/MacDownKit/`.
+
+- **`Math` (new SPM target)** — owns: the `$...$`/`$$...$$` span scanner
+  shared by both Preview's pre-processing and Export's `MathContribution`
+  (§6.1, §6.2); the `MathContribution: Contributing` type itself; pure
+  helpers for building the `<img>` HTML fragment string. Depends on
+  `MarkdownEngine` (for `SourceMap`) and `Contributions` (for
+  `Contributing`/`ContributionContent`/etc.), matching `TOCContribution`'s
+  existing dependency shape. **Does not** depend on `SwiftUIMath`/`Textual`
+  directly — rendering (turning a LaTeX string + font/style into pixels)
+  is app-layer work (next bullet), because it needs `ImageRenderer`
+  (SwiftUI) and `NSColor`/theme lookups that are app-target concerns
+  today (E12's own `Theme` type is already app-adjacent, not
+  package-internal math). This mirrors E14's own split: the package
+  target detects and models; the app target renders and adapts.
+- **App target (`MacDown2/MacDown2/`)** — owns:
+  - `MathPreviewPreprocessor` (new, app-internal) — the malformed-equation
+    rewrite step described in §6.1, called from `TextualMarkdownPreview`'s
+    block-rendering path.
+  - The one-parameter change enabling `syntaxExtensions: [.math]` in
+    `PreviewMarkupParser`'s construction (§6.1).
+  - `MathImageRenderer` (new, app-internal) — turns one `Math` span's
+    LaTeX string into PNG bytes via `ImageRenderer`, for `MathContribution`
+    to call through a small protocol seam (§6.2) so `Math`-target tests
+    can inject a fake renderer without linking SwiftUI.
+  - Registration of `MathContribution` into whatever registry Export
+    actually runs (§6.2 — today `ContributionRegistry.standard`'s
+    `contributions:` array, alongside `TOCContribution()`).
+  - `ExportContributionAdapter`'s `.html` arm (existing file, modified,
+    not a new file).
+- **Forbidden dependency directions**, matching E12/E14's own rules
+  exactly:
+  - `ExportService`/`Contributions`/`MarkdownEngine` do not import `Math`,
+    `SwiftUIMath`, or `Textual`. `Math` and its app-layer renderer are
+    consumed only by app-target adapters, the same relationship
+    `TOCContribution` already has to `PreviewContributionAdapter`/
+    `ExportContributionAdapter`.
+  - `Preview` (the package target) does not gain a dependency on
+    `SwiftUIMath` directly — it already depends on `Textual`, which
+    depends on `SwiftUIMath`; `Preview`'s own code never imports
+    `SwiftUIMath` types itself (only `Textual`'s `SyntaxExtension.math`
+    static value is referenced, from the app target, at the
+    `PreviewMarkupParser` call site).
+  - `Math`'s span scanner has no dependency on `Textual`/`SwiftUIMath` —
+    it does its own independent regex-equivalent scan (necessarily,
+    since Textual's tokenizer types are not public, §2.1). Its scanning
+    *rule* (what counts as a valid inline/display span) must stay
+    byte-for-byte consistent with Textual's own `PatternTokenizer.Pattern`
+    regexes (documented as a literal, tested constant in §6.1) so Preview
+    and Export never disagree about where an equation starts and ends.
+- **No new abstraction beyond what two consumers need.** This epic does
+  not add a general "derived-image contribution" type or a pluggable
+  math-backend protocol — `MathContribution`/`MathImageRenderer` are
+  concrete, not generic, matching EPIC_STANDARD.md §3.5's instruction not
+  to build for hypothetical future features. If E20/E21 later needs an
+  analogous image-embedding pattern, it can copy the same small idiom
+  MathContribution establishes, or a shared helper can be extracted then,
+  from actual duplication, not now from anticipation.
+
+---
+
+## 6. Types and interfaces
+
+Names may receive normal Swift-style adjustments; shape/ownership/error
+behaviour are binding, matching E12/E14's own convention.
+
+### 6.1 `Math` package target — shared span model
+
+```swift
+// MathSpan.swift (Math target)
+/// One `$...$` or `$$...$$` span found in a document's raw source text.
+/// `range` is UTF-16 offsets into the ORIGINAL source, matching every other
+/// range in this codebase (`ContributionContent.sourceRange`, `SourceMap`).
+public struct MathSpan: Sendable, Equatable {
+    public enum Style: Sendable, Equatable { case inline, display }
+    public let range: Range<Int>
+    public let style: Style
+    /// The LaTeX content WITHOUT the surrounding `$`/`$$` delimiters.
+    public let latex: String
+}
+
+// MathSpanScanner.swift (Math target)
+/// Scans raw source text for math spans, using literally the same matching
+/// rule as `Textual`'s sealed `.math` SyntaxExtension (`PatternTokenizer
+/// .Pattern.mathBlock`/`.mathInline`, verified against the checked-out
+/// `textual@0.5.0` source, §2.1) so Preview's pre-processing (below) and
+/// Export's `MathContribution` (§6.2) can never disagree with each other —
+/// or with what Textual itself will actually render — about where an
+/// equation starts and ends. This rule is a tested, literal constant here
+/// (`MathSpanScannerTests.swift`'s fixture corpus is the contract, not this
+/// comment); if a future `textual` upgrade changes its regex, that test
+/// suite is what catches the drift, not a silent divergence.
+///
+/// `$$...$$` is matched greedily-non-greedy exactly as Textual's regex does
+/// (`(?s)\$\$(.+?)\$\$`) BEFORE `$...$` is attempted at any position inside
+/// an already-matched `$$...$$` span, so a display block is never
+/// double-matched as two adjacent inline spans (this ordering constraint is
+/// Textual's own — `.mathBlock` is listed before `.mathInline` in its
+/// `patterns:` array, and `PatternTokenizer` tries patterns in order at
+/// each cursor position).
+public enum MathSpanScanner {
+    public static func scan(_ text: String) -> [MathSpan]
+}
+```
+
+Preview integration (`MacDown2/MacDown2/`, not package-public):
+
+```swift
+// MathPreviewPreprocessor.swift (app target)
+/// Rewrites a `PreviewBlock`'s source so a math span that will fail to
+/// typeset is visibly flagged BEFORE Textual's `.math` extension ever sees
+/// it — Textual's extension itself renders a parse failure as nothing at
+/// all (§2.1), which would silently violate this epic's "malformed math
+/// shows a useful local failure state" acceptance criterion. Spans that
+/// validate successfully are left byte-for-byte untouched, so Textual's own
+/// `.math` extension still does the actual glyph rendering for every valid
+/// equation — this preprocessor never renders math itself, it only removes
+/// spans Textual would have silently failed on.
+enum MathPreviewPreprocessor {
+    /// For each `MathSpan` in `source`, calls `isValid` (a thin wrapper over
+    /// `Math.typographicBounds(for:fitting:font:style:)` returning `false`
+    /// for a zero-size result — the only failure signal available, §2.1).
+    /// An invalid span's exact source text is replaced with an inline-code
+    /// run: `` `⚠ invalid math` `` — rendered by Textual's own, unmodified
+    /// Markdown handling as visible monospaced text, requiring no new
+    /// SwiftUI view and no attachment/hit-testing support this epic cannot
+    /// build (§2.1). Valid spans are untouched. Capped at 256 scanned spans
+    /// per block (§11) — far beyond any block's realistic equation count —
+    /// after which remaining spans are left untouched rather than validated,
+    /// to bound worst-case per-keystroke cost on a pathological block.
+    static func preprocess(
+        source: String,
+        isValid: (MathSpan) -> Bool = Self.defaultValidityCheck
+    ) -> String
+
+    static func defaultValidityCheck(_ span: MathSpan) -> Bool
+}
+```
+
+`TextualMarkdownPreview.BlockView`'s existing `renderedSource` computation
+(`TextualMarkdownPreview.swift:280-288`) gains one step: run
+`MathPreviewPreprocessor.preprocess(source:)` on the block's source before
+constructing `StructuredText`. `PreviewMarkupParser`'s construction changes
+from no `syntaxExtensions` to `syntaxExtensions: [.math]`
+(`TextualMarkdownPreview.swift:303`).
+
+### 6.2 Export — `MathContribution` and the `ExportContributionAdapter` change
+
+```swift
+// MathContribution.swift (Math target)
+/// E19's Export-side producer, matching `TOCContribution`'s exact shape
+/// (epic-14-implementation.md §6.2) and registered alongside it in
+/// `ContributionRegistry.standard`. Preview never calls this type — see
+/// invariant 5 (§4) — it exists purely for the Export path (§7).
+public struct MathContribution: Contributing {
+    public let id = "math"
+
+    /// Renders a `MathSpan.latex` string to a self-contained `<img>` HTML
+    /// fragment. Injected so `Math`-target tests can substitute a fake
+    /// renderer without linking SwiftUI/AppKit (mirrors `TextFilterRunner`'s
+    /// injected-`Limits` idiom, and `ExportService`'s injected
+    /// parser/resource seams, epic-12-implementation.md §3.7).
+    public init(renderer: @escaping MathImageRendering)
+
+    public func run(
+        document: MarkdownDocument, sourceText: String, sourceGeneration: UInt
+    ) async throws -> [ContributionResult] {
+        // For each MathSpan in sourceText (MathSpanScanner.scan):
+        //   - render via `renderer` (throws MathRenderError on failure —
+        //     the SAME zero-bounds signal §6.1 uses, surfaced here as a
+        //     typed error since this path has no SwiftUI view to silently
+        //     draw nothing into)
+        //   - success: ContributionResult(content: ContributionContent(
+        //       sourceRange: span.range,
+        //       placement: span.style == .inline ? .inline : .block,
+        //       representation: .html(imgTag)), sourceGeneration: ...)
+        //   - failure: ContributionResult(content: nil, sourceGeneration:...,
+        //       diagnostics: [.init(severity: .error, message:
+        //       "equation could not be typeset: \(span.latex)")]) —
+        //       isolated per-span, matching ContributionRegistry's own
+        //       per-contribution isolation (§4 invariant 2, §9)
+    }
+}
+
+/// Renders one equation to PNG bytes. Implemented in the app target
+/// (MathImageRenderer.swift) via SwiftUI's `ImageRenderer`; thrown errors
+/// carry no message text beyond what §2.1 makes available.
+public typealias MathImageRendering = @Sendable (MathSpan, ExportMathRenderContext) async throws -> Data
+
+/// What the renderer needs that MathContribution's `run(document:sourceText
+/// :sourceGeneration:)` signature does not carry — theme foreground color
+/// and target pixel scale. Threaded in at `MathContribution.init`
+/// construction time (the app-target adapter captures the export's active
+/// `Theme`, §6.3), not per-call, since one export renders every equation
+/// with the same theme.
+public struct ExportMathRenderContext: Sendable {
+    public let foregroundHex: String   // e.g. "#1a1a1a" — matches ExportURLPolicy's
+                                        // existing string-based color convention
+    public let pixelScale: CGFloat     // MathImageRenderer.standardScale, §11
+}
+
+public enum MathRenderError: Error, Sendable { case couldNotTypeset }
+```
+
+`ExportContributionAdapter.adapt(_:)`'s `.html` arm (`ExportContributionAdapter.swift`,
+current code quoted in §2.1) changes from:
+
+```swift
+case .html:
+    html = ""
+    diagnostics.append(...) // "does not support yet"
+```
+
+to:
+
+```swift
+case let .html(fragment):
+    html = fragment   // already a self-contained <img src="data:..."> string
+```
+
+No other line of `ExportContributionAdapter.swift` changes. The switch
+keeps having no `default:` case, so a third `ContributionRepresentation`
+case (should one ever be added) still fails to compile here until decided
+— unchanged from E14's own design intent.
+
+### 6.3 Wiring `MathContribution` into the app
+
+```swift
+// MacDown2/MacDown2/ (exact file TBD at implementation — likely
+// ExportCoordinator.swift, near exportContributionAdaptation(for:))
+extension ContributionRegistry {
+    /// Replaces `ContributionRegistry.standard` at the one call site
+    /// ExportCoordinator uses, adding MathContribution alongside the
+    /// existing TOCContribution(). Preview continues to use
+    /// `ContributionRegistry.standard` UNCHANGED (invariant 5, §4) — this
+    /// widened registry is passed explicitly only where Export builds its
+    /// ExportRequest, not swapped in globally, so Preview never sees
+    /// MathContribution's results and PreviewContributionAdmission's
+    /// existing `.html` rejection (§2.1, correctly) never fires for it.
+    static func standardForExport(theme: Theme) -> ContributionRegistry {
+        ContributionRegistry(contributions: [
+            TOCContribution(),
+            MathContribution(renderer: MathImageRenderer.render(span:context:)),
+        ])
+    }
+}
+```
+
+This is the one place this epic's design deviates from "just add to
+`.standard`" — because `.standard` is shared by both Preview and Export's
+`ContributionRegistry.run` call, and §4 invariant 5 requires Preview to
+never run `MathContribution` at all (it has no use for `.html` results and
+would only generate rejection diagnostics for every equation in every
+document, which is wrong, not merely wasted work). `ExportCoordinator`'s
+existing `exportContributionAdaptation(for:)` (`ExportCoordinator.swift:231-240`)
+is the one, already-existing call site that changes to call
+`.standardForExport(theme:)` instead of `.standard`.
+
+---
+
+## 7. State and data flow
+
+### 7.1 Preview
+
+```text
+DocumentEditorSplitView (unchanged trigger, existing reparse cadence, §8)
+        │
+        ▼
+PreviewBlock.blocks(from:text:)                          (unchanged, §2.1)
+        │
+        ▼
+TextualMarkdownPreview.BlockView, per block:
+   block.source
+        │
+        ▼  MathPreviewPreprocessor.preprocess(source:)     ── NEW, §6.1
+   possibly-rewritten source (malformed spans → `` `⚠ ...` ``)
+        │
+        ▼  renderedSource (existing link-ref prepend step, unchanged)
+        │
+        ▼
+   StructuredText(renderedSource, parser: PreviewMarkupParser(
+       baseURL:, syntaxExtensions: [.math]                 ── NEW parameter
+   ))
+        │
+        ▼
+   Textual's own AttributedStringMarkdownParser + `.math` SyntaxExtension
+   recognizes surviving (valid) $...$/$$...$$ spans, draws them via
+   SwiftUIMath's Math view — entirely inside Textual/SwiftUIMath, no
+   MacDown-2 code on this half of the path (§2.1: sealed, unmodifiable)
+```
+
+`PreviewContributionSession`/`PreviewContributionAdapter`/`ContributionRegistry`
+are **not** on this path at all — math rendering in Preview is a pure
+per-block text transform plus a parser-configuration change, not a
+contribution result (§4 invariant 5). The existing TOC-contribution data
+flow (epic-14-implementation.md §7.1) is completely unaffected and runs in
+parallel, unmodified, on the same `previewBlocks`.
+
+### 7.2 Export
+
+```text
+ExportCoordinator.performExport (existing entry point)
+        │
+        ▼  exportContributionAdaptation(for:) — MODIFIED to build
+        │  ContributionRegistry.standardForExport(theme:) instead of .standard
+        ▼
+ContributionRegistry.run(document:, sourceText:, sourceGeneration:)
+        │
+        ├─► TOCContribution.run(...)   (unchanged, epic-14 §7.1)
+        │
+        └─► MathContribution.run(...)                        ── NEW
+                 │  MathSpanScanner.scan(sourceText)
+                 │  for each span: MathImageRenderer.render(span:context:)
+                 │        │  ImageRenderer(content: Math(latex)...).cgImage
+                 │        │  → PNG Data → base64 → "<img src=\"data:...\">"
+                 │        ▼
+                 │  ContributionResult(content: .html(imgTag), ...)
+                 ▼
+        [ContributionResult]  (TOC's .block/.markdown results interleaved
+                                with Math's .inline|.block/.html results,
+                                same array, same registry run — no ordering
+                                dependency between the two contributions:
+                                DerivedContentComposer sorts by source
+                                position, §6.1 of epic-12-implementation.md)
+        │
+        ▼  ExportContributionAdapter.adapt(_:)  — MODIFIED .html arm (§6.2)
+        ▼
+[ExportDerivedContribution]  (TOC's rendered-markdown-as-HTML entries,
+                               Math's <img>-tag entries — same array type,
+                               no distinction downstream)
+        │
+        ▼
+ExportRequest(..., contributions: [...])   (unchanged field, epic-12 §3.5)
+        │
+        ▼
+ExportComposer.prepare → DerivedContentComposer.compose               (unchanged,
+   sentinel substitution, cmark parse, CMARK_NODE_CUSTOM_INLINE/BLOCK  epic-12 §3.5)
+   emits Math's <img> tag verbatim via on_enter, same mechanism TOC's
+   rendered list already uses today
+```
+
+`sourceGeneration` for `MathContribution` is `FileDocument.mutationGeneration`
+of the export's captured snapshot — identical to `TOCContribution`'s
+existing convention (epic-14 §7.1's own note that Export, unlike Preview,
+uses this exact counter).
+
+---
+
+## 8. Concurrency and cancellation
+
+- **`MathSpanScanner.scan`** is a pure, synchronous, `Sendable` function
+  with no actor affinity — callable from anywhere, matching
+  `TOCContribution.findMarkers`'s existing precedent.
+- **`MathPreviewPreprocessor.preprocess`** runs on whatever
+  actor/thread `TextualMarkdownPreview.BlockView`'s body evaluation
+  already runs on today (`@MainActor`, since it is SwiftUI view body
+  code) — this is a change of degree, not of kind: it adds bounded
+  per-block string scanning plus a bounded number of
+  `Math.typographicBounds` calls (§11 cap) to work SwiftUI's rendering
+  pass already does synchronously today. It must not be moved to a
+  background task — `Math.typographicBounds` reads
+  `@Environment`-sourced font/style state indirectly through the same
+  layout machinery `Math`'s view body uses, and is documented (by
+  Textual's own usage of it for sizing, per the earlier fact-finding
+  pass) as intended for synchronous, main-thread layout use.
+- **`MathContribution.run`** is `async throws`, called from
+  `ContributionRegistry.run`'s existing loop, which already checks
+  `Task.checkCancellation()` before and after each contribution
+  (epic-14 §6.1) — `MathContribution` inherits this for free and must
+  itself poll `Task.isCancelled` between equations if a document has many
+  (mirroring `Contributing.run`'s own documented cancellation contract).
+- **`MathImageRenderer.render(span:context:)`** (app-target, backs the
+  `MathImageRendering` closure) performs the actual `ImageRenderer` call.
+  Per epic-12 §3.7's own rule ("Only UI snapshot/save-panel state and
+  WebKit/AppKit/PDFKit work are main-actor"), and because SwiftUI's
+  `ImageRenderer` is documented to interact with the view-rendering
+  pipeline, this runs `@MainActor` — matching the same rule PDF export's
+  WebKit-based rendering already follows, not a new exception to it.
+  `MathContribution.run` therefore hops to `@MainActor` per equation via
+  its injected `renderer` closure and back off it for scanning/assembly —
+  the same "narrow main-actor island inside an otherwise background async
+  function" shape `WorkspaceModel+Saving.swift`'s save path already uses
+  (issue #57 work, this session).
+- **Stale-result suppression:** `ContributionResult.sourceGeneration`
+  already provides this for Export (`DerivedContentComposer`'s existing
+  staleness rejection, unchanged). Preview's preprocessing has no
+  cross-call state to go stale — it recomputes from each fresh `block
+  .source` on every body evaluation, exactly like `renderedSource`'s
+  existing link-reference-prepend step does today.
+- **What happens when a document changes while work is in flight:**
+  Export — an in-flight `MathContribution.run` for a superseded export
+  snapshot is simply never adapted into the eventual `ExportRequest`
+  (the coordinator captures one snapshot per export task, epic-12 §3.7's
+  existing "each document window owns at most one export task" rule).
+  Preview — there is no "in flight" state; each render pass is a fresh,
+  complete computation over the current block source.
+
+---
+
+## 9. Failure model
+
+| Failure | Preview behaviour | Export behaviour |
+|---|---|---|
+| Malformed LaTeX inside `$...$`/`$$...$$` (unbalanced braces, unknown command, etc.) | `MathPreviewPreprocessor` detects zero typographic bounds and rewrites the span to a visible `` `⚠ ...` `` marker before Textual sees it (§6.1); surrounding content and other equations unaffected | `MathContribution` catches `MathRenderError.couldNotTypeset` per span, returns `content: nil` + an `.error` diagnostic for that span only (§6.2). `ExportContributionAdapter.adapt` routes a `content == nil` result straight into `standaloneDiagnostics` (`ExportContributionAdapter.swift`'s existing `guard let content = result.content else { ... continue }` branch) — no `ExportDerivedContribution` is ever constructed for that span, so `DerivedContentComposer` never sees it and never has anything to reject. The net effect matches `DerivedContentComposer`'s "failed/rejected derived contribution, source preserved" outcome (epic-12 §3.8) — that one equation's literal `$...$` text stays in the exported document with a diagnostic recorded, never fatal to the export — but the mechanism is "never submitted," not "submitted then rejected." An implementer should not go looking for a composer-side rejection path for this case. |
+| `$...$`/`$$...$$` markers left unbalanced across the whole document (e.g. a single stray `$`) | `MathSpanScanner`'s regex-equivalent matching simply does not match an unpaired `$` (mirrors Textual's own regex behaviour exactly, §6.1) — renders as literal text, same as today | Same — `MathSpanScanner` finds no span, `MathContribution` contributes nothing for it |
+| Oversized/pathological equation source (e.g. deeply nested fractions producing pathological layout cost) | Bounded by the per-block scan cap (§11); a single slow `typographicBounds` call is bounded by the same per-keystroke reparse budget every other Preview content already accepts — no new timeout mechanism is introduced, matching that this is CPU-bound synchronous layout work, not an external process (contrast with `TextFilterRunner`'s subprocess timeout, which does not apply here) | `ContributionRegistry.run`'s existing cancellation checks bound total wall-clock impact on a cancelled export; a single pathological equation's render cost is bounded by `ImageRenderer`'s own layout cost for one view, no different in kind from any other single large export step |
+| `$` characters that are not intended as math at all (e.g. `Price: $5, $10`) — a real false-positive risk in prose | Out of scope for this epic to solve generally (the epic's own scope names `$...$`/`$$...$$` as the delimiter, with no escaping mechanism specified beyond what Textual's own regex already handles — `\$` is treated as literal by Textual's `mathInline` pattern, `(?:\\\$|[^$\n])+`); a user who needs a literal, unpaired `$` writes `\$`, matching Textual's existing escape convention. Documented as a residual, inherited-from-the-library limitation, not solved newly by MacDown 2 (§18) | Same limitation, same `\$` escape, same scanner rule (§6.1's shared-rule requirement) |
+| Document has zero equations | No-op: `MathSpanScanner.scan` returns `[]`, preprocessing is a no-op passthrough, `MathContribution.run` returns `[]` — identical cost/behaviour to today | Same |
+| Rapid repeated edits inside/near an equation while typing | Preview: each reparse recomputes from scratch; a mid-typing unbalanced `$` renders as literal text (not yet a complete span) until balanced, no error state shown for genuinely incomplete-not-yet-malformed input — this is `MathSpanScanner` simply not matching an incomplete span, not a special case | Not applicable — export runs once per explicit user action, never mid-typing |
+| Export's `ImageRenderer` call itself fails unexpectedly (not a LaTeX parse failure, e.g. an underlying AppKit/SwiftUI rendering error) | N/A | Treated identically to `MathRenderError.couldNotTypeset` — `MathImageRenderer.render` normalizes any thrown error to that one case at the `MathImageRendering` boundary (§6.2's typealias signature), since Export has no finer-grained diagnostic to offer regardless of failure cause (§2.1) |
+| Cancellation mid-export | Standard `CancellationError` propagation through `ContributionRegistry.run` (unchanged, epic-14 §8) — abandons remaining equations, does not partially commit |
+
+A feature is not robust if only its happy path is specified (EPIC_STANDARD.md
+§3.9) — the table above is this epic's binding failure-path scope; §15's
+adversarial corpus is what exercises each row.
+
+---
+
+## 10. Security and trust boundary
+
+- **Math rendering input is trusted, first-party-processed local content** —
+  the same trust level E14 §10 already establishes for
+  `Contributing.run`'s document text input ("no untrusted input to a
+  contribution beyond the document text itself, which the rest of the app
+  already treats as trusted local content the user is editing"). This
+  epic introduces no subprocess launch (unlike E14's text filters) and no
+  network access (§4 invariant 1) — its trust boundary is narrower and
+  simpler than either of E14's two halves.
+- **`SwiftUIMath` is a vendored, MIT-licensed, first-party-vetted
+  dependency**, not user-supplied code — its LaTeX parser runs
+  in-process on the same footing as `swift-cmark`/`swift-markdown`
+  already do today. A malformed LaTeX string cannot execute code; at
+  worst (per §2.1) it fails to render, which this epic's own failure
+  model (§9) already treats as an expected, handled outcome, not a
+  security event.
+- **The rendered `<img>` fragment is trusted first-party output**, per
+  E12 §3.9 rule 11's existing statement that "derived HTML is trusted
+  first-party output admitted later by E14 and must be passive/offline by
+  contract" — a `<img src="data:image/png;base64,...">` string with no
+  `<script>`, no external URL, and no event handler trivially satisfies
+  "passive/offline." `MathContribution`'s HTML-building code (§6.2) must
+  construct this string directly (base64 encoding of bytes it produced
+  itself), never by concatenating any part of the user's LaTeX source
+  into the HTML string, so there is no path for LaTeX source to become an
+  HTML/attribute injection vector even in principle (the `<img>` tag's
+  only variable content is the base64 payload of pixel bytes MacDown 2
+  itself rendered).
+- **Self-contained-HTML closure** (E12 §3.5's requirement that
+  self-contained export have no remaining authored raw HTML nodes before
+  derived substitution) is unaffected — Math's contribution is a *derived*
+  custom node exactly like TOC's, not authored raw HTML, so it does not
+  trip that check (§7.2's data-flow diagram, and E12 §3.5's own custom-node
+  algorithm, are unchanged by this epic).
+- **What this epic does not need to defend against:** a user's own
+  document containing pathological or hostile LaTeX cannot do anything
+  worse than fail to render (§9) — there is no sandboxing claim to make
+  here because there is no process boundary to cross, unlike E14's text
+  filters (E14 §10's "this epic does not attempt to protect against a
+  user running their own malicious script" disclaimer does not even apply
+  here; there is no external code execution at all in this epic).
+
+---
+
+## 11. Resource and performance budgets
+
+| Path | Budget | Evidence layer |
+|---|---|---|
+| `MathSpanScanner.scan` for one block's source | Sub-millisecond for realistic block sizes — pure string scanning, same order of cost as `TOCContribution.findMarkers`'s existing line scan | Unit/package benchmark (`MathTests`) |
+| `MathPreviewPreprocessor.preprocess` per-block validity-check cap | 256 scanned spans per block (§6.1) — a defensive ceiling, analogous to `PreviewContributionBudget.standard`'s 64-result cap (epic-14 §6.6), sized higher here because equations are typically denser per block than TOC markers | Unit test constructing more than 256 spans in one block and asserting validity-checking stops there, remaining spans left untouched |
+| Preview's total math-rendering cost for J6's ~100-equation document | Manual observation against the Release build — rides the existing reparse/redraw cadence (§7.1); no new debounce or throttle is introduced by this epic, matching that Preview's existing keystroke-to-redraw budget already bounds this (EPIC_STANDARD.md §3.11: do not present a package benchmark as proof of whole-app latency) | **Complete app-path Release measurement required before merge** — typing in a large, math-heavy document must not introduce perceptible input lag versus the same document with equations replaced by equivalent-length prose |
+| Export's per-equation `ImageRenderer` render | No hard per-call timeout is introduced (§9 — this is bounded CPU-bound layout work, not a subprocess); total export wall-clock is bounded by `ContributionRegistry.run`'s existing cancellation checkpoints | Manual observation across a representative equation-heavy document; existing `ExportResourceBudget.maxAggregateDerivedHTMLBytes` (32 MB, unchanged) already bounds the aggregate size of all derived HTML including base64 image payloads — no new budget type needed (§2.1) |
+| Rendered PNG pixel scale | `MathImageRenderer.standardScale = 3.0` (fixed constant) — chosen for legible on-screen/print quality without producing unreasonably large data URIs (a typical inline equation at 3x renders to a few KB, comfortably inside the existing 32 MB aggregate budget even for J6's ~100-equation document) | Unit test asserting rendered image pixel dimensions match `typographicBounds.size * standardScale`; visual review during Release-app dogfood |
+| `ExportDerivedContribution` count from `MathContribution` | Already bounded by the pre-existing `ExportResourceBudget.standard.maxDerivedFragmentCount` (4096, unchanged, shared with TOC and any future E20/E21 contributions) | Existing `ExportServiceTests` budget coverage, unchanged |
+
+Nothing in this epic touches the keystroke-to-highlight hot path measured
+by earlier epics (E04/E05); it adds work only to the existing
+reparse-to-preview-redraw cadence and to the (non-hot-path, user-initiated)
+export pipeline, matching epic-14 §11's own framing.
+
+---
+
+## 12. Accessibility and localisation impact
+
+- **Preview:** a successfully rendered equation is drawn by `SwiftUIMath`'s
+  `Canvas`-based `Math` view, which — per its own public documentation
+  comment — has no built-in accessibility label of its own (a `Canvas` is
+  opaque to VoiceOver by default). This epic must wrap each rendered math
+  attachment's presentation with an accessibility label carrying the
+  original LaTeX source (e.g. `.accessibilityLabel("Math: \(latex)")`) at
+  whatever SwiftUI level Textual's attachment rendering allows this to be
+  attached — **if Textual's sealed `MathAttachment` rendering does not
+  expose an attachment point for this** (to be confirmed during Slice 1
+  implementation, since this depends on internals not yet inspected at
+  this level of detail), the fallback is document-level: MacDown 2 cannot
+  retrofit accessibility onto a third-party sealed rendering path it does
+  not control, and this becomes a recorded residual risk (§18) rather
+  than a silently-dropped requirement.
+  A malformed-math marker (§6.1's `` `⚠ ...` `` rewrite) is ordinary
+  inline code text and inherits whatever accessibility behaviour
+  Textual's normal inline-code rendering already has today — no new work
+  needed there.
+- **Export:** the `<img>` tag `MathContribution` builds (§6.2) must
+  include an `alt` attribute containing the original LaTeX source (e.g.
+  `alt="E = mc^2"`), giving a screen reader or text-only consumer of the
+  exported HTML a meaningful fallback — cheap to add, no reason not to,
+  and directly satisfies the epic's own "accessibility labelling/
+  alternative representation where the chosen renderer permits it
+  reasonably" scope line.
+- **Localisation:** this epic introduces no new user-facing prose strings
+  in package code (matching E14's own package-level rule that "package
+  tests never assert English strings," epic-12 §3.5). The one new
+  app-facing string is the malformed-equation marker's visible text
+  (§6.1) and any diagnostic message surfaced through existing export
+  diagnostic UI — both are app-target concerns, deferred to E16's string
+  freeze like every other epic's user-facing strings, not solved here.
+
+---
+
+## 13. Export and interoperability
+
+Per EPIC_STANDARD.md §3.13's required states:
+
+- **Reopened:** the document's durable text is unchanged Markdown
+  (`$...$`/`$$...$$` literally in the file, invariant 3 §4) — reopening
+  re-renders exactly as before, nothing is cached into the file itself.
+- **Copied or pasted:** copying rendered preview text is out of this
+  epic's scope to change (Preview's existing copy behaviour for any
+  rendered block is unaffected — this epic changes drawing, not text
+  selection/copy semantics).
+- **Stored in source control:** the file diffs exactly as authored
+  Markdown text — a `$...$` change is a one-line diff, not a binary/image
+  diff, since the durable representation is always the literal LaTeX
+  source, never the rendered image (invariant 3, §4).
+- **Exported to HTML/PDF:** covered fully in §6.2/§7.2/J5 — self-contained
+  `<img>` embedding, no external references, feeds the existing HTML→PDF
+  path unchanged.
+- **Opened when an optional renderer is unavailable:** not applicable in
+  the hosted-renderer sense (this epic has no optional/hosted renderer to
+  be unavailable — `SwiftUIMath` is a compiled-in dependency, always
+  present). The nearest analogous case — a malformed equation — is
+  covered by §9's failure model.
+- Per EPIC_STANDARD.md §3.13's closing rule ("text-authored features
+  should preserve their readable source as the durable document
+  representation unless an epic explicitly decides otherwise"): this
+  epic does not decide otherwise. `$...$`/`$$...$$` LaTeX source is the
+  durable representation, full stop, matching invariant 3.
+
+---
+
+## 14. Test and evidence matrix
+
+| Requirement | Verification |
+|---|---|
+| `MathSpanScanner` matches exactly what Textual's sealed `.math` extension would match (inline, display, escaped `\$`, adjacent spans, spans spanning delimiters at block boundaries) | Package unit tests (`MathTests/MathSpanScannerTests.swift`) — a literal fixture corpus mirroring `PatternTokenizer`'s regexes, is the binding contract per §6.1's own comment |
+| `MathPreviewPreprocessor` leaves valid spans byte-for-byte untouched | Unit test asserting `preprocess(validSource) == validSource` for a corpus of syntactically valid LaTeX |
+| `MathPreviewPreprocessor` rewrites only the malformed span, preserving everything else in the block | Unit test with a fake `isValid` closure returning `false` for a chosen span, asserting exact before/after string diff is confined to that span's range |
+| `MathContribution.run` produces one `ContributionResult` per span, correct placement (`.inline`/`.block`) mapped from `MathSpan.Style` | Package unit tests (`MathTests/MathContributionTests.swift`), using a fake `MathImageRendering` injected at `init` (§6.2) — no SwiftUI/AppKit dependency needed in package tests |
+| `MathContribution.run` isolates one span's render failure from the rest (fake renderer throws for one span, succeeds for others) | Unit test asserting the failing span's result has `content: nil` + `.error` diagnostic while sibling spans still produce placeable content |
+| Cancellation propagates and abandons remaining spans | Unit test with a fake renderer that hangs on a cancellation token, asserting `CancellationError` propagates per `Contributing`'s documented contract (mirrors `DeterministicTestContribution.Behavior.hangs`, epic-14 §6.1) |
+| `ExportContributionAdapter`'s `.html` arm now passes the fragment through unchanged | App-target unit test (`ExportContributionAdapterTests.swift`, extending E14's existing suite) constructing a `ContributionResult` with `.html("<img ...>")` and asserting the resulting `ExportDerivedContribution.html` equals it exactly, with no diagnostic appended |
+| `DerivedContentComposer` places Math's `.inline`/`.block` HTML the same way it already places any derived content (existing machinery, not new) | Existing `DerivedContentTests.swift` suite is unchanged and continues to pass; a small number of new cases specifically using a math-shaped fixture (an `<img>` tag) added to that suite to close the gap the fact-finding pass noted (only TOC-shaped fixtures existed before) |
+| End-to-end: a real document with inline + display math exports to self-contained HTML with no external references | Integration test using the real `ExportService`/`ExportComposer` pipeline (not mocked), with a fake `MathImageRendering` producing deterministic tiny PNG bytes, asserting the output HTML contains `data:image/png;base64,` and no `<script>`/remote URL |
+| End-to-end: same real pipeline for PDF | Same integration level, asserting PDF generation succeeds and does not regress existing PDF export tests |
+| Preview actually draws math for real LaTeX (not just that the pipeline is wired) | **Release-app dogfood, executed, not build-only** (matching this epic's own RELEASE_HARDENING.md-derived rigor, and this session's own established practice on issue #57): open a document with `$E = mc^2$` and a `$$...$$` block in the real Release build, visually confirm typeset rendering; type an unbalanced `$\frac{1}{$` and visually confirm the `⚠` marker appears; correct it and confirm the marker disappears on next reparse |
+| Preview math renders correctly in both light and dark theme | Release-app dogfood, both appearances, visual review |
+| Exported HTML/PDF visually renders equations correctly when opened outside the app | Release-app dogfood: export to HTML, open the file in a browser with networking disabled, visually confirm equations render; export to PDF, open in Preview.app, visually confirm |
+| J6 large-document responsiveness | Complete-app-path Release measurement (§11) — typing latency in a ~100-equation document compared to an equivalent prose document, executed on the real Release build, not inferred from package benchmarks |
+| Accessibility label presence (Export `alt` text; Preview label if attachable, §12) | Unit test for Export's `alt` attribute content; manual VoiceOver spot-check for Preview, with the §12 caveat recorded as-is if Textual's rendering does not expose an attachment point |
+
+Every user-visible acceptance criterion from the epic issue maps to at
+least one row above.
+
+---
+
+## 15. Adversarial corpus
+
+Required before this epic is considered complete (EPIC_STANDARD.md §3.15
+— "pretty sample documents are demonstrations, not robustness evidence"):
+
+- Unbalanced delimiters: a lone `$`, a lone `$$`, `$$` immediately followed
+  by end-of-document, `$` immediately followed by end-of-line.
+- Escaped dollar signs adjacent to real math: `Price: \$5 and $x=1$ today.`
+- Empty math: `$$` immediately adjacent (empty inline), `$$$$` (empty
+  display).
+- Math spanning a Markdown structural boundary the scanner must not
+  accidentally match across: a `$` at the very end of one paragraph and
+  a `$` at the very start of the next (must NOT be treated as one span —
+  Textual's own regex is line-bounded for inline math via `[^$\n]`,
+  §6.1's scanner must replicate this exactly).
+- Math inside other Markdown constructs: `$x=1$` inside a list item,
+  inside a block quote, inside a table cell, inside a fenced code block
+  (must NOT render as math inside a code block — literal text, matching
+  ordinary Markdown code-fence semantics).
+- Deeply nested LaTeX: nested `\frac{\frac{\frac{...}}{...}}{...}` several
+  levels deep, to exercise §11's performance-budget claims under
+  realistic worst-case (not pathological-to-the-point-of-DoS) input.
+- Unicode inside math: `$\alpha + \beta = \gamma$` alongside literal
+  Unicode math characters `$α+β$` (SwiftUIMath's actual Unicode command
+  coverage is an implementation detail to characterize during Slice 1,
+  not assumed here).
+- A document with hundreds of equations (stress case for §11's budgets
+  and §6.1's per-block scan cap).
+- Multiple equations inside one paragraph, some valid and some malformed
+  interleaved with prose — exercises J3's fault-isolation claim precisely
+  and J4's documented block-level-only navigation scope.
+- An equation whose LaTeX source itself contains characters that would be
+  HTML-significant if mishandled (`<`, `&`, `"`) inside e.g. `\text{<tag>}`
+  — exercises §10's claim that the LaTeX source never flows into the
+  `<img>` tag's HTML structure, only into the rendered pixel bytes.
+- A math span immediately adjacent to a TOC `[TOC]` marker in the same
+  block — exercises that `MathContribution` and `TOCContribution` results
+  compose correctly through the same `ContributionRegistry.run`/
+  `DerivedContentComposer` pipeline without one contribution's range
+  interfering with the other's admission.
+
+---
+
+## 16. Expected files and symbols
+
+**New package target** `MacDown2/Packages/MacDownKit/Sources/Math/`:
+- `MathSpan.swift`, `MathSpanScanner.swift`
+- `MathContribution.swift`, `ExportMathRenderContext.swift`, `MathRenderError.swift`
+- (test target `MacDown2/Packages/MacDownKit/Tests/MathTests/`)
+
+**`Package.swift` changes:**
+- New `.library(name: "Math", targets: ["Math"])` product.
+- New `.target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"])`.
+- New `.testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"])`.
+- **No new external package dependency is added** — `SwiftUIMath` stays a
+  transitive dependency of `textual`, consumed only from the app target
+  (§5); this epic does not add an explicit top-level pin for it, since
+  the app target does not need SwiftPM to resolve it as a first-class
+  product (it is already resolvable transitively via `Textual`'s own
+  product graph — to be confirmed at Slice 3 implementation time whether
+  the app target needs `.product(name: "SwiftUIMath", package: "textual")`
+  or `package: "swiftui-math"` explicitly declared to import it directly;
+  if SwiftPM requires an explicit product dependency to import a
+  transitive package's types directly from the app target, that one line
+  is added to `MacDown2.xcodeproj`'s package dependencies, not to
+  MacDownKit's `Package.swift`).
+
+**App target (`MacDown2/MacDown2/`), new files:**
+- `MathPreviewPreprocessor.swift`
+- `MathImageRenderer.swift`
+
+**App target, modified files:**
+- `TextualMarkdownPreview.swift` — add the preprocessing call and the
+  `syntaxExtensions: [.math]` parameter at the existing `PreviewMarkupParser`
+  construction (§6.1, §7.1). No other line changes.
+- `ExportContributionAdapter.swift` — the `.html` arm only (§6.2). No
+  other line changes.
+- `ExportCoordinator.swift` — `exportContributionAdaptation(for:)` builds
+  `ContributionRegistry.standardForExport(theme:)` instead of `.standard`
+  (§6.3). No other line changes.
+
+**Must not be modified** (forbidden-area check per EPIC_STANDARD.md §3.16):
+- `PreviewContributionAdmission.swift`/`PreviewContributionComposer.swift`/
+  `PreviewContributionAdapter.swift` — Preview math does not go through
+  this pipeline (invariant 5, §4). If implementation finds itself needing
+  to touch these files, stop and reassess — it means the "Preview math
+  bypasses the contribution pipeline" architecture decision in this
+  document has been second-guessed mid-implementation, which needs to
+  come back through review, not be silently absorbed.
+- `DerivedContentComposer.swift`, `ExportManifest`/`ExportResourceBudget`,
+  `CMarkGFM.swift`'s sentinel/custom-node algorithm — this epic's Export
+  integration is a pure consumer of these, unchanged (§6.2, §10).
+- `TOCContribution.swift` — untouched; `MathContribution` is added
+  alongside it, never modifying its behaviour.
+- `MarkdownEngine`'s `ParseEngine`/`BlockConverter` — no inline-AST work
+  is added there (§2.1's own reconciliation note).
+- `Highlighting`'s `GrammarRegistry`/tree-sitter grammar wiring — the
+  dormant LaTeX injection hook (§2.1) is explicitly out of scope.
+
+---
+
+## 17. Implementation slices
+
+### Slice 1 — `Math` package target: span scanner + contribution (package-only, no rendering)
+
+- **Goal:** `MathSpan`/`MathSpanScanner`/`MathContribution` exist, fully
+  unit-tested against a fake `MathImageRendering`, with zero SwiftUI/AppKit
+  dependency in the package.
+- **Dependencies:** none beyond current `master`.
+- **Allowed files:** new `Math` target and `MathTests` only; `Package.swift`
+  product/target/test-target additions (§16).
+- **Important behaviours:** `MathSpanScanner` matching rule exactly mirrors
+  Textual's regex (§6.1, verified against the checked-out `textual@0.5.0`
+  source as part of this slice's own test-writing, not assumed); `.inline`
+  vs `.block` placement mapping; per-span fault isolation; cancellation
+  propagation.
+- **Tests/evidence:** full unit suite per §14's package-level rows.
+- **Verification commands:** `swift test --filter MathTests` inside
+  `MacDown2/Packages/MacDownKit`.
+- **Stop/escalation:** if Textual's actual shipped regex (re-verified at
+  implementation time, since this document's §2.1 findings could
+  theoretically be stale by the time this slice starts) differs from what
+  §6.1 documents, update §6.1's literal regex text and this slice's
+  fixture corpus together — do not silently pick a different rule.
+
+### Slice 2 — `ExportContributionAdapter`/`ExportCoordinator` wiring (Export end-to-end)
+
+- **Goal:** a document with math exports to self-contained HTML/PDF with
+  equations rendered as embedded images, verified via the real
+  `ExportService` pipeline (fake renderer for determinism, per §14).
+- **Dependencies:** Slice 1.
+- **Allowed files:** `ExportContributionAdapter.swift`'s `.html` arm,
+  `ExportCoordinator.swift`'s registry-construction call site,
+  `MathImageRenderer.swift` (new), plus corresponding app-target tests.
+- **Important behaviours:** §6.2's `.html` arm change exactly as specified
+  (no broader adapter refactor); `MathImageRenderer.render` normalizes all
+  failure modes to `MathRenderError.couldNotTypeset` (§9); `alt` text
+  includes original LaTeX (§12); PNG determinism (invariant 8, §4) for a
+  fixed input/theme/scale.
+- **Tests/evidence:** the export-integration rows of §14, executed against
+  the real pipeline with a fake renderer, plus one real-`ImageRenderer`
+  smoke test confirming actual PNG bytes decode as a valid image (not
+  faked) for at least one real equation.
+- **Verification commands:** `swift test` (package) + `xcodebuild test`
+  for the app-target `ExportContributionAdapterTests`/new export
+  integration tests.
+- **Stop/escalation:** `ImageRenderer` off an active window/view hierarchy
+  is not empirically verified in *this app's own code* (repo-wide grep
+  for `ImageRenderer` across `MacDown2`/`MacDownKit` returns zero hits),
+  but there is real, directly relevant precedent one level down: `textual`
+  0.5.0's own test suite
+  (`.build/checkouts/textual/Tests/TextualTests/Internal/TextFragment/TextBuilderTests.swift`)
+  calls `ImageRenderer(content:...).nsImage` inside a plain
+  `@MainActor` SPM `.testTarget` — i.e. under `swift test`, with no app
+  window — and asserts a non-nil result, in this exact toolchain. That
+  precedent uses different content and reads `.nsImage` rather than the
+  `.cgImage`/PNG-bytes path this epic needs, so it is mitigating evidence,
+  not proof, for this epic's specific use. If Slice 2's own attempt
+  contradicts it (fails or behaves unreliably for `Math`-view content),
+  stop and reassess the rendering mechanism (a hidden/offscreen host
+  view, or an alternative CoreGraphics-based rendering path reusing
+  `SwiftUIMath`'s lower-level layout API) before proceeding to Slice 3;
+  do not ship a rendering path that only works "most of the time."
+
+### Slice 3 — Preview integration (rendering + malformed-equation handling)
+
+- **Goal:** J1/J3/J4's Preview behaviour, dogfooded for real in the
+  Release build.
+- **Dependencies:** Slice 1 (shares `MathSpanScanner`); independent of
+  Slice 2's Export path (no code dependency, though both should land
+  before this epic is considered done, per §18).
+- **Allowed files:** `TextualMarkdownPreview.swift` (the two specific
+  changes in §16), `MathPreviewPreprocessor.swift` (new), corresponding
+  app-target tests.
+- **Important behaviours:** §6.1's exact preprocessing contract (valid
+  spans byte-for-byte untouched; malformed spans replaced with the exact
+  visible marker text; 256-span cap); the `syntaxExtensions: [.math]`
+  parameter change.
+- **Tests/evidence:** §14's `MathPreviewPreprocessor` unit tests, plus
+  **executed Release-app dogfood** (not build-only) for the visual
+  rendering rows — light/dark, valid/malformed/corrected round-trip,
+  large-document responsiveness (§11).
+- **Verification commands:** `swift test` (package, for anything
+  reusable), `xcodebuild ... -configuration Release build`, then manual
+  Release-app verification per §14's dogfood rows.
+- **Stop/escalation:** the `@_spi(Textual)` import itself is low-risk —
+  `Textual`'s own shipped code already does exactly this
+  (`.build/checkouts/textual/Sources/Textual/Internal/Attachment/MathAttachment.swift`
+  contains `@_spi(Textual) private import SwiftUIMath`, compiling
+  successfully in this toolchain today), so a non-`private` consuming
+  `@_spi(Textual) import SwiftUIMath` from the app target is the same
+  established pattern, not an open question. What genuinely is
+  unconfirmed at this level of detail is whether `Math.typographicBounds`
+  specifically (as opposed to the SPI mechanism in general) behaves as
+  §2.1 describes when called from outside `Textual`'s own module for
+  every font/style combination the app actually uses — confirm this with
+  a real call as the first concrete action of this slice, and if it does
+  not behave as documented, stop and escalate rather than silently
+  falling back to a different, undocumented validity signal.
+
+### Slice 4 — Accessibility follow-through and final reconciliation
+
+- **Goal:** close out §12's accessibility items to whatever extent
+  Slice 3's actual Textual integration allows, and reconcile this
+  document (an as-built section, matching E12/E14's own precedent of
+  recording what actually shipped versus what was originally specified)
+  plus `planning/RELEASE_EVIDENCE.md`'s E19 row.
+- **Dependencies:** Slices 1-3.
+- **Allowed files:** whatever Slice 3 leaves open for accessibility
+  labelling; `planning/epic-19-implementation.md` (this file, an as-built
+  addendum section); `planning/RELEASE_EVIDENCE.md`.
+- **Tests/evidence:** manual VoiceOver spot-check; final adversarial
+  corpus (§15) run end to end.
+- **Verification commands:** full `swift test --no-parallel` (package),
+  full app-target test suite, Release build, adversarial-corpus manual
+  pass.
+- **Stop/escalation:** none expected — this is reconciliation, not new
+  design; if reconciliation surfaces a genuine new architectural question,
+  it should have been caught in Slices 1-3's own stop conditions instead.
+
+---
+
+## 18. Definition of Done and residual risk
+
+**Definition of Done** (in addition to `EPIC_STANDARD.md` §4's universal
+list):
+
+- [ ] `MathSpanScanner`'s matching rule is verified, in a real test, to
+      match Textual's actual shipped `.math` extension's regex behaviour
+      at the current pinned `textual` version — not merely asserted in
+      this document.
+- [ ] Preview visually renders both inline and display math correctly in
+      the Release build, in both light and dark appearance, via executed
+      (not build-only) dogfood.
+- [ ] A malformed equation is visibly flagged in Preview, in place,
+      without affecting sibling content, via executed dogfood; correcting
+      it recovers automatically on next reparse.
+- [ ] HTML and PDF export of a math-containing document produce correct,
+      self-contained, network-free output, via executed dogfood opening
+      the exported file independently of MacDown 2.
+- [ ] J6's large-document responsiveness claim is backed by a real
+      Release-build measurement, not a package benchmark.
+- [ ] All rows of §14's evidence matrix have a recorded pass/fail/
+      unverified status — no row silently skipped.
+- [ ] The adversarial corpus in §15 has been run and its results recorded.
+- [ ] `planning/RELEASE_EVIDENCE.md`'s E19 row is updated from `blocked
+      until implemented` to a real status, with real evidence links, not
+      an inferred pass.
+
+**Residual risks, consciously deferred** (candidates for follow-up GitHub
+issues once real implementation confirms them, per EPIC_STANDARD.md
+§3.18):
+
+1. **No structured parse-error message for malformed math** (§2.1, §9) —
+   users see "this could not be typeset," never "why." Fixable only by
+   forking `SwiftUIMath` to expose its already-implemented internal
+   `ParserError`, or by MacDown 2 writing its own independent LaTeX
+   validity pre-checker (itself a real, nontrivial undertaking with its
+   own risk of disagreeing with `SwiftUIMath`'s actual parser). Deferred;
+   file as a follow-up issue if real dogfooding in Slice 3 shows this is
+   a materially worse experience than expected.
+2. **Source ↔ preview navigation is block-granularity, not
+   equation-granularity** (§3, J4) — a deliberate, documented scope
+   reduction forced by Textual's sealed `.math` extension exposing no
+   source-range-carrying attachment. Fixable only by forking Textual (or
+   contributing the capability upstream) — out of scope for macOS 1.0.
+3. **`$` used for currency/other non-math prose is a latent false-positive
+   surface** (§9) inherited from Textual's own regex design, not
+   introduced by MacDown 2. The `\$` escape is the only mitigation, and it
+   already exists in Textual's pattern today, unmodified by this epic.
+4. **Preview accessibility labelling for a successfully-rendered equation
+   may not be attachable at all**, depending on what Textual's sealed
+   attachment-rendering path actually permits (§12) — to be confirmed,
+   not assumed, at Slice 3/4. If genuinely unattachable, this is recorded
+   as a real, filed limitation, not silently dropped.
+5. **`\(...\)`/`\[...\]` delimiters remain unsupported** (§3, invariant 7)
+   — a deliberate resolution of the epic's own "only if unambiguous" gate,
+   not a placeholder for later work in this epic. A future epic could
+   revisit this if user demand justifies teaching `MathSpanScanner` (and,
+   necessarily, a forked or upstream-modified Textual extension, since the
+   sealed `.math` extension itself would also need to recognize them for
+   Preview) a second delimiter grammar.
+6. **`ImageRenderer`'s reliability outside an active view-hierarchy
+   context is unverified as of this document** (Slice 2's own stop
+   condition, §17) — if implementation finds it unreliable, the fallback
+   rendering mechanism is undesigned here and would need its own
+   mini-architecture pass before Slice 2 can complete.
