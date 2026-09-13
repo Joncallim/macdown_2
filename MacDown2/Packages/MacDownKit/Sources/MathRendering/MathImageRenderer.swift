@@ -59,6 +59,14 @@ public enum MathImageRenderer {
     /// requires main-actor affinity elsewhere in this app (epic-12
     /// §3.7's own "only UI snapshot/save-panel state and WebKit/AppKit/
     /// PDFKit work are main-actor" rule).
+    ///
+    /// Synchronous and CPU-bound, with no internal cancellation
+    /// checkpoints — once called, one equation's layout/PNG encoding
+    /// always runs to completion. `MathContribution.run` can only check
+    /// cancellation BETWEEN spans, not interrupt one already in progress
+    /// (an accepted, bounded limitation — see
+    /// `MathContributionTests.runStopsBetweenSpansWhenTheAmbientTaskIsCancelled`'s
+    /// own doc comment).
     public static func render(span: MathSpan, context: ExportMathRenderContext) throws -> Data {
         let style = Self.style(for: span)
         let bounds = Self.bounds(for: span)

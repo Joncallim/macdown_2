@@ -1449,3 +1449,111 @@ issues once real implementation confirms them, per EPIC_STANDARD.md
    under `swift test` with no app window, and via extensive real
    Release-app dogfood in Slice 3. No fallback rendering mechanism was
    needed.
+
+---
+
+## 19. Post-implementation adversarial review
+
+An independent adversarial review of the full Slice 1-4 implementation
+(all commits on `epic-19-math`, not this document) found two blocking
+defects and one overstated test claim before this epic was considered
+ready for PR. All three are fixed, on the same branch, with new tests and
+re-verified evidence — not deferred as residual risk.
+
+**1. [Fixed] Math scanning had no code-fence/HTML-block awareness — a
+real content-corruption bug, not a cosmetic gap.** `MathSpanScanner`
+operates on raw text with no knowledge of Markdown block structure;
+`MathContribution.run` fed it the entire raw document text and
+`MathPreviewPreprocessor` scanned every `PreviewBlock` regardless of
+`kind`. Textual's own real tokenizer does not have this gap — its
+`PatternProcessor.expand` explicitly skips every `isPreformatted` run
+before trying the math patterns (confirmed by reading its checked-out
+source) — but this epic's independent scanner, added in front of it
+(Preview) or entirely on its own (Export), did not. Concretely: a fenced
+code sample containing coincidental `$...$`-shaped text (a shell/PHP/Perl
+variable, currency in a comment, a literal `$$...$$` LaTeX example) could
+be silently spliced into exported HTML as a rendered equation image
+(replacing the author's literal code), or have the invalid-math marker
+inserted into displayed code in Preview. Live dogfood before this review
+had exercised a code-fence sample that happened not to trigger the false
+positive, so the gap went unnoticed until this pass looked for it
+directly.
+
+Fixed by excluding spans inside top-level `.codeBlock`/`.htmlBlock`
+blocks in both consumers: `MathContribution.excludedRanges(in:)` (`Math`
+target) computes UTF-16 exclusion ranges from `document.blocks`/
+`sourceMap` for Export; `MathPreviewPreprocessor.preprocessed(_:)` skips
+a `PreviewBlock` outright when its own `kind` is `.codeBlock`/`.htmlBlock`
+for Preview. Both are top-level only, matching `TOCContribution`'s own
+precedent (§6.2) — a code fence nested inside a list item or block quote
+is a narrower, explicitly documented residual risk, not fixed here (see
+§18's updated item 4a below). Re-verified live against the real Release
+build: a document with real math outside a fence and `price is $5, $10`
+inside one now renders the outside equation and leaves the fenced text
+completely untouched.
+
+**2. [Fixed] PDF export of a dark-themed document would print
+near-invisible equations.** `ExportService`'s own `structural.css`
+already forces every theme to a fixed light palette under `@media
+print` — "Paper is white. A dark theme's foreground would print as
+light text on a white page... so print gets its own readable palette."
+Ordinary themed body text is safe because that CSS override applies to
+it live at print time; a math equation is a pre-baked PNG of fixed pixel
+colors that CSS cannot recolor after the fact. `MathExportRegistry`
+baked the *live* theme's foreground into every equation unconditionally,
+so exporting a dark-themed (e.g. Tomorrow Dark) document to PDF would
+have printed light-gray equations against the print stylesheet's
+enforced white page — while surrounding text, correctly recolored by
+CSS, stayed readable. Not caught by `MathExportRegistryTests`'s existing
+end-to-end case, which only used the light theme.
+
+Fixed by threading whether the export target is PDF
+(`ExportCoordinator.performExport`'s already-available `selection.format
+== .pdf`) into `ContributionRegistry.standardForExport(theme:isPrintTarget:)`,
+which selects the identical fixed color `structural.css` uses for print
+(`#1a1a1a`) instead of the live theme's foreground when `isPrintTarget`
+is true. This constant must stay in sync with that CSS file's own
+`--md-foreground` print value — noted at both definition sites.
+
+**3. [Fixed — test/doc-comment correction, not a code defect]
+`MathContributionTests.runStopsWhenTheAmbientTaskIsCancelled` overstated
+what it proved.** Real, production `MathImageRenderer.render` is
+synchronous, `@MainActor`, and CPU-bound with no internal cancellation
+checkpoints — once entered, one equation's render always runs to
+completion; `MathContribution.run` can only check cancellation *between*
+spans. The test's injected renderer used a cooperative `Task.sleep`,
+which is itself cancellation-aware, so it never actually exercised the
+non-cooperative real renderer's behavior — the test name and the
+missing doc comment together implied more than was verified. Renamed to
+`runStopsBetweenSpansWhenTheAmbientTaskIsCancelled` with a doc comment
+stating the real limitation explicitly and citing precedent (epic-12
+§3.7 accepts the same shape of limitation for cmark parse/render). This
+is an accepted, bounded trade-off — one equation's layout is small, fast,
+non-pathological work — not a defect requiring a design change.
+
+**Confirmed solid by this review, not merely asserted:** the
+byte-for-byte regex parity between `MathSpanScanner` and Textual's real
+`PatternTokenizer.Pattern.mathBlock`/`.mathInline` (including try-order);
+the `swiftui-math` version pin genuinely matching what `textual` itself
+requests; UTF-16/astral-plane offset arithmetic in both the scanner and
+the newline-collapse logic (checked against emoji adjacent to and
+straddling span/rewrite boundaries); the `@MainActor` sync-function →
+`@Sendable async` closure conversion under this project's `SWIFT_STRICT_CONCURRENCY
+: complete` setting; HTML-injection safety of `MathContribution.imgTag`;
+and fault isolation / renderer-thrown-cancellation propagation in
+`MathContribution.run`.
+
+**Residual risk added by this review** (folds into §18's list):
+
+4a. A code fence (or raw HTML block) **nested** inside a list item or
+    block quote is not covered by the top-level-only exclusion fix
+    above — a math-like false positive inside such a nested fence could
+    still be misdetected. Narrower and rarer than the top-level case this
+    review fixed; a candidate for a follow-up issue if real use surfaces
+    it, not fixed preemptively here (proportionate scope, matching
+    `TOCContribution`'s own top-level-only precedent).
+
+Real evidence after remediation: package suite 1179/1179 across 130
+suites; app-target 137/137 serially; Debug and Release builds both
+succeed; the code-fence fix re-verified live against the real Release
+build.

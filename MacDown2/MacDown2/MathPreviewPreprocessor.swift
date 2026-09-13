@@ -1,4 +1,5 @@
 import Foundation
+import MarkdownEngine
 import Math
 import MathRendering
 import Preview
@@ -65,7 +66,26 @@ enum MathPreviewPreprocessor {
     /// this layer, so keeping it stable avoids resetting view/scroll-sync
     /// state purely because a span flipped between valid and invalid while
     /// the user is mid-edit.
+    ///
+    /// A code block or raw HTML block is skipped entirely — found during
+    /// this epic's own adversarial review: `MathSpanScanner` has no
+    /// block-structure awareness (unlike Textual's real `.math` extension,
+    /// which already skips every `isPreformatted` run before trying its
+    /// patterns), so without this check a `$`-looking pattern inside a
+    /// code sample (a shell variable, a literal LaTeX example, currency in
+    /// a comment) could be flagged with the invalid-math marker or have its
+    /// newlines collapsed, corrupting the displayed code content — a block
+    /// this preprocessor must never touch at all. Top-level only, matching
+    /// `MathContribution.excludedRanges(in:)`'s own scope (`Math` target)
+    /// and `TOCContribution`'s precedent (epic-14-implementation.md §6.2).
     static func preprocessed(_ block: PreviewBlock) -> PreviewBlock {
+        switch block.kind {
+        case .codeBlock, .htmlBlock:
+            return block
+        default:
+            break
+        }
+
         let rewritten = preprocess(source: block.source)
         guard rewritten != block.source else { return block }
         return PreviewBlock(id: block.id, kind: block.kind, source: rewritten, lineRange: block.lineRange)

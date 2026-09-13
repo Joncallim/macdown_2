@@ -26,21 +26,24 @@ public struct MathContribution: Contributing {
         self.renderer = renderer
     }
 
-    /// For each `MathSpan` in `sourceText`: render it and contribute a
-    /// self-contained `<img>` HTML fragment via `.html` representation, or —
-    /// on failure — contribute nothing for that span and report an
-    /// `.error` diagnostic, isolated from every other span in the same
-    /// document (epic-19-implementation.md §4 invariant 2, §9). A thrown
+    /// For each `MathSpan` in `sourceText`, EXCLUDING any span inside a
+    /// top-level code block or raw HTML block (`excludedRanges(in:)`
+    /// below): render it and contribute a self-contained `<img>` HTML
+    /// fragment via `.html` representation, or — on failure — contribute
+    /// nothing for that span and report an `.error` diagnostic, isolated
+    /// from every other span in the same document
+    /// (epic-19-implementation.md §4 invariant 2, §9). A thrown
     /// `CancellationError` propagates immediately, abandoning remaining
     /// spans, matching `ContributionRegistry.run`'s own cancellation
     /// convention (epic-14-implementation.md §6.1).
     public func run(
-        document _: MarkdownDocument,
+        document: MarkdownDocument,
         sourceText: String,
         sourceGeneration: UInt
     ) async throws -> [ContributionResult] {
+        let exclusions = Self.excludedRanges(in: document)
         var results: [ContributionResult] = []
-        for span in MathSpanScanner.scan(sourceText) {
+        for span in MathSpanScanner.scan(sourceText) where !exclusions.contains(where: { $0.overlaps(span.range) }) {
             try Task.checkCancellation()
             do {
                 let pngData = try await renderer(span, context)
@@ -70,6 +73,33 @@ public struct MathContribution: Contributing {
             }
         }
         return results
+    }
+
+    /// UTF-16 ranges of `document`'s top-level code blocks and raw HTML
+    /// blocks — a `$`-looking pattern inside one is never treated as math.
+    /// Found during this epic's own adversarial review: `MathSpanScanner`
+    /// operates on raw text with no block-structure awareness, unlike
+    /// Textual's real `.math` extension (`PatternProcessor.expand` skips
+    /// every `isPreformatted` run before trying its patterns, confirmed by
+    /// reading its checked-out source) — without this check, a code
+    /// sample containing coincidental `$...$`-shaped text (a shell
+    /// variable, a literal LaTeX example, currency in a comment) could be
+    /// silently spliced into the exported document as a rendered equation
+    /// image, replacing the author's literal code text. Top-level only,
+    /// matching `TOCContribution`'s own precedent
+    /// (epic-14-implementation.md §6.2) — a code fence nested inside a
+    /// list item or block quote is a narrower, documented residual risk
+    /// (epic-19-implementation.md §18), not covered here.
+    static func excludedRanges(in document: MarkdownDocument) -> [Range<Int>] {
+        document.blocks.compactMap { block in
+            switch block.kind {
+            case .codeBlock, .htmlBlock:
+                let nsRange = document.sourceMap.utf16Range(ofLines: block.lineRange)
+                return nsRange.location ..< (nsRange.location + nsRange.length)
+            default:
+                return nil
+            }
+        }
     }
 
     /// Builds a self-contained `<img>` tag embedding `pngData` as a `data:`

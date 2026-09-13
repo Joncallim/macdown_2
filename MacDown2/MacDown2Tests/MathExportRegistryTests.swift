@@ -14,7 +14,7 @@ import Themes
 @Suite("MathExportRegistry")
 struct MathExportRegistryTests {
     @Test func standardForExportRunsMathButNotForPreview() {
-        let registry = ContributionRegistry.standardForExport(theme: BundledThemes.light)
+        let registry = ContributionRegistry.standardForExport(theme: BundledThemes.light, isPrintTarget: false)
         #expect(registry.contributions.contains { $0.id == "math" })
         #expect(registry.contributions.contains { $0.id == "toc" })
         // `.standard` (Preview's registry) is untouched by this factory —
@@ -22,10 +22,37 @@ struct MathExportRegistryTests {
         #expect(!ContributionRegistry.standard.contributions.contains { $0.id == "math" })
     }
 
+    /// Adversarial-review finding (epic-19-implementation.md §18):
+    /// `structural.css` forces every theme to a fixed light palette under
+    /// `@media print`, but a math equation is a pre-baked PNG whose pixel
+    /// colors CSS cannot override — a dark theme's light foreground, baked
+    /// as-is, would print as near-invisible light-gray-on-white. PDF
+    /// export must use the SAME fixed print-safe color that CSS enforces
+    /// for everything else, not the live theme's foreground.
+    @Test func mathRenderContextUsesThePrintSafeColorForPDFRegardlessOfTheme() {
+        let darkContext = ContributionRegistry.mathRenderContext(theme: BundledThemes.dark, isPrintTarget: true)
+        let lightContext = ContributionRegistry.mathRenderContext(theme: BundledThemes.light, isPrintTarget: true)
+
+        #expect(darkContext.foregroundRed == lightContext.foregroundRed)
+        #expect(darkContext.foregroundGreen == lightContext.foregroundGreen)
+        #expect(darkContext.foregroundBlue == lightContext.foregroundBlue)
+        // #1a1a1a, matching structural.css's own `@media print` --md-foreground.
+        #expect(abs(darkContext.foregroundRed - 0x1A / 255.0) < 0.001)
+    }
+
+    @Test func mathRenderContextUsesTheLiveThemeForegroundWhenNotPrinting() {
+        let dark = BundledThemes.dark.chrome.foreground
+        let context = ContributionRegistry.mathRenderContext(theme: BundledThemes.dark, isPrintTarget: false)
+        #expect(context.foregroundRed == dark.red)
+        #expect(context.foregroundGreen == dark.green)
+        #expect(context.foregroundBlue == dark.blue)
+    }
+
     @Test func mathAndTOCComposeIntoRealSelfContainedHTMLWithNoExternalReferences() async throws {
         let text = "# Title\n\n[TOC]\n\nThe energy is $E = mc^2$ and:\n\n$$\na^2+b^2=c^2\n$$\n\n## Section\n"
         let parsed = try await ParseEngine().parse(text, revision: 0)
-        let results = try await ContributionRegistry.standardForExport(theme: BundledThemes.light).run(
+        let registry = ContributionRegistry.standardForExport(theme: BundledThemes.light, isPrintTarget: false)
+        let results = try await registry.run(
             document: parsed, sourceText: text, sourceGeneration: 9
         )
         let adaptation = ExportContributionAdapter.adapt(results)

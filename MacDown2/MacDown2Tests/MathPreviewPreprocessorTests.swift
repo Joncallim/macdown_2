@@ -148,4 +148,26 @@ struct MathPreviewPreprocessorTests {
             #expect(result == MathPreviewPreprocessor.invalidMathMarker, "\(testCase.comment)")
         }
     }
+
+    /// Adversarial-review finding (epic-19-implementation.md §18): a code
+    /// block must never be touched by this preprocessor, even when its
+    /// content happens to scan as a "malformed" math span — otherwise the
+    /// displayed code content itself would be corrupted with the invalid-
+    /// math marker.
+    @Test func preprocessedNeverRewritesACodeBlockEvenWithMathLikeContent() {
+        let block = PreviewBlock(kind: .codeBlock(language: nil), source: "price is $5, $10", lineRange: 1 ... 1)
+        #expect(MathPreviewPreprocessor.preprocessed(block) == block)
+    }
+
+    @Test func preprocessedNeverRewritesAnHTMLBlockEvenWithMathLikeContent() {
+        let block = PreviewBlock(kind: .htmlBlock, source: "<div>$5, $10</div>", lineRange: 1 ... 1)
+        #expect(MathPreviewPreprocessor.preprocessed(block) == block)
+    }
+
+    @Test func preprocessedStillRewritesAnOrdinaryParagraphWithMalformedMath() {
+        let block = PreviewBlock(kind: .paragraph, source: "$\\frac{1}{$ here", lineRange: 1 ... 1)
+        let result = MathPreviewPreprocessor.preprocessed(block)
+        #expect(result.source != block.source)
+        #expect(result.source.contains(MathPreviewPreprocessor.invalidMathMarker))
+    }
 }
