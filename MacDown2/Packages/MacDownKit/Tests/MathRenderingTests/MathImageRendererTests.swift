@@ -105,4 +105,15 @@ struct MathImageRendererTests {
         let span = MathSpan(range: 0 ..< 1, style: testCase.style, latex: testCase.latex)
         #expect(MathImageRenderer.isRenderable(span) == testCase.isRenderable, "\(testCase.comment)")
     }
+
+    /// Adversarial corpus (epic-19-implementation.md §15): deeply nested
+    /// fractions must render (or at least not crash/hang) rather than
+    /// exhibiting pathological cost — a realistic worst case, not a
+    /// deliberately-malicious one.
+    @Test func rendersADeeplyNestedFractionWithoutCrashingOrHanging() throws {
+        let nested = (0 ..< 8).reduce("x") { inner, _ in "\\frac{1}{\(inner)}" }
+        let span = MathSpan(range: 0 ..< nested.count, style: .display, latex: nested)
+        let data = try MathImageRenderer.render(span: span, context: Self.context)
+        #expect(!data.isEmpty)
+    }
 }

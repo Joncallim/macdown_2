@@ -1052,19 +1052,19 @@ export pipeline, matching epic-14 §11's own framing.
 ## 12. Accessibility and localisation impact
 
 - **Preview:** a successfully rendered equation is drawn by `SwiftUIMath`'s
-  `Canvas`-based `Math` view, which — per its own public documentation
-  comment — has no built-in accessibility label of its own (a `Canvas` is
-  opaque to VoiceOver by default). This epic must wrap each rendered math
-  attachment's presentation with an accessibility label carrying the
-  original LaTeX source (e.g. `.accessibilityLabel("Math: \(latex)")`) at
-  whatever SwiftUI level Textual's attachment rendering allows this to be
-  attached — **if Textual's sealed `MathAttachment` rendering does not
-  expose an attachment point for this** (to be confirmed during Slice 1
-  implementation, since this depends on internals not yet inspected at
-  this level of detail), the fallback is document-level: MacDown 2 cannot
-  retrofit accessibility onto a third-party sealed rendering path it does
-  not control, and this becomes a recorded residual risk (§18) rather
-  than a silently-dropped requirement.
+  `Canvas`-based `Math` view, which has no built-in accessibility label of
+  its own (a `Canvas` is opaque to VoiceOver by default). **Confirmed
+  during Slice 4, not merely assumed:** reading Textual's own
+  `Attachment` protocol source (`Sources/Textual/Attachment/Attachment.swift`)
+  shows no accessibility hook of any kind — its only string-producing
+  member is `description` (from `CustomStringConvertible`, used for
+  copy/paste and debug representation per its doc comments, with no
+  mention of VoiceOver), and `MathAttachment` itself
+  (`Internal/Attachment/MathAttachment.swift`) exposes nothing beyond
+  that. There is no attachment point this epic can hook to label a
+  rendered equation for VoiceOver without forking Textual. This is a
+  real, confirmed residual risk (§18), not a silently-dropped
+  requirement.
   A malformed-math marker (§6.1's `` `⚠ ...` `` rewrite) is ordinary
   inline code text and inherits whatever accessibility behaviour
   Textual's normal inline-code rendering already has today — no new work
@@ -1369,27 +1369,44 @@ Required before this epic is considered complete (EPIC_STANDARD.md §3.15
 **Definition of Done** (in addition to `EPIC_STANDARD.md` §4's universal
 list):
 
-- [ ] `MathSpanScanner`'s matching rule is verified, in a real test, to
+- [x] `MathSpanScanner`'s matching rule is verified, in a real test, to
       match Textual's actual shipped `.math` extension's regex behaviour
       at the current pinned `textual` version — not merely asserted in
-      this document.
-- [ ] Preview visually renders both inline and display math correctly in
+      this document. (`MathSpanScannerTests`, hand-traced against the
+      checked-out `textual@0.5.0` source.)
+- [x] Preview visually renders both inline and display math correctly in
       the Release build, in both light and dark appearance, via executed
-      (not build-only) dogfood.
-- [ ] A malformed equation is visibly flagged in Preview, in place,
+      (not build-only) dogfood. (Slice 3 dogfood note; includes the
+      multi-line display-math fix found and verified during that pass.)
+- [x] A malformed equation is visibly flagged in Preview, in place,
       without affecting sibling content, via executed dogfood; correcting
-      it recovers automatically on next reparse.
+      it recovers automatically on next reparse. (Slice 3 dogfood note.)
 - [ ] HTML and PDF export of a math-containing document produce correct,
       self-contained, network-free output, via executed dogfood opening
-      the exported file independently of MacDown 2.
+      the exported file independently of MacDown 2. **Not yet done**:
+      `MathExportRegistryTests` proves this at the `ExportService.prepare`
+      level (real pipeline, real renderer); opening an actually-exported
+      file outside the app is still open.
 - [ ] J6's large-document responsiveness claim is backed by a real
-      Release-build measurement, not a package benchmark.
-- [ ] All rows of §14's evidence matrix have a recorded pass/fail/
-      unverified status — no row silently skipped.
+      Release-build measurement, not a package benchmark. **Not yet
+      done** — only a handful-of-equations spot check has been performed
+      (Slice 3 dogfood note, item 9).
+- [x] All rows of §14's evidence matrix have a recorded pass/fail/
+      unverified status — no row silently skipped. (Package/app-target
+      automated rows: pass. Dogfood rows: pass, per Slice 3's as-built
+      note. Large-document Release measurement row: open, tracked above,
+      not silently marked pass.)
 - [ ] The adversarial corpus in §15 has been run and its results recorded.
-- [ ] `planning/RELEASE_EVIDENCE.md`'s E19 row is updated from `blocked
+      **Partially done**: unbalanced/escaped/empty delimiters, the
+      cross-newline-inline case, math-in-a-code-fence, math coexisting
+      with bold/italic/code/links, and the hundreds-of-equations span cap
+      are covered (automated tests plus Slice 3/4 dogfood); math inside a
+      genuine list item/block quote/table cell and the pathological
+      deeply-nested-LaTeX case are not yet specifically exercised.
+- [x] `planning/RELEASE_EVIDENCE.md`'s E19 row is updated from `blocked
       until implemented` to a real status, with real evidence links, not
-      an inferred pass.
+      an inferred pass — status is `unverified — not yet merged`, not
+      `passed`, since the items above remain open.
 
 **Residual risks, consciously deferred** (candidates for follow-up GitHub
 issues once real implementation confirms them, per EPIC_STANDARD.md
@@ -1413,10 +1430,12 @@ issues once real implementation confirms them, per EPIC_STANDARD.md
    introduced by MacDown 2. The `\$` escape is the only mitigation, and it
    already exists in Textual's pattern today, unmodified by this epic.
 4. **Preview accessibility labelling for a successfully-rendered equation
-   may not be attachable at all**, depending on what Textual's sealed
-   attachment-rendering path actually permits (§12) — to be confirmed,
-   not assumed, at Slice 3/4. If genuinely unattachable, this is recorded
-   as a real, filed limitation, not silently dropped.
+   is confirmed unattachable**, not merely suspected — §12 documents
+   reading Textual's own `Attachment` protocol source directly: it
+   exposes no accessibility hook at all, only `description`
+   (`CustomStringConvertible`, for copy/paste and debugging). Fixable
+   only by forking Textual or contributing the capability upstream — out
+   of scope for macOS 1.0. Candidate for a filed follow-up issue.
 5. **`\(...\)`/`\[...\]` delimiters remain unsupported** (§3, invariant 7)
    — a deliberate resolution of the epic's own "only if unambiguous" gate,
    not a placeholder for later work in this epic. A future epic could
@@ -1424,8 +1443,9 @@ issues once real implementation confirms them, per EPIC_STANDARD.md
    necessarily, a forked or upstream-modified Textual extension, since the
    sealed `.math` extension itself would also need to recognize them for
    Preview) a second delimiter grammar.
-6. **`ImageRenderer`'s reliability outside an active view-hierarchy
-   context is unverified as of this document** (Slice 2's own stop
-   condition, §17) — if implementation finds it unreliable, the fallback
-   rendering mechanism is undesigned here and would need its own
-   mini-architecture pass before Slice 2 can complete.
+6. ~~`ImageRenderer`'s reliability outside an active view-hierarchy context
+   is unverified~~ — **resolved during Slice 2**: confirmed reliable via
+   `MathRenderingTests`' real (non-faked) rendering tests, run repeatedly
+   under `swift test` with no app window, and via extensive real
+   Release-app dogfood in Slice 3. No fallback rendering mechanism was
+   needed.

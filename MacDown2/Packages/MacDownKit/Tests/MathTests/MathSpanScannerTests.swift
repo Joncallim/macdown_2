@@ -121,4 +121,35 @@ struct MathSpanScannerTests {
         #expect(spans.map(\.style) == [.inline, .display, .inline])
         #expect(spans.map(\.latex) == ["a=1", "\nb=2\n", "c=3"])
     }
+
+    /// Adversarial corpus (epic-19-implementation.md §15): the scanner
+    /// operates on raw text and does not itself know about list/quote
+    /// structure — a real list item or block quote line containing math is
+    /// found the same as any other line's math, which is what lets a
+    /// top-level block (list, quote) containing several such lines still
+    /// get every one of its equations detected.
+    @Test func scanFindsMathInsideARealListItemLine() {
+        let text = "- First item\n- Item with $x=1$ math\n- Third item"
+        let spans = MathSpanScanner.scan(text)
+        #expect(spans.count == 1)
+        #expect(spans.first?.latex == "x=1")
+    }
+
+    @Test func scanFindsMathInsideARealBlockQuoteLine() {
+        let text = "> A quote with $y=2$ math inside it"
+        let spans = MathSpanScanner.scan(text)
+        #expect(spans.count == 1)
+        #expect(spans.first?.latex == "y=2")
+    }
+
+    /// A stress case for §11's performance-budget claims: scanning must
+    /// terminate promptly and find every span in a document with a
+    /// realistic-but-large equation count.
+    @Test func scanFindsEveryEquationInADocumentWithHundredsOfSpans() {
+        let text = (0 ..< 400).map { "$eq\($0)=1$" }.joined(separator: " ")
+        let spans = MathSpanScanner.scan(text)
+        #expect(spans.count == 400)
+        #expect(spans.map(\.latex).first == "eq0=1")
+        #expect(spans.map(\.latex).last == "eq399=1")
+    }
 }
