@@ -77,30 +77,49 @@ public struct MathContribution: Contributing {
         return results
     }
 
-    /// UTF-16 ranges of `document`'s top-level code blocks and raw HTML
-    /// blocks — a `$`-looking pattern inside one is never treated as math.
-    /// Found during this epic's own adversarial review: `MathSpanScanner`
-    /// operates on raw text with no block-structure awareness, unlike
-    /// Textual's real `.math` extension (`PatternProcessor.expand` skips
-    /// every `isPreformatted` run before trying its patterns, confirmed by
-    /// reading its checked-out source) — without this check, a code
-    /// sample containing coincidental `$...$`-shaped text (a shell
-    /// variable, a literal LaTeX example, currency in a comment) could be
-    /// silently spliced into the exported document as a rendered equation
-    /// image, replacing the author's literal code text. Top-level only,
-    /// matching `TOCContribution`'s own precedent
-    /// (epic-14-implementation.md §6.2) — a code fence nested inside a
-    /// list item or block quote is a narrower, documented residual risk
-    /// (epic-19-implementation.md §18), not covered here.
+    /// UTF-16 ranges of every code block and raw HTML block in `document`,
+    /// AT ANY NESTING DEPTH — a `$`-looking pattern inside one is never
+    /// treated as math. Found during this epic's own adversarial review:
+    /// `MathSpanScanner` operates on raw text with no block-structure
+    /// awareness, unlike Textual's real `.math` extension
+    /// (`PatternProcessor.expand` skips every `isPreformatted` run before
+    /// trying its patterns, confirmed by reading its checked-out source) —
+    /// without this check, a code sample containing coincidental
+    /// `$...$`-shaped text (a shell variable, a literal LaTeX example,
+    /// currency in a comment) could be silently spliced into the exported
+    /// document as a rendered equation image, replacing the author's
+    /// literal code text.
+    ///
+    /// Recurses into `block.children` rather than scanning only
+    /// `document.blocks` (top-level siblings): a fenced code block nested
+    /// inside a list item or block quote is a CHILD of that block in
+    /// `MarkdownBlock`'s tree (`ParseEngine`'s `BlockConverter`), not a
+    /// top-level sibling, so a shallow scan never sees it. This was
+    /// originally scoped to top-level only, matching `TOCContribution`'s
+    /// own precedent (epic-14-implementation.md §6.2) and documented as a
+    /// residual risk (epic-19-implementation.md §18/§20). Reconciling that
+    /// residual risk against the real `ParseEngine` pipeline (rather than
+    /// leaving it as an unverified assertion) proved it is not a benign
+    /// "fails closed" gap: a nested fenced code block containing an
+    /// internal blank line defeats `InlineCodeSpanScanner`'s accidental,
+    /// incidental protection (its own "does not cross a blank line" rule),
+    /// which otherwise happened to catch the common single-paragraph case
+    /// by coincidence — so math-like text after that blank line was
+    /// spliced into the export exactly like the fixed inline-code and
+    /// escaped-dollar defects. `TOCContribution` is a separate
+    /// implementation with its own ownership boundary; this fix is scoped
+    /// to `Math`, matching this epic's own module ownership (§5).
     static func excludedRanges(in document: MarkdownDocument) -> [Range<Int>] {
-        document.blocks.compactMap { block in
-            switch block.kind {
-            case .codeBlock, .htmlBlock:
-                let nsRange = document.sourceMap.utf16Range(ofLines: block.lineRange)
-                return nsRange.location ..< (nsRange.location + nsRange.length)
-            default:
-                return nil
-            }
+        document.blocks.flatMap { excludedRanges(in: $0, sourceMap: document.sourceMap) }
+    }
+
+    private static func excludedRanges(in block: MarkdownBlock, sourceMap: SourceMap) -> [Range<Int>] {
+        switch block.kind {
+        case .codeBlock, .htmlBlock:
+            let nsRange = sourceMap.utf16Range(ofLines: block.lineRange)
+            return [nsRange.location ..< (nsRange.location + nsRange.length)]
+        default:
+            return block.children.flatMap { excludedRanges(in: $0, sourceMap: sourceMap) }
         }
     }
 

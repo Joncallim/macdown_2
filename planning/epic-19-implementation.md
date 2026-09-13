@@ -1683,3 +1683,87 @@ unit test asserting against a hand-built fixture.
    fully correct; Preview is not, and cannot be fixed without forking
    Textual or speculatively rewriting prose this epic does not otherwise
    touch. A candidate for a follow-up issue, not a blocker.
+
+## 21. Post-merge reconciliation (2026-09-14)
+
+Reconciled against `master@e12ee9b` (PR #62, already merged) as part of
+closing out this epic's release-evidence debt before starting E20.
+
+**Automated evidence re-verified directly on `master`, not carried forward
+from the PR:** package `swift test --no-parallel` 1183/1183 across 130
+suites; app-target `MacDown2Tests` 138/138 serially (parallel run
+reproduces the same pre-existing `WindowCoordinatorSaveAs*`/
+`ExternalFileController*` flakiness independently, confirmed unrelated to
+E19); Release build succeeds.
+
+**The §18/§20 residual risk "a code fence nested inside a list item or
+block quote is not covered by the code-fence exclusion fix" was
+investigated rather than left as an assumption, and turned out to be a
+real, reproducible content-corruption defect, not a benign gap:**
+`MathContribution.excludedRanges(in:)` scanned only `document.blocks`
+(top-level siblings); a fenced code block nested inside a list item or
+block quote is a CHILD block in `MarkdownBlock`'s tree, so it was never
+excluded. In practice this was accidentally masked for the common case by
+`InlineCodeSpanScanner` mis-treating the fence's own opening/closing
+` ``` ` runs as one long inline-code span — but that scanner explicitly
+does not cross a blank line, so a nested fenced code block with an
+internal blank line defeated both mechanisms at once, and math-like text
+after the blank line was spliced into the exported document exactly like
+the fixed inline-code defect (§20 finding 2). Reproduced directly against
+the real `ParseEngine` before being fixed (`MathContributionTests`, now
+`runExcludesASpanInsideAFencedCodeBlockNestedInAListItemWithAnInternalBlankLine`
+and two sibling tests covering the non-blank-line list-item and
+block-quote cases, all of which previously returned a non-empty/incorrect
+result before the fix and now correctly return empty).
+
+**Fixed on the Export side** by making `excludedRanges(in:)` recurse into
+`block.children` instead of scanning only the top-level array — a direct
+completion of the already-designed exclusion contract, not a new
+architecture; `Math` package suite grew from 1183 to 1186 (package
+total), all passing; `swiftformat --lint` and `swiftlint --strict` clean
+on the changed files.
+
+**The same underlying gap exists on the Preview side and was
+characterized but deliberately NOT fixed here.**
+`MathPreviewPreprocessor.preprocess(source:)` operates on one top-level
+`PreviewBlock`'s raw text; `PreviewBlock`'s top-level-only granularity is
+a deliberate E07 architectural decision (scroll-sync and per-block
+Textual rendering depend on it), not something this epic may change
+unilaterally per `EPIC_STANDARD.md`'s stop-and-escalate rule. Reproduced
+directly (`MathPreviewPreprocessorTests`,
+`preprocessCorruptsAnInvalidMathLikeSpanInsideAFencedCodeBlockWithAnInternalBlankLine`):
+invalid math-like text inside a nested fence WITH an internal blank line
+gets the `⚠ invalid math` marker spliced in, corrupting the displayed
+code sample (on-disk text is never affected — Preview-only). The
+single-line-fence-body case remains accidentally protected by
+`InlineCodeSpanScanner`'s coincidental treatment of the fence's own
+` ``` ` runs as inline code
+(`preprocessCorruptsAnInvalidMathLikeSpanInsideAFencedCodeBlockNestedInAListItem`
+documents this as currently fine). Filed as
+[#63](https://github.com/Joncallim/macdown_2/issues/63), P2 — a real fix
+needs its own fenced-code-block raw-text scanner, scoped as its own
+implementation slice with its own tests, not folded into this
+reconciliation pass.
+
+**Still open, explicitly not closed by this reconciliation:**
+
+- A large-equation-document Release performance measurement (§18's J6
+  item) has still not been executed.
+- The live visual re-check of the three post-#62 Preview fixes (§20)
+  remains unverified. The prior session's attempt was blocked by an
+  exhausted screen-capture/accessibility tooling failure; this session's
+  independent attempt, via an OS-level app-control permission grant, was
+  declined by the user. Both are recorded as genuine blockers, not
+  silently skipped — see `RELEASE_EVIDENCE.md`'s E19 row.
+- The deeply-nested-LaTeX and hundreds-of-equations stress cases from §15
+  remain unexercised beyond the existing handful-of-equations spot check.
+- The Preview-side counterpart of the nested-code-fence defect (previous
+  finding) is real but not fixed — filed as
+  [#63](https://github.com/Joncallim/macdown_2/issues/63), P2.
+
+None of the above are P0/P1 — the fixed defects all have real,
+non-mocked pipeline-level test coverage, and the newly-found
+Export-side nested-fence defect is now fixed and covered the same way.
+This epic is marked done in `planning/epics/README.md` with the residual
+items tracked honestly in `RELEASE_EVIDENCE.md` rather than hidden by
+closing issue #44 outright.

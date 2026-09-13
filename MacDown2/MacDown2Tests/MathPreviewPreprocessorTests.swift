@@ -104,6 +104,57 @@ struct MathPreviewPreprocessorTests {
         #expect(MathPreviewPreprocessor.preprocessed(nil) == nil)
     }
 
+    /// `PreviewBlock.blocks(from:text:)` is deliberately top-level-only
+    /// (E07's own design — `PreviewBlock.swift`'s doc comment: "mirrors a
+    /// top-level `MarkdownBlock`"), so a fenced code block nested inside a
+    /// list item or block quote is never its own `PreviewBlock`; it is
+    /// just plain text inside the ENCLOSING list/quote block's `source`
+    /// string. `preprocessed(_ block:)`'s top-level `.codeBlock`/
+    /// `.htmlBlock` skip (matching `MathContribution.excludedRanges(in:)`'s
+    /// former scope, before this epic's own reconciliation pass fixed that
+    /// side — epic-19-implementation.md §21) therefore never applies to
+    /// this block at all, and `preprocess(source:)` has no fenced-code
+    /// awareness within a block's own text — only `InlineCodeSpanScanner`
+    /// for genuinely inline code. Reproduced directly: an INVALID
+    /// math-like span inside a nested fence gets replaced with the visible
+    /// warning marker, corrupting the code sample the user actually
+    /// authored. This is a real, currently-unfixed defect discovered while
+    /// verifying the Export-side fix's Preview counterpart — recorded here
+    /// as evidence rather than assumed away, and tracked as a follow-up
+    /// (see `RELEASE_EVIDENCE.md`'s E19 row): fixing it requires either
+    /// giving `preprocess(source:)` its own fenced-code-block scanner (a
+    /// new, non-trivial raw-text CommonMark fence detector, not a
+    /// one-line completion like the Export-side fix) or changing
+    /// `PreviewBlock`'s granularity (an E07 architectural decision this
+    /// epic must not make unilaterally per EPIC_STANDARD.md's
+    /// stop-and-escalate rule).
+    @Test func preprocessCorruptsAnInvalidMathLikeSpanInsideAFencedCodeBlockNestedInAListItem() {
+        // A single-line fence body is accidentally protected today: the SAME
+        // `InlineCodeSpanScanner` this preprocessor also uses for genuine
+        // inline code (`` `$x$` ``) happens to treat the fence's own two
+        // ``` runs as if they were one giant inline code span, since that
+        // scanner has no fenced-code awareness either — it just matches "a
+        // run of N backticks, closed by the next run of exactly N, not
+        // crossing a blank line." That incidental protection breaks the
+        // moment the fence body has an internal blank line, below.
+        let listBlockSource = "- item text\n\n  ```\n  literal code: $bad$ end\n  ```"
+        let result = MathPreviewPreprocessor.preprocess(source: listBlockSource, isValid: { _ in false })
+        #expect(!result.contains(MathPreviewPreprocessor.invalidMathMarker))
+    }
+
+    @Test func preprocessCorruptsAnInvalidMathLikeSpanInsideAFencedCodeBlockWithAnInternalBlankLine() {
+        let listBlockSource = "- item text\n\n  ```\n  literal code:\n\n  $bad$ end\n  ```"
+        let result = MathPreviewPreprocessor.preprocess(source: listBlockSource, isValid: { _ in false })
+        // Documents a REAL, currently-unfixed defect (not the benign case
+        // above): once the fence body has a blank line, the accidental
+        // inline-code protection no longer applies, `preprocess` has no
+        // other fenced-code awareness, and the invalid-math marker
+        // corrupts the code sample the user actually authored. Tracked in
+        // `RELEASE_EVIDENCE.md`'s E19 row as a follow-up, not fixed here —
+        // see this test's suite-level doc comment for why.
+        #expect(result.contains(MathPreviewPreprocessor.invalidMathMarker))
+    }
+
     @Test func preprocessedMapsEveryBlockInAnArray() {
         let blocks = [
             PreviewBlock(kind: .paragraph, source: "$\\frac{1}{$", lineRange: 1 ... 1),

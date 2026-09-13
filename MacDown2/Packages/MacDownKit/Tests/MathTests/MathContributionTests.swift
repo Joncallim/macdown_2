@@ -232,6 +232,50 @@ struct MathContributionTests {
         #expect(html.contains("alt=\"y=2\""))
     }
 
+    /// Adversarial-corpus case named as a residual risk in
+    /// epic-19-implementation.md §18/§20 ("a code fence nested inside a
+    /// list item or block quote is not covered by the code-fence exclusion
+    /// fix") but never actually characterized against the real pipeline
+    /// until reconciled here. Investigating it found a real, reproducible
+    /// content-corruption defect (not a benign "fails closed" gap): a
+    /// fenced code block nested inside a list item, WITH AN INTERNAL BLANK
+    /// LINE, defeated both exclusion mechanisms simultaneously —
+    /// `excludedRanges(in:)` only scanned top-level `document.blocks`, and
+    /// `InlineCodeSpanScanner`'s "does not cross a blank line" rule broke
+    /// the accidental, incidental protection that otherwise happened to
+    /// catch the common single-paragraph nested-fence case by coincidence.
+    /// `excludedRanges(in:)` now recurses into `block.children`, closing
+    /// this for real rather than leaving it as an assumption.
+    @Test func runExcludesASpanInsideAFencedCodeBlockNestedInAListItemWithAnInternalBlankLine() async throws {
+        let text = "- item text\n\n  ```\n  literal code:\n\n  $a=1$ end\n  ```\n"
+        let parsed = try await ParseEngine().parse(text, revision: 0)
+        let contribution = MathContribution(context: Self.context) { span, _ in Self.fakeImage(for: span.latex) }
+
+        let results = try await contribution.run(document: parsed, sourceText: text, sourceGeneration: 0)
+
+        #expect(results.isEmpty)
+    }
+
+    @Test func runExcludesASpanInsideAFencedCodeBlockNestedInAListItem() async throws {
+        let text = "- item text\n\n  ```\n  literal code: $a=1$ end\n  ```\n"
+        let parsed = try await ParseEngine().parse(text, revision: 0)
+        let contribution = MathContribution(context: Self.context) { span, _ in Self.fakeImage(for: span.latex) }
+
+        let results = try await contribution.run(document: parsed, sourceText: text, sourceGeneration: 0)
+
+        #expect(results.isEmpty)
+    }
+
+    @Test func runExcludesASpanInsideAFencedCodeBlockNestedInABlockQuote() async throws {
+        let text = "> quoted text\n>\n> ```\n> literal code:\n>\n> $a=1$ end\n> ```\n"
+        let parsed = try await ParseEngine().parse(text, revision: 0)
+        let contribution = MathContribution(context: Self.context) { span, _ in Self.fakeImage(for: span.latex) }
+
+        let results = try await contribution.run(document: parsed, sourceText: text, sourceGeneration: 0)
+
+        #expect(results.isEmpty)
+    }
+
     /// Adversarial-review finding: an escaped `\$` immediately followed by
     /// a real equation on the same line must not be absorbed as a phantom
     /// span that swallows the real equation's opening delimiter.
