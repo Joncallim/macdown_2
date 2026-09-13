@@ -2,12 +2,13 @@ import Contributions
 import Foundation
 import MarkdownEngine
 
-/// Renders one equation's LaTeX to PNG bytes. Implemented in the app target
-/// via SwiftUI's `ImageRenderer` (epic-19-implementation.md §6.2, §17 Slice
-/// 2); injected so `MathContribution` and its tests never link SwiftUI/
-/// AppKit, mirroring `TextFilterRunner`'s injected-`Limits` idiom and
-/// `ExportService`'s injected parser/resource seams.
-public typealias MathImageRendering = @Sendable (MathSpan, ExportMathRenderContext) async throws -> Data
+/// Renders one equation's LaTeX to a PNG plus its logical size. Implemented
+/// in the app target via SwiftUI's `ImageRenderer`
+/// (epic-19-implementation.md §6.2, §17 Slice 2); injected so
+/// `MathContribution` and its tests never link SwiftUI/AppKit, mirroring
+/// `TextFilterRunner`'s injected-`Limits` idiom and `ExportService`'s
+/// injected parser/resource seams.
+public typealias MathImageRendering = @Sendable (MathSpan, ExportMathRenderContext) async throws -> RenderedMathImage
 
 /// E19's Export-side producer, matching `TOCContribution`'s exact shape
 /// (epic-14-implementation.md §6.2) and registered alongside it for Export
@@ -28,10 +29,11 @@ public struct MathContribution: Contributing {
 
     /// For each `MathSpan` in `sourceText`, EXCLUDING any span inside a
     /// top-level code block or raw HTML block (`excludedRanges(in:)`
-    /// below): render it and contribute a self-contained `<img>` HTML
-    /// fragment via `.html` representation, or — on failure — contribute
-    /// nothing for that span and report an `.error` diagnostic, isolated
-    /// from every other span in the same document
+    /// below) or an inline code span anywhere (`InlineCodeSpanScanner`,
+    /// `Math` target): render it and contribute a self-contained `<img>`
+    /// HTML fragment via `.html` representation, or — on failure —
+    /// contribute nothing for that span and report an `.error` diagnostic,
+    /// isolated from every other span in the same document
     /// (epic-19-implementation.md §4 invariant 2, §9). A thrown
     /// `CancellationError` propagates immediately, abandoning remaining
     /// spans, matching `ContributionRegistry.run`'s own cancellation
@@ -41,18 +43,18 @@ public struct MathContribution: Contributing {
         sourceText: String,
         sourceGeneration: UInt
     ) async throws -> [ContributionResult] {
-        let exclusions = Self.excludedRanges(in: document)
+        let exclusions = Self.excludedRanges(in: document) + InlineCodeSpanScanner.ranges(in: sourceText)
         var results: [ContributionResult] = []
         for span in MathSpanScanner.scan(sourceText) where !exclusions.contains(where: { $0.overlaps(span.range) }) {
             try Task.checkCancellation()
             do {
-                let pngData = try await renderer(span, context)
+                let image = try await renderer(span, context)
                 results.append(ContributionResult(
                     contributionID: id,
                     content: ContributionContent(
                         sourceRange: span.range,
                         placement: span.style == .inline ? .inline : .block,
-                        representation: .html(Self.imgTag(pngData: pngData, alt: span.latex))
+                        representation: .html(Self.imgTag(image: image, alt: span.latex))
                     ),
                     sourceGeneration: sourceGeneration
                 ))
@@ -102,15 +104,25 @@ public struct MathContribution: Contributing {
         }
     }
 
-    /// Builds a self-contained `<img>` tag embedding `pngData` as a `data:`
-    /// URI, with `alt` set to the original LaTeX source
+    /// Builds a self-contained `<img>` tag embedding `image.pngData` as a
+    /// `data:` URI, with `alt` set to the original LaTeX source
     /// (epic-19-implementation.md §12). `alt`'s only variable content is
     /// `span.latex`; the base64 payload is bytes MacDown 2 itself rendered —
     /// neither is ever concatenated unescaped into HTML structure
     /// (epic-19-implementation.md §10).
-    static func imgTag(pngData: Data, alt: String) -> String {
-        let base64 = pngData.base64EncodedString()
-        return "<img src=\"data:image/png;base64,\(base64)\" alt=\"\(htmlAttributeEscaped(alt))\">"
+    ///
+    /// Explicit `width`/`height` (rounded to the nearest whole CSS pixel,
+    /// matching the HTML attribute's own integer expectation) come from
+    /// `image`'s LOGICAL size, not its pixel dimensions — adversarial-review
+    /// finding: without these, a browser/WKWebView has no DPI hint and
+    /// renders the PNG at its native pixel size, `pixelScale`× too large
+    /// (`RenderedMathImage`'s own doc comment).
+    static func imgTag(image: RenderedMathImage, alt: String) -> String {
+        let base64 = image.pngData.base64EncodedString()
+        let width = Int(image.logicalWidth.rounded())
+        let height = Int(image.logicalHeight.rounded())
+        return "<img src=\"data:image/png;base64,\(base64)\" width=\"\(width)\" height=\"\(height)\" " +
+            "alt=\"\(htmlAttributeEscaped(alt))\">"
     }
 
     private static func htmlAttributeEscaped(_ text: String) -> String {

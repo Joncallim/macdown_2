@@ -24,6 +24,29 @@ import Foundation
 /// drift — do not let this comment substitute for re-checking the dependency
 /// source at that time.
 public enum MathSpanScanner {
+    /// **Deliberate, documented divergence from Textual's own tokenizer**
+    /// (adversarial-review finding, post-merge, `chatgpt-codex-connector`):
+    /// for input like `Price: \$5 and $x=1$ today.`, Textual's real
+    /// tokenizer (and this scanner, before this fix) reaches the escaped
+    /// `\$` one character at a time — the backslash matches neither
+    /// pattern, so it is skipped as plain text, and the scan resumes
+    /// exactly AT the following `$` with no memory that it was just
+    /// escaped, so `mathInline` matches "$5 and $" as a phantom equation,
+    /// consuming the real `$x=1$` equation's opening delimiter and leaving
+    /// `x=1$` behind as broken literal text.
+    ///
+    /// This scanner now skips an escaped `\$` as a two-character unit when
+    /// no pattern matches at the current position, so the `$` immediately
+    /// after `\` is never revisited as a fresh opening delimiter. Textual's
+    /// own sealed tokenizer has no equivalent fix and cannot be patched
+    /// from here, so Export (which uses this scanner directly) now handles
+    /// this input correctly while Preview (whose actual glyph rendering
+    /// depends on Textual's own real tokenizer, not merely on what this
+    /// scanner privately concludes) still inherits Textual's original
+    /// behavior — a residual, Preview-only limitation recorded in
+    /// epic-19-implementation.md §18, accepted because Export can be fully
+    /// correct on its own and Preview cannot be fixed without fragile,
+    /// speculative rewriting of prose this epic does not otherwise touch.
     public static func scan(_ text: String) -> [MathSpan] {
         var spans: [MathSpan] = []
         var currentIndex = text.startIndex
@@ -41,10 +64,20 @@ public enum MathSpanScanner {
                 currentIndex = match.range.upperBound
                 continue
             }
+            if isEscapedDollar(at: currentIndex, in: text) {
+                currentIndex = text.index(currentIndex, offsetBy: 2)
+                continue
+            }
             currentIndex = text.index(after: currentIndex)
         }
 
         return spans
+    }
+
+    private static func isEscapedDollar(at index: String.Index, in text: String) -> Bool {
+        guard text[index] == "\\" else { return false }
+        let next = text.index(after: index)
+        return next < text.endIndex && text[next] == "$"
     }
 
     private static func span(

@@ -1557,3 +1557,129 @@ Real evidence after remediation: package suite 1179/1179 across 130
 suites; app-target 137/137 serially; Debug and Release builds both
 succeed; the code-fence fix re-verified live against the real Release
 build.
+
+---
+
+## 20. Post-merge automated review findings (`chatgpt-codex-connector`)
+
+PR #61 merged (`306e291`) with the review above complete. After merge, this
+repo's automated GitHub review bot (`chatgpt-codex-connector`) left three
+P1-severity inline comments on the merged commit that neither the
+pre-implementation architecture review, the post-implementation adversarial
+review (§19), nor live dogfood had caught. Each was reproduced directly
+against the merged code before being treated as real (per this project's
+own standing rule: verify, don't trust the report) — all three held up. All
+three are fixed here, on a follow-up branch (`epic-19-codex-fixes`), not
+deferred.
+
+**1. [Fixed] An escaped `\$` immediately followed by real math absorbed
+the real equation's opening delimiter, losing it entirely.** For
+`Price: \$5 and $x=1$ today.`, `MathSpanScanner`'s outer scan loop reaches
+the backslash, finds no pattern match (both require a literal `$` to
+start), and skips it as one plain character — which leaves the scan
+resuming exactly AT the following `$` with no memory that it was just
+escaped. `mathInline` then matches `"$5 and $"` as a phantom equation,
+consuming the real equation's own opening `$` and leaving `x=1$` behind as
+broken literal text with no equation rendered at all. Reproduced directly:
+`MathSpanScanner.scan(...)` on this input returned exactly one span,
+`"5 and "`, and nothing else.
+
+Textual's real sealed tokenizer has the byte-for-byte identical algorithm
+and therefore the identical bug — confirmed by re-reading its checked-out
+`PatternTokenizer.tokenize` source, not assumed. This makes this fix a
+**deliberate, documented divergence from Textual**: `MathSpanScanner` now
+skips an escaped `\$` as a two-character unit so the `$` right after it is
+never revisited as a fresh opening delimiter, which makes **Export**
+(which uses this scanner directly) handle the input correctly. **Preview**
+cannot be fixed the same way — its actual glyph rendering depends on
+Textual's own sealed tokenizer acting on whatever raw text
+`MathPreviewPreprocessor` hands it, and since this input's real span is
+valid and single-line, the preprocessor's own default behavior (leave
+valid single-line spans byte-for-byte untouched) means the original,
+unfixed text still reaches Textual unchanged regardless of what this
+scanner now privately concludes. Preview therefore keeps Textual's
+original bug — a residual, Preview-only limitation (§18 item 7 below),
+accepted because Export can be fully correct on its own and Preview cannot
+be fixed without fragile, speculative rewriting of prose this epic does
+not otherwise touch.
+
+**2. [Fixed] Inline code containing math-like text was treated as math,
+and the sentinel-substitution mechanism does not run inside a cmark CODE
+node — producing literal garbage in exported output, not merely a wrong
+rendering.** `` `$x=1$` `` inside an ordinary paragraph is not a top-level
+code block, so `MathContribution.excludedRanges(in:)` (block-level only)
+did not exclude it. `MathSpanScanner` found `$x=1$` as a real span, and
+`MathContribution` spliced a sentinel into that position; cmark then
+placed the authored inline-code text (backticks included) into a `CODE`
+node, but `CMarkGFM`'s sentinel substitution only rewrites `TEXT` nodes —
+so the exported HTML showed the literal, meaningless sentinel string
+(e.g. `E12INLINE0Z`) where the author's code should have been. Reproduced
+directly: parsing `"Some text with `$x$` inline code."` gives one
+top-level `.paragraph` block, and `MathSpanScanner` finds `$x$` as a span
+inside it — the block-level exclusion has no way to see this.
+
+Fixed with a new `InlineCodeSpanScanner` (`Math` target): finds CommonMark
+inline code spans (a run of N backticks, closed by the next run of
+exactly N, not crossing a blank line) in raw text, independent of any
+block model — this is the same "no inline-node model exists" constraint
+§2.1 already establishes for `MarkdownEngine`, addressed the same way
+`MathSpanScanner` itself already is (an independent raw-text scanner, not
+a swift-markdown feature request). Wired into both `MathContribution.run`
+(Export, combined with the existing block-level exclusions) and
+`MathPreviewPreprocessor.preprocess` (Preview — protects against this
+preprocessor's OWN rewrite corrupting a code span's content before
+Textual's real, already-correct inline-code skip ever gets a chance to
+apply). Re-verified through the REAL cmark pipeline, not just
+`MathContribution` in isolation: exporting
+`"Real math $y=2$ and code `$x=1$` here."` now produces `<code>$x=1$</code>`
+verbatim, with no sentinel string anywhere in the output.
+
+**3. [Fixed] Exported equations rendered roughly 3× too large.**
+`ImageRenderer.scale = context.pixelScale` (3, for retina-quality output)
+triples the PNG's PIXEL dimensions, but `MathContribution.imgTag` emitted
+no `width`/`height` attributes and the export stylesheet only applies
+`max-width: 100%; height: auto` — with no DPI hint, a browser or WKWebView
+uses the image's native pixel size as its CSS size, so every exported
+equation displayed at roughly 3× its intended typographic size.
+
+Fixed by threading the equation's LOGICAL (unscaled) size through
+alongside the PNG bytes: a new `RenderedMathImage` struct (`Math` target)
+replaces the bare `Data` `MathImageRendering` used to return;
+`MathImageRenderer.render` now returns `RenderedMathImage`, using the
+typographic bounds it already computes (before applying `pixelScale`) as
+the logical size; `imgTag` emits `width`/`height` (rounded to the nearest
+whole CSS pixel) from that logical size — the same "declare the logical
+size, let pixel density scale the bitmap" pattern any ordinary retina
+`<img>` uses. Re-verified through the real export pipeline: the
+end-to-end HTML now contains explicit `width="..."`/`height="..."`
+attributes on every equation image.
+
+**Real evidence:** every fix reproduced against the merged, pre-fix code
+before being treated as real; every fix has a corresponding new test
+exercising the REAL pipeline where practical (a real `ParseEngine` parse
+for the escaped-dollar and inline-code fixes, the real `ExportService`/
+cmark pipeline for the inline-code and width/height fixes, not merely
+`MathContribution`/`MathImageRenderer` in isolation). Package suite
+1183/1183 across 130 suites (was 1179); app-target 138/138 serially (was
+137); Debug and Release builds both succeed.
+
+**Not re-verified visually against the real Release build for this
+specific remediation** — the environment's screen-capture/window
+accessibility access became unreliable during this pass (`app_screenshot`
+failed with a capture-stream error, and `System Events` stopped
+enumerating the app's windows despite seeing the process, on a machine
+where both had worked reliably earlier in this same epic). This is
+recorded honestly as a genuine, exhausted tooling blocker for this one
+verification step, not silently skipped or faked — the fixes are instead
+backed by real (non-mocked) pipeline-level automated tests: a real
+`ParseEngine` parse plus the real `ExportService`/cmark composition path,
+which is what actually produces the HTML a browser would render, not a
+unit test asserting against a hand-built fixture.
+
+**Residual risk update:**
+
+7. Preview inherits Textual's own bug for an escaped `\$` immediately
+   followed by real math on the same line (finding 1 above) — Export is
+   fully correct; Preview is not, and cannot be fixed without forking
+   Textual or speculatively rewriting prose this epic does not otherwise
+   touch. A candidate for a follow-up issue, not a blocker.
