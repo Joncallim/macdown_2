@@ -74,6 +74,10 @@ struct MathExportRegistryTests {
 
         #expect(prepared.bodyHTML.contains("Section"))
         #expect(prepared.bodyHTML.contains("data:image/png;base64,"))
+        // Adversarial-review finding: without explicit width/height, a
+        // browser renders the PNG at its native (3×-scaled) pixel size.
+        #expect(prepared.bodyHTML.contains("width=\""))
+        #expect(prepared.bodyHTML.contains("height=\""))
         #expect(prepared.bodyHTML.contains("alt=\"E = mc^2\""))
         #expect(prepared.bodyHTML.contains("alt=\"\na^2+b^2=c^2\n\"") || prepared.bodyHTML.contains("a^2+b^2=c^2"))
         #expect(!prepared.bodyHTML.contains("$E = mc^2$"))
@@ -81,5 +85,37 @@ struct MathExportRegistryTests {
         #expect(!prepared.bodyHTML.contains("http://"))
         #expect(!prepared.bodyHTML.contains("https://"))
         #expect(!prepared.bodyHTML.contains("<script"))
+    }
+
+    /// Adversarial-review finding, exercised through the REAL cmark
+    /// pipeline (not just `MathContribution` in isolation): before the
+    /// fix, `$x=1$` inside inline code was treated as math, and because
+    /// cmark places authored inline-code text in a CODE node while
+    /// `CMarkGFM`'s sentinel substitution only rewrites TEXT nodes, the
+    /// exported HTML showed the literal, meaningless sentinel string
+    /// instead of the author's code — active content corruption, not
+    /// merely a wrong rendering. This must no longer happen, and the
+    /// inline code's own text must survive untouched.
+    @Test func inlineCodeContainingMathLikeTextExportsAsLiteralCodeNotAnEquation() async throws {
+        let text = "Real math $y=2$ and code `$x=1$` here."
+        let parsed = try await ParseEngine().parse(text, revision: 0)
+        let registry = ContributionRegistry.standardForExport(theme: BundledThemes.light, isPrintTarget: false)
+        let results = try await registry.run(document: parsed, sourceText: text, sourceGeneration: 0)
+        let adaptation = ExportContributionAdapter.adapt(results)
+
+        #expect(adaptation.contributions.count == 1) // only the real equation, not the code-wrapped one
+
+        let request = ExportRequest(
+            text: text, sourceGeneration: 0, theme: BundledThemes.light, contributions: adaptation.contributions
+        )
+        let target = ExportTarget.html(
+            url: URL(fileURLWithPath: "/tmp/math-export-registry-inline-code-test.html"),
+            mode: .standalone(style: .embedded)
+        )
+        let prepared = try await ExportService.prepare(request, target: target)
+
+        #expect(prepared.bodyHTML.contains("<code>$x=1$</code>"))
+        #expect(prepared.bodyHTML.contains("alt=\"y=2\""))
+        #expect(!prepared.bodyHTML.contains("INLINE")) // no leaked cmark sentinel
     }
 }

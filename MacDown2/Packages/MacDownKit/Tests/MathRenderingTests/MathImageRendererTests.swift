@@ -19,18 +19,37 @@ struct MathImageRendererTests {
 
     @Test func renderProducesDecodablePNGDataForValidInlineLatex() throws {
         let span = MathSpan(range: 0 ..< 5, style: .inline, latex: "x=1")
-        let data = try MathImageRenderer.render(span: span, context: Self.context)
+        let image = try MathImageRenderer.render(span: span, context: Self.context)
 
-        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47])) // PNG magic bytes
-        let bitmap = try #require(NSBitmapImageRep(data: data))
+        #expect(image.pngData.starts(with: [0x89, 0x50, 0x4E, 0x47])) // PNG magic bytes
+        let bitmap = try #require(NSBitmapImageRep(data: image.pngData))
         #expect(bitmap.pixelsWide > 0)
         #expect(bitmap.pixelsHigh > 0)
+        #expect(image.logicalWidth > 0)
+        #expect(image.logicalHeight > 0)
     }
 
     @Test func renderProducesDecodablePNGDataForValidDisplayLatex() throws {
         let span = MathSpan(range: 0 ..< 20, style: .display, latex: "\\frac{1}{2}+\\sqrt{2}")
-        let data = try MathImageRenderer.render(span: span, context: Self.context)
-        #expect(NSBitmapImageRep(data: data) != nil)
+        let image = try MathImageRenderer.render(span: span, context: Self.context)
+        #expect(NSBitmapImageRep(data: image.pngData) != nil)
+    }
+
+    /// Adversarial-review finding: without a logical size, a browser has no
+    /// DPI hint and renders the PNG at its native (scaled) pixel size —
+    /// the logical size must be the UNSCALED bounds regardless of
+    /// `pixelScale`, so `imgTag`'s `width`/`height` describe the intended
+    /// on-screen size, not the higher-resolution bitmap behind it.
+    @Test func renderReturnsALogicalSizeIndependentOfPixelScale() throws {
+        let span = MathSpan(range: 0 ..< 5, style: .inline, latex: "x=1")
+        let unscaled = ExportMathRenderContext(foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0, pixelScale: 1)
+        let scaled = ExportMathRenderContext(foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0, pixelScale: 3)
+
+        let unscaledImage = try MathImageRenderer.render(span: span, context: unscaled)
+        let scaledImage = try MathImageRenderer.render(span: span, context: scaled)
+
+        #expect(unscaledImage.logicalWidth == scaledImage.logicalWidth)
+        #expect(unscaledImage.logicalHeight == scaledImage.logicalHeight)
     }
 
     /// `ImageRenderer` rounds the view's point-sized layout to a whole pixel
@@ -43,11 +62,11 @@ struct MathImageRendererTests {
         let unscaled = ExportMathRenderContext(foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0, pixelScale: 1)
         let scaled = ExportMathRenderContext(foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0, pixelScale: 3)
 
-        let unscaledData = try MathImageRenderer.render(span: span, context: unscaled)
-        let scaledData = try MathImageRenderer.render(span: span, context: scaled)
+        let unscaledImage = try MathImageRenderer.render(span: span, context: unscaled)
+        let scaledImage = try MathImageRenderer.render(span: span, context: scaled)
 
-        let unscaledBitmap = try #require(NSBitmapImageRep(data: unscaledData))
-        let scaledBitmap = try #require(NSBitmapImageRep(data: scaledData))
+        let unscaledBitmap = try #require(NSBitmapImageRep(data: unscaledImage.pngData))
+        let scaledBitmap = try #require(NSBitmapImageRep(data: scaledImage.pngData))
         let widthTolerance = 2
         let heightTolerance = 2
         #expect(abs(scaledBitmap.pixelsWide - unscaledBitmap.pixelsWide * 3) <= widthTolerance)
@@ -113,7 +132,7 @@ struct MathImageRendererTests {
     @Test func rendersADeeplyNestedFractionWithoutCrashingOrHanging() throws {
         let nested = (0 ..< 8).reduce("x") { inner, _ in "\\frac{1}{\(inner)}" }
         let span = MathSpan(range: 0 ..< nested.count, style: .display, latex: nested)
-        let data = try MathImageRenderer.render(span: span, context: Self.context)
-        #expect(!data.isEmpty)
+        let image = try MathImageRenderer.render(span: span, context: Self.context)
+        #expect(!image.pngData.isEmpty)
     }
 }

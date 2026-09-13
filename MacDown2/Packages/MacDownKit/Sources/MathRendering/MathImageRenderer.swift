@@ -67,7 +67,7 @@ public enum MathImageRenderer {
     /// (an accepted, bounded limitation — see
     /// `MathContributionTests.runStopsBetweenSpansWhenTheAmbientTaskIsCancelled`'s
     /// own doc comment).
-    public static func render(span: MathSpan, context: ExportMathRenderContext) throws -> Data {
+    public static func render(span: MathSpan, context: ExportMathRenderContext) throws -> RenderedMathImage {
         let style = Self.style(for: span)
         let bounds = Self.bounds(for: span)
         guard bounds.size.width > 0, bounds.size.height > 0 else {
@@ -92,6 +92,10 @@ public enum MathImageRenderer {
         guard let pngData = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
             throw MathRenderError.couldNotTypeset
         }
-        return pngData
+        return RenderedMathImage(
+            pngData: pngData,
+            logicalWidth: Double(bounds.size.width),
+            logicalHeight: Double(bounds.size.height)
+        )
     }
 }

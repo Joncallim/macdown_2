@@ -37,6 +37,14 @@ import Preview
 /// Textual's own `.math` extension still does the actual glyph rendering for
 /// every valid equation — this preprocessor never renders math itself.
 ///
+/// A span inside an inline code span (`` `$x$` ``) is excluded from BOTH
+/// treatments (`InlineCodeSpanScanner`, `Math` target — adversarial-review
+/// finding, post-merge): Textual's own real tokenizer already skips inline
+/// code correctly, but this preprocessor would otherwise rewrite the raw
+/// source BEFORE Textual gets that chance, corrupting the displayed code
+/// content with a flag marker or a newline collapse the user never
+/// authored.
+///
 /// Applied to `previewContributionSession.displayedBlocks(...)`'s result
 /// right before it is handed to `TextualMarkdownPreview(blocks:)`
 /// (`DocumentEditorSplitView.swift`) — deliberately outside the
@@ -101,7 +109,10 @@ enum MathPreviewPreprocessor {
         source: String,
         isValid: (MathSpan) -> Bool = MathImageRenderer.isRenderable
     ) -> String {
-        let spans = MathSpanScanner.scan(source).prefix(maxScannedSpansPerBlock)
+        let codeSpanRanges = InlineCodeSpanScanner.ranges(in: source)
+        let spans = MathSpanScanner.scan(source)
+            .filter { span in !codeSpanRanges.contains(where: { $0.overlaps(span.range) }) }
+            .prefix(maxScannedSpansPerBlock)
         let nsSource = source as NSString
         var result = ""
         var cursor = 0

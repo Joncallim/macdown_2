@@ -17,8 +17,12 @@ struct MathContributionTests {
         )
     }
 
+    private static func fakeImage(for latex: String) -> RenderedMathImage {
+        RenderedMathImage(pngData: Data("PNG:\(latex)".utf8), logicalWidth: 10, logicalHeight: 10)
+    }
+
     @Test func runReturnsNothingWhenSourceHasNoMath() async throws {
-        let contribution = MathContribution(context: Self.context) { _, _ in Data() }
+        let contribution = MathContribution(context: Self.context) { _, _ in Self.fakeImage(for: "") }
         let results = try await contribution.run(
             document: Self.document(),
             sourceText: "no math here",
@@ -29,7 +33,7 @@ struct MathContributionTests {
 
     @Test func runProducesOneHTMLResultPerSpanWithCorrectPlacement() async throws {
         let contribution = MathContribution(context: Self.context) { span, _ in
-            Data("PNG:\(span.latex)".utf8)
+            Self.fakeImage(for: span.latex)
         }
         let results = try await contribution.run(
             document: Self.document(), sourceText: "Inline $a=1$ and $$b=2$$ display.", sourceGeneration: 7
@@ -66,7 +70,7 @@ struct MathContributionTests {
             if span.latex == "bad" {
                 throw MathRenderError.couldNotTypeset
             }
-            return Data("PNG:\(span.latex)".utf8)
+            return Self.fakeImage(for: span.latex)
         }
         let results = try await contribution.run(
             document: Self.document(), sourceText: "$bad$ then $good$", sourceGeneration: 0
@@ -97,7 +101,7 @@ struct MathContributionTests {
             if span.latex == "second" {
                 throw CancellationError()
             }
-            return Data()
+            return Self.fakeImage(for: span.latex)
         }
 
         await #expect(throws: CancellationError.self) {
@@ -125,7 +129,7 @@ struct MathContributionTests {
     @Test func runStopsBetweenSpansWhenTheAmbientTaskIsCancelled() async {
         let contribution = MathContribution(context: Self.context) { _, _ in
             try await Task.sleep(for: .seconds(3600))
-            return Data()
+            return Self.fakeImage(for: "")
         }
 
         let task = Task {
@@ -153,7 +157,7 @@ struct MathContributionTests {
     @Test func runExcludesASpanInsideAFencedCodeBlock() async throws {
         let text = "Real math: $x=1$.\n\n```\nprice is $5, $10\n```\n"
         let parsed = try await ParseEngine().parse(text, revision: 0)
-        let contribution = MathContribution(context: Self.context) { span, _ in Data("PNG:\(span.latex)".utf8) }
+        let contribution = MathContribution(context: Self.context) { span, _ in Self.fakeImage(for: span.latex) }
 
         let results = try await contribution.run(document: parsed, sourceText: text, sourceGeneration: 0)
 
@@ -168,7 +172,7 @@ struct MathContributionTests {
     @Test func runExcludesEveryMathLikeSpanInsideAFencedCodeBlockEvenWhenNoOtherMathExists() async throws {
         let text = "```\n$5, $10\n```\n"
         let parsed = try await ParseEngine().parse(text, revision: 0)
-        let contribution = MathContribution(context: Self.context) { _, _ in Data() }
+        let contribution = MathContribution(context: Self.context) { _, _ in Self.fakeImage(for: "") }
 
         let results = try await contribution.run(document: parsed, sourceText: text, sourceGeneration: 0)
 
@@ -182,14 +186,66 @@ struct MathContributionTests {
     }
 
     @Test func imgTagEscapesHTMLSignificantCharactersInAlt() {
-        let tag = MathContribution.imgTag(pngData: Data([0x01]), alt: "a < b & \"c\"")
+        let image = RenderedMathImage(pngData: Data([0x01]), logicalWidth: 10, logicalHeight: 10)
+        let tag = MathContribution.imgTag(image: image, alt: "a < b & \"c\"")
         #expect(tag.contains("alt=\"a &lt; b &amp; &quot;c&quot;\""))
         #expect(!tag.contains("< b"))
     }
 
     @Test func imgTagEmbedsBase64EncodedPNGData() {
         let data = Data([0xDE, 0xAD, 0xBE, 0xEF])
-        let tag = MathContribution.imgTag(pngData: data, alt: "x")
+        let image = RenderedMathImage(pngData: data, logicalWidth: 10, logicalHeight: 10)
+        let tag = MathContribution.imgTag(image: image, alt: "x")
         #expect(tag.contains("data:image/png;base64,\(data.base64EncodedString())"))
+    }
+
+    /// Adversarial-review finding: a browser has no DPI hint without
+    /// explicit `width`/`height`, so it renders the PNG at its native
+    /// PIXEL size — `pixelScale`× too large. These must reflect the
+    /// LOGICAL size, rounded to the nearest whole CSS pixel.
+    @Test func imgTagEmitsLogicalWidthAndHeightNotPixelDimensions() {
+        let image = RenderedMathImage(pngData: Data([0x01]), logicalWidth: 34.2, logicalHeight: 17.6)
+        let tag = MathContribution.imgTag(image: image, alt: "x")
+        #expect(tag.contains("width=\"34\""))
+        #expect(tag.contains("height=\"18\""))
+    }
+
+    /// Adversarial-review finding: inline code (`` `$x$` ``) inside an
+    /// ordinary paragraph is not a top-level code block, so
+    /// `excludedRanges(in:)` alone does not protect it — `run` must also
+    /// consult `InlineCodeSpanScanner`. Without this, cmark places the
+    /// authored code in a CODE node, but the sentinel substitution only
+    /// rewrites TEXT nodes, so the exported document would show the raw
+    /// sentinel string instead of the author's literal code.
+    @Test func runExcludesASpanInsideInlineCodeWithinAnOrdinaryParagraph() async throws {
+        let text = "Real math $y=2$ and code `$x=1$` here."
+        let parsed = try await ParseEngine().parse(text, revision: 0)
+        let contribution = MathContribution(context: Self.context) { span, _ in Self.fakeImage(for: span.latex) }
+
+        let results = try await contribution.run(document: parsed, sourceText: text, sourceGeneration: 0)
+
+        #expect(results.count == 1)
+        guard case let .html(html) = results.first?.content?.representation else {
+            Issue.record("expected .html representation")
+            return
+        }
+        #expect(html.contains("alt=\"y=2\""))
+    }
+
+    /// Adversarial-review finding: an escaped `\$` immediately followed by
+    /// a real equation on the same line must not be absorbed as a phantom
+    /// span that swallows the real equation's opening delimiter.
+    @Test func runFindsTheRealEquationAfterAnEscapedDollarRatherThanAPhantomSpan() async throws {
+        let text = "Price: \\$5 and $x=1$ today."
+        let contribution = MathContribution(context: Self.context) { span, _ in Self.fakeImage(for: span.latex) }
+
+        let results = try await contribution.run(document: Self.document(), sourceText: text, sourceGeneration: 0)
+
+        #expect(results.count == 1)
+        guard case let .html(html) = results.first?.content?.representation else {
+            Issue.record("expected .html representation")
+            return
+        }
+        #expect(html.contains("alt=\"x=1\""))
     }
 }
