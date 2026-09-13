@@ -32,19 +32,20 @@ struct ExportContributionAdapterTests {
         #expect(adaptation.contributions.first?.placement == .inline)
     }
 
-    /// `.html` is a real, typed case no adapter in this epic handles yet
-    /// (epic-14-implementation.md §18): it must not silently vanish, and it
-    /// must not place unrendered content either — DerivedContentComposer's
-    /// existing empty-html rejection preserves the authored source.
-    @Test func anHTMLRepresentationProducesEmptyHTMLWithADiagnostic() {
+    /// `.html` is passed through verbatim (epic-19-implementation.md §6.2):
+    /// `MathContribution` already renders a self-contained fragment, so
+    /// there is nothing left for this adapter to do beyond forwarding it —
+    /// and, unlike the old rejecting behaviour, no diagnostic is invented
+    /// for a case this adapter now genuinely supports.
+    @Test func anHTMLRepresentationIsPassedThroughVerbatim() {
         let content = ContributionContent(sourceRange: 0 ..< 3, placement: .block, representation: .html("<p>x</p>"))
-        let result = ContributionResult(contributionID: "future", content: content, sourceGeneration: 1)
+        let result = ContributionResult(contributionID: "math", content: content, sourceGeneration: 1)
 
         let adaptation = ExportContributionAdapter.adapt([result])
 
         #expect(adaptation.contributions.count == 1)
-        #expect(adaptation.contributions.first?.html.isEmpty == true)
-        #expect(adaptation.contributions.first?.diagnostics.contains { $0.severity == .error } == true)
+        #expect(adaptation.contributions.first?.html == "<p>x</p>")
+        #expect(adaptation.contributions.first?.diagnostics.isEmpty == true)
     }
 
     /// Architecture takeover, pass 9/10: a `content == nil` result has no

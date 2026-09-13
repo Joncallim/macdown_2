@@ -300,16 +300,19 @@ private struct BlockView: View {
                 // `![plot](images/plot.png)`) during parsing. `linkResolver`
                 // carries the same document base URL used to resolve clicked
                 // links, so both paths agree on what "relative" means.
-                StructuredText(renderedSource, parser: PreviewMarkupParser(baseURL: linkResolver.baseURL))
-                    .tint(theme.linkColor.swiftUIColor)
-                    .environment(
-                        \.openURL,
-                        OpenURLAction { url in
-                            let resolved = linkResolver.resolve(url)
-                            NSWorkspace.shared.open(resolved)
-                            return .handled
-                        }
-                    )
+                StructuredText(
+                    renderedSource,
+                    parser: PreviewMarkupParser(baseURL: linkResolver.baseURL, syntaxExtensions: [.math])
+                )
+                .tint(theme.linkColor.swiftUIColor)
+                .environment(
+                    \.openURL,
+                    OpenURLAction { url in
+                        let resolved = linkResolver.resolve(url)
+                        NSWorkspace.shared.open(resolved)
+                        return .handled
+                    }
+                )
             }
         }
         .foregroundStyle(theme.foreground.swiftUIColor)

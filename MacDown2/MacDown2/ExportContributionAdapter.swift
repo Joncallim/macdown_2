@@ -19,15 +19,12 @@ enum ExportContributionAdapter {
     }
 
     /// Renders each placeable result's `.markdown` representation via
-    /// `ExportService.renderMarkdownFragment`. `.html` is a real, typed
-    /// case no adapter in this epic handles yet
-    /// (epic-14-implementation.md §18): rather than silently dropping it,
-    /// this still constructs a contribution with empty `html` — which
-    /// `DerivedContentComposer`'s existing empty-html rejection already
-    /// preserves authored source for — plus a diagnostic explaining why,
-    /// so the first contribution that actually produces `.html` is
-    /// visibly incomplete rather than silently missing from the export.
-    /// The switch below has no `default:` case, so a third
+    /// `ExportService.renderMarkdownFragment`. `.html` is passed through
+    /// verbatim as `ExportDerivedContribution.html` — `MathContribution`
+    /// (E19, `Math` target) is the first producer of this case, and its
+    /// fragment is already a self-contained `<img src="data:...">` string,
+    /// so there is nothing further to render (epic-19-implementation.md
+    /// §6.2). The switch below has no `default:` case, so a third
     /// `ContributionRepresentation` case fails to compile here until this
     /// adapter is updated to decide what it means.
     ///
@@ -48,17 +45,12 @@ enum ExportContributionAdapter {
             }
 
             let html: String
-            var diagnostics = result.diagnostics.map(exportDiagnostic)
+            let diagnostics = result.diagnostics.map(exportDiagnostic)
             switch content.representation {
             case let .markdown(markdown):
                 html = ExportService.renderMarkdownFragment(markdown)
-            case .html:
-                html = ""
-                diagnostics.append(ExportDiagnostic(
-                    severity: .error,
-                    message: "\(result.contributionID) produced an HTML representation, "
-                        + "which export does not support yet; authored source preserved"
-                ))
+            case let .html(fragment):
+                html = fragment
             }
 
             contributions.append(ExportDerivedContribution(

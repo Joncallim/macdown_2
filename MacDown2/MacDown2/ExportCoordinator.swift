@@ -181,7 +181,7 @@ struct ExportCoordinator {
         document: FileCore.FileDocument,
         selection: ExportSelection
     ) async throws -> ExportOutcome {
-        let adaptation = try await exportContributionAdaptation(for: document)
+        let adaptation = try await exportContributionAdaptation(for: document, isPrintTarget: selection.format == .pdf)
         let request = ExportRequest(
             text: document.text,
             sourceGeneration: document.mutationGeneration,
@@ -228,12 +228,24 @@ struct ExportCoordinator {
     /// of Preview, today, before this epic (epic-14-implementation.md §7.1).
     /// One extra parse per export, accepted as proportionally negligible
     /// next to export's other costs (§1 risk 2, §11).
+    ///
+    /// `.standardForExport(theme:isPrintTarget:)`, not `.standard` — E19's
+    /// `MathContribution` runs for Export only (epic-19-implementation.md
+    /// §4 invariant 5, §6.3). `isPrintTarget` selects a print-safe fixed
+    /// equation color for PDF, matching `structural.css`'s own `@media
+    /// print` override of every theme's foreground for the same reason —
+    /// see `ContributionRegistry.standardForExport`'s doc comment.
     private func exportContributionAdaptation(
-        for document: FileCore.FileDocument
+        for document: FileCore.FileDocument,
+        isPrintTarget: Bool
     ) async throws -> ExportContributionAdapter.Adaptation {
         let revision = Int(exactly: document.mutationGeneration) ?? Int.max
         let parsed = try await ParseEngine().parse(document.text, revision: revision)
-        let results = try await ContributionRegistry.standard.run(
+        let registry = ContributionRegistry.standardForExport(
+            theme: themeController.current,
+            isPrintTarget: isPrintTarget
+        )
+        let results = try await registry.run(
             document: parsed, sourceText: document.text, sourceGeneration: document.mutationGeneration
         )
         return ExportContributionAdapter.adapt(results)

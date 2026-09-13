@@ -44,6 +44,10 @@ targets:
       product: Contributions
     - package: MacDownKit
       product: TextFilters
+    - package: MacDownKit
+      product: Math
+    - package: MacDownKit
+      product: MathRendering
     settings:
       configs:
         Release:
@@ -187,6 +191,10 @@ targets:
       product: Preview
     - package: MacDownKit
       product: TextFilters
+    - package: MacDownKit
+      product: Math
+    - package: MacDownKit
+      product: MathRendering
     settings:
       base:
         GENERATE_INFOPLIST_FILE: 'YES'
