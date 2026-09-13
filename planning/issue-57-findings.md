@@ -554,6 +554,20 @@ here: the code path is unchanged by this PR, and this PR's own new
 `.saveFailed` banner already correctly covers the immediate-save-after-
 deletion case regardless of how #59 resolves.
 
+**Update:** once the environment's XCUITest permission blocker resolved
+(see "Real Release-app verification" above), running the existing
+`MacDown2UITests/ExternalFileChangesUITests` suite for real (not
+build-only) showed **all 6 of its tests fail** the same way — not just the
+backing-unavailable scenario, but clean reloads and dirty conflicts too.
+Each test's own initial "the document loaded" sanity check passes; the
+failure is specifically the next assertion, waiting for the UI to reflect
+a real external file change. This is materially stronger and broader
+evidence than the manual observation above: it rules out
+concurrent-machine-load as the explanation (a real XCUITest run has no
+such confound) and shows the gap is not specific to deletion. Posted to
+#59 and reflected in `planning/RELEASE_EVIDENCE.md`'s E18 row as executed,
+failing evidence — not a mere observation.
+
 ### Fixtures and cleanup
 
 All fixtures lived under `/tmp/macdown2-e2e-fixtures/` (test documents) and
