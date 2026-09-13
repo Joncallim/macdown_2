@@ -75,9 +75,12 @@ requiring a manual notification mechanism.
 
 - Update-channel preferences (Sparkle) — E17.
 - Any plugin/extension/text-filter preferences — E14.
-- A font/theme *editor* — the Theme pane reuses the existing theme picker
-  (`ThemeController`); building or importing new themes is O4/E07 scope, not
-  E13.
+- A font/theme *editor*, or a dedicated Theme pane at all — **as shipped
+  (corrected 2026-09-14; this line originally described the pre-implementation
+  plan, not the result), theme selection stayed exactly where it already
+  was, the pre-existing menu command backed by `ThemeController`, and
+  Settings does not duplicate it with a new pane.** Building or importing
+  new themes remains O4/E07 scope, not E13.
 - Toggles for the five non-functional `MarkdownParseOptions` fields.
 - Export template selection, export resource budgets, or any other
   composer-owned export input.
@@ -261,9 +264,13 @@ that target.
   rather than guessing at key names under time pressure. Full detail in
   §18.
 - **Issue #14's "Font/theme pickers integrate with the theme system
-  (E05/E07)" acceptance criterion** is satisfied by the Theme pane
-  presenting the *existing* `ThemeController`, not by Settings owning a new
-  theme concept.
+  (E05/E07)" acceptance criterion** is satisfied by leaving theme selection
+  in its pre-existing menu command (`ThemeController`) untouched — **not**,
+  as originally planned here, by a dedicated Theme pane inside Settings;
+  no such pane was built (corrected 2026-09-14, reconciling this document
+  against `SettingsView.swift`'s actual 5 panes: General, Editor, Markdown,
+  Preview & Export, Formats). Settings does not own or duplicate a theme
+  concept either way.
 
 ### 2.3 Dependencies and follow-ups this epic intersects
 
