@@ -70,4 +70,39 @@ struct MathImageRendererTests {
             _ = try MathImageRenderer.render(span: span, context: Self.context)
         }
     }
+
+    /// `isRenderable` is what `MathPreviewPreprocessor` (app target) uses to
+    /// decide whether Preview should flag a span (epic-19-implementation.md
+    /// §6.1) — it must agree exactly with what `render` would do, since both
+    /// consult the same shared bounds check.
+    @Test func isRenderableAgreesWithRenderForValidLatex() {
+        let span = MathSpan(range: 0 ..< 5, style: .inline, latex: "x=1")
+        #expect(MathImageRenderer.isRenderable(span))
+    }
+
+    @Test func isRenderableAgreesWithRenderForMalformedLatex() {
+        let span = MathSpan(range: 0 ..< 10, style: .inline, latex: "\\frac{1}{")
+        #expect(!MathImageRenderer.isRenderable(span))
+    }
+
+    @Test func isRenderableIsFalseForEmptyLatex() {
+        let span = MathSpan(range: 0 ..< 2, style: .display, latex: "")
+        #expect(!MathImageRenderer.isRenderable(span))
+    }
+
+    @Test func isRenderableIsTrueForADisplayEquation() {
+        let span = MathSpan(range: 0 ..< 20, style: .display, latex: "\\frac{1}{2}+\\sqrt{2}")
+        #expect(MathImageRenderer.isRenderable(span))
+    }
+
+    /// Export's half of the Preview/Export parity requirement
+    /// (epic-19-implementation.md §2.1, §7.1): every case in the shared
+    /// `MathParityCorpus` must agree with `isRenderable` exactly.
+    /// `MathPreviewPreprocessorTests` (app target) runs the SAME corpus
+    /// through Preview's own path.
+    @Test(arguments: MathParityCorpus.cases)
+    func isRenderableMatchesTheSharedParityCorpus(_ testCase: MathParityCorpus.Case) {
+        let span = MathSpan(range: 0 ..< 1, style: testCase.style, latex: testCase.latex)
+        #expect(MathImageRenderer.isRenderable(span) == testCase.isRenderable, "\(testCase.comment)")
+    }
 }

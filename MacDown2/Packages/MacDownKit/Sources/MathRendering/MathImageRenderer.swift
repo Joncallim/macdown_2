@@ -24,7 +24,32 @@ public enum MathImageRenderer {
     /// `ExportMathRenderContext` (`MathExportRegistry.swift`, app target).
     public nonisolated static let standardScale: CGFloat = 3
 
-    private static let font = SwiftUIMath.Math.Font(name: .latinModern, size: 18)
+    /// `nonisolated`: read by `isRenderable(_:)` too, which must be callable
+    /// without a main-actor hop (Preview's malformed-equation check runs
+    /// synchronously inside SwiftUI `body` evaluation, epic-19-implementation.md
+    /// §6.1/§8).
+    private nonisolated static let font = SwiftUIMath.Math.Font(name: .latinModern, size: 18)
+
+    private nonisolated static func style(for span: MathSpan) -> SwiftUIMath.Math.TypesettingStyle {
+        span.style == .inline ? .text : .display
+    }
+
+    private nonisolated static func bounds(for span: MathSpan) -> SwiftUIMath.Math.TypographicBounds {
+        SwiftUIMath.Math.typographicBounds(
+            for: span.latex, fitting: ProposedViewSize(width: nil, height: nil), font: font, style: style(for: span)
+        )
+    }
+
+    /// The one failure signal available for a math span
+    /// (epic-19-implementation.md §2.1): `SwiftUIMath` exposes no structured
+    /// parse error, only "measured to zero size." Shared by `render(span:
+    /// context:)` below and by Preview's `MathPreviewPreprocessor` (app
+    /// target), so both consult the exact same check rather than risking
+    /// two independently-written validity rules drifting apart.
+    public nonisolated static func isRenderable(_ span: MathSpan) -> Bool {
+        let size = bounds(for: span).size
+        return size.width > 0 && size.height > 0
+    }
 
     /// Matches the `MathImageRendering` typealias (`Math` target) so this
     /// can be passed directly as `MathContribution`'s injected renderer;
@@ -35,11 +60,8 @@ public enum MathImageRenderer {
     /// §3.7's own "only UI snapshot/save-panel state and WebKit/AppKit/
     /// PDFKit work are main-actor" rule).
     public static func render(span: MathSpan, context: ExportMathRenderContext) throws -> Data {
-        let style: SwiftUIMath.Math.TypesettingStyle = span.style == .inline ? .text : .display
-
-        let bounds = SwiftUIMath.Math.typographicBounds(
-            for: span.latex, fitting: ProposedViewSize(width: nil, height: nil), font: font, style: style
-        )
+        let style = Self.style(for: span)
+        let bounds = Self.bounds(for: span)
         guard bounds.size.width > 0, bounds.size.height > 0 else {
             throw MathRenderError.couldNotTypeset
         }

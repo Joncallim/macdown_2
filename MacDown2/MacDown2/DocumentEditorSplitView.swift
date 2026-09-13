@@ -281,8 +281,10 @@ struct DocumentEditorSplitView: View {
                 theme: PreviewTheme(theme: themeController.current),
                 linkResolver: PreviewLinkResolver(baseURL: document.fileURL),
                 controller: scrollController,
-                blocks: previewContributionSession.displayedBlocks(
-                    baseBlocks: previewBlocks, currentRevision: parseSession.document?.revision
+                blocks: MathPreviewPreprocessor.preprocessed(
+                    previewContributionSession.displayedBlocks(
+                        baseBlocks: previewBlocks, currentRevision: parseSession.document?.revision
+                    )
                 ),
                 linkDefinitions: previewLinkDefinitions
             )
