@@ -17,6 +17,41 @@ struct MathPreviewPreprocessorTests {
         #expect(MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true }) == source)
     }
 
+    @Test func leavesAValidSingleLineDisplayEquationByteForByteUntouched() {
+        let source = "$$\\frac{1}{2}+\\sqrt{2}$$"
+        #expect(MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true }) == source)
+    }
+
+    /// Confirmed via real Release-app dogfood (epic-19-implementation.md
+    /// §17 Slice 3 as-built note): Textual's `PatternProcessor` tokenizes
+    /// each `AttributedString` run separately, and Foundation's Markdown
+    /// parser puts each soft-line-broken line of a paragraph in its own
+    /// run — so a `$$` spanning multiple lines is invisible to Textual's
+    /// tokenizer even though `MathSpanScanner` (and Export's
+    /// `MathContribution`) both already handle it correctly. Collapsing the
+    /// internal newlines to spaces is what fixes this, since LaTeX math
+    /// mode assigns no meaning to that whitespace.
+    @Test func collapsesInternalNewlinesInAValidMultiLineDisplayEquation() {
+        let source = "$$\n\\frac{1}{2}+\\sqrt{2}\n$$"
+        let result = MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true })
+        #expect(result == "$$ \\frac{1}{2}+\\sqrt{2} $$")
+        #expect(!result.contains("\n"))
+    }
+
+    @Test func collapsesOnlyTheMultiLineSpanLeavingSurroundingTextAndOtherSpansAlone() {
+        let source = "before\n\n$$\nfoo\n$$\n\nafter $x=1$ end"
+        let result = MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true })
+        #expect(result == "before\n\n$$ foo $$\n\nafter $x=1$ end")
+    }
+
+    /// A malformed multi-line span is flagged, not newline-collapsed —
+    /// `isValid` is checked first, so a span never gets both treatments.
+    @Test func flagsAMalformedMultiLineSpanRatherThanCollapsingIt() {
+        let source = "$$\nbad\n$$"
+        let result = MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in false })
+        #expect(result == MathPreviewPreprocessor.invalidMathMarker)
+    }
+
     @Test func replacesAnInvalidSpanWithTheVisibleMarkerPreservingSurroundingText() {
         let source = "before $bad$ after"
         let result = MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in false })

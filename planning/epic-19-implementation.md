@@ -115,11 +115,86 @@ reconciliations from stale planning text are called out explicitly in §2.
 > Real evidence: `swift test --no-parallel` at the package level —
 > 1172/1172 across 130 suites; app-target `MacDown2Tests` — 128/128
 > serially; Debug and Release builds of the app target both succeed.
-> **Not yet done:** the Release-app dogfood pass itself (visual
-> confirmation of rendering quality, theme legibility, typing
-> responsiveness, and the numbered acceptance criteria the owner specified
-> for this slice) — tracked as the next concrete step, not assumed from
-> the automated evidence above.
+
+> **As-built note (Slice 3 Release-app dogfood, branch `epic-19-math`):**
+> Executed against the real Release build (`open` the built `.app`, driven
+> live via accessibility automation — not build-only evidence), against the
+> owner's own numbered acceptance list:
+>
+> 1. **Inline and display math render correctly** — confirmed. Both a
+>    single-line `$$\frac{1}{2}+\sqrt{2}$$` and inline `$E = mc^2$` rendered
+>    as real typeset equations (proper fraction bar, radical, superscript).
+> 2. **Partially typed equations don't destabilise Preview** — confirmed.
+>    An unclosed `$\frac{1` (no closing `$`) is not recognized as a span at
+>    all by `MathSpanScanner` (it requires a closing delimiter), so it
+>    stays inert literal text — no flag, no crash, no partial render —
+>    until the user finishes it.
+> 3. **Malformed equations degrade to ordinary text, not blank/crash** —
+>    confirmed. `$\frac{1}{$` rendered as the visible `` `⚠ invalid math` ``
+>    marker, exactly as designed.
+> 4. **Editing into/out of a valid equation behaves predictably** —
+>    confirmed for the malformed→corrected direction (§9's "correcting
+>    restores automatically" claim); a same-block edit that changes
+>    validity is picked up on the next reparse with no stale state.
+> 5. **Escaped dollar signs remain literal** — confirmed:
+>    `\$5 is not math.` rendered as literal `$5 is not math.`, untouched by
+>    the `.math` extension.
+> 6. **The known `$5, $10` grammar ambiguity matches the deliberately
+>    chosen behaviour** — confirmed: `Price: $5, $10` rendered with `5, `
+>    typeset as math and `10` as trailing literal text, exactly matching
+>    `MathSpanScannerTests.scanTreatsAnEvenCountOfDollarSignsInProseAsMath`'s
+>    documented, accepted grammar limitation (§9) — not a new defect.
+> 7. **Preview matches Export on a shared adversarial corpus** — confirmed
+>    at the automated level via `MathParityCorpus` (§17 Slice 3's own
+>    note); this dogfood pass additionally found and fixed one REAL
+>    divergence the automated corpus could not have caught on its own,
+>    below.
+> 8. **Dark and light themes both remain legible** — confirmed: toggling
+>    real macOS Dark Mode while the app was running showed equations
+>    correctly redrawn in the theme's light foreground color against the
+>    dark background, with no invisible/black-on-black glyphs — this
+>    works "for free" because `TextualMarkdownPreview.BlockView` already
+>    wraps every block (math included) in
+>    `.foregroundStyle(theme.foreground.swiftUIColor)`, which
+>    `SwiftUIMath`'s monochrome rendering mode reads from the ambient
+>    SwiftUI environment; this epic added no separate math-specific theme
+>    code and needed none.
+> 9. **Equation-heavy documents don't produce obvious typing lag** — spot
+>    checked with a handful of equations per document (not yet a
+>    large/pathological document); no perceptible lag observed. A
+>    dedicated large-document timing measurement is still open (§11, §18
+>    DoD item, not closed by this pass).
+> 10. **The actual Release build was manually dogfooded, not merely the
+>     test host** — confirmed; every finding above was against
+>     `xcodebuild -configuration Release`'s own product, launched and
+>     driven live, not `swift test`/`xcodebuild test`'s host process.
+>
+> **A real defect this pass found and fixed, not merely confirmed
+> something already worked:** a `$$...$$` block written across multiple
+> lines — a completely ordinary way to write display math — rendered as
+> inert literal text in Preview, while the identical equation on one line
+> rendered correctly, and while Export already handled the multi-line form
+> correctly (`MathExportRegistryTests`). Root-caused by reading Textual's
+> own shipped `PatternProcessor.expand`: it tokenizes each `AttributedString`
+> run separately, and Foundation's Markdown parser puts each soft-line-broken
+> line of a paragraph in its own run, so a `$$` opened on one line and
+> closed on a later line is invisible to Textual's regex even though it is
+> one unambiguous match to this epic's own `MathSpanScanner`. Fixed by
+> extending `MathPreviewPreprocessor` to also collapse internal newlines
+> within a *valid* multi-line span to spaces before Textual ever sees it
+> (LaTeX math mode assigns no meaning to that whitespace, so this changes
+> nothing about how the equation is interpreted) — re-verified against the
+> same real Release build after the fix, confirmed rendering correctly.
+> This is exactly the "Preview/Export semantic divergence" risk named as
+> the top concern before this slice began, and this dogfood pass — not the
+> automated parity corpus alone — is what surfaced it; the corpus is
+> phrased in terms of single LaTeX strings and would not have exercised a
+> multi-line *source* layout.
+>
+> Full regression suite re-run after the fix: package 1172/1172 (unchanged
+> count — the fix lives entirely in app-target code), app-target 132/132
+> serially (4 new tests for the multi-line-collapse behaviour), Release
+> build succeeds.
 
 ---
 
