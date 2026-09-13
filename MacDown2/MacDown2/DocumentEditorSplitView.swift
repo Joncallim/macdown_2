@@ -98,8 +98,23 @@ struct DocumentEditorSplitView: View {
                 await loadInitialContent()
             }
             .onChange(of: text) { _, newText in
-                parseSession.textDidChange(newText)
-                jsonSession.textDidChange(newText)
+                // #35: only the format that can actually consume the result
+                // pays for it. Before this gate, every keystroke in ANY
+                // format (a Python file, a JSON file, plain text) built a
+                // full swift-markdown AST/SourceMap AND ran a full JSON
+                // analysis, discarding whichever (or both) outputs the
+                // active format's preview/outline never reads — confirmed
+                // by `previewPane`'s own switch (only `.markdown` reads
+                // `parseSession`, only `.jsonOutline` reads `jsonSession`)
+                // and `refreshOutline`/`refreshJSONOutline`'s existing
+                // format gates, which already tolerate `document`/`result`
+                // staying `nil` for a format they don't apply to.
+                if isMarkdown {
+                    parseSession.textDidChange(newText)
+                }
+                if isJSON {
+                    jsonSession.textDidChange(newText)
+                }
             }
             .onChange(of: document.format.id) { _, _ in
                 // Save As format transitions re-gate both outline channels so
@@ -121,6 +136,10 @@ struct DocumentEditorSplitView: View {
                 refreshJSONOutline()
             }
             .onChange(of: appSettings?.markdown) { _, newValue in
+                // #35: `setOptions` reparses immediately (`textDidChange`
+                // internally) — a Markdown-settings change must not trigger
+                // a needless parse of a non-Markdown document's text.
+                guard isMarkdown else { return }
                 parseSession.setOptions(Self.markdownParseOptions(from: newValue))
             }
     }
@@ -175,11 +194,19 @@ struct DocumentEditorSplitView: View {
     /// debounce) and refresh both outline channels. Split out of `.task(id:)`
     /// so the compiler can type-check the view body.
     private func loadInitialContent() async {
-        parseSession.setOptions(Self.markdownParseOptions(from: appSettings?.markdown))
-        await parseSession.parseNow(text)
-        refreshPreviewBlocks()
+        // #35: mirrors the `.onChange(of: text)` gate above — a non-Markdown,
+        // non-JSON document (or a JSON document, for the Markdown side, and
+        // vice versa) never reaches either parser, on open or on any later
+        // edit.
+        if isMarkdown {
+            parseSession.setOptions(Self.markdownParseOptions(from: appSettings?.markdown))
+            await parseSession.parseNow(text)
+            refreshPreviewBlocks()
+        }
         refreshOutline()
-        await jsonSession.analyzeNow(text)
+        if isJSON {
+            await jsonSession.analyzeNow(text)
+        }
         refreshJSONOutline()
     }
 
