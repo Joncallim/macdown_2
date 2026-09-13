@@ -10,6 +10,54 @@ This document is written directly against current `master` source, not
 against the aspirational shapes described in earlier planning prose. Two
 reconciliations from stale planning text are called out explicitly in §2.
 
+> **As-built note (Slices 1-2, branch `epic-19-math`):** Slice 1
+> (`Math` package target: `MathSpan`, `MathSpanScanner`, `MathContribution`)
+> and Slice 2 (Export wiring) are implemented, with two deliberate shape
+> changes discovered during implementation, neither altering any binding
+> contract in §4-§10:
+>
+> - **`MathImageRenderer` lives in a new SPM package target,
+>   `MathRendering`** (dependencies: `Math`, and an explicit new
+>   `.package(url: ".../gonzalezreal/swiftui-math", exact: "0.1.0")` pin —
+>   resolving §16's own "to be confirmed" question: `textual` does not
+>   re-export `SwiftUIMath` as one of its own products, so a direct pin was
+>   required), not in the app target as §5/§6.2/§16 originally sketched.
+>   `ImageRenderer`/`SwiftUIMath` import and use cleanly from a plain SPM
+>   target on this platform, and doing it this way means
+>   `MathRenderingTests` exercises **real, non-faked** `ImageRenderer`
+>   rendering under `swift test` — including the malformed-LaTeX failure
+>   path — with no `xcodebuild`/app-target dependency at all. The app
+>   target's own responsibility shrinks to one small wiring file,
+>   `MathExportRegistry.swift` (`ContributionRegistry.standardForExport
+>   (theme:)`), plus the already-planned `ExportContributionAdapter`/
+>   `ExportCoordinator` call-site changes.
+> - **`ExportMathRenderContext` carries `foregroundRed/Green/Blue: Double`,
+>   not `foregroundHex: String`.** `Themes.ThemeColor` (what the app
+>   actually has) is already RGB doubles; hex was a needless lossy
+>   round-trip this correction removes, with no change to which package
+>   owns the type or why (`Math` still has no dependency on `Themes`,
+>   §5 — the app-layer wiring converts `ThemeColor` → these three
+>   `Double`s at the `MathExportRegistry.swift` call site).
+>
+> Both required one non-code change: `MacDown2.xcodeproj`'s `MacDown2` and
+> `MacDown2Tests` native targets now link the `Math` and `MathRendering`
+> package products (added via the `xcodeproj` Ruby gem rather than by
+> hand-editing `project.pbxproj`, to avoid a slip in its generated UUIDs).
+>
+> Real evidence so far: `swift test --no-parallel` at the package level —
+> 1167/1167 across 130 suites (was 1162/129 before this epic); real
+> `ImageRenderer` rendering confirmed working end-to-end, including a
+> genuine, previously-unverified rounding discovery (`ImageRenderer` snaps
+> point-to-pixel independently per `scale`, so `3×` output is not always
+> bit-exact `3×` the `1×` pixel count — `MathImageRendererTests` asserts a
+> small tolerance, not exact equality, for this reason); app-target
+> `MacDown2Tests` — 115/115 serially (`-parallel-testing-enabled NO`; three
+> pre-existing, unrelated `ExternalFileController*`/`WindowCoordinatorSaveAs*`
+> tests are flaky specifically under parallel execution, reproduced and
+> confirmed unrelated to this epic by passing individually and passing
+> serially); Debug and Release builds of the app target both succeed.
+> Preview integration (Slice 3) and Release-app dogfood are not done yet.
+
 ---
 
 ## 1. Owner summary

@@ -20,6 +20,7 @@ let package = Package(
         .library(name: "Contributions", targets: ["Contributions"]),
         .library(name: "TextFilters", targets: ["TextFilters"]),
         .library(name: "Math", targets: ["Math"]),
+        .library(name: "MathRendering", targets: ["MathRendering"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
@@ -60,6 +61,13 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-cmark", exact: "0.8.0"),
         .package(url: "https://github.com/jpsim/Yams", exact: "6.2.2"),
         .package(url: "https://github.com/gonzalezreal/textual", exact: "0.5.0"),
+        // Only a transitive dependency of `textual` (via its own Package.swift)
+        // until this pin: `textual` does not re-export `SwiftUIMath` as one of
+        // its own products, so `MathRendering` (below) needs this explicit,
+        // same-version pin to import it directly (epic-19-implementation.md
+        // §16). Pinned to the exact version `textual` 0.5.0 itself requests
+        // (`from: "0.1.0"`), so SwiftPM resolves one shared copy, not two.
+        .package(url: "https://github.com/gonzalezreal/swiftui-math", exact: "0.1.0"),
     ],
     targets: [
         .target(name: "FileCore"),
@@ -124,6 +132,13 @@ let package = Package(
         .target(name: "Contributions", dependencies: ["MarkdownEngine"]),
         .target(name: "TextFilters"),
         .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(
+            name: "MathRendering",
+            dependencies: [
+                "Math",
+                .product(name: "SwiftUIMath", package: "swiftui-math"),
+            ]
+        ),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),
@@ -140,5 +155,6 @@ let package = Package(
         .testTarget(name: "ContributionsTests", dependencies: ["Contributions", "MarkdownEngine"]),
         .testTarget(name: "TextFiltersTests", dependencies: ["TextFilters"]),
         .testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"]),
+        .testTarget(name: "MathRenderingTests", dependencies: ["MathRendering"]),
     ]
 )

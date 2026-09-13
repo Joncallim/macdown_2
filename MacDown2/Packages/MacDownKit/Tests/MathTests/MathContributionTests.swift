@@ -6,7 +6,9 @@ import Testing
 
 @Suite("MathContribution")
 struct MathContributionTests {
-    private static let context = ExportMathRenderContext(foregroundHex: "#1a1a1a", pixelScale: 3)
+    private static let context = ExportMathRenderContext(
+        foregroundRed: 0.1, foregroundGreen: 0.1, foregroundBlue: 0.1, pixelScale: 3
+    )
 
     private static func document() -> MarkdownDocument {
         MarkdownDocument(

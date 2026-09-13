@@ -7,16 +7,25 @@ import Foundation
 /// apply to every equation in the same export request), so these are
 /// threaded in once at `MathContribution.init`, not re-derived per call
 /// (epic-19-implementation.md §6.2).
+///
+/// Color is plain 0...1 RGB components — matching `Themes.ThemeColor`'s own
+/// shape exactly — rather than a hex string: `Math` (this package) has no
+/// dependency on `Themes` (§5's ownership boundary), so it cannot construct
+/// or parse a `ThemeColor` itself; the app-layer wiring that builds this
+/// context converts a real `ThemeColor` into these three `Double`s, and
+/// `MathRendering`'s `MathImageRenderer` converts them straight into a
+/// SwiftUI `Color` with no lossy hex round-trip in between.
 public struct ExportMathRenderContext: Sendable, Equatable {
-    /// e.g. `"#1a1a1a"` — matches `ExportURLPolicy`'s existing
-    /// string-based color convention rather than introducing a new color
-    /// type into this package.
-    public let foregroundHex: String
+    public let foregroundRed: Double
+    public let foregroundGreen: Double
+    public let foregroundBlue: Double
 
     public let pixelScale: CGFloat
 
-    public init(foregroundHex: String, pixelScale: CGFloat) {
-        self.foregroundHex = foregroundHex
+    public init(foregroundRed: Double, foregroundGreen: Double, foregroundBlue: Double, pixelScale: CGFloat) {
+        self.foregroundRed = foregroundRed
+        self.foregroundGreen = foregroundGreen
+        self.foregroundBlue = foregroundBlue
         self.pixelScale = pixelScale
     }
 }

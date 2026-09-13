@@ -228,12 +228,15 @@ struct ExportCoordinator {
     /// of Preview, today, before this epic (epic-14-implementation.md §7.1).
     /// One extra parse per export, accepted as proportionally negligible
     /// next to export's other costs (§1 risk 2, §11).
+    ///
+    /// `.standardForExport(theme:)`, not `.standard` — E19's `MathContribution`
+    /// runs for Export only (epic-19-implementation.md §4 invariant 5, §6.3).
     private func exportContributionAdaptation(
         for document: FileCore.FileDocument
     ) async throws -> ExportContributionAdapter.Adaptation {
         let revision = Int(exactly: document.mutationGeneration) ?? Int.max
         let parsed = try await ParseEngine().parse(document.text, revision: revision)
-        let results = try await ContributionRegistry.standard.run(
+        let results = try await ContributionRegistry.standardForExport(theme: themeController.current).run(
             document: parsed, sourceText: document.text, sourceGeneration: document.mutationGeneration
         )
         return ExportContributionAdapter.adapt(results)
