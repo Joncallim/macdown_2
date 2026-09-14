@@ -3,26 +3,35 @@
 A native macOS Markdown editor — a ground-up Swift / SwiftUI rewrite built on
 TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 
-> **Status:** early development; Epic 9 is implemented and merged. Foundations, file/format core, workspace shell,
-> native window tabs, the TextKit 2 editor, tree-sitter highlighting, the theme
-> system, a native Markdown parser, a block-sliced native preview, and the
-> content browser — heading outline plus the Epic 9 lazy folder browser with
-> watching, filters, drag/drop, and recoverable CRUD — are in place. Epic 9 has
-> package, Release app-build, formatter, and strict-lint validation; the 10k folder check is a
-> package-level Release benchmark, not a full-app-path measurement. Epic 18's
-> external-file reconciliation and recovery work is implemented locally with
-> package and app build validation; hosted CI and dogfooding remain publication
-> proof gates. Epic 10's Markdown editing assists (list/task/blockquote
-> continuation, structural and Markdown-delimiter auto-pairing with type-over,
-> paired Backspace, Tab/Shift-Tab indentation, smart Home, and Bold/Italic/
-> Inline Code/Heading/Paragraph commands) are implemented Markdown-only and
-> fail closed; they carry package-suite validation (100 dedicated tests
-> including mounted-window undo/publication atomicity, IME/E18 bypass, and
-> locality performance guards on pathological single-line documents), Release
-> performance evidence inside the keystroke budget, and three real-app UI
-> smoke tests (list continuation, no pairing in `.txt`, Format-menu Bold);
-> the interactive Release dogfood matrix is the remaining human gate before
-> M2 closes.
+> **Status:** active development, feature epics in progress (updated
+> 2026-09-14 — this note previously described the project's state as of
+> Epic 9 and had not been revisited since). Implemented and merged: project
+> foundations, file/format core, the native-`NSWindow`-tab workspace shell,
+> the TextKit 2 editor, tree-sitter highlighting and the theme system, the
+> native Markdown parser and block-sliced Textual preview, the heading
+> outline and lazy folder browser, JSON/HTML multi-format support, Markdown
+> editing assists, HTML/PDF export with a shared derived-content
+> destination, a native SwiftUI Settings scene, first-party contribution
+> infrastructure (table of contents, local text-filter commands, command
+> palette), live external-file change detection/conflict handling, and
+> first-class math/scientific-notation rendering ($…$ / $$…$$) in preview
+> and export.
+>
+> Known open work before macOS 1.0: a real defect in external-file-change
+> UI updates is under active investigation
+> ([#59](https://github.com/Joncallim/macdown_2/issues/59)); a narrower
+> Preview-only math/nested-code-fence edge case is tracked as
+> [#63](https://github.com/Joncallim/macdown_2/issues/63); PDF export
+> pagination has no automated test coverage yet
+> ([#13](https://github.com/Joncallim/macdown_2/issues/13)). The remaining
+> planned epics — a native diagram platform with Mermaid support, engineering
+> renderer evaluation (D2/Graphviz/WaveDrom), whole-app accessibility and
+> polish, localisation, and signed/distributable release engineering — have
+> not started. See
+> [`planning/epics/README.md`](planning/epics/README.md) for the full epic
+> table and [`planning/RELEASE_EVIDENCE.md`](planning/RELEASE_EVIDENCE.md)
+> for the release-readiness ledger, which distinguishes "implemented" from
+> "release-proven" per epic.
 
 ## Requirements
 
@@ -47,7 +56,13 @@ MacDown2/
 │       ├── MarkdownEngine    # Native swift-markdown parser + parse session store
 │       ├── Preview           # Block-sliced native Textual preview + scroll sync
 │       ├── OutlineUI         # Heading outline: tree, selection, identity remap, controller
-│       ├── FileTree / AppSettings / ExportService   # E09 / E13 / E12 modules
+│       ├── FileTree          # Folder browser: lazy tree, FS watching, CRUD (E09)
+│       ├── AppSettings       # Typed settings model + panes (E13)
+│       ├── ExportService     # HTML/PDF export + shared derived-content destination (E12)
+│       ├── Contributions     # First-party contribution SPI/registry: TOC, etc. (E14)
+│       ├── TextFilters       # Local text-filter command execution (E14)
+│       ├── JSONSupport       # JSON analysis/outline (E11)
+│       ├── Math / MathRendering   # Inline/display math parsing + rendering (E19)
 │       └── …
 ├── Packages/TreeSitterMarkdown  # Vendored markdown + markdown-inline grammars
 └── project.yml               # XcodeGen project definition
