@@ -45,6 +45,10 @@ final class WindowCoordinator {
     let recentFolderRoots: RecentFolderRoots
     let appSettings: AppSettingsModel
     private let workspaceStateStore: any WorkspaceStateStoring
+    /// Shared by every `WorkspaceModel` this coordinator creates, so a
+    /// sidebar-layout edit in one window is immediately reflected in every
+    /// other open window rather than only on the next launch (#34).
+    private let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
     private var restoreTask: Task<Void, Never>?
@@ -354,6 +358,7 @@ final class WindowCoordinator {
         let model = WorkspaceModel(
             tabStore: tabStore,
             stateStore: workspaceStateStore,
+            layoutBroadcaster: sidebarLayoutBroadcaster,
             panel: panel ?? panelProvider
         )
         model.setSaveAsSessionPublisher { [weak self, weak model] in
