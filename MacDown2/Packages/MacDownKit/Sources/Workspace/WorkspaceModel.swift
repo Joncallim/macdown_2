@@ -156,19 +156,36 @@ public final class WorkspaceModel {
     /// document, press ⌘N" from "the ⌘N you just pressed hasn't landed yet."
     public internal(set) var isCreatingDocument = false
 
-    /// Whether the sidebar column is visible. Persisted via `stateStore`.
+    /// Whether the sidebar column is visible in THIS window. Persisted via
+    /// `stateStore` (so a new window's initial visibility follows the most
+    /// recently closed one), but deliberately per-window while a window is
+    /// actually open — `WindowCoordinatorPaletteOriginTargetingTests
+    /// .toggleSidebarFromAnExplicitOriginTogglesOnlyThatOriginsSidebar`
+    /// already pins this: showing/hiding the column in one window must not
+    /// yank it out from under another window's user. This is unlike
+    /// `sectionOrder`/`sectionExpanded` below, which #34 is specifically
+    /// about making consistent live across windows — visibility and layout
+    /// are different kinds of state even though they share a persistence
+    /// suite. Not broadcast.
     public var sidebarVisible: Bool {
         didSet {
+            guard sidebarVisible != oldValue else { return }
             stateStore.sidebarVisible = sidebarVisible
         }
     }
 
     /// Document-order of sidebar sections. Persisted via `stateStore`.
-    public private(set) var sectionOrder: [SidebarSection]
+    /// `internal(set)`, not `private(set)`: the setter is used by
+    /// `WorkspaceModel+SidebarLayout.swift` (a different file, so `private`
+    /// would not reach it) — still not settable outside this module.
+    public internal(set) var sectionOrder: [SidebarSection]
 
     /// Cached expansion state so SwiftUI body evaluations do not hit
-    /// `UserDefaults` on every read.
-    private var sectionExpanded: [SidebarSection: Bool]
+    /// `UserDefaults` on every read. Not `private`: read/written by
+    /// `WorkspaceModel+SidebarLayout.swift`, split out to stay under the
+    /// file_length lint budget (matches `WorkspaceModel+Saving.swift`'s same
+    /// reason).
+    var sectionExpanded: [SidebarSection: Bool]
 
     public var hasActiveDocument: Bool {
         tabStore.hasActiveDocument
@@ -193,16 +210,26 @@ public final class WorkspaceModel {
         tabStore.canCloseActiveTab
     }
 
-    private var stateStore: WorkspaceStateStoring
+    /// Not `private`: read/written by `WorkspaceModel+SidebarLayout.swift`.
+    var stateStore: WorkspaceStateStoring
+    /// Fans this window's sidebar-layout edits out to every other open
+    /// window sharing the same `stateStore` suite, and applies theirs back
+    /// (#34). `nil` for every existing call site that does not pass one
+    /// (all unit tests, and any standalone `WorkspaceModel`) — behaviour is
+    /// then identical to before this type existed. Only `WindowCoordinator`
+    /// constructs one shared instance and passes it to every window.
+    let layoutBroadcaster: SidebarLayoutBroadcaster?
     let panel: any FilePanelProviding
 
     public init(
         tabStore: TabStore? = nil,
         stateStore: WorkspaceStateStoring = WorkspaceStateStore(),
+        layoutBroadcaster: SidebarLayoutBroadcaster? = nil,
         panel: (any FilePanelProviding)? = nil
     ) {
         self.tabStore = tabStore ?? TabStore()
         self.stateStore = stateStore
+        self.layoutBroadcaster = layoutBroadcaster
         self.panel = panel ?? NoOpFilePanelProvider()
         folderURL = nil
         lastError = nil
@@ -211,27 +238,7 @@ public final class WorkspaceModel {
         sectionExpanded = Dictionary(uniqueKeysWithValues: SidebarSection.allCases.map { section in
             (section, stateStore.sidebarSectionExpanded[section.rawValue] ?? true)
         })
-    }
-
-    // MARK: - State store helpers
-
-    public func isSectionExpanded(_ section: SidebarSection) -> Bool {
-        sectionExpanded[section] ?? true
-    }
-
-    public func setSectionExpanded(_ section: SidebarSection, _ expanded: Bool) {
-        sectionExpanded[section] = expanded
-        stateStore.sidebarSectionExpanded[section.rawValue] = expanded
-    }
-
-    /// Reorders sidebar sections and persists the new order.
-    ///
-    /// `offsets`/`offset` use the `ForEach.onMove` convention; out-of-range
-    /// values are tolerated rather than trapping.
-    public func moveSections(fromOffsets offsets: IndexSet, toOffset offset: Int) {
-        let order = reorder(sectionOrder, fromOffsets: offsets, toOffset: offset)
-        sectionOrder = order
-        stateStore.sidebarSectionOrder = order.map(\.rawValue)
+        layoutBroadcaster?.subscribe(self)
     }
 
     // MARK: - Intents
