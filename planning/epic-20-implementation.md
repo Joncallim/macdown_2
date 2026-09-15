@@ -14,6 +14,27 @@ the full `xcodebuild`-built app), and the exact mechanism by which a
 rendered SVG string becomes an on-screen native view. Everything else in
 this document is a binding contract.
 
+> **As-built note (Slice 0, 2026-09-15):** The spike is done and the
+> question is resolved. A standalone throwaway SPM package (not
+> committed to this repository) reproduced the exact mechanisms §10 and
+> §16 specify: a `WKWebView` configured with `websiteDataStore =
+> .nonPersistent()` and `allowsContentJavaScript = true`, driven from a
+> `@MainActor` type via `async`/`withCheckedThrowingContinuation` around
+> `WKNavigationDelegate` callbacks. Two real tests under plain `swift
+> test` (no `xcodebuild`, no app bundle, no on-screen window): (1)
+> `loadHTMLString(_:baseURL: nil)` + `evaluateJavaScript` completed
+> correctly 5/5 times, ~200ms per load+eval cycle; (2) the actual
+> `loadFileURL(_:allowingReadAccessTo:)` mechanism §10 specifies for the
+> bundled Mermaid harness — loading a local `harness.html` that pulls in
+> a separate local `script.js` via a `<script src>` tag, then calling a
+> function that script defined on `window` — completed correctly 10/10
+> times. **Decision: `DiagramRendering` proceeds exactly as designed in
+> §5/§6 — a genuine SPM package target, tested for real via `swift
+> test`, no fallback to app-target-only testing required.** No change to
+> any other section of this document. The second provisional item named
+> above (the SVG-to-native-view display mechanism) remains open,
+> addressed in Slice 4.
+
 ---
 
 ## 1. Owner summary
