@@ -21,6 +21,7 @@ let package = Package(
         .library(name: "TextFilters", targets: ["TextFilters"]),
         .library(name: "Math", targets: ["Math"]),
         .library(name: "MathRendering", targets: ["MathRendering"]),
+        .library(name: "Diagrams", targets: ["Diagrams"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
@@ -139,6 +140,7 @@ let package = Package(
                 .product(name: "SwiftUIMath", package: "swiftui-math"),
             ]
         ),
+        .target(name: "Diagrams", dependencies: ["MarkdownEngine", "Contributions"]),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),
@@ -156,5 +158,6 @@ let package = Package(
         .testTarget(name: "TextFiltersTests", dependencies: ["TextFilters"]),
         .testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"]),
         .testTarget(name: "MathRenderingTests", dependencies: ["MathRendering"]),
+        .testTarget(name: "DiagramsTests", dependencies: ["Diagrams", "MarkdownEngine"]),
     ]
 )
