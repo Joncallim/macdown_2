@@ -78,7 +78,23 @@ extension ExternalFileController {
         let priorID = document.lastKnownRevision?.fileObjectID
         bindTask = Task { [weak self] in
             guard let self else { return }
-            await monitor.cancel()
+            // #59 root cause: `monitor.bind(to:...)` below already performs a
+            // complete internal reset of its own accord (cancels its pending
+            // debounce task and old handles, then bumps its OWN `generation`
+            // and `probeSequence` counters exactly once). A separate
+            // `monitor.cancel()` call here bumped that SAME internal
+            // `generation` counter a second time — `cancel()` bumps it once,
+            // `bind()` bumps it again — so `DocumentFileMonitor.generation`
+            // ended up permanently one ahead of this controller's own
+            // `lifecycleGeneration` (bumped exactly once per `synchronize()`
+            // call, in the caller). Every `DocumentFileObservationContext`
+            // this monitor ever emits carries that too-high `bindingGeneration`,
+            // so `handle(_ context:)`'s `context.bindingGeneration ==
+            // lifecycleGeneration` guard failed for every single observation,
+            // permanently, for the lifetime of every bound document — not a
+            // race, a deterministic off-by-one between two independently
+            // incremented counters. Removing this redundant call restores the
+            // 1:1 correspondence `handle(_ context:)` depends on.
             guard isBindingCurrent(generation: generation, url: fileURL) else { return }
             do {
                 try await monitor.bind(
