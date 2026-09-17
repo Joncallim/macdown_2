@@ -314,7 +314,9 @@ struct DocumentEditorSplitView: View {
                     )
                 ),
                 linkDefinitions: previewLinkDefinitions,
-                mermaidFenceView: mermaidFenceView
+                mermaidFenceView: mermaidFenceView,
+                d2FenceView: d2FenceView,
+                graphvizFenceView: graphvizFenceView
             )
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 4) {

@@ -29,8 +29,8 @@ public enum D2FenceScanner {
     }
 
     /// Slices the block's full line range (fence delimiters included) out
-    /// of `sourceText`, then strips exactly the first and last physical
-    /// line — the opening ```d2 and closing ``` delimiters.
+    /// of `sourceText`, then recovers the inner diagram source via
+    /// `D2FenceContent.stripDelimiters(from:)`.
     private static func fence(
         for block: MarkdownBlock,
         sourceMap: SourceMap,
@@ -38,11 +38,7 @@ public enum D2FenceScanner {
     ) -> D2Fence? {
         let nsRange = sourceMap.utf16Range(ofLines: block.lineRange)
         guard let range = Range(nsRange, in: sourceText) else { return nil }
-        var lines = sourceText[range].components(separatedBy: "\n")
-        guard lines.count >= 2 else { return nil }
-        lines.removeFirst()
-        lines.removeLast()
-        let inner = lines.joined(separator: "\n")
+        let inner = D2FenceContent.stripDelimiters(from: String(sourceText[range]))
         return D2Fence(source: inner, sourceRange: nsRange.location ..< (nsRange.location + nsRange.length))
     }
 }
