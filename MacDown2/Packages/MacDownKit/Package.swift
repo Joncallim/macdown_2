@@ -122,6 +122,8 @@ let package = Package(
                 "Themes",
                 "FileCore",
                 "Diagrams",
+                "DiagramsD2",
+                "DiagramsGraphviz",
                 .product(name: "Textual", package: "textual"),
             ]
         ),

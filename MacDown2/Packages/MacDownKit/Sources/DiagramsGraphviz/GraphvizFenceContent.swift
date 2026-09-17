@@ -1,0 +1,18 @@
+import Foundation
+
+/// Shared by `GraphvizFenceScanner` (Export) and Preview's own block
+/// handling (`TextualMarkdownPreview`'s `BlockView`), mirroring
+/// `MermaidFenceContent`'s exact rationale.
+public enum GraphvizFenceContent {
+    /// Strips exactly the first and last physical line — the opening
+    /// ```dot/```graphviz and closing ``` delimiters — from `fenceText`,
+    /// which must be the block's full source including both delimiter
+    /// lines.
+    public static func stripDelimiters(from fenceText: String) -> String {
+        var lines = fenceText.components(separatedBy: "\n")
+        guard lines.count >= 2 else { return "" }
+        lines.removeFirst()
+        lines.removeLast()
+        return lines.joined(separator: "\n")
+    }
+}
