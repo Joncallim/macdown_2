@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "Math", targets: ["Math"]),
         .library(name: "MathRendering", targets: ["MathRendering"]),
         .library(name: "Diagrams", targets: ["Diagrams"]),
+        .library(name: "DiagramRendering", targets: ["DiagramRendering"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
@@ -141,6 +142,11 @@ let package = Package(
             ]
         ),
         .target(name: "Diagrams", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(
+            name: "DiagramRendering",
+            dependencies: ["Diagrams"],
+            resources: [.process("Resources")]
+        ),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),
@@ -159,5 +165,6 @@ let package = Package(
         .testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"]),
         .testTarget(name: "MathRenderingTests", dependencies: ["MathRendering"]),
         .testTarget(name: "DiagramsTests", dependencies: ["Diagrams", "MarkdownEngine"]),
+        .testTarget(name: "DiagramRenderingTests", dependencies: ["DiagramRendering"]),
     ]
 )
