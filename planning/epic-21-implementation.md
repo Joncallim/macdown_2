@@ -547,6 +547,33 @@ fallback, decided per-language, not assumed uniform).
 written, re-read the live file before extending it rather than assuming
 the shape described here still matches.
 
+**As-built (PR #84)**: `BlockView`'s structure had not diverged; the
+described extension applied directly. Confirmed the display-mechanism
+decision from Slice 0 for both languages: neither needs a raster
+fallback, since a real spike proved D2's and Graphviz's plain-element
+SVG output (no `<foreignObject>`) displays correctly via AppKit's own
+`NSImage` decoder — `D2DiagramBlockView`/`GraphvizDiagramBlockView`
+display `svg` directly, simpler than `MermaidDiagramBlockView`'s
+pngData/canvas-rasterization path. One deviation from the epic-20
+precedent: extending `BlockView` with two more fence branches pushed
+`TextualMarkdownPreview.swift` over SwiftLint's `file_length` limit
+(404 lines), so `BlockView` (previously `private`, file-scoped) was
+extracted into its own file, `TextualMarkdownPreview+BlockView.swift`,
+with its access level widened from `private` to internal (`struct`) so
+the main file can still construct it. `D2FenceContent`/
+`GraphvizFenceContent.stripDelimiters(from:)` were factored out of
+their respective `FenceScanner`s in the same commit, mirroring
+`MermaidFenceContent`'s existing shape, so Export's scanner-based
+stripping and Preview's block-based stripping share one implementation
+per language. Real evidence: full package suite 1266/1266, app-target
+suite 159/159 (serial, including two new `*PreviewIntegrationTests`
+suites exercising real parse → slice → strip → shared-renderer →
+real-SVG-assertion for each language), Debug + Release builds of both
+app and CLI schemes all succeed, `swiftformat`/`swiftlint --strict`
+clean. Live GUI dogfood of the wired Preview pane was not attempted
+this slice — same disclosed environment gap already recorded for
+Mermaid — deferred to Slice 6 alongside that existing gap.
+
 ### Slice 5 — Adversarial hardening + mixed-renderer performance
 
 **Goal**: adversarial corpus per language (empty/malformed/oversized
