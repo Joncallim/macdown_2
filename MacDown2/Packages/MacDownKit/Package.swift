@@ -23,6 +23,11 @@ let package = Package(
         .library(name: "MathRendering", targets: ["MathRendering"]),
         .library(name: "Diagrams", targets: ["Diagrams"]),
         .library(name: "DiagramRendering", targets: ["DiagramRendering"]),
+        .library(name: "DiagramWebKitPool", targets: ["DiagramWebKitPool"]),
+        .library(name: "DiagramsD2", targets: ["DiagramsD2"]),
+        .library(name: "D2Rendering", targets: ["D2Rendering"]),
+        .library(name: "DiagramsGraphviz", targets: ["DiagramsGraphviz"]),
+        .library(name: "GraphvizRendering", targets: ["GraphvizRendering"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
@@ -148,6 +153,19 @@ let package = Package(
             dependencies: ["Diagrams"],
             resources: [.process("Resources")]
         ),
+        .target(name: "DiagramWebKitPool"),
+        .target(name: "DiagramsD2", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(
+            name: "D2Rendering",
+            dependencies: ["DiagramsD2", "DiagramWebKitPool"],
+            resources: [.process("Resources")]
+        ),
+        .target(name: "DiagramsGraphviz", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(
+            name: "GraphvizRendering",
+            dependencies: ["DiagramsGraphviz", "DiagramWebKitPool"],
+            resources: [.process("Resources")]
+        ),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),
@@ -167,5 +185,9 @@ let package = Package(
         .testTarget(name: "MathRenderingTests", dependencies: ["MathRendering"]),
         .testTarget(name: "DiagramsTests", dependencies: ["Diagrams", "MarkdownEngine"]),
         .testTarget(name: "DiagramRenderingTests", dependencies: ["DiagramRendering"]),
+        .testTarget(name: "DiagramsD2Tests", dependencies: ["DiagramsD2", "MarkdownEngine"]),
+        .testTarget(name: "D2RenderingTests", dependencies: ["D2Rendering"]),
+        .testTarget(name: "DiagramsGraphvizTests", dependencies: ["DiagramsGraphviz", "MarkdownEngine"]),
+        .testTarget(name: "GraphvizRenderingTests", dependencies: ["GraphvizRendering"]),
     ]
 )

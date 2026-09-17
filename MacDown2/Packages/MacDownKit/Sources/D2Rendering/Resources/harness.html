@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- Three additions beyond the baseline CSP shape (Mermaid/Graphviz),
+     each confirmed necessary by a real, reproduced failure, not assumed:
+     - 'wasm-unsafe-eval' on script-src: D2's Go core is compiled to WASM;
+       without it, WebAssembly.compile/instantiate is refused.
+     - worker-src blob: D2 spawns its real compute worker via
+       `new Worker(URL.createObjectURL(new Blob([...])))` — with no
+       worker-src directive, this falls back to default-src 'none' and
+       the worker is silently never allowed to start, which surfaces on
+       the Swift side as "Completion handler for function call is no
+       longer reachable" (the main thread waits forever for a reply from
+       a worker that never ran) rather than a clean rejection.
+     - 'unsafe-eval' on script-src: even with the above two fixes, a real
+       render still fails with "Refused to evaluate a string as
+       JavaScript because 'unsafe-eval' ... is not an allowed source" —
+       D2's own compiled output uses a real string-to-JS eval() or
+       `new Function(...)` call somewhere in its Go-to-JS/WASM bridge
+       glue, not attacker-reachable input by design, but a materially
+       broader grant than Mermaid or Graphviz needed (neither requires
+       this). Accepted because the sandbox's OTHER containment already
+       bounds what full script execution inside this page could do
+       regardless: no network access at any layer, no file access beyond
+       this harness's own resource directory, and the only thing that
+       ever leaves this page is a plain SVG string that is later only
+       ever displayed as inert markup — never re-executed as script. A
+       full compromise of this already-isolated renderer cannot escalate
+       beyond producing a maliciously-shaped SVG string, which every
+       other failure mode in this pipeline already has to tolerate. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; worker-src blob:; style-src 'unsafe-inline' 'self'; connect-src 'none'; img-src data:; object-src 'none'; base-uri 'none'; form-action 'none';">
+</head>
+<body>
+<script src="d2-browser.js"></script>
+<script src="render.js"></script>
+</body>
+</html>

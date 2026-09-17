@@ -1,0 +1,18 @@
+viz-global.js is @viz-js/viz 3.30.0 (https://github.com/mdaines/viz-js),
+unmodified, vendored verbatim.
+
+The npm package's own `license` field says MIT (VIZJS-LICENSE.txt) — that
+covers the JavaScript wrapper Michael Daines wrote. The compiled artifact
+also embeds the real Graphviz C core compiled to WebAssembly. Graphviz
+itself is licensed under the Eclipse Public License 2.0
+(GRAPHVIZ-EPL-LICENSE.txt) — the viz-js project's own documentation
+states this directly ("since Viz.js is a derivative work, it is released
+under EPL too"), even though the npm `license` field alone does not
+surface it.
+
+EPL-2.0 is weak, module-level copyleft: bundling this unmodified library
+inside a closed-source application does not require the application's
+own source to be disclosed, but EPL notices/attribution for the Graphviz
+portion must be carried — this file is that notice. See
+planning/epic-21-implementation.md §1.2 for the full research this
+NOTICE was written from.
