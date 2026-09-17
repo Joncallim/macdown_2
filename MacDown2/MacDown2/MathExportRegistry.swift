@@ -1,18 +1,25 @@
 import Contributions
+import Diagrams
 import Foundation
 import Math
 import MathRendering
 import Themes
 
-/// Registers `MathContribution` for Export only, never for Preview
-/// (epic-19-implementation.md §4 invariant 5, §6.3): Preview's math
-/// rendering goes through `Textual`'s own `.math` syntax extension directly
-/// on each block's literal source text, not through `ContributionRegistry`.
+/// Registers `MathContribution` and `MermaidContribution` for Export only,
+/// never for Preview (epic-19-implementation.md §4 invariant 5, §6.3;
+/// epic-20-implementation.md §2.2): Preview's math rendering goes through
+/// `Textual`'s own `.math` syntax extension directly on each block's literal
+/// source text, and Preview's diagram rendering goes through a dedicated
+/// native view — neither goes through `ContributionRegistry`.
 /// `PreviewContributionAdmission` already rejects `.html` representations
-/// with a visible error badge — routing `MathContribution` through the
+/// with a visible error badge — routing either contribution through the
 /// SHARED `ContributionRegistry.standard` that Preview also uses would put
-/// that rejection badge on every math-containing document, a real
-/// regression this separate factory avoids.
+/// that rejection badge on every math- or diagram-containing document, a
+/// real regression this separate, Export-only factory avoids. Mermaid's own
+/// supporting pieces (`sharedMermaidRenderer`, `mermaidRenderContext`) live
+/// in `MermaidExportRegistry.swift`; this file keeps ownership of the one
+/// real `standardForExport` factory function so there is exactly one place
+/// export contributions are assembled, not a second competing registry.
 extension ContributionRegistry {
     /// `ExportService`'s own `structural.css` overrides EVERY theme's
     /// foreground/background for `@media print` — "Paper is white. A dark
@@ -32,9 +39,11 @@ extension ContributionRegistry {
 
     static func standardForExport(theme: Theme, isPrintTarget: Bool) -> ContributionRegistry {
         let context = mathRenderContext(theme: theme, isPrintTarget: isPrintTarget)
+        let mermaidContext = mermaidRenderContext(theme: theme, isPrintTarget: isPrintTarget)
         return ContributionRegistry(contributions: [
             TOCContribution(),
             MathContribution(context: context, renderer: MathImageRenderer.render(span:context:)),
+            MermaidContribution(context: mermaidContext, renderer: sharedMermaidRenderer),
         ])
     }
 

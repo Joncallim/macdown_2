@@ -48,6 +48,10 @@ targets:
       product: Math
     - package: MacDownKit
       product: MathRendering
+    - package: MacDownKit
+      product: Diagrams
+    - package: MacDownKit
+      product: DiagramRendering
     settings:
       configs:
         Release:
@@ -195,6 +199,10 @@ targets:
       product: Math
     - package: MacDownKit
       product: MathRendering
+    - package: MacDownKit
+      product: Diagrams
+    - package: MacDownKit
+      product: DiagramRendering
     settings:
       base:
         GENERATE_INFOPLIST_FILE: 'YES'
