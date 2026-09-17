@@ -622,22 +622,83 @@ explicit WaveDrom-deferral note recorded in the epic issue itself (§1.3's
 decision, restated as a closing comment on issue #46, not left only in
 this document).
 
+**As-built**: the "if the same environment limitation recurs" hedge
+turned out not to apply — this session's environment allowed genuine
+XCUITest execution for the first time. `D2GraphvizPreviewUITests` (new,
+mirroring `MermaidPreviewUITests`'s exact shape: valid/malformed ×
+D2/Graphviz, 4 tests) ran for real via `xcodebuild test-without-building`
+and passed 4/4. As a direct side effect of the environment cooperating,
+`MermaidPreviewUITests` (E20's own long-`unverified` suite) was also
+re-attempted and passed 2/2 for real — retroactively resolving that E20
+evidence gap too, recorded in `RELEASE_EVIDENCE.md`'s E20 row rather than
+only here.
+
+Running the full `MacDown2UITests` target once execution was possible
+surfaced a genuinely new, unrelated finding: 15 of the other 30 tests
+(across `EditingAssistsUITests`/`EditorTypingUITests`/
+`ExternalFileChangesUITests`/`FolderBrowserUITests`/`MultiFormatUITests`/
+`OutlineNavigationUITests`) fail when actually executed. Verified this is
+not a regression from this epic's own work: checked out `dd679b3` (the
+commit immediately before EPIC-21 started) in an isolated `git worktree`
+and reproduced one representative failure
+(`MultiFormatUITests.testPlainTextShowsNoPreviewPlaceholder`) identically
+against that pre-EPIC-21 code. Filed as
+[#88](https://github.com/Joncallim/macdown_2/issues/88) rather than
+silently left as a footnote — this project's UI-test suite has
+apparently never actually been run to completion before, since CI
+documents the whole target as build-only and every prior local attempt
+was blocked before getting this far.
+
+Reconciling this epic's own acceptance criteria ("Accepted renderers
+preserve vector output for preview/export... Source↔preview navigation
+and copy/export behave consistently across accepted renderers") against
+the shipped code alongside E20's own AC found the same real gap in both
+epics: no interactive copy-as-SVG affordance exists for any diagram
+language (Mermaid, D2, or Graphviz) despite it being a literal,
+explicit criterion. Filed as
+[#86](https://github.com/Joncallim/macdown_2/issues/86), scoped to cover
+all three languages together since they share the same gap and fix
+shape. Not fixed in this slice.
+
+WaveDrom's deferral decision was already posted as a comment on issue
+#46 during the architecture phase (before Slice 0 began) — re-confirmed
+present and unchanged rather than re-posted, satisfying the Definition
+of Done's intent (recorded on the issue itself, not left only in this
+document) without duplicating it.
+
+`RELEASE_EVIDENCE.md`'s E21 row reconciled to `done` with full Slice
+1-6 evidence; `planning/epics/README.md`'s E21 row updated to ✅ done.
+`README.md`'s status blurb and package-layout listing reconciled in the
+same pass. Issue #46 closed with a comment mirroring this project's
+established EPIC-13/#53 and EPIC-20/#45 precedent: core scope done and
+evidence-backed, both real residual gaps (#86, #88) have their own
+dedicated tracking rather than being silently dropped.
+
 ---
 
 ## 6. Definition of Done
 
-- [ ] D2 and Graphviz each pass every relevant test row from §5's slices;
+- [x] D2 and Graphviz each pass every relevant test row from §5's slices;
       WaveDrom's deferral decision (§1.3) is posted as a comment on issue
       #46, not left implicit.
-- [ ] Per-language AppKit-vs-raster display decision (§3.5) made from
-      real evidence, not assumed from Mermaid's own outcome.
-- [ ] `swift test`/`xcodebuild test` green for every new suite; full
-      existing suites unaffected (regression-free).
-- [ ] `swiftformat --lint`/`swiftlint lint --strict` clean.
-- [ ] Debug and Release builds succeed.
-- [ ] A mixed-renderer document (Mermaid + D2 + Graphviz) is verified
-      responsive and each renderer fails independently.
-- [ ] `planning/RELEASE_EVIDENCE.md`, `planning/epics/README.md`,
+- [x] Per-language AppKit-vs-raster display decision (§3.5) made from
+      real evidence, not assumed from Mermaid's own outcome (both
+      languages: direct SVG display, no raster fallback needed).
+- [x] `swift test`/`xcodebuild test` green for every new suite; full
+      existing suites unaffected (regression-free) — 1270/1270 package,
+      160/160 app-target serially, plus now-genuinely-executed
+      `D2GraphvizPreviewUITests` (4/4) and `MermaidPreviewUITests` (2/2).
+      A separate, pre-existing, non-regressive UI-test fragility finding
+      (15/30 other `MacDown2UITests`) is tracked as #88, not silently
+      folded into "unaffected."
+- [x] `swiftformat --lint`/`swiftlint lint --strict` clean.
+- [x] Debug and Release builds succeed (app and `macdown2` CLI, both
+      configurations).
+- [x] A mixed-renderer document (Mermaid + D2 + Graphviz) is verified
+      responsive and each renderer fails independently
+      (`MixedDiagramRendererIntegrationTests`, ~1.9s wall-clock, three
+      real concurrent `WebContent` processes).
+- [x] `planning/RELEASE_EVIDENCE.md`, `planning/epics/README.md`,
       `README.md` reconciled against real, current state.
 
 Consciously deferred:

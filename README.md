@@ -4,7 +4,7 @@ A native macOS Markdown editor — a ground-up Swift / SwiftUI rewrite built on
 TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 
 > **Status:** active development, feature epics in progress (updated
-> 2026-09-17). Implemented and merged: project foundations, file/format
+> 2026-09-18). Implemented and merged: project foundations, file/format
 > core, the native-`NSWindow`-tab workspace shell, the TextKit 2 editor,
 > tree-sitter highlighting and the theme system, the native Markdown parser
 > and block-sliced Textual preview, the heading outline and lazy folder
@@ -14,22 +14,25 @@ TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 > contents, local text-filter commands, command palette), live
 > external-file change detection/conflict handling, first-class
 > math/scientific-notation rendering ($…$ / $$…$$) in preview and export,
-> and a native diagram platform with Mermaid support (```mermaid``` fences
-> rendered in preview and exported as genuine vector SVG).
+> and a native diagram platform supporting Mermaid, D2, and Graphviz/DOT
+> (```mermaid```/```d2```/```dot``` fences rendered natively in preview and
+> exported as genuine vector SVG). WaveDrom was evaluated and deliberately
+> deferred, not rejected, over a real `eval()`-based code-execution risk in
+> its documented rendering API — see issue #46.
 >
 > Known open work before macOS 1.0: a narrower external-file-change
 > notice-banner issue is tracked as
 > [#70](https://github.com/Joncallim/macdown_2/issues/70) (the core
 > defect, #59, is fixed); a narrower Preview-only math/nested-code-fence
 > edge case is tracked as
-> [#63](https://github.com/Joncallim/macdown_2/issues/63); PDF export
-> pagination has no automated test coverage yet
-> ([#13](https://github.com/Joncallim/macdown_2/issues/13)); E20's own live
-> in-app UI-test execution and visual dogfood remain open, tracked in
-> `RELEASE_EVIDENCE.md`. The remaining planned epics — engineering renderer
-> evaluation (D2/Graphviz/WaveDrom), whole-app accessibility and polish,
-> localisation, and signed/distributable release engineering — have not
-> started. See
+> [#63](https://github.com/Joncallim/macdown_2/issues/63); none of the
+> three diagram languages has an interactive copy-as-SVG affordance yet
+> ([#86](https://github.com/Joncallim/macdown_2/issues/86)); a genuine,
+> pre-existing (not newly introduced) fragility across roughly half of the
+> `MacDown2UITests` target was found and is being triaged
+> ([#88](https://github.com/Joncallim/macdown_2/issues/88)). The remaining
+> planned epics — whole-app accessibility and polish, localisation, and
+> signed/distributable release engineering — have not started. See
 > [`planning/epics/README.md`](planning/epics/README.md) for the full epic
 > table and [`planning/RELEASE_EVIDENCE.md`](planning/RELEASE_EVIDENCE.md)
 > for the release-readiness ledger, which distinguishes "implemented" from
@@ -66,6 +69,9 @@ MacDown2/
 │       ├── JSONSupport       # JSON analysis/outline (E11)
 │       ├── Math / MathRendering   # Inline/display math parsing + rendering (E19)
 │       ├── Diagrams / DiagramRendering  # Mermaid diagram platform: model + WKWebView renderer (E20)
+│       ├── DiagramWebKitPool     # Shared offscreen WKWebView pool generalized for E21's renderers
+│       ├── DiagramsD2 / D2Rendering            # D2 diagram support (E21)
+│       ├── DiagramsGraphviz / GraphvizRendering  # Graphviz/DOT diagram support (E21)
 │       └── …
 ├── Packages/TreeSitterMarkdown  # Vendored markdown + markdown-inline grammars
 └── project.yml               # XcodeGen project definition
