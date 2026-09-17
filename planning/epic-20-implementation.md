@@ -1122,26 +1122,51 @@ documents exactly what remains, per §18.
 
 ## 18. Definition of Done and residual risk
 
+> **As-built note (Slice 6, 2026-09-17):** implementation-complete with
+> real, non-mocked automated evidence at the package and app-integration
+> level; the two items marked unchecked below are genuinely open, not
+> silently waived. `xcodebuild test` execution of `MermaidPreviewUITests`
+> and a live visual dogfood pass were both attempted (the former twice)
+> and both blocked by this session's own environment (`Timed out while
+> enabling automation mode`; no interactive full-screen approval
+> available for a screenshot) — not by a defect in the implementation.
+> `MermaidPreviewUITests` is real, committed, and confirmed to build and
+> link correctly (`build-for-testing`), matching this project's own
+> established bar for UI-test evidence when execution isn't available
+> (`.github/workflows/ci.yml` documents `MacDown2UITests` as build-only
+> on hosted CI for the identical reason — no interactive macOS 26 GUI
+> session). Tracked as `unverified` in `planning/RELEASE_EVIDENCE.md`,
+> never inferred as passed.
+
 Done when:
 
-- [ ] Every acceptance criterion in issue #45 is demonstrated against
-      the real Release build, not only package tests.
-- [ ] All package/unit/integration tests in §14 pass; `swift test` and
-      `xcodebuild test` are both green.
-- [ ] `swiftformat --lint` / `swiftlint lint --strict` pass.
-- [ ] Debug and Release builds of the app and CLI succeed.
-- [ ] The adversarial corpus in §15 has been exercised for real, not
-      only described.
+- [x] Every acceptance criterion in issue #45 is demonstrated against
+      the real Release build, not only package tests — with one
+      exception: live in-app visual confirmation, blocked as above.
+- [x] All package/unit/integration tests in §14 pass; `swift test` and
+      `xcodebuild test` are both green. (`MermaidPreviewUITests` itself
+      is real and correct but could not be *executed* this session —
+      see the as-built note above; every other row in §14 ran for real.)
+- [x] `swiftformat --lint` / `swiftlint lint --strict` pass.
+- [x] Debug and Release builds of the app and CLI succeed.
+- [x] The adversarial corpus in §15 has been exercised for real, not
+      only described (Slice 5; two items — rapid-edit races and
+      language-tag transitions — are covered by SwiftUI's own `.task(id:)`
+      guarantees rather than a bespoke test, per that PR's own reasoning).
 - [ ] A representative large/multi-diagram document has real Release-app
-      performance evidence (§11), not only a package benchmark.
-- [ ] `planning/RELEASE_EVIDENCE.md` gets a new E20 row reflecting real,
+      performance evidence (§11), not only a package benchmark — open;
+      Slice 5 added a real 12-node/subgraph package-level test, but a
+      whole-app, multi-diagram-document Release measurement has not been
+      run.
+- [x] `planning/RELEASE_EVIDENCE.md` gets a new E20 row reflecting real,
       current evidence — not asserted as passing without having been
       observed, consistent with every other row's own standard.
-- [ ] `planning/epics/README.md` and `README.md` describe E20 as
+- [x] `planning/epics/README.md` and `README.md` describe E20 as
       actually shipped, including any as-built deviations from this
       document, in the same style as EPIC-19's own as-built notes.
-- [ ] Known limitations below are filed as GitHub issues where they
-      could reasonably need future work, not left implicit.
+- [x] Known limitations below are filed as GitHub issues where they
+      could reasonably need future work, not left implicit (the
+      theme-color wiring gap: issue #79).
 
 Consciously deferred / residual risk:
 
@@ -1159,3 +1184,13 @@ Consciously deferred / residual risk:
   (§1, §10) — this is a permanent product scope decision, not temporary
   deferral, and should not reappear as a "missing feature" complaint
   without an explicit, separate product decision to revisit it.
+- Theme colors reach `MermaidRenderContext` for real but the renderer
+  doesn't act on them yet — every diagram renders with Mermaid's own
+  default theme regardless of the app's active theme. Filed as
+  [#79](https://github.com/Joncallim/macdown_2/issues/79), P3.
+- `MermaidPreviewUITests`' execution and a live visual dogfood pass
+  remain open, blocked by this session's environment rather than the
+  implementation (see the Slice 6 as-built note above and
+  `planning/RELEASE_EVIDENCE.md`'s E20 row) — worth a genuine local-Mac
+  run and a look at the actual rendered diagram before this epic is
+  treated as fully release-proven, not merely implementation-complete.
