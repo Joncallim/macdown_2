@@ -584,6 +584,35 @@ Release-build responsiveness holds with three renderer kinds active in
 one document (acceptance criterion: "mixed accepted-renderer documents
 remain responsive").
 
+**As-built (PR pending)**: mirrored epic-20 Slice 5's own precedent
+exactly — a moderately complex, realistic diagram (containers/clusters,
+multiple node shapes, styled connections) and a whitespace-only-source
+case added to `D2WebRendererTests`/`GraphvizWebRendererTests`. One real
+finding from doing this empirically rather than assuming Mermaid's
+pattern transfers unchanged: whitespace-only source is *valid* D2 (an
+empty document is a legal, deliberate D2 language feature) but *invalid*
+DOT (Graphviz requires a `graph`/`digraph` keyword) — so D2's test
+asserts safe completion with a real (near-empty) SVG, while Graphviz's
+asserts the same `.self`-typed failure as its malformed-syntax test,
+not a shared assumption. The other epic-20 §15 categories (rapid
+sequential edits, language-tag transitions, aggregate export-budget
+ceiling) are not separately re-tested per language for the same reason
+epic-20 gave: they exercise SwiftUI's own `.task(id:)` cancellation or
+E12's own generic budget machinery, not per-language code.
+
+The mixed-document test (`MixedDiagramRendererIntegrationTests`, app
+target) renders Mermaid + D2 concurrently (real, distinct sources —
+deliberately never reused from any other test in the process, since
+`ContributionRegistry.shared*Renderer` are process-lifetime caches and
+an identical source would silently short-circuit to a cache hit rather
+than a real render, understating the evidence) alongside a deliberately
+invalid Graphviz fence, via three `async let` bindings. Confirmed for
+real: the invalid fence fails on its own (caught, asserted `nil`)
+without blocking or corrupting the other two languages' independent
+results, and all three complete in ~1.9s wall-clock with three distinct
+`WebContent` processes visibly spawned concurrently in the test log —
+not serialized behind one shared pool.
+
 ### Slice 6 — Definition of Done
 
 **Goal**: real UI-test evidence (mirroring epic-20's own honest treatment
