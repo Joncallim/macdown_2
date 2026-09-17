@@ -34,7 +34,7 @@ struct MermaidDiagramBlockView: View {
             case let .rendered(image, width, height):
                 Image(nsImage: image)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .scaledToFit()
                     .frame(maxWidth: min(width, 640), maxHeight: height)
                     .accessibilityLabel(Text(source))
                     .accessibilityIdentifier("mermaidDiagramImage")
