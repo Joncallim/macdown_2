@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- 'wasm-unsafe-eval' is required for legitimate WebAssembly.compile/
+     instantiate calls (viz-js's real Graphviz core is compiled to WASM) —
+     confirmed necessary by a real failure without it: "Refused to create
+     a WebAssembly object because 'unsafe-eval' or 'wasm-unsafe-eval' is
+     not an allowed source of script." It does not permit string-to-JS
+     eval() or the Function constructor; those remain blocked. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'unsafe-inline' 'self'; connect-src 'none'; img-src data:; object-src 'none'; base-uri 'none'; form-action 'none';">
+</head>
+<body>
+<script src="viz-global.js"></script>
+<script src="render.js"></script>
+</body>
+</html>

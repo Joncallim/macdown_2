@@ -398,6 +398,47 @@ this the way it failed Mermaid — raster-snapshot fallback needed," with
 the actual before/after evidence (not asserted from documentation alone,
 matching §3.5's own stated discipline).
 
+> **As-built note (Slice 0, 2026-09-18):** done, both decisions are
+> "AppKit renders correctly." A real `digraph{A->B;B->C;A->C;}` through
+> the actual `@viz-js/viz@3.30.0` bundle, and a real `A -> B -> C`
+> through the actual `@terrastruct/d2@0.1.33` bundle, both produced SVG
+> with zero `<foreignObject>` elements, and both rasterized via
+> `NSImage(data:)` into fully correct, correctly-labelled, correctly-laid-out
+> images — confirmed visually, not merely "decoded without error." Neither
+> D2 nor Graphviz needs Mermaid's raster-PNG-snapshot fallback;
+> `RenderedD2Diagram`/`RenderedGraphvizDiagram` need only `svg` — no
+> `pngData` field, unlike `RenderedMermaidDiagram`. §3.5's provisional
+> language is resolved in the more favorable direction for both.
+>
+> **A second, real finding changes §3.2/§3.3's loading plan for D2
+> specifically:** `@terrastruct/d2`'s official browser build is a genuine
+> ES module (`export{... as D2}`, confirmed by inspecting the real
+> tarball). Loading it via `<script type="module">` and an internal
+> `import('./d2-browser.js')` — the natural approach — fails with
+> `TypeError: Cross-origin script load denied by Cross-Origin Resource
+> Sharing policy`, even though the page itself loads fine via
+> `loadFileURL(_:allowingReadAccessTo:)` and even though the *top-level*
+> module script executes (confirmed via a try/catch around the dynamic
+> `import()`, which is what surfaced this exact error text rather than a
+> silent failure). This is a real, current WebKit `file://` restriction
+> on ES module sub-imports specifically, distinct from ordinary
+> `<script src>` resource loading (which this app's harnesses, including
+> Mermaid's and viz-js's own plain-global-script builds, already rely on
+> without issue). **Resolution**: the vendored `d2-browser.js` resource is
+> not the untouched upstream file — it is upstream's own file with its
+> single trailing `export{lw as D2}` statement mechanically replaced by
+> `window.D2=lw;`, turning it into an ordinary global-assigning script
+> loadable exactly like every other bundle this app already vendors. This
+> is a real modification to an MPL-2.0-covered file; MPL-2.0's file-level
+> copyleft requires that modified file's source stay available, which it
+> already is (a plain, readable, committed resource file in this
+> repository, not obfuscated or built through an opaque pipeline) — the
+> patch itself is called out explicitly in that file's own leading
+> comment (Slice 2) and here, not left to be discovered by reading a diff.
+> Nothing else about the file is altered — no minification, no other
+> content change — so the WASM payload and D2 version remain exactly
+> upstream's own build.
+
 ### Slice 1 — `DiagramWebKitPool` (shared) + `DiagramsD2`/`DiagramsGraphviz` (pure Swift)
 
 **Goal**: the shared pool/page type (§3.1), and both languages' pure
@@ -427,6 +468,65 @@ under `swift test` (unlikely given Slice 0 of epic-20 already proved
 not proven for these SPECIFIC multi-megabyte WASM payloads), stop and
 re-run epic-20's own Slice-0-style investigation before proceeding
 further with that language.
+
+> **As-built note (Slice 1-2, 2026-09-18): the stop condition's own
+> caveat fired for real** — real WASM payloads under a real CSP surfaced
+> three genuine failures Mermaid's own (non-WASM) harness never needed to
+> solve, found via temporary `stderr` instrumentation in
+> `DiagramHarnessPage` (removed before the final commit, same discipline
+> as epic-20's own temporary `os_log` tracing for #59):
+>
+> 1. **`script-src 'self'` alone refuses `WebAssembly.compile`/
+>    `instantiate`.** viz-js failed immediately and cleanly with
+>    `Refused to create a WebAssembly object because 'unsafe-eval' or
+>    'wasm-unsafe-eval' is not an allowed source of script`. Fix: add
+>    `'wasm-unsafe-eval'` to `script-src` in both `D2Rendering`'s and
+>    `GraphvizRendering`'s harness CSP — this permits WASM compilation
+>    specifically and nothing broader (string-to-JS `eval()` stays
+>    blocked by it alone). This alone fully fixed Graphviz.
+> 2. **D2 needed a second, distinct fix**: with only fix 1 applied, D2
+>    still failed — not with a clean rejection, but with WebKit's
+>    `evaluateJavaScript`/`callAsyncJavaScript` eventually reporting
+>    "Completion handler for function call is no longer reachable" (the
+>    Swift side waiting indefinitely for a reply that never arrives).
+>    Root cause: D2 spawns its real compute worker via
+>    `new Worker(URL.createObjectURL(new Blob([...])))`, and the CSP had
+>    no `worker-src` directive, which falls back to `default-src 'none'`
+>    — silently refusing to start the worker at all, with no exception
+>    surfaced back through the `postMessage` channel D2's own JS uses to
+>    talk to it. Fix: add `worker-src blob:` to `D2Rendering`'s harness
+>    CSP specifically (Graphviz has no worker and needs no such
+>    exception).
+> 3. **A third, real, separate finding, uncovered only once 1 and 2 were
+>    both fixed**: an actual render then failed cleanly with `Refused to
+>    evaluate a string as JavaScript because 'unsafe-eval' ... is not an
+>    allowed source` — D2's own compiled output genuinely uses a
+>    string-to-JS `eval()`/`new Function(...)` call somewhere in its
+>    Go-to-JS/WASM bridge glue, independent of the WASM-specific
+>    permission already granted. This is a materially broader CSP grant
+>    than either Mermaid or Graphviz needs — recorded as a real, named
+>    trade-off (not silently added): accepted specifically because the
+>    harness's OTHER containment (no network access at any layer, no
+>    file access beyond this one resource directory, and an output that
+>    is only ever treated as inert SVG text afterward, never
+>    re-executed) already bounds what a full script-execution compromise
+>    of this one sandboxed, disposable page could do — it could not
+>    escalate beyond producing a maliciously-shaped SVG string, a failure
+>    mode every other layer of this pipeline already has to tolerate.
+>    `D2Rendering`'s harness CSP is therefore genuinely different from —
+>    not merely a superset of — Mermaid's and Graphviz's; this is called
+>    out directly in the harness HTML's own comment, not left to be
+>    discovered by diffing CSP strings across the three harnesses.
+>
+> All three fixes are applied only to the specific harness(es) that
+> needed them — Mermaid's own CSP (epic-20-implementation.md §10) is
+> completely untouched. Full evidence: all 7 `D2WebRendererTests` and all
+> 7 `GraphvizWebRendererTests` pass for real (previously, before fix 2,
+> the abandoned-task timeout test took ~6846 seconds to "pass" — Swift's
+> structured-concurrency task groups wait for cancelled children to
+> actually finish before returning, so a genuinely hung child task made
+> the whole timeout mechanism appear to work while actually blocking for
+> nearly two hours; after the fix, the same test passes in ~4 seconds).
 
 ### Slice 3 — Export wiring
 
