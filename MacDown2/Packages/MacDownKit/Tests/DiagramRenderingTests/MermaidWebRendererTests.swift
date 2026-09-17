@@ -127,4 +127,49 @@ struct MermaidWebRendererTests {
         #expect(!diagram.svg.contains("javascript:alert"))
         await renderer.shutdown()
     }
+
+    /// Adversarial corpus (epic-20-implementation.md §15): a genuinely
+    /// larger, more realistic diagram — not just a two-node smoke test —
+    /// to catch problems that only appear with real layout complexity
+    /// (long render time, degenerate output, a raster snapshot too small
+    /// to be useful). 12 nodes, a cluster, and multiple edge label styles.
+    @Test func renderHandlesAModeratelyComplexDiagramWithinTheDefaultTimeout() async throws {
+        let renderer = MermaidWebRenderer()
+        let source = """
+        graph TD
+            Start[Start] --> Auth{Authenticated?}
+            Auth -->|No| Login[Show Login]
+            Login --> Auth
+            Auth -->|Yes| Dashboard[Dashboard]
+            subgraph Processing
+                Dashboard --> Fetch[Fetch Data]
+                Fetch --> Validate{Valid?}
+                Validate -->|No| Error[Show Error]
+                Validate -->|Yes| Transform[Transform Data]
+                Transform --> Cache[(Cache)]
+            end
+            Cache --> Render[Render View]
+            Error --> Dashboard
+            Render --> End([Done])
+        """
+        let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+        #expect(diagram.svg.contains("<svg"))
+        #expect(diagram.naturalWidth > 0)
+        #expect(diagram.naturalHeight > 0)
+        let pngData = try #require(diagram.pngData)
+        #expect(pngData.count > 1000)
+        await renderer.shutdown()
+    }
+
+    /// Adversarial corpus: whitespace-only source is not valid Mermaid
+    /// syntax and must fail the same safe, diagnosable way as any other
+    /// malformed input — never hang, never crash, never produce an empty
+    /// but "successful" diagram.
+    @Test func renderFailsSafelyOnWhitespaceOnlySource() async throws {
+        let renderer = MermaidWebRenderer()
+        await #expect(throws: MermaidRenderError.self) {
+            _ = try await renderer.render(Self.fence("   \n\n   "), context: Self.context)
+        }
+        await renderer.shutdown()
+    }
 }
