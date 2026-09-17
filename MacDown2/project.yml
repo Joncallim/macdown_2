@@ -52,6 +52,16 @@ targets:
       product: Diagrams
     - package: MacDownKit
       product: DiagramRendering
+    - package: MacDownKit
+      product: DiagramWebKitPool
+    - package: MacDownKit
+      product: DiagramsD2
+    - package: MacDownKit
+      product: D2Rendering
+    - package: MacDownKit
+      product: DiagramsGraphviz
+    - package: MacDownKit
+      product: GraphvizRendering
     settings:
       configs:
         Release:
@@ -203,6 +213,16 @@ targets:
       product: Diagrams
     - package: MacDownKit
       product: DiagramRendering
+    - package: MacDownKit
+      product: DiagramWebKitPool
+    - package: MacDownKit
+      product: DiagramsD2
+    - package: MacDownKit
+      product: D2Rendering
+    - package: MacDownKit
+      product: DiagramsGraphviz
+    - package: MacDownKit
+      product: GraphvizRendering
     settings:
       base:
         GENERATE_INFOPLIST_FILE: 'YES'
