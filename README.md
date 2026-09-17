@@ -4,30 +4,32 @@ A native macOS Markdown editor — a ground-up Swift / SwiftUI rewrite built on
 TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 
 > **Status:** active development, feature epics in progress (updated
-> 2026-09-14 — this note previously described the project's state as of
-> Epic 9 and had not been revisited since). Implemented and merged: project
-> foundations, file/format core, the native-`NSWindow`-tab workspace shell,
-> the TextKit 2 editor, tree-sitter highlighting and the theme system, the
-> native Markdown parser and block-sliced Textual preview, the heading
-> outline and lazy folder browser, JSON/HTML multi-format support, Markdown
-> editing assists, HTML/PDF export with a shared derived-content
-> destination, a native SwiftUI Settings scene, first-party contribution
-> infrastructure (table of contents, local text-filter commands, command
-> palette), live external-file change detection/conflict handling, and
-> first-class math/scientific-notation rendering ($…$ / $$…$$) in preview
-> and export.
+> 2026-09-17). Implemented and merged: project foundations, file/format
+> core, the native-`NSWindow`-tab workspace shell, the TextKit 2 editor,
+> tree-sitter highlighting and the theme system, the native Markdown parser
+> and block-sliced Textual preview, the heading outline and lazy folder
+> browser, JSON/HTML multi-format support, Markdown editing assists,
+> HTML/PDF export with a shared derived-content destination, a native
+> SwiftUI Settings scene, first-party contribution infrastructure (table of
+> contents, local text-filter commands, command palette), live
+> external-file change detection/conflict handling, first-class
+> math/scientific-notation rendering ($…$ / $$…$$) in preview and export,
+> and a native diagram platform with Mermaid support (```mermaid``` fences
+> rendered in preview and exported as genuine vector SVG).
 >
-> Known open work before macOS 1.0: a real defect in external-file-change
-> UI updates is under active investigation
-> ([#59](https://github.com/Joncallim/macdown_2/issues/59)); a narrower
-> Preview-only math/nested-code-fence edge case is tracked as
+> Known open work before macOS 1.0: a narrower external-file-change
+> notice-banner issue is tracked as
+> [#70](https://github.com/Joncallim/macdown_2/issues/70) (the core
+> defect, #59, is fixed); a narrower Preview-only math/nested-code-fence
+> edge case is tracked as
 > [#63](https://github.com/Joncallim/macdown_2/issues/63); PDF export
 > pagination has no automated test coverage yet
-> ([#13](https://github.com/Joncallim/macdown_2/issues/13)). The remaining
-> planned epics — a native diagram platform with Mermaid support, engineering
-> renderer evaluation (D2/Graphviz/WaveDrom), whole-app accessibility and
-> polish, localisation, and signed/distributable release engineering — have
-> not started. See
+> ([#13](https://github.com/Joncallim/macdown_2/issues/13)); E20's own live
+> in-app UI-test execution and visual dogfood remain open, tracked in
+> `RELEASE_EVIDENCE.md`. The remaining planned epics — engineering renderer
+> evaluation (D2/Graphviz/WaveDrom), whole-app accessibility and polish,
+> localisation, and signed/distributable release engineering — have not
+> started. See
 > [`planning/epics/README.md`](planning/epics/README.md) for the full epic
 > table and [`planning/RELEASE_EVIDENCE.md`](planning/RELEASE_EVIDENCE.md)
 > for the release-readiness ledger, which distinguishes "implemented" from
@@ -63,6 +65,7 @@ MacDown2/
 │       ├── TextFilters       # Local text-filter command execution (E14)
 │       ├── JSONSupport       # JSON analysis/outline (E11)
 │       ├── Math / MathRendering   # Inline/display math parsing + rendering (E19)
+│       ├── Diagrams / DiagramRendering  # Mermaid diagram platform: model + WKWebView renderer (E20)
 │       └── …
 ├── Packages/TreeSitterMarkdown  # Vendored markdown + markdown-inline grammars
 └── project.yml               # XcodeGen project definition
