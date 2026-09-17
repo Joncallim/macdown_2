@@ -39,12 +39,8 @@ public enum MermaidFenceScanner {
     }
 
     /// Slices the block's full line range (fence delimiters included) out of
-    /// `sourceText`, then strips exactly the first and last physical line —
-    /// the opening ```mermaid and closing ``` delimiters — to recover the
-    /// diagram source those delimiters wrap. Positional, not syntax-aware:
-    /// this works regardless of fence character (``` or ~~~), indentation,
-    /// or language-tag spelling, because it never re-parses the delimiter
-    /// text, only excludes it by line position.
+    /// `sourceText`, then recovers the inner diagram source via
+    /// `MermaidFenceContent.stripDelimiters(from:)`.
     private static func fence(
         for block: MarkdownBlock,
         sourceMap: SourceMap,
@@ -52,11 +48,7 @@ public enum MermaidFenceScanner {
     ) -> MermaidFence? {
         let nsRange = sourceMap.utf16Range(ofLines: block.lineRange)
         guard let range = Range(nsRange, in: sourceText) else { return nil }
-        var lines = sourceText[range].components(separatedBy: "\n")
-        guard lines.count >= 2 else { return nil }
-        lines.removeFirst()
-        lines.removeLast()
-        let inner = lines.joined(separator: "\n")
+        let inner = MermaidFenceContent.stripDelimiters(from: String(sourceText[range]))
         return MermaidFence(source: inner, sourceRange: nsRange.location ..< (nsRange.location + nsRange.length))
     }
 }

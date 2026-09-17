@@ -14,7 +14,12 @@ private actor CountingRenderer: MermaidDiagramRendering {
             failNextCall = false
             throw MermaidRenderError.timedOut
         }
-        return RenderedMermaidDiagram(svg: "<svg><!-- \(fence.source) --></svg>", naturalWidth: 100, naturalHeight: 100)
+        return RenderedMermaidDiagram(
+            svg: "<svg><!-- \(fence.source) --></svg>",
+            pngData: nil,
+            naturalWidth: 100,
+            naturalHeight: 100
+        )
     }
 }
 

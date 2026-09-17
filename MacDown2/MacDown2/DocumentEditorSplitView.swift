@@ -313,7 +313,8 @@ struct DocumentEditorSplitView: View {
                         baseBlocks: previewBlocks, currentRevision: parseSession.document?.revision
                     )
                 ),
-                linkDefinitions: previewLinkDefinitions
+                linkDefinitions: previewLinkDefinitions,
+                mermaidFenceView: mermaidFenceView
             )
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 4) {

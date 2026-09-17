@@ -30,6 +30,23 @@ struct MermaidWebRendererTests {
         await renderer.shutdown()
     }
 
+    /// A real, WebKit-rendered raster snapshot of the diagram, used for
+    /// native Preview display (§7.2's `MermaidDiagramBlockView`) because a
+    /// real spike proved AppKit's own SVG decoder cannot reliably display
+    /// Mermaid's actual output (`RenderedMermaidDiagram`'s own doc comment;
+    /// `render.js`'s `png` field comment has the full finding). The PNG
+    /// magic-byte check confirms this is genuine decodable image data, not
+    /// merely a non-empty byte blob.
+    @Test func renderProducesAValidPNGSnapshotAlongsideTheSVG() async throws {
+        let renderer = MermaidWebRenderer()
+        let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: Self.context)
+        let pngData = try #require(diagram.pngData)
+        let pngMagicBytes: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        #expect(Array(pngData.prefix(8)) == pngMagicBytes)
+        #expect(pngData.count > 100)
+        await renderer.shutdown()
+    }
+
     @Test func renderThrowsInvalidSyntaxForMalformedSource() async throws {
         let renderer = MermaidWebRenderer()
         await #expect(throws: MermaidRenderError.self) {
