@@ -116,6 +116,7 @@ let package = Package(
                 "MarkdownEngine",
                 "Themes",
                 "FileCore",
+                "Diagrams",
                 .product(name: "Textual", package: "textual"),
             ]
         ),

@@ -24,7 +24,7 @@ struct MermaidContributionTests {
 
     @Test func runReturnsNothingWhenSourceHasNoMermaidFence() async throws {
         let contribution = MermaidContribution(context: Self.context, renderer: FakeRenderer { _ in
-            RenderedMermaidDiagram(svg: "<svg></svg>", naturalWidth: 1, naturalHeight: 1)
+            RenderedMermaidDiagram(svg: "<svg></svg>", pngData: nil, naturalWidth: 1, naturalHeight: 1)
         })
         let text = "no diagrams here"
         let results = try await contribution.run(document: Self.document(text), sourceText: text, sourceGeneration: 0)
@@ -33,7 +33,7 @@ struct MermaidContributionTests {
 
     @Test func runProducesOneHTMLResultPerFenceWithBlockPlacement() async throws {
         let contribution = MermaidContribution(context: Self.context, renderer: FakeRenderer { fence in
-            RenderedMermaidDiagram(svg: "<svg>\(fence.source)</svg>", naturalWidth: 42, naturalHeight: 24)
+            RenderedMermaidDiagram(svg: "<svg>\(fence.source)</svg>", pngData: nil, naturalWidth: 42, naturalHeight: 24)
         })
         let text = "```mermaid\ngraph TD; A-->B;\n```\n"
         let results = try await contribution.run(document: Self.document(text), sourceText: text, sourceGeneration: 5)
@@ -56,7 +56,7 @@ struct MermaidContributionTests {
             if fence.source.contains("bad") {
                 throw MermaidRenderError.invalidSyntax("unexpected token")
             }
-            return RenderedMermaidDiagram(svg: "<svg>ok</svg>", naturalWidth: 1, naturalHeight: 1)
+            return RenderedMermaidDiagram(svg: "<svg>ok</svg>", pngData: nil, naturalWidth: 1, naturalHeight: 1)
         })
         let text = "```mermaid\nbad syntax here\n```\n\n```mermaid\ngraph TD; A-->B;\n```\n"
         let results = try await contribution.run(document: Self.document(text), sourceText: text, sourceGeneration: 0)

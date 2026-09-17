@@ -35,6 +35,58 @@ this document is a binding contract.
 > above (the SVG-to-native-view display mechanism) remains open,
 > addressed in Slice 4.
 
+> **As-built note (Slice 4, 2026-09-17): the second provisional item is
+> now resolved, and the answer is not what §1/§6/§7.2/§16 assumed.** A
+> real spike against actual Mermaid output (not a toy SVG) found that
+> AppKit's built-in SVG decoder (`NSImage`/`_NSSVGImageRep`) cannot
+> reliably display it. First finding: Mermaid's default output uses
+> `<foreignObject><div>...</div></foreignObject>` for node/edge labels
+> (real, HTML-based text layout) — AppKit's SVG decoder does not support
+> `<foreignObject>` at all, so a rendered `graph TD; A-->B;` showed two
+> empty boxes joined by a line, with the "A"/"B" labels silently missing
+> entirely. Second finding: forcing Mermaid's own documented
+> interoperability escape hatch (`htmlLabels: false`, set at the
+> **top level** of `mermaid.initialize(...)` — its
+> `flowchart: { htmlLabels: false }` nested form is deprecated and,
+> empirically, did not actually change the output) does make Mermaid
+> emit native SVG `<text>`/`<tspan>` elements instead — but AppKit's
+> SVG decoder then positioned that text in the wrong place (floating
+> above each node instead of centered inside it), on every node, not as
+> an occasional glitch. Changing `themeVariables.fontFamily` to a plain
+> system font did not fix this either, pointing at AppKit's `<style>`
+> block/CSS support being the deeper limitation, not font resolution.
+>
+> **Decision:** keep `svg` (Mermaid's own, unmodified, richer
+> HTML-labelled output) as `RenderedMermaidDiagram`'s Export
+> representation — completely unaffected, since Export already renders
+> through a real browser engine (`PDFExportAdapter`'s `WKWebView`, or the
+> reader's own browser for HTML export) that supports `<foreignObject>`
+> correctly. For native, on-screen Preview display, `render.js` now also
+> rasterizes the SAME rendered SVG to a PNG **inside the same real
+> WebKit engine that already renders it correctly** — the standard
+> `Image` element loaded from a `data:image/svg+xml` URI, drawn to a
+> `<canvas>`, read back via `canvas.toDataURL('image/png')` (confirmed
+> for real: this is not blocked by canvas tainting for a same-page
+> `data:` URI source) — and `RenderedMermaidDiagram` gained a second
+> field, `pngData: Data?`, produced by that one same render call, not a
+> second render. `MermaidDiagramBlockView` (§7.2, §16) displays
+> `pngData`, not `svg`. This is architecturally the same tradeoff
+> `MathContribution`/`RenderedMathImage` already made and shipped in
+> EPIC-19 for the same underlying reason (AppKit has no reliable
+> resolution-independent on-screen path for this content) — not a novel
+> compromise invented here. `svg` remains genuinely vector and is what
+> journey 4 (copy/export as SVG) and all of §7.1 Export use; only the
+> interactive Preview surface's on-screen pixels are raster, exactly
+> mirroring how Math's Preview-visible glyphs are Textual's own text
+> rendering while Export's equations are always a PNG regardless.
+>
+> Every other section's mention of Preview showing "a native vector
+> image" should be read as "a native image, real WebKit-rendered,
+> resolution-fixed at `render.js`'s `PREVIEW_RASTER_SCALE` (2x)" —
+> the vector-quality claims in §1/§3/§18 apply to Export/copy-as-SVG
+> only, not to Preview's on-screen pixels. Not adjusting every such
+> mention individually; this note is the authoritative correction.
+
 ---
 
 ## 1. Owner summary
@@ -536,9 +588,11 @@ PreviewBlock (kind: .codeBlock(language: "mermaid"), source: fenceBody)
        .task(id: source) {
            result = try? await renderer.render(fence, context)
        }
-       -> renders RenderedMermaidDiagram.svg as a native vector image
-          on success; an inline diagnostic view on failure/timeout;
-          a lightweight placeholder while the task is in flight
+       -> renders RenderedMermaidDiagram.pngData as a native raster image
+          on success (§10 as-built note — NOT .svg; AppKit cannot
+          reliably display real Mermaid SVG output on screen);
+          an inline diagnostic view on failure/timeout; a lightweight
+          placeholder while the task is in flight
 ```
 
 `renderer` here is the same shared `MermaidDiagramCache`-wrapped

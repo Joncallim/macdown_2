@@ -93,9 +93,13 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard let svg = dict["svg"] as? String else {
             throw MermaidRenderError.rendererUnavailable
         }
+        // A `png` decode failure is intentionally not fatal to the whole
+        // render: `svg` (Export's only consumer) is still perfectly valid.
+        // Only native Preview display loses its snapshot in that case.
+        let pngData = (dict["png"] as? String).flatMap { Data(base64Encoded: $0) }
         let width = (dict["width"] as? NSNumber)?.doubleValue ?? 0
         let height = (dict["height"] as? NSNumber)?.doubleValue ?? 0
-        return RenderedMermaidDiagram(svg: svg, naturalWidth: width, naturalHeight: height)
+        return RenderedMermaidDiagram(svg: svg, pngData: pngData, naturalWidth: width, naturalHeight: height)
     }
 
     func teardown() {

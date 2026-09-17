@@ -1,4 +1,5 @@
 import AppKit
+import Diagrams
 import MarkdownEngine
 import SwiftUI
 import Textual
@@ -25,6 +26,18 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
     /// ``PreviewLinkDefinitions`` for why every block needs these.
     public let linkDefinitions: [String]?
 
+    /// Renders a ```mermaid``` fence's inner diagram source (delimiters
+    /// already stripped) as a native view, in place of Textual's ordinary
+    /// code-block rendering (epic-20-implementation.md §7.2). `nil` (the
+    /// default) — the app's own diagram renderer, and the `AnyView` return
+    /// type, are both app-target concerns; this package stays free of any
+    /// diagram-rendering dependency beyond the plain `Diagrams` model types
+    /// needed to recognize and strip a fence, matching how this package has
+    /// no math-rendering dependency either. When `nil`, a mermaid fence
+    /// renders exactly like any other code block — never a blank block, a
+    /// crash, or a silently dropped diagram.
+    public let mermaidFenceView: ((String) -> AnyView)?
+
     public init(
         document: MarkdownDocument?,
         text: String?,
@@ -32,7 +45,8 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         linkResolver: PreviewLinkResolver = PreviewLinkResolver(),
         controller: ScrollSyncController = ScrollSyncController(),
         blocks: [PreviewBlock]? = nil,
-        linkDefinitions: [String]? = nil
+        linkDefinitions: [String]? = nil,
+        mermaidFenceView: ((String) -> AnyView)? = nil
     ) {
         self.document = document
         self.text = text
@@ -41,6 +55,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         self.controller = controller
         self.blocks = blocks
         self.linkDefinitions = linkDefinitions
+        self.mermaidFenceView = mermaidFenceView
     }
 
     /// Per-block measured heights, keyed by position in ``displayBlocks``.
@@ -112,7 +127,8 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                     block: block,
                                     theme: theme,
                                     linkResolver: linkResolver,
-                                    linkDefinitions: displayLinkDefinitions
+                                    linkDefinitions: displayLinkDefinitions,
+                                    mermaidFenceView: mermaidFenceView
                                 )
                                 .id(block.id)
                                 // Inter-block spacing. Applied here, above the
@@ -276,6 +292,7 @@ private struct BlockView: View {
     let theme: PreviewTheme
     let linkResolver: PreviewLinkResolver
     let linkDefinitions: [String]
+    let mermaidFenceView: ((String) -> AnyView)?
 
     /// The block's source with every document-wide link reference definition
     /// prepended, so a `[text][label]` reference in this block resolves even
@@ -287,6 +304,18 @@ private struct BlockView: View {
         return (linkDefinitions + [block.source]).joined(separator: "\n")
     }
 
+    /// `block.source` for a `.codeBlock` includes both fence delimiter
+    /// lines (confirmed against `PreviewBlock.blocks(from:text:)`'s own
+    /// slicing) — stripped here via the same helper `MermaidFenceScanner`
+    /// uses for Export, so both paths recover identical diagram source from
+    /// differently-produced but identically-sliced text.
+    private var mermaidFenceSource: String? {
+        guard case let .codeBlock(language) = block.kind,
+              let language, language.caseInsensitiveCompare("mermaid") == .orderedSame
+        else { return nil }
+        return MermaidFenceContent.stripDelimiters(from: block.source)
+    }
+
     var body: some View {
         Group {
             if block.isOversize {
@@ -295,6 +324,8 @@ private struct BlockView: View {
                 // around 100 KB (see ``PreviewBlock/oversizeByteThreshold``).
                 Text(block.source)
                     .font(.system(.body, design: .monospaced))
+            } else if let mermaidFenceSource, let mermaidFenceView {
+                mermaidFenceView(mermaidFenceSource)
             } else {
                 // `baseURL` resolves relative image sources (e.g.
                 // `![plot](images/plot.png)`) during parsing. `linkResolver`
