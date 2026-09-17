@@ -92,4 +92,55 @@ struct GraphvizWebRendererTests {
         #expect(diagram.svg.contains("<svg"))
         await renderer.shutdown()
     }
+
+    /// Adversarial corpus (epic-21-implementation.md Slice 5, mirroring
+    /// epic-20-implementation.md §15): a genuinely larger, more realistic
+    /// diagram — not just a two-node smoke test — to catch problems that
+    /// only appear with real layout complexity. 12 nodes, a cluster, and
+    /// mixed node/edge styling.
+    @Test func renderHandlesAModeratelyComplexDiagramWithinTheDefaultTimeout() async throws {
+        let renderer = GraphvizWebRenderer()
+        let source = """
+        digraph Pipeline {
+            rankdir=LR;
+            node [shape=box];
+            Start [shape=ellipse];
+            End [shape=ellipse];
+            subgraph cluster_ingest {
+                label = "Ingest";
+                Fetch; Parse; Validate;
+                Fetch -> Parse -> Validate;
+            }
+            subgraph cluster_process {
+                label = "Process";
+                Transform; Enrich; Aggregate;
+                Transform -> Enrich -> Aggregate;
+            }
+            Start -> Fetch;
+            Validate -> Transform [style=dashed];
+            Aggregate -> Store [color=blue];
+            Store [shape=cylinder];
+            Store -> End;
+            Validate -> Error [color=red];
+            Error -> End [color=red];
+        }
+        """
+        let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+        #expect(diagram.svg.contains("<svg"))
+        #expect(diagram.naturalWidth > 0)
+        #expect(diagram.naturalHeight > 0)
+        await renderer.shutdown()
+    }
+
+    /// Adversarial corpus: whitespace-only source is not valid DOT syntax
+    /// (a DOT file requires a `graph`/`digraph` keyword) and must fail the
+    /// same safe, diagnosable way as any other malformed input — never
+    /// hang, never crash, never produce an empty but "successful" diagram.
+    @Test func renderFailsSafelyOnWhitespaceOnlySource() async throws {
+        let renderer = GraphvizWebRenderer()
+        await #expect(throws: GraphvizRenderError.self) {
+            _ = try await renderer.render(Self.fence("   \n\n   "), context: Self.context)
+        }
+        await renderer.shutdown()
+    }
 }

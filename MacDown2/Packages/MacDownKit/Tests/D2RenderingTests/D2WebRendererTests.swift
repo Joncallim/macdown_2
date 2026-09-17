@@ -92,4 +92,50 @@ struct D2WebRendererTests {
         #expect(diagram.svg.contains("<svg"))
         await renderer.shutdown()
     }
+
+    /// Adversarial corpus (epic-21-implementation.md Slice 5, mirroring
+    /// epic-20-implementation.md §15): a genuinely larger, more realistic
+    /// diagram — not just a two-node smoke test — to catch problems that
+    /// only appear with real layout complexity (long render time,
+    /// degenerate output). Containers, multiple shapes, and styled
+    /// connections.
+    @Test func renderHandlesAModeratelyComplexDiagramWithinTheDefaultTimeout() async throws {
+        let renderer = D2WebRenderer()
+        let source = """
+        classes: {
+          service: { style.fill: "#e3f2fd" }
+        }
+        client: Client
+        gateway: API Gateway
+        auth: Auth Service { class: service }
+        orders: Orders Service { class: service }
+        db: Database { shape: cylinder }
+        client -> gateway: request
+        gateway -> auth: verify token
+        gateway -> orders: forward
+        orders -> db: read/write
+        auth -> db: lookup user
+        gateway -> client: response {
+          style.stroke-dash: 3
+        }
+        """
+        let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+        #expect(diagram.svg.contains("<svg"))
+        #expect(diagram.naturalWidth > 0)
+        #expect(diagram.naturalHeight > 0)
+        await renderer.shutdown()
+    }
+
+    /// Adversarial corpus: whitespace-only source must fail (or otherwise
+    /// resolve) the same safe, diagnosable way every time — never hang,
+    /// never crash. D2 tolerates an empty document as a real, deliberate
+    /// language feature (an empty diagram is valid D2), so this asserts
+    /// the safe-completion contract rather than assuming an error, unlike
+    /// Mermaid/Graphviz which both require a real keyword to parse.
+    @Test func renderCompletesSafelyOnWhitespaceOnlySource() async throws {
+        let renderer = D2WebRenderer()
+        let diagram = try await renderer.render(Self.fence("   \n\n   "), context: Self.context)
+        #expect(diagram.svg.contains("<svg"))
+        await renderer.shutdown()
+    }
 }
