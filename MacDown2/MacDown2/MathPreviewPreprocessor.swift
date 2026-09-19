@@ -45,6 +45,14 @@ import Preview
 /// content with a flag marker or a newline collapse the user never
 /// authored.
 ///
+/// A span inside a *fenced* code block nested in a list item or block quote
+/// is excluded the same way (`FencedCodeBlockScanner`, `Math` target —
+/// issue #63): `preprocessed(_ block:)`'s own top-level `.codeBlock` skip
+/// only sees a fence that IS the whole `PreviewBlock`, not one living
+/// inside another block's `source` text, and `InlineCodeSpanScanner`'s
+/// "never crosses a blank line" rule only coincidentally protected a
+/// nested fence whose body had no internal blank line.
+///
 /// Applied to `previewContributionSession.displayedBlocks(...)`'s result
 /// right before it is handed to `TextualMarkdownPreview(blocks:)`
 /// (`DocumentEditorSplitView.swift`) — deliberately outside the
@@ -109,7 +117,7 @@ enum MathPreviewPreprocessor {
         source: String,
         isValid: (MathSpan) -> Bool = MathImageRenderer.isRenderable
     ) -> String {
-        let codeSpanRanges = InlineCodeSpanScanner.ranges(in: source)
+        let codeSpanRanges = InlineCodeSpanScanner.ranges(in: source) + FencedCodeBlockScanner.ranges(in: source)
         let spans = MathSpanScanner.scan(source)
             .filter { span in !codeSpanRanges.contains(where: { $0.overlaps(span.range) }) }
             .prefix(maxScannedSpansPerBlock)
