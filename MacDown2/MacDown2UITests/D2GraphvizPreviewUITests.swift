@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 
@@ -64,6 +65,41 @@ final class D2GraphvizPreviewUITests: XCTestCase {
             .exists)
         XCTAssertFalse(context.app.descendants(matching: .any).matching(identifier: "d2DiagramError").firstMatch
             .exists)
+    }
+
+    /// Real evidence for issue #86 in the live app: right-clicking a
+    /// rendered D2 diagram offers "Copy as SVG", and clicking it writes the
+    /// diagram's real SVG markup to the system pasteboard.
+    func testCopyAsSVGWritesRealSVGToThePasteboard() {
+        let text = "# Title\n\n```d2\na -> b\n```\n"
+        let context = makeApp(fixtureContents: text)
+        defer {
+            context.app.terminate()
+            cleanup(context)
+        }
+
+        context.app.launch()
+        context.app.activate()
+        XCTAssertTrue(context.app.windows.firstMatch.waitForExistence(timeout: 5))
+
+        let diagramImage = context.app.descendants(matching: .any)
+            .matching(identifier: "d2DiagramImage")
+            .firstMatch
+        XCTAssertTrue(diagramImage.waitForExistence(timeout: 20))
+
+        NSPasteboard.general.clearContents()
+        diagramImage.rightClick()
+        let copyItem = context.app.menuItems["Copy as SVG"]
+        XCTAssertTrue(copyItem.waitForExistence(timeout: 5))
+        copyItem.click()
+
+        let clipboardHasSVG = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                NSPasteboard.general.string(forType: .string)?.contains("<svg") == true
+            },
+            object: nil
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [clipboardHasSVG], timeout: 5), .completed)
     }
 
     func testAMalformedD2FenceShowsAnInlineErrorInTheLivePreview() {

@@ -17,7 +17,7 @@ struct D2DiagramBlockView: View {
 
     private enum RenderState {
         case loading
-        case rendered(NSImage, width: Double, height: Double)
+        case rendered(NSImage, width: Double, height: Double, svg: String)
         case failed(String)
     }
 
@@ -31,13 +31,19 @@ struct D2DiagramBlockView: View {
                     .controlSize(.small)
                     .frame(maxWidth: .infinity, minHeight: 40, alignment: .center)
                     .accessibilityIdentifier("d2DiagramLoading")
-            case let .rendered(image, width, height):
+            case let .rendered(image, width, height, svg):
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: min(width, 640), maxHeight: height)
                     .accessibilityLabel(Text(source))
                     .accessibilityIdentifier("d2DiagramImage")
+                    .contextMenu {
+                        Button("Copy as SVG") {
+                            DiagramClipboard.copySVG(svg)
+                        }
+                        .accessibilityIdentifier("d2DiagramCopyAsSVG")
+                    }
             case let .failed(message):
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
@@ -68,7 +74,7 @@ struct D2DiagramBlockView: View {
                 renderState = .failed("no preview image was produced")
                 return
             }
-            renderState = .rendered(image, width: diagram.naturalWidth, height: diagram.naturalHeight)
+            renderState = .rendered(image, width: diagram.naturalWidth, height: diagram.naturalHeight, svg: diagram.svg)
         } catch {
             guard !Task.isCancelled else { return }
             renderState = .failed(Self.describe(error))

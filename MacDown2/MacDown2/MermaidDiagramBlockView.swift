@@ -8,8 +8,10 @@ import SwiftUI
 /// own SVG decoder cannot reliably display real Mermaid output (see the
 /// Slice 4 as-built note at the top of the architecture document, and
 /// `RenderedMermaidDiagram`'s own doc comment for the full finding).
-/// `svg` remains genuinely vector and is what Export/copy-as-SVG use; this
-/// view never touches it.
+/// `svg` remains genuinely vector and is what Export uses; this view's own
+/// on-screen `Image` never touches it, but it is kept alongside the raster
+/// image so the "Copy as SVG" context menu (issue #86) can copy the real
+/// vector markup rather than the raster snapshot the user sees on screen.
 struct MermaidDiagramBlockView: View {
     let source: String
     let context: MermaidRenderContext
@@ -17,7 +19,7 @@ struct MermaidDiagramBlockView: View {
 
     private enum RenderState {
         case loading
-        case rendered(NSImage, width: Double, height: Double)
+        case rendered(NSImage, width: Double, height: Double, svg: String)
         case failed(String)
     }
 
@@ -31,13 +33,19 @@ struct MermaidDiagramBlockView: View {
                     .controlSize(.small)
                     .frame(maxWidth: .infinity, minHeight: 40, alignment: .center)
                     .accessibilityIdentifier("mermaidDiagramLoading")
-            case let .rendered(image, width, height):
+            case let .rendered(image, width, height, svg):
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: min(width, 640), maxHeight: height)
                     .accessibilityLabel(Text(source))
                     .accessibilityIdentifier("mermaidDiagramImage")
+                    .contextMenu {
+                        Button("Copy as SVG") {
+                            DiagramClipboard.copySVG(svg)
+                        }
+                        .accessibilityIdentifier("mermaidDiagramCopyAsSVG")
+                    }
             case let .failed(message):
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
@@ -68,7 +76,7 @@ struct MermaidDiagramBlockView: View {
                 renderState = .failed("no preview image was produced")
                 return
             }
-            renderState = .rendered(image, width: diagram.naturalWidth, height: diagram.naturalHeight)
+            renderState = .rendered(image, width: diagram.naturalWidth, height: diagram.naturalHeight, svg: diagram.svg)
         } catch {
             guard !Task.isCancelled else { return }
             renderState = .failed(Self.describe(error))
