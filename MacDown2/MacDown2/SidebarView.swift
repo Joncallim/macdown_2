@@ -133,6 +133,7 @@ struct SidebarView: View {
                     }
                     .disabled(index == 0)
                     .help("Move \(section.title) Up")
+                    .accessibilityLabel("Move \(section.title) Up")
 
                     Button {
                         moveSection(at: index, up: false)
@@ -141,6 +142,7 @@ struct SidebarView: View {
                     }
                     .disabled(index == model.sectionOrder.count - 1)
                     .help("Move \(section.title) Down")
+                    .accessibilityLabel("Move \(section.title) Down")
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 10, weight: .semibold))
