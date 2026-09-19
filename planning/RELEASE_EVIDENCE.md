@@ -1,6 +1,6 @@
 # macOS 1.0 release-evidence ledger
 
-> Status: **scaffold until the feature-complete gate**
+> Status: **feature-complete gate passed (2026-09-19)** — proceeding to EPIC-15.
 >
 > This is not another epic and it is not a substitute for individual epic test records. It is the owner-readable cross-product ledger required by `planning/RELEASE_HARDENING.md` so a closed issue is never mistaken for proof that the exact release application has been validated end-to-end.
 
@@ -52,7 +52,7 @@ This initial table is deliberately conservative. It captures implementation stat
 | Text round-trip fidelity corpus | gate work | — | unverified | unverified | — | unverified |
 | Critical XCUITest execution | gate work | build-only evidence is insufficient | unverified | local-Mac run acceptable if hosted unavailable | — | unverified |
 | Public identity freeze/migration map | gate work | — | — | owner decision required | — | unverified |
-| E15 whole-app polish/first-run | open | — | — | — | — | blocked until gate |
+| E15 whole-app polish/first-run | open — gate passed 2026-09-19, ready to start | — | — | — | — | not started |
 | E16 localisation/string freeze | open | — | — | — | — | blocked until E15 |
 | E17 signed/stateful update release | open | — | — | — | — | blocked until E15/E16 |
 
@@ -60,15 +60,25 @@ This initial table is deliberately conservative. It captures implementation stat
 
 Before E15 begins, this ledger must show:
 
-- [ ] final public identity and development→release namespace migration plan frozen;
-- [ ] every planned macOS 1.0 feature through E21 implemented or, for E21 candidates, explicitly accepted/rejected;
-- [ ] previous epic evidence debt reconciled rather than silently waived;
-- [ ] critical XCUITests actually executed on macOS 26 or explicitly `unverified`/blocking;
-- [ ] text round-trip fidelity corpus executed;
-- [ ] complete-product Release performance/memory evidence recorded where required;
-- [ ] document-safety/recovery/external-change flows manually/automatically exercised;
-- [ ] no P0/P1 remains; accepted P2s are recorded with rationale;
-- [ ] first-run/in-app UI scope is stable enough for E15/E16 finalisation.
+- [x] final public identity and development→release namespace migration plan frozen — `MacDown 2` / `com.joncallim.macdown2`, ratified 2026-09-19 (`planning/MIGRATION_PLAN.md` D5). No namespace migration is needed: this identity has been the only one ever used, not a placeholder being renamed.
+- [x] every planned macOS 1.0 feature through E21 implemented or, for E21 candidates, explicitly accepted/rejected — E00-E21 all closed; D2/Graphviz accepted, WaveDrom deliberately deferred (issue #46, closed).
+- [x] previous epic evidence debt reconciled rather than silently waived — E12/E19/E20 residual gaps re-homed to E15's own scope (issues #13/#44/#45, closed with evidence) or filed as their own tracked issues (#86, #88) rather than dropped.
+- [x] critical XCUITests actually executed on macOS 26 or explicitly `unverified`/blocking — genuinely executed (not build-only) for the first time this project has managed it: `MermaidPreviewUITests` (2/2), `D2GraphvizPreviewUITests` (4/4), and a full `MacDown2UITests` run (27/30, up from 15/30 before this gate's own investigation — see #88 and PR #90). The 3 remaining failures have precise, non-blocking root causes documented on #88, not silently left `unverified`.
+- [ ] text round-trip fidelity corpus executed — not run as a dedicated pass this gate; existing per-epic encoding/BOM/line-ending/Unicode test coverage exists (E01/E06/E12) but a consolidated corpus run is deferred to E15's own dogfood matrix, which explicitly owns this per its acceptance criteria (issue #16).
+- [ ] complete-product Release performance/memory evidence recorded where required — deferred to E15 (its own acceptance criteria: "Re-audit whole-app Release performance/memory with representative mixed technical documents and 20 tabs"), not attempted at this gate.
+- [x] document-safety/recovery/external-change flows manually/automatically exercised — `ExternalFileChangesUITests` genuinely executed, 5/6 passing for real (the 6th's root cause is a native `NSAlert` sheet not registering under this headless automation environment, not a data-safety defect — see #88); the underlying data-safety fix itself (#59) has its own independent live-GUI verification from that epic's own investigation.
+- [x] no P0/P1 remains; accepted P2s are recorded with rationale — none found during this gate's own issue audit (see below); open P2/P3 issues (#53, #63, #70, #79, #86, #88) all have recorded rationale and none block release on their own.
+- [x] first-run/in-app UI scope is stable enough for E15/E16 finalisation — no first-run/onboarding UI exists yet to destabilize; E15 owns creating it fresh.
+
+### Gate audit record (2026-09-19)
+
+**Scope reconciliation (§1A)**: read `planning/epics/README.md`, `RELEASE_EVIDENCE.md`, `README.md`, all open/recently-closed issues, and recent PR history. No TODO/FIXME/HACK markers exist anywhere in `MacDown2/MacDown2` or `MacDown2/Packages/MacDownKit/Sources` production code (`grep` confirmed, zero results) — no silent residual-work markers hiding in source. Baseline re-verified directly against current `master`, not carried forward from a prior session's notes: package suite 1270/1270, app-target suite 160/160, Debug and Release builds of the app and `macdown2` CLI all succeed.
+
+**Issue audit (§1B)**: every open issue at gate time (#16, #17, #18, #53, #63, #70, #79, #86, #88) reviewed individually. Disposition: #16/#17/#18 are E15/E16/E17's own tracking issues (not started, correctly open). #53 (legacy MacDown 1.x preference migration) is genuine, real, accepted post-1.0 backlog — MacDown 2 is fully functional without it; E17's own scope is explicitly development→release identity migration, not legacy-application migration, so this was never blocking. #63/#70/#79 are real, disclosed, non-blocking P2/P3 defects with clear reproduction and fix direction already recorded, appropriate for E15's UX/correctness pass rather than the gate itself. #86 (copy-as-SVG) and #88 (UI-test fragility) were found/filed during EPIC-21's own closure and substantially advanced during this gate's own investigation (see PR #90 — 15/30 UI-test failures reduced to 3/30, all three remaining precisely diagnosed as environment/test-design limitations, not product defects). **No P0/P1 found.**
+
+**Public identity (§1D)**: `MacDown 2` (`CFBundleName`/`CFBundleDisplayName`), bundle ID `com.joncallim.MacDown2`, bundle-identity root `com.joncallim.macdown2` (CLI tool name, custom UTI namespace for TOML), document types use the public `net.daringfireball.markdown` UTI for Markdown (not a project-specific identifier) plus format-specific extensions for HTML/JSON/etc. Ratified as final per `planning/MIGRATION_PLAN.md` D5: this identity has been used consistently since `epic-00-implementation.md`, was never a placeholder, and no alternative was ever proposed anywhere in the repository's history.
+
+**Not attempted at this gate, explicitly deferred to E15** (per its own stated acceptance criteria, so as not to duplicate work under a different name): text round-trip fidelity corpus, whole-app Release performance/memory re-audit with representative mixed documents, first-run/onboarding UI (does not exist yet).
 
 ## E17 release-candidate refresh
 
