@@ -49,7 +49,11 @@ final class EditorTypingUITests: XCTestCase {
         XCTAssertTrue(textView.value as? String == "# Hello\n" + typedText)
 
         // The preview pane should eventually reflect the edited text.
-        let preview = app.webViews.firstMatch
+        // Not `app.webViews.firstMatch`: Markdown preview is native
+        // SwiftUI/Textual (E07), not a WKWebView — only HTML files use a
+        // real WebView (`HTMLPreviewView`). This assertion predates that
+        // architecture and never got updated to match it.
+        let preview = app.descendants(matching: .any).matching(identifier: "previewPane").firstMatch
         XCTAssertTrue(preview.waitForExistence(timeout: 5))
 
         // Dirty-close prompt on ⌘W confirms the document was mutated. Using the

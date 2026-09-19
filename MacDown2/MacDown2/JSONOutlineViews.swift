@@ -67,6 +67,14 @@ struct JSONOutlinePreviewView: View {
         case .invalidJSON:
             invalidState
         case .ready:
+            // `.accessibilityIdentifier` on this container is best-effort, not
+            // a reliable test hook: a SwiftUI `List` bridges to an AppKit
+            // `NSOutlineView`-hosted AX subtree, and empirically its own
+            // container-level identifier does not attach the way it does for
+            // ordinary SwiftUI views (confirmed via a real accessibility-tree
+            // dump — every row keeps its own `jsonOutlineRow-*` identifier
+            // correctly, but the List's own identifier is not exposed).
+            // `MultiFormatUITests` locates this pane by row content instead.
             List(rows) { row in
                 JSONOutlineRowView(item: row.item, depth: row.depth, outlineController: outlineController)
             }
@@ -96,6 +104,7 @@ struct JSONOutlinePreviewView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
         .accessibilityIdentifier("jsonInvalidState")
     }
 }
