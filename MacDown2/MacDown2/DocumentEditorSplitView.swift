@@ -160,6 +160,16 @@ struct DocumentEditorSplitView: View {
 
                 if previewLayout.showsPreview {
                     previewPane
+                        // `.contain` (not the default) matters here: without it,
+                        // this identifier silently overrides every more-specific
+                        // identifier `previewPane`'s own content sets further down
+                        // (e.g. `noPreviewPane`, `htmlPreviewModeToggle`) — SwiftUI
+                        // propagates an ancestor's `.accessibilityIdentifier` onto
+                        // descendant AX elements that don't resolve to their own
+                        // distinct accessibility element, and `.contain` is what
+                        // stops that by making this wrapper a real element of its
+                        // own rather than a transparent pass-through.
+                        .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("previewPane")
                         .frame(width: PreviewPaneWidths.previewWidth(in: geometry.size.width, layout: previewLayout))
                 }
@@ -377,6 +387,7 @@ private struct NoPreviewView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
         .accessibilityIdentifier("noPreviewPane")
     }
 }

@@ -21,6 +21,12 @@ extension SidebarView {
                     .accessibilityIdentifier("openFolderButton")
                 Text("⌘⇧O opens a folder").font(.caption).foregroundStyle(.secondary)
             }
+            // `.contain`, not the default: without it this identifier leaks
+            // down and overrides the button's own more-specific
+            // `openFolderButton` identifier instead of just labeling this
+            // VStack — confirmed via a real accessibility-tree dump. `.contain`
+            // (unlike `.combine`) keeps the button independently clickable.
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("folderSection")
         case .loading:
             ProgressView("Loading folder…")

@@ -168,6 +168,11 @@ struct SidebarView: View {
             folderContent
         case .outline:
             outlineContent
+                // `.contain`: without it, this identifier leaks down and
+                // overrides each row's own more-specific `outlineRow-*`
+                // identifier instead of just labeling this container —
+                // confirmed via the same pattern in `SidebarView+Folder.swift`.
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("outlineSection")
         }
     }

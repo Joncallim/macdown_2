@@ -50,6 +50,7 @@ struct HTMLPreviewPane: View {
         }
         .pickerStyle(.segmented)
         .fixedSize()
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("htmlPreviewModeToggle")
     }
 

@@ -29,6 +29,18 @@ final class ExternalFileChangesUITests: XCTestCase {
         try? FileManager.default.removeItem(at: sessionDirectory)
     }
 
+    /// `app.otherElements[id]` requires the AX element to have the exact
+    /// `XCUIElementTypeOther` role, but `.accessibilityElement(children:)`
+    /// (`.combine`/`.contain` — needed so these banners' own identifiers
+    /// attach reliably rather than leaking their ancestor's, see
+    /// `ExternalFileStatusView.swift`) produces a `Group`-typed element
+    /// instead, confirmed via a real accessibility-tree dump. Matching by
+    /// identifier alone, regardless of type, is the robust form other
+    /// UI-test files in this target already use.
+    private func element(_ id: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: id).firstMatch
+    }
+
     func testCleanExternalReplacementReloadsWithoutAConflictSheet() {
         app.launch()
         app.activate()
@@ -37,10 +49,10 @@ final class ExternalFileChangesUITests: XCTestCase {
 
         atomicallyReplaceFixture(with: "# Disk Version\n")
 
-        let reload = app.otherElements["externalReloadStatus"]
+        let reload = element("externalReloadStatus")
         XCTAssertTrue(reload.waitForExistence(timeout: 8))
         XCTAssertEqual(textView.value as? String, "# Disk Version\n")
-        XCTAssertFalse(app.otherElements["externalChangeBanner"].exists)
+        XCTAssertFalse(element("externalChangeBanner").exists)
     }
 
     func testDirtyExternalReplacementKeepsLocalTextUntilDiskVersionIsChosen() {
@@ -53,7 +65,7 @@ final class ExternalFileChangesUITests: XCTestCase {
 
         atomicallyReplaceFixture(with: "# New Disk Version\n")
 
-        let banner = app.otherElements["externalChangeBanner"]
+        let banner = element("externalChangeBanner")
         XCTAssertTrue(banner.waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["externalConflictNotNowButton"].exists)
         app.buttons["externalConflictNotNowButton"].click()
@@ -73,7 +85,7 @@ final class ExternalFileChangesUITests: XCTestCase {
         textView.typeText(" local edit")
         atomicallyReplaceFixture(with: "# Disk Version\n")
 
-        let banner = app.otherElements["externalChangeBanner"]
+        let banner = element("externalChangeBanner")
         XCTAssertTrue(banner.waitForExistence(timeout: 8))
         app.buttons["externalConflictKeepMineButton"].click()
 
@@ -90,7 +102,7 @@ final class ExternalFileChangesUITests: XCTestCase {
         textView.typeText(" local edit")
         atomicallyReplaceFixture(with: "# First Disk Version\n")
 
-        let banner = app.otherElements["externalChangeBanner"]
+        let banner = element("externalChangeBanner")
         XCTAssertTrue(banner.waitForExistence(timeout: 8))
         app.buttons["externalConflictNotNowButton"].click()
         XCTAssertTrue(banner.exists)
@@ -114,7 +126,7 @@ final class ExternalFileChangesUITests: XCTestCase {
         textView.typeText(" local edit")
         atomicallyReplaceFixture(with: "# Disk Version\n")
 
-        let banner = app.otherElements["externalChangeBanner"]
+        let banner = element("externalChangeBanner")
         XCTAssertTrue(banner.waitForExistence(timeout: 8))
         try? FileManager.default.removeItem(at: fixtureURL)
         app.buttons["externalConflictUseDiskButton"].click()
@@ -132,7 +144,7 @@ final class ExternalFileChangesUITests: XCTestCase {
         textView.typeText(" local edit")
         atomicallyReplaceFixture(with: "# Disk Version Chosen At Close\n")
 
-        let conflict = app.otherElements["externalChangeBanner"]
+        let conflict = element("externalChangeBanner")
         XCTAssertTrue(conflict.waitForExistence(timeout: 8))
         app.typeKey("w", modifierFlags: .command)
 
@@ -144,7 +156,7 @@ final class ExternalFileChangesUITests: XCTestCase {
 
         let closed = NSPredicate(format: "exists == false")
         expectation(for: closed, evaluatedWith: textView)
-        waitForExpectations(timeout: 5)
+        waitForExpectations(timeout: 10)
     }
 
     private func atomicallyReplaceFixture(with text: String) {

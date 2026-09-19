@@ -62,6 +62,7 @@ struct ExternalFileStatusView: View {
             .padding(.vertical, 8)
             .foregroundStyle(.secondary)
             .background(.red.opacity(0.12))
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("externalRecoveryCleanupStatus")
         }
     }
@@ -89,6 +90,12 @@ struct ExternalFileStatusView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
         .background(.orange.opacity(0.15))
+        // `.contain`: without it, this banner's own identifier silently
+        // overrides each button's more-specific identifier instead of just
+        // labeling the banner itself (confirmed via a real accessibility-tree
+        // dump on an identical pattern elsewhere in this file/target).
+        // `.contain` keeps every button independently clickable/identifiable.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("externalChangeBanner")
     }
 
@@ -107,6 +114,7 @@ struct ExternalFileStatusView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
         .background(.red.opacity(0.12))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("externalChangeBanner")
     }
 
@@ -121,6 +129,11 @@ struct ExternalFileStatusView: View {
         .padding(.vertical, 7)
         .foregroundStyle(.secondary)
         .background(.green.opacity(0.1))
+        // `.combine`: this banner has no interactive children, so merging
+        // it into one element (rather than `.contain`) is safe and is what
+        // lets its caller's `.accessibilityIdentifier` actually attach to a
+        // real element instead of being silently dropped.
+        .accessibilityElement(children: .combine)
     }
 
     private func unavailableCopy(for issue: FileBackingIssue) -> String {

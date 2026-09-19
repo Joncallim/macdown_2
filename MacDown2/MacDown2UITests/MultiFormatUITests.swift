@@ -70,8 +70,17 @@ final class MultiFormatUITests: XCTestCase {
         let row = element(context.app, id: "jsonOutlineRow-$.a")
         XCTAssertTrue(row.waitForExistence(timeout: 5), "sidebar JSON outline row missing")
         ensureSplitLayout(context.app)
-        let pane = element(context.app, id: "jsonOutlinePreviewPane")
-        XCTAssertTrue(pane.waitForExistence(timeout: 5), "JSON outline preview pane missing")
+        // The preview pane's own `List` container (`jsonOutlinePreviewPane`)
+        // does not reliably expose its own accessibility identifier — a real,
+        // confirmed SwiftUI/AppKit `List` bridging limitation (see the
+        // identifier's doc comment in JSONOutlineViews.swift), not a product
+        // defect. Scoping a row lookup to inside `previewPane` instead proves
+        // the same thing this test cares about: the outline preview pane is
+        // actually showing JSON rows, not just present-but-empty.
+        let pane = element(context.app, id: "previewPane")
+        XCTAssertTrue(pane.waitForExistence(timeout: 5), "preview pane missing")
+        let rowInPreview = pane.descendants(matching: .any).matching(identifier: "jsonOutlineRow-$.a").firstMatch
+        XCTAssertTrue(rowInPreview.waitForExistence(timeout: 5), "JSON outline preview pane missing its rows")
     }
 
     func testInvalidJSONShowsDiagnosticInsteadOfStaleOutline() {
@@ -111,8 +120,12 @@ final class MultiFormatUITests: XCTestCase {
         let rendered = element(context.app, id: "htmlRenderedPane")
         XCTAssertTrue(rendered.waitForExistence(timeout: 5), "rendered pane missing")
 
-        // Switch to source and the read-only source pane appears.
-        context.app.segmentedControls.buttons["Source"].firstMatch.click()
+        // Switch to source and the read-only source pane appears. AppKit
+        // exposes a SwiftUI `.pickerStyle(.segmented)` Picker as a
+        // `RadioGroup`/`RadioButton` pair in the accessibility tree, not as
+        // `XCUIElementTypeSegmentedControl` — confirmed via a real
+        // accessibility-tree dump, not assumed from the SwiftUI source.
+        context.app.radioButtons["Source"].firstMatch.click()
         let source = element(context.app, id: "htmlSourcePane")
         XCTAssertTrue(source.waitForExistence(timeout: 5), "source pane did not appear after toggle")
     }

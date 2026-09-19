@@ -142,7 +142,11 @@ final class EditingAssistsUITests: XCTestCase {
         let boldItem = app.menuBars.menuBarItems["Format"].menuItems["Bold"].firstMatch
         XCTAssertTrue(boldItem.isEnabled)
 
-        let folderSection = app.otherElements["folderSection"]
+        // Not `app.otherElements[id]`: `.accessibilityElement(children: .contain)`
+        // (needed so this identifier attaches reliably rather than leaking
+        // onto its own child button — see `SidebarView+Folder.swift`)
+        // produces a `Group`-typed element, not `XCUIElementTypeOther`.
+        let folderSection = app.descendants(matching: .any).matching(identifier: "folderSection").firstMatch
         XCTAssertTrue(folderSection.waitForExistence(timeout: 5))
         folderSection.click()
         XCTAssertFalse(boldItem.isEnabled)

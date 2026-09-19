@@ -63,48 +63,7 @@ struct ContentAreaView: View {
         identity: String
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header bar
-            HStack(spacing: 10) {
-                Image(systemName: documentIcon(for: document.format.id))
-                    .foregroundStyle(.secondary)
-
-                Text(title(for: document))
-                    .font(.system(size: 13, weight: .semibold))
-
-                if document.fileURL == nil {
-                    Text("— Save As… ⌘⇧S to name this document")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                }
-
-                Spacer()
-
-                // Saving indicator (#57): the only signal a save is actually
-                // running. Before this there was no spinner, no disabled
-                // state, nothing — a save that took a moment looked
-                // identical to the app being hung.
-                if model.isSavingActiveDocument {
-                    HStack(spacing: 5) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Saving…")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                    .accessibilityIdentifier("savingIndicator")
-                }
-
-                // Format badge
-                Text(document.format.name)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.quaternary, in: Capsule())
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
+            documentHeaderBar(document)
 
             ExternalFileStatusView(controller: externalFileController)
             WorkspaceRecoveryRequiredNotice(model: model)
@@ -129,6 +88,51 @@ struct ContentAreaView: View {
         }
     }
 
+    private func documentHeaderBar(_ document: FileCore.FileDocument) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: documentIcon(for: document.format.id))
+                .foregroundStyle(.secondary)
+
+            Text(title(for: document))
+                .font(.system(size: 13, weight: .semibold))
+
+            if document.fileURL == nil {
+                Text("— Save As… ⌘⇧S to name this document")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+
+            // Saving indicator (#57): the only signal a save is actually
+            // running. Before this there was no spinner, no disabled
+            // state, nothing — a save that took a moment looked
+            // identical to the app being hung.
+            if model.isSavingActiveDocument {
+                HStack(spacing: 5) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Saving…")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("savingIndicator")
+            }
+
+            // Format badge
+            Text(document.format.name)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.quaternary, in: Capsule())
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+    }
+
     @ViewBuilder
     private var emptyState: some View {
         if model.isCreatingDocument {
@@ -140,6 +144,7 @@ struct ContentAreaView: View {
                     .font(.title2)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
             .accessibilityIdentifier("creatingDocumentNotice")
         } else if case let .openFailed(underlying) = model.lastError {
             VStack(spacing: 16) {
@@ -157,6 +162,7 @@ struct ContentAreaView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
+            .accessibilityElement(children: .combine)
             .accessibilityIdentifier("openFailedNotice")
         } else {
             VStack(spacing: 16) {
@@ -226,6 +232,7 @@ private struct WorkspaceRecoveryRequiredNotice: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
             .background(.orange.opacity(0.15))
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("conditionalPublicationRecoveryNotice")
         } else if case let .recoveryCleanupRequired(url) = model.lastError {
             HStack(spacing: 10) {
@@ -253,6 +260,7 @@ private struct WorkspaceRecoveryRequiredNotice: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
             .background(.orange.opacity(0.15))
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("recoveryCleanupRequiredNotice")
         } else if case let .saveFailed(underlying) = model.lastError {
             // #57: previously nothing rendered this case at all. A save
@@ -274,6 +282,7 @@ private struct WorkspaceRecoveryRequiredNotice: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
             .background(.red.opacity(0.12))
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("saveFailedNotice")
         }
     }
