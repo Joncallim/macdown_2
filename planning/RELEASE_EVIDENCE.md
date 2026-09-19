@@ -52,7 +52,7 @@ This initial table is deliberately conservative. It captures implementation stat
 | Text round-trip fidelity corpus | gate work | — | unverified | unverified | — | unverified |
 | Critical XCUITest execution | gate work | build-only evidence is insufficient | unverified | local-Mac run acceptable if hosted unavailable | — | unverified |
 | Public identity freeze/migration map | gate work | — | — | owner decision required | — | unverified |
-| E15 whole-app polish/first-run | open — gate passed 2026-09-19, ready to start | — | — | — | — | not started |
+| E15 whole-app polish/first-run | in progress (started 2026-09-19). Done: #86 (copy-as-SVG) resolved; #70 (reload banner) resolved as a side effect of the #88 fix; #63 (nested-fence math corruption) fixed; E12 PDF-pagination and E19 math-rendering-performance evidence debt closed; icon-only-button VoiceOver labels added; UI-test reliability substantially advanced. Not started: text round-trip fidelity corpus, Liquid Glass/visual coherence audit, final app icon/marketing assets, first-run/onboarding UI, whole-app 20-tab performance/memory report | package/app-target suites green throughout (see individual PRs) | none live-verified this pass (environment-blocked, as previously disclosed) | none known at P0/P1; #53 (legacy migration) and #79 (Mermaid/D2/Graphviz theme mismatch, P3) remain accepted, disclosed post-1.0/deferred debt | in progress, not yet `passed` |
 | E16 localisation/string freeze | open | — | — | — | — | blocked until E15 |
 | E17 signed/stateful update release | open | — | — | — | — | blocked until E15/E16 |
 
