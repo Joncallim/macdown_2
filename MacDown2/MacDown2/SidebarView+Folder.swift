@@ -32,7 +32,7 @@ extension SidebarView {
             ProgressView("Loading folder…")
         case let .rootUnreadable(reason):
             VStack(alignment: .leading) {
-                Text(reason).foregroundStyle(.secondary)
+                Text(verbatim: reason).foregroundStyle(.secondary)
                 Button("Choose Another Folder…") { coordinator?.chooseFolder() }
                     .accessibilityIdentifier("openFolderButton")
             }

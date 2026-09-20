@@ -71,7 +71,7 @@ struct SidebarView: View {
         ) {
             Button("OK", role: .cancel) { fileTreeModel.clearOperationError() }
         } message: {
-            Text(fileTreeModel.lastOperationError?.localizedDescription ?? "Unknown error")
+            Text(verbatim: fileTreeModel.lastOperationError?.localizedDescription ?? String(localized: "Unknown error"))
         }
     }
 

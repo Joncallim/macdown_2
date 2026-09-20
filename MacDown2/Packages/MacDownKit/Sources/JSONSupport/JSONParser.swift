@@ -38,7 +38,7 @@ public enum JSONParser {
 
         guard !scanner.isAtEnd else {
             return .invalid(JSONDiagnostic(
-                message: "Empty input: expected a JSON value.",
+                message: String(localized: "Empty input: expected a JSON value."),
                 line: 1,
                 column: 1,
                 range: nil
@@ -50,7 +50,9 @@ public enum JSONParser {
         case let .node(node):
             scanner.skipWhitespace()
             if !scanner.isAtEnd {
-                return .invalid(scanner.diagnostic("Unexpected content after the JSON value.", at: scanner.position))
+                return .invalid(scanner.diagnostic(
+                    String(localized: "Unexpected content after the JSON value."), at: scanner.position
+                ))
             }
             return .valid(node)
         case let .diagnostic(diagnostic):

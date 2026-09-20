@@ -49,7 +49,9 @@ enum PreviewContributionAdapter {
         guard isCoherent else {
             diagnostics.append(PreviewContributionDiagnostic(
                 contributionID: "preview-composer", severity: .error,
-                message: "preview blocks are not ordered/non-overlapping; contributions left as authored source"
+                message: String(
+                    localized: "preview blocks are not ordered/non-overlapping; contributions left as authored source"
+                )
             ))
             return PreviewContributionComposition(
                 sourceGeneration: sourceGeneration,
@@ -74,7 +76,9 @@ enum PreviewContributionAdapter {
         ) else {
             diagnostics.append(PreviewContributionDiagnostic(
                 contributionID: "preview-composer", severity: .error,
-                message: "internal composition invariant violated; contributions left as authored source"
+                message: String(
+                    localized: "internal composition invariant violated; contributions left as authored source"
+                )
             ))
             return PreviewContributionComposition(
                 sourceGeneration: sourceGeneration,

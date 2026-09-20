@@ -59,7 +59,7 @@ private struct PreviewContributionDiagnosticsList: View {
                 // A technical contribution identifier (e.g. "math", "mermaid"), never translated.
                 Text(verbatim: diagnostic.contributionID)
                     .font(.caption.bold())
-                Text(diagnostic.message)
+                Text(verbatim: diagnostic.message)
                     .font(.caption)
             }
             .accessibilityElement(children: .combine)

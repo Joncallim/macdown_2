@@ -15,15 +15,15 @@ public enum FileTreeOperationError: Error, Sendable, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .nameEmpty: "A name is required."
-        case .nameContainsPathSeparator: "Names cannot contain / or :."
-        case let .nameExists(name): "\"\(name)\" already exists."
-        case .sourceMissing: "The item no longer exists."
-        case .destinationNotDirectory: "The destination is not a folder."
-        case .outsideCurrentRoot: "The destination is outside the open folder."
-        case .staleOperation: "The folder changed before the operation could start."
-        case .moveIntoOwnSubtree: "A folder cannot be moved into itself."
-        case let .posix(code): "Folder operation failed (POSIX error \(code))."
+        case .nameEmpty: String(localized: "A name is required.")
+        case .nameContainsPathSeparator: String(localized: "Names cannot contain / or :.")
+        case let .nameExists(name): String(localized: "\"\(name)\" already exists.")
+        case .sourceMissing: String(localized: "The item no longer exists.")
+        case .destinationNotDirectory: String(localized: "The destination is not a folder.")
+        case .outsideCurrentRoot: String(localized: "The destination is outside the open folder.")
+        case .staleOperation: String(localized: "The folder changed before the operation could start.")
+        case .moveIntoOwnSubtree: String(localized: "A folder cannot be moved into itself.")
+        case let .posix(code): String(localized: "Folder operation failed (POSIX error \(code)).")
         case let .underlying(message): message
         }
     }

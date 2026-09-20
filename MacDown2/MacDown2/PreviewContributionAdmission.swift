@@ -48,45 +48,62 @@ extension PreviewContributionAdapter {
         guard let content = result.content else { return .skipped }
         guard !result.diagnostics.contains(where: { $0.severity == .error }) else { return .skipped }
         guard result.sourceGeneration == context.sourceGeneration else {
-            return .rejected("\(result.contributionID) is stale; authored source preserved")
+            return .rejected(String(localized: "\(result.contributionID) is stale; authored source preserved"))
         }
         guard case let .markdown(markdown) = content.representation else {
-            return .rejected(
-                "\(result.contributionID) produced HTML, which Preview does not support; authored source preserved"
-            )
+            return .rejected(rejectedHTMLMessage(contributionID: result.contributionID))
         }
         guard !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return .rejected("\(result.contributionID) produced empty content; authored source preserved")
+            return .rejected(
+                String(localized: "\(result.contributionID) produced empty content; authored source preserved")
+            )
         }
         guard context.document.sourceMap.utf16Length == context.sourceUTF16Length else {
-            return .rejected(
-                "\(result.contributionID)'s document does not match the current source; authored source preserved"
-            )
+            return .rejected(rejectedDocumentMismatchMessage(contributionID: result.contributionID))
         }
 
         let range = content.sourceRange
         guard range.lowerBound >= 0, range.upperBound > range.lowerBound,
               range.upperBound <= context.sourceUTF16Length
         else {
-            return .rejected("\(result.contributionID) has an invalid source range; authored source preserved")
+            return .rejected(
+                String(localized: "\(result.contributionID) has an invalid source range; authored source preserved")
+            )
         }
         guard let blockIndex = containingBlockIndex(for: range, in: context.baseIntervals) else {
-            return .rejected(
-                "\(result.contributionID)'s range does not fall inside exactly one preview block; "
-                    + "authored source preserved"
-            )
+            return .rejected(rejectedRangeNotInBlockMessage(contributionID: result.contributionID))
         }
         if let reason = placementRejectionReason(
             content: content, markdown: markdown, containingBlock: context.base[blockIndex],
             containingInterval: context.baseIntervals[blockIndex], context: context
         ) {
-            return .rejected("\(result.contributionID) \(reason); authored source preserved")
+            return .rejected(String(localized: "\(result.contributionID) \(reason); authored source preserved"))
         }
 
         return .accepted(PreviewContributionCandidate(
             resultIndex: resultIndex, contributionID: result.contributionID, sourceRange: range,
             placement: content.placement, markdown: markdown, containingBlockIndex: blockIndex
         ))
+    }
+
+    private static func rejectedHTMLMessage(contributionID: String) -> String {
+        String(
+            localized: "\(contributionID) produced HTML, which Preview does not support; authored source preserved"
+        )
+    }
+
+    private static func rejectedDocumentMismatchMessage(contributionID: String) -> String {
+        String(
+            localized: "\(contributionID)'s document does not match the current source; authored source preserved"
+        )
+    }
+
+    private static func rejectedRangeNotInBlockMessage(contributionID: String) -> String {
+        String(
+            localized: """
+            \(contributionID)'s range does not fall inside exactly one preview block; authored source preserved
+            """
+        )
     }
 
     /// The one base interval fully containing `range`, or `nil` when zero or
@@ -117,7 +134,7 @@ extension PreviewContributionAdapter {
             guard !replaced.contains("\n"), !replaced.contains("\r"),
                   !markdown.contains("\n"), !markdown.contains("\r")
             else {
-                return "has an inline placement that is not confined to one physical line"
+                return String(localized: "has an inline placement that is not confined to one physical line")
             }
             return nil
         case .block:
@@ -125,14 +142,14 @@ extension PreviewContributionAdapter {
                 return nil
             }
             guard case .paragraph = containingBlock.kind else {
-                return "has a partial block placement outside a top-level paragraph"
+                return String(localized: "has a partial block placement outside a top-level paragraph")
             }
             let sourceMap = context.document.sourceMap
             let startLine = sourceMap.line(atUTF16Offset: range.lowerBound)
             let endLine = sourceMap.line(atUTF16Offset: range.upperBound - 1)
             let exact = sourceMap.utf16Range(ofLines: startLine ... endLine)
             guard exact.location == range.lowerBound, exact.location + exact.length == range.upperBound else {
-                return "has a partial block placement that does not align with whole physical lines"
+                return String(localized: "has a partial block placement that does not align with whole physical lines")
             }
             return nil
         }
@@ -159,7 +176,9 @@ extension PreviewContributionAdapter {
             guard candidate.sourceRange.lowerBound >= previousUpperBound else {
                 diagnostics.append(PreviewContributionDiagnostic(
                     contributionID: candidate.contributionID, severity: .warning,
-                    message: "\(candidate.contributionID) overlaps another placement; authored source preserved"
+                    message: String(
+                        localized: "\(candidate.contributionID) overlaps another placement; authored source preserved"
+                    )
                 ))
                 continue
             }
@@ -171,8 +190,12 @@ extension PreviewContributionAdapter {
         if omittedByBudget > 0 {
             diagnostics.append(PreviewContributionDiagnostic(
                 contributionID: "preview-budget", severity: .warning,
-                message: "\(omittedByBudget) valid placement(s) exceeded the preview budget "
-                    + "and remain as authored source"
+                message: String(
+                    localized: """
+                    ^[\(omittedByBudget) valid placement](inflect: true) exceeded the preview budget \
+                    and remain as authored source
+                    """
+                )
             ))
         }
         return (accepted, diagnostics)

@@ -59,7 +59,7 @@ public struct MermaidContribution: Contributing {
                     diagnostics: [
                         ContributionDiagnostic(
                             severity: .error,
-                            message: "diagram could not be rendered: \(Self.describe(error))"
+                            message: String(localized: "diagram could not be rendered: \(Self.describe(error))")
                         ),
                     ]
                 ))
@@ -74,9 +74,10 @@ public struct MermaidContribution: Contributing {
         }
         switch renderError {
         case let .invalidSyntax(message): return message
-        case .timedOut: return "rendering timed out"
-        case let .outputTooLarge(byteCount): return "rendered output too large (\(byteCount) bytes)"
-        case .rendererUnavailable: return "renderer unavailable"
+        case .timedOut: return String(localized: "rendering timed out")
+        case let .outputTooLarge(byteCount):
+            return String(localized: "rendered output too large (\(byteCount) bytes)")
+        case .rendererUnavailable: return String(localized: "renderer unavailable")
         }
     }
 }

@@ -120,8 +120,10 @@ struct ContentAreaView: View {
                 .accessibilityIdentifier("savingIndicator")
             }
 
-            // Format badge
-            Text(document.format.name)
+            // Format badge -- format names ("Markdown", "JSON", "Plain Text", etc.) are
+            // technical/protocol labels, matching every other editor's convention of never
+            // translating them (FileFormat.swift's own doc comment lists the full built-in set).
+            Text(verbatim: document.format.name)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
@@ -156,7 +158,7 @@ struct ContentAreaView: View {
                     .font(.title2)
                     .foregroundStyle(.secondary)
 
-                Text(FileOpenFailurePresentation.message(for: underlying))
+                Text(verbatim: FileOpenFailurePresentation.message(for: underlying))
                     .font(.callout)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
@@ -175,8 +177,8 @@ struct ContentAreaView: View {
                     .foregroundStyle(.secondary)
 
                 VStack(spacing: 6) {
-                    ShortcutHint(shortcut: "⌘N", label: "New File")
-                    ShortcutHint(shortcut: "⌘O", label: "Open File")
+                    ShortcutHint(shortcut: "⌘N", label: Text("New File"))
+                    ShortcutHint(shortcut: "⌘O", label: Text("Open File"))
                 }
             }
         }
@@ -270,7 +272,7 @@ private struct WorkspaceRecoveryRequiredNotice: View {
             HStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle")
                     .foregroundStyle(.red)
-                Text(FileSaveFailurePresentation.message(for: underlying))
+                Text(verbatim: FileSaveFailurePresentation.message(for: underlying))
                     .font(.callout)
                 Spacer()
                 Button("Retry") {
@@ -329,7 +331,7 @@ enum FileSaveFailurePresentation {
 
 private struct ShortcutHint: View {
     let shortcut: String
-    let label: LocalizedStringKey
+    let label: Text
 
     var body: some View {
         HStack(spacing: 6) {
@@ -339,7 +341,7 @@ private struct ShortcutHint: View {
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
-            Text(label)
+            label
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }

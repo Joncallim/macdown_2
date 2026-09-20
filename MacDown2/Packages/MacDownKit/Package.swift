@@ -80,8 +80,8 @@ let package = Package(
         .target(name: "FileCore"),
         .target(name: "AppSettings"),
         .target(name: "Themes", resources: [.process("Themes")]),
-        .target(name: "Workspace", dependencies: ["FileCore"]),
-        .target(name: "FileTree", dependencies: ["FileCore"]),
+        .target(name: "Workspace", dependencies: ["FileCore"], resources: [.process("Resources")]),
+        .target(name: "FileTree", dependencies: ["FileCore"], resources: [.process("Resources")]),
         .target(name: "EditorCore", dependencies: ["FileCore"]),
         .target(
             name: "Highlighting",
@@ -128,7 +128,7 @@ let package = Package(
             ]
         ),
         .target(name: "OutlineUI", dependencies: ["MarkdownEngine", "JSONSupport"]),
-        .target(name: "JSONSupport", dependencies: []),
+        .target(name: "JSONSupport", dependencies: [], resources: [.process("Resources")]),
         .target(
             name: "ExportService",
             dependencies: [
@@ -139,8 +139,8 @@ let package = Package(
             ],
             resources: [.process("Resources")]
         ),
-        .target(name: "Contributions", dependencies: ["MarkdownEngine"]),
-        .target(name: "TextFilters"),
+        .target(name: "Contributions", dependencies: ["MarkdownEngine"], resources: [.process("Resources")]),
+        .target(name: "TextFilters", resources: [.process("Resources")]),
         .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"]),
         .target(
             name: "MathRendering",
@@ -149,20 +149,32 @@ let package = Package(
                 .product(name: "SwiftUIMath", package: "swiftui-math"),
             ]
         ),
-        .target(name: "Diagrams", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(
+            name: "Diagrams",
+            dependencies: ["MarkdownEngine", "Contributions"],
+            resources: [.process("Resources")]
+        ),
         .target(
             name: "DiagramRendering",
             dependencies: ["Diagrams"],
             resources: [.process("Resources")]
         ),
         .target(name: "DiagramWebKitPool"),
-        .target(name: "DiagramsD2", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(
+            name: "DiagramsD2",
+            dependencies: ["MarkdownEngine", "Contributions"],
+            resources: [.process("Resources")]
+        ),
         .target(
             name: "D2Rendering",
             dependencies: ["DiagramsD2", "DiagramWebKitPool"],
             resources: [.process("Resources")]
         ),
-        .target(name: "DiagramsGraphviz", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(
+            name: "DiagramsGraphviz",
+            dependencies: ["MarkdownEngine", "Contributions"],
+            resources: [.process("Resources")]
+        ),
         .target(
             name: "GraphvizRendering",
             dependencies: ["DiagramsGraphviz", "DiagramWebKitPool"],
