@@ -1,169 +1,1558 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "    Editor Only" : {
-
-    },
-    "    Preview Only" : {
-
-    },
-    "    Split Editor & Preview" : {
-
-    },
-    "— Save As… ⌘⇧S to name this document" : {
-
-    },
-    "%@" : {
-
-    },
-    "⌘⇧O opens a folder" : {
-
-    },
-    "✓ Editor Only" : {
-
-    },
-    "✓ Preview Only" : {
-
-    },
-    "✓ Split Editor & Preview" : {
-
-    },
-    "A competing version was preserved as %@. Reveal it, then use Save As to keep this copy." : {
-
-    },
-    "A fast, native Markdown editor for Mac, with live preview, math, and diagrams built right in." : {
-
-    },
-    "Applies the next time a new, untitled document is saved. Open documents keep their own encoding." : {
-
-    },
-    "Command" : {
-
-    },
-    "Couldn't Open File" : {
-
-    },
-    "Creating Document…" : {
-
-    },
-    "Editor Only" : {
-
-    },
-    "Embedded CSS" : {
-
-    },
-    "Empty folder" : {
-
-    },
-    "Export" : {
-
-    },
-    "HTML" : {
-
-    },
-    "Line %@, column %@: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Line %1$@, column %2$@: %3$@"
+  "sourceLanguage": "en",
+  "strings": {
+    "    Editor Only": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    Éditeur seul"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    エディタのみ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    Tylko edytor"
           }
         }
       }
     },
-    "Linked CSS" : {
-
+    "    Preview Only": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    Aperçu seul"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    プレビューのみ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    Tylko podgląd"
+          }
+        }
+      }
     },
-    "Live file monitoring is unavailable for this document." : {
-
+    "    Split Editor & Preview": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    Éditeur et aperçu partagés"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    エディタとプレビューを分割"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "    Edytor i podgląd obok siebie"
+          }
+        }
+      }
     },
-    "New File" : {
-
+    "%@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        }
+      }
     },
-    "No Commands Installed" : {
-
+    "%@ %@; authored source preserved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %@ ; la source rédigée est conservée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %@。作成時のソースを保持します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %@; zachowano źródło w oryginalnej postaci"
+          }
+        }
+      }
     },
-    "No Document" : {
-
+    "%@ has an invalid source range; authored source preserved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ a une plage source non valide ; la source rédigée est conservée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@のソース範囲が無効です。作成時のソースを保持します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ma nieprawidłowy zakres źródłowy; zachowano źródło w oryginalnej postaci"
+          }
+        }
+      }
     },
-    "No folder opened" : {
-
+    "%@ is stale; authored source preserved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ n'est plus à jour ; la source rédigée est conservée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@は古くなっています。作成時のソースを保持します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ jest nieaktualne; zachowano źródło w oryginalnej postaci"
+          }
+        }
+      }
     },
-    "No headings" : {
-
+    "%@ overlaps another placement; authored source preserved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ chevauche un autre placement ; la source rédigée est conservée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@が他の配置と重なっています。作成時のソースを保持します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ nakłada się na inne umieszczenie; zachowano źródło w oryginalnej postaci"
+          }
+        }
+      }
     },
-    "No Matching Commands" : {
-
+    "%@ produced HTML, which Preview does not support; authored source preserved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ a produit du HTML, que l'aperçu ne prend pas en charge ; la source rédigée est conservée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@がHTMLを生成しましたが、プレビューはHTMLに対応していません。作成時のソースを保持します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ wygenerowało HTML, którego podgląd nie obsługuje; zachowano źródło w oryginalnej postaci"
+          }
+        }
+      }
     },
-    "No matching files" : {
-
+    "%@ produced empty content; authored source preserved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ a produit un contenu vide ; la source rédigée est conservée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@が空のコンテンツを生成しました。作成時のソースを保持します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ wygenerowało pustą zawartość; zachowano źródło w oryginalnej postaci"
+          }
+        }
+      }
     },
-    "No outline available for %@" : {
-
+    "%@'s document does not match the current source; authored source preserved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "le document de %@ ne correspond pas à la source actuelle ; la source rédigée est conservée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@の書類が現在のソースと一致しません。作成時のソースを保持します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dokument %@ nie odpowiada bieżącemu źródłu; zachowano źródło w oryginalnej postaci"
+          }
+        }
+      }
     },
-    "No preview for %@" : {
-
+    "%@'s range does not fall inside exactly one preview block; authored source preserved": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la plage de %@ ne se situe pas exactement dans un seul bloc d'aperçu ; la source rédigée est conservée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@の範囲がちょうど1つのプレビューブロック内に収まっていません。作成時のソースを保持します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zakres %@ nie mieści się dokładnie w jednym bloku podglądu; zachowano źródło w oryginalnej postaci"
+          }
+        }
+      }
     },
-    "Now following %@" : {
-
+    "A competing version was preserved as %@. Reveal it, then use Save As to keep this copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une version concurrente a été conservée sous le nom %@. Révélez-la, puis utilisez Enregistrer sous pour conserver cette copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "競合するバージョンが%@として保存されました。それを表示してから、「別名で保存」でこのコピーを保持してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konkurencyjna wersja została zachowana jako %@. Odsłoń ją, a następnie użyj polecenia Zapisz jako, aby zachować tę kopię."
+          }
+        }
+      }
     },
-    "Open File" : {
-
+    "A fast, native Markdown editor for Mac, with live preview, math, and diagrams built right in.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un éditeur Markdown natif et rapide pour Mac, avec aperçu en direct, formules mathématiques et diagrammes intégrés."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブプレビュー、数式、図表を標準搭載した、高速でネイティブなMac用Markdownエディタです。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szybki, natywny edytor Markdown dla komputerów Mac z podglądem na żywo oraz wbudowaną obsługą wzorów matematycznych i diagramów."
+          }
+        }
+      }
     },
-    "PDF" : {
-
+    "Applies the next time a new, untitled document is saved. Open documents keep their own encoding.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S'applique la prochaine fois qu'un nouveau document sans titre est enregistré. Les documents ouverts conservent leur propre encodage."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次に新規の無題書類を保存するときに適用されます。開いている書類は各自のエンコーディングを維持します。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ma zastosowanie przy następnym zapisie nowego, nienazwanego dokumentu. Otwarte dokumenty zachowują własne kodowanie."
+          }
+        }
+      }
     },
-    "Preferences from the original MacDown were found. Importing them isn't supported yet." : {
-
+    "Command": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commande"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンド"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polecenie"
+          }
+        }
+      }
     },
-    "Preview Only" : {
-
+    "Couldn't Open File": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d'ouvrir le fichier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを開けませんでした"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można otworzyć pliku"
+          }
+        }
+      }
     },
-    "Recovery cleanup for %@ needs attention. Reveal it, retry, or use Save As." : {
-
+    "Creating Document…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Création du document…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書類を作成しています…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tworzenie dokumentu…"
+          }
+        }
+      }
     },
-    "Recovery for %@ could not be cleaned up. Keep this window open, or use Save As." : {
-
+    "Editor Only": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éditeur seul"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタのみ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko edytor"
+          }
+        }
+      }
     },
-    "Reloaded from disk" : {
-
+    "Embedded CSS": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSS intégré"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "埋め込みCSS"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Osadzony CSS"
+          }
+        }
+      }
     },
-    "Reopen windows from last session" : {
-
+    "Empty folder": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier vide"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "空のフォルダ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pusty folder"
+          }
+        }
+      }
     },
-    "Saving…" : {
-
+    "Export": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporter"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書き出す"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eksportuj"
+          }
+        }
+      }
     },
-    "Self-contained HTML" : {
-
+    "HTML": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTML"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTML"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTML"
+          }
+        }
+      }
     },
-    "Split Editor & Preview" : {
-
+    "Line %@, column %@: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Line %1$@, column %2$@: %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ligne %1$@, colonne %2$@ : %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@行目、%2$@列目: %3$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiersz %1$@, kolumna %2$@: %3$@"
+          }
+        }
+      }
     },
-    "Start with a new document" : {
-
+    "Linked CSS": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSS lié"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リンクされたCSS"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podlinkowany CSS"
+          }
+        }
+      }
     },
-    "Tables, task lists, strikethrough, autolinks, and footnotes always parse — MacDown 2's current Markdown engine does not yet support turning them off individually." : {
-
+    "Live file monitoring is unavailable for this document.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La surveillance en direct du fichier n'est pas disponible pour ce document."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この書類ではライブファイル監視を利用できません。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monitorowanie pliku na żywo jest niedostępne dla tego dokumentu."
+          }
+        }
+      }
     },
-    "These are starting points for the export panel — every export can still change them." : {
-
+    "New File": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouveau fichier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ファイル"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nowy plik"
+          }
+        }
+      }
     },
-    "This diagram could not be rendered." : {
-
+    "No Commands Installed": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune commande installée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンドがインストールされていません"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie zainstalowano żadnych poleceń"
+          }
+        }
+      }
     },
-    "This file changed on disk. Your local edits are still safe." : {
-
+    "No Document": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun document"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書類なし"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak dokumentu"
+          }
+        }
+      }
     },
-    "UTF-8" : {
-
+    "No Matching Commands": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune commande correspondante"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一致するコマンドがありません"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak pasujących poleceń"
+          }
+        }
+      }
     },
-    "UTF-16" : {
-
+    "No folder opened": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun dossier ouvert"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダが開かれていません"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie otwarto żadnego folderu"
+          }
+        }
+      }
     },
-    "Welcome to MacDown 2" : {
-
+    "No headings": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun titre"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "見出しがありません"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak nagłówków"
+          }
+        }
+      }
+    },
+    "No matching files": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun fichier correspondant"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一致するファイルがありません"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak pasujących plików"
+          }
+        }
+      }
+    },
+    "No outline available for %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun plan disponible pour %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@のアウトラインはありません"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak konspektu dla %@"
+          }
+        }
+      }
+    },
+    "No preview for %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun aperçu pour %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@のプレビューはありません"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak podglądu dla %@"
+          }
+        }
+      }
+    },
+    "Now following %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suit maintenant %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を追跡中"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Śledzenie %@"
+          }
+        }
+      }
+    },
+    "Open File": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir un fichier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを開く"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz plik"
+          }
+        }
+      }
+    },
+    "PDF": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF"
+          }
+        }
+      }
+    },
+    "Preferences from the original MacDown were found. Importing them isn't supported yet.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Des préférences provenant du MacDown original ont été trouvées. Leur importation n'est pas encore prise en charge."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オリジナル版MacDownの環境設定が見つかりました。インポートはまだサポートされていません。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znaleziono preferencje z oryginalnego MacDown. Ich importowanie nie jest jeszcze obsługiwane."
+          }
+        }
+      }
+    },
+    "Preview Only": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperçu seul"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレビューのみ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko podgląd"
+          }
+        }
+      }
+    },
+    "Recovery cleanup for %@ needs attention. Reveal it, retry, or use Save As.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nettoyage de la récupération pour %@ nécessite votre attention. Révélez-le, réessayez, ou utilisez Enregistrer sous."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@の復旧クリーンアップに対応が必要です。表示するか、再試行するか、「別名で保存」を使ってください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czyszczenie odzyskiwania dla %@ wymaga uwagi. Odsłoń je, spróbuj ponownie albo użyj polecenia Zapisz jako."
+          }
+        }
+      }
+    },
+    "Recovery for %@ could not be cleaned up. Keep this window open, or use Save As.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La récupération pour %@ n'a pas pu être nettoyée. Laissez cette fenêtre ouverte, ou utilisez Enregistrer sous."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@の復旧データをクリーンアップできませんでした。このウィンドウを開いたままにするか、「別名で保存」を使ってください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się wyczyścić odzyskiwania dla %@. Pozostaw to okno otwarte albo użyj polecenia Zapisz jako."
+          }
+        }
+      }
+    },
+    "Reloaded from disk": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechargé depuis le disque"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディスクから再読み込みしました"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytano ponownie z dysku"
+          }
+        }
+      }
+    },
+    "Reopen windows from last session": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rouvrir les fenêtres de la dernière session"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前回のセッションのウィンドウを再度開く"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz ponownie okna z ostatniej sesji"
+          }
+        }
+      }
+    },
+    "Saving…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrement…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存しています…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisywanie…"
+          }
+        }
+      }
+    },
+    "Self-contained HTML": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTML autonome"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自己完結型HTML"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samodzielny HTML"
+          }
+        }
+      }
+    },
+    "Split Editor & Preview": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éditeur et aperçu partagés"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタとプレビューを分割"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytor i podgląd obok siebie"
+          }
+        }
+      }
+    },
+    "Start with a new document": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commencer avec un nouveau document"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規書類から始める"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zacznij od nowego dokumentu"
+          }
+        }
+      }
+    },
+    "Tables, task lists, strikethrough, autolinks, and footnotes always parse — MacDown 2's current Markdown engine does not yet support turning them off individually.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les tableaux, listes de tâches, textes barrés, liens automatiques et notes de bas de page sont toujours interprétés — le moteur Markdown actuel de MacDown 2 ne permet pas encore de les désactiver individuellement."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーブル、タスクリスト、取り消し線、自動リンク、脚注は常に解析されます。MacDown 2の現在のMarkdownエンジンでは、これらを個別に無効にすることはまだサポートされていません。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tabele, listy zadań, przekreślenia, automatyczne odnośniki i przypisy są zawsze analizowane — obecny silnik Markdown MacDown 2 nie obsługuje jeszcze ich osobnego wyłączania."
+          }
+        }
+      }
+    },
+    "These are starting points for the export panel — every export can still change them.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce sont des valeurs de départ pour le panneau d'export — chaque export peut encore les modifier."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらは書き出しパネルの初期値です。書き出しごとに変更できます。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To są wartości początkowe dla panelu eksportu — każdy eksport nadal może je zmienić."
+          }
+        }
+      }
+    },
+    "This diagram could not be rendered.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce diagramme n'a pas pu être généré."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この図を描画できませんでした。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można było wyrenderować tego diagramu."
+          }
+        }
+      }
+    },
+    "This file changed on disk. Your local edits are still safe.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier a changé sur le disque. Vos modifications locales sont toujours en sécurité."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルはディスク上で変更されました。ローカルでの編集内容は引き続き保持されています。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten plik zmienił się na dysku. Twoje lokalne zmiany są nadal bezpieczne."
+          }
+        }
+      }
+    },
+    "UTF-16": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTF-16"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTF-16"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTF-16"
+          }
+        }
+      }
+    },
+    "UTF-8": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTF-8"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTF-8"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTF-8"
+          }
+        }
+      }
+    },
+    "Welcome to MacDown 2": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bienvenue dans MacDown 2"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown 2へようこそ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Witamy w MacDown 2"
+          }
+        }
+      }
+    },
+    "^[%lld valid placement](inflect: true) exceeded the preview budget and remain as authored source": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@arg1@"
+          },
+          "substitutions": {
+            "arg1": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg emplacement valide a dépassé le budget d'aperçu ; la source rédigée est conservée"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg emplacements valides ont dépassé le budget d'aperçu ; la source rédigée est conservée"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@arg1@"
+          },
+          "substitutions": {
+            "arg1": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg件の有効な配置がプレビューの上限を超えました。作成時のソースを保持します"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@arg1@"
+          },
+          "substitutions": {
+            "arg1": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg prawidłowe umieszczenia przekroczyły budżet podglądu; zachowano źródło w oryginalnej postaci"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg prawidłowych umieszczeń przekroczyło budżet podglądu; zachowano źródło w oryginalnej postaci"
+                    }
+                  },
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg prawidłowe umieszczenie przekroczyło budżet podglądu; zachowano źródło w oryginalnej postaci"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg prawidłowego umieszczenia przekroczyło budżet podglądu; zachowano źródło w oryginalnej postaci"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "has a partial block placement outside a top-level paragraph": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a un placement de bloc partiel en dehors d'un paragraphe de premier niveau"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トップレベルの段落の外側で部分的なブロック配置になっています"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ma częściowe umieszczenie blokowe poza akapitem najwyższego poziomu"
+          }
+        }
+      }
+    },
+    "has a partial block placement that does not align with whole physical lines": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a un placement de bloc partiel qui ne s'aligne pas sur des lignes physiques entières"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完全な物理行に揃っていない部分的なブロック配置になっています"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ma częściowe umieszczenie blokowe, które nie jest zgodne z pełnymi fizycznymi wierszami"
+          }
+        }
+      }
+    },
+    "has an inline placement that is not confined to one physical line": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a un placement en ligne qui ne se limite pas à une seule ligne physique"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1つの物理行に収まらないインライン配置になっています"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ma umieszczenie w linii, które nie ogranicza się do jednego fizycznego wiersza"
+          }
+        }
+      }
+    },
+    "internal composition invariant violated; contributions left as authored source": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "un invariant interne de composition a été violé ; les contributions restent telles que rédigées"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内部の合成不変条件に違反しました。コンテンツは作成時のソースのまま残します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "naruszono wewnętrzny niezmiennik składania; wkłady pozostają w oryginalnej postaci źródła"
+          }
+        }
+      }
+    },
+    "parsed revision %lld could not be represented; contributions skipped": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la révision analysée %lld n'a pas pu être représentée ; les contributions ont été ignorées"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解析済みリビジョン%lldを表現できませんでした。コンテンツはスキップされました"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przeanalizowana wersja %lld nie mogła zostać przedstawiona; wkłady pominięto"
+          }
+        }
+      }
+    },
+    "preview blocks are not ordered/non-overlapping; contributions left as authored source": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "les blocs d'aperçu ne sont pas ordonnés/non chevauchants ; les contributions restent telles que rédigées"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレビューブロックが順序付けられていない、または重なっています。コンテンツは作成時のソースのまま残します"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bloki podglądu nie są uporządkowane/nienakładające się; wkłady pozostają w oryginalnej postaci źródła"
+          }
+        }
+      }
+    },
+    "— Save As… ⌘⇧S to name this document": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "— Enregistrer sous… ⌘⇧S pour nommer ce document"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "— 別名で保存… ⌘⇧Sでこの書類に名前を付ける"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "— Zapisz jako… ⌘⇧S, aby nazwać ten dokument"
+          }
+        }
+      }
+    },
+    "⌘⇧O opens a folder": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘⇧O ouvre un dossier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘⇧Oでフォルダを開く"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘⇧O otwiera folder"
+          }
+        }
+      }
+    },
+    "✓ Editor Only": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Éditeur seul"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ エディタのみ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Tylko edytor"
+          }
+        }
+      }
+    },
+    "✓ Preview Only": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Aperçu seul"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ プレビューのみ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Tylko podgląd"
+          }
+        }
+      }
+    },
+    "✓ Split Editor & Preview": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Éditeur et aperçu partagés"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ エディタとプレビューを分割"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Edytor i podgląd obok siebie"
+          }
+        }
+      }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
