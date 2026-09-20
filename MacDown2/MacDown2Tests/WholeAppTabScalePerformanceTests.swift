@@ -114,6 +114,21 @@ struct WholeAppTabScalePerformanceTests {
         return Fixture(controller: controller, rootDirectory: rootDirectory, tabs: tabs)
     }
 
+    /// Releases the real `EditorTextSystem`/`NeonSyntaxHighlighter` graphs
+    /// `materialize` builds (up to `tabCount` of each — genuine
+    /// `NSTextView`/tree-sitter objects, not lightweight fakes), exactly as
+    /// `WindowController.windowWillClose` does. Left uncollected, they
+    /// stay live for the rest of this process's test run (Swift Testing
+    /// runs every suite in one process) and starve later suites of the
+    /// same real AppKit/tree-sitter resources this test intentionally
+    /// exercises at scale -- this was caught as a real, reproduced failure
+    /// in `PaletteOriginTargetingTests` on CI before this teardown existed.
+    private static func tearDown(_ fixture: Fixture) {
+        fixture.controller.editorStore.evictAll()
+        fixture.controller.highlightStore.evictAll()
+        try? FileManager.default.removeItem(at: fixture.rootDirectory)
+    }
+
     /// Builds the real per-tab caches exactly as `WindowController` does for
     /// the active tab in production (`makeSessionsForActiveTab`), applied
     /// here to every tab instead of just the active one.
@@ -133,7 +148,7 @@ struct WholeAppTabScalePerformanceTests {
 
     @Test func materializingTwentyTabsCompletesWithinBudget() {
         let fixture = Self.makeFixture(tabCount: Self.tabCount)
-        defer { try? FileManager.default.removeItem(at: fixture.rootDirectory) }
+        defer { Self.tearDown(fixture) }
 
         let duration = ContinuousClock().measure {
             for tab in fixture.tabs {
@@ -148,7 +163,7 @@ struct WholeAppTabScalePerformanceTests {
 
     @Test func switchingAcrossTwentyAlreadyOpenTabsIsCheapRelativeToFirstOpen() {
         let fixture = Self.makeFixture(tabCount: Self.tabCount)
-        defer { try? FileManager.default.removeItem(at: fixture.rootDirectory) }
+        defer { Self.tearDown(fixture) }
 
         let firstOpenDuration = ContinuousClock().measure {
             for tab in fixture.tabs {
