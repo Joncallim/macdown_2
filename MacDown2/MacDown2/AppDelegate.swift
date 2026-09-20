@@ -21,6 +21,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let launchURLs: [URL]
     private let launchFolderURL: URL?
     private var hasPendingDocumentOpen = false
+    private let defaults: UserDefaults
+    private let shouldShowFirstRun: Bool
+    private static let hasCompletedFirstRunKey = "com.joncallim.macdown2.hasCompletedFirstRun"
 
     override init() {
         let args = ProcessInfo.processInfo.arguments
@@ -44,6 +47,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defaults = .standard
             workspaceStateStore = WorkspaceStateStore()
         }
+
+        self.defaults = defaults
+        // Under `-UITesting`, `defaults` is always a fresh, empty, isolated
+        // suite (above), so it would never report first-run as complete and
+        // every one of this target's ~30 existing UI tests would otherwise
+        // have to contend with an unexpected welcome window. Onboarding is
+        // opted into explicitly with `-ForceFirstRun` instead, so its own UI
+        // test can exercise it without disturbing every other one.
+        shouldShowFirstRun = isUITesting
+            ? args.contains("-ForceFirstRun")
+            : !defaults.bool(forKey: Self.hasCompletedFirstRunKey)
 
         launchURLs = Self.openFilesPaths(from: args).map { URL(fileURLWithPath: $0) }
         launchFolderURL = Self.openFolderPath(from: args).map { URL(fileURLWithPath: $0, isDirectory: true) }
@@ -88,6 +102,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        if shouldShowFirstRun, launchURLs.isEmpty, launchFolderURL == nil {
+            coordinator.showFirstRunWindow { [weak self] in
+                guard let self else { return }
+                defaults.set(true, forKey: Self.hasCompletedFirstRunKey)
+                proceedWithNormalLaunch()
+            }
+        } else {
+            proceedWithNormalLaunch()
+        }
+    }
+
+    /// The app's ordinary launch behavior: open files/folders passed on the
+    /// command line, start a new document, or restore the prior session.
+    /// Runs on every launch except a first-ever one, where it instead runs
+    /// once the first-run welcome window is dismissed.
+    private func proceedWithNormalLaunch() {
         if !launchURLs.isEmpty {
             Task { @MainActor in
                 for url in launchURLs {

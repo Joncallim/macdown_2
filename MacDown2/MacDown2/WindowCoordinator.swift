@@ -52,7 +52,11 @@ final class WindowCoordinator {
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
     private var restoreTask: Task<Void, Never>?
-    @ObservationIgnored private var pendingNewDocumentTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
+    // `pendingNewDocumentTasks` and `addController` are internal rather than
+    // private for the same reason as the properties above:
+    // `WindowCoordinator+NewDocument.swift` is a same-module extension in a
+    // separate file and needs them.
+    @ObservationIgnored var pendingNewDocumentTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
     /// Documents with an export currently in flight. Not `@ObservationIgnored`
     /// — `ExportCoordinator.canExportActiveDocument` reads this on every menu
     /// validation, and the menu item must grey out while its export runs.
@@ -76,6 +80,10 @@ final class WindowCoordinator {
     /// `WindowCoordinator+CommandPalette.swift` and `CommandPalettePanel`'s
     /// doc comment for why this coordinator must hold it strongly.
     @ObservationIgnored var commandPalette: CommandPalettePanel?
+    /// The one currently open first-run welcome window, if any — see
+    /// `WindowCoordinator+FirstRun.swift`. Held strongly for the same reason
+    /// as `commandPalette`: nothing else references it while it is open.
+    @ObservationIgnored var firstRunWindow: FirstRunWindowController?
 
     init(
         sessionStore: WorkspaceSessionStoring = WorkspaceSessionStore(),
@@ -100,39 +108,6 @@ final class WindowCoordinator {
     }
 
     // MARK: - Window lifecycle
-
-    /// Creates a new untitled document window. When `addAsTab` is `true` and a
-    /// key window exists, the new window is added as a tab of the key window.
-    /// - Parameter relativeTo: when non-`nil`, used as the tab host instead
-    ///   of `NSApp.keyWindow` — the command palette passes its captured
-    ///   origin window here so "New Tab" targets the window the palette was
-    ///   opened from rather than the palette itself (post-review
-    ///   finding #7).
-    func newDocument(addAsTab: Bool = false, relativeTo overrideKeyWindow: NSWindow? = nil) {
-        let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
-
-        let model = makeWindowModel()
-        let controller = WindowController(
-            model: model,
-            coordinator: self,
-            themeController: themeController,
-            grammarRegistry: grammarRegistry,
-            fileTreePreferences: fileTreePreferences
-        )
-        addController(controller, addingAsTab: addAsTab, keyWindow: keyWindow)
-        let key = ObjectIdentifier(controller)
-        model.onManagedDocumentLifetimePrepared = { [weak self] in
-            await self?.onNewDocumentLifetimePrepared?()
-        }
-        let encoding = Self.defaultEncoding(from: appSettings.formats)
-        pendingNewDocumentTasks[key] = Task { @MainActor [weak self, weak controller] in
-            defer { self?.pendingNewDocumentTasks[key] = nil }
-            guard let self, let controller else { return }
-            _ = await model.newManagedDocument(encoding: encoding) {
-                !Task.isCancelled && self.controllers.contains { $0 === controller }
-            }
-        }
-    }
 
     /// Opens a file in a new window, or activates the existing window if the
     /// same file is already open.
@@ -337,7 +312,7 @@ final class WindowCoordinator {
         updateKeyModel()
     }
 
-    private func addController(
+    func addController(
         _ controller: WindowController,
         addingAsTab: Bool,
         keyWindow: NSWindow? = nil
