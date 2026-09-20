@@ -131,7 +131,11 @@ struct WorkspaceCommands: Commands {
                 Button(
                     action: { setPreviewLayout(.editorOnly) },
                     label: {
-                        Text((layout == .editorOnly ? "✓ " : "    ") + "Editor Only")
+                        if layout == .editorOnly {
+                            Text("✓ Editor Only")
+                        } else {
+                            Text("    Editor Only")
+                        }
                     }
                 )
                 .keyboardShortcut("1", modifiers: [.command, .option])
@@ -151,7 +155,11 @@ struct WorkspaceCommands: Commands {
                 Button(
                     action: { setPreviewLayout(.previewOnly) },
                     label: {
-                        Text((layout == .previewOnly ? "✓ " : "    ") + "Preview Only")
+                        if layout == .previewOnly {
+                            Text("✓ Preview Only")
+                        } else {
+                            Text("    Preview Only")
+                        }
                     }
                 )
                 .keyboardShortcut("3", modifiers: [.command, .option])
@@ -167,7 +175,8 @@ struct WorkspaceCommands: Commands {
                         Button(
                             action: { themeController.select(theme) },
                             label: {
-                                Text((active.id == theme.id ? "✓ " : "    ") + theme.name)
+                                // Theme names are proper nouns and are never translated.
+                                Text(verbatim: (active.id == theme.id ? "✓ " : "    ") + theme.name)
                             }
                         )
                     }
@@ -178,7 +187,8 @@ struct WorkspaceCommands: Commands {
                         Button(
                             action: { themeController.select(theme) },
                             label: {
-                                Text((active.id == theme.id ? "✓ " : "    ") + theme.name)
+                                // Theme names are proper nouns and are never translated.
+                                Text(verbatim: (active.id == theme.id ? "✓ " : "    ") + theme.name)
                             }
                         )
                     }

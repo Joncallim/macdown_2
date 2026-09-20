@@ -70,19 +70,21 @@ struct TextFilterCommands: Commands {
         if result.hadFailure {
             alert.alertStyle = .warning
             alert.messageText = result.installedCount > 0
-                ? "Some Example Scripts Couldn't Be Added"
-                : "Couldn't Add Example Scripts"
-            alert.informativeText = "Check that MacDown 2 can write to the Commands folder, then try again."
+                ? String(localized: "Some Example Scripts Couldn't Be Added")
+                : String(localized: "Couldn't Add Example Scripts")
+            alert.informativeText = String(
+                localized: "Check that MacDown 2 can write to the Commands folder, then try again."
+            )
         } else if result.installedCount > 0 {
             alert.alertStyle = .informational
-            alert.messageText = result.installedCount == 1
-                ? "Added 1 Example Script"
-                : "Added \(result.installedCount) Example Scripts"
-            alert.informativeText = "They're now listed in the Commands menu."
+            alert.messageText = String(localized: "^[Added \(result.installedCount) Example Script](inflect: true)")
+            alert.informativeText = String(localized: "They're now listed in the Commands menu.")
         } else {
             alert.alertStyle = .informational
-            alert.messageText = "Example Scripts Already Installed"
-            alert.informativeText = "Nothing new to add — see \"Show Commands Folder\" for what's there."
+            alert.messageText = String(localized: "Example Scripts Already Installed")
+            alert.informativeText = String(
+                localized: "Nothing new to add — see \"Show Commands Folder\" for what's there."
+            )
         }
         alert.runModal()
     }

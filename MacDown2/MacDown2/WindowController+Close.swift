@@ -35,26 +35,35 @@ extension WindowController {
         return false
     }
 
-    private func presentDirtyCloseSheet(for sender: NSWindow, context: CloseSheetContext) {
+    // #57: a document whose backing file was deleted/moved externally is
+    // still just `.dirty` here (`FileDocumentState` has no distinct case
+    // for that — see `FileBackingState.unavailable`), so it used to reach
+    // this exact same "Save / Cancel / Discard Changes" alert with no
+    // hint that "Save" cannot write in place. Labeling the button "Save
+    // As…" and explaining why up front means the destination panel that
+    // follows is expected, not a second, unexplained dialog.
+    private func makeDirtyCloseAlert(fileName: String, needsDestination: Bool) -> NSAlert {
         let alert = NSAlert()
-        let fileName = context.fileURL?.lastPathComponent ?? "Untitled"
-        // #57: a document whose backing file was deleted/moved externally is
-        // still just `.dirty` here (`FileDocumentState` has no distinct case
-        // for that — see `FileBackingState.unavailable`), so it used to reach
-        // this exact same "Save / Cancel / Discard Changes" alert with no
-        // hint that "Save" cannot write in place. Labeling the button "Save
-        // As…" and explaining why up front means the destination panel that
-        // follows is expected, not a second, unexplained dialog.
-        let needsDestination = model.requiresDestinationToSave
-        alert.messageText = "Unsaved Changes"
+        alert.messageText = String(localized: "Unsaved Changes")
         alert.informativeText = needsDestination
-            ? "The original file for \"\(fileName)\" is no longer available. "
-            + "Save a copy to close, or discard your changes."
-            : "Do you want to save changes to \"\(fileName)\"?"
-        alert.addButton(withTitle: needsDestination ? "Save As…" : "Save")
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Discard Changes")
+            ? String(
+                localized: """
+                The original file for "\(fileName)" is no longer available. \
+                Save a copy to close, or discard your changes.
+                """
+            )
+            : String(localized: "Do you want to save changes to \"\(fileName)\"?")
+        alert.addButton(withTitle: needsDestination ? String(localized: "Save As…") : String(localized: "Save"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.addButton(withTitle: String(localized: "Discard Changes"))
         alert.alertStyle = .warning
+        return alert
+    }
+
+    private func presentDirtyCloseSheet(for sender: NSWindow, context: CloseSheetContext) {
+        let fileName = context.fileURL?.lastPathComponent ?? String(localized: "Untitled")
+        let needsDestination = model.requiresDestinationToSave
+        let alert = makeDirtyCloseAlert(fileName: fileName, needsDestination: needsDestination)
         alert.beginSheetModal(for: sender) { [weak self] response in
             Task { @MainActor [weak self] in
                 guard let self, let coordinator,
@@ -104,13 +113,14 @@ extension WindowController {
         guard let document = model.activeDocument else { return }
         let context = CloseSheetContext(document)
         let alert = NSAlert()
-        alert.messageText = "External File Change"
-        alert.informativeText = "The file changed on disk while this window has local edits. "
-            + "Choose which version to close."
+        alert.messageText = String(localized: "External File Change")
+        alert.informativeText = String(
+            localized: "The file changed on disk while this window has local edits. Choose which version to close."
+        )
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Keep My Changes and Save")
-        alert.addButton(withTitle: "Use Disk Version and Close")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: String(localized: "Keep My Changes and Save"))
+        alert.addButton(withTitle: String(localized: "Use Disk Version and Close"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.beginSheetModal(for: window) { [weak self] response in
             Task { @MainActor [weak self] in
                 guard let self, let coordinator,

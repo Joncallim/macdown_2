@@ -32,7 +32,7 @@ struct GraphvizDiagramBlockView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: min(width, 640), maxHeight: height)
-                    .accessibilityLabel(Text(source))
+                    .accessibilityLabel(Text(verbatim: source))
                     .accessibilityIdentifier("graphvizDiagramImage")
                     .contextMenu {
                         Button("Copy as SVG") {

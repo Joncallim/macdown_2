@@ -20,7 +20,7 @@ struct OutlineRowView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(isCollapsed ? "Expand" : "Collapse")
             }
-            Text(item.title.isEmpty ? "Untitled section" : item.title)
+            Text(item.title.isEmpty ? String(localized: "Untitled section") : item.title)
                 .fontWeight(isCurrent ? .semibold : .regular)
                 .foregroundStyle(
                     item.title.isEmpty ? AnyShapeStyle(.tertiary) :

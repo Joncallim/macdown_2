@@ -1,0 +1,157 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "    Editor Only" : {
+
+    },
+    "    Preview Only" : {
+
+    },
+    "    Split Editor & Preview" : {
+
+    },
+    "— Save As… ⌘⇧S to name this document" : {
+
+    },
+    "%@" : {
+
+    },
+    "⌘⇧O opens a folder" : {
+
+    },
+    "✓ Editor Only" : {
+
+    },
+    "✓ Preview Only" : {
+
+    },
+    "✓ Split Editor & Preview" : {
+
+    },
+    "A competing version was preserved as %@. Reveal it, then use Save As to keep this copy." : {
+
+    },
+    "A fast, native Markdown editor for Mac, with live preview, math, and diagrams built right in." : {
+
+    },
+    "Applies the next time a new, untitled document is saved. Open documents keep their own encoding." : {
+
+    },
+    "Command" : {
+
+    },
+    "Couldn't Open File" : {
+
+    },
+    "Creating Document…" : {
+
+    },
+    "Editor Only" : {
+
+    },
+    "Embedded CSS" : {
+
+    },
+    "Empty folder" : {
+
+    },
+    "Export" : {
+
+    },
+    "HTML" : {
+
+    },
+    "Line %@, column %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Line %1$@, column %2$@: %3$@"
+          }
+        }
+      }
+    },
+    "Linked CSS" : {
+
+    },
+    "Live file monitoring is unavailable for this document." : {
+
+    },
+    "No Commands Installed" : {
+
+    },
+    "No Document" : {
+
+    },
+    "No folder opened" : {
+
+    },
+    "No headings" : {
+
+    },
+    "No Matching Commands" : {
+
+    },
+    "No matching files" : {
+
+    },
+    "No outline available for %@" : {
+
+    },
+    "No preview for %@" : {
+
+    },
+    "PDF" : {
+
+    },
+    "Preferences from the original MacDown were found. Importing them isn't supported yet." : {
+
+    },
+    "Preview Only" : {
+
+    },
+    "Recovery cleanup for %@ needs attention. Reveal it, retry, or use Save As." : {
+
+    },
+    "Recovery for %@ could not be cleaned up. Keep this window open, or use Save As." : {
+
+    },
+    "Reopen windows from last session" : {
+
+    },
+    "Saving…" : {
+
+    },
+    "Self-contained HTML" : {
+
+    },
+    "Split Editor & Preview" : {
+
+    },
+    "Start with a new document" : {
+
+    },
+    "Tables, task lists, strikethrough, autolinks, and footnotes always parse — MacDown 2's current Markdown engine does not yet support turning them off individually." : {
+
+    },
+    "These are starting points for the export panel — every export can still change them." : {
+
+    },
+    "This diagram could not be rendered." : {
+
+    },
+    "This file changed on disk. Your local edits are still safe." : {
+
+    },
+    "UTF-8" : {
+
+    },
+    "UTF-16" : {
+
+    },
+    "Welcome to MacDown 2" : {
+
+    }
+  },
+  "version" : "1.0"
+}

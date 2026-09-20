@@ -56,7 +56,8 @@ private struct PreviewContributionDiagnosticsList: View {
     var body: some View {
         List(Array(diagnostics.enumerated()), id: \.offset) { _, diagnostic in
             VStack(alignment: .leading, spacing: 2) {
-                Text(diagnostic.contributionID)
+                // A technical contribution identifier (e.g. "math", "mermaid"), never translated.
+                Text(verbatim: diagnostic.contributionID)
                     .font(.caption.bold())
                 Text(diagnostic.message)
                     .font(.caption)

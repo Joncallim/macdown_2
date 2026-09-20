@@ -48,7 +48,7 @@ struct FileTreeRowView: View {
                     }
                     .onExitCommand { model.renamingURL = nil }
             } else {
-                Text(row.entry.name).lineLimit(1)
+                Text(verbatim: row.entry.name).lineLimit(1)
             }
             if row.isLoading {
                 ProgressView().controlSize(.small)
@@ -200,11 +200,11 @@ struct FileTreeRowView: View {
 
     private func requestMoveToTrash() {
         let alert = NSAlert()
-        alert.messageText = "Move \"\(row.entry.name)\" to Trash?"
-        alert.informativeText = "You can recover it from the Trash in Finder."
+        alert.messageText = String(localized: "Move \"\(row.entry.name)\" to Trash?")
+        alert.informativeText = String(localized: "You can recover it from the Trash in Finder.")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Move to Trash")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: String(localized: "Move to Trash"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
         alert.beginSheetModal(for: window) { response in
             guard response == .alertFirstButtonReturn else { return }

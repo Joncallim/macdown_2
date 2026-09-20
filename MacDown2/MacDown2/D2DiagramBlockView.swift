@@ -36,7 +36,7 @@ struct D2DiagramBlockView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: min(width, 640), maxHeight: height)
-                    .accessibilityLabel(Text(source))
+                    .accessibilityLabel(Text(verbatim: source))
                     .accessibilityIdentifier("d2DiagramImage")
                     .contextMenu {
                         Button("Copy as SVG") {

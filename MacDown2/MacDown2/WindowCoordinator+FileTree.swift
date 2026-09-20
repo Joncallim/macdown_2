@@ -34,11 +34,11 @@ extension WindowCoordinator {
               let selected = controller.fileTreeModel.selectedURL,
               let window = controller.window else { return }
         let alert = NSAlert()
-        alert.messageText = "Move \"\(selected.lastPathComponent)\" to Trash?"
-        alert.informativeText = "You can recover it from the Trash in Finder."
+        alert.messageText = String(localized: "Move \"\(selected.lastPathComponent)\" to Trash?")
+        alert.informativeText = String(localized: "You can recover it from the Trash in Finder.")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Move to Trash")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: String(localized: "Move to Trash"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.beginSheetModal(for: window) { [weak self, weak controller] response in
             guard response == .alertFirstButtonReturn, let self, let controller else { return }
             let context = controller.fileTreeModel.beginOperation()
@@ -149,11 +149,11 @@ extension WindowCoordinator {
     private func presentRevealOutsideRootAlert(for url: URL, controller: WindowController) {
         guard let window = controller.window else { return }
         let alert = NSAlert()
-        alert.messageText = "File Is Outside the Open Folder"
-        alert.informativeText = "Open its parent folder to reveal it in the sidebar?"
+        alert.messageText = String(localized: "File Is Outside the Open Folder")
+        alert.informativeText = String(localized: "Open its parent folder to reveal it in the sidebar?")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open Parent Folder")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: String(localized: "Open Parent Folder"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.beginSheetModal(for: window) { [weak self, weak controller] response in
             guard response == .alertFirstButtonReturn, let self, let controller else { return }
             Task { @MainActor in
@@ -208,11 +208,11 @@ extension WindowCoordinator {
     private func presentDeletedDocumentAlert(on controller: WindowController, tabID: UUID) {
         guard let window = controller.window else { return }
         let alert = NSAlert()
-        alert.messageText = "File Moved to Trash"
-        alert.informativeText = "This document has unsaved changes."
-        alert.addButton(withTitle: "Save As…")
-        alert.addButton(withTitle: "Close Without Saving")
-        alert.addButton(withTitle: "Keep Open")
+        alert.messageText = String(localized: "File Moved to Trash")
+        alert.informativeText = String(localized: "This document has unsaved changes.")
+        alert.addButton(withTitle: String(localized: "Save As…"))
+        alert.addButton(withTitle: String(localized: "Close Without Saving"))
+        alert.addButton(withTitle: String(localized: "Keep Open"))
         alert.alertStyle = .warning
         alert.beginSheetModal(for: window) { [weak self, weak controller] response in
             Task { @MainActor in

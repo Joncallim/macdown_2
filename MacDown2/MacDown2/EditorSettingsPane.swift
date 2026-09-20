@@ -29,7 +29,7 @@ private struct EditorSettingsForm: View {
             Section("Font") {
                 Picker("Family", selection: $appSettings.editor.font.familyName) {
                     ForEach(availableFontFamilies, id: \.self) { family in
-                        Text(family).tag(family)
+                        Text(verbatim: family).tag(family)
                     }
                 }
                 Stepper(
