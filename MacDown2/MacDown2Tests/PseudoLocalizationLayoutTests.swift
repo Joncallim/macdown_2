@@ -32,12 +32,9 @@ struct PseudoLocalizationLayoutTests {
 
     private static let sampleMarkdown = """
     # Rendered State Evidence
-
     **Bold**, *italic*, `inline code`, and a [link](https://example.com).
-
     - A bullet list
     - With a second item
-
     > A blockquote for good measure.
     """
 
@@ -176,7 +173,7 @@ struct PseudoLocalizationLayoutTests {
     /// "pluralised strings correct in at least three materially different
     /// plural-rule languages" criterion directly against the seeded catalog.
     @Test(arguments: ["en", "fr", "pl", "ja"])
-    func pluralizedPreviewBudgetMessageResolvesInLocale(_ localeIdentifier: String) throws {
+    func pluralizedPreviewBudgetMessageResolvesInLocale(_ localeIdentifier: String) {
         func resolved(count: Int) -> String {
             String(AttributedString(
                 localized: """
