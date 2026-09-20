@@ -12,10 +12,10 @@ struct ExternalFileStatusView: View {
         case .none:
             EmptyView()
         case .reloaded:
-            transientStatus("Reloaded from disk")
+            transientStatus(Text("Reloaded from disk"))
                 .accessibilityIdentifier("externalReloadStatus")
         case let .moved(url):
-            transientStatus("Now following \(url.lastPathComponent)")
+            transientStatus(Text("Now following \(url.lastPathComponent)"))
                 .accessibilityIdentifier("externalReloadStatus")
         case .conflict:
             conflictBanner
@@ -120,10 +120,10 @@ struct ExternalFileStatusView: View {
         .accessibilityIdentifier("externalChangeBanner")
     }
 
-    private func transientStatus(_ text: LocalizedStringKey) -> some View {
+    private func transientStatus(_ text: Text) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle")
-            Text(text)
+            text
                 .font(.callout)
             Spacer()
         }

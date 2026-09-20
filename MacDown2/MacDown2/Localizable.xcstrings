@@ -77,6 +77,9 @@
     "Live file monitoring is unavailable for this document." : {
 
     },
+    "New File" : {
+
+    },
     "No Commands Installed" : {
 
     },
@@ -101,6 +104,12 @@
     "No preview for %@" : {
 
     },
+    "Now following %@" : {
+
+    },
+    "Open File" : {
+
+    },
     "PDF" : {
 
     },
@@ -114,6 +123,9 @@
 
     },
     "Recovery for %@ could not be cleaned up. Keep this window open, or use Save As." : {
+
+    },
+    "Reloaded from disk" : {
 
     },
     "Reopen windows from last session" : {

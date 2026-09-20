@@ -38,23 +38,25 @@ public enum TextFilterError: Error, LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case let .launchFailed(underlying):
-            "Couldn't run the command: \(underlying)"
+            String(localized: "Couldn't run the command: \(underlying)")
         case let .nonZeroExit(code, stderr):
-            stderr.isEmpty
-                ? "The command exited with status \(code)."
-                : "The command exited with status \(code): \(stderr)"
+            if stderr.isEmpty {
+                String(localized: "The command exited with status \(code).")
+            } else {
+                String(localized: "The command exited with status \(code): \(stderr)")
+            }
         case .timedOut:
-            "The command took too long and was stopped."
+            String(localized: "The command took too long and was stopped.")
         case .cancelled:
-            "The command was cancelled."
+            String(localized: "The command was cancelled.")
         case .outputTooLarge:
-            "The command produced more output than MacDown 2 will accept."
+            String(localized: "The command produced more output than MacDown 2 will accept.")
         case .outputNotDecodable:
-            "The command's output wasn't valid text."
+            String(localized: "The command's output wasn't valid text.")
         case .outputIncomplete:
-            "The command's output could not be fully read."
+            String(localized: "The command's output could not be fully read.")
         case .terminationUnconfirmed:
-            "The command could not be confirmed stopped."
+            String(localized: "The command could not be confirmed stopped.")
         }
     }
 }

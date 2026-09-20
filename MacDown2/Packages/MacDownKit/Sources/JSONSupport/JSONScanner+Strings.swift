@@ -38,7 +38,7 @@ extension JSONScanner {
                     return .failed(diagnostic)
                 }
             case 0x00 ... 0x1F:
-                return .failed(diagnostic("Unescaped control character in string.", at: position))
+                return .failed(diagnostic(String(localized: "Unescaped control character in string."), at: position))
             default:
                 switch appendUnescapedUnit() {
                 case let .character(character):
@@ -48,7 +48,7 @@ extension JSONScanner {
                 }
             }
         }
-        return .failed(diagnostic("Unterminated string.", at: start))
+        return .failed(diagnostic(String(localized: "Unterminated string."), at: start))
     }
 
     /// Parses one escape sequence (the cursor is on the character after the
@@ -56,7 +56,7 @@ extension JSONScanner {
     /// (including surrogate pairs).
     private mutating func parseEscapedUnit() -> UnitParseOutcome {
         guard let escaped = peek() else {
-            return .failed(diagnostic("Unterminated string: dangling escape.", at: position))
+            return .failed(diagnostic(String(localized: "Unterminated string: dangling escape."), at: position))
         }
         if let replacement = simpleEscapeReplacements[escaped] {
             position += 1
@@ -65,13 +65,13 @@ extension JSONScanner {
         if escaped == 0x75 { // \uXXXX
             position += 1
             guard let scalar = parseUnicodeEscape() else {
-                return .failed(diagnostic("Invalid \\u escape.", at: position - 1))
+                return .failed(diagnostic(String(localized: "Invalid \\u escape."), at: position - 1))
             }
             return .character(String(scalar))
         }
         let raw = String(decoding: [escaped], as: UTF16.self)
         return .failed(diagnostic(
-            "Invalid escape sequence '\\\(raw)'.",
+            String(localized: "Invalid escape sequence '\\\(raw)'."),
             at: position
         ))
     }
@@ -85,18 +85,18 @@ extension JSONScanner {
             guard position + 1 < units.count,
                   (0xDC00 ... 0xDFFF).contains(units[position + 1])
             else {
-                return .failed(diagnostic("Unpaired surrogate in string.", at: position))
+                return .failed(diagnostic(String(localized: "Unpaired surrogate in string."), at: position))
             }
             let low = units[position + 1]
             let scalarValue = 0x10000 + ((UInt32(unit) - 0xD800) << 10) + (UInt32(low) - 0xDC00)
             guard let scalar = UnicodeScalar(scalarValue) else {
-                return .failed(diagnostic("Unpaired surrogate in string.", at: position))
+                return .failed(diagnostic(String(localized: "Unpaired surrogate in string."), at: position))
             }
             position += 2
             return .character(String(scalar))
         }
         if (0xDC00 ... 0xDFFF).contains(unit) {
-            return .failed(diagnostic("Unpaired surrogate in string.", at: position))
+            return .failed(diagnostic(String(localized: "Unpaired surrogate in string."), at: position))
         }
         position += 1
         return .character(String(decoding: [unit], as: UTF16.self))

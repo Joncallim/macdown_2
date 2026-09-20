@@ -45,7 +45,7 @@ struct HTMLPreviewPane: View {
     private var modePicker: some View {
         Picker("Preview Mode", selection: modeBinding) {
             ForEach(document.format.supportedPreviewModes, id: \.self) { mode in
-                Text(modeLabel(mode)).tag(mode)
+                Text(verbatim: modeLabel(mode)).tag(mode)
             }
         }
         .pickerStyle(.segmented)
@@ -66,9 +66,9 @@ struct HTMLPreviewPane: View {
 
     private func modeLabel(_ mode: PreviewMode) -> String {
         switch mode {
-        case .source: "Source"
-        case .rendered: "Rendered"
-        case .outline: "Outline"
+        case .source: String(localized: "Source")
+        case .rendered: String(localized: "Rendered")
+        case .outline: String(localized: "Outline")
         }
     }
 }

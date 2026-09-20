@@ -92,7 +92,7 @@ final class PreviewContributionSession {
     private func invalidRevisionComposition(_ revision: Int) -> PreviewContributionComposition {
         let diagnostic = PreviewContributionDiagnostic(
             contributionID: "preview", severity: .error,
-            message: "parsed revision \(revision) could not be represented; contributions skipped"
+            message: String(localized: "parsed revision \(revision) could not be represented; contributions skipped")
         )
         return PreviewContributionComposition(sourceGeneration: nil, blocks: nil, diagnostics: [diagnostic])
     }

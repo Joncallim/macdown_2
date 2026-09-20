@@ -30,20 +30,26 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
         switch self {
         case let .unresolvedResources(diagnostics):
             let listed = Self.summarise(diagnostics)
-            return "This export must embed every image, but some could not be resolved:\n\(listed)"
+            return String(
+                localized: "This export must embed every image, but some could not be resolved:\n\(listed)"
+            )
         case .rawHTMLNotEmbeddable:
-            return "This document contains raw HTML, which cannot be embedded in a self-contained file. "
-                + "Export it as HTML instead."
+            return String(
+                localized: """
+                This document contains raw HTML, which cannot be embedded in a self-contained file. \
+                Export it as HTML instead.
+                """
+            )
         case let .parseFailed(error):
-            return "Markdown parse failed: \(error.localizedDescription)"
+            return String(localized: "Markdown parse failed: \(error.localizedDescription)")
         case let .renderFailed(error):
-            return "HTML rendering failed: \(error.localizedDescription)"
+            return String(localized: "HTML rendering failed: \(error.localizedDescription)")
         case let .writeFailed(error):
-            return "Writing export output failed: \(error.localizedDescription)"
+            return String(localized: "Writing export output failed: \(error.localizedDescription)")
         case let .invalidDestination(path):
-            return "Export destination is invalid: \(path)"
+            return String(localized: "Export destination is invalid: \(path)")
         case let .budgetExceeded(detail):
-            return "This document is too large to export: \(detail)."
+            return String(localized: "This document is too large to export: \(detail).")
         }
     }
 
@@ -58,24 +64,27 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
     private static func summarise(_ diagnostics: [ExportDiagnostic]) -> String {
         let listed = diagnostics.prefix(listedAtMost).map(\.message).joined(separator: "\n")
         guard diagnostics.count > listedAtMost else { return listed }
-        return listed + "\n…and \(diagnostics.count - listedAtMost) more."
+        let remaining = diagnostics.count - listedAtMost
+        return listed + "\n" + String(localized: "…and \(remaining) more.")
     }
 
     /// The actionable next step, shown under the message in the app's alert.
     public var recoverySuggestion: String? {
         switch self {
         case .unresolvedResources:
-            "Fix the image paths, or export as HTML, which keeps unresolved references as authored."
+            String(
+                localized: "Fix the image paths, or export as HTML, which keeps unresolved references as authored."
+            )
         case .rawHTMLNotEmbeddable:
-            "Choose the HTML format, which preserves authored raw HTML."
+            String(localized: "Choose the HTML format, which preserves authored raw HTML.")
         case .parseFailed, .renderFailed:
             nil
         case .writeFailed:
-            "Check that the destination folder exists and is writable."
+            String(localized: "Check that the destination folder exists and is writable.")
         case .invalidDestination:
-            "Choose a different destination folder."
+            String(localized: "Choose a different destination folder.")
         case .budgetExceeded:
-            "Split the document, or reduce the size of the images it references."
+            String(localized: "Split the document, or reduce the size of the images it references.")
         }
     }
 }
