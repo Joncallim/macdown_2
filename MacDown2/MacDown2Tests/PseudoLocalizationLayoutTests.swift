@@ -207,6 +207,15 @@ struct PseudoLocalizationLayoutTests {
             Text("⌘⇧⌥N")
         }
         .padding(8)
+        // Explicit opaque background: `ImageRenderer` otherwise produces a
+        // transparent canvas, and premultiplied-alpha black-on-transparent
+        // text shares the same RGB channels as the transparent background,
+        // so the RGB-only `isVisuallyNonBlank` sampler below would see no
+        // difference even though real text was drawn. Production views (the
+        // ones `RenderedStateEvidenceTests` renders) all have a real opaque
+        // background already, so this only bites a minimal synthetic view
+        // like this one.
+        .background(Color.white)
         let result = try Self.renderPNG(
             view, named: "loc-pseudo-01-shortcut-hint", size: CGSize(width: 320, height: 60)
         )
