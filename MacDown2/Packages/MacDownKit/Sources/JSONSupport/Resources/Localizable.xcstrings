@@ -1,7 +1,490 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-
+  "sourceLanguage": "en",
+  "strings": {
+    "Document exceeds the maximum nesting depth of %@.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le document dépasse la profondeur d'imbrication maximale de %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書類が最大ネスト深度%@を超えています。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dokument przekracza maksymalną głębokość zagnieżdżenia wynoszącą %@."
+          }
+        }
+      }
+    },
+    "Duplicate object key '%@' (first defined at line %@).": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé d'objet dupliquée « %@ » (définie pour la première fois à la ligne %@)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オブジェクトキー「%@」が重複しています(最初の定義は%@行目)。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zduplikowany klucz obiektu „%@” (po raz pierwszy zdefiniowany w wierszu %@)."
+          }
+        }
+      }
+    },
+    "Empty input: expected a JSON value.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrée vide : une valeur JSON était attendue."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力が空です: JSON値が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puste dane wejściowe: oczekiwano wartości JSON."
+          }
+        }
+      }
+    },
+    "Expected ',' or ']' in array.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« , » ou « ] » attendu dans le tableau."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配列内で「,」または「]」が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oczekiwano „,” lub „]” w tablicy."
+          }
+        }
+      }
+    },
+    "Expected ',' or '}' in object.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« , » ou « } » attendu dans l'objet."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オブジェクト内で「,」または「}」が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oczekiwano „,” lub „}” w obiekcie."
+          }
+        }
+      }
+    },
+    "Expected ':' after object key.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« : » attendu après la clé d'objet."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オブジェクトキーの後に「:」が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oczekiwano „:” po kluczu obiektu."
+          }
+        }
+      }
+    },
+    "Expected a JSON value.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une valeur JSON était attendue."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON値が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oczekiwano wartości JSON."
+          }
+        }
+      }
+    },
+    "Expected a quoted object key.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une clé d'objet entre guillemets était attendue."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "引用符で囲まれたオブジェクトキーが必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oczekiwano klucza obiektu w cudzysłowie."
+          }
+        }
+      }
+    },
+    "Invalid \\u escape.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Séquence d'échappement \\u non valide."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効な\\uエスケープです。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprawidłowa sekwencja ucieczki \\u."
+          }
+        }
+      }
+    },
+    "Invalid escape sequence '\\%@'.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Séquence d'échappement « \\%@ » non valide."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効なエスケープシーケンス「\\%@」です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprawidłowa sekwencja ucieczki „\\%@”."
+          }
+        }
+      }
+    },
+    "Invalid literal: expected 'true', 'false', or 'null'.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Littéral non valide : « true », « false » ou « null » attendu."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効なリテラルです:「true」、「false」、または「null」が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprawidłowy literał: oczekiwano „true”, „false” lub „null”."
+          }
+        }
+      }
+    },
+    "Invalid number: expected a digit after '.'.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre non valide : un chiffre était attendu après « . »."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効な数値です:「.」の後に数字が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprawidłowa liczba: oczekiwano cyfry po „.”."
+          }
+        }
+      }
+    },
+    "Invalid number: expected a digit in exponent.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre non valide : un chiffre était attendu dans l'exposant."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効な数値です: 指数部に数字が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprawidłowa liczba: oczekiwano cyfry w wykładniku."
+          }
+        }
+      }
+    },
+    "Invalid number: expected a digit.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre non valide : un chiffre était attendu."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効な数値です: 数字が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprawidłowa liczba: oczekiwano cyfry."
+          }
+        }
+      }
+    },
+    "Unescaped control character in string.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caractère de contrôle non échappé dans la chaîne."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字列中にエスケープされていない制御文字があります。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieukośnikowany znak sterujący w łańcuchu znaków."
+          }
+        }
+      }
+    },
+    "Unexpected character while reading a JSON value.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caractère inattendu lors de la lecture d'une valeur JSON."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON値の読み取り中に予期しない文字がありました。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieoczekiwany znak podczas odczytu wartości JSON."
+          }
+        }
+      }
+    },
+    "Unexpected content after the JSON value.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contenu inattendu après la valeur JSON."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON値の後に予期しない内容があります。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieoczekiwana zawartość po wartości JSON."
+          }
+        }
+      }
+    },
+    "Unpaired surrogate in string.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Substitut (surrogate) non apparié dans la chaîne."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字列中にペアになっていないサロゲートがあります。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niesparowany znak zastępczy (surrogate) w łańcuchu znaków."
+          }
+        }
+      }
+    },
+    "Unterminated array: expected ',' or ']'.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tableau non terminé : « , » ou « ] » attendu."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配列が終端されていません:「,」または「]」が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niezakończona tablica: oczekiwano „,” lub „]”."
+          }
+        }
+      }
+    },
+    "Unterminated object: expected ',' or '}'.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objet non terminé : « , » ou « } » attendu."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オブジェクトが終端されていません:「,」または「}」が必要です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niezakończony obiekt: oczekiwano „,” lub „}”."
+          }
+        }
+      }
+    },
+    "Unterminated string.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaîne non terminée."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字列が終端されていません。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niezakończony łańcuch znaków."
+          }
+        }
+      }
+    },
+    "Unterminated string: dangling escape.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaîne non terminée : séquence d'échappement incomplète."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字列が終端されていません: エスケープシーケンスが不完全です。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niezakończony łańcuch znaków: nieukończona sekwencja ucieczki."
+          }
+        }
+      }
+    }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

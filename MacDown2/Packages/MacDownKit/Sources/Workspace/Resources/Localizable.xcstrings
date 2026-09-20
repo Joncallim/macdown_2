@@ -1,7 +1,248 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-
+  "sourceLanguage": "en",
+  "strings": {
+    "MacDown cannot access the backing file. Use Save As to keep this copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown ne peut pas accéder au fichier source. Utilisez Enregistrer sous pour conserver cette copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDownは元のファイルにアクセスできません。「別名で保存」を使ってこのコピーを保持してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown nie ma dostępu do pliku źródłowego. Użyj polecenia Zapisz jako, aby zachować tę kopię."
+          }
+        }
+      }
+    },
+    "MacDown could not safely follow the moved file. Use Save As to keep this copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown n'a pas pu suivre le fichier déplacé en toute sécurité. Utilisez Enregistrer sous pour conserver cette copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDownは移動されたファイルを安全に追跡できませんでした。「別名で保存」を使ってこのコピーを保持してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown nie mógł bezpiecznie podążyć za przeniesionym plikiem. Użyj polecenia Zapisz jako, aby zachować tę kopię."
+          }
+        }
+      }
+    },
+    "MacDown preserved a competing version as %@. Reveal it, then use Save As to keep this copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown a conservé une version concurrente sous le nom %@. Révélez-la, puis utilisez Enregistrer sous pour conserver cette copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDownは競合するバージョンを%@として保存しました。それを表示してから、「別名で保存」を使ってこのコピーを保持してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown zachował konkurencyjną wersję jako %@. Odsłoń ją, a następnie użyj polecenia Zapisz jako, aby zachować tę kopię."
+          }
+        }
+      }
+    },
+    "MacDown retained recovery for %@. Keep this window open and retry, or use Save As after revealing the recovery copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown a conservé une récupération pour %@. Laissez cette fenêtre ouverte et réessayez, ou utilisez Enregistrer sous après avoir révélé la copie de récupération."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDownは%@の復旧データを保持しました。このウィンドウを開いたままにして再試行するか、復旧コピーを表示してから「別名で保存」を使ってください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacDown zachował kopię odzyskiwania dla %@. Pozostaw to okno otwarte i spróbuj ponownie, albo użyj polecenia Zapisz jako po odsłonięciu kopii odzyskiwania."
+          }
+        }
+      }
+    },
+    "Resolve the external file change before saving, or use Save As to keep this copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Résolvez la modification externe du fichier avant d'enregistrer, ou utilisez Enregistrer sous pour conserver cette copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存する前に外部でのファイル変更を解決するか、「別名で保存」を使ってこのコピーを保持してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozwiąż zewnętrzną zmianę pliku przed zapisaniem, albo użyj polecenia Zapisz jako, aby zachować tę kopię."
+          }
+        }
+      }
+    },
+    "The backing file cannot be read safely. Use Save As to keep this copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier source ne peut pas être lu en toute sécurité. Utilisez Enregistrer sous pour conserver cette copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "元のファイルを安全に読み取れません。「別名で保存」を使ってこのコピーを保持してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można bezpiecznie odczytać pliku źródłowego. Użyj polecenia Zapisz jako, aby zachować tę kopię."
+          }
+        }
+      }
+    },
+    "The backing file is no longer available. Use Save As to keep this copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier source n'est plus disponible. Utilisez Enregistrer sous pour conserver cette copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "元のファイルはもう利用できません。「別名で保存」を使ってこのコピーを保持してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik źródłowy nie jest już dostępny. Użyj polecenia Zapisz jako, aby zachować tę kopię."
+          }
+        }
+      }
+    },
+    "The backing path is no longer a regular file. Use Save As to keep this copy.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le chemin source n'est plus un fichier standard. Utilisez Enregistrer sous pour conserver cette copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "元のパスは通常のファイルではなくなりました。「別名で保存」を使ってこのコピーを保持してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ścieżka źródłowa nie jest już zwykłym plikiem. Użyj polecenia Zapisz jako, aby zachować tę kopię."
+          }
+        }
+      }
+    },
+    "The document could not be opened.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le document n'a pas pu être ouvert."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書類を開けませんでした。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można było otworzyć dokumentu."
+          }
+        }
+      }
+    },
+    "The document could not be saved.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le document n'a pas pu être enregistré."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書類を保存できませんでした。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można było zapisać dokumentu."
+          }
+        }
+      }
+    },
+    "There is no active document.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n'y a aucun document actif."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブな書類がありません。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak aktywnego dokumentu."
+          }
+        }
+      }
+    }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

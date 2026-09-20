@@ -1,7 +1,292 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-
+  "sourceLanguage": "en",
+  "strings": {
+    "Check that the destination folder exists and is writable.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez que le dossier de destination existe et qu'il est accessible en écriture."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書き出し先のフォルダが存在し、書き込み可能であることを確認してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdź, czy folder docelowy istnieje i czy można w nim zapisywać."
+          }
+        }
+      }
+    },
+    "Choose a different destination folder.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un autre dossier de destination."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別の書き出し先フォルダを選んでください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz inny folder docelowy."
+          }
+        }
+      }
+    },
+    "Choose the HTML format, which preserves authored raw HTML.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez le format HTML, qui préserve le HTML brut tel qu'il a été rédigé."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作成時の生のHTMLをそのまま保持するHTML形式を選んでください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz format HTML, który zachowuje surowy kod HTML w oryginalnej postaci."
+          }
+        }
+      }
+    },
+    "Export destination is invalid: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La destination d'export n'est pas valide : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書き出し先が無効です: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miejsce docelowe eksportu jest nieprawidłowe: %@"
+          }
+        }
+      }
+    },
+    "Fix the image paths, or export as HTML, which keeps unresolved references as authored.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrigez les chemins des images, ou exportez au format HTML, qui conserve les références non résolues telles qu'elles ont été rédigées."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像のパスを修正するか、未解決の参照をそのまま保持するHTML形式で書き出してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Popraw ścieżki obrazów albo wyeksportuj jako HTML, który zachowuje nierozwiązane odwołania w formie, w jakiej zostały napisane."
+          }
+        }
+      }
+    },
+    "HTML rendering failed: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec du rendu HTML : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTMLのレンダリングに失敗しました: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renderowanie HTML nie powiodło się: %@"
+          }
+        }
+      }
+    },
+    "Markdown parse failed: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de l'analyse Markdown : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdownの解析に失敗しました: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analiza Markdown nie powiodła się: %@"
+          }
+        }
+      }
+    },
+    "Split the document, or reduce the size of the images it references.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Divisez le document, ou réduisez la taille des images qu'il référence."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書類を分割するか、参照している画像のサイズを小さくしてください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podziel dokument albo zmniejsz rozmiar obrazów, do których się on odwołuje."
+          }
+        }
+      }
+    },
+    "This document contains raw HTML, which cannot be embedded in a self-contained file. Export it as HTML instead.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce document contient du HTML brut, qui ne peut pas être intégré dans un fichier autonome. Exportez-le plutôt au format HTML."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この書類には生のHTMLが含まれているため、自己完結ファイルには埋め込めません。代わりにHTMLとして書き出してください。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten dokument zawiera surowy kod HTML, którego nie można osadzić w samodzielnym pliku. Wyeksportuj go zamiast tego jako HTML."
+          }
+        }
+      }
+    },
+    "This document is too large to export: %@.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce document est trop volumineux pour être exporté : %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この書類は大きすぎて書き出せません: %@。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten dokument jest zbyt duży, aby go wyeksportować: %@."
+          }
+        }
+      }
+    },
+    "This export must embed every image, but some could not be resolved:\n%@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet export doit intégrer chaque image, mais certaines n'ont pas pu être résolues :\n%@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この書き出しではすべての画像を埋め込む必要がありますが、一部の画像を解決できませんでした:\n%@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten eksport musi osadzić każdy obraz, ale niektórych nie udało się rozwiązać:\n%@"
+          }
+        }
+      }
+    },
+    "Writing export output failed: %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de l'écriture du fichier exporté : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書き出し結果の書き込みに失敗しました: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapis wyeksportowanego pliku nie powiódł się: %@"
+          }
+        }
+      }
+    },
+    "…and %@ more.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "… et %@ de plus."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "…他%@件。"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "…i %@ więcej."
+          }
+        }
+      }
+    }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

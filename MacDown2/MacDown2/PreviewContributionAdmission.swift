@@ -106,6 +106,20 @@ extension PreviewContributionAdapter {
         )
     }
 
+    /// `^[...](inflect: true)` only resolves its singular/plural agreement
+    /// through `AttributedString`'s markdown-attributed parsing — `String(localized:)`
+    /// returns the markup unresolved. `PreviewContributionDiagnostic.message`
+    /// is a plain `String` shown via `Text(verbatim:)`, so the count-correct
+    /// text must be resolved here, once, before it is stored.
+    private static func omittedPlacementsMessage(count: Int) -> AttributedString {
+        AttributedString(
+            localized: """
+            ^[\(count) valid placement](inflect: true) exceeded the preview budget \
+            and remain as authored source
+            """
+        )
+    }
+
     /// The one base interval fully containing `range`, or `nil` when zero or
     /// more than one does — a range in a newline gap, crossing two blocks,
     /// or outside all blocks is invalid either way.
@@ -190,12 +204,7 @@ extension PreviewContributionAdapter {
         if omittedByBudget > 0 {
             diagnostics.append(PreviewContributionDiagnostic(
                 contributionID: "preview-budget", severity: .warning,
-                message: String(
-                    localized: """
-                    ^[\(omittedByBudget) valid placement](inflect: true) exceeded the preview budget \
-                    and remain as authored source
-                    """
-                )
+                message: String(omittedPlacementsMessage(count: omittedByBudget).characters)
             ))
         }
         return (accepted, diagnostics)

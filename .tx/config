@@ -1,0 +1,63 @@
+[main]
+host = https://www.transifex.com
+lang_map = zh_TW:zh-Hant, zh_CN:zh-Hans, ko_KR:ko-KR
+
+[o:macdown-2--core:p:macdown-2:r:app]
+file_filter = MacDown2/MacDown2/Localizable.xcstrings
+source_file = MacDown2/MacDown2/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:workspace]
+file_filter = MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:filetree]
+file_filter = MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:jsonsupport]
+file_filter = MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:contributions]
+file_filter = MacDown2/Packages/MacDownKit/Sources/Contributions/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/Contributions/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:textfilters]
+file_filter = MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:exportservice]
+file_filter = MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:diagrams]
+file_filter = MacDown2/Packages/MacDownKit/Sources/Diagrams/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/Diagrams/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:diagramsd2]
+file_filter = MacDown2/Packages/MacDownKit/Sources/DiagramsD2/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/DiagramsD2/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+
+[o:macdown-2--core:p:macdown-2:r:diagramsgraphviz]
+file_filter = MacDown2/Packages/MacDownKit/Sources/DiagramsGraphviz/Resources/Localizable.xcstrings
+source_file = MacDown2/Packages/MacDownKit/Sources/DiagramsGraphviz/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
