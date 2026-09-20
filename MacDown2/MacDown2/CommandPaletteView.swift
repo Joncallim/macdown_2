@@ -104,7 +104,9 @@ private struct CommandPaletteRowView: View {
 
     var body: some View {
         HStack {
-            Text(row.title)
+            // Mixes app command names with user-authored text-filter script
+            // names, so this can't assume everything here is translatable.
+            Text(verbatim: row.title)
             Spacer()
             if row.kind == .textFilter {
                 Text("Command")

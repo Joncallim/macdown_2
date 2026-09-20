@@ -16,14 +16,11 @@ struct FirstRunView: View {
             VStack(spacing: 8) {
                 Text("Welcome to MacDown 2")
                     .font(.largeTitle.bold())
-                Text(
-                    "A fast, native Markdown editor for Mac, with live preview, " +
-                        "math, and diagrams built right in."
-                )
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 380)
+                Text("A fast, native Markdown editor for Mac, with live preview, math, and diagrams built right in.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 380)
             }
 
             VStack(spacing: 12) {

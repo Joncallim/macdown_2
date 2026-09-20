@@ -170,7 +170,7 @@ struct TextFilterCoordinator {
     private static func presentAlert(_ error: Error, commandName: String, on window: NSWindow) async {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "\"\(commandName)\" Failed"
+        alert.messageText = String(localized: "\"\(commandName)\" Failed")
         alert.informativeText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             alert.beginSheetModal(for: window) { _ in continuation.resume() }

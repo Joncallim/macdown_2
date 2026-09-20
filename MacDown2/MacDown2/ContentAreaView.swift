@@ -93,7 +93,7 @@ struct ContentAreaView: View {
             Image(systemName: documentIcon(for: document.format.id))
                 .foregroundStyle(.secondary)
 
-            Text(title(for: document))
+            Text(verbatim: title(for: document))
                 .font(.system(size: 13, weight: .semibold))
 
             if document.fileURL == nil {
@@ -183,7 +183,7 @@ struct ContentAreaView: View {
     }
 
     private func title(for document: FileCore.FileDocument) -> String {
-        document.fileURL?.lastPathComponent ?? "Untitled"
+        document.fileURL?.lastPathComponent ?? String(localized: "Untitled")
     }
 
     private func documentIcon(for formatID: String) -> String {
@@ -215,8 +215,10 @@ private struct WorkspaceRecoveryRequiredNotice: View {
                 Image(systemName: "externaldrive.badge.exclamationmark")
                     .foregroundStyle(.orange)
                 Text(
-                    "A competing version was preserved as \(url.lastPathComponent). "
-                        + "Reveal it, then use Save As to keep this copy."
+                    """
+                    A competing version was preserved as \(url.lastPathComponent). \
+                    Reveal it, then use Save As to keep this copy.
+                    """
                 )
                 .font(.callout)
                 Spacer()
@@ -238,11 +240,8 @@ private struct WorkspaceRecoveryRequiredNotice: View {
             HStack(spacing: 10) {
                 Image(systemName: "externaldrive.badge.exclamationmark")
                     .foregroundStyle(.orange)
-                Text(
-                    "Recovery cleanup for \(url.lastPathComponent) needs attention. "
-                        + "Reveal it, retry, or use Save As."
-                )
-                .font(.callout)
+                Text("Recovery cleanup for \(url.lastPathComponent) needs attention. Reveal it, retry, or use Save As.")
+                    .font(.callout)
                 Spacer()
                 Button("Reveal") {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -297,19 +296,20 @@ private struct WorkspaceRecoveryRequiredNotice: View {
 enum FileSaveFailurePresentation {
     static func message(for error: FileStoreError) -> String {
         switch error {
-        case .writeFailed: "The file could not be written."
-        case .permissionDenied: "MacDown does not have permission to write this file."
-        case .notRegularFile: "This is not a regular file."
-        case .invalidURL: "This is not a valid save location."
-        case .fileChangedDuringRead: "The file changed on disk while saving. Try again."
+        case .writeFailed: String(localized: "The file could not be written.")
+        case .permissionDenied: String(localized: "MacDown does not have permission to write this file.")
+        case .notRegularFile: String(localized: "This is not a regular file.")
+        case .invalidURL: String(localized: "This is not a valid save location.")
+        case .fileChangedDuringRead: String(localized: "The file changed on disk while saving. Try again.")
         // Thrown both when the containing folder is gone and when the file
         // itself was deleted/moved/trashed while its folder is untouched —
         // exactly issue #57's headline scenario — so this must not name
         // "folder" specifically (adversarial review finding).
-        case .fileMissing: "The file could not be found. It may have been moved, renamed, or deleted."
-        case .encodingDetectionFailed: "The file's text encoding could not be determined."
+        case .fileMissing:
+            String(localized: "The file could not be found. It may have been moved, renamed, or deleted.")
+        case .encodingDetectionFailed: String(localized: "The file's text encoding could not be determined.")
         case let .decodingFailed(diagnostics):
-            diagnostics.first?.message ?? "The file's contents could not be verified after saving."
+            diagnostics.first?.message ?? String(localized: "The file's contents could not be verified after saving.")
         case .conditionalPublicationRecoveryRequired:
             // Unreachable in practice: `workspaceError(for:)`
             // (`WorkspaceModel+SavingSupport.swift`) intercepts this case
@@ -318,9 +318,9 @@ enum FileSaveFailurePresentation {
             // .conditionalPublicationRecoveryRequired(url)` that
             // `WorkspaceRecoveryRequiredNotice` renders with the actual
             // filename. Kept here only for switch exhaustiveness.
-            "A competing version was preserved separately."
+            String(localized: "A competing version was preserved separately.")
         case .readFailed:
-            "The file could not be verified after saving."
+            String(localized: "The file could not be verified after saving.")
         }
     }
 }
@@ -329,11 +329,11 @@ enum FileSaveFailurePresentation {
 
 private struct ShortcutHint: View {
     let shortcut: String
-    let label: String
+    let label: LocalizedStringKey
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(shortcut)
+            Text(verbatim: shortcut)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)

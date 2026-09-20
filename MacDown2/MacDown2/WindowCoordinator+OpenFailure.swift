@@ -11,15 +11,15 @@ import Foundation
 enum FileOpenFailurePresentation {
     static func message(for error: FileStoreError) -> String {
         switch error {
-        case .fileMissing: "The file could not be found."
-        case .permissionDenied: "MacDown does not have permission to read this file."
-        case .notRegularFile: "This is not a regular file."
-        case .invalidURL: "This is not a valid file location."
-        case .fileChangedDuringRead: "The file changed while it was being read. Try again."
-        case .encodingDetectionFailed: "The file's text encoding could not be determined."
+        case .fileMissing: String(localized: "The file could not be found.")
+        case .permissionDenied: String(localized: "MacDown does not have permission to read this file.")
+        case .notRegularFile: String(localized: "This is not a regular file.")
+        case .invalidURL: String(localized: "This is not a valid file location.")
+        case .fileChangedDuringRead: String(localized: "The file changed while it was being read. Try again.")
+        case .encodingDetectionFailed: String(localized: "The file's text encoding could not be determined.")
         case let .decodingFailed(diagnostics):
-            diagnostics.first?.message ?? "The file's contents could not be decoded."
-        default: "The file could not be read."
+            diagnostics.first?.message ?? String(localized: "The file's contents could not be decoded.")
+        default: String(localized: "The file could not be read.")
         }
     }
 }
@@ -36,7 +36,7 @@ extension WindowCoordinator {
     func presentOpenFailure(_ error: FileStoreError, url: URL) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Couldn't Open \"\(url.lastPathComponent)\""
+        alert.messageText = String(localized: "Couldn't Open \"\(url.lastPathComponent)\"")
         alert.informativeText = FileOpenFailurePresentation.message(for: error)
         if let window = NSApp.keyWindow {
             alert.beginSheetModal(for: window) { _ in }

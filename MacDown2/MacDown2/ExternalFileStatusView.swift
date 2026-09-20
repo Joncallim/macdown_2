@@ -40,8 +40,10 @@ struct ExternalFileStatusView: View {
             HStack(spacing: 8) {
                 Image(systemName: "externaldrive.badge.exclamationmark")
                 Text(
-                    "Recovery for \(url.lastPathComponent) could not be cleaned up. "
-                        + "Keep this window open, or use Save As."
+                    """
+                    Recovery for \(url.lastPathComponent) could not be cleaned up. \
+                    Keep this window open, or use Save As.
+                    """
                 )
                 .font(.callout)
                 Button("Reveal") {
@@ -103,7 +105,7 @@ struct ExternalFileStatusView: View {
         HStack(spacing: 10) {
             Image(systemName: "externaldrive.badge.exclamationmark")
                 .foregroundStyle(.red)
-            Text(unavailableCopy(for: issue))
+            Text(verbatim: unavailableCopy(for: issue))
                 .font(.callout)
             Spacer()
             Button("Save As…") {
@@ -118,7 +120,7 @@ struct ExternalFileStatusView: View {
         .accessibilityIdentifier("externalChangeBanner")
     }
 
-    private func transientStatus(_ text: String) -> some View {
+    private func transientStatus(_ text: LocalizedStringKey) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle")
             Text(text)
@@ -139,15 +141,15 @@ struct ExternalFileStatusView: View {
     private func unavailableCopy(for issue: FileBackingIssue) -> String {
         switch issue {
         case .missingOrMoved, .parentUnavailable:
-            "The backing file is unavailable. Save As to keep this copy."
+            String(localized: "The backing file is unavailable. Save As to keep this copy.")
         case .permissionDenied:
-            "MacDown cannot access the backing file. Save As to keep this copy."
+            String(localized: "MacDown cannot access the backing file. Save As to keep this copy.")
         case .notRegularFile:
-            "The backing path is no longer a regular file. Save As to keep this copy."
+            String(localized: "The backing path is no longer a regular file. Save As to keep this copy.")
         case .ambiguousMove, .moveCollidesWithOpenDocument:
-            "MacDown cannot safely identify the moved file. Save As to keep this copy."
+            String(localized: "MacDown cannot safely identify the moved file. Save As to keep this copy.")
         case .readFailed:
-            "The backing file could not be read safely. Save As to keep this copy."
+            String(localized: "The backing file could not be read safely. Save As to keep this copy.")
         }
     }
 }

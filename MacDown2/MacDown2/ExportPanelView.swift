@@ -15,9 +15,9 @@ enum ExportFormatOption: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .standaloneHTML: "HTML"
-        case .selfContainedHTML: "Self-contained HTML"
-        case .pdf: "PDF"
+        case .standaloneHTML: String(localized: "HTML")
+        case .selfContainedHTML: String(localized: "Self-contained HTML")
+        case .pdf: String(localized: "PDF")
         }
     }
 
@@ -41,8 +41,9 @@ enum ExportFormatOption: String, CaseIterable, Identifiable {
     var explanation: String? {
         switch self {
         case .standaloneHTML: nil
-        case .selfContainedHTML: "Embeds the stylesheet and every image into one file that opens anywhere."
-        case .pdf: "Embeds every image and prints through the macOS render system."
+        case .selfContainedHTML:
+            String(localized: "Embeds the stylesheet and every image into one file that opens anywhere.")
+        case .pdf: String(localized: "Embeds every image and prints through the macOS render system.")
         }
     }
 }
@@ -74,7 +75,7 @@ struct ExportPanelView: View {
         VStack(alignment: .leading, spacing: 12) {
             Picker("Format", selection: $model.format) {
                 ForEach(ExportFormatOption.allCases) { option in
-                    Text(option.title).tag(option)
+                    Text(verbatim: option.title).tag(option)
                 }
             }
             .pickerStyle(.segmented)
@@ -89,7 +90,7 @@ struct ExportPanelView: View {
                 .pickerStyle(.radioGroup)
                 .accessibilityLabel("Stylesheet delivery")
             } else if let explanation = model.format.explanation {
-                Text(explanation)
+                Text(verbatim: explanation)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

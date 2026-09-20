@@ -288,7 +288,7 @@ struct ExportCoordinator {
     private func presentError(_ error: Error) async {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Export Failed"
+        alert.messageText = String(localized: "Export Failed")
         alert.informativeText = error.localizedDescription
         if let suggestion = (error as? LocalizedError)?.recoverySuggestion {
             alert.informativeText += "\n\n" + suggestion
