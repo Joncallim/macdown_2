@@ -63,6 +63,8 @@ targets:
     - package: MacDownKit
       product: GraphvizRendering
     settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
         Release:
           ENABLE_TESTABILITY: 'YES'
@@ -71,6 +73,7 @@ targets:
       properties:
         CFBundleName: MacDown 2
         CFBundleDisplayName: MacDown 2
+        CFBundleIconName: AppIcon
         CFBundleShortVersionString: 0.1.0
         CFBundleVersion: '1'
         LSMinimumSystemVersion: '26.0'
