@@ -68,3 +68,17 @@ E12 must satisfy `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md`
 ## Notes
 
 Keep template variables compatible in spirit with useful old MacDown concepts (title, style, content, assets) so migration guidance is possible, but do not preserve a legacy abstraction merely because it existed.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+Issue #118 is the final 1.0 closure owner for E12 residuals recovered from the implementation architecture and merged review PRs. It requires:
+- current cmark/Preview parity and block-directive disposition;
+- race-resistant local-resource reads;
+- measured/frozen export budgets including final self-contained bytes;
+- real PDF pagination/UI execution on an interactive macOS 26 RC;
+- PDF progress/cancellation/main-thread responsiveness policy;
+- safe managed-assets crash/mode-switch cleanup;
+- the as-built architecture reconciliation already merged via PR #114.
+
+Historical “accepted residual risk” language is evidence history, not a production-release waiver.
