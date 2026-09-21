@@ -69,3 +69,15 @@ The open E11 architecture PR (#43) predates the 2026-08-16 product/release-contr
 ## Architecture gate
 
 E11 must satisfy both `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md` before implementation begins. The refreshed current-master architecture must verify the exact v1 format/grammar set, text-fidelity behaviour and HTML `WKWebView` security/resource/navigation/lifecycle contract.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+The “tracked as a follow-up” LaTeX/TeX sentence above is now resolved to a concrete owner: E22 (#112) must implement/test the lightweight `.tex`/`.latex` source-recognition/highlighting/no-preview contract before 1.0.
+
+The complete merged-PR sweep also recovered two HTML-preview race limitations that were not represented by that status note. Issue #121 now owns:
+- binding each WebKit scheme task to the immutable preview request/root that created it, preventing stale-task/new-root interleaving;
+- closing the validation→read TOCTOU window for local subresources with race-resistant resource opening;
+- re-proving CSP/no-network/navigation/download containment and final Release-app HTML-preview behavior.
+
+Full TeX compilation remains an explicit non-goal, not debt.

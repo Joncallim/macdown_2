@@ -27,6 +27,15 @@ identity, offline/privacy, fidelity, evidence, localisation and release gates.
 > locally/offline, makes E21 renderer candidates individually admissible, makes
 > E16 the in-app string freeze, and requires E17 to rehearse stateful migration
 > from development/beta identities before release.
+>
+> **Amended 2026-09-21 (pre-release reopening + complete debt audit):** E22 and
+> E23 are bounded final capability epics; the old `MacDown 2` public-identity
+> freeze is reopened because the release will be a new editor descended from
+> MacDown; #115 is a hard gate that closes every historical carried-forward
+> requirement/evidence gap before the final E16 freeze and E17 production RC.
+> The audit searched closed issues, binding implementation docs, all merged PR
+> descriptions, the release ledger, issue-57 findings, and current residual
+> source seams; #53/#79/#88/#116-#121 are the named closure records.
 
 ---
 
@@ -55,7 +64,7 @@ upload document content to a hosted renderer or service.
 | D2 | Tab model | **Native `NSWindow` tabs** — one window = one document, grouped by AppKit tab groups; `WindowCoordinator` owns the pool, each window hosts its own `WorkspaceModel` + sidebar. The mid-point review proved native tabbing composes correctly with the per-window sidebar and provides dedupe, dirty-close and session restore with less custom UI. |
 | D3 | Editor | **Custom NSTextView + TextKit 2** wrapped in `NSViewRepresentable`, **tree-sitter** highlighting. Priority: fastest, smoothest experience. |
 | D4 | Markdown preview | **Native SwiftUI via Textual** for ordinary Markdown (no WKWebView for Markdown). First-party derived content uses explicit contribution/renderer seams rather than turning Markdown preview into a web page. |
-| D5 | Identity | **New product.** **Frozen at the feature-complete gate (2026-09-19):** public name `MacDown 2`, bundle identity root `com.joncallim.macdown2` (app bundle ID `com.joncallim.MacDown2`, CLI `macdown2`, custom UTI namespace `com.joncallim.macdown2.*`), document type `net.daringfireball.markdown` (a public, pre-existing UTI, not project-specific). No development→release namespace migration is needed: unlike a typical rewrite that develops under a placeholder identity and renames before shipping, this identity has been used consistently since project inception (`planning/epic-00-implementation.md` onward, ~300+ references across planning docs, every merged PR, and the shipping app's own `Info.plist`/`CFBundleDocumentTypes`), was never a placeholder, and no alternative name was ever proposed in any issue, PR, or planning document — reconciling the roadmap's own "reopened 2026-08-16" note against actual usage, not against a hypothetical new name. See the feature-complete gate record in `RELEASE_EVIDENCE.md` for the full reconciliation. |
+| D5 | Identity | **New product descended from MacDown.** Historical development identity: `MacDown 2` / `com.joncallim.macdown2` (app bundle ID `com.joncallim.MacDown2`, CLI `macdown2`). That identity was provisionally frozen at the 2026-09-19 feature-complete gate, then **explicitly reopened by the owner on 2026-09-21** after deciding the public product should have its own name rather than ship as “MacDown 2”. The final public name, app/bundle/update identity, CLI public name, repository/public links and migration namespaces are re-frozen before E23 commits final Quick Look/theme/document-icon identifiers. E17 must migrate representative development/beta state from the historical MacDown 2 namespaces into that final identity and prove idempotence; it may not decide the brand itself. The public Markdown document UTI remains `net.daringfireball.markdown` unless a later exact integration need justifies additional declarations. |
 | D6 | Contributions/extensions | macOS 1.0: internal **renderer-neutral first-party contribution infrastructure** + user local text-filter commands. E12 owns export destination composition; E14 owns the contribution lifecycle/isolation/result seam; E19 owns production math; E20 owns diagram platform + Mermaid; E21 evaluates additional renderers. Post-1.0: evaluate JavaScriptCore extension API. **Never** resurrect NSBundle in-process loading. |
 | D7 | Sandboxing | **Unsandboxed** for now (direct distribution). `FileTreeModel` remains security-scoped-ready so later sandboxing is additive. |
 | D8 | iPad sequencing | **No iPad implementation before the completed macOS 1.0 release.** Do not add UIKit targets or speculative portability layers during the Mac roadmap. Avoid gratuitous AppKit coupling where platform-neutral engine code is equally simple; actual porting is post-release work. |

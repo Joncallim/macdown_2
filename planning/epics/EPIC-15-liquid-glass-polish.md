@@ -76,3 +76,12 @@ Before broad E15 polish begins, the feature-complete gate must have:
 ## Architecture gate
 
 E15 must satisfy `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md`. It is evidence-backed whole-product work, not a late opportunity to redesign feature architecture casually.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+E15's historical acceptance with a placeholder icon and environment-blocked live VoiceOver/visual pass is superseded for production 1.0:
+- E23 (#113) must replace the placeholder with final production identity/icon/document presentation assets;
+- #115 requires the final live VoiceOver, visual, keyboard-only and accessibility-condition sanity pass on a suitable interactive Mac after E22/E23 and all residual fixes.
+
+Environment-blocked is no longer a final release disposition.

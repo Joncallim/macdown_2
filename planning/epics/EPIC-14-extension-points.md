@@ -76,3 +76,15 @@ The implementation architecture must freeze concrete limits, but the following b
 ## Architecture gate
 
 E14 must satisfy `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md`. Its architecture must reconcile E12's then-current export contract and explain the contribution model in owner-readable language. It should solve the concrete first-party derived-content and local-command requirements without accumulating a speculative generic plugin framework.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+Issue #117 now owns the E14 residuals that were named in the binding implementation contract but never fully closed:
+- make contribution destination capabilities explicit instead of leaving generic `.html` structurally rejected by Preview;
+- deterministic shared heading anchors and genuinely navigable TOC/internal links;
+- measure/eliminate the extra export parse if material;
+- prevent E22's expanded command surface from drifting away from the command palette;
+- resolve the ambient-key-window Export targeting follow-up.
+
+The real text-filter/palette hands-on GUI matrix remains a mandatory #115 final-RC evidence item. The possible JavaScriptCore third-party API remains intentionally post-1.0 and is not debt.

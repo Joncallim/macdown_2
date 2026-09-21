@@ -24,6 +24,32 @@
 | Open P0/P1/P2 | unresolved release-relevant findings; link issue(s) rather than hiding them in prose |
 | Release status | `unverified`, `blocked`, `accepted`, or `passed` with short reason |
 
+## 2026-09-21 complete carry-forward audit
+
+The final historical-debt search expanded beyond epic closure comments. It inspected:
+
+- all closed epic issues E00-E15/E18-E21 and all closed non-epic issues;
+- every available binding `planning/epic-XX-implementation.md`, including residual-risk/manual-evidence sections;
+- all 77 merged pull-request descriptions through PR #114 for “deferred”, “residual”, “follow-up”, “unverified”, “known limitation”, and similar wording;
+- `planning/issue-57-findings.md`, the extension design note, roadmap/hardening docs, and the full release ledger;
+- current source at the known residual seams;
+- production files changed since the Sep 19 source-marker audit. The Sep 19 gate had already grep-verified zero production `TODO/FIXME/HACK` markers; every production source file changed after that baseline was re-scanned. The only forward-looking source comments found map to tracked work: inert Markdown options (#53/E22) and the placeholder icon (E23).
+
+The authoritative closure set is issue **#115**. Specific inherited-debt owners are:
+
+- #53 — legacy MacDown preference migration + inert Markdown option cleanup;
+- #79 — Mermaid/D2/Graphviz theme coherence;
+- #88 — remaining real UI-test execution gaps;
+- #116 — E19 math diagnostics/accessibility/delimiter/source-identity debt;
+- #117 — E14 contribution/TOC/palette/export-targeting residuals;
+- #118 — E12 export parity/resource security/budget/PDF evidence/responsiveness debt;
+- #119 — E18 external-file manual/performance evidence;
+- #120 — #57 Open/Save progress/race/latency carry-forwards;
+- #121 — E11 HTML-preview request-root and resource-read races;
+- E22 (#112) and E23 (#113) absorb the inherited editor/format/theme/Finder items named in their amended contracts.
+
+Historical table rows below are retained as evidence of what was known at the time. They are **not** current release dispositions where #115 or one of the issues above supersedes them.
+
 ## Initial roadmap scaffold
 
 This initial table is deliberately conservative. It captures implementation status known from the roadmap while leaving release proof unverified until evidence is reconciled at the gate.

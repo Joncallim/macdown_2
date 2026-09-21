@@ -56,3 +56,15 @@ real-app `EditingAssistsUITests` (list continuation; no pairing in `.txt`;
 Format-menu Bold on the focused editor). Remaining before M2 close: the
 interactive Release dogfood matrix (§18.3) — the automated substitutes are
 green, the human pass is not yet recorded.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+The historical completion note above is preserved, but its remaining manual gate is no longer an open-ended carry-forward. Issue #115 requires the still-applicable E10 Release dogfood matrix to run on the exact final RC.
+
+E10 also consciously allowed Markdown-specific assists throughout an entire Markdown file, including fenced-code/front-matter regions, because it avoided stale AST state in the keystroke path. E22 (#112) now owns closing that limitation with a bounded synchronous source classifier while preserving native/general pairing behavior and hot-path performance.
+
+Final 1.0 disposition:
+- package/integration evidence remains valid;
+- E22 closes inappropriate assist behavior inside fenced code/front matter;
+- #115 closes the real interactive shortcut/Home/list/pairing/undo dogfood evidence.

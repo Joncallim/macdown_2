@@ -96,3 +96,13 @@ E21 follows E20 so the common renderer platform is proven with one language befo
 ## Architecture gate
 
 Implementation must not begin until `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md` are satisfied and a current-master `planning/epic-21-implementation.md` has been reviewed. The architecture pass must perform the admission gate independently for each candidate while preserving one common MacDown 2 user experience for whatever is accepted.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+The 1.0 renderer decisions are now final:
+- D2 — accepted;
+- Graphviz/DOT — accepted;
+- WaveDrom — **rejected for macOS 1.0** after #115, over the same documented `eval()`/CVE-precedented integration risk. A future release may reconsider only a materially safer path.
+
+#88 must close the remaining critical UI-test execution gaps. E23 owns theme coherence and final renderer-limit/security calibration. There is no remaining ambiguous “deferred WaveDrom” promise in the 1.0 plan.

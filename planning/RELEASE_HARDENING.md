@@ -161,7 +161,7 @@ E16 originally ran after the first public-identity/first-run baseline and has al
 
 **2026-09-21 sequencing amendment:** E22 and E23 intentionally add bounded user-facing UI after that baseline. Their new strings must enter the normal catalogs in the same implementation slices. The closed-epic debt audit in #115 must then close every historical carried-forward release item; fixes from that gate enter the same localisation pipeline. One final E16 extraction/translation/pseudo-localisation delta is required only after #115 closes. That post-#115 baseline is the macOS 1.0 string freeze consumed by E17.
 
-Once E16 reaches that **final post-E23** string freeze:
+Once E16 reaches that **final post-#115** string freeze:
 
 - E17 may update release notes, website copy and other non-app release material;
 - E17 must not introduce new user-facing app strings or new app UI without reopening the affected localisation verification;
