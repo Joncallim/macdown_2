@@ -140,7 +140,7 @@ ecosystem/runtime has changed.
 | Localization | String Catalogs + Transifex | Priority locales first |
 | CI | GitHub Actions, macOS 26 environment where available | Real UI execution may require a recorded local-Mac release gate |
 | Math renderer | **Not preselected** | E19 verifies capability/licensing/accessibility/offline/export/performance fit |
-| Diagram renderers | Mermaid first; D2/Graphviz/WaveDrom are E21 candidates | Each E21 candidate may be accepted or rejected independently |
+| Diagram renderers | Mermaid + D2 + Graphviz/DOT ship for macOS 1.0; WaveDrom rejected for 1.0 after E21/#115 security review | All shipped renderers remain local/offline; future WaveDrom reconsideration requires a materially safer integration path |
 
 **Dependency policy:** prefer/require SwiftPM for Swift package dependencies,
 pin exact versions where practical, and wrap third-party UI/runtime dependencies
@@ -352,7 +352,7 @@ responsiveness in mixed technical documents.
 | O3 | Import old MacDown prefs/themes on first run? | E13; if approved, must be stable before E15/E16 first-run/string freeze |
 | O4 | **Resolved 2026-09-21:** E23 expands to at least 8 deliberate bundled themes (>=4 light, >=4 dark) plus safe declarative custom themes; provenance/licensing and contrast are release gates. | E23 |
 | O5 | Final math rendering engine and exact delimiter compatibility | E19 architecture |
-| O6 | E20 Mermaid packaging/execution choice and E21 accept/reject decisions for D2/Graphviz/WaveDrom | E20/E21 architecture |
+| O6 | **Resolved:** Mermaid, D2 and Graphviz/DOT ship; WaveDrom is rejected for macOS 1.0 after the #115 final disposition (unsafe documented `eval()` path; safe parser work not justified for 1.0). | — |
 
 ## 13. Appendix — D6: Contribution and extension design
 
