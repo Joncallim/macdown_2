@@ -75,3 +75,12 @@ E20 runs after E12/E14 establish export/contribution seams. It proves the diagra
 ## Architecture gate
 
 Implementation must not begin until `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md` are satisfied and a current-master `planning/epic-20-implementation.md` is reviewed. Architecture must verify Mermaid's local execution model, licensing/security boundary, renderer protocol, SVG handling, cache limits, stale-result rules, source identity, shared export integration and real-app Release performance.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+E23 (#113) now owns E20's two remaining 1.0 residuals:
+- #79: renderer theme coherence across Mermaid/D2/Graphviz with print-safe contrast;
+- empirical Release calibration of diagram timeout/output/memory limits, which were explicitly provisional in E20.
+
+The final #115 pass also re-proves renderer security/offline containment after E23's shared-presentation/Quick Look refactor. Character-level diagram navigation and Mermaid interactive click features remain deliberate product boundaries, not unowned carry-forward work.
