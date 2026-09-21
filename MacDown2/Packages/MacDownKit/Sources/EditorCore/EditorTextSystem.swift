@@ -67,6 +67,16 @@ public final class EditorTextSystem {
     /// Set by `scrollOffset`'s setter before the scroll view exists yet
     /// (session restore); applied by `applyPendingScrollOffset()` once it does.
     var pendingScrollOffset: CGFloat?
+    /// Kept current with every edit this text system observes, incrementally
+    /// (never a full rescan except on whole-document replacement). Powers
+    /// the gutter, status bar, and Go to Line/Column. Setter is `internal`
+    /// (not `private`) so `EditorTextSystem+LineIndex.swift` can maintain
+    /// it — see that file for the update/rebuild methods and the
+    /// undo/redo observer that keeps it correct across those, which bypass
+    /// the normal incremental-edit path entirely.
+    public internal(set) var lineIndex: EditorLineIndex
+    /// See `EditorTextSystem+LineIndex.swift`'s `registerUndoRedoObservers()`.
+    var undoRedoObservers: [NSObjectProtocol] = []
 
     /// Snapshot of the inputs that produced the current overscroll inset so we
     /// can skip redundant updates.
@@ -96,8 +106,10 @@ public final class EditorTextSystem {
     public init(identity: String, initialText: String, configuration: EditorConfiguration) {
         self.identity = identity
         stack = TextKitStack()
+        lineIndex = EditorLineIndex(text: initialText as NSString)
         apply(configuration)
         setText(initialText)
+        registerUndoRedoObservers()
     }
 
     // MARK: - Content
@@ -107,6 +119,7 @@ public final class EditorTextSystem {
     public func setText(_ text: String) {
         textView.string = text
         editRevision &+= 1
+        lineIndex.rebuild(text: text as NSString)
         // A wholesale text replacement invalidates any measured height from
         // the previous document — see `syncFrameHeightToContent`.
         measuredContentHeight = 0
@@ -130,6 +143,7 @@ public final class EditorTextSystem {
 
         textView.string = text
         editRevision &+= 1
+        lineIndex.rebuild(text: text as NSString)
         measuredContentHeight = 0
         lastFrameSyncSignature = nil
         textView.setSelectedRange(clampedToLiveText(snapshot.selectedRange))
@@ -352,5 +366,7 @@ public final class EditorTextSystem {
         frameSyncTask = nil
         textView.delegate = nil
         stack.layoutManager.textContainer = nil
+        undoRedoObservers.forEach(NotificationCenter.default.removeObserver)
+        undoRedoObservers = []
     }
 }

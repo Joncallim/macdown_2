@@ -55,6 +55,12 @@ public struct EditorView: NSViewRepresentable {
         scrollView.autohidesScrollers = configuration.wrapsLines
         scrollView.borderType = .noBorder
         system.scrollView = scrollView
+
+        let gutterView = EditorGutterView(scrollView: scrollView, system: system)
+        scrollView.verticalRulerView = gutterView
+        scrollView.hasVerticalRuler = true
+        scrollView.rulersVisible = true
+        context.coordinator.gutterView = gutterView
         // The scroll view has not been laid out yet, so size the text view to
         // its content (with a minimum that matches the scroll view). The
         // vertically-resizable NSTextView will keep this in sync as the text
@@ -91,17 +97,40 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onSelectionChange = onSelectionChange
         context.coordinator.onScrollChange = onScrollChange
 
-        // Observe scroll changes through the clip view's bounds. NSScrollView
-        // always owns a contentView, so the object is non-optional.
-        let contentView = scrollView.contentView
-        NotificationCenter.default.addObserver(
-            context.coordinator,
-            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
-            name: NSView.boundsDidChangeNotification,
-            object: contentView
-        )
+        registerCoordinatorObservers(scrollView: scrollView, system: system, coordinator: context.coordinator)
 
         return scrollView
+    }
+
+    /// Observes scroll changes through the clip view's bounds (NSScrollView
+    /// always owns a contentView, so the object is non-optional), plus
+    /// undo/redo so the gutter can redraw — `EditorTextSystem` itself keeps
+    /// `lineIndex` correct across undo/redo (see its
+    /// `registerUndoRedoObservers()`); this coordinator only needs to know
+    /// when to invalidate the gutter, which lives at this UI layer.
+    private func registerCoordinatorObservers(
+        scrollView: NSScrollView,
+        system: EditorTextSystem,
+        coordinator: Coordinator
+    ) {
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.undoManagerDidChange(_:)),
+            name: .NSUndoManagerDidUndoChange,
+            object: system.undoManager
+        )
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.undoManagerDidChange(_:)),
+            name: .NSUndoManagerDidRedoChange,
+            object: system.undoManager
+        )
     }
 
     public func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
@@ -110,8 +139,19 @@ public struct EditorView: NSViewRepresentable {
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
+        NotificationCenter.default.removeObserver(
+            coordinator,
+            name: .NSUndoManagerDidUndoChange,
+            object: coordinator.system?.undoManager
+        )
+        NotificationCenter.default.removeObserver(
+            coordinator,
+            name: .NSUndoManagerDidRedoChange,
+            object: coordinator.system?.undoManager
+        )
         coordinator.system?.textView.delegate = nil
         coordinator.system?.scrollView = nil
+        coordinator.gutterView = nil
     }
 
     public func updateNSView(_ scrollView: NSScrollView, context: Context) {
@@ -120,6 +160,8 @@ public struct EditorView: NSViewRepresentable {
         // Apply configuration changes (cheap because we diff at the call site
         // via SwiftUI's update cycle, but `apply` is idempotent).
         system.apply(configuration)
+        // A font-size preference change affects the gutter's digit width.
+        context.coordinator.gutterView?.updateThickness()
 
         // Only push model text into the view when it differs from the view's
         // current text *and* the change did not originate from the view itself.
@@ -158,12 +200,42 @@ public struct EditorView: NSViewRepresentable {
 
     public final class Coordinator: NSObject, NSTextViewDelegate {
         weak var system: EditorTextSystem?
+        weak var gutterView: EditorGutterView?
         var textBinding: Binding<String>?
         var onSelectionChange: ((NSRange) -> Void)?
         var onScrollChange: ((Int) -> Void)?
         var isApplyingModelText = false
+        /// Captured in `shouldChangeTextIn` (every edit this delegate
+        /// observes, any origin) and consumed in the very next
+        /// `textDidChange` — see that method's doc comment for why this
+        /// stays correct even across E10's nested edit interception and an
+        /// `EditorEditTransaction`'s per-range multi-firing.
+        private var pendingLineIndexEdit: (range: NSRange, replacementUTF16Length: Int)?
 
+        /// Unconditionally keeps `system.lineIndex` current with EVERY edit
+        /// this coordinator observes, independent of
+        /// `isApplyingMultiRangeTransaction`'s SwiftUI-publication
+        /// suppression below — an `EditorEditTransaction` with N ranges
+        /// fires `textDidChange` N times (verified by
+        /// `EditorEditTransactionTests.multiRangeIsOneUndoStepAndOnePublication`,
+        /// the reason that suppression exists in the first place), and the
+        /// line index must stay correct after every one of them, not just
+        /// the transaction's final state.
         public func textDidChange(_: Notification) {
+            if let system, let pending = pendingLineIndexEdit {
+                system.noteIncrementalEdit(
+                    editedRange: pending.range,
+                    replacementUTF16Length: pending.replacementUTF16Length
+                )
+                pendingLineIndexEdit = nil
+            }
+            // The gutter has no way to know about a text edit on its own
+            // (unlike scrolling, which NSRulerView already tracks via its
+            // scroll view) — every edit needs an explicit redraw, and
+            // `updateThickness()` also covers a line-count digit-width
+            // change (e.g. line 9 -> 10, or 99 -> 100).
+            gutterView?.updateThickness()
+
             guard !isApplyingModelText,
                   let system,
                   !system.isPerformingProgrammaticTextUpdate,
@@ -188,6 +260,14 @@ public struct EditorView: NSViewRepresentable {
         ) -> Bool {
             guard let system else { return true }
             guard let replacementString else { return true }
+            // Captured before every branch below (including the E10/IME
+            // early returns), since AppKit performs exactly
+            // (affectedRange, replacementString) as the edit on every path
+            // that returns `true` here, and a nested edit that vetoes this
+            // one (E10 intercepting it) overwrites this same property with
+            // ITS OWN (affectedRange, replacementString) before ITS OWN
+            // `textDidChange` consumes it — see that method's doc comment.
+            pendingLineIndexEdit = (affectedRange, (replacementString as NSString).length)
             guard !isApplyingModelText else { return true }
             guard !system.isPerformingProgrammaticTextUpdate else { return true }
             guard !system.isPerformingEditingAssist else { return true }
@@ -271,6 +351,14 @@ public struct EditorView: NSViewRepresentable {
         @objc @MainActor func scrollViewDidScroll(_: Notification) {
             guard let system else { return }
             onScrollChange?(system.topVisibleUTF16Offset)
+        }
+
+        /// `EditorTextSystem` itself keeps `lineIndex` correct across
+        /// undo/redo (see its own `registerUndoRedoObservers()`); this
+        /// coordinator-level observer exists only to redraw the gutter,
+        /// which `EditorTextSystem` has no reference to.
+        @objc @MainActor func undoManagerDidChange(_: Notification) {
+            gutterView?.updateThickness()
         }
     }
 }
