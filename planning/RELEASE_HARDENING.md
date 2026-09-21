@@ -159,7 +159,7 @@ E15's whole-app pass consumes the release-evidence ledger and closes release-blo
 
 E16 originally ran after the first public-identity/first-run baseline and has already established the localisation infrastructure and current translated catalog state.
 
-**2026-09-21 sequencing amendment:** E22 and E23 intentionally add bounded user-facing UI after that baseline. Their new strings must enter the normal catalogs in the same implementation slices, and one final E16 extraction/translation/pseudo-localisation delta is required after E23. That post-E23 baseline is the macOS 1.0 string freeze consumed by E17.
+**2026-09-21 sequencing amendment:** E22 and E23 intentionally add bounded user-facing UI after that baseline. Their new strings must enter the normal catalogs in the same implementation slices. The closed-epic debt audit in #115 must then close every historical carried-forward release item; fixes from that gate enter the same localisation pipeline. One final E16 extraction/translation/pseudo-localisation delta is required only after #115 closes. That post-#115 baseline is the macOS 1.0 string freeze consumed by E17.
 
 Once E16 reaches that **final post-E23** string freeze:
 
@@ -170,6 +170,15 @@ Once E16 reaches that **final post-E23** string freeze:
 This avoids shipping an English-only release screen after the localisation epic is considered complete.
 
 ## 8. E17 update and identity migration gate
+
+### 8.0 Closed-epic debt precondition
+
+Issue #115 is a hard production-release precondition. E17 architecture/signing work may proceed in parallel, but no production release candidate may be authorised, notarised for publication, or released while #115 remains open. A closed epic's earlier `accepted with residual evidence debt`, `unverified`, `environment blocked`, or similar status is historical evidence only, not a final-release pass.
+
+Before production RC authorization, every #115 item must be fixed, proved on a suitable interactive environment, or explicitly rejected only where its original candidate-feature contract allowed rejection. Release-relevant P0/P1/P2 debt must be zero.
+
+#53's legacy MacDown preference import is part of the stateful migration rehearsal for 1.0, in addition to development/beta → final-identity migration.
+
 
 E17 must test more than a clean installation and an empty-state Sparkle update.
 
@@ -195,7 +204,7 @@ Use a simple release classification so the feature-complete gate and E17 do not 
 
 - **P0** — crash, data loss/corruption, security boundary failure, cannot launch/open/save/restore/update: blocks release.
 - **P1** — core editor/preview/export/workspace/math/diagram path materially broken or misleading with no reasonable workaround: blocks release.
-- **P2** — significant visible or workflow defect with a practical workaround: fix or explicitly accept with an owner-readable record.
+- **P2** — significant visible or workflow defect with a practical workaround: during development it may be owner-recorded, but #115 requires every release-relevant P2 carried into the pre-1.0 gate to be fixed/proved before production RC authorization.
 - **P3** — minor cosmetic/documentation issue: may defer with a record.
 
 No P0/P1 may remain for macOS 1.0.
