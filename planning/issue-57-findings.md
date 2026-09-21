@@ -599,3 +599,13 @@ verification of the same behaviors, which the above supplies). Everything
 else originally listed in this section has now been directly, live
 verified against the real Release build, with real file content read back
 from disk as evidence, not inferred.
+
+
+## 2026-09-21 final pre-1.0 disposition
+
+Issue #120 converts the three known #57 carry-forwards into required 1.0 closure work:
+- Save As progress must cover the complete logical/durability-critical operation across the identity swap;
+- the close-dialog label/action race must stop presenting stale/misleading “Save” semantics;
+- current Release Open-panel latency must be remeasured, with safe prewarming implemented if materially beneficial or the system cost explicitly proved/accepted.
+
+The remaining single text-filter discovery scan was already measured at sub-millisecond scale and is treated as empirically proved unless E22 materially changes that cost.
