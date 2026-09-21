@@ -66,3 +66,10 @@ E19 runs after E14 establishes the contribution seam and E12 establishes export.
 ## Architecture gate
 
 Implementation must not begin until `planning/EPIC_STANDARD.md` and `planning/RELEASE_HARDENING.md` are satisfied and a current-master `planning/epic-19-implementation.md` is reviewed. Architecture selects/verifies rendering technology, delimiters, local/offline execution, licensing, cache model, export representation, accessibility and complete-app Release performance.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+Issue #116 is the final 1.0 owner for E19 residuals: structured malformed-math diagnostics, accessible rendered-equation representation, escaped-dollar and currency/non-math delimiter correctness, equation-level source identity/navigation where the final Preview seam permits it, and live visual re-verification of the post-#62 fixes.
+
+The optional `\(...\)` / `\[...\]` delimiter family remains an explicit product non-goal for 1.0 unless #116's architecture chooses to support it as part of one coherent delimiter grammar; it is not silently promised.
