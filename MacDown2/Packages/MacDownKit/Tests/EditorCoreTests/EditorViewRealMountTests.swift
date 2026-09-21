@@ -23,30 +23,8 @@ import Testing
 @MainActor
 @Suite("EditorView real makeNSView path")
 struct EditorViewRealMountTests {
-    /// A thin wrapper whose branch SwiftUI can switch, which is the
-    /// standard way to force a REAL `dismantleNSView` call on the outgoing
-    /// `NSViewRepresentable` -- reassigning properties on the SAME
-    /// `EditorView` value only ever calls `updateNSView`, never
-    /// `dismantleNSView`; switching the `if` branch changes the view
-    /// tree's identity at that position, which SwiftUI tears down and
-    /// remakes.
-    private struct HostedContent: View {
-        var showsEditor: Bool
-        let binding: Binding<String>
-        let identity: String
-        let store: EditorTextSystemStore
-
-        var body: some View {
-            if showsEditor {
-                EditorView(text: binding, identity: identity, configuration: .default, store: store)
-            } else {
-                Color.clear
-            }
-        }
-    }
-
     private struct Mounted {
-        let hostingView: NSHostingView<HostedContent>
+        let hostingView: NSHostingView<EditorView>
         let window: NSWindow
         let store: EditorTextSystemStore
         let identity: String
@@ -59,10 +37,10 @@ struct EditorViewRealMountTests {
     ) -> Mounted {
         let binding = Binding<String>(get: { initialText }, set: { _ in })
 
-        let hostingView = NSHostingView(rootView: HostedContent(
-            showsEditor: true,
-            binding: binding,
+        let hostingView = NSHostingView(rootView: EditorView(
+            text: binding,
             identity: identity,
+            configuration: .default,
             store: store
         ))
         let window = NSWindow(
@@ -104,7 +82,7 @@ struct EditorViewRealMountTests {
         )
 
         assertUndoRedoDrivesGutter(system: system, gutter: gutter)
-        try assertDismantleLeavesNoObserver(mounted: mounted, system: system, gutter: gutter)
+        try assertDismantleLeavesNoObserver(mounted: mounted, scrollView: scrollView, system: system)
     }
 
     /// Edit past a digit boundary, then undo/redo, asserting the gutter
@@ -133,34 +111,75 @@ struct EditorViewRealMountTests {
         )
     }
 
-    /// Switches the hosted branch away from `EditorView`, forcing SwiftUI
-    /// to tear down the outgoing `NSViewRepresentable` (reassigning
-    /// properties on the same value only calls `updateNSView`; a
-    /// branch/identity change is what triggers `dismantleNSView`), then
-    /// proves no observer survived it.
+    /// Calls the REAL `EditorView.dismantleNSView(_:coordinator:)`
+    /// directly, rather than trying to force SwiftUI's own view-identity
+    /// switch to trigger it: empirically, in this headless test process
+    /// (no live `NSApplication` run loop driving an actual display-link
+    /// update cycle), switching a hosted branch and pumping the run loop
+    /// does NOT reliably make `NSHostingView` tear down the outgoing
+    /// `NSViewRepresentable` at all -- confirmed by a first version of this
+    /// test, which found `coordinator.gutterView` still non-nil afterward.
+    /// `dismantleNSView`'s body never reads `self` (only its two
+    /// parameters), so calling it on a throwaway `EditorView` value with
+    /// the REAL `scrollView`/`coordinator` is not a workaround; it
+    /// exercises the exact same production code SwiftUI would call.
+    ///
+    /// A first version of the leak assertion itself only checked the
+    /// ALREADY-mounted `gutter`'s `ruleThickness` afterward, which an
+    /// independent hostile review correctly flagged as unable to
+    /// distinguish "the observer was removed" from "the observer is still
+    /// registered but harmlessly no-ops", since `dismantleNSView`
+    /// unconditionally sets `coordinator.gutterView = nil` REGARDLESS of
+    /// whether `removeObserver` also ran -- `Coordinator.undoManagerDidChange`'s
+    /// entire body is `gutterView?.updateThickness()`, so that version
+    /// would have passed even with `removeObserver` deleted entirely. This
+    /// version reassigns a FRESH `gutterView` onto the same coordinator
+    /// after dismantle, restoring a non-nil target so a still-registered
+    /// observer would have something to visibly act on.
     private func assertDismantleLeavesNoObserver(
         mounted: Mounted,
-        system: EditorTextSystem,
-        gutter: EditorGutterView
+        scrollView: NSScrollView,
+        system: EditorTextSystem
     ) throws {
-        let binding = Binding<String>(get: { "" }, set: { _ in })
-        mounted.hostingView.rootView = HostedContent(
-            showsEditor: false,
-            binding: binding,
+        let coordinator = try #require(
+            system.textView.delegate as? EditorView.Coordinator,
+            "expected the real Coordinator to still be the text view's delegate before dismantle"
+        )
+
+        let throwawayBinding = Binding<String>(get: { "" }, set: { _ in })
+        let editorView = EditorView(
+            text: throwawayBinding,
             identity: mounted.identity,
+            configuration: .default,
             store: mounted.store
         )
-        mounted.hostingView.layoutSubtreeIfNeeded()
+        editorView.dismantleNSView(scrollView, coordinator: coordinator)
 
-        // A synthetic undo/redo notification posted AFTER dismantle must
-        // not change the (still strongly referenced, merely detached)
-        // gutter's thickness at all.
-        let thicknessAfterDismantle = gutter.ruleThickness
+        #expect(coordinator.gutterView == nil, "dismantleNSView did not clear the coordinator's gutterView")
+
+        // Grow the document (directly against `system`, bypassing the now
+        // fully detached view) so a real `updateThickness()` call WOULD
+        // produce a different thickness than this scratch gutter's own
+        // freshly-computed one, giving a leaked observer something to
+        // visibly change.
+        let scratchScrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        let scratchGutter = EditorGutterView(scrollView: scratchScrollView, system: system)
+        coordinator.gutterView = scratchGutter
+        system.textView.insertText(
+            (1 ... 500).map { "line \($0)" }.joined(separator: "\n"),
+            replacementRange: NSRange(location: 0, length: (system.text as NSString).length)
+        )
+        let thicknessBeforeSyntheticNotifications = scratchGutter.ruleThickness
+
         NotificationCenter.default.post(name: .NSUndoManagerDidUndoChange, object: system.undoManager)
         NotificationCenter.default.post(name: .NSUndoManagerDidRedoChange, object: system.undoManager)
+
         #expect(
-            gutter.ruleThickness == thicknessAfterDismantle,
-            "gutter reacted to undo/redo notifications after dismantle -- an observer leaked"
+            scratchGutter.ruleThickness == thicknessBeforeSyntheticNotifications,
+            """
+            a synthetic undo/redo notification still reached the coordinator after dismantle -- the \
+            NotificationCenter observer was not actually removed, only masked by gutterView being nil
+            """
         )
     }
 
@@ -230,10 +249,10 @@ struct EditorViewRealMountTests {
 
     private func pushModelText(_ newText: String, into mounted: Mounted) {
         let binding = Binding<String>(get: { newText }, set: { _ in })
-        mounted.hostingView.rootView = HostedContent(
-            showsEditor: true,
-            binding: binding,
+        mounted.hostingView.rootView = EditorView(
+            text: binding,
             identity: mounted.identity,
+            configuration: .default,
             store: mounted.store
         )
         mounted.hostingView.layoutSubtreeIfNeeded()
