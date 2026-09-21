@@ -6,6 +6,32 @@
 > **Architecture date:** 2026-08-17
 > **Review status:** Final adversarial pass complete; implementation begins with Slice 0 only
 
+## 2026-09-21 as-built reconciliation
+
+> **Authority amendment:** E12 shipped successfully, but several symbol/type sketches below describe the pre-implementation design rather than the final code. For implementation truth, the as-built mapping in this section supersedes conflicting symbol names/shapes below. The product/security/file-safety invariants remain binding.
+
+The shipped architecture retained the intended one-composer/one-export-destination design but simplified several planned abstractions:
+
+| Planned architecture name/shape | Shipped owner / implementation |
+|---|---|
+| `ExportSourceSnapshot` nested inside a target-bearing `ExportRequest` | `ExportRequest.swift`: flat immutable `text`, `sourceGeneration`, `theme`, `documentURL`, `contributions`; the destination remains an argument to `ExportService.prepare/exportHTML` rather than stored in the request. |
+| `CMarkHTMLBodyRenderer` | `CMarkGFM.swift` plus `ExportComposer.renderBody`: the cmark-gfm bridge and composition policy are split by responsibility rather than wrapped in the planned protocol/type. |
+| planned `DerivedCMarkInjector`/derived AST injector | `DerivedContentComposer.swift` + `InlineSentinelIndex.swift` + `CMarkGFM.CustomNodeSpec`: renderer-neutral contributions are validated/spliced through deterministic sentinels and restored as custom nodes. |
+| planned mutable resource/manifest builder shapes | `ExportResourceResolver.swift`, `ExportManifest.swift`, `ExportResourceBudget.swift`, `ExportHTMLWriter.swift` and `ExportFileWriter.swift`: resolution, budget and publication responsibilities are narrower than the sketch below. |
+| planned Theme→CSS mapper / structural sheet | `ExportThemeStylesheet.swift` + bundled `Resources/structural.css`; E23 may further centralise semantic colour derivation, but Export does not own a second theme model. |
+| planned app-side `WebKitPDFRenderer`/page-layout naming | `MacDown2/PDFExportAdapter.swift`: real `WKWebView` → `NSPrintOperation` → PDF pipeline consuming the same `PreparedExportDocument`. |
+| future contribution adaptation described generically | `MacDown2/ExportContributionAdapter.swift` and the export-only contribution registry assembly in `MathExportRegistry.swift` / renderer registry files; E23 may extract this orchestration into a shared read-only presentation seam for Quick Look. |
+
+Other important as-built facts:
+
+- `ExportService.prepare` still performs a fresh local parse and never consumes Preview's debounced view state.
+- Preview/Export technical content still converges on the E12/E14 derived-content contract; later math/diagram epics proved this seam without replacing `ExportComposer`.
+- Authored-source preservation on failed/stale/out-of-range/overlapping derived contributions is implemented in `DerivedContentComposer`; failed derived output falls back to authored Markdown with diagnostics.
+- Ordinary/self-contained/PDF target policies are implemented in `ExportComposer.Policy`; do not infer policy from the older planned type sketches below.
+- PDF pagination now has a genuine non-mocked `PDFExportAdapterTests` torture test, but #115 requires that test to execute successfully on a suitable interactive macOS 26 environment before production 1.0.
+
+When maintaining E12, inspect current source first. The remainder of this document remains useful for design rationale and invariants, but a stale planned symbol is not permission to recreate an obsolete abstraction.
+
 ## Owner summary
 
 Epic 12 implements one local/offline Markdown export pipeline. It prepares one complete HTML document, then either writes that document as HTML or prints that **same prepared document** to PDF through an isolated macOS adapter. PDF does not get a second Markdown renderer.
