@@ -336,6 +336,46 @@ public struct TextSearchEngine: Sendable {
 
 Cancellation/off-main-actor policy, `WorkspaceFileIndex`'s exact actor shape, and the fuzzy-scoring algorithm are specified in full when Slice 5/6 begins, per the same "detailed contract fixed at the point the slice starts" convention `EPIC_STANDARD.md` §1 (Layer 3) describes — committing to an exact fuzzy-ranking formula now, before the foundational line-index/selection work has landed and been reviewed, would risk exactly the "invent architecture the worker wasn't asked to invent" failure mode the standard warns against. What *is* fixed now: `TextSearch` owns these types, they are pure Foundation, and folder search must reuse the identical `TextSearchEngine.matches` call per file rather than a second regex/literal implementation.
 
+### 6.6 `EditorLineIndex` wiring + line-number gutter (Slice 2a) — baseline and contract
+
+**Baseline, verified against live master before writing this contract (no prior code exists for any of this):**
+- `EditorTextSystem` has no edit chokepoint: `applyDocumentReplacement`/`applyExternalReplacement`/`applyAssistOutcome` (one each) and `EditorEditTransaction.apply(_:)` (N ranges, Slice 1) all call `textView.insertText(_:replacementRange:)`; raw typing goes through AppKit's own internal handling. `setText(_:)`/`replaceTextFromExternal(...)` set `textView.string` directly (bypassing the delegate entirely) and manually bump `editRevision` — confirmed these do NOT trigger `NSTextViewDelegate` callbacks.
+- `EditorView.Coordinator` already implements `textView(_:shouldChangeTextIn:replacementString:)` (fires before every edit, any origin, with the affected range in pre-edit coordinates and the exact replacement string — including for each individual `insertText` call inside an `EditorEditTransaction`'s loop) and `textDidChange(_:)` (fires after; currently suppressed for every call but the last in a multi-range transaction, via `isApplyingMultiRangeTransaction`, purely to avoid re-publishing the SwiftUI binding N times — see §6.3).
+- `EditorChrome.invisibles: ThemeColor?` (`Sources/Themes/TokenStyle.swift`) and `EditorConfiguration.showsInvisibles` are both fully declared but genuinely inert: neither is read by `NeonSyntaxHighlighter.applyChrome(theme:)` nor by `EditorTextSystem.apply(_:)`. No gutter, status bar, or Go to Line UI exists in any form (stub or otherwise) anywhere in the package or app target.
+- `EditorTextSystem+Scroll.swift` already exposes `topVisibleUTF16Offset` (resolves the layout fragment at the clip view's origin) and `layoutFragmentFrame(atUTF16Location:)` (forces layout for one explicit, bounded range only, via `enumerateTextLayoutFragments(from:options: [.ensuresLayout])`) — these are the only existing viewport-bounded layout queries, and a gutter must use the same bounded-range discipline, never enumerate the whole document's fragments.
+- `EditorPerformanceTests.open10MBLazy` pins `<500` materialized fragments for a 10 MB document at a fixed viewport size, by counting `layoutManager.enumerateTextLayoutFragments(from:options: .ensuresLayout)` results bounded to the viewport height. A gutter that iterates `EditorLineIndex.lineStartOffsets` for the *whole document* to place `lineCount` label views would not violate this exact assertion (the assertion only measures `NSTextLayoutManager` fragments) but would violate its *spirit* and this epic's own performance discipline — it must draw line numbers only for lines whose fragments are already materialized in the current viewport, discovered by walking `layoutManager.enumerateTextLayoutFragments(from:options:)` starting at `topVisibleUTF16Offset`, exactly mirroring the existing viewport-query pattern.
+- Nearest UI-chrome precedent for a floating panel (relevant to Slice 2b's Go to Line, noted here for continuity): `CommandPalettePanel`/`WindowCoordinator+CommandPalette.swift` — an `NSPanel` with `[.titled, .fullSizeContentView, .closable]`, hidden title, floating level, hosting a SwiftUI view via `NSHostingView`, held strongly by `WindowCoordinator` since `NSPanel.isReleasedWhenClosed == false`.
+
+**Wiring contract:**
+
+```swift
+// EditorTextSystem.swift
+public final class EditorTextSystem {
+    /// Kept current with every edit this text system observes, incrementally
+    /// (never a full rescan except on whole-document replacement). Powers
+    /// the gutter, status bar, and Go to Line/Column.
+    public private(set) var lineIndex: EditorLineIndex
+
+    /// Called once per atomic edit — including once per individual range
+    /// inside an `EditorEditTransaction`, independent of that transaction's
+    /// own SwiftUI-publication suppression, since the line index must stay
+    /// correct for every intermediate state, not just the transaction's
+    /// final one. `editedRange` is in *pre-edit* coordinates; `newText` is
+    /// read directly from the already-mutated live text view (an O(1)
+    /// reference, not a copy) — this must never be synthesized via
+    /// `NSString.replacingCharacters(in:with:)` before the edit happens,
+    /// which would cost an O(document length) copy per keystroke and defeat
+    /// the incremental index's entire purpose.
+    func noteIncrementalEdit(editedRange: NSRange, replacementUTF16Length: Int)
+}
+```
+
+`setText(_:)` and `replaceTextFromExternal(...)` call `lineIndex.rebuild(text:)` (full rebuild — these are the type's own documented "whole document changed" case, and both already bypass the incremental delegate path entirely). `EditorTextSystem.init` builds the initial index from `initialText`.
+
+**`EditorView.Coordinator` wiring:** a new private `pendingLineIndexEdit: (range: NSRange, replacementUTF16Length: Int)?` is set at the top of `shouldChangeTextIn` (before every existing branch, including the E10/marked-text early returns, so it captures literally every edit this delegate observes) and consumed at the top of `textDidChange` (before the existing `isApplyingMultiRangeTransaction` publication-suppression guard, so the index updates for every one of an N-range transaction's individual edits even though only the last one publishes to SwiftUI). This relies on `shouldChangeTextIn`/`textDidChange` firing in strict alternation per edit, including for E10's own nested internal edit when it intercepts and replaces an outer one (verified by tracing `EditorTextSystem+EditingAssists.swift`'s `applyAssistOutcome` call chain): the nested edit's own `shouldChangeTextIn` overwrites `pendingLineIndexEdit` before the nested `textDidChange` consumes it, and the outer (vetoed) edit that follows never fires its own `textDidChange` at all, so nothing is left stale. Proven with real, AppKit-driven (not synthetic) integration tests comparing `system.lineIndex` against a fresh `EditorLineIndex(text:)` rebuild after each of: plain typing, an E10-intercepted edit, a multi-range `EditorEditTransaction`, and undo/redo.
+
+**Gutter contract:** a new `EditorGutterView: NSRulerView` (or equivalent `NSView` subclass docked to the scroll view's ruler area) queries `system.lineIndex.line(atUTF16Offset:)`/`.column(atUTF16Offset:onLine:in:)` and the viewport-bounded fragment enumeration described above to draw only the currently-materialized visible lines' numbers — never the whole document. Detailed view-layer API (exact class shape, redraw triggering) is fixed in the Slice 2a worked implementation itself, per `EPIC_STANDARD.md`'s Layer 3 convention, since it is UI-layer detail this document's Layer 2 contract does not need to pre-invent.
+
 ## 7. State and data flow
 
 ### 7.1 Selection: editor → outline/preview (extends existing single-range flow)
@@ -510,6 +550,10 @@ Per the owner's explicit technical-dependency-order instruction, slices are orde
 **Goal:** wire `EditorLineIndex` into `EditorTextSystem`'s edit path; ship the line-number gutter, status bar, Go to Line/Column, and real TextKit-2-safe invisibles (making `showsInvisibles`/`EditorChrome.invisibles` genuinely consumed).
 **Dependencies:** Slice 1.
 **Tests:** the gutter/status/invisibles adversarial corpus (§15); the viewport-laziness performance budget (§11) as an automated assertion.
+
+**Split into two sequential PRs, decided at the point this slice began** (per `EPIC_STANDARD.md`'s "detailed contract fixed when the slice starts" convention, same as §6.4/§6.5): a fresh baseline read of `EditorTextSystem`, `EditorView`, and the (nonexistent) gutter/status-bar/Go-to-Line code (recorded in §6.6 below) showed the line-index wiring alone has real correctness subtlety — it must update once per atomic edit even inside an `EditorEditTransaction`'s N-range loop (which `EditorView.Coordinator.textDidChange`'s existing multi-range publication suppression would otherwise hide N−1 of), it must handle E10 assist's edit-interception (a vetoed outer edit whose nested internal edit is the one that actually lands), and it must do all of this without a full-document string copy per keystroke — while the remaining three deliverables (status bar, Go to Line, invisibles) are comparatively independent, self-contained UI additions. Bundling five non-trivial, differently-risky changes into one PR would repeat exactly the "monolithic change" failure mode this epic's own owner directive warns against at the epic level, just one level down. So:
+- **Slice 2a** — `EditorLineIndex` wiring (§6.6) + the line-number gutter, the one deliverable that both consumes the wiring directly and gives it a visible, testable surface end-to-end.
+- **Slice 2b** — status bar, Go to Line/Column, and invisibles, once 2a is merged and proven.
 
 ### Slice 3 — Selection foundation and multi-cursor
 
