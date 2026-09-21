@@ -91,3 +91,10 @@ coordination gives for free.
 This is a data-loss-sensitive subsystem: correctness beats elegance
 (#28 §5). Keep the watcher event → document mutation path synchronous and
 testable; IO and event sources live at the edges like the rest of FileCore.
+
+
+## 2026-09-21 pre-1.0 debt amendment
+
+Core external-change defects (#59/#70) were fixed, but E18's binding manual/performance evidence matrix was never fully closed. Issue #119 now requires the complete final-RC behavior matrix plus measured snapshot/digest/event-latency/no-idle-polling/no-main-actor-I/O evidence. #88 owns the broader UI-test execution mechanics.
+
+No E18 data-safety journey may ship under an environment waiver.
