@@ -68,6 +68,47 @@ struct EditorViewRealMountTests {
         )
     }
 
+    @Test func gutterResizesAfterAModelTextPushAcrossADigitBoundary() throws {
+        let store = EditorTextSystemStore()
+        let identity = UUID().uuidString
+        var text = "a"
+        let binding = Binding<String>(get: { text }, set: { text = $0 })
+
+        func makeRootView() -> EditorView {
+            EditorView(text: binding, identity: identity, configuration: .default, store: store)
+        }
+
+        let hostingView = NSHostingView(rootView: makeRootView())
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        hostingView.layoutSubtreeIfNeeded()
+        defer { window.orderOut(nil) }
+
+        let scrollView = try #require(Self.findScrollView(in: hostingView), "makeNSView did not run")
+        let gutter = try #require(scrollView.verticalRulerView as? EditorGutterView)
+        let thicknessBefore = gutter.ruleThickness
+
+        // Push a 100-line document through the BINDING (a model-driven
+        // change, e.g. a document reload) rather than through
+        // `textView.insertText` -- this goes through `updateNSView`'s
+        // `system.setText(text)` path, which bypasses the incremental
+        // delegate hooks entirely and must resize the gutter itself.
+        text = (1 ... 100).map { "line \($0)" }.joined(separator: "\n")
+        hostingView.rootView = makeRootView()
+        hostingView.layoutSubtreeIfNeeded()
+
+        #expect(
+            gutter.ruleThickness > thicknessBefore,
+            "gutter did not resize after a model text push crossing a digit boundary"
+        )
+    }
+
     private static func findScrollView(in view: NSView) -> NSScrollView? {
         if let scrollView = view as? NSScrollView {
             return scrollView

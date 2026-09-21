@@ -163,8 +163,6 @@ public struct EditorView: NSViewRepresentable {
         // Apply configuration changes (cheap because we diff at the call site
         // via SwiftUI's update cycle, but `apply` is idempotent).
         system.apply(configuration)
-        // A font-size preference change affects the gutter's digit width.
-        context.coordinator.gutterView?.updateThickness()
 
         // Only push model text into the view when it differs from the view's
         // current text *and* the change did not originate from the view itself.
@@ -182,6 +180,16 @@ public struct EditorView: NSViewRepresentable {
             // layout through the NSTextView directly.
             system.textView.sizeToFit()
         }
+
+        // After any model push above (which bypasses the incremental
+        // delegate hooks and rebuilds `lineIndex` wholesale in `setText`)
+        // AND after a font-size preference change, either of which can
+        // change the digit count/width the gutter needs -- calling this
+        // BEFORE `setText` would read the pre-push `lineIndex`, leaving a
+        // model replacement that crosses a digit boundary (e.g. 9 to 100
+        // lines) stuck at the old ruler width until an unrelated later
+        // update happened to trigger a redraw.
+        context.coordinator.gutterView?.updateThickness()
 
         // Model pushes need a deferred measurement after TextKit has applied
         // the new text. Ordinary keystrokes already schedule a coalesced sync

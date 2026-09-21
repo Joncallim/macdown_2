@@ -8,18 +8,26 @@ extension EditorTextSystem {
     /// index must stay correct for every intermediate state, not just the
     /// transaction's final one.
     ///
-    /// `editedRange` is in *pre-edit* coordinates. `newText` is read
-    /// directly from the live text view (`text`), which by the time this
-    /// is called already reflects the edit — an O(1) reference read, not a
-    /// copy. This must never be called with a `newText` synthesized via
-    /// `NSString.replacingCharacters(in:with:)` before the edit happens,
-    /// which would cost an O(document length) copy per keystroke and
-    /// defeat the incremental index's entire purpose.
+    /// `editedRange` is in *pre-edit* coordinates. `newText` is read from
+    /// `assistTextSource` — the live, backing `NSTextStorage.mutableString`
+    /// (`EditorTextSystem+EditingAssists.swift`) — which by the time this
+    /// is called already reflects the edit, with NO additional copy: it is
+    /// the SAME buffer TextKit itself mutated, not a fresh materialization.
+    /// This must never read from `text` (`textView.string`, bridged to a
+    /// Swift `String`) instead: this codebase's own `assistTextSource`/
+    /// `liveSourceLength` already document that `textView.string` is a
+    /// real O(document length) materialization, treated elsewhere as "last
+    /// resort only" — using it here on every keystroke would cost that
+    /// copy on every keystroke and defeat the incremental index's entire
+    /// purpose. `assistTextSource` can be `nil` only if the toolchain's
+    /// TextKit 2 bridge is unavailable (see its own doc comment); falling
+    /// back to `text as NSString` there is the same "fail open" trade the
+    /// existing `liveSourceLength` makes.
     func noteIncrementalEdit(editedRange: NSRange, replacementUTF16Length: Int) {
         lineIndex.applying(
             editedRange: editedRange,
             replacementUTF16Length: replacementUTF16Length,
-            newText: text as NSString
+            newText: assistTextSource ?? (text as NSString)
         )
     }
 
@@ -27,9 +35,11 @@ extension EditorTextSystem {
     /// entirely — currently just undo/redo (see `registerUndoRedoObservers()`
     /// below). Undo/redo are comparatively rare next to every-keystroke
     /// edits, so an O(n) rebuild here is an acceptable, simple trade
-    /// against chasing a lower-level storage-delegate hook.
+    /// against chasing a lower-level storage-delegate hook. Uses
+    /// `assistTextSource` for the same no-extra-copy reason as
+    /// `noteIncrementalEdit` above.
     func rebuildLineIndex() {
-        lineIndex.rebuild(text: text as NSString)
+        lineIndex.rebuild(text: assistTextSource ?? (text as NSString))
     }
 
     /// Undo/redo replays a previously-approved edit directly against the

@@ -19,6 +19,13 @@ public final class EditorGutterView: NSRulerView {
         super.init(scrollView: scrollView, orientation: .verticalRuler)
         clientView = system.textView
         updateThickness()
+        // epic-22-implementation.md §12: new UI ships with basic
+        // accessibility labels/identifiers from the same slice that
+        // introduces it, not deferred to a later cleanup pass.
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityLabel(String(localized: "Line numbers", bundle: .module))
+        setAccessibilityIdentifier("editorGutter")
     }
 
     @available(*, unavailable)
