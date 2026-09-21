@@ -72,6 +72,46 @@ struct EditorPerformanceTests {
         #expect(fragmentCount < 500, "Viewport laid out \(fragmentCount) fragments")
     }
 
+    @Test("keystroke with incremental line-index update stays within budget on a 10 MB document")
+    func keystrokeLineIndexIncremental() {
+        // Proves `EditorTextSystem.noteIncrementalEdit` reads the live,
+        // backing `NSTextStorage` (`assistTextSource`) rather than
+        // `textView.string` (a real O(document length) materialization,
+        // per `EditorTextSystem+EditingAssists.swift`'s own documented
+        // "last resort only" characterization) -- a single keystroke on a
+        // 10 MB document must stay within the SAME budget as an ordinary
+        // keystroke on a 1 MB document with no line-index wiring at all
+        // (see `keystroke()` above), not scale with document size. Unlike
+        // `keystroke()`, this attaches a real `Coordinator` as the text
+        // view's delegate so `shouldChangeTextIn`/`textDidChange` actually
+        // fire and drive `noteIncrementalEdit` -- without a delegate
+        // attached, that path never runs at all.
+        let text = Fixtures.markdown(targetByteCount: 10_000_000)
+        let system = EditorTextSystem(
+            identity: UUID().uuidString,
+            initialText: text,
+            configuration: .default
+        )
+        system.textView.frame = viewportBounds
+        let coordinator = EditorView.Coordinator()
+        coordinator.system = system
+        system.textView.delegate = coordinator
+
+        // Prime layout with one viewport pass.
+        _ = layoutViewportFragments(in: system)
+
+        let duration = ContinuousClock().measure {
+            system.textView.insertText("x", replacementRange: NSRange(location: 0, length: 0))
+        }
+
+        let durationMilliseconds = milliseconds(duration)
+        #expect(
+            durationMilliseconds < 50,
+            "keystroke with line-index update took \(durationMilliseconds) ms (budget 50 ms, 10 MB document)"
+        )
+        #expect(system.lineIndex.utf16Length == (system.text as NSString).length)
+    }
+
     @Test("keystroke insert stays within budget")
     func keystroke() {
         let text = Fixtures.markdown(targetByteCount: 1_000_000)
