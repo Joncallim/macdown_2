@@ -134,7 +134,19 @@ struct WorkspaceFileIndexTests {
         #expect(results.map(\.relativePath) == ["linked/target.txt"])
     }
 
-    @Test func rapidSupersedingRebuildsSettleOnTheLastRootWithoutCorruption() async throws {
+    @Test func rapidSupersedingRebuildsSettleOnOneRootWithoutCorruption() async throws {
+        // `async let` gives no guarantee about which of two concurrently
+        // issued actor calls actually runs its (generation-incrementing)
+        // synchronous prefix first -- an earlier version of this test
+        // asserted a SPECIFIC winner ("treeB always wins") and was
+        // observed to fail intermittently because of exactly that. The
+        // property the generation counter actually, deterministically
+        // guarantees is corruption-avoidance: whichever rebuild's prefix
+        // runs chronologically LAST is the one whose result survives, and
+        // the other's -- even if its own walk finishes later -- is
+        // discarded outright, never merged in. So the only thing this test
+        // can correctly assert is "exactly one tree's contents, never a mix
+        // of both."
         let treeA = try TempTree { _ in }
         try treeA.write("a1.txt")
         try treeA.write("a2.txt")
@@ -143,15 +155,17 @@ struct WorkspaceFileIndexTests {
         try treeB.write("b1.txt")
 
         let index = WorkspaceFileIndex()
-        // A rebuild for `treeB` fires before `treeA`'s rebuild finishes: the
-        // superseded walk's own task is cancelled, and its result (even if
-        // it completes anyway) must never overwrite the newer one's.
         async let first: Void = index.rebuild(root: treeA.root)
         async let second: Void = index.rebuild(root: treeB.root)
         _ = await (first, second)
 
-        let results = await index.query("")
-        #expect(Set(results.map(\.relativePath)) == ["b1.txt"])
+        let results = await Set(index.query("").map(\.relativePath))
+        let isExactlyTreeA = results == ["a1.txt", "a2.txt"]
+        let isExactlyTreeB = results == ["b1.txt"]
+        #expect(
+            isExactlyTreeA || isExactlyTreeB,
+            "expected exactly one tree's contents with no corruption, got \(results)"
+        )
     }
 
     @Test func stateReflectsBuildProgress() async throws {

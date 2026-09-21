@@ -100,68 +100,235 @@ struct EditorEditTransactionTests {
         #expect(!system.undoManager.canUndo)
     }
 
-    // MARK: - `validating(orderedDescending:documentLength:)` (pure, no AppKit)
+    // MARK: - `validate(_:documentLength:)` (pure, no AppKit)
 
     /// Unlike `apply(_:)` itself (whose `assertionFailure` on invalid input
     /// traps in a normal Debug test run), this pure validation logic can be
     /// exercised directly against genuinely malformed input in any build
-    /// configuration -- closing the gap an earlier hostile review found:
-    /// the "Release silently drops the bad subset" claim previously had
-    /// zero test coverage.
-    @Test func validatingAcceptsAllNonOverlappingInBoundsReplacements() {
+    /// configuration. A transaction is one atomic command: validity is
+    /// all-or-nothing for the whole set, never a partial "safe prefix" --
+    /// see `malformedTransactionMutatesNothing` below for the corresponding
+    /// AppKit-level, all-or-nothing regression.
+    @Test func validateAcceptsASingleValidReplacement() {
+        let replacements = [
+            TextReplacement(range: NSRange(location: 2, length: 3), replacementText: "dog"),
+        ]
+        #expect(EditorEditTransaction.validate(replacements, documentLength: 11))
+    }
+
+    @Test func validateAcceptsTwoDisjointReplacements() {
+        let replacements = [
+            TextReplacement(range: NSRange(location: 6, length: 2), replacementText: "X"),
+            TextReplacement(range: NSRange(location: 0, length: 2), replacementText: "Y"),
+        ]
+        #expect(EditorEditTransaction.validate(replacements, documentLength: 10))
+    }
+
+    @Test func validateAcceptsAllNonOverlappingInBoundsReplacements() {
         let replacements = [
             TextReplacement(range: NSRange(location: 8, length: 3), replacementText: "dog"),
             TextReplacement(range: NSRange(location: 4, length: 3), replacementText: "dog"),
             TextReplacement(range: NSRange(location: 0, length: 3), replacementText: "dog"),
         ]
-        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 11)
-        #expect(result.applied == replacements)
-        #expect(!result.hadInvalidReplacement)
+        #expect(EditorEditTransaction.validate(replacements, documentLength: 11))
     }
 
-    @Test func validatingDropsFromTheFirstOverlap() {
-        // Sorted highest-to-lowest; [4,3) and [2,3) overlap (2+3=5 > 4).
+    @Test func validateAcceptsTouchingRanges() {
+        // [0,5) and [5,5) touch but do not overlap -- must remain valid.
         let replacements = [
+            TextReplacement(range: NSRange(location: 0, length: 5), replacementText: "X"),
+            TextReplacement(range: NSRange(location: 5, length: 5), replacementText: "Y"),
+        ]
+        #expect(EditorEditTransaction.validate(replacements, documentLength: 10))
+    }
+
+    @Test func validateAcceptsDistinctZeroLengthCarets() {
+        // Two zero-length inserts at DIFFERENT locations are ordinary
+        // multi-cursor typing, not a duplicate-edit ambiguity.
+        let replacements = [
+            TextReplacement(range: NSRange(location: 0, length: 0), replacementText: "x"),
+            TextReplacement(range: NSRange(location: 5, length: 0), replacementText: "x"),
+        ]
+        #expect(EditorEditTransaction.validate(replacements, documentLength: 10))
+    }
+
+    @Test func validateRejectsTheWholeSetOnAnyOverlap() {
+        // [4,3) and [2,3) overlap (2+3=5 > 4); the valid [8,3) entry must
+        // NOT survive either -- validity is all-or-nothing. The overlapping
+        // pair is the FIRST pair in sorted order (2,3)/(4,3).
+        let replacements = [
+            TextReplacement(range: NSRange(location: 8, length: 3), replacementText: "ok"),
             TextReplacement(range: NSRange(location: 4, length: 3), replacementText: "X"),
             TextReplacement(range: NSRange(location: 2, length: 3), replacementText: "Y"),
         ]
-        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 10)
-        #expect(result.applied == [replacements[0]])
-        #expect(result.hadInvalidReplacement)
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 11))
     }
 
-    @Test func validatingDropsAnOutOfBoundsReplacement() {
+    @Test func validateRejectsAnOverlapInTheMiddleOfSortedOrder() {
+        // Sorted: (0,2), (2,2), (3,2), (10,2). Only the middle pair
+        // -- (2,2)/(3,2), since 3 < 2+2=4 -- overlaps; the pairs on
+        // either side of it are fine.
+        let replacements = [
+            TextReplacement(range: NSRange(location: 0, length: 2), replacementText: "a"),
+            TextReplacement(range: NSRange(location: 2, length: 2), replacementText: "b"),
+            TextReplacement(range: NSRange(location: 3, length: 2), replacementText: "c"),
+            TextReplacement(range: NSRange(location: 10, length: 2), replacementText: "d"),
+        ]
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 20))
+    }
+
+    @Test func validateRejectsAnOverlapAtTheEndOfSortedOrder() {
+        // Sorted: (0,2), (5,2), (10,2), (11,2). Only the LAST pair
+        // -- (10,2)/(11,2), since 11 < 10+2=12 -- overlaps.
+        let replacements = [
+            TextReplacement(range: NSRange(location: 0, length: 2), replacementText: "a"),
+            TextReplacement(range: NSRange(location: 5, length: 2), replacementText: "b"),
+            TextReplacement(range: NSRange(location: 10, length: 2), replacementText: "c"),
+            TextReplacement(range: NSRange(location: 11, length: 2), replacementText: "d"),
+        ]
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 20))
+    }
+
+    @Test func validateRejectsAnOutOfBoundsReplacement() {
         let replacements = [
             TextReplacement(range: NSRange(location: 5, length: 10), replacementText: "X"),
         ]
-        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 8)
-        #expect(result.applied.isEmpty)
-        #expect(result.hadInvalidReplacement)
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 8))
     }
 
-    @Test func validatingKeepsTheValidPrefixBeforeAnInvalidEntry() {
-        // Processed highest-offset-first: the higher, valid entry is
-        // accepted before the lower, out-of-bounds one is reached and the
-        // scan stops -- a malformed transaction fails closed on everything
-        // from the first bad entry onward, but keeps what was already
-        // validated as safe.
-        let valid = TextReplacement(range: NSRange(location: 5, length: 2), replacementText: "ok")
+    @Test func validateRejectsTheWholeSetWhenOneEntryIsOutOfBounds() {
+        // The out-of-bounds entry sorts FIRST (lowest offset); the higher,
+        // valid one must still be rejected along with it -- no partial
+        // result.
         let replacements = [
-            valid,
+            TextReplacement(range: NSRange(location: 5, length: 2), replacementText: "ok"),
             TextReplacement(range: NSRange(location: -1, length: 1), replacementText: "bad"),
         ]
-        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 8)
-        #expect(result.applied == [valid])
-        #expect(result.hadInvalidReplacement)
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 8))
     }
 
-    @Test func validatingRejectsANegativeLocation() {
+    @Test func validateRejectsAnOutOfBoundsEntryInTheMiddleOfAnOtherwiseValidSet() {
+        // Sorted: (0,2), (3,20), (8,2). Only the middle entry is out of
+        // bounds (3+20=23 > 10); the other two, on their own, are fine.
+        let replacements = [
+            TextReplacement(range: NSRange(location: 0, length: 2), replacementText: "a"),
+            TextReplacement(range: NSRange(location: 3, length: 20), replacementText: "bad"),
+            TextReplacement(range: NSRange(location: 8, length: 2), replacementText: "c"),
+        ]
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 10))
+    }
+
+    @Test func validateRejectsAnOutOfBoundsEntryLastInSortedOrder() {
+        let replacements = [
+            TextReplacement(range: NSRange(location: 0, length: 2), replacementText: "a"),
+            TextReplacement(range: NSRange(location: 5, length: 2), replacementText: "b"),
+            TextReplacement(range: NSRange(location: 18, length: 10), replacementText: "bad"),
+        ]
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 20))
+    }
+
+    @Test func validateRejectsLocationLengthOverflow() {
+        // NSRange stores platform-native Int fields, so a malicious/buggy
+        // caller can construct a location/length pair whose sum overflows
+        // Int.max -- `addingReportingOverflow` must catch this rather than
+        // trapping or wrapping.
+        let replacements = [
+            TextReplacement(range: NSRange(location: Int.max, length: 1), replacementText: "X"),
+        ]
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 10))
+    }
+
+    @Test func validateRejectsANegativeLocation() {
         let replacements = [
             TextReplacement(range: NSRange(location: -1, length: 1), replacementText: "X"),
         ]
-        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 10)
-        #expect(result.applied.isEmpty)
-        #expect(result.hadInvalidReplacement)
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 10))
+    }
+
+    @Test func validateRejectsANegativeLength() {
+        let replacements = [
+            TextReplacement(range: NSRange(location: 2, length: -1), replacementText: "X"),
+        ]
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 10))
+    }
+
+    @Test func validateRejectsDuplicateZeroLengthEditsAtTheSameLocation() {
+        let replacements = [
+            TextReplacement(range: NSRange(location: 5, length: 0), replacementText: "x"),
+            TextReplacement(range: NSRange(location: 5, length: 0), replacementText: "y"),
+        ]
+        #expect(!EditorEditTransaction.validate(replacements, documentLength: 10))
+    }
+
+    @Test func validateAcceptsAnEmptySet() {
+        #expect(EditorEditTransaction.validate([], documentLength: 10))
+    }
+
+    // MARK: - Malformed transaction, mounted `NSTextView` (AppKit-level regression)
+
+    /// The all-or-nothing contract at the level that actually matters: a
+    /// malformed transaction applied against a real mounted text view must
+    /// leave text, selection, undo state, AND publication count completely
+    /// untouched -- not partially applied. Uses the internal
+    /// `reportsInvalidAsAssertionFailure: false` seam so this
+    /// runs to completion under a normal Debug `swift test` -- the real
+    /// `apply(_:)` entry point every production call site uses always
+    /// reports `true` and cannot be told otherwise from outside this
+    /// module; see that method's doc comment for why.
+    @Test func malformedTransactionMutatesNothing() {
+        let system = support.makeSystem(text: "cat cat cat")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        let coordinator = support.makeCoordinator(system: system)
+        let (binding, counter) = support.makeBinding()
+        coordinator.textBinding = binding
+        let selectionBefore = system.textView.selectedRanges
+
+        // The first two entries are individually valid and would, on their
+        // own, succeed -- only the third (out of bounds) is malformed. The
+        // whole transaction must still be rejected, not just that entry.
+        system.apply(
+            EditorEditTransaction(
+                replacements: [
+                    TextReplacement(range: NSRange(location: 8, length: 3), replacementText: "dog"),
+                    TextReplacement(range: NSRange(location: 4, length: 3), replacementText: "dog"),
+                    TextReplacement(range: NSRange(location: 100, length: 3), replacementText: "dog"),
+                ],
+                undoActionName: "Replace All"
+            ),
+            reportsInvalidAsAssertionFailure: false
+        )
+
+        #expect(system.text == "cat cat cat", "malformed transaction must not mutate any text, including valid members")
+        #expect(
+            system.textView.selectedRanges == selectionBefore,
+            "malformed transaction must not change the selection"
+        )
+        #expect(!system.undoManager.canUndo, "malformed transaction must not create an undo entry")
+        // swiftlint:disable:next empty_count
+        #expect(counter.count == 0, "malformed transaction must not publish the binding at all")
+    }
+
+    @Test func malformedTransactionWithDuplicateZeroLengthEditsMutatesNothing() {
+        let system = support.makeSystem(text: "unchanged")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        let coordinator = support.makeCoordinator(system: system)
+        let (binding, counter) = support.makeBinding()
+        coordinator.textBinding = binding
+
+        system.apply(
+            EditorEditTransaction(replacements: [
+                TextReplacement(range: NSRange(location: 3, length: 0), replacementText: "x"),
+                TextReplacement(range: NSRange(location: 3, length: 0), replacementText: "y"),
+            ]),
+            reportsInvalidAsAssertionFailure: false
+        )
+
+        #expect(system.text == "unchanged")
+        #expect(!system.undoManager.canUndo)
+        // swiftlint:disable:next empty_count
+        #expect(counter.count == 0)
     }
 
     @Test func hundredCaretInsertionAppliesToAll() {
