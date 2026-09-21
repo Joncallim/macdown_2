@@ -28,6 +28,7 @@ let package = Package(
         .library(name: "D2Rendering", targets: ["D2Rendering"]),
         .library(name: "DiagramsGraphviz", targets: ["DiagramsGraphviz"]),
         .library(name: "GraphvizRendering", targets: ["GraphvizRendering"]),
+        .library(name: "TextSearch", targets: ["TextSearch"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
@@ -78,6 +79,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "FileCore"),
+        .target(name: "TextSearch", dependencies: ["FileCore"]),
         .target(name: "AppSettings"),
         .target(name: "Themes", resources: [.process("Themes")]),
         .target(name: "Workspace", dependencies: ["FileCore"], resources: [.process("Resources")]),
@@ -182,6 +184,7 @@ let package = Package(
         ),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
+        .testTarget(name: "TextSearchTests", dependencies: ["TextSearch"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),
         .testTarget(name: "ThemesTests", dependencies: ["Themes"]),
         .testTarget(name: "WorkspaceTests", dependencies: ["Workspace"]),
