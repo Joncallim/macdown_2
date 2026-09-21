@@ -27,6 +27,15 @@ identity, offline/privacy, fidelity, evidence, localisation and release gates.
 > locally/offline, makes E21 renderer candidates individually admissible, makes
 > E16 the in-app string freeze, and requires E17 to rehearse stateful migration
 > from development/beta identities before release.
+>
+> **Amended 2026-09-21 (pre-release reopening + complete debt audit):** E22 and
+> E23 are bounded final capability epics; the old `MacDown 2` public-identity
+> freeze is reopened because the release will be a new editor descended from
+> MacDown; #115 is a hard gate that closes every historical carried-forward
+> requirement/evidence gap before the final E16 freeze and E17 production RC.
+> The audit searched closed issues, binding implementation docs, all merged PR
+> descriptions, the release ledger, issue-57 findings, and current residual
+> source seams; #53/#79/#88/#116-#121 are the named closure records.
 
 ---
 
