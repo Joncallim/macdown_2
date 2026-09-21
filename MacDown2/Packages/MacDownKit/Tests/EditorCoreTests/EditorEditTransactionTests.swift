@@ -100,6 +100,70 @@ struct EditorEditTransactionTests {
         #expect(!system.undoManager.canUndo)
     }
 
+    // MARK: - `validating(orderedDescending:documentLength:)` (pure, no AppKit)
+
+    /// Unlike `apply(_:)` itself (whose `assertionFailure` on invalid input
+    /// traps in a normal Debug test run), this pure validation logic can be
+    /// exercised directly against genuinely malformed input in any build
+    /// configuration -- closing the gap an earlier hostile review found:
+    /// the "Release silently drops the bad subset" claim previously had
+    /// zero test coverage.
+    @Test func validatingAcceptsAllNonOverlappingInBoundsReplacements() {
+        let replacements = [
+            TextReplacement(range: NSRange(location: 8, length: 3), replacementText: "dog"),
+            TextReplacement(range: NSRange(location: 4, length: 3), replacementText: "dog"),
+            TextReplacement(range: NSRange(location: 0, length: 3), replacementText: "dog"),
+        ]
+        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 11)
+        #expect(result.applied == replacements)
+        #expect(!result.hadInvalidReplacement)
+    }
+
+    @Test func validatingDropsFromTheFirstOverlap() {
+        // Sorted highest-to-lowest; [4,3) and [2,3) overlap (2+3=5 > 4).
+        let replacements = [
+            TextReplacement(range: NSRange(location: 4, length: 3), replacementText: "X"),
+            TextReplacement(range: NSRange(location: 2, length: 3), replacementText: "Y"),
+        ]
+        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 10)
+        #expect(result.applied == [replacements[0]])
+        #expect(result.hadInvalidReplacement)
+    }
+
+    @Test func validatingDropsAnOutOfBoundsReplacement() {
+        let replacements = [
+            TextReplacement(range: NSRange(location: 5, length: 10), replacementText: "X"),
+        ]
+        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 8)
+        #expect(result.applied.isEmpty)
+        #expect(result.hadInvalidReplacement)
+    }
+
+    @Test func validatingKeepsTheValidPrefixBeforeAnInvalidEntry() {
+        // Processed highest-offset-first: the higher, valid entry is
+        // accepted before the lower, out-of-bounds one is reached and the
+        // scan stops -- a malformed transaction fails closed on everything
+        // from the first bad entry onward, but keeps what was already
+        // validated as safe.
+        let valid = TextReplacement(range: NSRange(location: 5, length: 2), replacementText: "ok")
+        let replacements = [
+            valid,
+            TextReplacement(range: NSRange(location: -1, length: 1), replacementText: "bad"),
+        ]
+        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 8)
+        #expect(result.applied == [valid])
+        #expect(result.hadInvalidReplacement)
+    }
+
+    @Test func validatingRejectsANegativeLocation() {
+        let replacements = [
+            TextReplacement(range: NSRange(location: -1, length: 1), replacementText: "X"),
+        ]
+        let result = EditorEditTransaction.validating(orderedDescending: replacements, documentLength: 10)
+        #expect(result.applied.isEmpty)
+        #expect(result.hadInvalidReplacement)
+    }
+
     @Test func hundredCaretInsertionAppliesToAll() {
         // Adversarial: 100+ simultaneous cursors, per the epic's explicit
         // "100+ cursors" requirement.

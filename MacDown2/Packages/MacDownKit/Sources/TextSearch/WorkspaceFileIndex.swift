@@ -127,6 +127,7 @@ struct DirectoryWalker: Sendable {
         .isDirectoryKey,
         .isHiddenKey,
         .isPackageKey,
+        .isSymbolicLinkKey,
     ]
 
     private func walk(
@@ -150,11 +151,24 @@ struct DirectoryWalker: Sendable {
             guard let values = try? child.resourceValues(forKeys: Self.resourceKeys) else { continue }
             guard values.isHidden != true else { continue }
             let name = child.lastPathComponent
+            // Resource values describe the link itself on some file
+            // systems, so a symlink to a directory can report
+            // `isDirectory == false` when queried unresolved — mirrors
+            // `FileSystemDirectoryReader.contents(of:)`'s existing
+            // resolve-and-recheck for symlinks (`DirectoryReading.swift`),
+            // without which a symlinked directory would be misclassified as
+            // a file and its subtree silently dropped from the index.
+            let isSymbolicLink = values.isSymbolicLink == true
+            let targetValues = isSymbolicLink
+                ? try? child.resolvingSymlinksInPath().resourceValues(forKeys: Self.resourceKeys)
+                : nil
+            let isDirectory = values.isDirectory == true || targetValues?.isDirectory == true
+            let isPackage = values.isPackage == true || targetValues?.isPackage == true
             // Rebind to the lexical parent so a symlinked root's children
             // keep the user-facing path, matching `FileTree`'s own
             // lexical-parent convention (`DirectoryReading.swift`).
-            let lexicalChild = directory.appendingPathComponent(name, isDirectory: values.isDirectory == true)
-            if values.isDirectory == true, values.isPackage != true {
+            let lexicalChild = directory.appendingPathComponent(name, isDirectory: isDirectory)
+            if isDirectory, !isPackage {
                 guard !excludedDirectoryNames.contains(name) else { continue }
                 walk(
                     directory: lexicalChild,

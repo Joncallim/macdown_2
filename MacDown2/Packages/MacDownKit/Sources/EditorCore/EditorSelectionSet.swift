@@ -155,9 +155,22 @@ public struct EditorSelectionSet: Sendable, Equatable {
     /// `target` after normalization may have merged/reordered it: prefer a
     /// range that contains `target`'s location, else the closest by start
     /// offset.
+    ///
+    /// Containment for a nonempty candidate is half-open (`location ..<
+    /// location + length`), matching every other range comparison in this
+    /// type: two distinct ranges may legitimately touch (one's end equal to
+    /// the next's start, per `normalize`'s own "touching ranges do not
+    /// merge" rule), and an inclusive check would wrongly credit the
+    /// EARLIER of two touching ranges with containing the boundary point
+    /// that actually belongs to the LATER one. A zero-length candidate has
+    /// no interior to contain anything with, so it matches only by exact
+    /// location equality.
     private static func indexClosest(to target: NSRange, in normalized: [NSRange]) -> Int {
-        if let containing = normalized.firstIndex(where: {
-            $0.location <= target.location && target.location <= $0.location + $0.length
+        if let containing = normalized.firstIndex(where: { candidate in
+            if candidate.length == 0 {
+                return candidate.location == target.location
+            }
+            return candidate.location <= target.location && target.location < candidate.location + candidate.length
         }) {
             return containing
         }

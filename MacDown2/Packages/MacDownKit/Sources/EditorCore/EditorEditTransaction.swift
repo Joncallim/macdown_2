@@ -44,6 +44,38 @@ public struct EditorEditTransaction: Sendable {
         self.undoActionName = undoActionName
         self.resultingSelection = resultingSelection
     }
+
+    /// Given `replacements` sorted highest-offset-to-lowest, returns the
+    /// longest safe-to-apply prefix — dropping everything from the first
+    /// out-of-bounds or overlapping entry onward — plus whether anything
+    /// was dropped. Pure and build-configuration-independent: unlike
+    /// `EditorTextSystem.apply(_:)`'s own `assertionFailure` diagnostic
+    /// (Debug-fatal, a no-op in Release, and therefore untestable in a
+    /// normal Debug test run without crashing the test process), this
+    /// validation logic runs unconditionally in every configuration, so the
+    /// "malformed input still yields a safe, non-corrupting result" claim
+    /// is directly unit-testable rather than merely asserted in a comment.
+    static func validating(
+        orderedDescending replacements: [TextReplacement],
+        documentLength: Int
+    ) -> (applied: [TextReplacement], hadInvalidReplacement: Bool) {
+        var applied: [TextReplacement] = []
+        var previousStart = Int.max
+        var hadInvalidReplacement = false
+        for replacement in replacements {
+            let location = replacement.range.location
+            let end = location + replacement.range.length
+            let isInBounds = location >= 0 && end <= documentLength
+            let isNonOverlapping = end <= previousStart
+            guard isInBounds, isNonOverlapping else {
+                hadInvalidReplacement = true
+                break
+            }
+            applied.append(replacement)
+            previousStart = location
+        }
+        return (applied, hadInvalidReplacement)
+    }
 }
 
 public extension EditorTextSystem {
@@ -55,27 +87,26 @@ public extension EditorTextSystem {
     /// exactly `applyExternalReplacement`'s existing shape, generalized to
     /// N ranges.
     ///
-    /// A transaction with overlapping replacements is a programmer error:
-    /// `precondition` traps immediately, in both Debug and Release builds
-    /// (Swift only compiles it out under `-Ounchecked`, which this codebase
-    /// does not build with). The `guard ... else { break }` immediately
-    /// below is defense-in-depth for that unchecked configuration only — it
-    /// stops applying a subset of replacements that could otherwise corrupt
-    /// text by operating on stale offsets, "failing closed" the same way
-    /// this codebase already does for other malformed input (e.g.
-    /// `FileStore`'s decode failures) — not a distinct Release-mode path.
+    /// A transaction with an out-of-bounds or overlapping replacement is a
+    /// programmer error: `assertionFailure` traps immediately in Debug
+    /// builds (loud, for development), but — unlike `precondition`, which
+    /// traps in Release too — is a no-op in a standard optimized Release
+    /// build, so execution falls through to applying only
+    /// `EditorEditTransaction.validating(orderedDescending:documentLength:)`'s
+    /// already-filtered safe prefix instead of crashing the shipped app.
+    /// "Failing closed" this way, rather than terminating, matches this
+    /// codebase's established discipline for other malformed input (e.g.
+    /// `FileStore`'s decode failures).
     func apply(_ transaction: EditorEditTransaction) {
         guard !transaction.replacements.isEmpty else { return }
         let ordered = transaction.replacements.sorted { $0.range.location > $1.range.location }
-
-        var applied: [TextReplacement] = []
-        var previousStart = Int.max
-        for replacement in ordered {
-            let end = replacement.range.location + replacement.range.length
-            precondition(end <= previousStart, "EditorEditTransaction replacements must be non-overlapping")
-            guard end <= previousStart else { break }
-            applied.append(replacement)
-            previousStart = replacement.range.location
+        let documentLength = textView.textStorage?.length ?? 0
+        let (applied, hadInvalidReplacement) = EditorEditTransaction.validating(
+            orderedDescending: ordered,
+            documentLength: documentLength
+        )
+        if hadInvalidReplacement {
+            assertionFailure("EditorEditTransaction contains an out-of-bounds or overlapping replacement")
         }
         guard !applied.isEmpty else { return }
 

@@ -102,10 +102,36 @@ struct WorkspaceFileIndexTests {
 
         let index = WorkspaceFileIndex()
         // The real assertion is that this call returns at all (a symlink
-        // loop with no guard would recurse forever).
+        // loop with no guard would recurse forever). This only genuinely
+        // exercises the loop guard if "self" is correctly classified as a
+        // directory in the first place -- see
+        // `symlinkedDirectoryIsTraversedAndItsFilesAreIndexed` below for
+        // that classification, tested directly.
         await index.rebuild(root: tree.root)
         let results = await index.query("")
         #expect(results.contains { $0.relativePath == "real.txt" })
+    }
+
+    @Test func symlinkedDirectoryIsTraversedAndItsFilesAreIndexed() async throws {
+        // Resource values describe the LINK itself on some file systems, so
+        // querying `.isDirectoryKey` on an unresolved symlink URL can
+        // report `false` even when its target is a directory. Without
+        // resolving the target first, a symlinked directory would be
+        // misclassified as a file and its entire subtree silently dropped.
+        let realDir = try TempTree { _ in }
+        try realDir.write("target.txt")
+
+        let tree = try TempTree { root in
+            try FileManager.default.createSymbolicLink(
+                at: root.appendingPathComponent("linked", isDirectory: true),
+                withDestinationURL: realDir.root
+            )
+        }
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        let results = await index.query("")
+        #expect(results.map(\.relativePath) == ["linked/target.txt"])
     }
 
     @Test func rapidSupersedingRebuildsSettleOnTheLastRootWithoutCorruption() async throws {

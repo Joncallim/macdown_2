@@ -67,6 +67,20 @@ struct EditorSelectionSetTests {
         #expect(set.ranges == [NSRange(location: 5, length: 0)])
     }
 
+    @Test func primaryAtTouchingBoundaryStaysWithItsOwnRange() {
+        // [0,5) and [5,6) touch (don't merge). The primary is [5,6) --
+        // passed at index 1, BEFORE normalization already sorts it last --
+        // and its own location (5) sits exactly on [0,5)'s exclusive upper
+        // bound. A half-open (not inclusive) containment check must not let
+        // [0,5) "claim" that boundary point instead of [5,6) itself.
+        let set = EditorSelectionSet(
+            ranges: [NSRange(location: 0, length: 5), NSRange(location: 5, length: 1)],
+            primaryIndex: 1
+        )
+        #expect(set.ranges.count == 2) // touching ranges do not merge
+        #expect(set.primaryRange == NSRange(location: 5, length: 1))
+    }
+
     @Test func addRangeMakePrimary() {
         var set = EditorSelectionSet(single: NSRange(location: 0, length: 1))
         set.addRange(NSRange(location: 10, length: 1), makePrimary: true)

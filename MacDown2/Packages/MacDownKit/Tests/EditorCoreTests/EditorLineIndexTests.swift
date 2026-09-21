@@ -196,6 +196,20 @@ struct EditorLineIndexTests {
         )
     }
 
+    @Test func incrementalNewlineAfterTrailingBareCRFormsCRLF() {
+        // A document ending in a lone CR (its own complete terminator,
+        // opening an empty final line) then gets a "\n" appended right
+        // after it. The appended LF combines with the PRECEDING, already
+        // fully-scanned CR into one CRLF pair — the mirror case of
+        // `incrementalCRLFStraddlingBoundary_insertedCRBeforeUntouchedLF`,
+        // caught only by the leading (not trailing) margin.
+        assertIncrementalMatchesRebuild(
+            original: "\r",
+            editedRange: NSRange(location: 1, length: 0),
+            replacement: "\n"
+        )
+    }
+
     @Test func incrementalCRLFStraddling_deletingLFLeavesLoneCR() {
         assertIncrementalMatchesRebuild(
             original: "aaa\r\nbbb\nccc",

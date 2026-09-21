@@ -45,12 +45,17 @@ public struct EditorLineIndex: Sendable, Equatable {
     /// `newText` is the full text after the edit.
     ///
     /// Only rescans the line(s) touching the edit, plus one full untouched
-    /// line beyond it as a safety margin so a terminator that would
-    /// otherwise straddle the rescan boundary (e.g. an edit inserting a
-    /// trailing `\r` immediately before old content beginning with `\n`,
-    /// which only becomes a real CRLF pair after the edit) is always
-    /// resolved entirely inside the rescanned span, never split across it.
-    /// Every line after that margin is O(1) shifted by the edit's length
+    /// line of margin on EACH side, so a terminator that would otherwise
+    /// straddle the rescan boundary is always resolved entirely inside the
+    /// rescanned span, never split across it. The trailing margin handles
+    /// e.g. an edit inserting a trailing `\r` immediately before old content
+    /// beginning with `\n`, which only becomes a real CRLF pair after the
+    /// edit. The LEADING margin exists for the mirror case: an edit whose
+    /// `location` sits exactly at the start of a line preceded by a lone-CR
+    /// terminator, where new content beginning with `\n` would combine with
+    /// that untouched preceding CR into a new CRLF — a rescan starting
+    /// exactly at the edit would never re-examine that preceding CR at all.
+    /// Every line beyond both margins is O(1) shifted by the edit's length
     /// delta, never rescanned.
     public mutating func applying(editedRange: NSRange, replacementUTF16Length: Int, newText: NSString) {
         let delta = replacementUTF16Length - editedRange.length
@@ -58,13 +63,14 @@ public struct EditorLineIndex: Sendable, Equatable {
 
         let startLine = line(atUTF16Offset: editedRange.location)
         let touchedEndLine = oldEditEnd >= utf16Length ? lineCount : line(atUTF16Offset: oldEditEnd)
-        // One extra untouched line of margin (see doc comment above).
+        // One extra untouched line of margin on each side (see doc comment above).
+        let rescanStartLine = max(1, startLine - 1)
         let marginEndLine = min(lineCount, touchedEndLine + 1)
 
-        let prefixCount = startLine - 1 // lines 1...prefixCount are strictly before the edit; unaffected.
+        let prefixCount = rescanStartLine - 1 // lines 1...prefixCount are strictly before the edit; unaffected.
         var offsets = Array(lineStartOffsets[0 ..< prefixCount])
 
-        let rescanStart = lineStartOffsets[startLine - 1]
+        let rescanStart = lineStartOffsets[rescanStartLine - 1]
         let hasOldTail = marginEndLine < lineCount
         let oldTailStart = hasOldTail ? lineStartOffsets[marginEndLine] : utf16Length
         let rescanEnd = oldTailStart + delta
