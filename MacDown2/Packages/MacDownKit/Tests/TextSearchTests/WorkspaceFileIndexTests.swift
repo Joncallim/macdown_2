@@ -108,6 +108,26 @@ struct WorkspaceFileIndexTests {
         #expect(results.contains { $0.relativePath == "real.txt" })
     }
 
+    @Test func rapidSupersedingRebuildsSettleOnTheLastRootWithoutCorruption() async throws {
+        let treeA = try TempTree { _ in }
+        try treeA.write("a1.txt")
+        try treeA.write("a2.txt")
+
+        let treeB = try TempTree { _ in }
+        try treeB.write("b1.txt")
+
+        let index = WorkspaceFileIndex()
+        // A rebuild for `treeB` fires before `treeA`'s rebuild finishes: the
+        // superseded walk's own task is cancelled, and its result (even if
+        // it completes anyway) must never overwrite the newer one's.
+        async let first: Void = index.rebuild(root: treeA.root)
+        async let second: Void = index.rebuild(root: treeB.root)
+        _ = await (first, second)
+
+        let results = await index.query("")
+        #expect(Set(results.map(\.relativePath)) == ["b1.txt"])
+    }
+
     @Test func stateReflectsBuildProgress() async throws {
         let tree = try TempTree { _ in }
         try tree.write("a.txt")

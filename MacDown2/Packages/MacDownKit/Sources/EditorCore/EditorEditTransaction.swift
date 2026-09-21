@@ -56,12 +56,14 @@ public extension EditorTextSystem {
     /// N ranges.
     ///
     /// A transaction with overlapping replacements is a programmer error:
-    /// Debug builds trap via `precondition`; Release builds drop every
-    /// replacement after the first overlap is detected (scanned in the
-    /// highest-to-lowest application order) rather than applying a subset
-    /// that could corrupt text by operating on stale offsets — "fail
-    /// closed," matching this codebase's established discipline for
-    /// malformed input (e.g. `FileStore`'s decode failures).
+    /// `precondition` traps immediately, in both Debug and Release builds
+    /// (Swift only compiles it out under `-Ounchecked`, which this codebase
+    /// does not build with). The `guard ... else { break }` immediately
+    /// below is defense-in-depth for that unchecked configuration only — it
+    /// stops applying a subset of replacements that could otherwise corrupt
+    /// text by operating on stale offsets, "failing closed" the same way
+    /// this codebase already does for other malformed input (e.g.
+    /// `FileStore`'s decode failures) — not a distinct Release-mode path.
     func apply(_ transaction: EditorEditTransaction) {
         guard !transaction.replacements.isEmpty else { return }
         let ordered = transaction.replacements.sorted { $0.range.location > $1.range.location }

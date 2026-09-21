@@ -183,6 +183,19 @@ struct EditorLineIndexTests {
         )
     }
 
+    @Test func incrementalCRLFStraddlingBoundaryWithUntouchedTailLines() {
+        // Unlike `incrementalCRLFStraddlingBoundary_insertedCRBeforeUntouchedLF`
+        // (only 2 lines, so the margin line IS the document's last line and
+        // `hasOldTail` is false), this document has lines left over beyond
+        // the margin line. That exercises the "rescanned.last == rescanEnd"
+        // dedup branch, which only runs when `hasOldTail` is true.
+        assertIncrementalMatchesRebuild(
+            original: "aaa\nbbb\nccc\nddd",
+            editedRange: NSRange(location: 3, length: 0), // right before the first \n
+            replacement: "\r"
+        )
+    }
+
     @Test func incrementalCRLFStraddling_deletingLFLeavesLoneCR() {
         assertIncrementalMatchesRebuild(
             original: "aaa\r\nbbb\nccc",

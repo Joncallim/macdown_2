@@ -36,6 +36,7 @@ public actor WorkspaceFileIndex {
     public private(set) var state: State = .empty
     private var paths: [IndexedPath] = []
     private var generation = 0
+    private var currentWalkTask: Task<[IndexedPath], Never>?
 
     public init() {}
 
@@ -43,15 +44,24 @@ public actor WorkspaceFileIndex {
     /// only once the new one is ready (a query made while a rebuild is in
     /// flight still sees the last-good snapshot, never a half-built one —
     /// matching `FileTreeModel`'s own "stale generation" discipline).
+    ///
+    /// A rebuild that supersedes an in-flight one cancels it, so rapid
+    /// repeated calls (e.g. fast workspace-root switching) don't pile up
+    /// concurrent full directory walks; `DirectoryWalker.walk` checks
+    /// `Task.isCancelled` between entries so a cancelled walk actually stops
+    /// promptly rather than merely having its result discarded.
     public func rebuild(root: URL,
                         excluding excludedDirectoryNames: Set<String> = defaultExcludedDirectoryNames) async {
         generation += 1
         let currentGeneration = generation
         state = .building
+        currentWalkTask?.cancel()
         let walker = DirectoryWalker()
-        let result = await Task.detached(priority: .utility) {
+        let task = Task.detached(priority: .utility) {
             walker.walk(root: root, excludedDirectoryNames: excludedDirectoryNames)
-        }.value
+        }
+        currentWalkTask = task
+        let result = await task.value
         guard currentGeneration == generation else { return } // superseded by a newer rebuild
         paths = result
         state = .ready(count: result.count)
@@ -117,7 +127,6 @@ struct DirectoryWalker: Sendable {
         .isDirectoryKey,
         .isHiddenKey,
         .isPackageKey,
-        .isSymbolicLinkKey,
     ]
 
     private func walk(
@@ -127,6 +136,7 @@ struct DirectoryWalker: Sendable {
         visited: inout Set<PhysicalFileIdentity.FileObjectID>,
         into results: inout [IndexedPath]
     ) {
+        guard !Task.isCancelled else { return }
         guard let identity = PhysicalFileIdentity(url: directory).fileObjectID else { return }
         guard visited.insert(identity).inserted else { return } // symlink loop guard
         guard let children = try? FileManager.default.contentsOfDirectory(
@@ -136,6 +146,7 @@ struct DirectoryWalker: Sendable {
         ) else { return }
 
         for child in children {
+            guard !Task.isCancelled else { return }
             guard let values = try? child.resourceValues(forKeys: Self.resourceKeys) else { continue }
             guard values.isHidden != true else { continue }
             let name = child.lastPathComponent
