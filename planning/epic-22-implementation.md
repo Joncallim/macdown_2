@@ -171,7 +171,7 @@ public struct EditorLineIndex: Sendable, Equatable {
 
     public var lineCount: Int { get }
     public func line(atUTF16Offset offset: Int) -&gt; Int
-    public func utf16Range(ofLine line: Int) -&gt; NSRange
+    public func utf16Range(ofLine line: Int, in text: NSString) -&gt; NSRange
     /// Character (not UTF-16 unit) column for user-facing display —
     /// `SourceMap`'s existing line-mapping precedent uses UTF-16 internally
     /// and characters for display; `EditorLineIndex` must do the same so
@@ -262,6 +262,8 @@ extension EditorTextSystem {
 ```
 
 This is the primitive every new multi-cursor typing/paste/delete/indent/transform command, and every existing single-range command that chooses to adopt it, funnels through. It does not replace `applyDocumentReplacement`/`applyExternalReplacement` (whole-document and text-filter output remain their own simpler cases) — it is the new general case for N &gt; 1 disjoint ranges, including N == 1 (a single-cursor command may use it too, and should, in preference to hand-rolling a fourth ad hoc pattern).
+
+**A real problem found and fixed while implementing this in Slice 1, not anticipated when this contract was first drafted:** the existing single-replacement patterns never had to worry about "one publication," because a single `textView.insertText(_:replacementRange:)` call naturally posts AppKit's text-change notification exactly once. For N &gt; 1 calls in a loop, each one independently posts that notification, and `EditorView.Coordinator.textDidChange` — which reads `system.text` and forwards it to the SwiftUI binding — has no existing guard against this, so a 3-range transaction published the binding 3 times with intermediate, not-yet-fully-edited text, not once with the final result. Fixed by adding a new guard, `EditorTextSystem.isApplyingMultiRangeTransaction` (mirroring `isPerformingProgrammaticTextUpdate`'s existing shape), which `EditorEditTransaction`'s `apply(_:)` raises before the loop and lowers immediately before the *last* `insertText` call, so `textDidChange` suppresses every intermediate notification and only the final one — which by then reflects every replacement — reaches the binding. Verified with a real mounted `NSTextView`/binding-publication-counter integration test (`EditorEditTransactionTests.multiRangeIsOneUndoStepAndOnePublication`), not inferred from reading the code.
 
 ### 6.4 `LanguageEditingProfile` (EditorCore) — contract, detailed implementation in Slice 4
 

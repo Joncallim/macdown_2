@@ -166,7 +166,8 @@ public struct EditorView: NSViewRepresentable {
         public func textDidChange(_: Notification) {
             guard !isApplyingModelText,
                   let system,
-                  !system.isPerformingProgrammaticTextUpdate
+                  !system.isPerformingProgrammaticTextUpdate,
+                  !system.isApplyingMultiRangeTransaction
             else { return }
             isApplyingModelText = true
             textBinding?.wrappedValue = system.text

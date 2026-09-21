@@ -50,6 +50,16 @@ public final class EditorTextSystem {
     /// The setter is internal so the adapter in
     /// `EditorTextSystem+EditingAssists.swift` can raise it around the edit.
     public internal(set) var isPerformingEditingAssist = false
+    /// Set while an `EditorEditTransaction` with more than one replacement
+    /// is applying all but its last `insertText` call, so
+    /// `EditorView.Coordinator.textDidChange` suppresses the intermediate
+    /// AppKit change notifications those calls individually post and
+    /// publishes exactly once, after the whole transaction has landed —
+    /// "one command, one publication" for N &gt; 1 ranges, matching the
+    /// existing single-range patterns' one-publication guarantee. The
+    /// setter is internal so `EditorEditTransaction.swift`'s `apply(_:)`
+    /// can raise/lower it around the loop.
+    public internal(set) var isApplyingMultiRangeTransaction = false
     /// The assist configuration currently applied to this text system.
     /// Storage lives here (extensions cannot hold stored properties);
     /// the E10 methods live in `EditorTextSystem+EditingAssists.swift`.
