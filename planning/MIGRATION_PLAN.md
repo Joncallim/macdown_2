@@ -160,12 +160,12 @@ value.
 | **M3 — Markdown core** | Live native preview + content browser | E06, E07, E08 |
 | **M4 — Workspace & formats** | Folder browser, JSON/HTML/TeX source, export, settings, live external files | E09, E11, E12, E13, E18 |
 | **M5A — Feature completion** | Safe contribution seam + first-class technical writing | E14, E19, E20, E21 |
-| **Feature-complete gate** | Prove complete Mac product **and freeze public identity** before polish | all major macOS 1.0 features through E21 + release-hardening evidence |
-| **M5B — Polish & ship** | E15 whole-app/first-run polish → E16 localisation/string freeze → E17 state migration/distribution | E15, E16, E17 |
+| **Feature-complete gate** | Prove the original Mac product surface and establish the release-evidence baseline | all major original macOS 1.0 features through E21 + release-hardening evidence |
+| **M5B — Polish & pre-release completion** | E15 whole-app/first-run → E16 translation baseline → E22 editor essentials → public identity re-freeze → E23 themes/Quick Look/Finder polish → affected E15 evidence delta → final E16 string freeze → E17 distribution | E15, E16, E22, E23, E17 |
 | **Post-1.0** | Evaluate/implement iPad from a finished Mac product | future work only after E17 release gate |
 
-GitHub's existing `M5 — Polish & ship` milestone may continue to hold E14-E21
-administratively; this document defines the logical ordering inside M5.
+GitHub's existing `M5 — Polish & ship` milestone may continue to hold E14-E23
+administratively; this document defines the logical ordering inside M5. E23 is the final planned capability epic; work after it is release evidence, localisation re-freeze and distribution rather than another feature wave.
 
 ### Dependency graph
 
@@ -185,10 +185,15 @@ E00 ─▶ E01 ─▶ E02 ─▶ E03 ─▶ E09
 
 E18: E01 + E03(as built) + E04; completed implementation, evidence carried into release ledger
 
-E19 + E21 + remaining Mac features
-  ─▶ FEATURE-COMPLETE GATE + IDENTITY FREEZE
+E19 + E21 + remaining original Mac features
+  ─▶ FEATURE-COMPLETE GATE
   ─▶ E15 (whole-app + first-run/in-app copy)
-  ─▶ E16 (localisation + in-app string freeze)
+  ─▶ E16 (translation infrastructure/current baseline)
+  ─▶ E22 (editor essentials)
+  ─▶ FINAL PUBLIC IDENTITY RE-FREEZE
+  ─▶ E23 (themes + Markdown Quick Look + Finder polish; final capability epic)
+  ─▶ affected E15 evidence delta
+  ─▶ E16 FINAL LOCALISATION/STRING FREEZE
   ─▶ E17 (identity/state migration + signed/updateable macOS 1.0 release)
   ─▶ only then post-1.0 iPad work
 ```
@@ -307,23 +312,31 @@ responsiveness in mixed technical documents.
 
 ## 11. Release Strategy
 
-- `MacDown 2` remains the working development name until the feature-complete
-  gate freezes the final public identity.
-- Private alpha/dogfooding continues throughout feature development; closing an
-  implementation epic does not erase outstanding release evidence.
-- Major macOS 1.0 feature development ends at E21 after each candidate renderer
-  has an accept/reject decision.
-- The feature-complete gate exercises the complete app, freezes public identity,
-  builds the release-evidence ledger, executes/records critical UI tests and
-  proves text round-trip fidelity.
-- E15 performs whole-app polish/accessibility/performance and finalises the
-  icon, first-run/sample/onboarding UI and in-app copy against the frozen identity.
-- E16 freezes/translates the complete in-app string set.
-- E17 packages that already-localised app, rehearses migration of representative
-  development/beta state into the final identity, signs/notarises, verifies
-  Sparkle updates and publishes macOS 1.0.
-- E17 does not invent new first-run UI after string freeze; any new in-app string
-  requires localisation re-verification.
+- `MacDown 2` is the development identity only. On 2026-09-21 the owner
+  explicitly chose to ship a **new editor descended from MacDown**, so the
+  earlier public-identity freeze is reopened in a controlled way.
+- Private alpha/dogfooding continues throughout pre-release completion; closing
+  an implementation epic does not erase outstanding release evidence.
+- The 2026-09-19 feature-complete gate remains valid as the evidence baseline
+  for the original E00-E21 surface; E22/E23 do not retroactively claim that
+  evidence covers their new behaviour.
+- E15 remains the whole-app/accessibility/first-run baseline. E22/E23 rerun the
+  affected portions rather than repeating unrelated evidence.
+- E16's current catalogs/translations are a valid localisation baseline, but
+  its **final** string freeze is intentionally deferred until E22 and E23 have
+  landed and their UI/string deltas have been translated and pseudo-localised.
+- E22 adds the bounded day-to-day editor essentials already approved in issue
+  #112. E23 adds themes, Markdown Quick Look and Finder integration and is the
+  **last planned macOS 1.0 capability epic**.
+- The final public product name/bundle/update/CLI strategy is re-frozen before
+  E23 commits final extension/theme-file/document-icon identifiers.
+- After E23, no further capability work enters 1.0 unless release testing proves
+  an ordinary workflow is broken. The affected E15 evidence is rerun, E16
+  performs the final localisation/string-freeze delta, then E17 packages the
+  already-localised app.
+- E17 rehearses migration of representative development/beta state into the
+  final identity, signs/notarises, verifies Sparkle updates and publishes macOS
+  1.0. It does not invent new user-facing release UI after the final string freeze.
 - No P0/P1 remains for macOS 1.0; accepted P2s are recorded explicitly.
 - iPad implementation begins only after the completed E17 release.
 - Legacy MacDown remains available; no forced migration.
@@ -332,10 +345,10 @@ responsiveness in mixed technical documents.
 
 | # | Question | Blocks |
 |---|----------|--------|
-| O1 | Final public product name, bundle/update identity, CLI public name where affected, repository/public-link strategy and development→release namespace migration plan | **Feature-complete gate / E15 start** |
-| O2 | Where does the app live long-term: rename this fork, or fresh repo? | Feature-complete identity freeze (may choose to retain repo with documented public strategy) |
+| O1 | Final public product name, bundle/update identity, CLI public name where affected, repository/public-link strategy and development→release namespace migration plan | **E23 final identifiers / final E16 freeze / E17** |
+| O2 | Where does the app live long-term: rename this fork, or fresh repo? | Public identity re-freeze before E23 final identifiers |
 | O3 | Import old MacDown prefs/themes on first run? | E13; if approved, must be stable before E15/E16 first-run/string freeze |
-| O4 | Which legacy themes ship in v1? Tomorrow Light + Tomorrow Dark already shipped; additional themes are deliberate data additions | E13/E07 design only if expanded |
+| O4 | **Resolved 2026-09-21:** E23 expands to at least 8 deliberate bundled themes (>=4 light, >=4 dark) plus safe declarative custom themes; provenance/licensing and contrast are release gates. | E23 |
 | O5 | Final math rendering engine and exact delimiter compatibility | E19 architecture |
 | O6 | E20 Mermaid packaging/execution choice and E21 accept/reject decisions for D2/Graphviz/WaveDrom | E20/E21 architecture |
 
