@@ -97,7 +97,7 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onSelectionChange = onSelectionChange
         context.coordinator.onScrollChange = onScrollChange
 
-        registerCoordinatorObservers(scrollView: scrollView, system: system, coordinator: context.coordinator)
+        registerCoordinatorObservers(scrollView: scrollView, coordinator: context.coordinator)
 
         return scrollView
     }
@@ -108,11 +108,22 @@ public struct EditorView: NSViewRepresentable {
     /// `lineIndex` correct across undo/redo (see its
     /// `registerUndoRedoObservers()`); this coordinator only needs to know
     /// when to invalidate the gutter, which lives at this UI layer.
-    private func registerCoordinatorObservers(
-        scrollView: NSScrollView,
-        system: EditorTextSystem,
-        coordinator: Coordinator
-    ) {
+    ///
+    /// The undo/redo observers register with `object: nil` (any sender)
+    /// rather than `system.undoManager` evaluated here: at this point
+    /// (called from `makeNSView`, before SwiftUI has attached the returned
+    /// `NSScrollView` to a window) `system.textView.window` is still nil,
+    /// so `EditorTextSystem.undoManager` resolves to its temporary
+    /// `fallbackUndoManager` — a different object than the real window
+    /// undo manager it switches to once actually mounted. An observer
+    /// registered against that stale fallback would never see a real
+    /// undo/redo notification (this exact bug was already found and fixed
+    /// for `EditorTextSystem`'s OWN line-index-correctness observer, in
+    /// `EditorTextSystem+LineIndex.swift` — it just hadn't been applied
+    /// here too). `Coordinator.undoManagerDidChange(_:)` re-resolves
+    /// `system.undoManager` fresh and checks the notification's sender
+    /// against it instead.
+    private func registerCoordinatorObservers(scrollView: NSScrollView, coordinator: Coordinator) {
         NotificationCenter.default.addObserver(
             coordinator,
             selector: #selector(Coordinator.scrollViewDidScroll(_:)),
@@ -123,13 +134,13 @@ public struct EditorView: NSViewRepresentable {
             coordinator,
             selector: #selector(Coordinator.undoManagerDidChange(_:)),
             name: .NSUndoManagerDidUndoChange,
-            object: system.undoManager
+            object: nil
         )
         NotificationCenter.default.addObserver(
             coordinator,
             selector: #selector(Coordinator.undoManagerDidChange(_:)),
             name: .NSUndoManagerDidRedoChange,
-            object: system.undoManager
+            object: nil
         )
     }
 
@@ -139,16 +150,8 @@ public struct EditorView: NSViewRepresentable {
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
-        NotificationCenter.default.removeObserver(
-            coordinator,
-            name: .NSUndoManagerDidUndoChange,
-            object: coordinator.system?.undoManager
-        )
-        NotificationCenter.default.removeObserver(
-            coordinator,
-            name: .NSUndoManagerDidRedoChange,
-            object: coordinator.system?.undoManager
-        )
+        NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidUndoChange, object: nil)
+        NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidRedoChange, object: nil)
         coordinator.system?.textView.delegate = nil
         coordinator.system?.scrollView = nil
         coordinator.gutterView = nil
@@ -357,7 +360,12 @@ public struct EditorView: NSViewRepresentable {
         /// undo/redo (see its own `registerUndoRedoObservers()`); this
         /// coordinator-level observer exists only to redraw the gutter,
         /// which `EditorTextSystem` has no reference to.
-        @objc @MainActor func undoManagerDidChange(_: Notification) {
+        @objc @MainActor func undoManagerDidChange(_ notification: Notification) {
+            // Registered with `object: nil` (see `registerCoordinatorObservers`'s
+            // doc comment), so this fires for every text system's undo/redo
+            // in the app — filter to this one's current (freshly-resolved,
+            // not cached) undo manager.
+            guard let system, notification.object as AnyObject === system.undoManager else { return }
             gutterView?.updateThickness()
         }
     }
