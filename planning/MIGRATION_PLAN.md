@@ -161,7 +161,7 @@ value.
 | **M4 — Workspace & formats** | Folder browser, JSON/HTML/TeX source, export, settings, live external files | E09, E11, E12, E13, E18 |
 | **M5A — Feature completion** | Safe contribution seam + first-class technical writing | E14, E19, E20, E21 |
 | **Feature-complete gate** | Prove the original Mac product surface and establish the release-evidence baseline | all major original macOS 1.0 features through E21 + release-hardening evidence |
-| **M5B — Polish & pre-release completion** | E15 whole-app/first-run → E16 translation baseline → E22 editor essentials → public identity re-freeze → E23 themes/Quick Look/Finder polish → affected E15 evidence delta → final E16 string freeze → E17 distribution | E15, E16, E22, E23, E17 |
+| **M5B — Polish & pre-release completion** | E15 whole-app/first-run → E16 translation baseline → E22 editor essentials → public identity re-freeze → E23 themes/Quick Look/Finder polish → #115 closed-epic debt closure → final E16 string freeze → E17 distribution | E15, E16, E22, E23, #115 gate, E17 |
 | **Post-1.0** | Evaluate/implement iPad from a finished Mac product | future work only after E17 release gate |
 
 GitHub's existing `M5 — Polish & ship` milestone may continue to hold E14-E23
@@ -192,7 +192,7 @@ E19 + E21 + remaining original Mac features
   ─▶ E22 (editor essentials)
   ─▶ FINAL PUBLIC IDENTITY RE-FREEZE
   ─▶ E23 (themes + Markdown Quick Look + Finder polish; final capability epic)
-  ─▶ affected E15 evidence delta
+  ─▶ #115 CLOSED-EPIC DEBT CLOSURE GATE
   ─▶ E16 FINAL LOCALISATION/STRING FREEZE
   ─▶ E17 (identity/state migration + signed/updateable macOS 1.0 release)
   ─▶ only then post-1.0 iPad work
@@ -331,13 +331,15 @@ responsiveness in mixed technical documents.
 - The final public product name/bundle/update/CLI strategy is re-frozen before
   E23 commits final extension/theme-file/document-icon identifiers.
 - After E23, no further capability work enters 1.0 unless release testing proves
-  an ordinary workflow is broken. The affected E15 evidence is rerun, E16
-  performs the final localisation/string-freeze delta, then E17 packages the
-  already-localised app.
+  an ordinary workflow is broken. Issue #115 then closes every historical
+  carried-forward/residual/unverified item from closed epics: each must be fixed,
+  proved on a suitable environment, or explicitly rejected only where the original
+  candidate contract allowed rejection. Only after #115 closes does E16 perform
+  the final localisation/string-freeze delta and E17 package the app.
 - E17 rehearses migration of representative development/beta state into the
   final identity, signs/notarises, verifies Sparkle updates and publishes macOS
   1.0. It does not invent new user-facing release UI after the final string freeze.
-- No P0/P1 remains for macOS 1.0; accepted P2s are recorded explicitly.
+- No release-relevant P0/P1/P2 remains for macOS 1.0 after #115; cosmetic P3s require explicit owner acceptance.
 - iPad implementation begins only after the completed E17 release.
 - Legacy MacDown remains available; no forced migration.
 
