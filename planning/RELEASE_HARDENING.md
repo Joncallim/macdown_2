@@ -110,6 +110,8 @@ Before E15 begins, freeze:
 
 E15 then creates the final icon, first-run experience and polished copy against this identity. E16 localises stable identity-bearing strings. E17 implements/verifies the already-approved release identity; it does not decide the brand at the end of the release cycle.
 
+**Controlled reopening (2026-09-21):** the historical gate was passed, but the owner subsequently made two explicit product decisions: add bounded pre-release epics E22/E23 and ship as a new editor descended from MacDown rather than as `MacDown 2`. The earlier identity freeze is therefore an evidence record, not the final release identity. The public identity must be re-frozen before E23 commits final app/Quick Look/theme-file identifiers, and E17 still may not decide the brand at the end.
+
 ### 5.2 Maintain a release-evidence ledger
 
 Create one owner-readable table for the complete product. At minimum:
@@ -155,9 +157,11 @@ E15's whole-app pass consumes the release-evidence ledger and closes release-blo
 
 ## 7. E16 string freeze
 
-E16 runs after the final public identity and first-run/product UI are stable.
+E16 originally ran after the first public-identity/first-run baseline and has already established the localisation infrastructure and current translated catalog state.
 
-Once E16 reaches string freeze:
+**2026-09-21 sequencing amendment:** E22 and E23 intentionally add bounded user-facing UI after that baseline. Their new strings must enter the normal catalogs in the same implementation slices, and one final E16 extraction/translation/pseudo-localisation delta is required after E23. That post-E23 baseline is the macOS 1.0 string freeze consumed by E17.
+
+Once E16 reaches that **final post-E23** string freeze:
 
 - E17 may update release notes, website copy and other non-app release material;
 - E17 must not introduce new user-facing app strings or new app UI without reopening the affected localisation verification;
@@ -210,6 +214,8 @@ An architecture PR that was correct against an older product contract is not gra
 
 ## 11. Scope discipline
 
-This hardening contract does not add search-in-folder, Git status, multi-root workspaces, full LaTeX compilation, visual diagram authoring, PlantUML/TikZ, a renderer marketplace, Mac App Store work or iPad implementation to macOS 1.0.
+This hardening contract does not itself add product features. Its earlier exclusion list predated the owner's explicit 2026-09-21 approval of E22 and E23.
 
-Those remain outside the current roadmap unless a later explicit product decision changes scope. The purpose here is to make the existing plan integrate and release cleanly, not to make it larger.
+E22 and E23 are therefore the documented “later explicit product decision” contemplated by the original rule. Where their live issue contracts conflict with the older exclusion examples (most notably E22's approved folder search), the approved epic contract wins.
+
+Outside E22/E23, Git status, multi-root workspaces, full LaTeX compilation, visual diagram authoring, PlantUML/TikZ, a renderer marketplace, Mac App Store work and iPad implementation remain outside macOS 1.0. E23 is the final planned capability epic; after it, this contract returns to hardening-only scope unless release testing proves an ordinary workflow is broken.
