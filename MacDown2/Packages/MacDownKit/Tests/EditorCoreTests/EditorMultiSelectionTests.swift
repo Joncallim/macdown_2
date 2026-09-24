@@ -229,19 +229,29 @@ struct EditorMultiSelectionTests {
         // override (reads the pasteboard and routes it through
         // `applyMultiCursorInsert(_:)` in one step, ahead of AppKit's
         // two-step sequence). Exercised against the REAL system pasteboard,
-        // with its prior contents saved and restored around the call so
-        // this test has no lasting side effect.
+        // with a best-effort save/restore of its prior contents around the
+        // call (every UTI representation of every item, restored in one
+        // `writeObjects` call so a multi-item clipboard doesn't lose all but
+        // the last) -- not an absolute guarantee: a process crash between
+        // the save and the restore, however unlikely, would still leave the
+        // pasteboard in this test's transient state.
         let pasteboard = NSPasteboard.general
-        let savedItems = pasteboard.pasteboardItems?.compactMap { item -> (String, Data)? in
-            guard let type = item.types.first, let data = item.data(forType: type) else { return nil }
-            return (type.rawValue, data)
+        let savedItems: [[NSPasteboard.PasteboardType: Data]] = pasteboard.pasteboardItems?.map { item in
+            Dictionary(uniqueKeysWithValues: item.types.compactMap { type in
+                item.data(forType: type).map { (type, $0) }
+            })
         } ?? []
         defer {
             pasteboard.clearContents()
-            for (type, data) in savedItems {
-                let item = NSPasteboardItem()
-                item.setData(data, forType: NSPasteboard.PasteboardType(type))
-                pasteboard.writeObjects([item])
+            if !savedItems.isEmpty {
+                let restoredItems = savedItems.map { typesToData -> NSPasteboardItem in
+                    let item = NSPasteboardItem()
+                    for (type, data) in typesToData {
+                        item.setData(data, forType: type)
+                    }
+                    return item
+                }
+                pasteboard.writeObjects(restoredItems)
             }
         }
 
