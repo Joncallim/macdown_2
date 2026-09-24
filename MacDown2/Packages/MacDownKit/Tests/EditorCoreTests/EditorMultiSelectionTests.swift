@@ -170,7 +170,7 @@ struct EditorMultiSelectionTests {
         #expect(system.text == "cat cat cat")
     }
 
-    @Test func resultingPrimaryCaretLandsRightAfterItsReplacementAccountingForLengthShifts() {
+    @Test func resultingCaretsLandRightAfterEachReplacementAccountingForLengthShifts() {
         let system = support.makeSystem(text: "cat cat cat")
         let window = support.mountInWindow(system)
         defer { window.orderOut(nil) }
@@ -183,14 +183,19 @@ struct EditorMultiSelectionTests {
         // `EditorEditTransaction.resultingCaretRanges` correctly computes
         // all three post-edit caret positions (accounting for each earlier
         // replacement's own +5 length delta -- "elephant" is 8 chars vs
-        // "cat"'s 3), but only the FIRST survives once installed into
-        // `textView.selectedRanges`: three simultaneous zero-length carets
-        // cannot coexist there any more than three simultaneous carets can
-        // (§6.9's architecture-correction note) -- this is an honest,
-        // disclosed limitation of Slice 3a's foundation, not a bug; durably
-        // tracking every resulting caret needs Slice 3b's custom,
-        // AppKit-independent caret state.
-        #expect(system.selectionSet.ranges == [NSRange(location: 8, length: 0)])
+        // "cat"'s 3). `textView.selectedRanges` itself still only ever
+        // shows the first (three simultaneous zero-length carets cannot
+        // coexist there any more than three simultaneous bare carets can —
+        // §6.9's architecture-correction note), but `selectionSet` itself
+        // (Slice 3b-i's fix to the getter/setter cache) now correctly
+        // retains all three: `EditorTextView`'s own secondary-caret drawing
+        // pass is what makes the other two visible.
+        #expect(system.selectionSet.ranges == [
+            NSRange(location: 8, length: 0),
+            NSRange(location: 17, length: 0),
+            NSRange(location: 26, length: 0),
+        ])
+        #expect(system.textView.selectedRanges.map(\.rangeValue) == [NSRange(location: 8, length: 0)])
     }
 
     @Test func deleteBackwardRemovesEveryActiveSelection() {
