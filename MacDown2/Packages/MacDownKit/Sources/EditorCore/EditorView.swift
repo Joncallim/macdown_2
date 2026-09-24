@@ -55,6 +55,12 @@ public struct EditorView: NSViewRepresentable {
         scrollView.autohidesScrollers = configuration.wrapsLines
         scrollView.borderType = .noBorder
         system.scrollView = scrollView
+
+        let gutterView = EditorGutterView(scrollView: scrollView, system: system)
+        scrollView.verticalRulerView = gutterView
+        scrollView.hasVerticalRuler = true
+        scrollView.rulersVisible = true
+        context.coordinator.gutterView = gutterView
         // The scroll view has not been laid out yet, so size the text view to
         // its content (with a minimum that matches the scroll view). The
         // vertically-resizable NSTextView will keep this in sync as the text
@@ -91,17 +97,51 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.onSelectionChange = onSelectionChange
         context.coordinator.onScrollChange = onScrollChange
 
-        // Observe scroll changes through the clip view's bounds. NSScrollView
-        // always owns a contentView, so the object is non-optional.
-        let contentView = scrollView.contentView
-        NotificationCenter.default.addObserver(
-            context.coordinator,
-            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
-            name: NSView.boundsDidChangeNotification,
-            object: contentView
-        )
+        registerCoordinatorObservers(scrollView: scrollView, coordinator: context.coordinator)
 
         return scrollView
+    }
+
+    /// Observes scroll changes through the clip view's bounds (NSScrollView
+    /// always owns a contentView, so the object is non-optional), plus
+    /// undo/redo so the gutter can redraw — `EditorTextSystem` itself keeps
+    /// `lineIndex` correct across undo/redo (see its
+    /// `registerUndoRedoObservers()`); this coordinator only needs to know
+    /// when to invalidate the gutter, which lives at this UI layer.
+    ///
+    /// The undo/redo observers register with `object: nil` (any sender)
+    /// rather than `system.undoManager` evaluated here: at this point
+    /// (called from `makeNSView`, before SwiftUI has attached the returned
+    /// `NSScrollView` to a window) `system.textView.window` is still nil,
+    /// so `EditorTextSystem.undoManager` resolves to its temporary
+    /// `fallbackUndoManager` — a different object than the real window
+    /// undo manager it switches to once actually mounted. An observer
+    /// registered against that stale fallback would never see a real
+    /// undo/redo notification (this exact bug was already found and fixed
+    /// for `EditorTextSystem`'s OWN line-index-correctness observer, in
+    /// `EditorTextSystem+LineIndex.swift` — it just hadn't been applied
+    /// here too). `Coordinator.undoManagerDidChange(_:)` re-resolves
+    /// `system.undoManager` fresh and checks the notification's sender
+    /// against it instead.
+    private func registerCoordinatorObservers(scrollView: NSScrollView, coordinator: Coordinator) {
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.undoManagerDidChange(_:)),
+            name: .NSUndoManagerDidUndoChange,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.undoManagerDidChange(_:)),
+            name: .NSUndoManagerDidRedoChange,
+            object: nil
+        )
     }
 
     public func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
@@ -110,8 +150,11 @@ public struct EditorView: NSViewRepresentable {
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
+        NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidUndoChange, object: nil)
+        NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidRedoChange, object: nil)
         coordinator.system?.textView.delegate = nil
         coordinator.system?.scrollView = nil
+        coordinator.gutterView = nil
     }
 
     public func updateNSView(_ scrollView: NSScrollView, context: Context) {
@@ -138,6 +181,16 @@ public struct EditorView: NSViewRepresentable {
             system.textView.sizeToFit()
         }
 
+        // After any model push above (which bypasses the incremental
+        // delegate hooks and rebuilds `lineIndex` wholesale in `setText`)
+        // AND after a font-size preference change, either of which can
+        // change the digit count/width the gutter needs -- calling this
+        // BEFORE `setText` would read the pre-push `lineIndex`, leaving a
+        // model replacement that crosses a digit boundary (e.g. 9 to 100
+        // lines) stuck at the old ruler width until an unrelated later
+        // update happened to trigger a redraw.
+        context.coordinator.gutterView?.updateThickness()
+
         // Model pushes need a deferred measurement after TextKit has applied
         // the new text. Ordinary keystrokes already schedule a coalesced sync
         // from the text-view delegate; measuring here as well duplicated the
@@ -158,12 +211,42 @@ public struct EditorView: NSViewRepresentable {
 
     public final class Coordinator: NSObject, NSTextViewDelegate {
         weak var system: EditorTextSystem?
+        weak var gutterView: EditorGutterView?
         var textBinding: Binding<String>?
         var onSelectionChange: ((NSRange) -> Void)?
         var onScrollChange: ((Int) -> Void)?
         var isApplyingModelText = false
+        /// Captured in `shouldChangeTextIn` (every edit this delegate
+        /// observes, any origin) and consumed in the very next
+        /// `textDidChange` — see that method's doc comment for why this
+        /// stays correct even across E10's nested edit interception and an
+        /// `EditorEditTransaction`'s per-range multi-firing.
+        private var pendingLineIndexEdit: (range: NSRange, replacementUTF16Length: Int)?
 
+        /// Unconditionally keeps `system.lineIndex` current with EVERY edit
+        /// this coordinator observes, independent of
+        /// `isApplyingMultiRangeTransaction`'s SwiftUI-publication
+        /// suppression below — an `EditorEditTransaction` with N ranges
+        /// fires `textDidChange` N times (verified by
+        /// `EditorEditTransactionTests.multiRangeIsOneUndoStepAndOnePublication`,
+        /// the reason that suppression exists in the first place), and the
+        /// line index must stay correct after every one of them, not just
+        /// the transaction's final state.
         public func textDidChange(_: Notification) {
+            if let system, let pending = pendingLineIndexEdit {
+                system.noteIncrementalEdit(
+                    editedRange: pending.range,
+                    replacementUTF16Length: pending.replacementUTF16Length
+                )
+                pendingLineIndexEdit = nil
+            }
+            // The gutter has no way to know about a text edit on its own
+            // (unlike scrolling, which NSRulerView already tracks via its
+            // scroll view) — every edit needs an explicit redraw, and
+            // `updateThickness()` also covers a line-count digit-width
+            // change (e.g. line 9 -> 10, or 99 -> 100).
+            gutterView?.updateThickness()
+
             guard !isApplyingModelText,
                   let system,
                   !system.isPerformingProgrammaticTextUpdate,
@@ -188,6 +271,14 @@ public struct EditorView: NSViewRepresentable {
         ) -> Bool {
             guard let system else { return true }
             guard let replacementString else { return true }
+            // Captured before every branch below (including the E10/IME
+            // early returns), since AppKit performs exactly
+            // (affectedRange, replacementString) as the edit on every path
+            // that returns `true` here, and a nested edit that vetoes this
+            // one (E10 intercepting it) overwrites this same property with
+            // ITS OWN (affectedRange, replacementString) before ITS OWN
+            // `textDidChange` consumes it — see that method's doc comment.
+            pendingLineIndexEdit = (affectedRange, (replacementString as NSString).length)
             guard !isApplyingModelText else { return true }
             guard !system.isPerformingProgrammaticTextUpdate else { return true }
             guard !system.isPerformingEditingAssist else { return true }
@@ -271,6 +362,19 @@ public struct EditorView: NSViewRepresentable {
         @objc @MainActor func scrollViewDidScroll(_: Notification) {
             guard let system else { return }
             onScrollChange?(system.topVisibleUTF16Offset)
+        }
+
+        /// `EditorTextSystem` itself keeps `lineIndex` correct across
+        /// undo/redo (see its own `registerUndoRedoObservers()`); this
+        /// coordinator-level observer exists only to redraw the gutter,
+        /// which `EditorTextSystem` has no reference to.
+        @objc @MainActor func undoManagerDidChange(_ notification: Notification) {
+            // Registered with `object: nil` (see `registerCoordinatorObservers`'s
+            // doc comment), so this fires for every text system's undo/redo
+            // in the app — filter to this one's current (freshly-resolved,
+            // not cached) undo manager.
+            guard let system, notification.object as AnyObject === system.undoManager else { return }
+            gutterView?.updateThickness()
         }
     }
 }
