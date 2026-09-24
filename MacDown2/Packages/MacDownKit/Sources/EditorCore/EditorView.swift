@@ -315,6 +315,16 @@ public struct EditorView: NSViewRepresentable {
         /// `false` when AppKit should continue with the responder chain.
         public func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             guard let system else { return false }
+            // Escape collapses a multi-selection to its primary range
+            // regardless of the Markdown-assist configuration below (§6.9)
+            // — multi-cursor collapse is not a Markdown editing assist. Still
+            // gated on marked text, matching every other branch in this
+            // method (line below): an active IME composition must let
+            // native `cancelOperation:` cancel it, never get intercepted
+            // here first.
+            if selector == #selector(NSResponder.cancelOperation(_:)), !textView.hasMarkedText() {
+                return collapseMultipleSelectionsIfNeeded(system: system)
+            }
             guard system.editingAssistConfiguration.isEnabled else { return false }
             guard !isApplyingModelText,
                   !system.isPerformingProgrammaticTextUpdate,

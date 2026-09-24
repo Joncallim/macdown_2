@@ -77,6 +77,11 @@ public final class EditorTextSystem {
     public internal(set) var lineIndex: EditorLineIndex
     /// See `EditorTextSystem+LineIndex.swift`'s `registerUndoRedoObservers()`.
     var undoRedoObservers: [NSObjectProtocol] = []
+    /// Backing storage for `selectionSet` (`EditorTextSystem+Selection.swift`)
+    /// — see that property's doc comment for why a plain computed
+    /// reconstruction from `textView.selectedRanges` cannot, on its own,
+    /// preserve a non-zero `primaryIndex` across a read-after-write.
+    var storedSelectionSet: EditorSelectionSet?
 
     /// Snapshot of the inputs that produced the current overscroll inset so we
     /// can skip redundant updates.
@@ -110,6 +115,11 @@ public final class EditorTextSystem {
         // `lineIndex.rebuild` scan of `initialText`; starting from an empty
         // index here avoids scanning the same text twice on every open.
         lineIndex = EditorLineIndex(text: "" as NSString)
+        // `self` is fully initialized as of this point (every stored
+        // property without a default has now been assigned), so it is safe
+        // to hand a reference to the text view here — see
+        // `EditorTextView.owningSystem`'s doc comment for why it needs one.
+        (stack.textView as? EditorTextView)?.owningSystem = self
         apply(configuration)
         setText(initialText)
         registerUndoRedoObservers()

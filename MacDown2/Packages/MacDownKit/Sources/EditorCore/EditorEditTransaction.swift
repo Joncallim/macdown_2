@@ -110,6 +110,32 @@ public struct EditorEditTransaction: Sendable {
             && current.range.location == previous.range.location
         return current.range.location >= previousEnd && !isDuplicateZeroLength
     }
+
+    /// For each replacement (ascending by pre-edit location), the
+    /// zero-length caret range immediately after its own replacement text,
+    /// adjusted for the cumulative length delta of every earlier
+    /// (lower-offset) replacement — `apply(_:)` applies highest-offset-to-
+    /// lowest, so a lower-offset replacement's own resulting position is
+    /// never shifted by a higher one, but a HIGHER-offset caret's final
+    /// position must account for every LOWER-offset replacement's own
+    /// length change already having landed first. Two carets that converge
+    /// on the same offset (e.g. two adjacent single-character deletes)
+    /// collapse to one caret when passed through `EditorSelectionSet`'s own
+    /// duplicate-caret merge rule — never a crash or a silently-dropped
+    /// cursor. Used by any multi-range command (§7.2's multi-cursor typing
+    /// and delete, Slice 3a) that wants "one caret per replacement,
+    /// positioned where a human would expect after that edit" rather than
+    /// hand-computing the offset arithmetic at each call site.
+    static func resultingCaretRanges(for replacements: [TextReplacement]) -> [NSRange] {
+        let sorted = replacements.sorted { $0.range.location < $1.range.location }
+        var delta = 0
+        return sorted.map { replacement in
+            let shiftedLocation = replacement.range.location + delta
+            let insertedLength = (replacement.replacementText as NSString).length
+            delta += insertedLength - replacement.range.length
+            return NSRange(location: shiftedLocation + insertedLength, length: 0)
+        }
+    }
 }
 
 public extension EditorTextSystem {
@@ -180,7 +206,13 @@ public extension EditorTextSystem {
         }
 
         if let resultingSelection = transaction.resultingSelection {
-            textView.selectedRanges = resultingSelection.asNSValueArray
+            // Routed through `selectionSet`'s setter, not
+            // `textView.selectedRanges` directly, so the cached
+            // `storedSelectionSet` (§6.9's selection-source-of-truth
+            // design) stays correct — including a non-zero `primaryIndex`
+            // — for whatever reads `selectionSet` next, not just AppKit's
+            // own range array.
+            selectionSet = resultingSelection
         }
         if let undoActionName = transaction.undoActionName, undoManager.canUndo {
             undoManager.setActionName(undoActionName)
