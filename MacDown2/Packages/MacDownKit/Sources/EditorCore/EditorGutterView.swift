@@ -41,7 +41,7 @@ public final class EditorGutterView: NSRulerView {
         guard let system else { return }
         let digitCount = String(max(1, system.lineIndex.lineCount)).count
         let font = system.textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let digitWidth = ("0" as NSString).size(withAttributes: [.font: font]).width
+        let digitWidth = Self.widestDigitWidth(in: font)
         let needed = digitWidth * CGFloat(digitCount) + Self.horizontalPadding * 2
         let newThickness = max(Self.minimumThickness, needed.rounded(.up))
         guard newThickness != ruleThickness else {
@@ -50,6 +50,19 @@ public final class EditorGutterView: NSRulerView {
         }
         ruleThickness = newThickness
         needsDisplay = true
+    }
+
+    /// The widest "0"..."9" glyph in `font`. The editor's font picker offers
+    /// every installed font family via `NSFontManager.availableFontFamilies`
+    /// (`DocumentEditorSplitView+AppSettings.swift`), not just monospace
+    /// ones, so a proportional or display font could render some other
+    /// digit wider than "0" — measuring only "0" risks clipping labels'
+    /// left edge once the line count needs that wider digit.
+    private static func widestDigitWidth(in font: NSFont) -> CGFloat {
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        return "0123456789".reduce(CGFloat(0)) { widest, digit in
+            max(widest, (String(digit) as NSString).size(withAttributes: attributes).width)
+        }
     }
 
     override public func drawHashMarksAndLabels(in _: NSRect) {

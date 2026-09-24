@@ -107,6 +107,38 @@ struct EditorGutterViewTests {
         #expect(mounted.gutter.ruleThickness >= 32)
     }
 
+    /// The Editor settings pane's font picker offers every installed font
+    /// family via `NSFontManager.availableFontFamilies`
+    /// (`DocumentEditorSplitView+AppSettings.swift`), not just monospace
+    /// ones, so `updateThickness()` must size the gutter from the widest
+    /// digit glyph, not assume "0" is widest. "Bradley Hand" is a standard
+    /// macOS system font whose "7" is measurably wider than its "0",
+    /// confirmed independently below so this test fails loudly (rather than
+    /// passing vacuously) if that ever stops being true on some future OS.
+    @Test func ruleThicknessAccountsForTheWidestDigitNotJustZero() throws {
+        let font = try #require(
+            NSFont(name: "Bradley Hand", size: 24),
+            "Bradley Hand is expected to be installed on every macOS runner"
+        )
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        let zeroWidth = ("0" as NSString).size(withAttributes: attributes).width
+        let sevenWidth = ("7" as NSString).size(withAttributes: attributes).width
+        #expect(sevenWidth > zeroWidth, "test fixture assumption broke: Bradley Hand's 7 is no longer wider than 0")
+
+        let mounted = makeMountedGutter(text: (1 ... 500).map { "line \($0)" }.joined(separator: "\n"))
+        defer { mounted.window.orderOut(nil) }
+        mounted.system.textView.font = font
+        mounted.gutter.updateThickness()
+
+        // "500" is 3 digits; horizontalPadding is 6pt each side (see
+        // `EditorGutterView.horizontalPadding`).
+        let thicknessIfOnlyZeroWereMeasured = (zeroWidth * 3 + 12).rounded(.up)
+        #expect(
+            mounted.gutter.ruleThickness > thicknessIfOnlyZeroWereMeasured,
+            "gutter sized itself as though 0 were the widest digit, clipping a wider one"
+        )
+    }
+
     /// epic-22-implementation.md §11's "Gutter draw" row requires extending
     /// `EditorPerformanceTests.open10MBLazy`'s viewport-fragment-count
     /// assertion to the gutter's own draw path specifically -- a large
