@@ -106,7 +106,10 @@ public final class EditorTextSystem {
     public init(identity: String, initialText: String, configuration: EditorConfiguration) {
         self.identity = identity
         stack = TextKitStack()
-        lineIndex = EditorLineIndex(text: initialText as NSString)
+        // `setText` below performs the single authoritative
+        // `lineIndex.rebuild` scan of `initialText`; starting from an empty
+        // index here avoids scanning the same text twice on every open.
+        lineIndex = EditorLineIndex(text: "" as NSString)
         apply(configuration)
         setText(initialText)
         registerUndoRedoObservers()

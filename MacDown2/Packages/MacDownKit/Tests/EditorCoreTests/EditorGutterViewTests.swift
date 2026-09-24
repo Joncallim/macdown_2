@@ -106,4 +106,48 @@ struct EditorGutterViewTests {
 
         #expect(mounted.gutter.ruleThickness >= 32)
     }
+
+    /// epic-22-implementation.md §11's "Gutter draw" row requires extending
+    /// `EditorPerformanceTests.open10MBLazy`'s viewport-fragment-count
+    /// assertion to the gutter's own draw path specifically -- a large
+    /// document exercising ONLY `drawingDoesNotCrashAgainstARealMountedTextView`'s
+    /// 50-line fixture proves nothing about whether the gutter's own
+    /// enumeration stays viewport-bounded, since a future change that made
+    /// gutter drawing walk the whole document would still pass a 50-line
+    /// smoke test.
+    @Test func drawingA10MBDocumentNeverMaterializesTheWholeDocument() throws {
+        let text = Fixtures.markdown(targetByteCount: 10_000_000)
+        let mounted = makeMountedGutter(text: text)
+        defer { mounted.window.orderOut(nil) }
+        mounted.system.textView.frame = NSRect(x: 0, y: 0, width: 400, height: 300)
+
+        var fragmentCount = 0
+        mounted.system.enumerateVisibleLineFragments { _, _ in fragmentCount += 1 }
+        #expect(fragmentCount < 500, "gutter enumerated \(fragmentCount) fragments for a 10 MB document")
+
+        // Exercise the real draw path end-to-end against the same large
+        // document -- not just the enumeration helper above -- so a future
+        // regression inside `drawHashMarksAndLabels` itself (not just
+        // `enumerateVisibleLineFragments`) would also be caught.
+        let bounds = mounted.gutter.bounds
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: max(1, Int(bounds.width)),
+            pixelsHigh: max(1, Int(bounds.height)),
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        defer { NSGraphicsContext.restoreGraphicsState() }
+
+        mounted.gutter.drawHashMarksAndLabels(in: bounds)
+    }
 }
