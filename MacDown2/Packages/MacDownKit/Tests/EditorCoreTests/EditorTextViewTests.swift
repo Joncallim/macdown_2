@@ -20,8 +20,12 @@ struct EditorTextViewTests {
         let window: NSWindow
     }
 
-    private func mount(text: String, frame: NSRect = NSRect(x: 0, y: 0, width: 200, height: 80)) throws -> Mounted {
-        let system = EditorTextSystem(identity: UUID().uuidString, initialText: text, configuration: .default)
+    private func mount(
+        text: String,
+        frame: NSRect = NSRect(x: 0, y: 0, width: 200, height: 80),
+        configuration: EditorConfiguration = .default
+    ) throws -> Mounted {
+        let system = EditorTextSystem(identity: UUID().uuidString, initialText: text, configuration: configuration)
         let textView = try #require(system.textView as? EditorTextView)
         let scrollView = NSScrollView(frame: frame)
         scrollView.documentView = textView
@@ -36,8 +40,14 @@ struct EditorTextViewTests {
         return Mounted(system: system, textView: textView, window: window)
     }
 
-    private func render(_ textView: EditorTextView) throws -> NSBitmapImageRep {
+    /// Renders `dirtyRect` (default: the view's full bounds, an origin-(0,0)
+    /// full-window paint) exactly as `draw(_:)` would receive it from a real
+    /// AppKit display cycle. Passing a smaller, non-(0,0)-origin `dirtyRect`
+    /// simulates an ordinary scrolled/partial redraw — the exact scenario a
+    /// hostile review of PR #127 found `drawInvisibles` silently failing on.
+    private func render(_ textView: EditorTextView, dirtyRect: NSRect? = nil) throws -> NSBitmapImageRep {
         let bounds = textView.bounds
+        let rectToDraw = dirtyRect ?? bounds
         // `NSImage(size:flipped:drawingHandler:)`, not a hand-built
         // `NSGraphicsContext(bitmapImageRep:)` plus a direct `draw(_:)` call,
         // and not `cacheDisplay(in:to:)`: `NSTextView.isFlipped` is `true`,
@@ -51,8 +61,8 @@ struct EditorTextViewTests {
         // nothing there). `NSImage`'s `flipped` parameter sets up the
         // correct coordinate transform for the drawing block without
         // routing through layer compositing.
-        let image = NSImage(size: bounds.size, flipped: true) { rect in
-            textView.draw(rect)
+        let image = NSImage(size: bounds.size, flipped: true) { _ in
+            textView.draw(rectToDraw)
             return true
         }
         var proposedRect = NSRect(origin: .zero, size: bounds.size)
@@ -123,6 +133,81 @@ struct EditorTextViewTests {
 
     @Test func aLineOfTabsDrawsOneMarkerColoredRegionPerTab() throws {
         let mounted = try mount(text: "\t\t\t")
+        defer { mounted.window.orderOut(nil) }
+        mounted.textView.showsInvisibles = true
+        mounted.textView.invisiblesColor = markerColor
+
+        let bitmap = try render(mounted.textView)
+        #expect(countRedDominantPixels(in: bitmap) > 0)
+    }
+
+    @Test func drawsMarkersCorrectlyForAScrolledPartialRedrawWithANonzeroTextContainerInset() throws {
+        // Regression test for the hostile-review finding: `drawInvisibles`
+        // drew correctly for a from-scratch (0,0)-origin full-window paint
+        // (every other test in this suite), but silently drew nothing for
+        // an ordinary, genuinely scrolled dirty rect once
+        // `textContainerInset` was nonzero -- exactly the dirty rect shape
+        // AppKit issues on real scrolling and per-line edit invalidation. A
+        // small, explicit inset (not `scrollsPastEnd`'s inset, which also
+        // requires `syncFrameHeightToContent` to grow the view's frame to
+        // stay internally consistent -- machinery this focused test
+        // deliberately does not exercise) isolates the coordinate-space bug
+        // itself without that confound.
+        var configuration = EditorConfiguration.default
+        configuration.textInsets = NSSize(width: 4, height: 30)
+        configuration.scrollsPastEnd = false
+        let lines = (1 ... 20).map { "line \($0) " } // trailing space on every line
+        let mounted = try mount(
+            text: lines.joined(separator: "\n"),
+            frame: NSRect(x: 0, y: 0, width: 300, height: 400),
+            configuration: configuration
+        )
+        defer { mounted.window.orderOut(nil) }
+        mounted.textView.showsInvisibles = true
+        mounted.textView.invisiblesColor = markerColor
+
+        let inset = mounted.textView.textContainerInset
+        #expect(inset.height == 30, "test fixture assumption broke: expected the configured inset to be applied")
+
+        // A dirty rect comfortably within the 400pt-tall view but NOT
+        // starting at (0, 0) -- the one scenario every other test in this
+        // suite exercises -- covering real content a few lines down.
+        let scrolledDirtyRect = NSRect(x: 0, y: 60, width: 300, height: 60)
+        let bitmap = try render(mounted.textView, dirtyRect: scrolledDirtyRect)
+
+        #expect(
+            countRedDominantPixels(in: bitmap) > 0,
+            "expected markers to draw for a genuinely scrolled dirty rect, not just a from-scratch (0,0) full paint"
+        )
+    }
+
+    @Test func drawsAMarkerOnAWrappedContinuationLine() throws {
+        // §6.8's own test commitment: "adversarial fixtures from §15
+        // (wrapped lines...)". `locationForCharacter(at:)`/`characterRange`
+        // are paragraph-relative, so a wrapped line's second+ fragment has
+        // `characterRange.location != 0` -- the one case none of this
+        // suite's other (single-fragment-per-paragraph) fixtures exercise.
+        var configuration = EditorConfiguration.default
+        configuration.wrapsLines = true
+        let longLine = String(repeating: "a", count: 40) + " " + String(repeating: "b", count: 40)
+        let mounted = try mount(
+            text: longLine,
+            frame: NSRect(x: 0, y: 0, width: 120, height: 200),
+            configuration: configuration
+        )
+        defer { mounted.window.orderOut(nil) }
+        mounted.textView.showsInvisibles = true
+        mounted.textView.invisiblesColor = markerColor
+
+        let bitmap = try render(mounted.textView)
+        #expect(countRedDominantPixels(in: bitmap) > 0, "expected the space marker to draw even when its line wraps")
+    }
+
+    @Test func drawsAMarkerForACRLFLineEndingThroughTheRealDrawPath() throws {
+        // The pure `EditorInvisiblesLayoutTests` cover CRLF/CR/LF as string
+        // logic only; this exercises the same fixture through the real
+        // AppKit `draw(_:)` path §6.8 commits to testing end-to-end.
+        let mounted = try mount(text: "a\r\nb")
         defer { mounted.window.orderOut(nil) }
         mounted.textView.showsInvisibles = true
         mounted.textView.invisiblesColor = markerColor
