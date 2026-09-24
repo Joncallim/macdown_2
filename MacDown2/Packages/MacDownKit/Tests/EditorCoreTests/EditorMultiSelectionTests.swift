@@ -34,11 +34,12 @@ import Testing
 /// `applyMultiCursorDeleteSelection()`, called directly from the view-level
 /// override, are the real mechanism (see `EditorTextSystem+MultiCursor.swift`).
 ///
-/// Paste is not separately tested here: `NSTextView.paste(_:)` terminates
-/// in the identical `insertText(_:replacementRange:)` chokepoint typing
-/// does, so it is covered by the same override -- exercising it for real
-/// would mean mutating the developer's actual system pasteboard from a unit
-/// test, which no other suite in this package does.
+/// Paste is confirmed to terminate in the identical
+/// `insertText(_:replacementRange:)` chokepoint typing does
+/// (`pastingReplacesEveryActiveSelectionThroughTheRealPasteboard`), exercised
+/// against the real system pasteboard with its prior contents saved and
+/// restored around the call, so this test has no lasting effect on the
+/// developer's actual clipboard.
 @MainActor
 @Suite("EditorTextSystem multi-selection (Slice 3a)")
 struct EditorMultiSelectionTests {
@@ -153,6 +154,12 @@ struct EditorMultiSelectionTests {
         system.textView.selectedRanges = [0, 4, 8].map { NSValue(range: NSRange(location: $0, length: 3)) }
         system.textView.insertText("dog", replacementRange: NSRange(location: NSNotFound, length: 0))
 
+        // Asserted before the undo/publication checks below: without this,
+        // the test cannot distinguish "all three selections were replaced"
+        // from "only the primary selection was replaced, which also
+        // produces exactly one notification" -- a real gap an independent
+        // review caught in this test's first version.
+        #expect(system.text == "dog dog dog")
         #expect(
             counter.count == 1,
             "expected exactly one binding publication for a 3-selection keystroke, got \(counter.count)"
@@ -208,6 +215,47 @@ struct EditorMultiSelectionTests {
         system.textView.deleteForward(nil)
 
         #expect(system.text == "  ")
+    }
+
+    @Test func pastingReplacesEveryActiveSelectionThroughTheRealPasteboard() {
+        // This test's first version assumed `NSTextView.paste(_:)` shares
+        // the plain `insertText` chokepoint typing does, and failed against
+        // real AppKit: `paste(_:)` actually performs the edit as TWO
+        // separate `insertText` calls (delete the selection(s), then insert
+        // the pasted text), and the first call's own multi-range delete
+        // collapses the selection to one caret before the second call ever
+        // runs -- silently losing the paste at every selection but one. This
+        // is what led to `EditorTextView.paste(_:)`'s own dedicated
+        // override (reads the pasteboard and routes it through
+        // `applyMultiCursorInsert(_:)` in one step, ahead of AppKit's
+        // two-step sequence). Exercised against the REAL system pasteboard,
+        // with its prior contents saved and restored around the call so
+        // this test has no lasting side effect.
+        let pasteboard = NSPasteboard.general
+        let savedItems = pasteboard.pasteboardItems?.compactMap { item -> (String, Data)? in
+            guard let type = item.types.first, let data = item.data(forType: type) else { return nil }
+            return (type.rawValue, data)
+        } ?? []
+        defer {
+            pasteboard.clearContents()
+            for (type, data) in savedItems {
+                let item = NSPasteboardItem()
+                item.setData(data, forType: NSPasteboard.PasteboardType(type))
+                pasteboard.writeObjects([item])
+            }
+        }
+
+        let system = support.makeSystem(text: "cat cat cat")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        system.textView.delegate = support.makeCoordinator(system: system)
+
+        pasteboard.clearContents()
+        pasteboard.setString("dog", forType: .string)
+        system.textView.selectedRanges = [0, 4, 8].map { NSValue(range: NSRange(location: $0, length: 3)) }
+        system.textView.paste(nil)
+
+        #expect(system.text == "dog dog dog")
     }
 
     @Test func singleSelectionTypingIsUnaffectedByTheMultiSelectionOverride() {

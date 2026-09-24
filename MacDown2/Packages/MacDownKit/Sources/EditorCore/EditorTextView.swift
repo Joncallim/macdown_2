@@ -85,6 +85,29 @@ public final class EditorTextView: NSTextView {
         super.deleteForward(sender)
     }
 
+    /// Multi-selection paste (§6.9, §7.2) needs its own override, separate
+    /// from `insertText`: found empirically (a real, pasteboard-backed test)
+    /// that `NSTextView.paste(_:)` performs the operation as two SEPARATE
+    /// `insertText` calls — an empty-string "delete the current selection(s)"
+    /// call, then a text "insert" call — rather than one. Once the first
+    /// call's multi-range delete correctly empties every selection, AppKit's
+    /// own selection collapses to a single caret (the same collapse this
+    /// file's `insertText`/`deleteBackward` docs already describe for
+    /// multiple simultaneous zero-length ranges), so the second call would
+    /// only ever insert the pasted text at ONE location — silently losing
+    /// the other selections' paste. Reading the pasteboard directly and
+    /// routing it through `applyMultiCursorInsert(_:)` in one step, before
+    /// AppKit's own two-step sequence begins, avoids that entirely. Plain
+    /// string only, matching this editor's plain-text-only design
+    /// (`EditorTextSystem.apply(_:)` already sets `isRichText = false`).
+    override public func paste(_ sender: Any?) {
+        if let owningSystem, let text = NSPasteboard.general.string(forType: .string),
+           owningSystem.applyMultiCursorInsert(text) {
+            return
+        }
+        super.paste(sender)
+    }
+
     /// Viewport-bounded: starts at the fragment intersecting `dirtyRect`'s
     /// origin and stops as soon as a fragment's frame is entirely below
     /// `dirtyRect`, mirroring `EditorTextSystem+Gutter.swift`'s

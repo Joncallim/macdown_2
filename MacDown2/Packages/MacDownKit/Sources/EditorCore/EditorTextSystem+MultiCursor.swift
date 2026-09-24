@@ -36,31 +36,38 @@ extension EditorTextSystem {
     /// assist/programmatic text update (this call is itself part of one, so
     /// re-entering would double-apply).
     func applyMultiCursorInsert(_ text: String) -> Bool {
-        let ranges = selectionSet.ranges
-        guard ranges.count > 1 else { return false }
+        let selection = selectionSet
+        guard selection.ranges.count > 1 else { return false }
         guard !textView.hasMarkedText() else { return false }
         guard !isPerformingEditingAssist, !isPerformingProgrammaticTextUpdate else { return false }
 
-        let replacements = ranges.map { TextReplacement(range: $0, replacementText: text) }
-        applyMultiCursorTransaction(replacements)
+        let replacements = selection.ranges.map { TextReplacement(range: $0, replacementText: text) }
+        applyMultiCursorTransaction(replacements, primaryIndex: selection.primaryIndex)
         return true
     }
 
     /// The delete counterpart of `applyMultiCursorInsert(_:)`, called by
     /// both `EditorTextView.deleteBackward(_:)` and `deleteForward(_:)`.
     /// Per that method's doc comment, every range in a `count > 1`
-    /// `selectionSet` is guaranteed non-empty, so deleting each selection's
-    /// own content is direction-independent — exactly like pressing either
-    /// delete key with one ordinary selection active, which is why there is
-    /// no separate forward/backward variant here.
+    /// `selectionSet` is EXPECTED to be non-empty, so deleting each
+    /// selection's own content is direction-independent — exactly like
+    /// pressing either delete key with one ordinary selection active, which
+    /// is why there is no separate forward/backward variant here. That
+    /// expectation is a live AppKit behavior this codebase does not control,
+    /// not a guarantee this type can enforce on its own, so it is checked
+    /// (`allSatisfy`) rather than trusted blindly: falling through to
+    /// AppKit's native single-range handling if it is ever violated is
+    /// strictly safer than silently no-op'ing a zero-length range's delete
+    /// keystroke (a swallowed caret) the way an unchecked pass-through
+    /// would.
     func applyMultiCursorDeleteSelection() -> Bool {
-        let ranges = selectionSet.ranges
-        guard ranges.count > 1 else { return false }
+        let selection = selectionSet
+        guard selection.ranges.count > 1, selection.ranges.allSatisfy({ $0.length > 0 }) else { return false }
         guard !textView.hasMarkedText() else { return false }
         guard !isPerformingEditingAssist, !isPerformingProgrammaticTextUpdate else { return false }
 
-        let replacements = ranges.map { TextReplacement(range: $0, replacementText: "") }
-        applyMultiCursorTransaction(replacements)
+        let replacements = selection.ranges.map { TextReplacement(range: $0, replacementText: "") }
+        applyMultiCursorTransaction(replacements, primaryIndex: selection.primaryIndex)
         return true
     }
 
@@ -74,12 +81,20 @@ extension EditorTextSystem {
     /// non-overlapping) by `EditorSelectionSet` itself, so this should
     /// never actually reject; it is defense in depth, not a case this
     /// slice's tests need to force.
-    private func applyMultiCursorTransaction(_ replacements: [TextReplacement]) {
+    ///
+    /// `primaryIndex` is the ORIGINAL (pre-edit) selection's primary index,
+    /// not hardcoded to `0`: `replacements` is built directly from
+    /// `selectionSet.ranges` (already ascending by location), and
+    /// `resultingCaretRanges` sorts by that same ascending location — a
+    /// no-op reordering on already-sorted input — so output index *i*
+    /// corresponds to input index *i* and the original `primaryIndex`
+    /// carries over correctly to the resulting selection.
+    private func applyMultiCursorTransaction(_ replacements: [TextReplacement], primaryIndex: Int) {
         let documentLength = textView.textStorage?.length ?? 0
         guard EditorEditTransaction.validate(replacements, documentLength: documentLength) else { return }
         let resultingSelection = EditorSelectionSet(
             ranges: EditorEditTransaction.resultingCaretRanges(for: replacements),
-            primaryIndex: 0
+            primaryIndex: primaryIndex
         )
         apply(EditorEditTransaction(replacements: replacements, resultingSelection: resultingSelection))
     }
