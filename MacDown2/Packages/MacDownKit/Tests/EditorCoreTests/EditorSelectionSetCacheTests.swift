@@ -153,19 +153,36 @@ struct EditorSelectionSetCacheTests {
     }
 
     @Test func documentReplacementClearsAStaleMultiSelectionCache() {
+        // `setText`'s own caret always ends up wherever AppKit puts it after
+        // a plain `.string =` reassignment (empirically: the new document's
+        // end), which never coincides with a stale cached primary on its
+        // own -- meaning a naive version of this test would pass even
+        // without `setText`'s explicit `storedSelectionSet = nil` reset,
+        // since the getter's pre-existing reactive fallback already
+        // invalidates a cache whose primary no longer matches live AppKit
+        // state (found by a second, focused re-review of this fix). Using
+        // `replaceTextFromExternal` instead makes the coincidence
+        // deterministic: its `snapshot.selectedRange` explicitly controls
+        // where the post-replacement caret lands, so it can be set to the
+        // EXACT same offset as the stale cached primary -- the one
+        // combination that actually exercises the explicit reset rather
+        // than merely happening to be covered by the reactive fallback too.
         let system = support.makeSystem(text: "one two three four")
         let window = support.mountInWindow(system)
         defer { window.orderOut(nil) }
 
+        let stalePrimary = NSRange(location: 0, length: 0)
         system.selectionSet = EditorSelectionSet(
-            ranges: [NSRange(location: 0, length: 0), NSRange(location: 8, length: 3)],
+            ranges: [stalePrimary, NSRange(location: 8, length: 3)],
             primaryIndex: 0
         )
         #expect(system.selectionSet.isMultiple)
 
-        // A brand-new document whose own (collapsed-to-start) caret
-        // coincidentally lands at the exact same offset as the old primary.
-        system.setText("brand new document")
+        system.replaceTextFromExternal(
+            "brand new document",
+            preserving: EditorViewportSnapshot(selectedRange: stalePrimary, scrollOffset: 0),
+            clearUndo: false
+        )
 
         #expect(
             !system.selectionSet.isMultiple,
