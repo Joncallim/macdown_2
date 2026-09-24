@@ -183,6 +183,7 @@ public final class EditorTextSystem {
 
             textView.font = configuration.font
             textView.textContainerInset = configuration.textInsets
+            (textView as? EditorTextView)?.showsInvisibles = configuration.showsInvisibles
 
             // Plain-text editing: Markdown source must not be silently mutated by
             // smart substitutions or rich-text parsing. These are applied here so

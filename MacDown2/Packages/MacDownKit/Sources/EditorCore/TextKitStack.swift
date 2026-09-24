@@ -37,7 +37,11 @@ struct TextKitStack {
         layoutManager.textContainer = textContainer
         layoutManager.replace(contentStorage)
 
-        textView = NSTextView(frame: .zero, textContainer: textContainer)
+        // `EditorTextView`, not a plain `NSTextView`: it draws invisible
+        // characters (§6.8, Slice 2c) when `EditorConfiguration.showsInvisibles`
+        // is on. `textView`'s declared type stays `NSTextView` (below) so
+        // nothing outside `EditorCore` needs to know the concrete type.
+        textView = EditorTextView(frame: .zero, textContainer: textContainer)
         textView.allowsUndo = true
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
