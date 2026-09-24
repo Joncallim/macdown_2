@@ -12,6 +12,13 @@ import AppKit
 /// accessor) — only `textLayoutManager`, the TextKit 2 API.
 @MainActor
 public final class EditorTextView: NSTextView {
+    /// Set once by `EditorTextSystem.init`, after `self` is fully
+    /// initialized, so this view can route multi-selection typing/delete
+    /// through `EditorTextSystem`'s `EditorEditTransaction` chokepoint
+    /// (§6.9, §7.2, Slice 3a). Weak: the text system owns this view (via
+    /// `TextKitStack`), never the reverse.
+    weak var owningSystem: EditorTextSystem?
+
     /// Public: `EditorTextSystem.apply(_:)` sets this from
     /// `EditorConfiguration.showsInvisibles`.
     public var showsInvisibles = false {
@@ -34,6 +41,48 @@ public final class EditorTextView: NSTextView {
         super.draw(dirtyRect)
         guard showsInvisibles, let textLayoutManager else { return }
         drawInvisibles(in: dirtyRect, layoutManager: textLayoutManager)
+    }
+
+    /// Multi-selection typing (§6.9, §7.2): when more than one selection is
+    /// active, `owningSystem.applyMultiCursorInsert(_:)` replaces every one
+    /// of them with the typed text and returns `true`; `super` is not
+    /// called in that case, since calling it too would insert the text a
+    /// second time at whichever range AppKit itself considers primary.
+    /// `replacementRange.location != NSNotFound` means this call already
+    /// targets one specific, explicit range — including each of the N
+    /// individual sub-edits `EditorEditTransaction.apply(_:)` itself makes
+    /// through this same override while fanning out — so those always fall
+    /// through to `super` unchanged, exactly as before this override
+    /// existed. This never fires for bare multi-caret typing (no selected
+    /// text, more than one insertion point): that state cannot exist in
+    /// `selectedRanges` in the first place — see §6.9's architecture-
+    /// correction note.
+    override public func insertText(_ string: Any, replacementRange: NSRange) {
+        if replacementRange.location == NSNotFound,
+           let owningSystem, let text = string as? String,
+           owningSystem.applyMultiCursorInsert(text) {
+            return
+        }
+        super.insertText(string, replacementRange: replacementRange)
+    }
+
+    /// Multi-selection delete (§6.9, §7.2): `deleteBackward`/`deleteForward`
+    /// share one selection-deleting implementation, since every range in a
+    /// real multi-selection is non-empty (see
+    /// `applyMultiCursorDeleteSelection()`'s doc comment) and deleting a
+    /// selection's own content is direction-independent.
+    override public func deleteBackward(_ sender: Any?) {
+        if let owningSystem, owningSystem.applyMultiCursorDeleteSelection() {
+            return
+        }
+        super.deleteBackward(sender)
+    }
+
+    override public func deleteForward(_ sender: Any?) {
+        if let owningSystem, owningSystem.applyMultiCursorDeleteSelection() {
+            return
+        }
+        super.deleteForward(sender)
     }
 
     /// Viewport-bounded: starts at the fragment intersecting `dirtyRect`'s
