@@ -80,6 +80,10 @@ final class WindowCoordinator {
     /// `WindowCoordinator+CommandPalette.swift` and `CommandPalettePanel`'s
     /// doc comment for why this coordinator must hold it strongly.
     @ObservationIgnored var commandPalette: CommandPalettePanel?
+    /// The one currently open Go to Line panel, if any — see
+    /// `WindowCoordinator+GoToLine.swift` and `GoToLinePanel`'s doc comment
+    /// for why this coordinator must hold it strongly.
+    @ObservationIgnored var goToLinePanel: GoToLinePanel?
     /// The one currently open first-run welcome window, if any — see
     /// `WindowCoordinator+FirstRun.swift`. Held strongly for the same reason
     /// as `commandPalette`: nothing else references it while it is open.
@@ -307,6 +311,13 @@ final class WindowCoordinator {
         // clears `commandPalette` itself.
         if commandPalette?.originController === controller {
             commandPalette?.close()
+        }
+        // Same reasoning as the command palette above: a Go to Line panel
+        // left open against a controller that just closed would be a stuck,
+        // non-functional orphan pointing at an already-evicted editor store
+        // (found by hostile review of PR #126).
+        if goToLinePanel?.originController === controller {
+            goToLinePanel?.close()
         }
         scheduleSaveSession()
         updateKeyModel()

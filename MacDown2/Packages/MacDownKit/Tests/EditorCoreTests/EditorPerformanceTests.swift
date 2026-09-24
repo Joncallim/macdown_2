@@ -139,10 +139,19 @@ struct EditorPerformanceTests {
         // single scheduler hiccup on a shared/contended CI runner inflating
         // the whole result, even though the code's steady-state cost is well
         // under budget (observed locally at ~5-6 ms/op). Taking the minimum
-        // across several independent trials is standard microbenchmark
-        // practice for filtering transient noise without loosening the
-        // actual budget: a genuine regression would still fail every trial,
-        // including the minimum.
+        // across several independent trials filters that kind of transient,
+        // externally-caused noise without loosening the actual budget: a
+        // regression that raises the steady-state floor (e.g. a constant
+        // added cost per call) still fails every trial, including the
+        // minimum. This is deliberately best-case/floor evidence only, per
+        // epic-22-implementation.md §11's "package unit benchmark" evidence
+        // layer -- it does NOT prove typical latency, p95, cold-start
+        // behavior, or complete edit-path responsiveness, and it cannot
+        // distinguish a genuinely intermittent/probabilistic regression
+        // (one that only fires on some calls) from ordinary noise, since
+        // such a regression could still leave one of five trials clean.
+        // Slice 10's Release-calibration pass owns the fuller
+        // distribution-based measurement this budget ultimately needs.
         let iterationsPerTrial = 200
         var bestPerOperationMilliseconds = Double.infinity
         for _ in 0 ..< 5 {

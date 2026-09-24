@@ -31,17 +31,26 @@ struct DocumentEditorSplitView: View {
     let outlineController: OutlineController
 
     @Environment(\.windowCoordinator) var coordinator
-    @Environment(\.appSettings) private var appSettings
+    /// Not `private`: read by DocumentEditorSplitView+EditorPane.swift.
+    @Environment(\.appSettings) var appSettings
 
-    // Not `private`: read by DocumentEditorSplitView+Divider.swift, split
-    // out to stay under the type-body-length lint budget (matches
-    // DocumentEditorSplitView+AppSettings.swift's same reason).
+    /// Not `private`: read by DocumentEditorSplitView+Divider.swift, split
+    /// out to stay under the type-body-length lint budget (matches
+    /// DocumentEditorSplitView+AppSettings.swift's same reason).
     @State var dragOriginFraction: Double?
+    /// Drives `EditorStatusBarView`'s line/column and selection-count
+    /// display. Updated by `EditorView`'s `onSelectionChange` callback — a
+    /// dedicated `@State` because a caret move alone (no text edit) does not
+    /// change `$text`, so nothing else in this view's body would otherwise
+    /// trigger a re-render for it. Not `private`: read by
+    /// DocumentEditorSplitView+EditorPane.swift.
+    @State var statusBarSelection = NSRange(location: 0, length: 0)
     @State private var previewBlocks: [PreviewBlock]?
     @State private var previewLinkDefinitions: [String] = []
     @State private var previewContributionSession = PreviewContributionSession()
 
-    private var parseSession: MarkdownParseSession {
+    /// Not `private`: read by DocumentEditorSplitView+EditorPane.swift.
+    var parseSession: MarkdownParseSession {
         parseStore.session(for: identity)
     }
 
@@ -73,7 +82,8 @@ struct DocumentEditorSplitView: View {
         }
     }
 
-    private var editorConfiguration: EditorConfiguration {
+    /// Not `private`: read by DocumentEditorSplitView+EditorPane.swift.
+    var editorConfiguration: EditorConfiguration {
         var config = EditorConfiguration.default
         if let editorSettings = appSettings?.editor {
             config.font = Self.resolvedFont(from: editorSettings.font)
@@ -268,46 +278,6 @@ struct DocumentEditorSplitView: View {
         )
     }
 
-    /// Forwards the editor's visible top line into the scroll-sync
-    /// controller so the preview follows. `utf16Offset` comes from
-    /// `EditorView`'s scroll callback (see `EditorTextSystem.topVisibleUTF16Offset`).
-    ///
-    /// Skips the outline update while `scrollController.isJumping`: an
-    /// animated `revealSelection` (the outline's own jump) fires this
-    /// callback once per frame of its ~0.2s scroll animation, and those
-    /// mid-flight offsets don't yet reflect the jump's target — reading them
-    /// back into the outline overwrote the correct highlight (already set
-    /// synchronously by the jump's own selection change, below in
-    /// `pendingJumpLineRange`) with a stale one, leaving the *previous*
-    /// heading bolded after a jump landed correctly.
-    private func handleEditorScroll(utf16Offset: Int) {
-        guard let sourceMap = parseSession.document?.sourceMap else { return }
-        scrollController.editorDidScroll(toLine: sourceMap.line(atUTF16Offset: utf16Offset))
-        guard !scrollController.isJumping else { return }
-        outlineController.referenceOffsetDidChange(utf16Offset)
-    }
-
-    private var editorPane: some View {
-        EditorView(
-            text: $text,
-            identity: identity,
-            configuration: editorConfiguration,
-            store: editorStore,
-            onSelectionChange: { range in
-                outlineController.referenceOffsetDidChange(range.location)
-                outlineController.jsonReferenceOffsetDidChange(range.location)
-            },
-            onScrollChange: { offset in
-                handleEditorScroll(utf16Offset: offset)
-                outlineController.jsonReferenceOffsetDidChange(offset)
-            }
-        )
-        .accessibilityIdentifier("editorPane")
-        .task(id: identity) {
-            attachHighlighter()
-        }
-    }
-
     @ViewBuilder
     private var previewPane: some View {
         switch PreviewRouter.previewKind(for: document.format) {
@@ -360,16 +330,6 @@ struct DocumentEditorSplitView: View {
         guard let mode = tab.previewMode, !PreviewRouter.supports(mode, for: document.format) else { return }
         model.tabStore.setPreviewMode(nil, for: tab.id)
         coordinator?.scheduleSaveSession()
-    }
-
-    private func attachHighlighter() {
-        guard let textSystem = editorStore.existingSystem(for: identity) else { return }
-        _ = highlightStore.highlighter(
-            for: identity,
-            textSystem: textSystem,
-            languageID: document.format.highlightLanguageID,
-            theme: themeController.current
-        )
     }
 }
 
