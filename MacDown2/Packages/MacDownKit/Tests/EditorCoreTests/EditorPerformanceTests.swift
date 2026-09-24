@@ -112,6 +112,51 @@ struct EditorPerformanceTests {
         #expect(system.lineIndex.utf16Length == (system.text as NSString).length)
     }
 
+    @Test("gutter/status caret update stays within the 8 ms main-actor budget (synthetic keystroke loop)")
+    func gutterCaretUpdateStaysWithinBudget() {
+        // epic-22-implementation.md §11: "Gutter/status caret update | < 8 ms
+        // main-actor work | package unit benchmark (synthetic keystroke
+        // loop)" is a narrower, dedicated budget -- distinct from the 50 ms
+        // whole-keystroke ceiling `keystrokeLineIndexIncremental` enforces
+        // above, which measures the ENTIRE `NSTextView.insertText`
+        // pipeline (TextKit layout and painting included). This test
+        // isolates only the two pieces of work `textDidChange` actually
+        // performs synchronously on every keystroke for the gutter/caret:
+        // `EditorLineIndex.applying` and `EditorGutterView.updateThickness()`.
+        // A real, growing `NSMutableString` drives genuine edits (not fake
+        // edit descriptors against unchanged text), so the line index stays
+        // internally consistent across iterations; TextKit layout is never
+        // invoked here, since that cost is already covered by the tests
+        // above.
+        let workingText = NSMutableString(string: Fixtures.markdown(targetByteCount: 10_000_000))
+        var lineIndex = EditorLineIndex(text: workingText)
+
+        let system = EditorTextSystem(identity: UUID().uuidString, initialText: "", configuration: .default)
+        let scrollView = NSScrollView(frame: viewportBounds)
+        let gutter = EditorGutterView(scrollView: scrollView, system: system)
+
+        let iterations = 200
+        let duration = ContinuousClock().measure {
+            for iterationIndex in 0 ..< iterations {
+                let insertionPoint = iterationIndex * 37
+                let editedRange = NSRange(location: insertionPoint, length: 0)
+                workingText.replaceCharacters(in: editedRange, with: "x")
+                lineIndex.applying(editedRange: editedRange, replacementUTF16Length: 1, newText: workingText)
+                system.lineIndex = lineIndex
+                gutter.updateThickness()
+            }
+        }
+
+        let perOperationMilliseconds = milliseconds(duration) / Double(iterations)
+        #expect(
+            perOperationMilliseconds < 8,
+            """
+            gutter/status caret update averaged \(perOperationMilliseconds) ms/op \
+            (budget: < 8 ms main-actor work, epic-22-implementation.md §11)
+            """
+        )
+    }
+
     @Test("keystroke insert stays within budget")
     func keystroke() {
         let text = Fixtures.markdown(targetByteCount: 1_000_000)
