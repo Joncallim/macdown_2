@@ -74,6 +74,11 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
         textView.textColor = theme.chrome.foreground.nsColor
         textView.insertionPointColor = theme.chrome.caret.nsColor
         textView.selectedTextAttributes = [.backgroundColor: theme.chrome.selection.nsColor]
+        // A theme without an explicit `invisibles` color still gets a
+        // sensible, low-contrast default rather than an invisible-by-
+        // coincidence one (epic-22-implementation.md §6.8).
+        (textView as? EditorTextView)?.invisiblesColor = theme.chrome.invisibles?.nsColor
+            ?? theme.chrome.foreground.nsColor.withAlphaComponent(0.35)
     }
 
     private func buildHighlighter(languageID: String?) {
