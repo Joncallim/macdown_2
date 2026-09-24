@@ -27,6 +27,7 @@ struct AppSettingsDomainTests {
         #expect(settings.font == .systemMonospacedDefault)
         #expect(settings.wrapsLines == true)
         #expect(settings.showsInvisibles == false)
+        #expect(settings.showsStatusBar == true)
         #expect(settings.indentationWidth == 4)
         #expect(settings.assistsEnabled == true)
     }
@@ -46,6 +47,7 @@ struct AppSettingsDomainTests {
             font: FontDescriptor(familyName: "Menlo", size: 14),
             wrapsLines: false,
             showsInvisibles: true,
+            showsStatusBar: false,
             indentationWidth: 2,
             assistsEnabled: false,
             continuesMarkdownPrefixes: false,

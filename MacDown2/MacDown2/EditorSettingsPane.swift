@@ -43,6 +43,7 @@ private struct EditorSettingsForm: View {
             Section("Layout") {
                 Toggle("Wrap lines", isOn: $appSettings.editor.wrapsLines)
                 Toggle("Show invisible characters", isOn: $appSettings.editor.showsInvisibles)
+                Toggle("Show status bar", isOn: $appSettings.editor.showsStatusBar)
                 Stepper(
                     "Indent width: \(appSettings.editor.indentationWidth) spaces",
                     value: $appSettings.editor.indentationWidth,

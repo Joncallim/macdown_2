@@ -80,6 +80,10 @@ final class WindowCoordinator {
     /// `WindowCoordinator+CommandPalette.swift` and `CommandPalettePanel`'s
     /// doc comment for why this coordinator must hold it strongly.
     @ObservationIgnored var commandPalette: CommandPalettePanel?
+    /// The one currently open Go to Line panel, if any — see
+    /// `WindowCoordinator+GoToLine.swift` and `GoToLinePanel`'s doc comment
+    /// for why this coordinator must hold it strongly.
+    @ObservationIgnored var goToLinePanel: GoToLinePanel?
     /// The one currently open first-run welcome window, if any — see
     /// `WindowCoordinator+FirstRun.swift`. Held strongly for the same reason
     /// as `commandPalette`: nothing else references it while it is open.

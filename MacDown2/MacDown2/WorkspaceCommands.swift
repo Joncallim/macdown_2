@@ -211,6 +211,12 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("j", modifiers: [.command, .shift])
             .disabled(coordinator?.keyModel?.activeDocument?.fileURL == nil)
+
+            Button("Go to Line/Column…") {
+                coordinator?.toggleGoToLine()
+            }
+            .keyboardShortcut("g", modifiers: [.control])
+            .disabled(coordinator?.keyModel?.hasActiveDocument != true)
         }
 
         // E10: the editor is plain text (`isRichText = false`), so the rich

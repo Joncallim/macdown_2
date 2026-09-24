@@ -10,6 +10,7 @@ public struct EditorSettings: Codable, Sendable, Equatable {
     public var font: FontDescriptor
     public var wrapsLines: Bool
     public var showsInvisibles: Bool
+    public var showsStatusBar: Bool
     /// Clamped to `1...8`, matching `EditingAssistConfiguration.indentationWidth`.
     public var indentationWidth: Int
     /// Maps to `EditingAssistConfiguration.isEnabled`, the master switch.
@@ -24,6 +25,7 @@ public struct EditorSettings: Codable, Sendable, Equatable {
         font: FontDescriptor = .systemMonospacedDefault,
         wrapsLines: Bool = true,
         showsInvisibles: Bool = false,
+        showsStatusBar: Bool = true,
         indentationWidth: Int = 4,
         assistsEnabled: Bool = true,
         continuesMarkdownPrefixes: Bool = true,
@@ -35,6 +37,7 @@ public struct EditorSettings: Codable, Sendable, Equatable {
         self.font = font
         self.wrapsLines = wrapsLines
         self.showsInvisibles = showsInvisibles
+        self.showsStatusBar = showsStatusBar
         self.indentationWidth = min(max(1, indentationWidth), 8)
         self.assistsEnabled = assistsEnabled
         self.continuesMarkdownPrefixes = continuesMarkdownPrefixes
