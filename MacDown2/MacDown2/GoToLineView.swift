@@ -14,7 +14,9 @@ struct GoToLineView: View {
             TextField("Line, or Line:Column", text: $input)
                 .textFieldStyle(.roundedBorder)
                 .focused($isFocused)
-                .onSubmit { onSubmit(input) }
+                // Return must respect the same empty-input guard as the "Go"
+                // button below, not bypass it (hostile review finding, PR #126).
+                .onSubmit { guard !input.isEmpty else { return }; onSubmit(input) }
                 .accessibilityIdentifier("goToLineField")
 
             HStack {

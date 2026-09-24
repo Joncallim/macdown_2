@@ -312,6 +312,13 @@ final class WindowCoordinator {
         if commandPalette?.originController === controller {
             commandPalette?.close()
         }
+        // Same reasoning as the command palette above: a Go to Line panel
+        // left open against a controller that just closed would be a stuck,
+        // non-functional orphan pointing at an already-evicted editor store
+        // (found by hostile review of PR #126).
+        if goToLinePanel?.originController === controller {
+            goToLinePanel?.close()
+        }
         scheduleSaveSession()
         updateKeyModel()
     }

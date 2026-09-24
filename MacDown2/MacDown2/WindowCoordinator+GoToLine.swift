@@ -17,7 +17,10 @@ extension WindowCoordinator {
         }
 
         let originWindow = NSApp.keyWindow
-        guard let originController = controllers.first(where: { $0.window == originWindow }) else { return }
+        guard let originController = controllers.first(where: { $0.window == originWindow }),
+              let activeTab = originController.model.tabStore.activeTab,
+              originController.editorStore.existingSystem(for: activeTab.id.uuidString) != nil
+        else { return }
 
         let created = GoToLinePanel(coordinator: self, originController: originController)
         // Strong ownership lives here for exactly as long as the panel is

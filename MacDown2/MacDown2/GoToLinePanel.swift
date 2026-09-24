@@ -51,8 +51,11 @@ final class GoToLinePanel: NSPanel, NSWindowDelegate {
     /// silently on a parse failure — an unparsable line defaults to line 1,
     /// and `EditorLineIndex.utf16Offset(forLine:column:in:)`'s own clamping
     /// handles genuinely out-of-range numbers, matching this type's
-    /// clamping convention throughout (§6.7).
-    private func jump(to input: String) {
+    /// clamping convention throughout (§6.7). Not `private`: called directly
+    /// by `GoToLinePanelTests` — the exact production code path, since
+    /// `GoToLineView`'s `onSubmit` closure forwards to this with no
+    /// intervening logic of its own.
+    func jump(to input: String) {
         guard let originController,
               let activeTab = originController.model.tabStore.activeTab,
               let textSystem = originController.editorStore.existingSystem(for: activeTab.id.uuidString)
@@ -72,9 +75,13 @@ final class GoToLinePanel: NSPanel, NSWindowDelegate {
     /// line 1 rather than rejecting the input outright — Go to Line is a
     /// quick, low-stakes action, and this codebase's own `EditorLineIndex`
     /// convention throughout is to clamp rather than error on out-of-range
-    /// input.
+    /// input. `omittingEmptySubsequences: false` matters for a leading colon
+    /// (`":3"`): omitting empty subsequences (the default) would drop the
+    /// empty line component entirely, shifting "3" into the line position
+    /// and silently jumping to line 3 instead of column 3 on the current
+    /// line 1 (hostile review finding, PR #126).
     private static func parse(_ input: String) -> (line: Int, column: Int?) {
-        let parts = input.split(separator: ":", maxSplits: 1)
+        let parts = input.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
         let line = parts.first.flatMap { Int($0) } ?? 1
         let column = parts.count > 1 ? Int(parts[1]) : nil
         return (line, column)
