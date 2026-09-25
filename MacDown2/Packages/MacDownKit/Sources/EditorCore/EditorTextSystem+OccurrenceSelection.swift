@@ -61,6 +61,21 @@ public extension EditorTextSystem {
     /// in the document in one call — usable standalone from a bare caret,
     /// not only as a continuation of repeated `selectNextOccurrence()`
     /// presses.
+    ///
+    /// Disclosed, accepted edge case (found by an independent hostile
+    /// review, not fixed — a genuinely ambiguous UX question, not a
+    /// corruption bug the way `selectNextOccurrence()`'s own self-overlap
+    /// case was): if the current primary is a MANUALLY selected
+    /// self-overlapping range (e.g. the middle `"aa"` at offset 1 of
+    /// `"aaaa"` — the word-selection path can never produce this, since
+    /// `"a"` alone has no self-overlap boundary to land on), the new
+    /// primary after this call is whichever non-overlapping tiled
+    /// occurrence CONTAINS that location, which may not be the exact range
+    /// the user had selected. This never corrupts the selection the way
+    /// the original `selectNextOccurrence()` bug did — `occurrences` here
+    /// is always a valid, non-overlapping `EditorSelectionSet` — it can
+    /// only pick a different, still-correct-for-the-search-text primary
+    /// than the one the user started from.
     @discardableResult
     func selectAllOccurrences() -> Bool {
         guard !textView.hasMarkedText() else { return false }
@@ -141,7 +156,7 @@ public extension EditorTextSystem {
     /// past its own end — this cannot loop forever.
     ///
     /// NOT used by `selectNextOccurrence()`'s own "find the next occurrence
-    /// after the current primary" step — see `firstOccurrence(of:in:searchingFrom:notAlreadyIn:)`'s
+    /// after the current primary" step — see `firstOccurrence(of:in:searchingFrom:notOverlapping:)`'s
     /// own doc comment for why a whole-document greedy tiling is the wrong
     /// tool there specifically.
     private static func allOccurrenceRanges(of searchText: String, in text: NSString) -> [NSRange] {
@@ -208,12 +223,20 @@ public extension EditorTextSystem {
         return nil
     }
 
-    /// Standard half-open-interval overlap test. Valid for the ranges this
-    /// file ever passes to it, which always have `length > 0` (a search
-    /// match's length is the search text's own length, which every call
-    /// site guards to be non-empty) — unlike `EditorSelectionSet.normalize`'s
-    /// own overlap test, this never needs a zero-length "duplicate caret"
-    /// special case.
+    /// Standard half-open-interval overlap test, agreeing with
+    /// `EditorSelectionSet.normalize`'s own overlap condition. `first` here
+    /// is always a fresh search match, so its `length` is always the search
+    /// text's own length (every call site guards that to be non-empty);
+    /// `second` (an existing selection range) can legitimately be
+    /// zero-length (a bare caret from another cursor in a multi-cursor
+    /// session) — the formula is still correct for that case, since a
+    /// zero-length range simply can never satisfy `second.location <
+    /// first.location + first.length` for any `first` it doesn't already
+    /// contain (this function does not need `normalize`'s own separate
+    /// "duplicate caret" special case, which exists only to make two
+    /// zero-length ranges AT THE SAME point merge — not a distinction that
+    /// matters when only one side of the comparison can ever be
+    /// zero-length).
     private static func overlaps(_ first: NSRange, _ second: NSRange) -> Bool {
         first.location < second.location + second.length && second.location < first.location + first.length
     }
