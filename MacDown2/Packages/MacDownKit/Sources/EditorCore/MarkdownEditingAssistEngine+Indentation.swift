@@ -42,10 +42,7 @@ extension MarkdownEditingAssistEngine {
         ))
     }
 
-    /// Internal (not `private`): EPIC-22 §6.13, Slice 4c-ii reuses these two
-    /// directly for the new multi-selection Increase/Decrease Indent
-    /// commands, rather than duplicating their per-line closures.
-    static func indentSelectedLines(text: NSString, selection: NSRange, width: Int) -> EditingAssistOutcome {
+    private static func indentSelectedLines(text: NSString, selection: NSRange, width: Int) -> EditingAssistOutcome {
         transformSelectedLines(text: text, selection: selection, undoActionName: "Indent") { lines in
             var deltas: [Int] = []
             let processed = lines.map { line in
@@ -56,7 +53,7 @@ extension MarkdownEditingAssistEngine {
         }
     }
 
-    static func unindentSelectedLines(text: NSString, selection: NSRange, width: Int) -> EditingAssistOutcome {
+    private static func unindentSelectedLines(text: NSString, selection: NSRange, width: Int) -> EditingAssistOutcome {
         transformSelectedLines(text: text, selection: selection, undoActionName: "Unindent") { lines in
             var deltas: [Int] = []
             let processed = lines.map { line in

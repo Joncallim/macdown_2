@@ -159,6 +159,16 @@ struct EditorTextTransformsCaseAndIndentTests {
         let applied = LineTransformTestSupport.applied(transaction, to: text as String)
 
         #expect(applied?.text == "  foo")
+        // A P1 an independent hostile review found: an earlier version of
+        // this method fed the whole line-block into `indentSelectedLines`/
+        // `unindentSelectedLines` and propagated THEIR OWN resultingSelection
+        // (the whole block) straight through, so a bare caret ended up with
+        // the entire re-indented line SELECTED rather than a collapsed
+        // caret -- meaning the very next keystroke would replace the whole
+        // line. The caret was originally after "f" (offset 1); after
+        // prepending 2 spaces, it must still be a bare caret, now after
+        // "f" in "  foo" (offset 1 + 2 = 3), never a real selection.
+        #expect(applied?.selection == NSRange(location: 3, length: 0))
     }
 
     @Test("decrease indent on an already-flush line is a genuine no-op")
@@ -217,5 +227,52 @@ struct EditorTextTransformsCaseAndIndentTests {
         #expect(transaction?.replacements.count == 2)
         let applied = LineTransformTestSupport.applied(transaction, to: text as String)
         #expect(applied?.text == "  foo\nbar\n  baz")
+        // Each disjoint caret must independently remain a bare caret (not
+        // expand into a selection). A caret sitting EXACTLY at a line's own
+        // start is not shifted by that same line's own indent delta
+        // (`remappedLocation`'s own established convention, already used by
+        // single-selection Tab/Shift-Tab: the caret stays BEFORE the newly
+        // inserted indentation) -- so the first caret stays at 0. The
+        // second group's own remapping must ALSO correctly account for
+        // both its own group's absolute start offset (8, not 0 -- the
+        // exact P1 this test's own fix commit corrected: an earlier
+        // version added only the cross-group `delta` and forgot the
+        // group's own `groupRange.location`) and the first group's already-
+        // applied delta (+2).
+        #expect(transaction?.resultingSelection?.ranges == [
+            NSRange(location: 0, length: 0), // "  foo", caret stays before the inserted indent
+            NSRange(location: 10, length: 0), // "  foo\nbar\n  baz", caret stays before the inserted indent
+        ])
+    }
+
+    @Test("two bare carets on adjacent lines merge into one group; each keeps its own caret, not one merged selection")
+    func indentMergedGroupPreservesEachMembersOwnCaret() {
+        // The specific multi-caret scenario the same hostile review traced
+        // through by hand: two carets on ADJACENT lines merge into one
+        // `EditorLineTransforms` group (§6.13's own conflict rule), but
+        // unlike the P1 this pins a fix for, each member is remapped
+        // independently through the group's own per-line deltas -- neither
+        // caret should vanish or expand into a selection.
+        let text = "foo\nbar" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(
+            ranges: [NSRange(location: 1, length: 0), NSRange(location: 5, length: 0)], // after "f", after "b"
+            primaryIndex: 0
+        )
+
+        let transaction = EditorTextTransforms.indentTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection,
+            width: 2,
+            decrease: false
+        )
+        #expect(transaction?.replacements.count == 1) // one merged group, one replacement
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+        #expect(applied?.text == "  foo\n  bar")
+        #expect(transaction?.resultingSelection?.ranges == [
+            NSRange(location: 3, length: 0), // after "f" in "  foo"
+            NSRange(location: 9, length: 0), // after "b" in "  bar"
+        ])
     }
 }

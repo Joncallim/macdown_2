@@ -98,6 +98,25 @@ struct EditorTextTransformsIntegrationTests {
         #expect(system.textView.string == "    foo")
     }
 
+    @Test func increaseIndentLeavesABareCaretNotAFullLineSelection() {
+        // A P1 an independent hostile review found end-to-end against a
+        // real mounted NSTextView: the caret after "f" turned into the
+        // ENTIRE re-indented line being selected, so the very next
+        // keystroke would have replaced the whole line instead of typing
+        // at the caret.
+        let system = support.makeSystem(text: "foo")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        system.textView.delegate = support.makeCoordinator(system: system)
+        system.selectedRange = NSRange(location: 1, length: 0) // after "f"
+
+        let handled = system.increaseIndent()
+
+        #expect(handled)
+        #expect(system.textView.string == "    foo")
+        #expect(system.selectedRange == NSRange(location: 5, length: 0)) // still a bare caret, after "f" in "    foo"
+    }
+
     @Test func decreaseIndentRemovesLeadingWhitespace() {
         let system = support.makeSystem(text: "    foo")
         let window = support.mountInWindow(system)
