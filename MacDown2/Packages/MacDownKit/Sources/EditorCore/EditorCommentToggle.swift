@@ -235,10 +235,22 @@ enum EditorCommentToggle {
     /// own per-line edits — a position AT OR BEFORE a line's own
     /// `insertionColumns[index]` (its leading-whitespace length, where the
     /// edit itself happens) is unaffected by THAT line's own delta, since
-    /// it sits strictly before the edit point; only a position AFTER it
-    /// shifts. This generalizes `MarkdownEditingAssistEngine.remappedLocation`'s
-    /// own "at column 0, unaffected" special case (correct for Indent's own
-    /// column-0 edits) to an edit at an arbitrary per-line column.
+    /// it sits strictly before the edit point; a position strictly AFTER
+    /// the edit shifts by the line's own delta; a position that fell
+    /// STRICTLY INSIDE a just-removed prefix (uncommenting only — `delta <
+    /// 0`) has nothing left to sit on and clamps to the insertion point
+    /// itself, rather than applying the removal's full negative delta and
+    /// landing somewhere BEFORE the line's own leading whitespace (a P2 an
+    /// independent hostile review found: a caret between the two `/`
+    /// characters of `//` at the moment of uncommenting used to jump to
+    /// before the leading whitespace instead of to where the removed
+    /// prefix used to start). This generalizes
+    /// `MarkdownEditingAssistEngine.remappedLocation`'s own "at column 0,
+    /// unaffected" special case (correct for Indent's own column-0 edits,
+    /// and correct for indent/outdent since a partial-indent removal can
+    /// never leave a caret past where non-whitespace content starts) to an
+    /// edit at an arbitrary per-line column, where that assumption no
+    /// longer holds.
     private static func remappedCommentTogglePosition(
         _ position: Int,
         lineLengths: [Int],
@@ -254,7 +266,13 @@ enum EditorCommentToggle {
             }
             if position <= lineEnd {
                 let column = position - lineStart
-                return column <= insertionColumns[index] ? position + shift : position + shift + deltas[index]
+                let insertionColumn = insertionColumns[index]
+                guard column > insertionColumn else { return position + shift }
+                let delta = deltas[index]
+                if delta < 0, column < insertionColumn - delta {
+                    return lineStart + insertionColumn + shift
+                }
+                return position + shift + delta
             }
             shift += deltas[index]
             lineStart = lineEnd + 1
