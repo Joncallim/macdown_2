@@ -31,9 +31,10 @@ public struct EditingAssistConfiguration: Sendable, Equatable {
     /// Return-key continuation of Markdown line prefixes (lists, task lists,
     /// blockquotes, indentation) and empty-construct termination. Meaningful
     /// only when `isMarkdownFormat` is `true`; a non-Markdown format's
-    /// configuration leaves this at its default and it is never consulted
-    /// (see `isMarkdownFormat`'s own doc comment for why the two are
-    /// deliberately independent). When `false` for a Markdown document,
+    /// configuration (`.general` explicitly sets this `false`) never has it
+    /// consulted regardless of its value (see `isMarkdownFormat`'s own doc
+    /// comment for why the two are deliberately independent). When `false`
+    /// for a Markdown document,
     /// Return is a pure no-op here — the general "maintain the previous
     /// line's indentation" behavior
     /// (`MarkdownEditingAssistEngine+Newline.swift`'s `generalNewlineOutcome`)
