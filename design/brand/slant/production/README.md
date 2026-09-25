@@ -40,7 +40,7 @@ npm run build && npm run verify   # verify needs Chromium (CHROMIUM_PATH)
 - **Wordmark:** measured with perpendicular stroke-thickness sampling and
   facing-profile pair spacing, as below.
 
-## Wordmark optical corrections (D-023)
+## Wordmark optical corrections (D-025)
 
 1. **Slant stroke compensation.** The extra 2.6° shear thickens edges that run
    up-left and thins edges that run up-right, by about 2.2% at 45°. Before the

@@ -41,6 +41,10 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
   Chosen mark: **Slant**, an M and T sharing one stem, leaning forward, with a
   wedge cut on the crossbar. Geometry is release-candidate frozen, not frozen
   (D-018). The 16 px files are microglyphs for ≤17 px only; never enlarge them (D-020).
+- **Handoff and gates:** `design/FIGMA_HANDOFF.md` (everything the Figma session
+  needs), `design/brand/PROVENANCE.md` (licences, canonical files),
+  `design/validation/read-test/` (blind human test) and
+  `design/brand/TRADEMARK_SEARCH.md` (register search record, not yet run).
 - The mark must work at macOS app-icon size, at favicon size (16 px), in
   monochrome, on light and dark backgrounds, and in a wordmark lockup.
 - Current icon: **placeholder only**. It is a white document glyph on a blue
@@ -56,8 +60,8 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
 | App sources | `MacDown2/MacDown2/`; packages in `MacDown2/Packages/MacDownKit/` | live, changing |
 | Build / run | macOS 26 + Xcode 26: see the commands table in `AGENTS.md`. Judge feel on a **Release** build | needs a Mac; cloud design sessions run on Linux and **cannot run the app** |
 | Screenshots | `design/evidence/YYYY-MM-DD/` (capture protocol below) | **none yet** |
-| Figma | [MostlyText — Brand Identity (Slant 12°)](https://www.figma.com/design/x5wTgOFnR9GgNFfUqWwKmX): 8 pages, components for the mark (master, 32 optical, 16 microglyphs), wordmark, lockup and app icon sources, plus brand colour, theme and spacing variables | **live**; the production source for brand assets and the visual source of truth (D-022). Product UI is not in it yet |
-| Brand assets | `design/brand/gen2/`: source geometry in `marks.mjs`, exported SVGs, comparison board (`node build.mjs` rebuilds `board.html`; published at https://claude.ai/artifact/HnqRCjVR1UPxFtWC9KnAwW). Gen-1 board: owner's image "Logo concepts — five directions for the T" (not in repo) | **Slant chosen (D-010).** Refinement in `design/brand/slant/` (board: https://claude.ai/artifact/CxLEqf5TCcFrEMMo1uN4Ni); `slant/marks.mjs` holds the parameterised geometry. Lockup board: https://claude.ai/artifact/BEM1dsLaq9Wf6jfE4KeRBV (`node lockup.mjs`). **Pre-freeze validation and production masters:** `design/brand/slant/validation/` (board: https://claude.ai/artifact/KdvvQKM2q4pV93baFvntnV, `node build.mjs`). **Production outlines** (mark flattened, wordmark outlined and corrected, lockup): `design/brand/slant/production/` (D-022, D-023). Earlier rounds in `gen2/` and `gen3/` are kept as a record |
+| Figma | [MostlyText — Brand Identity (Slant 12°)](https://www.figma.com/design/x5wTgOFnR9GgNFfUqWwKmX): 8 pages, components for the mark (master, 32 optical, 16 microglyphs), wordmark, lockup and app icon sources, plus brand colour, theme and spacing variables | **live**; the production source for brand assets and the visual source of truth (D-024). Product UI is not in it yet |
+| Brand assets | `design/brand/gen2/`: source geometry in `marks.mjs`, exported SVGs, comparison board (`node build.mjs` rebuilds `board.html`; published at https://claude.ai/artifact/HnqRCjVR1UPxFtWC9KnAwW). Gen-1 board: owner's image "Logo concepts — five directions for the T" (not in repo) | **Slant chosen (D-010).** Refinement in `design/brand/slant/` (board: https://claude.ai/artifact/CxLEqf5TCcFrEMMo1uN4Ni); `slant/marks.mjs` holds the parameterised geometry. Lockup board: https://claude.ai/artifact/BEM1dsLaq9Wf6jfE4KeRBV (`node lockup.mjs`). **Pre-freeze validation and production masters:** `design/brand/slant/validation/` (board: https://claude.ai/artifact/KdvvQKM2q4pV93baFvntnV, `node build.mjs`). **Production outlines** (mark flattened, wordmark outlined and corrected, lockup): `design/brand/slant/production/` (D-024, D-025). Earlier rounds in `gen2/` and `gen3/` are kept as a record |
 | Design tokens / themes | Editor/preview themes: `MacDownKit` `Themes` module; the chrome follows system colours | not yet a named token set |
 | Polish/identity contract | `planning/epics/EPIC-15-liquid-glass-polish.md`; `planning/RELEASE_HARDENING.md` §5.1 | binding for release |
 | Surfaces with UI tests (a list of what exists) | `MacDown2/MacDown2UITests/*.swift` file names | live |
