@@ -325,6 +325,15 @@ public struct EditorView: NSViewRepresentable {
             if selector == #selector(NSResponder.cancelOperation(_:)), !textView.hasMarkedText() {
                 return collapseMultipleSelectionsIfNeeded(system: system)
             }
+            // Synchronized plain-arrow-key movement (§6.9, §6.10, Slice
+            // 3b-iii) — likewise gated only on IME, not on the Markdown
+            // assist configuration below: multi-caret movement is not a
+            // Markdown editing assist. Falls through unchanged (returns
+            // `false`) for every other selector, including the
+            // overwhelmingly common single-caret case.
+            if !textView.hasMarkedText(), handleSynchronizedMovement(selector, system: system) {
+                return true
+            }
             guard system.editingAssistConfiguration.isEnabled else { return false }
             guard !isApplyingModelText,
                   !system.isPerformingProgrammaticTextUpdate,
@@ -377,22 +386,8 @@ public struct EditorView: NSViewRepresentable {
             }
         }
 
-        @objc @MainActor func scrollViewDidScroll(_: Notification) {
-            guard let system else { return }
-            onScrollChange?(system.topVisibleUTF16Offset)
-        }
-
-        /// `EditorTextSystem` itself keeps `lineIndex` correct across
-        /// undo/redo (see its own `registerUndoRedoObservers()`); this
-        /// coordinator-level observer exists only to redraw the gutter,
-        /// which `EditorTextSystem` has no reference to.
-        @objc @MainActor func undoManagerDidChange(_ notification: Notification) {
-            // Registered with `object: nil` (see `registerCoordinatorObservers`'s
-            // doc comment), so this fires for every text system's undo/redo
-            // in the app — filter to this one's current (freshly-resolved,
-            // not cached) undo manager.
-            guard let system, notification.object as AnyObject === system.undoManager else { return }
-            gutterView?.updateThickness()
-        }
+        // `scrollViewDidScroll(_:)`/`undoManagerDidChange(_:)` live in
+        // `EditorView+Coordinator+Observers.swift` (extracted to keep this
+        // file under its line-count limit).
     }
 }

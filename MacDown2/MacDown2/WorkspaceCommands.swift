@@ -279,6 +279,23 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("f", modifiers: [.option, .shift, .command])
             .disabled(coordinator?.canPerformJSONFormatting != true)
+
+            Divider()
+
+            // EPIC-22 §6.10, Slice 3b-ii-b: not format-restricted, unlike
+            // the Markdown/JSON commands above — ⌃⌘↑/⌃⌘↓ matches Xcode's
+            // own established convention for the same feature.
+            Button("Add Cursor Above") {
+                coordinator?.addCursorAbove()
+            }
+            .keyboardShortcut(.upArrow, modifiers: [.control, .command])
+            .disabled(coordinator?.canPerformCursorCommand != true)
+
+            Button("Add Cursor Below") {
+                coordinator?.addCursorBelow()
+            }
+            .keyboardShortcut(.downArrow, modifiers: [.control, .command])
+            .disabled(coordinator?.canPerformCursorCommand != true)
         }
 
         #if DEBUG
