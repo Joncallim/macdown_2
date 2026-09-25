@@ -80,7 +80,7 @@ T `#7EA4FF`. The macOS icon build may change these.
 |---|---|---|
 | 1. Wordmark outlined with curve and "yT" corrections | **Figma** (this handoff) | Open |
 | 2. macOS icon set (light, dark, clear, tinted) built in Icon Composer and checked in a real Dock and Finder | **Mac** | Open |
-| 3. Blind human read test passes D-019 | **Humans**, using `design/validation/read-test/` | Open |
+| 3. Blind human read test passes D-019 (S1-only gate, exactly 8 valid participants: D-023) | **Humans**, using `design/validation/read-test/` | Open |
 | 4. Trademark register search (WIPO, USPTO, IPOS) run and reviewed | **Human searcher / reviewer**, using `design/brand/TRADEMARK_SEARCH.md` | Open. No legal conclusion has been drawn |
 
 ## Record-keeping

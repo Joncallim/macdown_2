@@ -3,8 +3,9 @@
 **Owner summary.** This package checks whether people who have never seen the
 mark read M and T in it, and whether they can pick it out at 16 px. It also
 records what it reminds them of, especially cars or motorsport. It is the
-perceptual gate in D-018/D-019. Participants never see the product name, the
-wordmark or any design rationale. Run it with 6–8 people, one at a time, in
+perceptual gate in D-018/D-019, with exact rules in D-022 as amended by D-023.
+Participants never see the product name, the wordmark or any design rationale.
+The formal test needs **exactly 8 valid participants**, seen one at a time,
 about 5 minutes each.
 
 ## What's in this folder
@@ -15,7 +16,7 @@ about 5 minutes each.
 | `stimuli/` | 16 px line-up glyphs: `glyph-T.png` is the target, `glyph-d1`–`d4.png` are decoys. |
 | `lineup-key.json` | The correct line-up letter per participant. **Facilitator only; never on screen.** |
 | `responses-template.csv` | Copy to `responses.csv` and fill in verbatim. |
-| `score.mjs` | `node score.mjs responses.csv` prints PASS / HOLD / FAIL against D-019, D-021 and D-022. |
+| `score.mjs` | `node score.mjs responses.csv` prints PASS / HOLD / FAIL / INCOMPLETE against D-019, D-021, D-022 and D-023. |
 | `build.mjs` | Rebuilds the stimuli from the checked-in mark sources. Not needed to run a session. |
 
 ## Rules for the facilitator
@@ -92,7 +93,12 @@ explain what it was for.
 
 - One row per participant in `responses.csv`, with IDs P1–P8 in the order you
   run them. The ID decides which line-up is shown.
-- `letters_override`: leave blank. Only enter `Y` or `N` when an answer is
+- `valid`: `Y` by default. Set `N` if the session was compromised (for example
+  the person had seen the design work, the name was mentioned, or the
+  stimulus was shown for the wrong time), and say why in `notes`. Replace an
+  invalid participant with a new person, reusing the same ID and line-up, so
+  the test still reaches 8 valid participants.
+- `letters_override`: leave blank. Only enter `Y` or `N` when an **S1** answer is
   genuinely ambiguous and the scorer's letter rule would misread it (for
   example "looks like a M-T thing but backwards"). Note why in `notes`.
 - Keep `responses.csv` alongside this README when committing results. It
@@ -100,20 +106,23 @@ explain what it was for.
 
 ## Scoring (deterministic)
 
-`node score.mjs responses.csv` applies these rules:
+`node score.mjs responses.csv` applies these rules. Thresholds are fixed and
+don't scale with the number of participants.
 
 | Measure | Rule | Pass |
 |---|---|---|
-| Logo-scale reading | The participant names both M and T (as "M and T", "MT", "TM", "em/tee" etc.) in `s1_letters` or `s2_letters`. `letters_override` wins when set | at least ⌈0.75 × n⌉: 6 of 8, 6 of 7, 5 of 6. 7 of 8 is the target |
-| 16 px recognition | `lineup_choice` equals the participant's key letter | at least ⌈0.75 × n⌉ (chance is 1 in 5) |
-| Automotive association | Any answer mentions BMW, car, motor, racing, sport, speed or similar (full list in `score.mjs`) | fewer than 3 participants |
+| **Gate 1: logo-scale reading** | **S1 only** (the first exposure, the monochrome 64 px mark): `s1_letters` names both M and T (as "M and T", "MT", "TM", "em/tee" etc.). `letters_override` wins when set | **at least 6 of 8**. 7 of 8 is the target |
+| **Gate 2: 16 px recognition** | `lineup_choice` equals the participant's key letter | **at least 6 of 8** (chance is 1 in 5) |
+| Automotive trigger | Any answer mentions BMW, car, motor, racing, sport, speed or similar (full list in `score.mjs`) | fewer than 3 participants |
+| Diagnostic only | S2 letters and all S2/S3 associations are reported but **never counted towards Gate 1**. They can't rescue a failed S1 | — |
 
 The result is one of:
-- **PASS:** all three rows pass.
-- **HOLD:** reading and recognition pass, but 3 or more people made
-  automotive associations. Run the 8°/10°/12° comparison in D-021.
-- **FAIL:** a D-019 threshold was missed.
-- **INCOMPLETE:** fewer than 6 participants.
+- **PASS:** both gates pass and the trigger doesn't fire.
+- **HOLD:** both gates pass, but 3 or more people made automotive
+  associations. Run the 8°/10°/12° comparison in D-021.
+- **FAIL:** a gate was missed.
+- **INCOMPLETE:** anything other than exactly 8 valid participants. The
+  scorer also prints a provisional reading, which is not a result.
 
 The keyword check only automates the automotive trigger. Read every verbatim
 association by hand as well, and flag any other association that 3 or more
@@ -123,7 +132,6 @@ people share.
 
 - The target microglyph is hand-tuned for 16 px, while the decoys are scaled
   masters. It may look slightly crisper, which is a small bias in its favour.
-- Showing S1 first primes S2 and S3. The logo-scale letter rule therefore
-  accepts S1 or S2, and the scorer also reports S1 alone as the stricter,
-  first-exposure figure.
+- Showing S1 first primes S2 and S3. That is why Gate 1 uses S1 alone, and why
+  S2 and S3 are diagnostic only.
 - Eight people is a screen for obvious problems, not a statistical study.
