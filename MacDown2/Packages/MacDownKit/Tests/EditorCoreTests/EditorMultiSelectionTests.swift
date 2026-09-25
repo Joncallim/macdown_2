@@ -3,11 +3,13 @@ import AppKit
 import Foundation
 import Testing
 
-/// EPIC-22 Slice 3a — `EditorTextSystem.selectionSet` as the real selection
-/// source of truth, Escape-collapse, and multi-selection typing/delete
-/// routed through `EditorEditTransaction` (§6.9, §7.1, §7.2). Mounted
+/// EPIC-22 Slice 3a — multi-selection typing/delete/paste routed through
+/// `EditorEditTransaction`, and Escape-collapse (§6.9, §7.1, §7.2). Mounted
 /// against a real `NSTextView`/window, matching `EditorEditTransactionTests`'
-/// existing integration style.
+/// existing integration style. `EditorTextSystem.selectionSet`'s own
+/// getter/setter/cache-invalidation contract has its own dedicated suite,
+/// `EditorSelectionSetCacheTests.swift` (split out to keep this file under
+/// its line-count limit).
 ///
 /// Every multi-range scenario below uses genuine, non-zero-length,
 /// non-touching selections (never bare carets) — confirmed empirically,
@@ -44,86 +46,6 @@ import Testing
 @Suite("EditorTextSystem multi-selection (Slice 3a)")
 struct EditorMultiSelectionTests {
     private let support = EditingAssistIntegrationSupport.self
-
-    // MARK: - `selectionSet`
-
-    @Test func selectionSetReflectsRealAppKitSelectedRanges() {
-        let system = support.makeSystem(text: "one two three")
-        let window = support.mountInWindow(system)
-        defer { window.orderOut(nil) }
-
-        let ranges = [NSRange(location: 0, length: 3), NSRange(location: 4, length: 3)]
-        system.textView.selectedRanges = ranges.map { NSValue(range: $0) }
-
-        #expect(system.selectionSet.ranges == ranges)
-        #expect(system.selectionSet.isMultiple)
-    }
-
-    @Test func selectedRangeStaysConsistentWithSelectionSetsPrimary() {
-        let system = support.makeSystem(text: "one two three")
-        let window = support.mountInWindow(system)
-        defer { window.orderOut(nil) }
-
-        let ranges = [NSRange(location: 0, length: 3), NSRange(location: 4, length: 3)]
-        system.textView.selectedRanges = ranges.map { NSValue(range: $0) }
-
-        // AppKit's own singular accessor and this type's plural one must
-        // agree on which range is "the" selection -- confirmed empirically
-        // against a real mounted text view rather than assumed from
-        // documentation alone, per this epic's established practice.
-        #expect(system.selectedRange == system.selectionSet.primaryRange)
-        #expect(system.selectedRange == ranges[0])
-    }
-
-    @Test func settingSelectionSetWritesBackToAppKit() {
-        let system = support.makeSystem(text: "one two three four")
-        let window = support.mountInWindow(system)
-        defer { window.orderOut(nil) }
-
-        let newSelection = EditorSelectionSet(
-            ranges: [NSRange(location: 0, length: 3), NSRange(location: 8, length: 5)],
-            primaryIndex: 1
-        )
-        system.selectionSet = newSelection
-
-        #expect(system.textView.selectedRanges.map(\.rangeValue) == newSelection.ranges)
-    }
-
-    @Test func primaryIndexSurvivesAReadAfterWriteEvenWhenNotZero() {
-        // The real bug this regression-guards: AppKit's own
-        // `selectedRanges` has no concept of "primary" at all, so a naive
-        // computed property that always reconstructs fresh from AppKit
-        // would silently reset `primaryIndex` to 0 on every read -- found
-        // by this exact test failing during Slice 3a's own development.
-        let system = support.makeSystem(text: "one two three")
-        let window = support.mountInWindow(system)
-        defer { window.orderOut(nil) }
-
-        system.selectionSet = EditorSelectionSet(
-            ranges: [NSRange(location: 0, length: 3), NSRange(location: 4, length: 3)],
-            primaryIndex: 1
-        )
-
-        #expect(system.selectionSet.primaryRange == NSRange(location: 4, length: 3))
-    }
-
-    @Test func aNativeSelectionChangeInvalidatesTheCachedPrimaryIndex() {
-        let system = support.makeSystem(text: "one two three four")
-        let window = support.mountInWindow(system)
-        defer { window.orderOut(nil) }
-
-        system.selectionSet = EditorSelectionSet(
-            ranges: [NSRange(location: 0, length: 3), NSRange(location: 4, length: 3)],
-            primaryIndex: 1
-        )
-        // Bypasses `selectionSet`'s setter entirely, simulating a native
-        // AppKit-driven change (a click, arrow-key navigation) this type
-        // did not mediate.
-        system.textView.selectedRanges = [NSValue(range: NSRange(location: 8, length: 5))]
-
-        #expect(system.selectionSet.primaryRange == NSRange(location: 8, length: 5))
-        #expect(!system.selectionSet.isMultiple)
-    }
 
     // MARK: - Multi-selection typing (§7.2)
 
@@ -170,7 +92,7 @@ struct EditorMultiSelectionTests {
         #expect(system.text == "cat cat cat")
     }
 
-    @Test func resultingPrimaryCaretLandsRightAfterItsReplacementAccountingForLengthShifts() {
+    @Test func resultingCaretsLandRightAfterEachReplacementAccountingForLengthShifts() {
         let system = support.makeSystem(text: "cat cat cat")
         let window = support.mountInWindow(system)
         defer { window.orderOut(nil) }
@@ -183,14 +105,19 @@ struct EditorMultiSelectionTests {
         // `EditorEditTransaction.resultingCaretRanges` correctly computes
         // all three post-edit caret positions (accounting for each earlier
         // replacement's own +5 length delta -- "elephant" is 8 chars vs
-        // "cat"'s 3), but only the FIRST survives once installed into
-        // `textView.selectedRanges`: three simultaneous zero-length carets
-        // cannot coexist there any more than three simultaneous carets can
-        // (§6.9's architecture-correction note) -- this is an honest,
-        // disclosed limitation of Slice 3a's foundation, not a bug; durably
-        // tracking every resulting caret needs Slice 3b's custom,
-        // AppKit-independent caret state.
-        #expect(system.selectionSet.ranges == [NSRange(location: 8, length: 0)])
+        // "cat"'s 3). `textView.selectedRanges` itself still only ever
+        // shows the first (three simultaneous zero-length carets cannot
+        // coexist there any more than three simultaneous bare carets can —
+        // §6.9's architecture-correction note), but `selectionSet` itself
+        // (Slice 3b-i's fix to the getter/setter cache) now correctly
+        // retains all three: `EditorTextView`'s own secondary-caret drawing
+        // pass is what makes the other two visible.
+        #expect(system.selectionSet.ranges == [
+            NSRange(location: 8, length: 0),
+            NSRange(location: 17, length: 0),
+            NSRange(location: 26, length: 0),
+        ])
+        #expect(system.textView.selectedRanges.map(\.rangeValue) == [NSRange(location: 8, length: 0)])
     }
 
     @Test func deleteBackwardRemovesEveryActiveSelection() {

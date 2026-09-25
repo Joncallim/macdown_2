@@ -346,6 +346,14 @@ public struct EditorView: NSViewRepresentable {
 
         public func textViewDidChangeSelection(_: Notification) {
             guard let system else { return }
+            // Proactively invalidates a stale `selectionSet` cache for
+            // every selection change EXCEPT the ones `selectionSet`'s own
+            // setter itself just posted (`isUpdatingSelectionSet` guards
+            // that) — see that property's doc comment (§6.10, Slice 3b-i)
+            // for the exact coincidental-match bug this closes.
+            if !system.isUpdatingSelectionSet {
+                system.invalidateStoredSelectionSetIfStale()
+            }
             system.scheduleFrameHeightSync()
             onSelectionChange?(system.selectedRange)
         }

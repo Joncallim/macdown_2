@@ -33,7 +33,14 @@ public struct EditorEditTransaction: Sendable {
     /// The `EditorSelectionSet` to install after applying, expressed in
     /// *post-edit* offsets. The caller computes this; the transaction does
     /// not guess caret placement (mirroring `applyExternalReplacement`'s
-    /// existing "caller passes explicit range" discipline).
+    /// existing "caller passes explicit range" discipline). Passing `nil`
+    /// while `EditorTextSystem.storedSelectionSet` still holds an active
+    /// multi-selection (§6.9, §6.10) would leave that cache's correctness
+    /// resting entirely on `EditorView.Coordinator.textViewDidChangeSelection`'s
+    /// reactive invalidation rather than an explicit guarantee — every
+    /// current caller (`EditorTextSystem+MultiCursor.swift`) always supplies
+    /// a value, so this is a latent risk for a future caller to be aware
+    /// of, not a live bug (confirmed by a hostile review of PR #129).
     public let resultingSelection: EditorSelectionSet?
 
     public init(

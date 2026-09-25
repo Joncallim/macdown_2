@@ -38,13 +38,23 @@ public final class EditorTextSystem {
     private let fallbackUndoManager = UndoManager()
     private var lastAppliedConfiguration: EditorConfiguration?
     private var lastAppliedOverscroll: OverscrollState?
-    private var lastFrameSyncSignature: FrameSyncSignature?
-    private var measuredContentHeight: CGFloat = 0
+    /// Not `private`: `EditorTextSystem+Content.swift`'s `setText`/
+    /// `replaceTextFromExternal` also reset this on a whole-document
+    /// replacement.
+    var lastFrameSyncSignature: FrameSyncSignature?
+    /// Not `private`: see `lastFrameSyncSignature`'s note above.
+    var measuredContentHeight: CGFloat = 0
     private var frameSyncTask: Task<Void, Never>?
-    private var editRevision: UInt64 = 0
+    /// Not `private`: `EditorTextSystem+Content.swift`'s `setText`/
+    /// `replaceTextFromExternal` bump this on every whole-document
+    /// replacement, mirroring the incremental-edit path's own bump in
+    /// `noteTextEdit()` below.
+    var editRevision: UInt64 = 0
     /// Prevents a disk-driven replacement from flowing back through the
-    /// editor binding as a user edit.
-    public private(set) var isPerformingProgrammaticTextUpdate = false
+    /// editor binding as a user edit. Setter is `internal` (not `private`)
+    /// so `EditorTextSystem+Content.swift`'s `replaceTextFromExternal` can
+    /// raise/lower it.
+    public internal(set) var isPerformingProgrammaticTextUpdate = false
     /// Set while an E10 assist edit is being applied, so the nested
     /// `shouldChangeTextIn` callback does not re-transform the assist.
     /// The setter is internal so the adapter in
@@ -82,6 +92,14 @@ public final class EditorTextSystem {
     /// reconstruction from `textView.selectedRanges` cannot, on its own,
     /// preserve a non-zero `primaryIndex` across a read-after-write.
     var storedSelectionSet: EditorSelectionSet?
+    /// Set while `selectionSet`'s own setter is writing to
+    /// `textView.selectedRanges` (including its own AppKit-collapse-revert
+    /// branch), so `EditorView.Coordinator.textViewDidChangeSelection`'s
+    /// staleness check on that same notification does not immediately
+    /// invalidate the cache the setter just wrote. See
+    /// `EditorTextSystem+Selection.swift` for the full mechanism this
+    /// guards.
+    var isUpdatingSelectionSet = false
 
     /// Snapshot of the inputs that produced the current overscroll inset so we
     /// can skip redundant updates.
@@ -93,8 +111,9 @@ public final class EditorTextSystem {
 
     /// Snapshot of the inputs that produced the last frame-height sync, so
     /// `syncFrameHeightToContent()` can skip the (TextKit 2 layout) work when
-    /// neither has changed.
-    private struct FrameSyncSignature: Equatable {
+    /// neither has changed. Not `private`: `lastFrameSyncSignature`'s own
+    /// type must be at least as visible as that property.
+    struct FrameSyncSignature: Equatable {
         let textLength: Int
         let width: CGFloat
         let editRevision: UInt64
@@ -127,45 +146,10 @@ public final class EditorTextSystem {
 
     // MARK: - Content
 
-    /// Replaces the entire document text. This is intended for external reloads
-    /// and conflict resolution; it resets selection and scroll.
-    public func setText(_ text: String) {
-        textView.string = text
-        editRevision &+= 1
-        lineIndex.rebuild(text: text as NSString)
-        // A wholesale text replacement invalidates any measured height from
-        // the previous document — see `syncFrameHeightToContent`.
-        measuredContentHeight = 0
-        lastFrameSyncSignature = nil
-    }
-
-    /// Captures the selection and vertical viewport before an external reload.
-    public func viewportSnapshot() -> EditorViewportSnapshot {
-        EditorViewportSnapshot(selectedRange: selectedRange, scrollOffset: scrollOffset)
-    }
-
-    /// Replaces editor content from a stable external snapshot without
-    /// creating a user edit or losing the visible location where possible.
-    public func replaceTextFromExternal(
-        _ text: String,
-        preserving snapshot: EditorViewportSnapshot,
-        clearUndo: Bool
-    ) {
-        isPerformingProgrammaticTextUpdate = true
-        defer { isPerformingProgrammaticTextUpdate = false }
-
-        textView.string = text
-        editRevision &+= 1
-        lineIndex.rebuild(text: text as NSString)
-        measuredContentHeight = 0
-        lastFrameSyncSignature = nil
-        textView.setSelectedRange(clampedToLiveText(snapshot.selectedRange))
-        pendingScrollOffset = max(0, snapshot.scrollOffset)
-        if clearUndo {
-            undoManager.removeAllActions()
-        }
-        scheduleFrameHeightSync()
-    }
+    // `setText`/`viewportSnapshot`/`replaceTextFromExternal` live in
+    // `EditorTextSystem+Content.swift` (extracted to keep this file under
+    // its line-count limit, mirroring the established
+    // `DocumentEditorSplitView+EditorPane.swift` precedent).
 
     /// The current plain-text content of the editor.
     public var text: String {
