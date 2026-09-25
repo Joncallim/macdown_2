@@ -72,7 +72,15 @@ enum EditorCommentToggle {
     /// A selection spanning both a fence and surrounding prose is scoped
     /// entirely to whichever profile ITS OWN anchor line resolves to — a
     /// mixed per-line profile within one selection would make the smart-
-    /// toggle "already commented?" check itself ambiguous.
+    /// toggle "already commented?" check itself ambiguous. A disclosed
+    /// consequence an independent hostile review confirmed: a wide
+    /// selection starting INSIDE a fence and reaching past that fence's own
+    /// closing delimiter (and beyond, into surrounding prose) comments the
+    /// closing "```" line itself with the fenced language's own line
+    /// comment, corrupting it as a fence marker — accepted as a rare,
+    /// disclosed edge case (this profile-resolution rule is what the
+    /// design contract explicitly asks for) rather than a bug to special-
+    /// case away; pinned by `fenceAwareProfileScopesAWideSelectionSpanningTheFenceBoundaryToItsOwnAnchorLine`.
     private static func fenceAwareProfile(
         forAnchorLine anchorLine: Int,
         text: NSString,
@@ -116,16 +124,16 @@ enum EditorCommentToggle {
 
         if let lineComment = profile.lineComment {
             let lines = groupContent.components(separatedBy: "\n")
-            let (newLines, lineDeltas) = lineCommentToggle(lines: lines, prefix: lineComment)
-            let newContent = newLines.joined(separator: "\n")
+            let result = lineCommentToggle(lines: lines, prefix: lineComment)
+            let newContent = result.lines.joined(separator: "\n")
             let lineLengths = lines.map { ($0 as NSString).length }
             let newLength = (newContent as NSString).length
             return ToggleOutcome(range: groupRange, newContent: newContent) { original in
-                let remapped = MarkdownEditingAssistEngine.remappedSelection(
-                    original: original,
-                    rangeLocation: groupRange.location,
+                let remapped = remappedCommentToggleSelection(
+                    original: NSRange(location: original.location - groupRange.location, length: original.length),
                     lineLengths: lineLengths,
-                    deltas: lineDeltas,
+                    insertionColumns: result.insertionColumns,
+                    deltas: result.deltas,
                     newLength: newLength
                 )
                 return NSRange(location: groupRange.location + remapped.location, length: remapped.length)
@@ -146,23 +154,61 @@ enum EditorCommentToggle {
         return nil
     }
 
-    /// Per-line smart toggle: if EVERY line (after its own leading
+    /// Per-line smart toggle: if EVERY NON-BLANK line (after its own leading
     /// whitespace) already starts with `prefix`, strip it (plus one
-    /// following space, if present) from each; otherwise add `prefix + " "`
-    /// to every line that doesn't already have it. Blank lines are not
-    /// special-cased — an all-blank block being "commented" gets the
-    /// prefix inserted into its own blank lines too, matching this being a
-    /// simple, disclosed v1 rather than every editor's own fancier
-    /// blank-line handling.
-    private static func lineCommentToggle(lines: [String], prefix: String) -> (lines: [String], deltas: [Int]) {
-        let allCommented = lines.allSatisfy { line in
-            let leadingWhitespace = line.prefix { $0 == " " || $0 == "\t" }
-            return line.dropFirst(leadingWhitespace.count).hasPrefix(prefix)
+    /// following space, if present) from each of them; otherwise add
+    /// `prefix + " "` to every non-blank line that doesn't already have it.
+    /// Blank/whitespace-only lines are entirely skipped in both directions
+    /// (delta 0, content untouched) — an independent hostile review found a
+    /// genuine P2 in an earlier version that folded blank lines into the
+    /// "already commented?" decision: a block where every REAL line was
+    /// already commented except one blank line wrongly registered as "not
+    /// all commented," so pressing the shortcut on a block that visibly
+    /// looked fully commented added a second, redundant prefix to every
+    /// already-commented line instead of stripping them.
+    ///
+    /// Also returns `insertionColumns`, the UTF-16 column (== character
+    /// count, since leading whitespace is pure ASCII space/tab) at which
+    /// each line's own edit actually happens — needed because that point is
+    /// AFTER the line's own leading whitespace, not column 0 the way
+    /// Indent's own per-line edit is. A P1 an independent hostile review
+    /// found: reusing `MarkdownEditingAssistEngine.remappedSelection`
+    /// directly (which only special-cases "at column 0, unaffected") wrongly
+    /// applied a whole line's own full delta to any caret sitting strictly
+    /// INSIDE that line's own leading whitespace, teleporting it past the
+    /// just-inserted/removed prefix instead of leaving it exactly where it
+    /// was. `remappedCommentToggleSelection` below is this transform's own
+    /// remap, aware of the real per-line insertion column.
+    /// The result of `lineCommentToggle`: the rewritten lines, each one's
+    /// own UTF-16 length delta, and each one's own insertion column.
+    private struct LineCommentToggleResult {
+        let lines: [String]
+        let deltas: [Int]
+        let insertionColumns: [Int]
+    }
+
+    private static func lineCommentToggle(lines: [String], prefix: String) -> LineCommentToggleResult {
+        func leadingWhitespace(of line: String) -> Substring {
+            line.prefix { $0 == " " || $0 == "\t" }
         }
+        func isBlank(_ line: String) -> Bool {
+            leadingWhitespace(of: line).count == line.count
+        }
+        let allCommented = lines.allSatisfy { line in
+            isBlank(line) || line.dropFirst(leadingWhitespace(of: line).count).hasPrefix(prefix)
+        }
+
         var deltas: [Int] = []
+        var insertionColumns: [Int] = []
         let processed = lines.map { line -> String in
-            let leadingWhitespace = line.prefix { $0 == " " || $0 == "\t" }
-            let rest = line.dropFirst(leadingWhitespace.count)
+            let leading = leadingWhitespace(of: line)
+            insertionColumns.append(leading.count)
+            let rest = line.dropFirst(leading.count)
+
+            guard !isBlank(line) else {
+                deltas.append(0)
+                return line
+            }
             if allCommented {
                 var afterPrefix = rest.dropFirst(prefix.count)
                 var removedLength = (prefix as NSString).length
@@ -171,7 +217,7 @@ enum EditorCommentToggle {
                     removedLength += 1
                 }
                 deltas.append(-removedLength)
-                return String(leadingWhitespace) + afterPrefix
+                return String(leading) + afterPrefix
             }
             guard !rest.hasPrefix(prefix) else {
                 deltas.append(0)
@@ -179,9 +225,65 @@ enum EditorCommentToggle {
             }
             let inserted = prefix + " "
             deltas.append((inserted as NSString).length)
-            return String(leadingWhitespace) + inserted + rest
+            return String(leading) + inserted + rest
         }
-        return (processed, deltas)
+        return LineCommentToggleResult(lines: processed, deltas: deltas, insertionColumns: insertionColumns)
+    }
+
+    /// Maps a position within the ORIGINAL block (already relative to the
+    /// block's own start) to its final position after `lineCommentToggle`'s
+    /// own per-line edits — a position AT OR BEFORE a line's own
+    /// `insertionColumns[index]` (its leading-whitespace length, where the
+    /// edit itself happens) is unaffected by THAT line's own delta, since
+    /// it sits strictly before the edit point; only a position AFTER it
+    /// shifts. This generalizes `MarkdownEditingAssistEngine.remappedLocation`'s
+    /// own "at column 0, unaffected" special case (correct for Indent's own
+    /// column-0 edits) to an edit at an arbitrary per-line column.
+    private static func remappedCommentTogglePosition(
+        _ position: Int,
+        lineLengths: [Int],
+        insertionColumns: [Int],
+        deltas: [Int]
+    ) -> Int {
+        var shift = 0
+        var lineStart = 0
+        for (index, length) in lineLengths.enumerated() {
+            let lineEnd = lineStart + length
+            if position < lineStart {
+                break
+            }
+            if position <= lineEnd {
+                let column = position - lineStart
+                return column <= insertionColumns[index] ? position + shift : position + shift + deltas[index]
+            }
+            shift += deltas[index]
+            lineStart = lineEnd + 1
+        }
+        return position + shift
+    }
+
+    private static func remappedCommentToggleSelection(
+        original: NSRange,
+        lineLengths: [Int],
+        insertionColumns: [Int],
+        deltas: [Int],
+        newLength: Int
+    ) -> NSRange {
+        let location = remappedCommentTogglePosition(
+            original.location,
+            lineLengths: lineLengths,
+            insertionColumns: insertionColumns,
+            deltas: deltas
+        )
+        let end = remappedCommentTogglePosition(
+            original.location + original.length,
+            lineLengths: lineLengths,
+            insertionColumns: insertionColumns,
+            deltas: deltas
+        )
+        let clampedLocation = min(max(0, location), newLength)
+        let clampedEnd = min(max(0, end), newLength)
+        return NSRange(location: clampedLocation, length: max(0, clampedEnd - clampedLocation))
     }
 
     /// Whole-block toggle for a `lineComment`-less profile: if `content`
