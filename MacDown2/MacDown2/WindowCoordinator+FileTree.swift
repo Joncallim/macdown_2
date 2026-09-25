@@ -13,16 +13,20 @@ extension WindowCoordinator {
     /// clicking into the editor left every Folder command (bound off this
     /// property) still enabled, because only `fileTreeModel.selectedURL`
     /// was checked, never focus. Fixed at this property's own definition,
-    /// not just at the "Duplicate" button's call site, since "Rename" reuses
-    /// this same gate and is bound to a plain, unmodified Return — a key
-    /// the editor's own E10 list/blockquote-continuation assists depend on;
-    /// narrowing the fix to Cmd-D alone would have left that identical
-    /// conflict live for Return. Reads `commandStateRevision` to establish
-    /// an Observation dependency on AppKit focus changes, exactly like
-    /// `canPerformOccurrenceSelection`'s own inverted check
-    /// (`WindowCoordinator+OccurrenceSelection.swift`) — the two properties
-    /// are deliberately never simultaneously "occupied" for the same
-    /// keystroke, so both bindings can stay declared on it.
+    /// not just at the "Duplicate" button's call site, since ALL THREE
+    /// Folder commands read this one property, and Cmd-D was not the only
+    /// live conflict with a key the editor itself depends on: "Rename" is a
+    /// plain, unmodified Return, which the editor's own E10 list/blockquote-
+    /// continuation assists use, and "Move to Trash" is Cmd-Delete, a
+    /// standard `NSTextView` binding (delete to beginning of line) — both
+    /// were silently hijack-able the identical way Cmd-D was, just never
+    /// separately reported. Fixing at the source closes all three at once
+    /// rather than only the one this slice's own issue named. Reads
+    /// `commandStateRevision` to establish an Observation dependency on
+    /// AppKit focus changes, exactly like `canPerformOccurrenceSelection`'s
+    /// own inverted check (`WindowCoordinator+OccurrenceSelection.swift`) —
+    /// the two properties are deliberately never simultaneously "occupied"
+    /// for the same keystroke, so both bindings can stay declared on it.
     var keyFolderSelection: URL? {
         _ = commandStateRevision
         guard canPerformOccurrenceSelection == false else { return nil }

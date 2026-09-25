@@ -12,13 +12,19 @@ public extension EditorTextSystem {
     /// press can still match inside a longer identifier later) starting
     /// just after the current primary's own end, wraps to the document
     /// start if not found before the end, and adds it to the selection set
-    /// as the new primary. Skips any occurrence already present in the
-    /// selection set, so a further press once every occurrence in the
-    /// document is already selected is a correct no-op, not a re-add.
+    /// as the new primary. Skips any occurrence that OVERLAPS an existing
+    /// selection (not just an exact duplicate — see
+    /// `firstOccurrence(of:in:searchingFrom:notOverlapping:)`'s own doc
+    /// comment for why that distinction matters for a self-overlapping
+    /// search string), so a further press once every occurrence in the
+    /// document is already selected, or every remaining candidate would
+    /// overlap what is already selected, is a correct no-op rather than a
+    /// re-add or a silent, corrupting merge.
     ///
     /// `false` when there is no active editor state to act on: a bare
-    /// caret touching no word, an IME composition in progress, or a
-    /// currently-in-progress editing assist/programmatic text update.
+    /// caret touching no word, an IME composition in progress, a
+    /// currently-in-progress editing assist/programmatic text update, or no
+    /// remaining occurrence that doesn't overlap the current selection.
     @discardableResult
     func selectNextOccurrence() -> Bool {
         guard !textView.hasMarkedText() else { return false }
@@ -34,12 +40,15 @@ public extension EditorTextSystem {
         }
 
         let searchText = text.substring(with: selection.primaryRange)
-        let occurrences = Self.allOccurrenceRanges(of: searchText, in: text)
-        guard !occurrences.isEmpty else { return false }
-
         let primaryEnd = selection.primaryRange.location + selection.primaryRange.length
-        let ordered = occurrences.filter { $0.location >= primaryEnd } + occurrences.filter { $0.location < primaryEnd }
-        guard let next = ordered.first(where: { !selection.ranges.contains($0) }) else { return false }
+        let next = Self.firstOccurrence(
+            of: searchText,
+            in: text,
+            searchingFrom: primaryEnd,
+            notOverlapping: selection.ranges
+        )
+            ?? Self.firstOccurrence(of: searchText, in: text, searchingFrom: 0, notOverlapping: selection.ranges)
+        guard let next else { return false }
 
         selection.addRange(next, makePrimary: true)
         selectionSet = selection
@@ -122,9 +131,19 @@ public extension EditorTextSystem {
     }
 
     /// Every non-overlapping literal (case-sensitive) occurrence of
-    /// `searchText` in `text`, in ascending document order. `searchText` is
+    /// `searchText` in `text`, in ascending document order — the correct,
+    /// only-workable semantic for `selectAllOccurrences()` specifically:
+    /// `EditorSelectionSet` cannot represent overlapping ranges at all, so
+    /// "select every occurrence" of a self-overlapping pattern (e.g. `"aa"`
+    /// in `"aaaa"`) necessarily means the non-overlapping tiling, exactly
+    /// like a real editor's own "Find All" would produce. `searchText` is
     /// never empty at any call site above, so each match advances the scan
     /// past its own end — this cannot loop forever.
+    ///
+    /// NOT used by `selectNextOccurrence()`'s own "find the next occurrence
+    /// after the current primary" step — see `firstOccurrence(of:in:searchingFrom:notAlreadyIn:)`'s
+    /// own doc comment for why a whole-document greedy tiling is the wrong
+    /// tool there specifically.
     private static func allOccurrenceRanges(of searchText: String, in text: NSString) -> [NSRange] {
         guard !searchText.isEmpty else { return [] }
         var ranges: [NSRange] = []
@@ -140,5 +159,62 @@ public extension EditorTextSystem {
             searchStart = found.location + found.length
         }
         return ranges
+    }
+
+    /// The first occurrence of `searchText` at or after `start` that does
+    /// NOT overlap any range in `existing`, or `nil` if none exists before
+    /// the end of the document.
+    ///
+    /// Skips on OVERLAP, not mere exact-match, and deliberately advances
+    /// the scan by exactly one UTF-16 unit past a skipped candidate, not
+    /// past that candidate's own end, so a self-overlapping search string
+    /// (e.g. `"aa"` in `"aaaa"`) is still searched correctly. Both
+    /// properties matter together: an independent hostile review of this
+    /// slice found an earlier version of this method skipped only on exact
+    /// `NSRange` equality, which is not enough — even a genuinely NEW,
+    /// not-previously-selected candidate can still overlap an existing
+    /// selection for a self-overlapping pattern (the middle `"aa"` at
+    /// offset 1 of `"aaaa"`, selected manually rather than via the
+    /// word-selection path, has `"aa"` at offset 0 as a distinct-but-
+    /// overlapping neighbor), and adding an overlapping range would still
+    /// hit `EditorSelectionSet.normalize`'s own overlap-merge rule,
+    /// collapsing the result into one larger, no-longer-matching range
+    /// while this method still reported success. Skipping on overlap
+    /// (rather than exact match) means every candidate this method ever
+    /// returns is genuinely safe to add via `EditorSelectionSet.addRange(_:makePrimary:)`
+    /// without triggering that merge — and correctly declining (returning
+    /// `nil` from both the forward and wraparound searches) for the
+    /// `"aaaa"` case above, since literally every possible `"aa"` position
+    /// there overlaps the existing selection: there is no valid "next
+    /// occurrence" to add, and reporting that honestly is strictly better
+    /// than corrupting the selection while claiming success.
+    private static func firstOccurrence(
+        of searchText: String,
+        in text: NSString,
+        searchingFrom start: Int,
+        notOverlapping existing: [NSRange]
+    ) -> NSRange? {
+        var searchStart = start
+        while searchStart <= text.length {
+            let found = text.range(
+                of: searchText,
+                options: [.literal],
+                range: NSRange(location: searchStart, length: text.length - searchStart)
+            )
+            guard found.location != NSNotFound else { return nil }
+            guard existing.contains(where: { overlaps($0, found) }) else { return found }
+            searchStart = found.location + 1
+        }
+        return nil
+    }
+
+    /// Standard half-open-interval overlap test. Valid for the ranges this
+    /// file ever passes to it, which always have `length > 0` (a search
+    /// match's length is the search text's own length, which every call
+    /// site guards to be non-empty) — unlike `EditorSelectionSet.normalize`'s
+    /// own overlap test, this never needs a zero-length "duplicate caret"
+    /// special case.
+    private static func overlaps(_ first: NSRange, _ second: NSRange) -> Bool {
+        first.location < second.location + second.length && second.location < first.location + first.length
     }
 }

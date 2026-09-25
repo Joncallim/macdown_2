@@ -129,6 +129,55 @@ struct EditorOccurrenceSelectionTests {
         #expect(system.selectionSet.count == 2, "a declined call must not mutate the existing selection")
     }
 
+    @Test func selectNextOccurrenceDeclinesRatherThanCorruptTheSelectionForASelfOverlappingSearchText() {
+        // An independent hostile review of this slice found a real bug: a
+        // MANUALLY selected (not word-selected -- "a" is a word character,
+        // so the caret-driven first-press path can never land here) search
+        // string that overlaps itself, at an offset that doesn't fall on a
+        // whole-document greedy non-overlapping tiling's own boundaries,
+        // could previously go unrecognized as a conflict and get added
+        // anyway -- `EditorSelectionSet.normalize`'s own overlap-merge rule
+        // then silently collapsed the result into ONE larger, no-longer-
+        // matching range, while this method still reported success. The
+        // middle "aa" in "aaaa" (offset 1) is exactly that case: EVERY
+        // possible "aa" position in this document overlaps it, so there is
+        // no valid "next occurrence" to add at all -- declining honestly is
+        // the only correct outcome, not a corrupting merge reported as a
+        // success.
+        let system = support.makeSystem(text: "aaaa")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        system.selectedRange = NSRange(location: 1, length: 2) // the middle "aa"
+
+        let handled = system.selectNextOccurrence()
+
+        #expect(!handled)
+        #expect(
+            system.selectionSet.ranges == [NSRange(location: 1, length: 2)],
+            "a declined call must not mutate the selection"
+        )
+    }
+
+    @Test func selectNextOccurrenceFindsANonOverlappingOccurrenceEvenWhenTheSearchTextIsSelfOverlapping() {
+        // The overlap-based skip must not be overly conservative: a
+        // genuinely non-conflicting occurrence elsewhere in the document
+        // must still be found, even though the search text itself can
+        // self-overlap.
+        let system = support.makeSystem(text: "aaaa bbbb aaaa")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        system.selectedRange = NSRange(location: 1, length: 2) // the middle "aa" of the first "aaaa"
+
+        let handled = system.selectNextOccurrence()
+
+        #expect(handled)
+        #expect(system.selectionSet.ranges.contains(NSRange(location: 1, length: 2)))
+        // Some non-overlapping "aa" within the second "aaaa" (offset 10-13)
+        // was added -- which exact one depends only on where the forward
+        // scan first lands, not asserted precisely here.
+        #expect(system.selectionSet.ranges.contains { $0.location >= 10 && $0.length == 2 })
+    }
+
     @Test func selectNextOccurrenceMatchesAsASubstringInsideALongerWord() {
         // Matches Sublime/VS Code's own Cmd-D convention: the search step is
         // a plain substring match, not restricted to whole-word boundaries,
