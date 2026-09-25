@@ -138,28 +138,44 @@ struct EditorVerticalCursorTests {
         #expect(system.selectionSet.count == 3, "a no-op call must not mutate the existing carets")
     }
 
-    @Test func addCursorBelowFailsClosedWhenTheTargetPointFallsInsideAnExistingRealSelection() {
-        // The real bug an independent hostile review found: nothing gates
-        // this command to bare-caret selections, so the top-most/bottom-most
-        // "caret" can actually be a genuine multi-line selection. If the
-        // computed target point lands inside it, `EditorSelectionSet.normalize`'s
-        // own overlap-merge rule (the same one PR #131's review already
-        // found a bug in) silently absorbs the new point -- the selection
-        // count never actually grows, and this must report `false` rather
-        // than claiming success for a call that changed nothing observable.
+    @Test func addCursorBelowFromARealSelectionAnchorsOnItsEndNotItsStart() {
+        // A second, later hostile review (of Slice 3b-iii) found this
+        // method originally anchored on `.location` (the selection's
+        // START) for BOTH directions, while the newer, more deliberate
+        // `EditorTextSystem+SynchronizedMovement.swift` anchors on the END
+        // for downward movement ("collapse toward the direction of
+        // travel") -- producing visibly different landing columns between
+        // "Add Cursor Below" and a synchronized Down-arrow press starting
+        // from the same selection. Fixed to match: this test pins the
+        // corrected, END-anchored behavior for `addCursorBelow`.
+        //
+        // A side effect of this fix: the ORIGINAL version of this test
+        // exercised "the computed target point lands inside the reference
+        // selection's own span," which was only reachable because the old
+        // START anchor let a one-line-down target fall within a selection
+        // that extended past that line. Anchoring on the END instead makes
+        // that specific self-containment geometrically impossible (moving
+        // one line down from a range's own END can never land before that
+        // END) -- the `updated.count > selection.count` guard in
+        // `addVerticalCursor` (added for the ORIGINAL hostile-review
+        // finding) remains as defense in depth for a case this codebase
+        // can no longer construct, not because the guard itself was wrong.
         let system = support.makeSystem(text: "one\ntwo\nthree\nfour")
         let window = support.mountInWindow(system)
         defer { window.orderOut(nil) }
-        // A single real selection spanning lines 1-3 ("one\ntwo\nth").
+        // A single real selection spanning lines 1-3 ("one\ntwo\nth"), END
+        // at offset 9 (line 3, column 2).
         system.selectedRange = NSRange(location: 0, length: 9)
 
         let handled = system.addCursorBelow()
 
-        #expect(!handled)
-        #expect(
-            system.selectionSet.ranges == [NSRange(location: 0, length: 9)],
-            "the original selection must survive untouched"
-        )
+        #expect(handled)
+        // Line 3 column 2 (the selection's end) -> line 4 column 2 -> "four"
+        // starting at offset 14, column 2 is offset 15.
+        #expect(system.selectionSet.ranges == [
+            NSRange(location: 0, length: 9),
+            NSRange(location: 15, length: 0),
+        ])
     }
 
     @Test func addCursorBelowHandlesCJKAndEmojiColumnsCorrectly() {

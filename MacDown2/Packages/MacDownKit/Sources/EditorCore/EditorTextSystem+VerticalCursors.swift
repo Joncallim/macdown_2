@@ -18,12 +18,18 @@ public extension EditorTextSystem {
     ///
     /// If the top-most/bottom-most entry is a genuine multi-character
     /// selection rather than a bare caret (reachable today: nothing gates
-    /// this command to bare-caret selections), only its `location` (the
-    /// lower bound) is used as the reference point — `NSRange` carries no
-    /// anchor/active-end distinction, so which end the user actually placed
-    /// their caret at cannot be recovered here. This is a disclosed,
-    /// unfixed gap, not a crash risk: found by an independent hostile
-    /// review of this slice.
+    /// this command to bare-caret selections), the reference point is its
+    /// START for `addCursorAbove()` and its END for `addCursorBelow()` —
+    /// "collapse toward the direction of travel," matching Slice 3b-iii's
+    /// `EditorTextSystem+SynchronizedMovement.swift` exactly (an independent
+    /// hostile review of that later slice found this file had originally
+    /// used `.location` for BOTH directions, producing visibly inconsistent
+    /// landing columns between "Add Cursor Below" and a synchronized
+    /// Down-arrow press starting from the same selection — fixed here to
+    /// match). `NSRange` still carries no anchor/active-end distinction, so
+    /// which end the user actually placed their own caret at cannot be
+    /// recovered; "collapse toward the direction of travel" is a reasonable,
+    /// disclosed default, not a claim of recovering the user's true intent.
     ///
     /// The target column is recomputed fresh from the reference caret's own
     /// current column on every call — not carried as separate persistent
@@ -54,8 +60,11 @@ public extension EditorTextSystem {
         // top-most/bottom-most existing carets respectively.
         guard let referenceRange = above ? selection.ranges.first : selection.ranges.last else { return false }
 
-        let referenceLine = lineIndex.line(atUTF16Offset: referenceRange.location)
-        let referenceColumn = lineIndex.column(atUTF16Offset: referenceRange.location, onLine: referenceLine, in: text)
+        // Start for "above" (moving toward the beginning of the document),
+        // end for "below" — see the doc comment above.
+        let anchor = above ? referenceRange.location : referenceRange.location + referenceRange.length
+        let referenceLine = lineIndex.line(atUTF16Offset: anchor)
+        let referenceColumn = lineIndex.column(atUTF16Offset: anchor, onLine: referenceLine, in: text)
         let targetLine = above ? referenceLine - 1 : referenceLine + 1
         guard targetLine >= 1, targetLine <= lineIndex.lineCount else { return false }
 

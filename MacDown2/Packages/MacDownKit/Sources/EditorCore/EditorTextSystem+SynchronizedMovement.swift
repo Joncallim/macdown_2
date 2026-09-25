@@ -67,8 +67,17 @@ public extension EditorTextSystem {
     /// Left/Up reference a range's START; Right/Down reference its END —
     /// both for the ordinary in-bounds movement case AND for the
     /// can't-move-further collapse case, so the two stay internally
-    /// consistent (mirroring how native Left/Right always collapse a
-    /// selection toward the edge closest to the direction of travel).
+    /// consistent. This is the SAME "collapse toward the edge closest to
+    /// the direction of travel" choice native Left/Right make for a real
+    /// selection, but the analogy is not exact for Up/Down: Left/Right
+    /// collapse and stop there, while Up/Down collapse to that edge AND
+    /// THEN also move one line further from it — e.g. pressing Up on a
+    /// selection spanning several lines lands one line ABOVE the
+    /// selection's own start, not merely at the start. This matches every
+    /// real editor's conventional vertical-arrow-on-a-selection behavior,
+    /// confirmed by an independent hostile review of this slice, but is a
+    /// meaningfully different operation from the horizontal case, not a
+    /// pure collapse.
     private func movedCaret(for range: NSRange, direction: MovementDirection, in text: NSString) -> NSRange {
         switch direction {
         case .leftward:

@@ -171,6 +171,59 @@ struct EditorSynchronizedMovementTests {
         ])
     }
 
+    @Test func upwardMovementCanReorderCaretsAndStillRelocatesThePrimaryCorrectly() {
+        // Adversarial, per an independent hostile review of this slice: a
+        // caret that can't move further (already on line 1) stays put,
+        // while another caret one line below moves up onto line 1 at an
+        // EARLIER column -- crossing the first caret's own position in
+        // sorted order. `EditorSelectionSet.init(ranges:primaryIndex:)`'s
+        // `indexClosest` must still correctly relocate the ORIGINAL primary
+        // (the one that stayed at 9) after re-sorting, not silently pick
+        // the wrong one.
+        let system = support.makeSystem(text: "0123456789\nab")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        // Caret A (primary) on line 1's last column; caret B on line 2.
+        system.selectionSet = EditorSelectionSet(
+            ranges: [NSRange(location: 9, length: 0), NSRange(location: 11, length: 0)],
+            primaryIndex: 0
+        )
+
+        let handled = system.moveAllCaretsUp()
+
+        #expect(handled)
+        // B moves up to line 1 column 1 (offset 0), crossing A (which
+        // stayed at 9, already on line 1) in sorted order.
+        #expect(system.selectionSet.ranges == [
+            NSRange(location: 0, length: 0),
+            NSRange(location: 9, length: 0),
+        ])
+        // The ORIGINAL primary (A, which stayed at 9) must still be the
+        // primary after re-sorting -- not B, which is now first in order.
+        #expect(system.selectionSet.primaryRange == NSRange(location: 9, length: 0))
+    }
+
+    @Test func convergingCaretsAfterVerticalMovementMergeIntoOne() {
+        // The vertical counterpart of `convergingCaretsAfterMovementMergeIntoOne`
+        // below: two carets at different columns on a long line both move
+        // down onto a much shorter line, where column-clamping lands both
+        // at that line's own end -- the same final offset.
+        let system = support.makeSystem(text: "aaaaaaaaaa\nb\ncd")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        system.selectionSet = EditorSelectionSet(
+            ranges: [NSRange(location: 5, length: 0), NSRange(location: 9, length: 0)],
+            primaryIndex: 0
+        )
+
+        let handled = system.moveAllCaretsDown()
+
+        #expect(handled)
+        #expect(!system.selectionSet.isMultiple)
+        // Line 2 ("b") is only 1 character -- both clamp to its end.
+        #expect(system.selectionSet.primaryRange == NSRange(location: 12, length: 0))
+    }
+
     @Test func convergingCaretsAfterMovementMergeIntoOne() {
         // Adversarial: a caret one character before the document end, and a
         // caret already AT the end (which `moveAllCaretsRight()` leaves in
