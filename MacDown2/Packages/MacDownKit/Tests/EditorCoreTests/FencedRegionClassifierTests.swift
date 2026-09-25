@@ -82,6 +82,21 @@ struct FencedRegionClassifierTests {
         #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: insideOffset) == .prose)
     }
 
+    @Test("a document ending in an unterminated closing fence with no trailing newline is prose again, not fencedCode")
+    func unterminatedClosingFenceAtEndOfDocumentWithNoTrailingNewlineIsProse() {
+        // A P1 an independent hostile review of §6.12 found: the caret's OWN
+        // current line was never itself checked for being a fence
+        // delimiter, only lines strictly BEFORE it -- so when the document
+        // ends with a closing fence and no trailing newline, the caret's
+        // "own line" IS that closing fence, and it was silently dropped
+        // from the parity count. That left only the opener counted (odd),
+        // wrongly reporting `.fencedCode` for a caret that has actually
+        // moved past the closing fence back into ordinary prose (there just
+        // happens to be no more prose text after it).
+        let text = "prose\n```swift\ncode\n```" as NSString
+        #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: text.length) == .prose)
+    }
+
     @Test("a fence nested inside a blockquote is still recognized")
     func fenceInsideBlockquote() {
         // The classifier's own fence-line check only looks at leading
@@ -94,6 +109,26 @@ struct FencedRegionClassifierTests {
         let text = "> ```swift\n> let x = 1\n> ```" as NSString
         let insideOffset = text.range(of: "let x").location
         #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: insideOffset) == .prose)
+    }
+
+    @Test("a closing line with a MISMATCHED fence character is still treated as closing (disclosed simplification)")
+    func mismatchedFenceCharactersAreTreatedAsClosingAnyOpenFence() {
+        // A P2 an independent hostile review of §6.12 found: unlike real
+        // CommonMark (where only a matching marker character closes a
+        // fence — a backtick fence is never closed by a tilde line, or vice
+        // versa), this classifier counts ANY fence-delimiter line as a
+        // toggle regardless of its own marker character. Disclosed above
+        // this type's own doc comment as an accepted, low-impact
+        // simplification rather than a full stack-based rewrite; this test
+        // pins the current behavior so a future change to it is deliberate.
+        let text = "prose\n```swift\ncode\n~~~\nmore prose" as NSString
+        // Real CommonMark: the `~~~` line does NOT close the backtick
+        // fence, so "more prose" would still be inside the (still-open)
+        // code block. This classifier's own simplified grammar treats the
+        // mismatched `~~~` as a valid closer regardless, so it reports
+        // .prose here instead.
+        let afterMismatchedCloser = text.range(of: "more prose").location
+        #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: afterMismatchedCloser) == .prose)
     }
 
     // MARK: - Front matter
@@ -200,8 +235,34 @@ struct FencedRegionClassifierTests {
         #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: lateOffset) == .prose)
         // Generous budget: this is a correctness-of-boundedness check, not a
         // tight micro-benchmark -- it must not degrade toward whole-document
-        // cost, which a bounded 20,000-line scan comfortably avoids even on
+        // cost, which a bounded 5,000-line scan comfortably avoids even on
         // a slow CI runner.
         #expect(elapsed < .milliseconds(200))
+    }
+
+    @Test("a worst-case scan (caret 5,000 lines past the last fence) stays within a few milliseconds")
+    func worstCaseScanStaysWithinAPerKeystrokeBudget() {
+        // A P2 an independent hostile review of §6.12 found: this
+        // classifier runs on EVERY keystroke, and while the bounded scan is
+        // correctness-bounded (the test above), its per-keystroke COST close
+        // to the cap was never itself pinned by a test. This fixture puts
+        // the caret ~4,900 lines past the document's only (closed) fence --
+        // close to, but comfortably under, `maximumFenceLinesScanned` (so
+        // the scan reaches both fence lines and document start well within
+        // its budget, giving a stable, unambiguous `.prose` answer) --
+        // forcing a near-worst-case-length backward scan every time.
+        let linesPastFence = 4900
+        let filler = String(repeating: "prose line\n", count: linesPastFence)
+        let text = ("```swift\ncode\n```\n" + filler) as NSString
+        let lateOffset = text.length - 5
+
+        let clock = ContinuousClock()
+        let elapsed = clock.measure {
+            _ = FencedRegionClassifier.classify(text: text, atUTF16Offset: lateOffset)
+        }
+        #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: lateOffset) == .prose)
+        // A generous per-keystroke budget -- measured well under 5ms in
+        // practice at this cap, budgeted higher for a slow CI runner.
+        #expect(elapsed < .milliseconds(25))
     }
 }

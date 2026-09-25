@@ -14,6 +14,19 @@ import Foundation
 /// smaller than that cap) and why fence-line detection here is a practical,
 /// disclosed approximation of CommonMark's own grammar rather than a second
 /// Markdown parser.
+///
+/// One further disclosed simplification (found by an independent review,
+/// alongside the 4-space-indent and blockquote-nesting limitations already
+/// pinned by tests below): this classifier counts ANY fence-delimiter line
+/// as toggling in/out of a fenced region, without checking that a closing
+/// line's marker CHARACTER matches the opener's (real CommonMark requires a
+/// ` ``` ` fence to be closed only by another ` ``` ` line, never by `~~~`,
+/// and vice versa). A document mixing fence characters — e.g. a ` ``` `
+/// opener "closed" by a `~~~` line — is classified differently from real
+/// CommonMark as a result. This is accepted as a rare, low-impact case
+/// rather than implemented as a full stack-based matching rewrite; see
+/// `mismatchedFenceCharactersAreTreatedAsClosingAnyOpenFence` below, which
+/// pins the current (simplified) behavior.
 enum FencedRegionClassifier {
     enum Classification: Equatable {
         case prose
@@ -27,8 +40,12 @@ enum FencedRegionClassifier {
 
     /// How many lines this scans backward from the caret's own line before
     /// giving up and reporting `.prose` — see §6.12 for why this is a
-    /// disclosed, not-unboundedly-correct tradeoff.
-    private static let maximumFenceLinesScanned = 20000
+    /// disclosed, not-unboundedly-correct tradeoff. Measured at ~0.5ms per
+    /// 1,000 lines scanned (an independent review's own measurement), so
+    /// 5,000 keeps a worst-case per-keystroke classification (this runs on
+    /// every keystroke) at a few milliseconds rather than the ~10ms a
+    /// 20,000-line cap could reach.
+    private static let maximumFenceLinesScanned = 5000
 
     /// How many lines this scans FORWARD from a document's own first line,
     /// looking for a front-matter block's closing delimiter, before giving
@@ -48,6 +65,20 @@ enum FencedRegionClassifier {
         var fenceCount = 0
         var nearestLanguageID: String?
         var linesScanned = 0
+
+        // The caret's OWN current line counts too if it is itself a fence
+        // delimiter and the caret sits at or past the marker's own end --
+        // otherwise a document ending in an unterminated closing fence with
+        // no trailing newline (the caret's "own line" IS that closing fence
+        // line) would silently drop that closer from the count, since the
+        // backward scan below only ever looks at lines STRICTLY BEFORE the
+        // caret's line.
+        let currentLineContentEnd = MarkdownEditingAssistEngine.lineContentEnd(of: currentLineStart, in: text)
+        if let fence = fenceDelimiter(lineStart: currentLineStart, lineContentEnd: currentLineContentEnd, in: text),
+           caret >= fence.markerEnd {
+            fenceCount += 1
+            nearestLanguageID = fence.languageID
+        }
 
         while currentLineStart > 0, linesScanned < maximumFenceLinesScanned {
             let previousLineStart = MarkdownEditingAssistEngine.lineStart(of: currentLineStart - 1, in: text)
@@ -70,14 +101,25 @@ enum FencedRegionClassifier {
         return .fencedCode(languageID: nearestLanguageID)
     }
 
+    /// A recognized fence-delimiter line: its marker character, derived
+    /// `languageID`, and `markerEnd` (the UTF-16 offset immediately past the
+    /// run of backtick/tilde characters, before any info string) -- callers
+    /// use `markerEnd` to decide whether a caret sitting ON this very line
+    /// has actually crossed past the fence marker itself.
+    private struct FenceDelimiter {
+        let character: unichar
+        let languageID: String?
+        let markerEnd: Int
+    }
+
     /// If the line spanning `lineStart..<lineContentEnd` is a fence
     /// delimiter (up to 3 leading spaces, then 3+ of the same backtick or
-    /// tilde character), its marker character and derived `languageID`.
+    /// tilde character), the `FenceDelimiter` it describes.
     private static func fenceDelimiter(
         lineStart: Int,
         lineContentEnd: Int,
         in text: NSString
-    ) -> (character: unichar, languageID: String?)? {
+    ) -> FenceDelimiter? {
         var index = lineStart
         var leadingSpaces = 0
         while index < lineContentEnd, leadingSpaces < 3,
@@ -94,11 +136,16 @@ enum FencedRegionClassifier {
             index += 1
         }
         guard fenceLength >= 3 else { return nil }
+        let markerEnd = index
 
         let infoString = text.substring(with: NSRange(location: index, length: lineContentEnd - index))
             .trimmingCharacters(in: .whitespaces)
         let firstToken = infoString.split(separator: " ").first.map { String($0).lowercased() }
-        return (marker, (firstToken?.isEmpty == false) ? firstToken : nil)
+        return FenceDelimiter(
+            character: marker,
+            languageID: (firstToken?.isEmpty == false) ? firstToken : nil,
+            markerEnd: markerEnd
+        )
     }
 
     /// The UTF-16 offset at which ordinary content resumes after a
