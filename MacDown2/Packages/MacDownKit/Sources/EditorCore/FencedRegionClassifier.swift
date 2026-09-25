@@ -15,18 +15,20 @@ import Foundation
 /// disclosed approximation of CommonMark's own grammar rather than a second
 /// Markdown parser.
 ///
-/// One further disclosed simplification (found by an independent review,
+/// Two further disclosed simplifications (found by an independent review,
 /// alongside the 4-space-indent and blockquote-nesting limitations already
 /// pinned by tests below): this classifier counts ANY fence-delimiter line
-/// as toggling in/out of a fenced region, without checking that a closing
-/// line's marker CHARACTER matches the opener's (real CommonMark requires a
-/// ` ``` ` fence to be closed only by another ` ``` ` line, never by `~~~`,
-/// and vice versa). A document mixing fence characters — e.g. a ` ``` `
-/// opener "closed" by a `~~~` line — is classified differently from real
-/// CommonMark as a result. This is accepted as a rare, low-impact case
-/// rather than implemented as a full stack-based matching rewrite; see
+/// as toggling in/out of a fenced region, without checking (1) that a
+/// closing line's marker CHARACTER matches the opener's (real CommonMark
+/// requires a ` ``` ` fence to be closed only by another ` ``` ` line, never
+/// by `~~~`, and vice versa — see
 /// `mismatchedFenceCharactersAreTreatedAsClosingAnyOpenFence` below, which
-/// pins the current (simplified) behavior.
+/// pins the current, simplified behavior), or (2) that a closing line's
+/// marker is at least as LONG as its opener's (real CommonMark requires a
+/// 4-backtick opener to be closed by 4+ backticks, not merely 3 — this
+/// classifier accepts any 3+ run as a valid closer for any opener). Both are
+/// accepted as rare, low-impact cases rather than implemented as a full
+/// stack-based matching rewrite.
 enum FencedRegionClassifier {
     enum Classification: Equatable {
         case prose

@@ -97,6 +97,34 @@ struct FencedRegionClassifierTests {
         #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: text.length) == .prose)
     }
 
+    @Test(
+        "a caret on a closing fence line, right past its marker but before that line's own trailing newline, is prose"
+    )
+    func caretPastClosingFenceMarkerButBeforeItsOwnTrailingNewlineIsProse() {
+        // The same current-line check the P1 fix above added is not
+        // EOF-specific -- it must also fire for a closing fence that DOES
+        // have more document after it, as long as the caret itself has
+        // moved past the marker but is still positioned on that same line
+        // (e.g. before the line's own trailing newline).
+        let text = "prose\n```swift\ncode\n```\nmore prose" as NSString
+        let closingFenceLineStart = text.range(of: "```\nmore prose").location
+        let caret = closingFenceLineStart + 3 // right after the 3 backticks, before "\nmore prose"
+        #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: caret) == .prose)
+    }
+
+    @Test("an unterminated OPENING fence at end of document (no closer, no trailing newline) is fencedCode")
+    func unterminatedOpeningFenceAtEndOfDocumentIsFencedCode() {
+        // A related case the P1 fix's own current-line check also resolves
+        // correctly, though it targets the SAME code path as the closing-
+        // fence regression above: an opener with no closer anywhere in the
+        // document (CommonMark: an unclosed fence extends to end of
+        // document) must still classify as `.fencedCode`, not `.prose`, when
+        // the caret sits on that same unterminated opening line.
+        let text = "prose\n```swift" as NSString
+        #expect(FencedRegionClassifier
+            .classify(text: text, atUTF16Offset: text.length) == .fencedCode(languageID: "swift"))
+    }
+
     @Test("a fence nested inside a blockquote is still recognized")
     func fenceInsideBlockquote() {
         // The classifier's own fence-line check only looks at leading
