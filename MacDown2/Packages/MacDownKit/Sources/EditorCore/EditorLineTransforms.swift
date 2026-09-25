@@ -277,6 +277,15 @@ enum EditorLineTransforms {
     /// (not `private`), since `EditorLineTransforms+Move.swift` calls it
     /// too.
     static func terminatorText(afterLine line: Int, lineIndex: EditorLineIndex, text: NSString) -> String {
+        // Every current call site already guarantees `line < lineCount`
+        // (the document's actual last line has no terminator to return) --
+        // enforced here, not just documented, since an out-of-bounds
+        // `lineStartOffsets[line]` would otherwise trap unhelpfully for any
+        // future call site that forgets this precondition.
+        precondition(
+            line < lineIndex.lineCount,
+            "terminatorText(afterLine:) requires a line before the document's last"
+        )
         let contentEnd = lineIndex.utf16Range(ofLine: line, in: text)
         let terminatorStart = contentEnd.location + contentEnd.length
         let nextLineStart = lineIndex

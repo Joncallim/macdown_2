@@ -177,6 +177,51 @@ struct EditorLineTransformsMoveTests {
         #expect(applied?.text == "BBB\rAAA\rCCC")
     }
 
+    @Test("moving a line down in a bare-CR document preserves every CR terminator")
+    func moveLineDownPreservesBareCR() {
+        let text = "AAA\rBBB\rCCC" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let caret = text.range(of: "AAA").location
+        let selection = EditorSelectionSet(single: NSRange(location: caret, length: 0))
+
+        let transaction = EditorLineTransforms.moveLinesDownTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection
+        )
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+
+        #expect(applied?.text == "BBB\rAAA\rCCC")
+    }
+
+    @Test("moving a multi-line block down across a CRLF boundary preserves every terminator, including the caret")
+    func moveMultiLineBlockDownPreservesCRLFAndCaret() {
+        // Complements `moveMultiLineBlockPreservesInternalCRLF` above
+        // (moveUp only) -- an independent re-review flagged moveDown across
+        // a CRLF boundary, exactly where `blockOffsetInNewContent`'s
+        // length-aware formula (replacing a previously-hardcoded `+1`) is
+        // most likely to expose a residual off-by-one, as uncovered.
+        let text = "AAA\r\nBBB\r\nCCC\r\nDDD" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        // A real, non-empty selection spanning both "BBB" and "CCC" -- a
+        // bare caret would only touch its own single line, not the 2-line
+        // block this test means to move.
+        let selection = EditorSelectionSet(single: NSRange(location: 5, length: 8)) // "BBB\r\nCCC"
+
+        let transaction = EditorLineTransforms.moveLinesDownTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection
+        )
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+
+        #expect(applied?.text == "AAA\r\nDDD\r\nBBB\r\nCCC")
+        // The selection must land exactly on "BBB\r\nCCC" in its new
+        // position -- "AAA\r\nDDD\r\n" is 10 UTF-16 units, and the selection's
+        // own original length (8, "BBB\r\nCCC") is preserved.
+        #expect(applied?.selection == NSRange(location: 10, length: 8))
+    }
+
     @Test("if ANY active selection is already at the boundary, the whole Move Up command no-ops")
     func moveUpAllOrNothingAcrossMultipleSelections() {
         let text = "AAA\nBBB\nCCC" as NSString

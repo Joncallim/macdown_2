@@ -114,6 +114,27 @@ struct EditorLineTransformsTests {
         #expect(applied?.text == "AAA\r\nBBB\r\nBBB")
     }
 
+    @Test("duplicating a MULTI-LINE last block in a CRLF document reuses the terminator before the whole block")
+    func duplicateMultiLineLastBlockPreservesCRLFStyle() {
+        // A P2 gap an independent re-review flagged: the single-line case
+        // above doesn't distinguish "the terminator before the sole
+        // preceding line" from "the terminator before the whole block" --
+        // this fixture's block spans TWO lines, so a wrong reference point
+        // would reach into the block's own internal terminator instead.
+        let text = "AAA\r\nBBB\r\nCCC" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(single: NSRange(location: 5, length: 8)) // "BBB\r\nCCC"
+
+        let transaction = EditorLineTransforms.duplicateLinesTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection
+        )
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+
+        #expect(applied?.text == "AAA\r\nBBB\r\nCCC\r\nBBB\r\nCCC")
+    }
+
     @Test("duplicating lines on a truly empty document is a no-op, consistent with Delete/Join/Move")
     func duplicateLinesOnEmptyDocumentIsNoOp() {
         let text = "" as NSString
