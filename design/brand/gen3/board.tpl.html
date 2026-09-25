@@ -1,0 +1,119 @@
+<title>MostlyText M+T Marks</title>
+<style>
+:root{--paper:#F4F5F8;--surface:#FFFFFF;--ink:#11141A;--muted:#5A6270;--line:#DCE0E7;--accent:#2F5FE6;
+ --good:#1D7A45;--good-bg:#E3F3E9;--ok:#8A5A00;--ok-bg:#FBF0D9;--bad:#B3322A;--bad-bg:#FBE5E3;--fin:#E8EEFF;
+ --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+ --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--paper:#0E1014;--surface:#171A20;--ink:#E7EAF0;--muted:#9AA3B1;--line:#2A2F38;--accent:#8AA9FF;
+ --good:#6FD39A;--good-bg:#15301F;--ok:#E8BC62;--ok-bg:#33280F;--bad:#FF8C80;--bad-bg:#3A1A17;--fin:#1B2238}}
+:root[data-theme="dark"]{color-scheme:dark;--paper:#0E1014;--surface:#171A20;--ink:#E7EAF0;--muted:#9AA3B1;--line:#2A2F38;--accent:#8AA9FF;
+ --good:#6FD39A;--good-bg:#15301F;--ok:#E8BC62;--ok-bg:#33280F;--bad:#FF8C80;--bad-bg:#3A1A17;--fin:#1B2238}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans);padding-inline:clamp(16px,4vw,48px);padding-block:32px 64px}
+main{max-width:1180px;margin:0 auto;display:grid;gap:40px}
+h1{font-size:30px;line-height:1.15;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h2{font-size:20px;margin:0;letter-spacing:-.01em}h3{font-size:16px;margin:0 0 6px}
+.eyebrow{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.intro{display:grid;gap:10px;max-width:70ch}.intro p{margin:0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,540px),1fr));gap:20px}
+.concept{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:14px;align-content:start}
+.concept.fin{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.concept header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.verdict{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 9px;white-space:nowrap}
+.verdict.is-fin{color:var(--accent);border-color:var(--accent);background:var(--fin)}
+.mech{margin:0;color:var(--muted)}
+figure{margin:0;display:grid;gap:6px;justify-items:start;align-content:start}
+figcaption{font:11px/1.3 var(--mono);color:var(--muted)}
+.primary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile svg{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;max-width:100%;display:block;border-radius:8px}
+.tile.pos .mk{background:#fff;box-shadow:0 0 0 1px #0000001a inset;padding:14%}
+.tile.neg .mk{background:#000;padding:14%}
+.tile.icons .ic-lg{padding:0}
+.scales{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 18px;padding-top:12px;border-top:1px solid var(--line)}
+.scales figure>svg,.scales figure>canvas,.scales figure>.tb{display:inline-block;vertical-align:middle;margin-right:6px}
+.scales figure{display:block}.scales figcaption{margin-top:6px}
+.ic-64{width:64px;height:64px}
+.tb{display:inline-flex!important;align-items:center;gap:7px;height:30px;padding:0 10px;border-radius:8px;background:#ECEEF2;color:#1B1E24;font-size:13px;margin-bottom:6px}
+.tb.dk{background:#2A2D33;color:#E8EAEE}.mk20{width:20px;height:20px;color:#1B1E24}
+.px canvas{width:64px;height:64px;image-rendering:pixelated;border:1px solid var(--line);border-radius:4px}
+.actual svg{background:#fff;border-radius:3px}.actual .a32{width:32px;height:32px}.actual .a16{width:16px;height:16px}
+.actual svg.a32:first-child,.actual svg.a16:nth-child(2){padding:0;box-shadow:0 0 0 4px #fff}
+.lockup{display:flex;align-items:center;gap:9px;padding:10px 12px;background:#fff;color:#0B0D11;border-radius:10px;box-shadow:0 0 0 1px #0000001a inset;width:max-content;max-width:100%}
+.lockup span{font:700 24px/1 var(--sans);letter-spacing:-.025em}.mk28{width:28px;height:28px}
+.note{margin:0;max-width:70ch}
+.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px}
+th,td{padding:9px 14px;border-bottom:1px solid var(--line);text-align:left}
+thead th{font:600 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+tbody th{font-weight:500}tbody tr:last-child>*{border-bottom:0}
+.rt{display:inline-block;font:600 12px/1 var(--sans);padding:4px 8px;border-radius:6px}
+.rt.g{color:var(--good);background:var(--good-bg)}.rt.o{color:var(--ok);background:var(--ok-bg)}.rt.w{color:var(--bad);background:var(--bad-bg)}
+.final{display:grid;gap:20px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:20px}
+.fcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:14px;align-content:start}
+.fhead{display:flex;gap:14px;align-items:center}.fhead svg{width:72px;height:72px;flex:none}
+.fcard ul{margin:0;padding-left:18px;display:grid;gap:4px}.fcard p{margin:0}
+.diff{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:12px}
+.diff ol{margin:0;padding-left:20px;display:grid;gap:4px}
+</style>
+<main>
+ <div class="intro">
+  <span class="eyebrow">MostlyText identity · generation 3 · 25 Sep 2026</span>
+  <h1>Giving the MT ligature more energy</h1>
+  <p>Owner review of generation 2: Crown looks like an IUD, and Ligature is too plain. Crown, Arch and Gate all hang arms either side of a central stem, which is the outline of an IUD, so that whole family is closed. This round keeps Ligature’s shared stem and tries four different ways to give it energy. Each one has to work in solid black first. Colour is then a two-tone accent on the T, never a way to rescue weak geometry.</p>
+ </div>
+ <div class="grid">{{CARDS}}</div>
+ <section class="final" aria-labelledby="sc">
+  <h2 id="sc">Scorecard</h2>
+  {{TABLE}}
+ </section>
+ <section class="final" aria-labelledby="fin">
+  <h2 id="fin">Two finalists</h2>
+  <div class="diff">
+   <h3>What separates them</h3>
+   <p><b>Caret gets its energy from meaning.</b> The T is the text cursor, so the mark is about writing in an editor, and the cursor is the natural place for colour. It is calmer and more native to macOS, and more specific to MostlyText.</p>
+   <p><b>Slant gets its energy from motion.</b> Weight and a forward lean make it the loudest mark here, and the most confident at small sizes. It says “fast” more than “text”. Its neighbours are sports and car marks rather than Mac apps.</p>
+   <p>Neither wins outright on structure. They can also be combined: a Caret with a slight lean of 4–6° instead of 12° is worth one test.</p>
+  </div>
+  <div class="pair">
+   <article class="fcard"><div class="fhead">{{CROWN}}<div><h3>Caret</h3><p class="mech">The T is the text cursor</p></div></div>
+    <div><h3>Refine next</h3><ul>
+     <li>“MI” risk: keep the foot clearly shorter than the crossbar (36 against 58 now). Test 28 and 44, and a foot on one side only.</li>
+     <li>Balance: the crossbar and foot are both on the right. Move the mark about 3% left and test a slightly wider M.</li>
+     <li>Join: the M’s right peak disappears under the crossbar. Test a hairline gap so the M keeps both peaks.</li>
+     <li>Two-tone: only the cursor carries colour. Check that it still reads when the tinted icon removes the colour.</li></ul></div>
+    <div><h3>Could break in production</h3><ul>
+     <li>At 16 px the foot and the M’s bottom-right can merge into one block. The favicon needs a hand-drawn pixel version.</li>
+     <li>I-beam cursor glyphs are common in text-editor icons. The M next to it has to stay dominant enough that it is not just a cursor icon.</li>
+     <li>The mark is taller than it is wide because the cursor overshoots, so its clear-space rules differ from a square mark.</li></ul></div>
+   </article>
+   <article class="fcard"><div class="fhead">{{LIGATURE}}<div><h3>Slant</h3><p class="mech">The ligature leans forward</p></div></div>
+    <div><h3>Refine next</h3><ul>
+     <li>Angle: compare 8°, 12° (current) and 15°. Less lean is calmer and more Mac-like, more lean is faster.</li>
+     <li>Crossbar cut: match the cut angle to the lean so the end reads as one gesture.</li>
+     <li>Counters: with heavy strokes, the V between the M’s diagonals is small. Open it slightly so it doesn’t fill in on non-Retina screens.</li>
+     <li>Wordmark: should “MostlyText” lean too? Probably not, but test it.</li></ul></div>
+    <div><h3>Could break in production</h3><ul>
+     <li>It is close to BMW M and similar performance marks, so it needs a similarity check early.</li>
+     <li>Slanted shapes sit awkwardly in a square icon, because the corners fill unevenly.</li>
+     <li>“Speed” can promise more than a text editor should.</li></ul></div>
+   </article>
+  </div>
+  <div class="diff">
+   <h3>Tests before freezing either mark</h3>
+   <ol>
+    <li><b>Read test:</b> show 6–8 people who haven’t seen the marks each one for 5 seconds, at 64 px and at 16 px. Ask “Which letters do you see?”. For Caret, also ask “What does this app do?”.</li>
+    <li><b>Look-alike check:</b> ask the same people what the shape reminds them of. This catches problems like the IUD reading before launch.</li>
+    <li><b>Hand-drawn small sizes:</b> 16 and 32 px pixel versions for the favicon, Finder list and menu bar.</li>
+    <li><b>macOS 26 icon:</b> light, dark, clear and tinted versions in Icon Composer, in a real Dock next to Notes, TextEdit and Obsidian.</li>
+    <li><b>Similarity search:</b> trademarks and existing app icons (MT monograms, BMW M, cursor-glyph editor icons).</li>
+    <li><b>Lockup and single colour:</b> the mark with the wordmark at three sizes, one ink, and Increase Contrast.</li>
+   </ol>
+  </div>
+ </section>
+</main>
+<script>
+const S={{MARKS}};
+document.querySelectorAll('canvas[data-k]').forEach(c=>{const s=+c.dataset.s,x=c.getContext('2d');x.fillStyle=c.dataset.bg;x.fillRect(0,0,s,s);
+ const i=new Image();i.onload=()=>x.drawImage(i,s*.08,s*.08,s*.84,s*.84);
+ i.src='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color:'+c.dataset.fg+'">'+S[c.dataset.k]+'</svg>')});
+</script>
