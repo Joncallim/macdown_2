@@ -110,6 +110,45 @@ public final class EditorTextView: NSTextView {
         super.paste(sender)
     }
 
+    /// Option-click add/remove caret (§6.10, Slice 3b-ii). A plain
+    /// (single-click) Option-click resolves the click point to a character
+    /// offset and toggles a secondary caret there via
+    /// `EditorTextSystem.toggleSecondaryCaret(at:)`; anything else (no
+    /// Option, or more than one click) falls through to `super.mouseDown(_:)`
+    /// unchanged. Not calling `super` for a handled Option-click also means
+    /// AppKit's own internal drag-tracking loop never starts for it, so an
+    /// Option-*drag* does nothing beyond placing the initial caret — the
+    /// correct minimal scope here; rectangular/column selection via
+    /// Option-drag is Slice 3b-iv's own, separate feature.
+    ///
+    /// Point-to-offset resolution uses `NSTextInputClient.characterIndex(for:)`
+    /// (screen-space), confirmed empirically against this exact TextKit 2
+    /// stack (round-tripped through `firstRect(forCharacterRange:)`'s
+    /// already-verified offset-to-point mapping, exact for 7 offsets
+    /// spanning a line wrap) — a different, more precise tool than
+    /// `EditorTextSystem+Scroll.swift`'s `topVisibleUTF16Offset`, which only
+    /// ever needed fragment-level granularity, not an exact character
+    /// position within a line.
+    override public func mouseDown(with event: NSEvent) {
+        if Self.isPlainOptionClick(event), let owningSystem, let window {
+            let screenPoint = window.convertPoint(toScreen: event.locationInWindow)
+            if owningSystem.toggleSecondaryCaret(at: characterIndex(for: screenPoint)) {
+                return
+            }
+        }
+        super.mouseDown(with: event)
+    }
+
+    /// `true` for exactly the click `mouseDown(with:)` intercepts: Option
+    /// held, single click. Extracted as a pure, testable predicate — an
+    /// independent hostile review noted that driving a REAL `mouseDown(with:)`
+    /// call in a test to check this condition risks the modal-tracking-loop
+    /// hang documented above, so this lets `EditorOptionClickTests` cover
+    /// the guard itself directly without that risk.
+    static func isPlainOptionClick(_ event: NSEvent) -> Bool {
+        event.modifierFlags.contains(.option) && event.clickCount == 1
+    }
+
     /// Viewport-bounded: starts at the fragment intersecting `dirtyRect`'s
     /// origin and stops as soon as a fragment's frame is entirely below
     /// `dirtyRect`, mirroring `EditorTextSystem+Gutter.swift`'s
