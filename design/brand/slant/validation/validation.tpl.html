@@ -58,12 +58,12 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:4px}
  <div class="intro">
   <span class="eyebrow">MostlyText identity · pre-freeze validation · 25 Sep 2026</span>
   <h1>Is Slant ready to freeze?</h1>
-  <p>Selected identity: the 12° Slant mark with a leaned Inter Tight Bold wordmark, in one colour (D-010 to D-013). This page tests the mark at real sizes and in real contexts. It checks the small sizes pixel by pixel, looks for existing logos it could be confused with, tunes the lockup, and ends with a freeze verdict. It explores no new logo concepts.</p>
+  <p>Selected identity: the 12° Slant mark with a leaned Inter Tight Bold wordmark, in one colour (D-010 to D-013). Status: geometry release-candidate frozen (D-018). This page tests the mark at real sizes and in real contexts. It checks the small sizes pixel by pixel, looks for existing logos it could be confused with, tunes the lockup, and ends with a freeze verdict. It explores no new logo concepts.</p>
  </div>
 
  <section aria-labelledby="s1">
   <h2 id="s1">1 · Read test in context</h2>
-  <p>Every context below uses the master drawn for that size: the 16 px master up to 17 px, the 32 px master from 18 to 40 px, and the vector master above that. On a Retina Mac, a 16-point context is drawn with 32 physical pixels, so the 32 px master covers most real Mac use. The 16 px master matters for non-Retina screens and 1× browser favicons.</p>
+  <p>Every context below uses the artwork drawn for that size: the 16 px microglyph up to 17 px, the 32 px master from 18 to 40 px, and the vector master above that. On a Retina Mac, a 16-point context is drawn with 32 physical pixels, so the 32 px master covers most real Mac use. The microglyph matters for non-Retina screens and 1× browser favicons.</p>
   <div class="grid2">
    <div class="card"><h3>Sizes, mark only</h3>
     <div class="stage lt sizes"><figure>{{MARK:16}}<span class="cap">16</span></figure><figure>{{MARK:20}}<span class="cap">20</span></figure><figure>{{MARK:24}}<span class="cap">24</span></figure><figure>{{MARK:32}}<span class="cap">32</span></figure><figure>{{MARK:64}}<span class="cap">64</span></figure><figure>{{MARK:128}}<span class="cap">128</span></figure></div>
@@ -97,7 +97,7 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:4px}
   <div class="tw"><table><thead><tr><th>Context</th><th>M reads</th><th>T reads</th><th>Construction holds</th><th>Note</th></tr></thead><tbody>
    <tr><th>Mark 64–128, icon 64–128</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>The shared stem, the V and the wedge are all visible.</td></tr>
    <tr><th>Mark 20–32 (32 px master)</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>The redrawn V stays open. The crossbar’s wedge still shows at 20 px.</td></tr>
-   <tr><th>Mark 16 (16 px master)</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt o">Mostly</span></td><td>Reads as “MT”. The V is a small opening and the wedge is only suggested. The shared stem reads as touching letters rather than as one construction.</td></tr>
+   <tr><th>Mark 16 (microglyph)</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt o">Mostly</span></td><td>Reads as “MT”. The V is a small opening and the wedge is only suggested. The shared stem reads as touching letters rather than as one construction.</td></tr>
    <tr><th>App icon 32</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>The coloured T separates the letters, which helps.</td></tr>
    <tr><th>App icon 16 (Finder list)</th><td><span class="rt o">Shape</span></td><td><span class="rt g">Yes</span></td><td><span class="rt o">No</span></td><td>About 11 px of mark. It reads as a leaning dark “MT” block with a blue top. It is recognisable by shape, not by construction. This is normal at this size, and on Retina the 32 px master is used here instead.</td></tr>
    <tr><th>Lockups (About, website, 22–28 px)</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>Mark and name read as one unit. With the name beside it, the MT initials become obvious.</td></tr>
@@ -107,20 +107,22 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:4px}
    <ol>
     <li>Show 6–8 people who haven’t seen the mark each one for 5 seconds, in this order: mark at 16 px (1× screen), mark at 64 px, app icon at 128 px, website header.</li>
     <li>Ask “What letters, if any, do you see?”, then “What does it remind you of?”, then “What kind of app is this?”. Don’t prompt with M or T.</li>
-    <li><b>Pass:</b> at least 5 of 8 name M and T at 64 px, at least 4 of 8 at 16 px, and no single look-alike is named by 3 or more people. If “BMW” or “car” comes up 3 or more times, go to the fallback in §3.</li>
+    <li><b>Pass at logo scale (64 px mark, 128 px icon, website header):</b> at least 6 of 8 people, ideally 7, name both M and T without prompting. The M/T combination is the whole idea, so this bar is deliberately high.</li>
+    <li><b>Pass at 16 px:</b> people recognise it as the same distinctive glyph. Show the 16 px microglyph among four other small app glyphs and ask which one matches the large mark. They don’t need to read the letters or the shared stem at this size.</li>
+    <li><b>Associations:</b> record every unprompted association word for word. If automotive or motorsport associations (BMW, car, racing, sport) come up independently from 3 or more people, treat the lean as needing reconsideration (see §3).</li>
    </ol>
   </div>
  </section>
 
  <section aria-labelledby="s2">
-  <h2 id="s2">2 · Small-size optical masters</h2>
-  <p>Each size below is rendered at its true pixel size and then enlarged. The scaled master loses the V, turns the peak-to-crossbar notch grey, and blurs every vertical edge because of the 12° lean. The optical masters are redrawn for their pixel grid. Top edges, the crossbar and the baseline land on whole pixels. Stems are whole pixels wide (2 at 16 px, 4 at 32 px). Diagonals are thinner and the V is opened, so the M keeps its counter.</p>
+  <h2 id="s2">2 · Small-size artwork: 32 px master and 16 px microglyph</h2>
+  <p>Each size below is rendered at its true pixel size and then enlarged. The scaled master loses the V, turns the peak-to-crossbar notch grey, and blurs every vertical edge because of the 12° lean. The small-size artwork is redrawn for its pixel grid. Top edges, the crossbar and the baseline land on whole pixels. Stems are whole pixels wide (2 at 16 px, 4 at 32 px). Diagonals are thinner and the V is opened, so the M keeps its counter.</p>
   <div class="card"><div class="sizes">{{Z16M}}{{Z16O}}{{ZI16M}}{{ZI16O}}{{Z32M}}{{Z32O}}</div></div>
   <div class="grid3">
    <div class="card"><h3>What changed</h3><ul>
     <li>Horizontals sit on pixel rows, so the crossbar and baseline are crisp rather than half-toned.</li>
     <li>Diagonals are lighter than stems (1.2 against 2 px at 16, 3.4 against 4 px at 32). This opens the V.</li>
-    <li>At 16 px the vertex moves down and the stem moves right by half a pixel. This leaves a clear two-pixel V counter and a clear gap between the V and the stem.</li>
+    <li>In the 16 px microglyph the vertex moves down and the stem moves right by half a pixel. This leaves a clear two-pixel V counter and a clear gap between the V and the stem.</li>
     <li>Inside the 16 px icon, the V counter is given up. The mark keeps the stem, crossbar and lean.</li></ul></div>
    <div class="card"><h3>Tested and rejected</h3><ul>
     <li><b>Hand-drawn 1-bit pixel grids:</b> crisp, but the 12° lean becomes a 3-step staircase. That breaks the stems into blocks and fights the mark’s main gesture.</li>
@@ -128,24 +130,24 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:4px}
    <div class="card"><h3>Balance</h3><ul>
     <li>The weight sits top-right (the crossbar and wedge), so the masters sit about 1 px left of centre at 16, and the icon masters sit slightly low.</li>
     <li>Neither letter overwhelms the other: the M is wider, and the T is darker at the top.</li>
-    <li>Files: <code>slant-16.svg</code>, <code>slant-32.svg</code>, <code>slant-icon-16-inner.svg</code>, <code>slant-master.svg</code>.</li></ul></div>
+    <li>Files: <code>slant-16.svg</code> (microglyph), <code>slant-32.svg</code>, <code>slant-icon-16-inner.svg</code> (microglyph), <code>slant-master.svg</code>.</li></ul></div>
   </div>
  </section>
 
  <section aria-labelledby="s3">
   <h2 id="s3">3 · Similarity and collision review</h2>
-  <p>I searched by structure (a leaning heavy M, an MT or TM monogram, parallelogram-built letters, a T badge) and by category (Mac writing apps, Markdown editors, developer tools). This was a web search, not a trademark-register search. A formal image search in the WIPO Global Brand Database and at the USPTO (Classes 9 and 42) is still needed.</p>
+  <p>This is a visual-neighbour screen, not a legal assessment. I searched by structure (a leaning heavy M, an MT or TM monogram, parallelogram-built letters, a T badge) and by category (Mac writing apps, Markdown editors, developer tools). This was a web search, not a trademark-register search. A formal image search in the WIPO Global Brand Database and at the USPTO (Classes 9 and 42) is still needed.</p>
   <div class="tw"><table><thead><tr><th>Mark</th><th>What is shared</th><th>Level</th><th>Assessment</th></tr></thead><tbody>
-   <tr><th>BMW M (the “Giugiaro M”)</th><td>A heavy, forward-leaning capital M with bevelled, speed-coded geometry. The current version uses light blue, dark blue and red.</td><td><span class="rt o">Structural, bounded</span></td><td>The closest neighbour. Slant’s shared T stem and flat crossbar are absent from BMW M, and BMW M’s three coloured stripes are absent from Slant. The market is different (cars against Mac software), so legal risk is low. The perceptual risk is real only if Slant adds stripes, multicolour bars, or red with blue. <b>Rule:</b> never pair the mark with parallel stripes or a red-and-blue scheme.</td></tr>
+   <tr><th>BMW M (the “Giugiaro M”)</th><td>A heavy, forward-leaning capital M with bevelled, speed-coded geometry. The current version uses light blue, dark blue and red.</td><td><span class="rt o">Structural, bounded</span></td><td>The strongest perceptual concern. Slant’s shared T stem and flat crossbar are absent from BMW M, and BMW M’s three coloured stripes are absent from Slant. It doesn’t look like the BMW M logo, but at large size the heavy oblique M, forward motion and wedge do carry some motorsport character. Adding stripes, multicolour bars or red with blue would push it closer. <b>Rule:</b> never pair the mark with parallel stripes or a red-and-blue scheme. Whether there is any trademark concern is for the register search to establish, not this screen.</td></tr>
    <tr><th>Stock MT / TM monograms (Scalebranding, Branition, Dribbble)</th><td>M and T sharing a stroke.</td><td><span class="rt o">Common vocabulary</span></td><td>Many generic MT ligatures exist, and some are sold as ready-made logos. None found uses the 12° lean with a wedge-cut crossbar. The risk is looking generic rather than colliding, which the lean and wedge answer. A ready-made logo sold to an unknown buyer can’t be ruled out by web search, which is why the register search is needed.</td></tr>
-   <tr><th>Monzo</th><td>An M built from slanted parallelograms.</td><td><span class="rt g">Common vocabulary</span></td><td>Upright, symmetric, four colours, no T. Not confusable.</td></tr>
+   <tr><th>Monzo</th><td>An M built from slanted parallelograms.</td><td><span class="rt g">Common vocabulary</span></td><td>Upright, symmetric, four colours, no T. Visually distinct.</td></tr>
    <tr><th>M&amp;T Bank</th><td>The letters M and T.</td><td><span class="rt g">Superficial</span></td><td>A condensed serif “M&amp;T” wordmark in green. Different structure and category.</td></tr>
-   <tr><th>Microsoft Teams</th><td>A T in a coloured badge.</td><td><span class="rt g">Superficial</span></td><td>An upright T with figures of people, in purple. Not confusable.</td></tr>
+   <tr><th>Microsoft Teams</th><td>A T in a coloured badge.</td><td><span class="rt g">Superficial</span></td><td>An upright T with figures of people, in purple. Visually distinct.</td></tr>
    <tr><th>Tesla</th><td>A stylised T.</td><td><span class="rt g">Not applicable</span></td><td>This risk belonged to the dropped Crown mark. Slant has no notch and no arched bar.</td></tr>
    <tr><th>Markdown mark (M↓)</th><td>An M in the Markdown category.</td><td><span class="rt g">Common vocabulary</span></td><td>An upright M with a down arrow in a rectangle. Slant uses no arrow and no frame.</td></tr>
    <tr><th>MarkText (Markdown editor)</th><td>The name pattern “M…Text” in the same category.</td><td><span class="rt o">Name, not logo</span></td><td>Its logo couldn’t be retrieved to check visually. The name overlap is the bigger point: two Markdown editors called M…Text. This doesn’t reopen the name, but the register search should cover MarkText, and the icon must not resemble MarkText’s.</td></tr>
   </tbody></table></div>
-  <p><b>Conclusion:</b> no likely real collision was found. The one concerning structural neighbour is BMW M, and it is contained by a usage rule. If the read test links the mark to BMW or cars 3 or more times, the fallback is the 8° lean from the refinement board, not a new concept.</p>
+  <p><b>Conclusion:</b> in this screen, the only close visual neighbour is BMW M. The usage rule above keeps the mark clear of it, and the unprompted-association question in the human test is the real check on its motorsport character. If that test turns up automotive associations, compare 8°, 10° and 12° in a follow-up round and keep as much of the lean as passes. The motion is one of the identity’s strengths, so don’t decide the fallback angle in advance. Trademark conclusions wait for the register search.</p>
  </section>
 
  <section aria-labelledby="s4">
@@ -179,15 +181,15 @@ ul,ol{margin:0;padding-left:20px;display:grid;gap:4px}
  <section aria-labelledby="s5">
   <h2 id="s5">5 · Freeze recommendation</h2>
   <div class="card verdict">
-   <h3>Freeze the geometry now. Freeze the public identity once three external checks pass.</h3>
-   <p>No design defect remains in the mark. It reads as M and T from 20 px up. At 16 px it reads as “MT” with its construction simplified. It needs no colour. The lockup specification above is complete. The remaining items are production work and outside checks, not design problems:</p>
+   <h3>Geometry: release-candidate frozen. Public identity: not frozen until four items close.</h3>
+   <p>The mark has passed machine and visual validation: rendering at true pixel size, numerical coverage checks and in-context review. It reads as M and T from 20 px up. The 16 px microglyph keeps the MT look while simplifying the construction, and nothing depends on colour. It has <b>not</b> had perceptual validation (people seeing it cold) or rendering through the real macOS icon pipeline. Optical corrections from either are expected and are part of the release-candidate stage, not a breach of the design record. Four items remain:</p>
    <ol>
     <li><b>Wordmark outlines (production defect):</b> the lockup is still live text. Convert “MostlyText” to outlines using the specification above, correct the synthetic 2.6° on the curves of the o, y and x, and tighten the “yT” pair. Until then, the lockup depends on the Inter Tight web font loading.</li>
     <li><b>macOS icon set (production defect):</b> build the light, dark, clear and tinted versions in Icon Composer on a Mac using the 16, 32 and vector masters, and check them in a real Dock and Finder. This can’t be done from this Linux environment.</li>
-    <li><b>Human read test (check):</b> run the protocol in §1.</li>
-    <li><b>Register search (check):</b> a WIPO and USPTO image and word search, covering BMW M, MT monograms and MarkText.</li>
+    <li><b>Human read test (check):</b> run the protocol in §1, with the thresholds there.</li>
+    <li><b>Register search (check):</b> a WIPO and USPTO image and word search, covering BMW M, MT monograms and MarkText. This, not the visual screen, settles any trademark question.</li>
    </ol>
-   <p>If the read test or register search fails, the prepared fallback is the 8° lean. The identity doesn’t reopen.</p>
+   <p>If the read test turns up automotive associations, compare 8°, 10° and 12° rather than switching straight to a fixed fallback. The identity doesn’t reopen.</p>
   </div>
  </section>
 </main>

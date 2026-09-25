@@ -39,7 +39,8 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
   licence doesn't allow logo use.
 - Primary identity direction: the symbol meaningfully combines **M** and **T**.
   Chosen mark: **Slant**, an M and T sharing one stem, leaning forward, with a
-  wedge cut on the crossbar. It is not frozen yet (see D-010 and D-011).
+  wedge cut on the crossbar. Geometry is release-candidate frozen, not frozen
+  (D-018). The 16 px files are microglyphs for ≤17 px only; never enlarge them (D-020).
 - The mark must work at macOS app-icon size, at favicon size (16 px), in
   monochrome, on light and dark backgrounds, and in a wordmark lockup.
 - Current icon: **placeholder only**. It is a white document glyph on a blue

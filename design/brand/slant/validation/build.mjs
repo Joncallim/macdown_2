@@ -4,7 +4,7 @@ import { marks } from '../marks.mjs';
 import { vSmall, P16, PI16, v32 } from './small.mjs';
 let n = 0; const u = s => { n++; return s.replace(/id="([^"]+)"/g, `id="$1-${n}"`).replace(/url\(#([^)]+)\)/g, `url(#$1-${n})`); };
 const M = (tc = 'currentColor') => marks.s12.svg.replaceAll('"TC"', `"${tc}"`);
-// Size-appropriate master: ≤17 px uses the 16 optical master, 18–40 px the 32 optical master, above that the vector master.
+// Size-appropriate artwork: ≤17 px uses the 16 px microglyph (never enlarged), 18–40 px the 32 optical master, above that the vector master.
 // Metrics (fractions of the box): glyph height, glyph bottom, left and right side bearings.
 const MET = { 16: { h: 11 / 16, bot: 14 / 16, l: .4 / 16, r: .66 / 16 }, 32: { h: 22 / 32, bot: 27 / 32, l: 2 / 32, r: .8 / 32 }, 100: { h: .596, bot: .818, l: .07, r: .07 } };
 const which = px => px <= 17 ? 16 : px <= 40 ? 32 : 100;
@@ -40,18 +40,19 @@ const html = tpl.replace(/\{\{(\w+)(?::([^}]*))?\}\}/g, (_, key, arg) => {
     case 'ICON': return icon(+a[0], a[1] || 'light');
     case 'LOCK': return lock(+a[0], { style: a[1] || 'hy', two: a[2] === 'two', dark: a[3] === 'dk', align: a[4] || 'base', k: a[5] ? +a[5] : 1.15 });
     case 'Z16M': return zoom(0, 16, master(16, 15 / 86, .5), '16 px, master scaled');
-    case 'Z16O': return zoom(0, 16, vSmall(P16, '#000', '#000'), '16 px, optical master');
+    case 'Z16O': return zoom(0, 16, vSmall(P16, '#000', '#000'), '16 px microglyph');
     case 'Z32M': return zoom(0, 32, master(32, 30 / 86, 1), '32 px, master scaled');
     case 'Z32O': return zoom(0, 32, v32('#000', '#000'), '32 px, optical master');
     case 'ZI16M': return zoom(0, 16, `<rect x=".5" y=".5" width="15" height="15" rx="3.6" fill="#EEF1F6" stroke="#0003"/>` + master(16, 11 / 86, 2.5), 'Icon 16, master scaled');
-    case 'ZI16O': return zoom(0, 16, `<rect x=".5" y=".5" width="15" height="15" rx="3.6" fill="#EEF1F6" stroke="#0003"/>` + vSmall(PI16, '#000', '#000'), 'Icon 16, optical master');
+    case 'ZI16O': return zoom(0, 16, `<rect x=".5" y=".5" width="15" height="15" rx="3.6" fill="#EEF1F6" stroke="#0003"/>` + vSmall(PI16, '#000', '#000'), 'Icon 16 microglyph');
   }
 });
 writeFileSync('validation.html', html);
 // Export production masters.
-const file = (vb, body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vb} ${vb}" style="color:#000">${body}</svg>\n`;
-writeFileSync('slant-16.svg', file(16, vSmall(P16)));
+const MICRO = '<!-- MostlyText Slant microglyph. For rendering at 17 px or smaller ONLY. It is a deliberate simplification of the mark: never enlarge it or use it as general artwork. Use slant-32.svg for 18–40 px and slant-master.svg above that. -->';
+const file = (vb, body, note = '') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vb} ${vb}" style="color:#000">${note}${body}</svg>\n`;
+writeFileSync('slant-16.svg', file(16, vSmall(P16), MICRO));
 writeFileSync('slant-32.svg', file(32, v32()));
-writeFileSync('slant-icon-16-inner.svg', file(16, vSmall(PI16)));
+writeFileSync('slant-icon-16-inner.svg', file(16, vSmall(PI16), MICRO));
 writeFileSync('slant-master.svg', file(100, M()));
 console.log('built validation', html.length);
