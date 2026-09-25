@@ -77,11 +77,17 @@ extension EditorLineTransforms {
     /// Rearranges the block `[startLine...endLine]` and the single adjacent
     /// line (above for `moveUp`, below otherwise) via one pure content
     /// swap over their exact combined span — the same set of lines, in a
-    /// new order, joined by the same `"\n"` separators, replacing the
-    /// identical span they already occupied. No terminator bookkeeping is
-    /// needed beyond this: whatever precedes/follows the combined span
-    /// (including "nothing, this is the document's last line") is
-    /// completely untouched.
+    /// new order, replacing the identical span they already occupied.
+    ///
+    /// Every terminator inside the span is preserved VERBATIM, never
+    /// assumed to be `"\n"` — a P1 an independent hostile review found: the
+    /// original implementation rejoined bare line content with a literal
+    /// `"\n"`, silently downgrading a CRLF or bare-CR document's own line
+    /// endings to LF within the swapped span. The block's own INTERNAL
+    /// terminators (between its own lines, if it spans more than one) never
+    /// change position and are copied through unchanged; only the ONE
+    /// terminator that sits between the block and the adjacent line
+    /// relocates to the opposite side, but its own exact text is preserved.
     private static func swapReplacement(
         startLine: Int,
         endLine: Int,
@@ -100,13 +106,32 @@ extension EditorLineTransforms {
 
         let blockLines = (startLine ... endLine)
             .map { text.substring(with: lineIndex.utf16Range(ofLine: $0, in: text)) }
+        let blockInternalTerminators = (startLine ..< endLine)
+            .map { EditorLineTransforms.terminatorText(afterLine: $0, lineIndex: lineIndex, text: text) }
         let adjacentContent = text.substring(with: lineIndex.utf16Range(ofLine: adjacentLine, in: text))
+        let adjacentTerminatorLine = moveUp ? adjacentLine : endLine
+        let adjacentTerminator = EditorLineTransforms.terminatorText(
+            afterLine: adjacentTerminatorLine,
+            lineIndex: lineIndex,
+            text: text
+        )
 
-        let orderedLines = moveUp ? blockLines + [adjacentContent] : [adjacentContent] + blockLines
-        let newContent = orderedLines.joined(separator: "\n")
+        var blockJoined = ""
+        for (index, line) in blockLines.enumerated() {
+            blockJoined += line
+            if index < blockInternalTerminators.count {
+                blockJoined += blockInternalTerminators[index]
+            }
+        }
+
+        let newContent = moveUp
+            ? blockJoined + adjacentTerminator + adjacentContent
+            : adjacentContent + adjacentTerminator + blockJoined
         let replacement = TextReplacement(range: combinedRange, replacementText: newContent)
 
-        let blockOffsetInNewContent = moveUp ? 0 : (adjacentContent as NSString).length + 1
+        let blockOffsetInNewContent = moveUp
+            ? 0
+            : (adjacentContent as NSString).length + (adjacentTerminator as NSString).length
         return (replacement, blockOffsetInNewContent)
     }
 }

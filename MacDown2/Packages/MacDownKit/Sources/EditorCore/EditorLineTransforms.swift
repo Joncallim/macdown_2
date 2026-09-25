@@ -30,6 +30,11 @@ enum EditorLineTransforms {
         lineIndex: EditorLineIndex,
         selection: EditorSelectionSet
     ) -> EditorEditTransaction? {
+        // An empty document is a single empty line; duplicating it would
+        // still build a valid but low-value zero-content "edit" that
+        // registers an undo step for no visible change -- for consistency
+        // with `deleteLinesTransaction`'s own identical guard, decline.
+        guard lineIndex.utf16Length > 0 else { return nil }
         let groups = mergedLineBlockGroups(for: selection, lineIndex: lineIndex)
         guard !groups.isEmpty else { return nil }
 
@@ -42,7 +47,20 @@ enum EditorLineTransforms {
             let blockRange = fullBlockRange(startLine: group.startLine, endLine: group.endLine, lineIndex: lineIndex)
             let blockContent = text.substring(with: blockRange)
             let needsLeadingSeparator = group.endLine == lineIndex.lineCount
-            let replacementText = (needsLeadingSeparator ? "\n" : "") + blockContent
+            // When duplicating the document's actual last line, a fresh
+            // separator has to be synthesized (the block itself has no
+            // trailing terminator to reuse) -- reuse the terminator ALREADY
+            // used immediately before this block, rather than hardcoding
+            // "\n", so a CRLF/CR document's own line-ending style is never
+            // silently mixed with a foreign one. Only a single-line document
+            // (nothing before the block to infer a style from) falls back
+            // to "\n".
+            let separator = needsLeadingSeparator
+                ? (group.startLine > 1
+                    ? terminatorText(afterLine: group.startLine - 1, lineIndex: lineIndex, text: text)
+                    : "\n")
+                : ""
+            let replacementText = separator + blockContent
             let insertionPoint = blockRange.location + blockRange.length
             let replacement = TextReplacement(
                 range: NSRange(location: insertionPoint, length: 0),
@@ -50,7 +68,7 @@ enum EditorLineTransforms {
             )
             replacements.append(replacement)
 
-            let duplicateStart = insertionPoint + (needsLeadingSeparator ? 1 : 0)
+            let duplicateStart = insertionPoint + (separator as NSString).length
             for index in group.memberIndices {
                 let original = selection.ranges[index]
                 let offset = original.location - blockStart
@@ -128,6 +146,17 @@ enum EditorLineTransforms {
     /// dropped. If every group drops this way, the whole command is a
     /// no-op, matching Move Up/Down's own all-or-nothing boundary
     /// precedent.
+    ///
+    /// A disclosed, non-obvious consequence of extending single-line
+    /// groups before re-merging: two carets separated by exactly one
+    /// UNCLAIMED line (e.g. carets on lines 1 and 3 of a 4-line document)
+    /// do not merge in the initial per-selection pass, but each then
+    /// extends to claim the line between them, and the re-merge step
+    /// correctly detects the resulting overlap — producing ONE whole-span
+    /// join across all four lines rather than two independent two-line
+    /// joins. This is accepted as a faithful, uniformly-applied consequence
+    /// of the merge rule rather than special-cased away; pinned by
+    /// `joinTwoCaretsWithAGapMergeIntoOneBlockAfterExtension`.
     static func joinLinesTransaction(
         text: NSString,
         lineIndex: EditorLineIndex,
@@ -236,6 +265,23 @@ enum EditorLineTransforms {
             }
         }
         return merged
+    }
+
+    /// The exact terminator text (`"\n"`, `"\r\n"`, or `"\r"`) immediately
+    /// after `line`'s own content — i.e. between `line` and `line + 1`.
+    /// `line` must not be the document's actual last line (which has no
+    /// terminator of its own). Never assume `"\n"`: a CRLF/CR document's
+    /// own line-ending style must survive every line-reordering transform
+    /// unchanged, exactly as `EditorLineIndex`'s own header comment
+    /// describes for the three terminator kinds it recognizes. Internal
+    /// (not `private`), since `EditorLineTransforms+Move.swift` calls it
+    /// too.
+    static func terminatorText(afterLine line: Int, lineIndex: EditorLineIndex, text: NSString) -> String {
+        let contentEnd = lineIndex.utf16Range(ofLine: line, in: text)
+        let terminatorStart = contentEnd.location + contentEnd.length
+        let nextLineStart = lineIndex
+            .lineStartOffsets[line] // `line` is 1-based; index `line` is the NEXT line's start.
+        return text.substring(with: NSRange(location: terminatorStart, length: nextLineStart - terminatorStart))
     }
 
     /// The UTF-16 range spanning every character of lines `startLine...endLine`

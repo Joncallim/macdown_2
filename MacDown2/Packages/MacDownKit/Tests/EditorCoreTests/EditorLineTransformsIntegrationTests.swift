@@ -93,6 +93,7 @@ struct EditorLineTransformsIntegrationTests {
         let window = support.mountInWindow(system)
         defer { window.orderOut(nil) }
 
+        #expect(system.duplicateLines() == false)
         #expect(system.deleteLines() == false)
         #expect(system.joinLines() == false)
         #expect(system.moveLinesUp() == false)

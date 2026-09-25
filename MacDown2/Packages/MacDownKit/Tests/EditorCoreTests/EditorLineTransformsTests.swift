@@ -94,6 +94,40 @@ struct EditorLineTransformsTests {
         #expect(applied?.text == "AAA\nBBBBB\nBBBBB\nCCC")
     }
 
+    @Test("duplicating the last line of a CRLF document reuses the document's own CRLF style, not a hardcoded LF")
+    func duplicateLastLinePreservesCRLFStyle() {
+        // A P2 an independent hostile review found alongside the Move Up/
+        // Down CRLF P1: the synthesized separator for a last-line duplicate
+        // was a hardcoded "\n", introducing a stray LF into an otherwise
+        // all-CRLF document.
+        let text = "AAA\r\nBBB" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(single: NSRange(location: text.length, length: 0))
+
+        let transaction = EditorLineTransforms.duplicateLinesTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection
+        )
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+
+        #expect(applied?.text == "AAA\r\nBBB\r\nBBB")
+    }
+
+    @Test("duplicating lines on a truly empty document is a no-op, consistent with Delete/Join/Move")
+    func duplicateLinesOnEmptyDocumentIsNoOp() {
+        let text = "" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(single: NSRange(location: 0, length: 0))
+
+        let transaction = EditorLineTransforms.duplicateLinesTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection
+        )
+        #expect(transaction == nil)
+    }
+
     // MARK: - Delete Line
 
     @Test("deleting a single line removes it and its own terminator")
@@ -245,5 +279,39 @@ struct EditorLineTransformsTests {
         let applied = LineTransformTestSupport.applied(transaction, to: text as String)
 
         #expect(applied?.text == "AAA BBB\nCCC")
+    }
+
+    @Test("two carets with a one-line gap between them both extend downward and end up joining as ONE block")
+    func joinTwoCaretsWithAGapMergeIntoOneBlockAfterExtension() {
+        // A disclosed, non-obvious consequence of this transform's own
+        // rules an independent hostile review specifically traced through:
+        // carets on lines 1 and 3 of a 4-line document don't merge in the
+        // FIRST pass (their blocks [1,1] and [3,3] aren't adjacent -- line 2
+        // sits between them, unclaimed by either). Each single-line group
+        // then independently extends to include its own next line
+        // ([1,1]->[1,2], [3,3]->[3,4]), and THOSE now touch (line 2's own
+        // end is adjacent to line 3's own start) -- the required re-merge
+        // pass combines them into one [1,4] block, producing a single
+        // whole-span join rather than two independent two-line joins. This
+        // is judged an acceptable, if surprising, consequence of applying
+        // the same "always merge touching blocks" rule uniformly rather
+        // than special-casing it away; pinned here so a future change to
+        // this behavior is deliberate, not accidental.
+        let text = "AAA\nBBB\nCCC\nDDD" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(
+            ranges: [NSRange(location: 0, length: 0), NSRange(location: 8, length: 0)], // line 1, line 3
+            primaryIndex: 0
+        )
+
+        let transaction = EditorLineTransforms.joinLinesTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection
+        )
+        #expect(transaction?.replacements.count == 1)
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+
+        #expect(applied?.text == "AAA BBB CCC DDD")
     }
 }
