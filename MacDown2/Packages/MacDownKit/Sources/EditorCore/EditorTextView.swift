@@ -19,6 +19,36 @@ public final class EditorTextView: NSTextView {
     /// `TextKitStack`), never the reverse.
     weak var owningSystem: EditorTextSystem?
 
+    /// Non-nil for exactly the duration of a gesture that STARTED as a
+    /// plain Option-click (§6.10, Slice 3b-iv): the view-space point
+    /// `mouseDown(with:)` captured. `mouseDragged(with:)` uses it as the
+    /// drag's fixed anchor corner on every subsequent event; `nil` means
+    /// the current gesture (if any) is an ordinary, non-Option one and
+    /// every override below falls through to `super` unchanged. Being
+    /// non-nil does NOT by itself mean rectangular selection has engaged —
+    /// see `didDragRectangularSelection` below.
+    private var optionDragAnchorViewPoint: CGPoint?
+
+    /// `true` once the current Option gesture has moved far enough from
+    /// `optionDragAnchorViewPoint` to count as a genuine drag rather than a
+    /// stationary click (`Self.dragActivationThreshold`). Distinguishing
+    /// this from "an anchor is set" matters: without it, `mouseUp(with:)`
+    /// would recompute a degenerate, single-point "rectangle" for EVERY
+    /// plain Option-click (since a real click's own mouseUp always fires,
+    /// even with zero mouse movement) and silently overwrite
+    /// `mouseDown(with:)`'s own toggle-caret result the instant the button
+    /// is released — turning a working single-click toggle into a feature
+    /// that never visibly does anything in practice. Caught in review
+    /// before this shipped, not found by an external hostile review.
+    private var didDragRectangularSelection = false
+
+    /// Minimum view-space distance from the anchor before an Option-drag
+    /// counts as a genuine rectangular-selection gesture rather than
+    /// ordinary hand tremor during a click — real pointing hardware rarely
+    /// reports two events at the exact same point even for a gesture a
+    /// user experiences as "just a click."
+    private static let dragActivationThreshold: CGFloat = 4
+
     /// Public: `EditorTextSystem.apply(_:)` sets this from
     /// `EditorConfiguration.showsInvisibles`.
     public var showsInvisibles = false {
@@ -130,13 +160,107 @@ public final class EditorTextView: NSTextView {
     /// ever needed fragment-level granularity, not an exact character
     /// position within a line.
     override public func mouseDown(with event: NSEvent) {
+        // Reset defensively at the top of every mouseDown, regardless of
+        // branch, so a gesture that ends without ever reaching
+        // `mouseUp(with:)` (never actually observed, but not provable
+        // impossible either) can't leak stale drag state into the next,
+        // unrelated gesture.
+        optionDragAnchorViewPoint = nil
+        didDragRectangularSelection = false
         if Self.isPlainOptionClick(event), let owningSystem, let window {
             let screenPoint = window.convertPoint(toScreen: event.locationInWindow)
-            if owningSystem.toggleSecondaryCaret(at: characterIndex(for: screenPoint)) {
+            let handled = owningSystem.toggleSecondaryCaret(at: characterIndex(for: screenPoint))
+            // Arm rectangular-drag tracking regardless of `handled`: a
+            // rectangular drag is a distinct gesture from the plain-click
+            // toggle above (§6.10, Slice 3b-iv). If the user drags far
+            // enough from here, `mouseDragged(with:)` REPLACES
+            // `selectionSet` wholesale with the rectangle — it does not
+            // depend on, or need to undo, whatever the toggle above just
+            // did. If no drag ever follows, the toggle's own result
+            // (including a declined `false`, e.g. an offset strictly
+            // inside a real selection) stands unchanged: see
+            // `didDragRectangularSelection`'s own doc comment for why that
+            // distinction is load-bearing, not cosmetic.
+            optionDragAnchorViewPoint = convert(event.locationInWindow, from: nil)
+            if handled {
                 return
             }
         }
         super.mouseDown(with: event)
+    }
+
+    /// Rectangular (column) selection via Option-drag (§6.10, Slice 3b-iv).
+    /// Only engages once the gesture has moved past
+    /// `Self.dragActivationThreshold` from an Option-click's own anchor;
+    /// below that, or for any gesture that didn't start as a plain
+    /// Option-click at all (including one where `toggleSecondaryCaret`
+    /// itself declined), this is a no-op — sub-threshold movement is
+    /// deliberately swallowed rather than falling through to
+    /// `super.mouseDragged(with:)`, since starting native drag-selection
+    /// mid-gesture on what is still, as far as the user is concerned, a
+    /// stationary Option-click would be a visible glitch of its own.
+    /// Recomputes the full rectangular selection fresh from the fixed
+    /// anchor and the current point on every call, rather than
+    /// incrementally adjusting the previous one: matches every other
+    /// selection recomputation in this codebase
+    /// (`EditorTextSystem+SynchronizedMovement.swift`'s own per-caret
+    /// recomputation, for one) and is simple enough at realistic document
+    /// sizes that no incremental-update optimization is justified without
+    /// a measured need for one.
+    override public func mouseDragged(with event: NSEvent) {
+        guard let anchor = optionDragAnchorViewPoint, let owningSystem else {
+            super.mouseDragged(with: event)
+            return
+        }
+        let currentPoint = convert(event.locationInWindow, from: nil)
+        guard didDragRectangularSelection || hypot(currentPoint.x - anchor.x, currentPoint.y - anchor.y) >= Self
+            .dragActivationThreshold
+        else {
+            return
+        }
+        didDragRectangularSelection = true
+        owningSystem.applyRectangularSelection(fromViewPoint: anchor, toViewPoint: currentPoint)
+    }
+
+    /// Finishes an Option gesture. If it never crossed the drag-activation
+    /// threshold, this is a no-op beyond clearing state: `mouseDown(with:)`'s
+    /// own toggle-caret result (or lack thereof) stands as final, exactly
+    /// matching this method's behavior before this slice, when no override
+    /// existed here at all. If it DID become a genuine rectangular drag,
+    /// performs one final update at the exact release point — the last
+    /// `mouseDragged(with:)` event may have landed a pixel or two short of
+    /// it. `super.mouseUp(with:)` is always called afterward: since
+    /// `mouseDown(with:)` never calls `super` for a handled Option-click,
+    /// there is no native tracking-loop state for `super.mouseUp(with:)` to
+    /// interact with here — calling it is a harmless, defensive default
+    /// rather than a behavioral requirement.
+    override public func mouseUp(with event: NSEvent) {
+        finishRectangularSelectionGesture(atViewPoint: convert(event.locationInWindow, from: nil))
+        super.mouseUp(with: event)
+    }
+
+    /// `mouseUp(with:)`'s own logic, extracted into a plain method that
+    /// never itself touches `super` — deliberately, so
+    /// `EditorRectangularSelectionTests` can call it directly instead of
+    /// driving the real `mouseUp(with:)` override. Found empirically (a
+    /// real, synthetic-event test that hung past the test runner's own
+    /// timeout during this slice's development, the same class of failure
+    /// `isPlainOptionClick(_:)`'s own doc comment already documents for
+    /// `mouseDown`): `NSTextView.mouseUp(with:)`'s real implementation, like
+    /// `mouseDown(with:)`, has internal behavior that expects a live
+    /// `NSApplication` event queue behind it and hangs indefinitely against
+    /// one isolated synthetic event with no real queue supplying whatever
+    /// it is waiting for. This is not a risk in real, running-app usage
+    /// (`super.mouseUp(with:)` already ran, safely, after every Option-click
+    /// even before this slice added an explicit override here, since with
+    /// no override at all the inherited default simply ran unfiltered) —
+    /// only an isolated, single-event test call is at risk.
+    func finishRectangularSelectionGesture(atViewPoint currentPoint: CGPoint) {
+        if didDragRectangularSelection, let anchor = optionDragAnchorViewPoint, let owningSystem {
+            owningSystem.applyRectangularSelection(fromViewPoint: anchor, toViewPoint: currentPoint)
+        }
+        optionDragAnchorViewPoint = nil
+        didDragRectangularSelection = false
     }
 
     /// `true` for exactly the click `mouseDown(with:)` intercepts: Option
