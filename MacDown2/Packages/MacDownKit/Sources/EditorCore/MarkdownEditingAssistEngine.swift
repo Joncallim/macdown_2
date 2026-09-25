@@ -72,50 +72,120 @@ enum MarkdownEditingAssistEngine {
         guard configuration.isEnabled else { return .passthrough }
 
         let clampedSelection = clampedRange(selection, length: text.length)
+        let (effectiveConfiguration, effectiveProfile) = effectiveConfigurationAndProfile(
+            configuration: configuration,
+            profile: profile,
+            text: text,
+            caret: clampedSelection.location
+        )
+        return dispatchedOutcome(
+            for: action,
+            text: text,
+            clampedSelection: clampedSelection,
+            configuration: effectiveConfiguration,
+            profile: effectiveProfile
+        )
+    }
+
+    /// The per-action dispatch, extracted from `outcome(for:...)` itself to
+    /// stay under swiftlint's function-body-length limit once the fence/
+    /// front-matter substitution (§6.12) was added above it.
+    private static func dispatchedOutcome(
+        for action: EditingAssistAction,
+        text: NSString,
+        clampedSelection: NSRange,
+        configuration effectiveConfiguration: EditingAssistConfiguration,
+        profile effectiveProfile: LanguageEditingProfile
+    ) -> EditingAssistOutcome {
         switch action {
         case let .replacement(range, string):
-            return replacementOutcome(
+            replacementOutcome(
                 range: clampedRange(range, length: text.length),
                 string: string,
                 text: text,
-                configuration: configuration,
-                profile: profile
+                configuration: effectiveConfiguration,
+                profile: effectiveProfile
             )
         case .insertNewline:
-            return newlineOutcome(
+            newlineOutcome(
                 text: text,
                 selection: clampedSelection,
-                configuration: configuration,
-                profile: profile
+                configuration: effectiveConfiguration,
+                profile: effectiveProfile
             )
         case .insertTab:
-            return tabOutcome(
+            tabOutcome(
                 text: text,
                 selection: clampedSelection,
-                configuration: configuration,
-                profile: profile,
+                configuration: effectiveConfiguration,
+                profile: effectiveProfile,
                 shift: false
             )
         case .insertBacktab:
-            return tabOutcome(
+            tabOutcome(
                 text: text,
                 selection: clampedSelection,
-                configuration: configuration,
-                profile: profile,
+                configuration: effectiveConfiguration,
+                profile: effectiveProfile,
                 shift: true
             )
         case .deleteBackward:
-            return backspaceOutcome(
+            backspaceOutcome(
                 text: text,
                 selection: clampedSelection,
-                configuration: configuration,
-                profile: profile
+                configuration: effectiveConfiguration,
+                profile: effectiveProfile
             )
         case .smartHome:
-            return smartHomeOutcome(text: text, selection: clampedSelection, configuration: configuration)
+            smartHomeOutcome(text: text, selection: clampedSelection, configuration: effectiveConfiguration)
         case let .markdownCommand(command):
-            return commandOutcome(command: command, text: text, selection: clampedSelection)
+            // Deliberately NOT gated by fence classification in this slice
+            // (§6.12, §7.3): an explicit, deliberate menu command (Bold,
+            // Italic, Heading...) is a different interaction model from the
+            // ambient typing/Return/Tab auto-assists this classifier exists
+            // to gate.
+            commandOutcome(command: command, text: text, selection: clampedSelection)
         }
+    }
+
+    /// Substitutes a fence/front-matter-aware configuration and profile for
+    /// a Markdown document whose caret currently sits inside one (§6.12,
+    /// §7.3, Slice 4b — the E10 inherited-debt item §2.3 named). A no-op
+    /// (returns the inputs unchanged) for a non-Markdown document, or a
+    /// Markdown document whose caret is in ordinary prose.
+    private static func effectiveConfigurationAndProfile(
+        configuration: EditingAssistConfiguration,
+        profile: LanguageEditingProfile,
+        text: NSString,
+        caret: Int
+    ) -> (EditingAssistConfiguration, LanguageEditingProfile) {
+        guard configuration.isMarkdownFormat else { return (configuration, profile) }
+
+        switch FencedRegionClassifier.classify(text: text, atUTF16Offset: caret) {
+        case .prose:
+            return (configuration, profile)
+        case .frontMatter:
+            return (nonMarkdownConfiguration(from: configuration), .plainText)
+        case let .fencedCode(languageID):
+            let fenceProfile = languageID.map { LanguageEditingProfileRegistry.profile(for: $0) } ?? .plainText
+            return (nonMarkdownConfiguration(from: configuration), fenceProfile)
+        }
+    }
+
+    /// `configuration` with every Markdown-specific behavior forced off and
+    /// `isMarkdownFormat` forced `false` — general mechanics (structural
+    /// pairing, Tab/Shift-Tab, Smart Home, generic Return-maintains-
+    /// indentation) still run, driven by whichever profile the caller
+    /// substitutes alongside this.
+    private static func nonMarkdownConfiguration(
+        from configuration: EditingAssistConfiguration
+    ) -> EditingAssistConfiguration {
+        var adjusted = configuration
+        adjusted.isMarkdownFormat = false
+        adjusted.continuesMarkdownPrefixes = false
+        adjusted.completesMarkdownDelimiters = false
+        adjusted.autoIncrementOrderedLists = false
+        return adjusted
     }
 
     // MARK: - Smart Home
