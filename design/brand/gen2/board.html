@@ -1,0 +1,361 @@
+<title>MostlyText M+T Marks</title>
+<style>
+:root{--paper:#F4F5F8;--surface:#FFFFFF;--ink:#11141A;--muted:#5A6270;--line:#DCE0E7;--accent:#2F5FE6;
+ --good:#1D7A45;--good-bg:#E3F3E9;--ok:#8A5A00;--ok-bg:#FBF0D9;--bad:#B3322A;--bad-bg:#FBE5E3;--fin:#E8EEFF;
+ --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+ --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--paper:#0E1014;--surface:#171A20;--ink:#E7EAF0;--muted:#9AA3B1;--line:#2A2F38;--accent:#8AA9FF;
+ --good:#6FD39A;--good-bg:#15301F;--ok:#E8BC62;--ok-bg:#33280F;--bad:#FF8C80;--bad-bg:#3A1A17;--fin:#1B2238}}
+:root[data-theme="dark"]{color-scheme:dark;--paper:#0E1014;--surface:#171A20;--ink:#E7EAF0;--muted:#9AA3B1;--line:#2A2F38;--accent:#8AA9FF;
+ --good:#6FD39A;--good-bg:#15301F;--ok:#E8BC62;--ok-bg:#33280F;--bad:#FF8C80;--bad-bg:#3A1A17;--fin:#1B2238}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans);padding-inline:clamp(16px,4vw,48px);padding-block:32px 64px}
+main{max-width:1180px;margin:0 auto;display:grid;gap:40px}
+h1{font-size:30px;line-height:1.15;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h2{font-size:20px;margin:0;letter-spacing:-.01em}h3{font-size:16px;margin:0 0 6px}
+.eyebrow{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.intro{display:grid;gap:10px;max-width:70ch}.intro p{margin:0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,540px),1fr));gap:20px}
+.concept{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:14px;align-content:start}
+.concept.fin{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.concept header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.verdict{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 9px;white-space:nowrap}
+.verdict.is-fin{color:var(--accent);border-color:var(--accent);background:var(--fin)}
+.mech{margin:0;color:var(--muted)}
+figure{margin:0;display:grid;gap:6px;justify-items:start;align-content:start}
+figcaption{font:11px/1.3 var(--mono);color:var(--muted)}
+.primary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile svg{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;max-width:100%;display:block;border-radius:8px}
+.tile.pos .mk{background:#fff;box-shadow:0 0 0 1px #0000001a inset;padding:14%}
+.tile.neg .mk{background:#000;padding:14%}
+.tile.icons .ic-lg{padding:0}
+.scales{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 18px;padding-top:12px;border-top:1px solid var(--line)}
+.scales figure>svg,.scales figure>canvas,.scales figure>.tb{display:inline-block;vertical-align:middle;margin-right:6px}
+.scales figure{display:block}.scales figcaption{margin-top:6px}
+.ic-64{width:64px;height:64px}
+.tb{display:inline-flex!important;align-items:center;gap:7px;height:30px;padding:0 10px;border-radius:8px;background:#ECEEF2;color:#1B1E24;font-size:13px;margin-bottom:6px}
+.tb.dk{background:#2A2D33;color:#E8EAEE}.mk20{width:20px;height:20px;color:#1B1E24}
+.px canvas{width:64px;height:64px;image-rendering:pixelated;border:1px solid var(--line);border-radius:4px}
+.actual svg{background:#fff;border-radius:3px}.actual .a32{width:32px;height:32px}.actual .a16{width:16px;height:16px}
+.actual svg.a32:first-child,.actual svg.a16:nth-child(2){padding:0;box-shadow:0 0 0 4px #fff}
+.lockup{display:flex;align-items:center;gap:9px;padding:10px 12px;background:#fff;color:#0B0D11;border-radius:10px;box-shadow:0 0 0 1px #0000001a inset;width:max-content;max-width:100%}
+.lockup span{font:700 24px/1 var(--sans);letter-spacing:-.025em}.mk28{width:28px;height:28px}
+.note{margin:0;max-width:70ch}
+.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px}
+th,td{padding:9px 14px;border-bottom:1px solid var(--line);text-align:left}
+thead th{font:600 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+tbody th{font-weight:500}tbody tr:last-child>*{border-bottom:0}
+.rt{display:inline-block;font:600 12px/1 var(--sans);padding:4px 8px;border-radius:6px}
+.rt.g{color:var(--good);background:var(--good-bg)}.rt.o{color:var(--ok);background:var(--ok-bg)}.rt.w{color:var(--bad);background:var(--bad-bg)}
+.final{display:grid;gap:20px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:20px}
+.fcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:14px;align-content:start}
+.fhead{display:flex;gap:14px;align-items:center}.fhead svg{width:72px;height:72px;flex:none}
+.fcard ul{margin:0;padding-left:18px;display:grid;gap:4px}.fcard p{margin:0}
+.diff{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:12px}
+.diff ol{margin:0;padding-left:20px;display:grid;gap:4px}
+</style>
+<main>
+ <div class="intro">
+  <span class="eyebrow">MostlyText identity · generation 2 · 25 Sep 2026</span>
+  <h1>Four ways to build one mark from M and T</h1>
+  <p>The first board had five T concepts. This round starts again from the structure: each mark has to show both letters in solid black before any colour is applied. Benchmarks are 04 Type T (clarity) and 01 Fluid T (personality). Colour is the existing blue-to-violet, used lightly and only as an application style. Every small size is rasterised at its true pixel size.</p>
+ </div>
+ <div class="grid"><section class="concept fin" id="crown">
+ <header><h2>Crown</h2><span class="verdict is-fin">Finalist</span></header>
+ <p class="mech">Negative space — a capital M crown cut into a T</p>
+ <div class="primary"><figure class="tile pos"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><path fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></svg><figcaption>Black on white</figcaption></figure>
+  <figure class="tile neg"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><path fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></svg><figcaption>White on black</figcaption></figure>
+  <figure class="tile icons"><svg class="ic-lg" viewBox="0 0 100 100" role="img" aria-label="Crown light app icon">
+  <defs><linearGradient id="bg-light-crown-ic-lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-crown-ic-lg" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-crown-ic-lg)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-crown-ic-lg)"><path fill="url(#fg-light-crown-ic-lg)" stroke="url(#fg-light-crown-ic-lg)" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></g></svg><figcaption>macOS icon, colour</figcaption></figure></div>
+ <div class="scales">
+  <figure><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Crown light app icon">
+  <defs><linearGradient id="bg-light-crown-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-crown-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-crown-ic-64)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-crown-ic-64)"><path fill="url(#fg-light-crown-ic-64)" stroke="url(#fg-light-crown-ic-64)" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Crown dark app icon">
+  <defs><linearGradient id="bg-dark-crown-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272F"/><stop offset="1" stop-color="#0D0F13"/></linearGradient>
+  <linearGradient id="fg-dark-crown-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#7EA4FF"/><stop offset="1" stop-color="#9A8CFF"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-dark-crown-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-dark-crown-ic-64)"><path fill="url(#fg-dark-crown-ic-64)" stroke="url(#fg-dark-crown-ic-64)" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Crown tint app icon">
+  <defs><linearGradient id="bg-tint-crown-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E6572"/><stop offset="1" stop-color="#3A3F48"/></linearGradient>
+  <linearGradient id="fg-tint-crown-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#F2F4F8"/><stop offset="1" stop-color="#DADFE7"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-tint-crown-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-tint-crown-ic-64)"><path fill="url(#fg-tint-crown-ic-64)" stroke="url(#fg-tint-crown-ic-64)" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></g></svg><figcaption>Dock 64 · light / dark / tinted</figcaption></figure>
+  <figure><span class="tb"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><path fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></svg><span>Untitled.md</span></span><span class="tb dk"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><path fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></svg><span>Untitled.md</span></span><figcaption>Toolbar / sidebar 20</figcaption></figure>
+  <figure class="px"><canvas data-k="crown" data-s="32" data-fg="#000" data-bg="#fff" width="32" height="32"></canvas><canvas data-k="crown" data-s="16" data-fg="#000" data-bg="#fff" width="16" height="16"></canvas><canvas data-k="crown" data-s="16" data-fg="#fff" data-bg="#000" width="16" height="16"></canvas><figcaption>32 / 16 / 16 inverted, true pixels, enlarged</figcaption></figure>
+  <figure class="actual"><svg class="a32" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><path fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></svg><svg class="a16" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><path fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></svg><svg class="a32" viewBox="0 0 100 100" role="img" aria-label="Crown light app icon">
+  <defs><linearGradient id="bg-light-crown-a32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-crown-a32" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-crown-a32)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-crown-a32)"><path fill="url(#fg-light-crown-a32)" stroke="url(#fg-light-crown-a32)" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></g></svg><svg class="a16" viewBox="0 0 100 100" role="img" aria-label="Crown light app icon">
+  <defs><linearGradient id="bg-light-crown-a16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-crown-a16" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-crown-a16)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-crown-a16)"><path fill="url(#fg-light-crown-a16)" stroke="url(#fg-light-crown-a16)" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></g></svg><figcaption>Actual size: mark 32 / 16, icon 32 / 16</figcaption></figure>
+ </div>
+ <div class="lockup"><svg class="mk28" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><path fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></svg><span>MostlyText</span></div>
+ <p class="note">The V notch gives a capital M its peaks, and the long stem gives the T. Both read without any explanation. The notch is still 2 px deep at 16 px. The shape is top-heavy, and there is some kinship with Tesla’s T and with a T-shirt silhouette.</p>
+</section><section class="concept fin" id="ligature">
+ <header><h2>Ligature</h2><span class="verdict is-fin">Finalist</span></header>
+ <p class="mech">Shared stem — M’s right leg is the T’s stem</p>
+ <div class="primary"><figure class="tile pos"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></svg><figcaption>Black on white</figcaption></figure>
+  <figure class="tile neg"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><defs><clipPath id="lc"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></svg><figcaption>White on black</figcaption></figure>
+  <figure class="tile icons"><svg class="ic-lg" viewBox="0 0 100 100" role="img" aria-label="Ligature light app icon">
+  <defs><linearGradient id="bg-light-ligature-ic-lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-ligature-ic-lg" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-ligature-ic-lg)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-ligature-ic-lg)"><defs><clipPath id="lc-light-ic-lg"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="url(#fg-light-ligature-ic-lg)" stroke-width="16" clip-path="url(#lc-light-ic-lg)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></g></svg><figcaption>macOS icon, colour</figcaption></figure></div>
+ <div class="scales">
+  <figure><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Ligature light app icon">
+  <defs><linearGradient id="bg-light-ligature-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-ligature-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-ligature-ic-64)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-ligature-ic-64)"><defs><clipPath id="lc-light-ic-64"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="url(#fg-light-ligature-ic-64)" stroke-width="16" clip-path="url(#lc-light-ic-64)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Ligature dark app icon">
+  <defs><linearGradient id="bg-dark-ligature-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272F"/><stop offset="1" stop-color="#0D0F13"/></linearGradient>
+  <linearGradient id="fg-dark-ligature-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#7EA4FF"/><stop offset="1" stop-color="#9A8CFF"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-dark-ligature-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-dark-ligature-ic-64)"><defs><clipPath id="lc-dark-ic-64"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="url(#fg-dark-ligature-ic-64)" stroke-width="16" clip-path="url(#lc-dark-ic-64)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Ligature tint app icon">
+  <defs><linearGradient id="bg-tint-ligature-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E6572"/><stop offset="1" stop-color="#3A3F48"/></linearGradient>
+  <linearGradient id="fg-tint-ligature-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#F2F4F8"/><stop offset="1" stop-color="#DADFE7"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-tint-ligature-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-tint-ligature-ic-64)"><defs><clipPath id="lc-tint-ic-64"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="url(#fg-tint-ligature-ic-64)" stroke-width="16" clip-path="url(#lc-tint-ic-64)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></g></svg><figcaption>Dock 64 · light / dark / tinted</figcaption></figure>
+  <figure><span class="tb"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></svg><span>Untitled.md</span></span><span class="tb dk"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><defs><clipPath id="lc"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></svg><span>Untitled.md</span></span><figcaption>Toolbar / sidebar 20</figcaption></figure>
+  <figure class="px"><canvas data-k="ligature" data-s="32" data-fg="#000" data-bg="#fff" width="32" height="32"></canvas><canvas data-k="ligature" data-s="16" data-fg="#000" data-bg="#fff" width="16" height="16"></canvas><canvas data-k="ligature" data-s="16" data-fg="#fff" data-bg="#000" width="16" height="16"></canvas><figcaption>32 / 16 / 16 inverted, true pixels, enlarged</figcaption></figure>
+  <figure class="actual"><svg class="a32" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></svg><svg class="a16" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></svg><svg class="a32" viewBox="0 0 100 100" role="img" aria-label="Ligature light app icon">
+  <defs><linearGradient id="bg-light-ligature-a32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-ligature-a32" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-ligature-a32)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-ligature-a32)"><defs><clipPath id="lc-light-a32"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="url(#fg-light-ligature-a32)" stroke-width="16" clip-path="url(#lc-light-a32)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></g></svg><svg class="a16" viewBox="0 0 100 100" role="img" aria-label="Ligature light app icon">
+  <defs><linearGradient id="bg-light-ligature-a16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-ligature-a16" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-ligature-a16)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-ligature-a16)"><defs><clipPath id="lc-light-a16"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="url(#fg-light-ligature-a16)" stroke-width="16" clip-path="url(#lc-light-a16)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></g></svg><figcaption>Actual size: mark 32 / 16, icon 32 / 16</figcaption></figure>
+ </div>
+ <div class="lockup"><svg class="mk28" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></svg><span>MostlyText</span></div>
+ <p class="note">The most literal of the four: it reads “MT” instantly. At 16 px the M’s V fills in and the crossbar merges with the M’s right peak. It is asymmetric and slightly M-led. It looks more like initials than a symbol, and MT monograms are common.</p>
+</section><section class="concept" id="arch">
+ <header><h2>Arch</h2><span class="verdict ">Reserve: fold into Crown</span></header>
+ <p class="mech">Shared strokes — T crossbar is the shoulders of an m</p>
+ <div class="primary"><figure class="tile pos"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke="currentColor" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></svg><figcaption>Black on white</figcaption></figure>
+  <figure class="tile neg"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><g fill="none" stroke="currentColor" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></svg><figcaption>White on black</figcaption></figure>
+  <figure class="tile icons"><svg class="ic-lg" viewBox="0 0 100 100" role="img" aria-label="Arch light app icon">
+  <defs><linearGradient id="bg-light-arch-ic-lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-arch-ic-lg" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-arch-ic-lg)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-arch-ic-lg)"><g fill="none" stroke="url(#fg-light-arch-ic-lg)" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></g></svg><figcaption>macOS icon, colour</figcaption></figure></div>
+ <div class="scales">
+  <figure><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Arch light app icon">
+  <defs><linearGradient id="bg-light-arch-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-arch-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-arch-ic-64)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-arch-ic-64)"><g fill="none" stroke="url(#fg-light-arch-ic-64)" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Arch dark app icon">
+  <defs><linearGradient id="bg-dark-arch-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272F"/><stop offset="1" stop-color="#0D0F13"/></linearGradient>
+  <linearGradient id="fg-dark-arch-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#7EA4FF"/><stop offset="1" stop-color="#9A8CFF"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-dark-arch-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-dark-arch-ic-64)"><g fill="none" stroke="url(#fg-dark-arch-ic-64)" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Arch tint app icon">
+  <defs><linearGradient id="bg-tint-arch-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E6572"/><stop offset="1" stop-color="#3A3F48"/></linearGradient>
+  <linearGradient id="fg-tint-arch-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#F2F4F8"/><stop offset="1" stop-color="#DADFE7"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-tint-arch-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-tint-arch-ic-64)"><g fill="none" stroke="url(#fg-tint-arch-ic-64)" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></g></svg><figcaption>Dock 64 · light / dark / tinted</figcaption></figure>
+  <figure><span class="tb"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke="currentColor" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></svg><span>Untitled.md</span></span><span class="tb dk"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><g fill="none" stroke="currentColor" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></svg><span>Untitled.md</span></span><figcaption>Toolbar / sidebar 20</figcaption></figure>
+  <figure class="px"><canvas data-k="arch" data-s="32" data-fg="#000" data-bg="#fff" width="32" height="32"></canvas><canvas data-k="arch" data-s="16" data-fg="#000" data-bg="#fff" width="16" height="16"></canvas><canvas data-k="arch" data-s="16" data-fg="#fff" data-bg="#000" width="16" height="16"></canvas><figcaption>32 / 16 / 16 inverted, true pixels, enlarged</figcaption></figure>
+  <figure class="actual"><svg class="a32" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke="currentColor" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></svg><svg class="a16" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke="currentColor" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></svg><svg class="a32" viewBox="0 0 100 100" role="img" aria-label="Arch light app icon">
+  <defs><linearGradient id="bg-light-arch-a32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-arch-a32" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-arch-a32)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-arch-a32)"><g fill="none" stroke="url(#fg-light-arch-a32)" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></g></svg><svg class="a16" viewBox="0 0 100 100" role="img" aria-label="Arch light app icon">
+  <defs><linearGradient id="bg-light-arch-a16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-arch-a16" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-arch-a16)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-arch-a16)"><g fill="none" stroke="url(#fg-light-arch-a16)" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></g></svg><figcaption>Actual size: mark 32 / 16, icon 32 / 16</figcaption></figure>
+ </div>
+ <div class="lockup"><svg class="mk28" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke="currentColor" stroke-width="17" stroke-linejoin="round">
+      <path d="M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25"/><path d="M50 25v63"/></g></svg><span>MostlyText</span></div>
+ <p class="note">The friendliest and closest to 01 Fluid. It is very robust at 16 px. The m has to be looked for: at first glance it reads as a T on legs, or as π or a small table. Its soft shoulders are the right personality to lend to Crown.</p>
+</section><section class="concept" id="gate">
+ <header><h2>Gate</h2><span class="verdict ">Dropped</span></header>
+ <p class="mech">Outer structure — an M built from a T’s frame</p>
+ <div class="primary"><figure class="tile pos"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="currentColor"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></svg><figcaption>Black on white</figcaption></figure>
+  <figure class="tile neg"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><g fill="currentColor"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></svg><figcaption>White on black</figcaption></figure>
+  <figure class="tile icons"><svg class="ic-lg" viewBox="0 0 100 100" role="img" aria-label="Gate light app icon">
+  <defs><linearGradient id="bg-light-gate-ic-lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-gate-ic-lg" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-gate-ic-lg)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-gate-ic-lg)"><g fill="url(#fg-light-gate-ic-lg)"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></g></svg><figcaption>macOS icon, colour</figcaption></figure></div>
+ <div class="scales">
+  <figure><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Gate light app icon">
+  <defs><linearGradient id="bg-light-gate-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-gate-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-gate-ic-64)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-gate-ic-64)"><g fill="url(#fg-light-gate-ic-64)"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Gate dark app icon">
+  <defs><linearGradient id="bg-dark-gate-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272F"/><stop offset="1" stop-color="#0D0F13"/></linearGradient>
+  <linearGradient id="fg-dark-gate-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#7EA4FF"/><stop offset="1" stop-color="#9A8CFF"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-dark-gate-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-dark-gate-ic-64)"><g fill="url(#fg-dark-gate-ic-64)"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Gate tint app icon">
+  <defs><linearGradient id="bg-tint-gate-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E6572"/><stop offset="1" stop-color="#3A3F48"/></linearGradient>
+  <linearGradient id="fg-tint-gate-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#F2F4F8"/><stop offset="1" stop-color="#DADFE7"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-tint-gate-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-tint-gate-ic-64)"><g fill="url(#fg-tint-gate-ic-64)"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></g></svg><figcaption>Dock 64 · light / dark / tinted</figcaption></figure>
+  <figure><span class="tb"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="currentColor"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></svg><span>Untitled.md</span></span><span class="tb dk"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><g fill="currentColor"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></svg><span>Untitled.md</span></span><figcaption>Toolbar / sidebar 20</figcaption></figure>
+  <figure class="px"><canvas data-k="gate" data-s="32" data-fg="#000" data-bg="#fff" width="32" height="32"></canvas><canvas data-k="gate" data-s="16" data-fg="#000" data-bg="#fff" width="16" height="16"></canvas><canvas data-k="gate" data-s="16" data-fg="#fff" data-bg="#000" width="16" height="16"></canvas><figcaption>32 / 16 / 16 inverted, true pixels, enlarged</figcaption></figure>
+  <figure class="actual"><svg class="a32" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="currentColor"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></svg><svg class="a16" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="currentColor"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></svg><svg class="a32" viewBox="0 0 100 100" role="img" aria-label="Gate light app icon">
+  <defs><linearGradient id="bg-light-gate-a32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-gate-a32" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-gate-a32)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-gate-a32)"><g fill="url(#fg-light-gate-a32)"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></g></svg><svg class="a16" viewBox="0 0 100 100" role="img" aria-label="Gate light app icon">
+  <defs><linearGradient id="bg-light-gate-a16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-gate-a16" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-gate-a16)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-gate-a16)"><g fill="url(#fg-light-gate-a16)"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></g></svg><figcaption>Actual size: mark 32 / 16, icon 32 / 16</figcaption></figure>
+ </div>
+ <div class="lockup"><svg class="mk28" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="currentColor"><path d="M12 14H88V88H72V30H28V88H12Z"/><path d="M42 30H58V68L50 78L42 68Z"/></g></svg><span>MostlyText</span></div>
+ <p class="note">A clear, square M. The T only appears once it is pointed out, because the short stem reads as the M’s middle V. Visually it sits with transport signage and other square-M marks. It fails the brief.</p>
+</section></div>
+ <section class="final" aria-labelledby="sc">
+  <h2 id="sc">Scorecard</h2>
+  <div class="tw"><table><thead><tr><th scope="col">Test</th><th scope="col">Crown</th><th scope="col">Ligature</th><th scope="col">Arch</th><th scope="col">Gate</th></tr></thead><tbody>
+<tr><th scope="row">Does the M read?</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Does the T read?</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt w">Fails</span></td></tr><tr><th scope="row">Both still read at 16 px</th><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td></tr><tr><th scope="row">Silhouette distinctiveness</th><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt w">Fails</span></td></tr><tr><th scope="row">Optical balance</th><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Negative space</th><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td></tr><tr><th scope="row">Stays clean (no mud)</th><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Neither letter overwhelms</th><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt w">Fails</span></td></tr><tr><th scope="row">Monochrome</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Light / dark</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Fits a native macOS writing app</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td></tr><tr><th scope="row">Avoids generic SaaS / dev-tool look</th><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td><td><span class="rt w">Fails</span></td></tr></tbody></table></div>
+ </section>
+ <section class="final" aria-labelledby="fin">
+  <h2 id="fin">Two finalists</h2>
+  <div class="diff">
+   <h3>What separates them</h3>
+   <p><b>Crown is a symbol.</b> The M and the T are fused into one symmetric shape: the M lives in the top edge and the T in the stem. It works like a macOS app icon, a shape you recognise before you read it. It is more ownable and less literal.</p>
+   <p><b>Ligature is typography.</b> The letters stay letters and share one stroke, the way a type designer joins letters. Nobody needs an explanation, and it suits a writing app. It reads as initials rather than a symbol, it is asymmetric, and it gives up more detail at 16 px.</p>
+   <p>Neither wins outright on structure. Crown is ahead on small-size robustness and distinctiveness, and Ligature is ahead on instant literal reading.</p>
+  </div>
+  <div class="pair">
+   <article class="fcard"><div class="fhead"><svg class="fin" viewBox="0 0 100 100" role="img" aria-label="Crown light app icon">
+  <defs><linearGradient id="bg-light-crown-fin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-crown-fin" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-crown-fin)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-crown-fin)"><path fill="url(#fg-light-crown-fin)" stroke="url(#fg-light-crown-fin)" stroke-width="4" stroke-linejoin="round"
+      d="M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z"/></g></svg><div><h3>Crown</h3><p class="mech">M cut into a T</p></div></div>
+    <div><h3>Refine next</h3><ul>
+     <li>Balance: the top is heavy. Try a crossbar of 28 instead of 32, or a stem of 20 instead of 18, and move the mark 2% lower in the squircle.</li>
+     <li>Notch: test angles of 80°, 90° (current) and 105°, and depth. A shallower notch is calmer, a deeper one makes the M stronger.</li>
+     <li>Warmth: give the outer shoulders Arch’s soft radius (r 6–10). This brings in the Fluid personality and moves the shape away from the T-shirt reading.</li>
+     <li>Compare leg length 60 (current) with 54 and 66 against the stem at 88.</li></ul></div>
+    <div><h3>Could break in production</h3><ul>
+     <li>At 16 px the notch is 2 px deep. Softening it or making it shallower would close it, so the favicon needs a hand-drawn pixel version.</li>
+     <li>At some sizes it reads as a crown, a T-shirt or a robot rather than as letters.</li>
+     <li>A notch cut into a T is close to Tesla’s T, so a trademark similarity check is required.</li></ul></div>
+   </article>
+   <article class="fcard"><div class="fhead"><svg class="fin" viewBox="0 0 100 100" role="img" aria-label="Ligature light app icon">
+  <defs><linearGradient id="bg-light-ligature-fin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="fg-light-ligature-fin" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-ligature-fin)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-ligature-fin)"><defs><clipPath id="lc-light-fin"><rect x="10" y="14" width="84" height="74"/></clipPath></defs>
+      <g fill="none" stroke="url(#fg-light-ligature-fin)" stroke-width="16" clip-path="url(#lc-light-fin)">
+      <path d="M18 88V14"/><path d="M14 8L42 56L70 8" stroke-linejoin="miter"/><path d="M66 14V88"/><path d="M38 22H94"/></g></g></svg><div><h3>Ligature</h3><p class="mech">M and T share a stem</p></div></div>
+    <div><h3>Refine next</h3><ul>
+     <li>Centring: the weight sits at the top right, so move the mark left in the squircle and judge by eye, not by the bounding box.</li>
+     <li>Join: decide how the crossbar meets the M’s right diagonal. It can join cleanly, or tuck behind with a gap of about 3 units so the M’s right peak stays visible.</li>
+     <li>Stroke contrast: thinner diagonals than stems, typeface-style, keep the V open at 16 px.</li>
+     <li>Test crossbar overhang to the right at 18, 22 and 26.</li></ul></div>
+    <div><h3>Could break in production</h3><ul>
+     <li>At 16 px the V fills in and the triangle under the bar disappears, so it becomes “MI” or a blob. It needs a separate simplified favicon.</li>
+     <li>In the Dock it sits among many monogram icons and has less presence than a symbol.</li>
+     <li>MT monograms are common (law firms, fashion), so the trademark space is crowded.</li></ul></div>
+   </article>
+  </div>
+  <div class="diff">
+   <h3>Tests before freezing either mark</h3>
+   <ol>
+    <li><b>Read test:</b> show 6–8 people who haven’t seen the marks each one for 5 seconds, at 64 px and at 16 px. Ask “Which letters do you see?”. Don’t prompt with M or T.</li>
+    <li><b>Hand-drawn small sizes:</b> draw 16 and 32 px pixel versions for the favicon, Finder list and menu bar, and check them on Retina and non-Retina screens.</li>
+    <li><b>macOS 26 icon:</b> build light, dark, clear and tinted versions in Icon Composer and look at them in a real Dock next to Notes, TextEdit, Xcode and Obsidian.</li>
+    <li><b>Similarity search:</b> check trademarks and existing app icons (Tesla, MT monograms, Motorola, square-M transport marks).</li>
+    <li><b>Lockup:</b> mark plus MostlyText wordmark at three sizes. Set a minimum size and the clear space around the mark.</li>
+    <li><b>Single colour:</b> one ink, embossed or debossed, and Increase Contrast.</li>
+   </ol>
+  </div>
+ </section>
+</main>
+<script>
+const S={"arch":"<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"17\" stroke-linejoin=\"round\">\n      <path d=\"M24 62V37a12 12 0 0 1 12-12h28a12 12 0 0 1 12 12v25\"/><path d=\"M50 25v63\"/></g>","crown":"<path fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"4\" stroke-linejoin=\"round\"\n      d=\"M12 14H34L50 30L66 14H88V60H72V44H59V88H41V44H28V60H12Z\"/>","ligature":"<defs><clipPath id=\"lc\"><rect x=\"10\" y=\"14\" width=\"84\" height=\"74\"/></clipPath></defs>\n      <g fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\" clip-path=\"url(#lc)\">\n      <path d=\"M18 88V14\"/><path d=\"M14 8L42 56L70 8\" stroke-linejoin=\"miter\"/><path d=\"M66 14V88\"/><path d=\"M38 22H94\"/></g>","gate":"<g fill=\"currentColor\"><path d=\"M12 14H88V88H72V30H28V88H12Z\"/><path d=\"M42 30H58V68L50 78L42 68Z\"/></g>"};
+document.querySelectorAll('canvas[data-k]').forEach(c=>{const s=+c.dataset.s,x=c.getContext('2d');x.fillStyle=c.dataset.bg;x.fillRect(0,0,s,s);
+ const i=new Image();i.onload=()=>x.drawImage(i,s*.08,s*.08,s*.84,s*.84);
+ i.src='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color:'+c.dataset.fg+'">'+S[c.dataset.k]+'</svg>')});
+</script>

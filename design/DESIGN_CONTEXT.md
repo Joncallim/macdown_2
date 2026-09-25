@@ -52,7 +52,7 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
 | Build / run | macOS 26 + Xcode 26: see the commands table in `AGENTS.md`. Judge feel on a **Release** build | needs a Mac; cloud design sessions run on Linux and **cannot run the app** |
 | Screenshots | `design/evidence/YYYY-MM-DD/` (capture protocol below) | **none yet** |
 | Figma | — | **none yet**; no Figma connector in the design session |
-| Brand assets | `design/brand/` once they exist; app icon in `Assets.xcassets/AppIcon.appiconset/` | placeholder only |
+| Brand assets | `design/brand/gen2/`: source geometry in `marks.mjs`, exported SVGs, comparison board (`node build.mjs` rebuilds `board.html`; published at https://claude.ai/artifact/HnqRCjVR1UPxFtWC9KnAwW). Gen-1 board: owner's image "Logo concepts — five directions for the T" (not in repo) | gen-2 finalists awaiting owner review |
 | Design tokens / themes | Editor/preview themes: `MacDownKit` `Themes` module; the chrome follows system colours | not yet a named token set |
 | Polish/identity contract | `planning/epics/EPIC-15-liquid-glass-polish.md`; `planning/RELEASE_HARDENING.md` §5.1 | binding for release |
 | Surfaces with UI tests (a list of what exists) | `MacDown2/MacDown2UITests/*.swift` file names | live |
