@@ -10,12 +10,34 @@ public struct EditingAssistConfiguration: Sendable, Equatable {
     /// native AppKit behavior.
     public var isEnabled: Bool
 
+    /// `true` exactly for the Markdown format (EPIC-22 §6.11, Slice 4a).
+    /// Independent of `continuesMarkdownPrefixes` on purpose: an independent
+    /// hostile review of this slice found that dispatching Return's own
+    /// Markdown-vs-general behavior off `continuesMarkdownPrefixes` alone
+    /// conflated two different questions — "is this document Markdown" and
+    /// "did the user turn off list/quote/indentation continuation" — which
+    /// are both represented by that one flag being `false` for a
+    /// non-Markdown document, but need to be told apart for a MARKDOWN
+    /// document whose user has turned continuation off via its own real,
+    /// persisted Preferences toggle ("Continue lists, quotes, and
+    /// indentation on Return"): before this slice, that toggle made Return
+    /// a pure no-op for Markdown, full stop; without this separate flag, the
+    /// new general "maintain indentation" behavior this slice added would
+    /// have silently resurrected indentation-carrying for exactly the users
+    /// who explicitly asked to turn it off — the toggle's own label promises
+    /// "...and indentation," not just list markers.
+    public var isMarkdownFormat: Bool
+
     /// Return-key continuation of Markdown line prefixes (lists, task lists,
-    /// blockquotes, indentation) and empty-construct termination. Markdown-
-    /// specific — `false` for every other format (EPIC-22 §6.11, Slice 4a),
-    /// which instead gets a general "maintain the previous line's
-    /// indentation" behavior (see `MarkdownEditingAssistEngine+Newline.swift`'s
-    /// `generalNewlineOutcome`).
+    /// blockquotes, indentation) and empty-construct termination. Meaningful
+    /// only when `isMarkdownFormat` is `true`; a non-Markdown format's
+    /// configuration leaves this at its default and it is never consulted
+    /// (see `isMarkdownFormat`'s own doc comment for why the two are
+    /// deliberately independent). When `false` for a Markdown document,
+    /// Return is a pure no-op here — the general "maintain the previous
+    /// line's indentation" behavior
+    /// (`MarkdownEditingAssistEngine+Newline.swift`'s `generalNewlineOutcome`)
+    /// is reserved for non-Markdown formats only.
     public var continuesMarkdownPrefixes: Bool
 
     /// Structural (bracket/quote) pair completion, type-over, selection
@@ -63,6 +85,7 @@ public struct EditingAssistConfiguration: Sendable, Equatable {
 
     public init(
         isEnabled: Bool,
+        isMarkdownFormat: Bool = true,
         continuesMarkdownPrefixes: Bool = true,
         completesMatchingCharacters: Bool = true,
         completesMarkdownDelimiters: Bool = true,
@@ -72,6 +95,7 @@ public struct EditingAssistConfiguration: Sendable, Equatable {
         indentationWidth: Int = 4
     ) {
         self.isEnabled = isEnabled
+        self.isMarkdownFormat = isMarkdownFormat
         self.continuesMarkdownPrefixes = continuesMarkdownPrefixes
         self.completesMatchingCharacters = completesMatchingCharacters
         self.completesMarkdownDelimiters = completesMarkdownDelimiters
@@ -81,17 +105,20 @@ public struct EditingAssistConfiguration: Sendable, Equatable {
         self.indentationWidth = min(max(1, indentationWidth), 8)
     }
 
-    /// Every assist disabled: the fail-closed default.
+    /// Every assist disabled: the fail-closed default. `isMarkdownFormat`'s
+    /// own default (`true`) is irrelevant here since `isEnabled` short-
+    /// circuits the whole engine before anything reads it.
     public static let disabled = EditingAssistConfiguration(isEnabled: false)
 
     /// Markdown-native behavior: all assists on, 4-space indentation.
-    public static let markdownDefault = EditingAssistConfiguration(isEnabled: true)
+    public static let markdownDefault = EditingAssistConfiguration(isEnabled: true, isMarkdownFormat: true)
 
     /// General (non-Markdown) behavior: structural pairing, Tab/Shift-Tab
     /// indent, Smart Home, and generic Return-maintains-indentation all on;
     /// every Markdown-specific behavior off (EPIC-22 §6.11, Slice 4a).
     public static let general = EditingAssistConfiguration(
         isEnabled: true,
+        isMarkdownFormat: false,
         continuesMarkdownPrefixes: false,
         completesMarkdownDelimiters: false,
         autoIncrementOrderedLists: false

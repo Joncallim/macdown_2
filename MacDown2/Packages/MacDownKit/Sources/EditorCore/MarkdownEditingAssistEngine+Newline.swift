@@ -3,11 +3,25 @@ import Foundation
 // MARK: - Return / list / task / blockquote continuation
 
 extension MarkdownEditingAssistEngine {
-    /// Dispatches to Markdown's own list/task/blockquote continuation, or
-    /// (EPIC-22 §6.11, Slice 4a) a general "maintain the previous line's
-    /// indentation" behavior for every other format — mutually exclusive,
-    /// since `configuration.continuesMarkdownPrefixes` is `false` for every
-    /// non-Markdown format's config.
+    /// Dispatches on `configuration.isMarkdownFormat` — NOT on
+    /// `continuesMarkdownPrefixes` — to Markdown's own list/task/blockquote
+    /// continuation, or (EPIC-22 §6.11, Slice 4a) a general "maintain the
+    /// previous line's indentation" behavior for every other format.
+    ///
+    /// An independent hostile review of this slice found dispatching on
+    /// `continuesMarkdownPrefixes` alone was a real regression: that flag is
+    /// ALSO a genuine, persisted user preference ("Continue lists, quotes,
+    /// and indentation on Return") a Markdown user can turn off — and before
+    /// this slice, turning it off made Return a pure no-op, full stop. With
+    /// only `continuesMarkdownPrefixes` to dispatch on, a Markdown document
+    /// with that preference off was indistinguishable from a non-Markdown
+    /// document, so it silently fell into the new general behavior and
+    /// resurrected indentation-carrying for exactly the users who had
+    /// explicitly asked to turn it off. `isMarkdownFormat` is a separate
+    /// signal precisely so this method can tell "not Markdown" (run the
+    /// general behavior) apart from "Markdown, but the user turned
+    /// continuation off" (stay a no-op, matching this flag's own
+    /// pre-existing, disclosed contract).
     static func newlineOutcome(
         text: NSString,
         selection: NSRange,
@@ -17,10 +31,11 @@ extension MarkdownEditingAssistEngine {
         guard selection.length == 0 else { return .passthrough }
         let caret = selection.location
 
-        if configuration.continuesMarkdownPrefixes {
-            return markdownNewlineOutcome(caret: caret, text: text, configuration: configuration)
+        guard configuration.isMarkdownFormat else {
+            return generalNewlineOutcome(caret: caret, text: text, configuration: configuration, profile: profile)
         }
-        return generalNewlineOutcome(caret: caret, text: text, configuration: configuration, profile: profile)
+        guard configuration.continuesMarkdownPrefixes else { return .passthrough }
+        return markdownNewlineOutcome(caret: caret, text: text, configuration: configuration)
     }
 
     private static func markdownNewlineOutcome(

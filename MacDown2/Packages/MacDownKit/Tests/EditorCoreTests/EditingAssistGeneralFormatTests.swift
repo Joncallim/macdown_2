@@ -108,6 +108,43 @@ struct EditingAssistGeneralFormatTests {
         #expect(result?.text == "    let x = 1\n    ")
     }
 
+    @Test("isMarkdownFormat, not continuesMarkdownPrefixes, is what selects the general Return path")
+    func generalNewlineDispatchesOnIsMarkdownFormatNotThePrefixFlag() {
+        // The direct unit-level counterpart of `continuationFlagDisabledAlsoSuppressesIndentationCarrying`
+        // (`EditingAssistReviewTests.swift`): confirms the fix at the exact
+        // point of the bug an independent hostile review found -- a
+        // Markdown-format configuration with `continuesMarkdownPrefixes`
+        // off must NOT fall into the general path just because that one
+        // flag is `false`; `isMarkdownFormat` is the real dispatch signal.
+        var markdownWithContinuationOff = EditingAssistConfiguration.markdownDefault
+        markdownWithContinuationOff.continuesMarkdownPrefixes = false
+        let indentedMarkdownText = "    - item"
+
+        let markdownOutcome = support.outcome(
+            for: .insertNewline,
+            in: indentedMarkdownText,
+            selection: NSRange(location: indentedMarkdownText.utf16.count, length: 0),
+            configuration: markdownWithContinuationOff,
+            profile: LanguageEditingProfileRegistry.profile(for: "markdown")
+        )
+        #expect(markdownOutcome == .passthrough)
+
+        // The exact same indented text, but with `isMarkdownFormat: false`
+        // (a genuinely non-Markdown format) -- the general path must still
+        // fire normally, proving the fix didn't just make this method
+        // always decline.
+        var general = EditingAssistConfiguration.general
+        general.continuesMarkdownPrefixes = false // already false via .general; explicit for clarity
+        let generalOutcome = support.outcome(
+            for: .insertNewline,
+            in: indentedMarkdownText,
+            selection: NSRange(location: indentedMarkdownText.utf16.count, length: 0),
+            configuration: general,
+            profile: Self.swiftProfile
+        )
+        #expect(support.applied(generalOutcome, to: indentedMarkdownText)?.text == "    - item\n    ")
+    }
+
     @Test("Return with no leading indentation and no trigger character is a no-op")
     func returnIsANoOpWithNoIndentationOrTrigger() {
         let text = "let x = 1"

@@ -57,6 +57,7 @@ extension DocumentEditorSplitView {
         guard let editorSettings else { return isMarkdown ? .markdownDefault : .general }
         return EditingAssistConfiguration(
             isEnabled: editorSettings.assistsEnabled,
+            isMarkdownFormat: isMarkdown,
             continuesMarkdownPrefixes: isMarkdown && editorSettings.continuesMarkdownPrefixes,
             completesMatchingCharacters: editorSettings.completesMatchingCharacters,
             completesMarkdownDelimiters: isMarkdown && editorSettings.completesMatchingCharacters,
