@@ -41,6 +41,10 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
   Chosen mark: **Slant**, an M and T sharing one stem, leaning forward, with a
   wedge cut on the crossbar. Geometry is release-candidate frozen, not frozen
   (D-018). The 16 px files are microglyphs for ≤17 px only; never enlarge them (D-020).
+- **Handoff and gates:** `design/FIGMA_HANDOFF.md` (everything the Figma session
+  needs), `design/brand/PROVENANCE.md` (licences, canonical files),
+  `design/validation/read-test/` (blind human test) and
+  `design/brand/TRADEMARK_SEARCH.md` (register search record, not yet run).
 - The mark must work at macOS app-icon size, at favicon size (16 px), in
   monochrome, on light and dark backgrounds, and in a wordmark lockup.
 - Current icon: **placeholder only**. It is a white document glyph on a blue
