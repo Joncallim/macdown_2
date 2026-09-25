@@ -105,6 +105,20 @@ extension WorkspaceCommands {
             }
             .keyboardShortcut("[", modifiers: .command)
             .disabled(coordinator?.canPerformTextTransform != true)
+
+            Divider()
+
+            // EPIC-22 §6.13, Slice 4c-iii: not gated on `canPerformTextTransform`
+            // (which only checks first-responder) -- the pure engine itself
+            // declines when the effective profile has no comment syntax at
+            // all (e.g. JSON), so the menu item's own enabled state is
+            // deliberately not format-restricted here either, matching
+            // every other command in this menu.
+            Button("Toggle Comment") {
+                coordinator?.toggleComment()
+            }
+            .keyboardShortcut("/", modifiers: .command)
+            .disabled(coordinator?.canToggleComment != true)
         }
     }
 }
