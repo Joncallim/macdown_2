@@ -6,8 +6,27 @@ extension WindowCoordinator {
         controllers.first(where: { $0.window == NSApp.keyWindow })?.fileTreeModel.root
     }
 
+    /// `nil` whenever the active editor's text view is the current first
+    /// responder, even if the sidebar still shows a selected file — the
+    /// fix for a live Cmd-D conflict with Select Next/All Occurrence
+    /// (§6.9, Slice 3c): before this, selecting a sidebar file and then
+    /// clicking into the editor left every Folder command (bound off this
+    /// property) still enabled, because only `fileTreeModel.selectedURL`
+    /// was checked, never focus. Fixed at this property's own definition,
+    /// not just at the "Duplicate" button's call site, since "Rename" reuses
+    /// this same gate and is bound to a plain, unmodified Return — a key
+    /// the editor's own E10 list/blockquote-continuation assists depend on;
+    /// narrowing the fix to Cmd-D alone would have left that identical
+    /// conflict live for Return. Reads `commandStateRevision` to establish
+    /// an Observation dependency on AppKit focus changes, exactly like
+    /// `canPerformOccurrenceSelection`'s own inverted check
+    /// (`WindowCoordinator+OccurrenceSelection.swift`) — the two properties
+    /// are deliberately never simultaneously "occupied" for the same
+    /// keystroke, so both bindings can stay declared on it.
     var keyFolderSelection: URL? {
-        controllers.first(where: { $0.window == NSApp.keyWindow })?.fileTreeModel.selectedURL
+        _ = commandStateRevision
+        guard canPerformOccurrenceSelection == false else { return nil }
+        return controllers.first(where: { $0.window == NSApp.keyWindow })?.fileTreeModel.selectedURL
     }
 
     func renameKeyFolderSelection() {

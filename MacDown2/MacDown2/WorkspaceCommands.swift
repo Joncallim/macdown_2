@@ -6,7 +6,11 @@ import Themes
 import Workspace
 
 struct WorkspaceCommands: Commands {
-    @Environment(\.windowCoordinator) private var coordinator
+    // Internal, not `private`: `WorkspaceCommands+TextFormatting.swift`
+    // reads it from an extension in a separate file, mirroring this
+    // codebase's established per-file command-bridge extraction pattern
+    // used once a type's own body grows past its line-count limit.
+    @Environment(\.windowCoordinator) var coordinator
     @Environment(\.appSettings) private var appSettings
     @FocusedValue(\.previewLayout) private var previewLayout
     private let themeController: ThemeController
@@ -219,84 +223,7 @@ struct WorkspaceCommands: Commands {
             .disabled(coordinator?.keyModel?.hasActiveDocument != true)
         }
 
-        // E10: the editor is plain text (`isRichText = false`), so the rich
-        // text Format menu is replaced with Markdown formatting commands.
-        // `.textEditing` (Find, spelling, substitutions) is intentionally
-        // left untouched — in particular ⌘E keeps AppKit's "Use Selection
-        // for Find" behavior, and Inline Code is ⌃⌘E.
-        CommandGroup(replacing: .textFormatting) {
-            Button("Bold") {
-                coordinator?.performMarkdownEditingCommand(.bold)
-            }
-            .keyboardShortcut("b", modifiers: .command)
-            .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
-
-            Button("Italic") {
-                coordinator?.performMarkdownEditingCommand(.italic)
-            }
-            .keyboardShortcut("i", modifiers: .command)
-            .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
-
-            Button("Inline Code") {
-                coordinator?.performMarkdownEditingCommand(.inlineCode)
-            }
-            .keyboardShortcut("e", modifiers: [.control, .command])
-            .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
-
-            Divider()
-
-            Menu("Heading") {
-                ForEach(1 ... 6, id: \.self) { level in
-                    Button("Heading \(level)") {
-                        coordinator?.performMarkdownEditingCommand(.heading(level: level))
-                    }
-                    .keyboardShortcut(KeyEquivalent(Character("\(level)")), modifiers: [.control, .command])
-                    .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
-                }
-
-                Divider()
-
-                Button("Paragraph") {
-                    coordinator?.performMarkdownEditingCommand(.paragraph)
-                }
-                .keyboardShortcut("0", modifiers: [.control, .command])
-                .disabled(coordinator?.canPerformMarkdownEditingCommand != true)
-            }
-
-            Divider()
-
-            // E11 Gate 2: deterministic JSON formatting. Disabled for
-            // non-JSON documents and for invalid JSON (the analysis session
-            // must verify the current text is a valid document first).
-            Button("Format JSON") {
-                Task { await coordinator?.performJSONFormatting(sortKeys: false) }
-            }
-            .keyboardShortcut("f", modifiers: [.option, .command])
-            .disabled(coordinator?.canPerformJSONFormatting != true)
-
-            Button("Format JSON with Sorted Keys") {
-                Task { await coordinator?.performJSONFormatting(sortKeys: true) }
-            }
-            .keyboardShortcut("f", modifiers: [.option, .shift, .command])
-            .disabled(coordinator?.canPerformJSONFormatting != true)
-
-            Divider()
-
-            // EPIC-22 §6.10, Slice 3b-ii-b: not format-restricted, unlike
-            // the Markdown/JSON commands above — ⌃⌘↑/⌃⌘↓ matches Xcode's
-            // own established convention for the same feature.
-            Button("Add Cursor Above") {
-                coordinator?.addCursorAbove()
-            }
-            .keyboardShortcut(.upArrow, modifiers: [.control, .command])
-            .disabled(coordinator?.canPerformCursorCommand != true)
-
-            Button("Add Cursor Below") {
-                coordinator?.addCursorBelow()
-            }
-            .keyboardShortcut(.downArrow, modifiers: [.control, .command])
-            .disabled(coordinator?.canPerformCursorCommand != true)
-        }
+        textFormattingCommands
 
         #if DEBUG
             CommandMenu("Debug") {
