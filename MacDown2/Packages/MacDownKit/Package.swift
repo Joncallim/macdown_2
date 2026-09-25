@@ -84,7 +84,7 @@ let package = Package(
         .target(name: "Themes", resources: [.process("Themes")]),
         .target(name: "Workspace", dependencies: ["FileCore"], resources: [.process("Resources")]),
         .target(name: "FileTree", dependencies: ["FileCore"], resources: [.process("Resources")]),
-        .target(name: "EditorCore", dependencies: ["FileCore"], resources: [.process("Resources")]),
+        .target(name: "EditorCore", dependencies: ["FileCore", "TextSearch"], resources: [.process("Resources")]),
         .target(
             name: "Highlighting",
             dependencies: [
