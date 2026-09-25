@@ -306,7 +306,8 @@ public struct EditorView: NSViewRepresentable {
                 for: .replacement(range: affectedRange, string: replacementString),
                 text: source,
                 selection: system.selectedRange,
-                configuration: system.editingAssistConfiguration
+                configuration: system.editingAssistConfiguration,
+                profile: system.languageEditingProfile
             )
             return !system.applyAssistOutcome(outcome)
         }
@@ -348,7 +349,8 @@ public struct EditorView: NSViewRepresentable {
                 for: action,
                 text: source,
                 selection: system.selectedRange,
-                configuration: system.editingAssistConfiguration
+                configuration: system.editingAssistConfiguration,
+                profile: system.languageEditingProfile
             )
             return system.applyAssistOutcome(outcome)
         }

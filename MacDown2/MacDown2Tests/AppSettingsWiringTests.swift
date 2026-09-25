@@ -36,7 +36,7 @@ struct AppSettingsWiringTests {
 
     // MARK: - Editor assists
 
-    @Test func assistConfigurationReflectsEveryField() {
+    @Test func assistConfigurationReflectsEveryFieldForMarkdown() {
         let settings = EditorSettings(
             indentationWidth: 2,
             assistsEnabled: false,
@@ -46,18 +46,46 @@ struct AppSettingsWiringTests {
             smartHome: false,
             autoIncrementOrderedLists: false
         )
-        let config = DocumentEditorSplitView.assistConfiguration(from: settings)
+        let config = DocumentEditorSplitView.assistConfiguration(from: settings, isMarkdown: true)
         #expect(!config.isEnabled)
         #expect(!config.continuesMarkdownPrefixes)
         #expect(!config.completesMatchingCharacters)
+        #expect(!config.completesMarkdownDelimiters)
         #expect(!config.convertsTabsToSpaces)
         #expect(!config.smartHome)
         #expect(!config.autoIncrementOrderedLists)
         #expect(config.indentationWidth == 2)
     }
 
+    /// EPIC-22 §6.11, Slice 4a: for a non-Markdown format, the Markdown-only
+    /// fields are forced off regardless of the user's own setting, while the
+    /// general mechanics still respect it.
+    @Test func assistConfigurationForcesMarkdownOnlyFieldsOffForOtherFormats() {
+        let settings = EditorSettings(
+            indentationWidth: 2,
+            assistsEnabled: true,
+            continuesMarkdownPrefixes: true,
+            completesMatchingCharacters: true,
+            convertsTabsToSpaces: true,
+            smartHome: true,
+            autoIncrementOrderedLists: true
+        )
+        let config = DocumentEditorSplitView.assistConfiguration(from: settings, isMarkdown: false)
+        #expect(config.isEnabled)
+        #expect(!config.continuesMarkdownPrefixes)
+        #expect(config.completesMatchingCharacters)
+        #expect(!config.completesMarkdownDelimiters)
+        #expect(config.convertsTabsToSpaces)
+        #expect(config.smartHome)
+        #expect(!config.autoIncrementOrderedLists)
+    }
+
     @Test func assistConfigurationFallsBackToMarkdownDefaultWhenSettingsUnavailable() {
-        #expect(DocumentEditorSplitView.assistConfiguration(from: nil) == .markdownDefault)
+        #expect(DocumentEditorSplitView.assistConfiguration(from: nil, isMarkdown: true) == .markdownDefault)
+    }
+
+    @Test func assistConfigurationFallsBackToGeneralWhenSettingsUnavailableForOtherFormats() {
+        #expect(DocumentEditorSplitView.assistConfiguration(from: nil, isMarkdown: false) == .general)
     }
 
     // MARK: - Preview layout

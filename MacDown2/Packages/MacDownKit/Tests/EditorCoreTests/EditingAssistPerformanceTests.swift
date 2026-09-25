@@ -40,7 +40,8 @@ struct EditingAssistPerformanceTests {
             for: .replacement(range: NSRange(location: caret, length: 0), string: "a"),
             text: text,
             selection: NSRange(location: caret, length: 0),
-            configuration: .markdownDefault
+            configuration: .markdownDefault,
+            profile: .plainText
         )
 
         let duration = ContinuousClock().measure {
@@ -51,7 +52,8 @@ struct EditingAssistPerformanceTests {
                     for: .replacement(range: NSRange(location: caret, length: 0), string: "a"),
                     text: text,
                     selection: NSRange(location: caret, length: 0),
-                    configuration: .markdownDefault
+                    configuration: .markdownDefault,
+                    profile: .plainText
                 )
                 #expect(outcome == .passthrough)
             }
@@ -77,7 +79,8 @@ struct EditingAssistPerformanceTests {
                 for: .insertNewline,
                 text: source,
                 selection: system.selectedRange,
-                configuration: .markdownDefault
+                configuration: .markdownDefault,
+                profile: .plainText
             )
             #expect(system.applyAssistOutcome(outcome))
         }
@@ -95,7 +98,8 @@ struct EditingAssistPerformanceTests {
             for: .replacement(range: NSRange(location: caret, length: 0), string: "a"),
             text: text,
             selection: NSRange(location: caret, length: 0),
-            configuration: .disabled
+            configuration: .disabled,
+            profile: .plainText
         )
         let baseline = ContinuousClock().measure {
             for _ in 0 ..< 100 {
@@ -103,7 +107,8 @@ struct EditingAssistPerformanceTests {
                     for: .replacement(range: NSRange(location: caret, length: 0), string: "a"),
                     text: text,
                     selection: NSRange(location: caret, length: 0),
-                    configuration: .disabled
+                    configuration: .disabled,
+                    profile: .plainText
                 )
             }
         }
@@ -112,7 +117,8 @@ struct EditingAssistPerformanceTests {
             for: .replacement(range: NSRange(location: caret, length: 0), string: "a"),
             text: text,
             selection: NSRange(location: caret, length: 0),
-            configuration: .markdownDefault
+            configuration: .markdownDefault,
+            profile: .plainText
         )
         let assisted = ContinuousClock().measure {
             for _ in 0 ..< 100 {
@@ -120,7 +126,8 @@ struct EditingAssistPerformanceTests {
                     for: .replacement(range: NSRange(location: caret, length: 0), string: "a"),
                     text: text,
                     selection: NSRange(location: caret, length: 0),
-                    configuration: .markdownDefault
+                    configuration: .markdownDefault,
+                    profile: .plainText
                 )
             }
         }
@@ -150,7 +157,8 @@ struct EditingAssistPerformanceTests {
                 for: .smartHome,
                 text: text,
                 selection: NSRange(location: text.length, length: 0),
-                configuration: .markdownDefault
+                configuration: .markdownDefault,
+                profile: .plainText
             )
             #expect(outcome == .selection(NSRange(location: 0, length: 0)))
         }
@@ -176,7 +184,8 @@ struct EditingAssistPerformanceTests {
                 for: .insertNewline,
                 text: text,
                 selection: NSRange(location: text.length, length: 0),
-                configuration: .markdownDefault
+                configuration: .markdownDefault,
+                profile: .plainText
             )
             #expect(outcome == .passthrough)
         }

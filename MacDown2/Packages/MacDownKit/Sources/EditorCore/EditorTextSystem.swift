@@ -74,6 +74,10 @@ public final class EditorTextSystem {
     /// Storage lives here (extensions cannot hold stored properties);
     /// the E10 methods live in `EditorTextSystem+EditingAssists.swift`.
     public private(set) var editingAssistConfiguration: EditingAssistConfiguration = .disabled
+    /// The active document format's editor mechanics (EPIC-22 §6.11,
+    /// Slice 4a) — set alongside `editingAssistConfiguration`, from the same
+    /// `EditorConfiguration.apply(_:)` call.
+    public private(set) var languageEditingProfile: LanguageEditingProfile = .plainText
     /// Set by `scrollOffset`'s setter before the scroll view exists yet
     /// (session restore); applied by `applyPendingScrollOffset()` once it does.
     var pendingScrollOffset: CGFloat?
@@ -174,6 +178,7 @@ public final class EditorTextSystem {
         if configurationChanged {
             lastAppliedConfiguration = configuration
             editingAssistConfiguration = configuration.editingAssists
+            languageEditingProfile = configuration.languageProfile
 
             textView.font = configuration.font
             textView.textContainerInset = configuration.textInsets

@@ -9,13 +9,15 @@ enum EditingAssistTestSupport {
         for action: EditingAssistAction,
         in text: String,
         selection: NSRange,
-        configuration: EditingAssistConfiguration = .markdownDefault
+        configuration: EditingAssistConfiguration = .markdownDefault,
+        profile: LanguageEditingProfile = .plainText
     ) -> EditingAssistOutcome {
         MarkdownEditingAssistEngine.outcome(
             for: action,
             text: text as NSString,
             selection: selection,
-            configuration: configuration
+            configuration: configuration,
+            profile: profile
         )
     }
 
@@ -23,13 +25,15 @@ enum EditingAssistTestSupport {
         _ character: Character,
         in text: String,
         at location: Int,
-        configuration: EditingAssistConfiguration = .markdownDefault
+        configuration: EditingAssistConfiguration = .markdownDefault,
+        profile: LanguageEditingProfile = .plainText
     ) -> EditingAssistOutcome {
         outcome(
             for: .replacement(range: NSRange(location: location, length: 0), string: String(character)),
             in: text,
             selection: NSRange(location: location, length: 0),
-            configuration: configuration
+            configuration: configuration,
+            profile: profile
         )
     }
 
@@ -300,12 +304,43 @@ struct EditingAssistMarkdownDelimiterTests {
         #expect(support.type("~", in: "foo", at: 3) == .passthrough)
     }
 
-    @Test("matching-character assists honor their configuration flag")
-    func matchingCharacterFlagPassesThroughAllPairPaths() {
+    @Test("completesMatchingCharacters only gates structural (bracket/quote) pair paths")
+    func matchingCharacterFlagGatesOnlyStructuralPairs() {
+        // EPIC-22 §6.11, Slice 4a split the once-bundled `completesMatchingCharacters`
+        // flag into this general/structural flag and a separate
+        // `completesMarkdownDelimiters` flag for `*`/`_`/backtick — see the
+        // sibling test below for that half.
         var configuration = EditingAssistConfiguration.markdownDefault
         configuration.completesMatchingCharacters = false
 
         #expect(support.type("(", in: "foo", at: 3, configuration: configuration) == .passthrough)
+        // Markdown symmetric-delimiter wrapping/backspace are UNAFFECTED by
+        // this flag now — they still fire, since `completesMarkdownDelimiters`
+        // defaults to `true` and this configuration never touches it.
+        #expect(
+            support.outcome(
+                for: .replacement(range: NSRange(location: 1, length: 3), string: "*"),
+                in: "foo",
+                selection: NSRange(location: 1, length: 3),
+                configuration: configuration
+            ) != .passthrough
+        )
+        #expect(
+            support.outcome(
+                for: .deleteBackward,
+                in: "foo**bar",
+                selection: NSRange(location: 4, length: 0),
+                configuration: configuration
+            ) != .passthrough
+        )
+    }
+
+    @Test("completesMarkdownDelimiters only gates symmetric (*/_/backtick) pair paths")
+    func markdownDelimiterFlagGatesOnlySymmetricPairs() {
+        var configuration = EditingAssistConfiguration.markdownDefault
+        configuration.completesMarkdownDelimiters = false
+
+        // Symmetric wrap/backspace now pass through.
         #expect(
             support.outcome(
                 for: .replacement(range: NSRange(location: 1, length: 3), string: "*"),
@@ -322,6 +357,8 @@ struct EditingAssistMarkdownDelimiterTests {
                 configuration: configuration
             ) == .passthrough
         )
+        // Structural (bracket) pairing is UNAFFECTED by this flag.
+        #expect(support.type("(", in: "foo", at: 3, configuration: configuration) != .passthrough)
     }
 
     @Test("paired Backspace on Markdown pair behaves as documented")
