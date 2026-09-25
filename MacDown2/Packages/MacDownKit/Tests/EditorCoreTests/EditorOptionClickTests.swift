@@ -86,6 +86,74 @@ struct EditorOptionClickTests {
         ])
     }
 
+    @Test func anOffsetStrictlyInsideARealSelectionIsNotHandled() {
+        // The real bug an independent hostile review found: adding a
+        // zero-length point strictly inside an existing non-empty selection
+        // would be silently merged away by `EditorSelectionSet.normalize`'s
+        // own overlap-merge rule -- consuming the click while visibly doing
+        // nothing (no new caret, selection unchanged, and none of the
+        // ordinary click behavior the user would otherwise get). Must fail
+        // open (return `false`) instead, exactly like an out-of-bounds
+        // offset.
+        let system = support.makeSystem(text: "one two three")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        system.selectedRange = NSRange(location: 0, length: 5) // "one t"
+
+        let handled = system.toggleSecondaryCaret(at: 2) // strictly inside
+
+        #expect(!handled)
+        #expect(
+            system.selectionSet.ranges == [NSRange(location: 0, length: 5)],
+            "the original selection must survive untouched"
+        )
+    }
+
+    @Test func anOffsetExactlyAtASelectionsBoundaryStillAddsADistinctTouchingCaret() {
+        // The boundary case the fix above must NOT also break: clicking
+        // exactly at a selection's own start/end is a genuine touch, not an
+        // overlap, and `EditorSelectionSet.normalize` keeps touching ranges
+        // distinct.
+        let system = support.makeSystem(text: "one two three")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        system.selectedRange = NSRange(location: 0, length: 5) // "one t"
+
+        let handled = system.toggleSecondaryCaret(at: 5) // exactly at the end boundary
+
+        #expect(handled)
+        #expect(system.selectionSet.isMultiple)
+        #expect(system.selectionSet.ranges.contains(NSRange(location: 5, length: 0)))
+    }
+
+    // MARK: - `EditorTextView.isPlainOptionClick(_:)` (pure predicate)
+
+    private func syntheticEvent(modifierFlags: NSEvent.ModifierFlags, clickCount: Int) throws -> NSEvent {
+        try #require(NSEvent.mouseEvent(
+            with: .leftMouseDown,
+            location: .zero,
+            modifierFlags: modifierFlags,
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            eventNumber: 0,
+            clickCount: clickCount,
+            pressure: 1
+        ))
+    }
+
+    @Test func isPlainOptionClickIsTrueForASingleClickWithOptionHeld() throws {
+        #expect(try EditorTextView.isPlainOptionClick(syntheticEvent(modifierFlags: .option, clickCount: 1)))
+        // Another modifier held alongside Option doesn't disqualify it --
+        // this predicate only cares that Option is among the held flags.
+        #expect(try EditorTextView.isPlainOptionClick(syntheticEvent(modifierFlags: [.option, .shift], clickCount: 1)))
+    }
+
+    @Test func isPlainOptionClickIsFalseWithoutOptionOrForMoreThanOneClick() throws {
+        #expect(try !EditorTextView.isPlainOptionClick(syntheticEvent(modifierFlags: [], clickCount: 1)))
+        #expect(try !EditorTextView.isPlainOptionClick(syntheticEvent(modifierFlags: .option, clickCount: 2)))
+    }
+
     // MARK: - Real `mouseDown(with:)` (a genuine, synthesized NSEvent)
 
     private struct Mounted {

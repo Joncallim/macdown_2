@@ -130,13 +130,23 @@ public final class EditorTextView: NSTextView {
     /// ever needed fragment-level granularity, not an exact character
     /// position within a line.
     override public func mouseDown(with event: NSEvent) {
-        if event.modifierFlags.contains(.option), event.clickCount == 1, let owningSystem, let window {
+        if Self.isPlainOptionClick(event), let owningSystem, let window {
             let screenPoint = window.convertPoint(toScreen: event.locationInWindow)
             if owningSystem.toggleSecondaryCaret(at: characterIndex(for: screenPoint)) {
                 return
             }
         }
         super.mouseDown(with: event)
+    }
+
+    /// `true` for exactly the click `mouseDown(with:)` intercepts: Option
+    /// held, single click. Extracted as a pure, testable predicate — an
+    /// independent hostile review noted that driving a REAL `mouseDown(with:)`
+    /// call in a test to check this condition risks the modal-tracking-loop
+    /// hang documented above, so this lets `EditorOptionClickTests` cover
+    /// the guard itself directly without that risk.
+    static func isPlainOptionClick(_ event: NSEvent) -> Bool {
+        event.modifierFlags.contains(.option) && event.clickCount == 1
     }
 
     /// Viewport-bounded: starts at the fragment intersecting `dirtyRect`'s

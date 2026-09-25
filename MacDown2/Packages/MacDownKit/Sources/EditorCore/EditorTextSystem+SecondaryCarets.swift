@@ -12,15 +12,34 @@ public extension EditorTextSystem {
     /// Returns `true` once handled — including the no-op case of toggling
     /// off the last remaining secondary caret — so the caller always treats
     /// a plain Option-click as consumed and never falls through to native
-    /// click handling for it; `false` only for a genuinely out-of-bounds
-    /// offset (defensive: real callers always resolve `offset` from a
-    /// point actually inside this text view).
+    /// click handling for it; `false` for a genuinely out-of-bounds offset,
+    /// or when `offset` lands strictly inside an existing non-empty
+    /// selection (see below) — both cases fail open to native click
+    /// handling instead.
+    ///
+    /// An offset strictly inside an existing real (non-zero-length)
+    /// selection is deliberately NOT handled: adding a zero-length point
+    /// there would be silently merged away by `EditorSelectionSet.normalize`'s
+    /// own overlap-merge rule (a genuine overlap, not a mere touch), which
+    /// would consume the click while visibly doing nothing — no new caret,
+    /// selection unchanged, and none of the ordinary click behavior
+    /// (collapsing to a caret at the click point) the user would otherwise
+    /// get. Found by an independent hostile review of this slice. Clicking
+    /// exactly AT a selection's boundary (`location` or `location + length`)
+    /// is unaffected by this guard and still adds a genuine, distinct
+    /// touching caret, since `normalize` only merges genuine overlaps, not
+    /// touching ranges.
     @discardableResult
     func toggleSecondaryCaret(at offset: Int) -> Bool {
         let documentLength = (textView.string as NSString).length
         guard offset >= 0, offset <= documentLength else { return false }
 
         var selection = selectionSet
+        let landsInsideARealSelection = selection.ranges.contains { range in
+            range.length > 0 && offset > range.location && offset < range.location + range.length
+        }
+        guard !landsInsideARealSelection else { return false }
+
         if let existingIndex = selection.ranges.firstIndex(where: { $0.length == 0 && $0.location == offset }) {
             // `EditorSelectionSet.removeRange(at:)` is itself a no-op on the
             // last remaining range (a selection set is never empty) — no
