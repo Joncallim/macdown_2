@@ -91,14 +91,19 @@ struct DocumentEditorSplitView: View {
             config.showsInvisibles = editorSettings.showsInvisibles
         }
         config.scrollsPastEnd = false
-        // E10 is Markdown-only and fails closed: the default is disabled, and
-        // only the exact Markdown format id receives the Markdown assists.
-        // `WindowController` eagerly creates a text system with `.default`
-        // before this format-specific configuration arrives, so a JSON/HTML/
-        // source file can never receive a transient Markdown assist.
-        config.editingAssists = document.format.id == "markdown"
-            ? Self.assistConfiguration(from: appSettings?.editor)
-            : .disabled
+        // EPIC-22 §6.11, Slice 4a: every format now gets a real, profile-
+        // driven assist configuration — general mechanics (structural
+        // pairing, Tab/Shift-Tab indent, Smart Home, Return-maintains-
+        // indentation) for every format, Markdown's own additional behaviors
+        // (list/blockquote continuation, symmetric delimiter pairing) only
+        // for the exact Markdown format id. `WindowController` eagerly
+        // creates a text system with `.default` (still `.disabled`) before
+        // this format-specific configuration arrives, so a document can
+        // never receive a transient assist configuration meant for a
+        // different format.
+        let isMarkdown = document.format.id == "markdown"
+        config.editingAssists = Self.assistConfiguration(from: appSettings?.editor, isMarkdown: isMarkdown)
+        config.languageProfile = LanguageEditingProfileRegistry.profile(for: document.format.id)
         return config
     }
 

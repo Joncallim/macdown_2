@@ -3,15 +3,31 @@ import Foundation
 // MARK: - Return / list / task / blockquote continuation
 
 extension MarkdownEditingAssistEngine {
+    /// Dispatches to Markdown's own list/task/blockquote continuation, or
+    /// (EPIC-22 §6.11, Slice 4a) a general "maintain the previous line's
+    /// indentation" behavior for every other format — mutually exclusive,
+    /// since `configuration.continuesMarkdownPrefixes` is `false` for every
+    /// non-Markdown format's config.
     static func newlineOutcome(
         text: NSString,
         selection: NSRange,
-        configuration: EditingAssistConfiguration
+        configuration: EditingAssistConfiguration,
+        profile: LanguageEditingProfile
     ) -> EditingAssistOutcome {
-        guard configuration.continuesMarkdownPrefixes else { return .passthrough }
         guard selection.length == 0 else { return .passthrough }
         let caret = selection.location
 
+        if configuration.continuesMarkdownPrefixes {
+            return markdownNewlineOutcome(caret: caret, text: text, configuration: configuration)
+        }
+        return generalNewlineOutcome(caret: caret, text: text, configuration: configuration, profile: profile)
+    }
+
+    private static func markdownNewlineOutcome(
+        caret: Int,
+        text: NSString,
+        configuration: EditingAssistConfiguration
+    ) -> EditingAssistOutcome {
         let prefix = linePrefix(before: caret, in: text)
 
         let hasConstruct = prefix.listMarker != nil || prefix.taskMarker != nil
@@ -44,6 +60,38 @@ extension MarkdownEditingAssistEngine {
             text: text,
             configuration: configuration
         )
+    }
+
+    /// General Return-key indentation, for every non-Markdown format: keeps
+    /// the current line's own leading indentation, plus one further level
+    /// (via `profile.indentAfterTrailing`, e.g. `{` for C-family languages)
+    /// when the character immediately before the caret is one of the
+    /// profile's own trailing triggers. A no-op (falls through to native
+    /// Return, a bare newline) when there is nothing to add — an unindented
+    /// line with no trailing trigger character.
+    private static func generalNewlineOutcome(
+        caret: Int,
+        text: NSString,
+        configuration: EditingAssistConfiguration,
+        profile: LanguageEditingProfile
+    ) -> EditingAssistOutcome {
+        let start = lineStart(of: caret, in: text)
+        var indentation = parseIndentation(from: start, to: caret, in: text)
+
+        if let previous = scalar(before: caret, in: text), profile.indentAfterTrailing.contains(Character(previous)) {
+            let width = profile.defaultIndentWidth ?? configuration.indentationWidth
+            indentation += configuration.convertsTabsToSpaces ? String(repeating: " ", count: width) : "\t"
+        }
+        guard !indentation.isEmpty else { return .passthrough }
+
+        let separator = lineSeparator(ofLineContaining: caret, in: text)
+        let replacement = separator + indentation
+        return .edit(EditingAssistEdit(
+            replacementRange: NSRange(location: caret, length: 0),
+            replacementString: replacement,
+            resultingSelection: NSRange(location: caret + replacement.utf16.count, length: 0),
+            undoActionName: "Insert"
+        ))
     }
 
     /// Empty-construct termination: exit one level. Calculates the entire

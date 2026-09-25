@@ -7,9 +7,14 @@ extension MarkdownEditingAssistEngine {
         text: NSString,
         selection: NSRange,
         configuration: EditingAssistConfiguration,
+        profile: LanguageEditingProfile,
         shift: Bool
     ) -> EditingAssistOutcome {
-        let width = configuration.indentationWidth
+        // A format's own profile can override the global indentation-width
+        // preference (EPIC-22 §6.11, Slice 4a); `nil` defers to it exactly
+        // as `LanguageEditingProfile.defaultIndentWidth`'s own doc comment
+        // already specified back in Slice 1.
+        let width = profile.defaultIndentWidth ?? configuration.indentationWidth
 
         if shift {
             if selection.length > 0 {

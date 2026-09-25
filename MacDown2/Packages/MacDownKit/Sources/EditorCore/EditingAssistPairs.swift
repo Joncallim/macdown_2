@@ -23,10 +23,13 @@ let structuralPairs: [(opener: Character, closer: Character)] = [
     ("\u{300A}", "\u{300B}"), // East-Asian double angle brackets
 ]
 
-func structuralCloser(for opener: Character) -> Character? {
-    structuralPairs.first { $0.opener == opener }?.closer
+/// `pairs` defaults to the global Markdown/general table for source
+/// compatibility; Slice 4a's profile-aware call sites pass the active
+/// `LanguageEditingProfile.pairedDelimiters` explicitly instead.
+func structuralCloser(for opener: Character, in pairs: [PairedDelimiter] = PairedDelimiter.structural) -> Character? {
+    pairs.first { $0.opener == opener }?.closer
 }
 
-func structuralOpener(for closer: Character) -> Character? {
-    structuralPairs.first { $0.closer == closer }?.opener
+func structuralOpener(for closer: Character, in pairs: [PairedDelimiter] = PairedDelimiter.structural) -> Character? {
+    pairs.first { $0.closer == closer }?.opener
 }
