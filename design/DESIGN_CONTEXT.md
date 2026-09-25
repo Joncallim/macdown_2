@@ -36,6 +36,8 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
 
 - Name: MostlyText. Wordmark casing is `MostlyText`, with a capital T.
 - Primary identity direction: the symbol meaningfully combines **M** and **T**.
+  Chosen mark: **Slant**, an M and T sharing one stem, leaning forward, with a
+  wedge cut on the crossbar. It is not frozen yet (see D-010 and D-011).
 - The mark must work at macOS app-icon size, at favicon size (16 px), in
   monochrome, on light and dark backgrounds, and in a wordmark lockup.
 - Current icon: **placeholder only**. It is a white document glyph on a blue
@@ -52,7 +54,7 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
 | Build / run | macOS 26 + Xcode 26: see the commands table in `AGENTS.md`. Judge feel on a **Release** build | needs a Mac; cloud design sessions run on Linux and **cannot run the app** |
 | Screenshots | `design/evidence/YYYY-MM-DD/` (capture protocol below) | **none yet** |
 | Figma | — | **none yet**; no Figma connector in the design session |
-| Brand assets | `design/brand/gen2/`: source geometry in `marks.mjs`, exported SVGs, comparison board (`node build.mjs` rebuilds `board.html`; published at https://claude.ai/artifact/HnqRCjVR1UPxFtWC9KnAwW). Gen-1 board: owner's image "Logo concepts — five directions for the T" (not in repo) | gen-3 board (`design/brand/gen3/`, published at https://claude.ai/artifact/YXsdWoZq6wWP8VjLQ9jrmB): Caret and Slant awaiting owner review; gen-2 kept as a record |
+| Brand assets | `design/brand/gen2/`: source geometry in `marks.mjs`, exported SVGs, comparison board (`node build.mjs` rebuilds `board.html`; published at https://claude.ai/artifact/HnqRCjVR1UPxFtWC9KnAwW). Gen-1 board: owner's image "Logo concepts — five directions for the T" (not in repo) | **Slant chosen (D-010).** Refinement in `design/brand/slant/` (board: https://claude.ai/artifact/CxLEqf5TCcFrEMMo1uN4Ni); `slant/marks.mjs` holds the parameterised geometry. Earlier rounds in `gen2/` and `gen3/` are kept as a record |
 | Design tokens / themes | Editor/preview themes: `MacDownKit` `Themes` module; the chrome follows system colours | not yet a named token set |
 | Polish/identity contract | `planning/epics/EPIC-15-liquid-glass-polish.md`; `planning/RELEASE_HARDENING.md` §5.1 | binding for release |
 | Surfaces with UI tests (a list of what exists) | `MacDown2/MacDown2UITests/*.swift` file names | live |
