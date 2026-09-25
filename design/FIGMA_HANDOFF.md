@@ -54,7 +54,7 @@ Let **F** be the wordmark's font size.
 | Cap height | 0.7367 F (measured) |
 | Mark size | The mark's letters are **1.15 × cap height = 0.847 F** tall |
 | Vertical position | The bottom of the mark's letters sits **on the wordmark baseline** |
-| Gap | **0.2 F** from the mark's lower-right stem to the wordmark's M, measured along the 12° lean |
+| Gap | **0.2 F** from the mark's right extent (the crossbar tip) to the wordmark origin, as clarified by D-025. A 0.2 F gap from the stem would put the crossbar tip over the M |
 | Weight relation | The mark's stems are about 1.4× the wordmark's stems. The mark leads, so don't use weight 800 for the wordmark. |
 | Clear space | At least the height of the mark's crossbar on every side |
 | Minimum size | Wordmark at 12 px on screen (5 mm cap height in print). Below that, use the mark alone. |
@@ -74,11 +74,11 @@ Lockup: single ink, e.g. `#11141A` on light and `#F3F5F9` on dark.
 Icon, two-tone T only: light M `#14171D` / T `#2F5FE6`; dark M `#F3F5F9` /
 T `#7EA4FF`. The macOS icon build may change these.
 
-## Release gates still open (public identity isn't frozen until all four close)
+## Release gates (public identity isn't frozen until all four close)
 
 | Gate | Owner / where | Status |
 |---|---|---|
-| 1. Wordmark outlined with curve and "yT" corrections | **Figma** (this handoff) | Open |
+| 1. Wordmark outlined with curve and "yT" corrections | **Figma** (this handoff) | **Closed.** Outlines, slant stroke compensation, yT −60 and xt +60 are in the Figma file and `design/brand/slant/production/`; accepted by the owner (D-025) |
 | 2. macOS icon set (light, dark, clear, tinted) built in Icon Composer and checked in a real Dock and Finder | **Mac** | Open |
 | 3. Blind human read test passes D-019 (S1-only gate, exactly 8 valid participants: D-023) | **Humans**, using `design/validation/read-test/` | Open |
 | 4. Trademark register search (WIPO, USPTO, IPOS) run and reviewed | **Human searcher / reviewer**, using `design/brand/TRADEMARK_SEARCH.md` | Open. No legal conclusion has been drawn |

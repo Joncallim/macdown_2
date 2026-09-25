@@ -27,6 +27,7 @@ npm install
 # Inter Tight Bold Italic (SIL OFL), not committed:
 curl -sL -o InterTight-BoldItalic.ttf \
   https://fonts.gstatic.com/s/intertight/v9/NGShv5HMAFg6IuGlBNMjxLsC66ZMtb8hyW62x0ylGC5X.ttf
+# Inter Tight Bold Italic, name-table version 3.004 (Google Fonts v9)
 # expected sha256 f6908b1a008b5f86c502390161e91f8e1c7960342bdae61aaa229130b745c49b
 npm run build && npm run verify   # verify needs Chromium (CHROMIUM_PATH)
 ```
