@@ -102,6 +102,18 @@ public extension EditorTextSystem {
                 let lineMaxY = lineMinY + lineFragment.typographicBounds.height
                 guard lineMinY < maxY, lineMaxY > minY else { continue }
 
+                // Assumes every wrapped line's own local x=0 coincides with
+                // `fragmentFrame.minX` — true today (confirmed by the same
+                // probe cited above) because this codebase applies no
+                // paragraph styling beyond `lineHeightMultiple` anywhere
+                // (`EditorTextSystem.swift`'s `typingAttributes`) — no
+                // indent, alignment, or RTL writing direction. Flagged by an
+                // independent hostile review of this slice as real, current
+                // fragility rather than a live bug: a future hanging indent
+                // (e.g. for blockquotes) or RTL paragraph support would need
+                // this reworked to account for each line's own indent/writing
+                // direction rather than always subtracting the fragment's own
+                // `minX`.
                 let localMinX = minX - fragmentFrame.minX
                 let localMaxX = maxX - fragmentFrame.minX
                 let localY = lineFragment.typographicBounds.height / 2

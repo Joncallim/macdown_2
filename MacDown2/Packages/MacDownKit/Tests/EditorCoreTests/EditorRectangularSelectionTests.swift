@@ -196,6 +196,42 @@ struct EditorRectangularSelectionTests {
         #expect(mounted.system.selectionSet.count == 2, "must be exactly the rectangle's own 2 lines, not 3")
     }
 
+    // MARK: - A ragged rectangle's interaction with multi-selection typing/delete
+
+    @Test func aRaggedRectangleDeclinesBothMultiCursorInsertAndDeleteConsistently() throws {
+        // An independent hostile review of this slice found `applyMultiCursorInsert`
+        // missing the same `allSatisfy`-non-empty guard `applyMultiCursorDeleteSelection`
+        // already had: a RAGGED rectangle (a short middle line produces a
+        // zero-length range where the drag's own left edge falls past that
+        // line's end) let typing act on every line while deleting silently
+        // acted on only the primary line and dropped the rest -- the same
+        // selection behaving inconsistently between the two operations.
+        // Both must now decline identically, falling through to native
+        // single-range handling, per §6.10's own disclosed scope boundary
+        // ("a mix of a real selection and bare synthetic carets" is a
+        // distinct, not-yet-scoped follow-up for BOTH operations, not just
+        // delete).
+        let mounted = try mount(text: "one two three\nab\nfour five six")
+        // The LEFT edge (column 5, offset 4) is already past "ab"'s own
+        // 2-character length, so line 2 clamps to a zero-length caret at
+        // its own end on BOTH sides -- unlike a left edge at column 1,
+        // which would still land WITHIN "ab" and produce a real (if short)
+        // selection there instead of a bare caret.
+        let start = try viewPoint(at: 4, in: mounted)
+        let end = try viewPoint(at: 29, in: mounted, edge: 400) // far past line 3's own end
+
+        #expect(mounted.system.applyRectangularSelection(fromViewPoint: start, toViewPoint: end))
+        let ranges = mounted.system.selectionSet.ranges
+        #expect(ranges.count == 3)
+        #expect(ranges.contains { $0.length == 0 }, "fixture must actually be ragged for this test to mean anything")
+        #expect(ranges.contains { $0.length > 0 })
+
+        #expect(!mounted.system.applyMultiCursorInsert("X"))
+        #expect(!mounted.system.applyMultiCursorDeleteSelection())
+        // Neither declined call may have mutated the selection.
+        #expect(mounted.system.selectionSet.ranges == ranges)
+    }
+
     // MARK: - Real `mouseDown`/`mouseDragged` + `finishRectangularSelectionGesture`
 
     //
