@@ -138,6 +138,30 @@ struct EditorVerticalCursorTests {
         #expect(system.selectionSet.count == 3, "a no-op call must not mutate the existing carets")
     }
 
+    @Test func addCursorBelowFailsClosedWhenTheTargetPointFallsInsideAnExistingRealSelection() {
+        // The real bug an independent hostile review found: nothing gates
+        // this command to bare-caret selections, so the top-most/bottom-most
+        // "caret" can actually be a genuine multi-line selection. If the
+        // computed target point lands inside it, `EditorSelectionSet.normalize`'s
+        // own overlap-merge rule (the same one PR #131's review already
+        // found a bug in) silently absorbs the new point -- the selection
+        // count never actually grows, and this must report `false` rather
+        // than claiming success for a call that changed nothing observable.
+        let system = support.makeSystem(text: "one\ntwo\nthree\nfour")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        // A single real selection spanning lines 1-3 ("one\ntwo\nth").
+        system.selectedRange = NSRange(location: 0, length: 9)
+
+        let handled = system.addCursorBelow()
+
+        #expect(!handled)
+        #expect(
+            system.selectionSet.ranges == [NSRange(location: 0, length: 9)],
+            "the original selection must survive untouched"
+        )
+    }
+
     @Test func addCursorBelowHandlesCJKAndEmojiColumnsCorrectly() {
         // §6.10's own adversarial coverage note: CJK/emoji columns.
         // `EditorLineIndex` counts grapheme clusters, not UTF-16 units, for

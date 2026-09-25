@@ -16,6 +16,15 @@ public extension EditorTextSystem {
     /// other carets exist (e.g. after an Option-click, Slice 3b-ii, adds
     /// one above the original primary).
     ///
+    /// If the top-most/bottom-most entry is a genuine multi-character
+    /// selection rather than a bare caret (reachable today: nothing gates
+    /// this command to bare-caret selections), only its `location` (the
+    /// lower bound) is used as the reference point — `NSRange` carries no
+    /// anchor/active-end distinction, so which end the user actually placed
+    /// their caret at cannot be recovered here. This is a disclosed,
+    /// unfixed gap, not a crash risk: found by an independent hostile
+    /// review of this slice.
+    ///
     /// The target column is recomputed fresh from the reference caret's own
     /// current column on every call — not carried as separate persistent
     /// "desired column" state across repeated invocations through an
@@ -53,6 +62,15 @@ public extension EditorTextSystem {
         let targetOffset = lineIndex.utf16Offset(forLine: targetLine, column: referenceColumn, in: text)
         var updated = selection
         updated.addRange(NSRange(location: targetOffset, length: 0), makePrimary: false)
+        // The new zero-length point can land inside an existing real
+        // selection (see the doc comment above) — `EditorSelectionSet.normalize`'s
+        // own overlap-merge rule then silently absorbs it, leaving `updated`
+        // with the SAME range count as `selection`. Checking the count
+        // actually grew (rather than unconditionally returning `true`)
+        // avoids claiming success for a call that changed nothing visible —
+        // found by an independent hostile review of this slice, the same
+        // class of bug PR #131's own review found once already.
+        guard updated.count > selection.count else { return false }
         selectionSet = updated
         return true
     }
