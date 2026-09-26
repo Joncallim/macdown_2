@@ -1,5 +1,8 @@
 # Round-2 protocol (approved 2026-09-26; thresholds fixed before any data)
 
+> **Not run: the owner waived the formal human gate (D-026).** Kept for reference. If it is ever run, the
+> thresholds below stand as written.
+
 Two tranches. **Run A first**, because the lean it keeps decides the geometry B tests. Round 1 was
 exploratory (people were sent the stimuli), so **round 2 is the formal D-023 human gate**. Nothing
 here changes D-019 to D-023: the pass counts are the same 6 of 8 and the automotive trigger is the

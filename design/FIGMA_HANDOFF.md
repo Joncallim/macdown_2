@@ -74,13 +74,13 @@ Lockup: single ink, e.g. `#11141A` on light and `#F3F5F9` on dark.
 Icon, two-tone T only: light M `#14171D` / T `#2F5FE6`; dark M `#F3F5F9` /
 T `#7EA4FF`. The macOS icon build may change these.
 
-## Release gates (public identity isn't frozen until all four close)
+## Release gates (public identity isn't frozen until all four close or are explicitly waived)
 
 | Gate | Owner / where | Status |
 |---|---|---|
 | 1. Wordmark outlined with curve and "yT" corrections | **Figma** (this handoff) | **Closed.** Outlines, slant stroke compensation, yT −60 and xt +60 are in the Figma file and `design/brand/slant/production/`; accepted by the owner (D-025) |
 | 2. macOS icon set (light, dark, clear, tinted) built in Icon Composer and checked in a real Dock and Finder | **Mac** | Open |
-| 3. Blind human read test passes D-019 (S1-only gate, exactly 8 valid participants: D-023) | **Humans**, using `design/validation/read-test/` | Open |
+| 3. Blind human read test passes D-019 (S1-only gate, exactly 8 valid participants: D-023) | **Humans**, using `design/validation/read-test/` | **Waived by the owner (D-026)**, not passed. Round 1 exploratory evidence: M+T 8/8; motorsport/performance associations 6/8; 16 px microglyph 0/8. Lean and small sizes to be settled by direct comparison and macOS validation |
 | 4. Trademark register search (WIPO, USPTO, IPOS) run and reviewed | **Human searcher / reviewer**, using `design/brand/TRADEMARK_SEARCH.md` | Open. No legal conclusion has been drawn |
 
 ## Record-keeping

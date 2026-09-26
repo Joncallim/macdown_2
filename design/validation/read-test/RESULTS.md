@@ -22,7 +22,7 @@ direct the next round:
 - The automotive associations (6 of 8 on the round-1 keyword list; 4 of 8 counting only cars and
   motorsport) justify running the D-021 8°/10°/12° comparison as round-2 tranche A.
 
-The formal human gate is round 2, run to `../round-2/PROTOCOL.md`.
+~~The formal human gate is round 2, run to `../round-2/PROTOCOL.md`.~~ **Update 2026-09-26:** the owner waived the formal human gate (D-026). Round 2 will not be run. The owner accepts the residual association risk. This record remains the only human evidence, and D-023 is not claimed as passed.
 
 ## Original recorded reading (preserved; superseded as a formal verdict by the classification above)
 

@@ -1,5 +1,9 @@
 # Round 2: small-size diagnosis and the next validation tranche
 
+> **Status 2026-09-26: not run.** The owner waived the formal human gate (D-026). The diagnosis and the
+> derive-from-master rule remain approved inputs for direct comparison and macOS validation. The test kit
+> is kept for reference and could still be run later. Nothing here is a D-023 result.
+
 **Owner summary.** Round 1 (`../read-test/RESULTS.md`) is exploratory evidence: eight real people
 were sent the stimuli instead of being run through the timed protocol, so it is not a formal D-023
 result. Its findings still count as evidence. The 64 px mark read as M+T for 8 of 8, but 0 of 8
@@ -12,7 +16,7 @@ the tranche A protocol. The 16 px line-up is the only formal small-size gate (at
 32 px line-up is diagnostic only, and its evidence carries into the Mac / Icon Composer validation.
 
 - **Why Soft won:** at 16 px, Soft is the closest image to the big mark. It is the same shared-stem M+T
-  ligature, and the test harness gave it the same 12° lean and glyph box. Our microglyph is 17–22%
+  ligature, and the test harness gave it the same 12° lean and glyph box. Our microglyph is 17–23%
   lighter than the master and breaks the ligature into two separate, thin letters. By an
   alignment-independent pixel match, Soft resembles the master more than our microglyph does.
 - **The same drift affects the 32 px master**, which covers most Retina use. It is untested by people
