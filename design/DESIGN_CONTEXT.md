@@ -35,16 +35,22 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
 ## Brand
 
 - Name: MostlyText. Wordmark casing is `MostlyText`, with a capital T. The wordmark
-  leans 12° to match the mark (D-012). Don't use SF Pro in brand artwork: its
+  leans to match the mark (D-012). Don't use SF Pro in brand artwork: its
   licence doesn't allow logo use.
 - Primary identity direction: the symbol meaningfully combines **M** and **T**.
   Chosen mark: **Slant**, an M and T sharing one stem, leaning forward, with a
   wedge cut on the crossbar. Geometry is release-candidate frozen, not frozen
   (D-018). The 16 px files are microglyphs for ≤17 px only; never enlarge them (D-020).
+  **Production lean is 10°, superseding the checked-in 12° validation/production
+  artwork (D-027, 2026-09-26).** The wordmark/lockup/Figma production files and
+  `slant-16.svg`/`slant-32.svg`/`slant-master.svg` still reflect 12° and have not
+  yet been regenerated at 10° — D-027 records the geometry decision, not the
+  cascade. Read `design/evidence/2026-09-26/icon-art/README.md` before touching
+  any of that production geometry.
 - **Handoff and gates:** `design/FIGMA_HANDOFF.md` (everything the Figma session
   needs), `design/brand/PROVENANCE.md` (licences, canonical files),
   `design/validation/read-test/` (blind human test: round 1 exploratory; formal gate waived by the owner, D-026) and
-  `design/brand/TRADEMARK_SEARCH.md` (register search record, not yet run).
+  `design/brand/TRADEMARK_SEARCH.md` (register search record: word-mark queries run 2026-09-26 on WIPO/USPTO/IPOS, no exact match found; figurative/image search not run — see the file's search log).
 - The mark must work at macOS app-icon size, at favicon size (16 px), in
   monochrome, on light and dark backgrounds, and in a wordmark lockup.
 - Current icon: **placeholder only**. It is a white document glyph on a blue
