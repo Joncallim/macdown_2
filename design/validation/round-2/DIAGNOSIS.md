@@ -47,7 +47,8 @@ alike:
 The ranking puts Soft first, which is exactly what all eight participants picked. **Conclusion:** the
 microglyph traded the mark's mass and fused silhouette for small-size letter legibility, and moved far
 enough that a sibling construction resembled the master more. This is a real identity-drift defect,
-not an unlucky draw. The round-1 FAIL stands.
+not an unlucky draw. Round 1 is exploratory evidence rather than a formal verdict (§6), but this
+finding stands on the measurements alone.
 
 ## 3. The 32 px optical master has the same drift
 
@@ -64,7 +65,7 @@ master than Soft is:
 The 16 px icon microglyph (`slant-icon-16-inner.svg`) was drawn by the same approach. It should follow
 whatever rule round 2 settles, and it is validated at the Mac icon gate.
 
-## 4. Proposed correction strategy (bounded)
+## 4. Correction strategy (approved by the owner, 2026-09-26; not yet applied to production)
 
 Keep D-014's pixel discipline (horizontals on whole pixel rows, whole-pixel stems, lean about the
 baseline) but **stop lightening**. Derive every small drawing mechanically from the master
@@ -88,13 +89,12 @@ narrowly as cars or motorsport only, it is 4 of 8 (P4, P6, P7, P8). That is stil
 HOLD stands under either reading and D-021 applies. Round 2 reports both counts, but only the round-1
 list decides the gate.
 
-## 6. A provenance question to settle before round 2
+## 6. Provenance: round 1 was exploratory
 
-The raw transcripts in `../read-test/raw/` read like responses from AI assistants given image files,
-not like notes from a facilitated session. Several open with "Here are the responses based on the
-visual stimuli provided", use Markdown headings, and refer to files such as "S1.png". The line-up
-choices are not in the transcripts; they were supplied separately. If the reviewers were AI models
-rather than people shown the timed slides, round 1 was not the human test D-019 and D-023 describe:
-it had no 5-second first exposure and the 16 px glyphs were not seen at true size. Model image-matching
-would also explain why the choices follow the pixel-match ranking so exactly. This note doesn't change
-the recorded result, but round 2 must use people (see `PROTOCOL.md`).
+The owner confirmed on 2026-09-26 that the eight reviewers were real people who were **sent the
+stimuli**, not run through the timed facilitator protocol. There was no controlled 5-second first
+exposure, and the 16 px glyphs were not viewed on a facilitator screen at true size. Round 1 is
+therefore classified as **protocol-noncompliant exploratory evidence**, not a formal D-023 PASS or
+FAIL (`../read-test/RESULTS.md`). Its raw data and findings are kept. Viewing the files at
+arbitrary zoom favours image matching, which fits the choices following the pixel-match ranking so
+closely. Round 2 is the formal test and must be facilitated live (`PROTOCOL.md`).

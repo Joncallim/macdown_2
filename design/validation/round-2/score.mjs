@@ -29,7 +29,7 @@ if (mode === 'lean') {
   const c16 = valid.filter(r => (r.lineup16_choice || '').toUpperCase() === key[r.participant_id]).length, c32 = valid.filter(r => (r.lineup32_choice || '').toUpperCase() === key[r.participant_id]).length;
   console.log(`Valid participants: ${n} (needs exactly ${N})`);
   console.log(`16 px recognition: ${c16}/${n} (gate, needs ${NEED}; chance 1 in 5)`);
-  console.log(`32 px recognition: ${c32}/${n} (needs ${NEED}; gate only if the owner approves it before the test, otherwise diagnostic)`);
+  console.log(`32 px recognition: ${c32}/${n} (diagnostic only; carry into the Mac / Icon Composer validation)`);
   console.log(`S1 M+T (replication, diagnostic): ${valid.filter(s1).length}/${n}`);
   console.log(`\nRESULT: ${n !== N ? `INCOMPLETE (${n} valid)` : c16 >= NEED ? 'PASS (16 px)' : 'FAIL (16 px)'}`);
 } else { console.error('mode must be lean or small'); process.exit(1); }
