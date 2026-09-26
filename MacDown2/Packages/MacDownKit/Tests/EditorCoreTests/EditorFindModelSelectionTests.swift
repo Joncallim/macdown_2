@@ -43,13 +43,24 @@ struct EditorFindModelSelectionTests {
         #expect(selection?.primaryRange == NSRange(location: 8, length: 3))
     }
 
-    @Test("selectionSetForAllMatches defaults to the first match as primary when there is no current match")
-    func selectionSetForAllMatchesDefaultsToFirstMatchWhenNoCurrentIndex() async {
+    @Test("selectionSetForAllMatches's primary follows currentIndex after a query change from zero matches to some")
+    func selectionSetForAllMatchesUsesCurrentIndexAfterAQueryChange() async {
+        // A prior review flagged this test's original name/intent
+        // ("...WhenNoCurrentIndex") as misleading: by the time
+        // `selectionSetForAllMatches` is read below, `updateMatches` has
+        // already resolved a real `currentIndex` (0, the nearest match to
+        // anchor 0) -- `currentIndex` is never actually `nil` at that point,
+        // so this never exercised `selectionSetForAllMatches`'s defensive
+        // `currentIndex ?? 0` fallback. It's kept as a test that
+        // `updateMatches` correctly re-resolves `currentIndex` (and thus the
+        // primary selection) after a query change that goes from zero
+        // matches to some.
         let model = EditorFindModel(query: "zzz")
         await model.updateMatches(in: "cat and cat", preferringLocationNear: 0)
         #expect(model.currentIndex == nil)
         model.query = "cat"
         await model.updateMatches(in: "cat and cat", preferringLocationNear: 0)
+        #expect(model.currentIndex == 0)
 
         let selection = model.selectionSetForAllMatches
         #expect(selection?.primaryRange == NSRange(location: 0, length: 3))

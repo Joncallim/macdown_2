@@ -94,6 +94,14 @@ public final class EditorFindModel {
     /// pressed before ever navigating).
     public var selectionSetForAllMatches: EditorSelectionSet? {
         guard !matches.isEmpty else { return nil }
+        // `currentIndex` is never `nil` here in practice: every path that
+        // populates a non-empty `matches` (`updateMatches`'s own
+        // `nearestIndex` call, `advance(by:)`) also sets `currentIndex` to a
+        // real index whenever `matches` is non-empty. The `?? 0` is a
+        // defensive fallback for that invariant, not a reachable case — a
+        // review of this exact line found the test named for "no current
+        // index" didn't actually exercise a nil `currentIndex` at the point
+        // this property was read, since `updateMatches` had already set one.
         return EditorSelectionSet(ranges: matches.map(\.range), primaryIndex: currentIndex ?? 0)
     }
 
