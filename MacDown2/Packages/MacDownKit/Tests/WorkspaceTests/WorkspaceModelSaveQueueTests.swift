@@ -109,36 +109,22 @@ struct WorkspaceModelSaveQueueTests {
 
     /// The timeout is a cleanup guard only. Ordering is established by the
     /// writer/file-store continuations, never by elapsed time or yielding.
+    /// `waitForSignal` itself lives in `AsyncBarrierWaiting.swift`, shared
+    /// with every other test in this target that waits on a
+    /// `SavePublicationBarrier`.
     private func waitForFirstPublication(from barrier: SavePublicationBarrier) async -> Bool {
         await waitForSignal(
+            timeout: .seconds(3),
             wait: { await barrier.waitForFirstPublication() },
-            cancel: { barrier.cancelWaiters() }
+            onTimeout: { barrier.cancelWaiters() }
         )
     }
 
     private func waitForSecondWriterEntry(from barrier: SavePublicationBarrier) async -> Bool {
         await waitForSignal(
+            timeout: .seconds(3),
             wait: { await barrier.waitForSecondSaveToEnterWriterLane() },
-            cancel: { barrier.cancelWaiters() }
+            onTimeout: { barrier.cancelWaiters() }
         )
-    }
-
-    private func waitForSignal(
-        wait: @escaping @Sendable () async -> Bool,
-        cancel: @escaping @Sendable () -> Void
-    ) async -> Bool {
-        await withTaskGroup(of: Bool.self) { group in
-            group.addTask { await wait() }
-            group.addTask {
-                try? await Task.sleep(for: .seconds(3))
-                return false
-            }
-            let result = await group.next() ?? false
-            if !result {
-                cancel()
-            }
-            group.cancelAll()
-            return result
-        }
     }
 }

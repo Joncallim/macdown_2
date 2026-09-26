@@ -268,7 +268,10 @@ struct WorkspaceModelFileTests {
         let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore())
 
         let save = Task { @MainActor in await model.save() }
-        await waitUntil { barrier.hasArrived }
+        await waitForSignal(
+            wait: { await barrier.waitForFirstPublication() },
+            onTimeout: { Issue.record("Timed out waiting for delayed save publication") }
+        )
         model.tabStore.updateActiveDocument { $0.edited(text: "second local") }
         barrier.allowPublication()
         await save.value
@@ -282,19 +285,6 @@ struct WorkspaceModelFileTests {
 
         #expect(model.activeDocument?.state == .clean)
         #expect(try FileStore().read(from: url).content == "second local")
-    }
-
-    private func waitUntil(
-        _ condition: @escaping @Sendable () -> Bool,
-        limit: Int = 200
-    ) async {
-        for _ in 0 ..< limit {
-            if condition() {
-                return
-            }
-            await Task.yield()
-        }
-        Issue.record("Timed out waiting for delayed save publication")
     }
 }
 

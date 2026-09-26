@@ -29,6 +29,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let args = ProcessInfo.processInfo.arguments
         let isUITesting = args.contains("-UITesting")
 
+        // EPIC-22/#150: MacDown2Tests (non-UI app-target tests) is
+        // intentionally serial-only -- see SingleTestInstanceGuard's own
+        // doc comment for the full root-cause writeup. A no-op for a normal
+        // launch, for `-UITesting` (its own separate isolation below already
+        // applies), and for a genuinely single, correctly-serial test run.
+        if !isUITesting {
+            SingleTestInstanceGuard.enforceSingleInstance()
+        }
+
         let defaults: UserDefaults
         if isUITesting {
             let sessionDir = Self.sessionDirectory(from: args)
