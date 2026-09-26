@@ -47,81 +47,91 @@ struct FindBarView: View {
     /// calling this.
     let onMatchesChanged: () -> Void
     let onClose: () -> Void
+    /// EPIC-22 §6.14, Slice 5b: called with the transaction Replace/Replace
+    /// All built (`EditorFindModel.replaceCurrentTransaction(with:)`/
+    /// `replaceAllTransaction(with:)`) so the caller can apply it to the
+    /// live `EditorTextSystem` — this view never mutates text itself,
+    /// matching `EditorFindModel`'s own "never mutates live text" contract.
+    let onReplace: (EditorEditTransaction) -> Void
 
     @FocusState private var isQueryFocused: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Find", text: $model.query)
-                    .textFieldStyle(.plain)
-                    .focused($isQueryFocused)
-                    .accessibilityIdentifier("findBarQueryField")
-                    .onKeyPress(phases: .down) { press in
-                        switch press.key {
-                        case .return:
-                            if press.modifiers.contains(.shift) {
-                                navigate(model.findPrevious)
-                            } else {
-                                navigate(model.findNext)
+        VStack(spacing: 6) {
+            HStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Find", text: $model.query)
+                        .textFieldStyle(.plain)
+                        .focused($isQueryFocused)
+                        .accessibilityIdentifier("findBarQueryField")
+                        .onKeyPress(phases: .down) { press in
+                            switch press.key {
+                            case .return:
+                                if press.modifiers.contains(.shift) {
+                                    navigate(model.findPrevious)
+                                } else {
+                                    navigate(model.findNext)
+                                }
+                                return .handled
+                            case .escape:
+                                onClose()
+                                return .handled
+                            default:
+                                return .ignored
                             }
-                            return .handled
-                        case .escape:
-                            onClose()
-                            return .handled
-                        default:
-                            return .ignored
                         }
-                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                .frame(minWidth: 200, maxWidth: 320)
+
+                optionToggle("Aa", isOn: $model.options.isCaseSensitive, help: "Case Sensitive")
+                optionToggle("W", isOn: $model.options.isWholeWord, help: "Whole Word")
+                optionToggle(".*", isOn: $model.options.isRegex, help: "Regular Expression")
+
+                if model.isSearching {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityIdentifier("findBarSearching")
+                }
+
+                statusLabel
+
+                Spacer(minLength: 0)
+
+                Button {
+                    navigate(model.findPrevious)
+                } label: {
+                    Image(systemName: "chevron.up")
+                }
+                .disabled(model.matchCount == 0)
+                .help("Find Previous")
+                .accessibilityIdentifier("findBarPreviousButton")
+
+                Button {
+                    navigate(model.findNext)
+                } label: {
+                    Image(systemName: "chevron.down")
+                }
+                .disabled(model.matchCount == 0)
+                .help("Find Next")
+                .accessibilityIdentifier("findBarNextButton")
+
+                Divider().frame(height: 16)
+
+                Button {
+                    onClose()
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .help("Close (Esc)")
+                .accessibilityIdentifier("findBarCloseButton")
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
-            .frame(minWidth: 200, maxWidth: 320)
 
-            optionToggle("Aa", isOn: $model.options.isCaseSensitive, help: "Case Sensitive")
-            optionToggle("W", isOn: $model.options.isWholeWord, help: "Whole Word")
-            optionToggle(".*", isOn: $model.options.isRegex, help: "Regular Expression")
-
-            if model.isSearching {
-                ProgressView()
-                    .controlSize(.small)
-                    .accessibilityIdentifier("findBarSearching")
-            }
-
-            statusLabel
-
-            Spacer(minLength: 0)
-
-            Button {
-                navigate(model.findPrevious)
-            } label: {
-                Image(systemName: "chevron.up")
-            }
-            .disabled(model.matchCount == 0)
-            .help("Find Previous")
-            .accessibilityIdentifier("findBarPreviousButton")
-
-            Button {
-                navigate(model.findNext)
-            } label: {
-                Image(systemName: "chevron.down")
-            }
-            .disabled(model.matchCount == 0)
-            .help("Find Next")
-            .accessibilityIdentifier("findBarNextButton")
-
-            Divider().frame(height: 16)
-
-            Button {
-                onClose()
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .help("Close (Esc)")
-            .accessibilityIdentifier("findBarCloseButton")
+            replaceRow
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, 12)
@@ -137,6 +147,53 @@ struct FindBarView: View {
         .onChange(of: model.query) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
         .onChange(of: model.options) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
         .onChange(of: text) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
+    }
+
+    /// Always shown alongside the query row (not a collapsible "expand for
+    /// replace" toggle — the simplest complete shape for this slice, and a
+    /// standard one: e.g. Sublime Text's default Find bar does the same).
+    private var replaceRow: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.turn.down.right")
+                    .foregroundStyle(.secondary)
+                TextField("Replace", text: $model.replacementText)
+                    .textFieldStyle(.plain)
+                    .accessibilityIdentifier("findBarReplaceField")
+                    .onKeyPress(phases: .down) { press in
+                        switch press.key {
+                        case .return:
+                            replaceCurrent()
+                            return .handled
+                        case .escape:
+                            onClose()
+                            return .handled
+                        default:
+                            return .ignored
+                        }
+                    }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            .frame(minWidth: 200, maxWidth: 320)
+
+            Button("Replace") {
+                replaceCurrent()
+            }
+            .buttonStyle(.bordered)
+            .disabled(model.currentMatch == nil)
+            .accessibilityIdentifier("findBarReplaceButton")
+
+            Button("Replace All") {
+                replaceAll()
+            }
+            .buttonStyle(.bordered)
+            .disabled(model.matchCount == 0)
+            .accessibilityIdentifier("findBarReplaceAllButton")
+
+            Spacer(minLength: 0)
+        }
     }
 
     @ViewBuilder
@@ -203,5 +260,20 @@ struct FindBarView: View {
             guard await model.updateMatches(in: text, preferringLocationNear: anchor) else { return }
             onMatchesChanged()
         }
+    }
+
+    /// A no-op (not an error) when there's no current match to replace —
+    /// mirrors the disabled state of the "Replace" button and the Return
+    /// key inside the replace field, both of which can still fire this
+    /// while `model.currentMatch` is nil (e.g. a fast Return press racing
+    /// an in-flight search).
+    private func replaceCurrent() {
+        guard let transaction = model.replaceCurrentTransaction(with: model.replacementText) else { return }
+        onReplace(transaction)
+    }
+
+    private func replaceAll() {
+        guard let transaction = model.replaceAllTransaction(with: model.replacementText) else { return }
+        onReplace(transaction)
     }
 }
