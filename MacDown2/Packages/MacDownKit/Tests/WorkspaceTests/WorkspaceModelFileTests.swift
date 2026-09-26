@@ -268,9 +268,21 @@ struct WorkspaceModelFileTests {
         let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore())
 
         let save = Task { @MainActor in await model.save() }
+        // `onTimeout` MUST unblock the barrier's own stored continuation
+        // (`cancelWaiters()`), not just record the issue: `waitForFirstPublication()`
+        // is a bare `withCheckedContinuation` with no cancellation handler, and
+        // `withTaskGroup` always awaits every child task (cancelled or not)
+        // before returning -- an un-resumed continuation hangs `waitForSignal`,
+        // and therefore this whole test, forever rather than failing. An
+        // independent review of this exact fix caught this (this call site
+        // and WorkspaceModelFileSaveAsTests.swift's own twin originally
+        // omitted it) with an empirical repro showing the hang.
         await waitForSignal(
             wait: { await barrier.waitForFirstPublication() },
-            onTimeout: { Issue.record("Timed out waiting for delayed save publication") }
+            onTimeout: {
+                barrier.cancelWaiters()
+                Issue.record("Timed out waiting for delayed save publication")
+            }
         )
         model.tabStore.updateActiveDocument { $0.edited(text: "second local") }
         barrier.allowPublication()
