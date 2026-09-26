@@ -14,10 +14,15 @@ public struct SearchOptions: Sendable, Equatable {
     /// Advisory to the caller that only the current selection should be
     /// searched. `TextSearchEngine.matches` has no notion of "the
     /// document" or "the selection" — a caller that wants selection-only
-    /// search passes the selection's own substring as `text` and offsets
-    /// the results itself. This flag exists so UI state (the search bar's
-    /// "In Selection" toggle) round-trips through one `SearchOptions`
-    /// value rather than needing a second, parallel piece of state.
+    /// search runs `matches` against the FULL text (so `isWholeWord`'s
+    /// boundary check still sees the true surrounding context) and then
+    /// filters the result down to matches fully contained in the selection,
+    /// rather than searching a pre-sliced substring (boundary-unsafe for
+    /// `isWholeWord` — see `EditorFindModel.updateMatches`'s own inline
+    /// comment for the empirically-reproduced bug this avoids). This flag
+    /// exists so UI state (the search bar's "In Selection" toggle) round-trips
+    /// through one `SearchOptions` value rather than needing a second,
+    /// parallel piece of state.
     public var searchesSelectionOnly: Bool
 
     public init(
