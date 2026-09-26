@@ -13,6 +13,7 @@ import Workspace
 struct ContentAreaView: View {
     let model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    let findStore: EditorFindModelStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let jsonAnalysisStore: JSONAnalysisStore
@@ -78,6 +79,7 @@ struct ContentAreaView: View {
                 identity: identity,
                 text: textBinding,
                 editorStore: editorStore,
+                findStore: findStore,
                 highlightStore: highlightStore,
                 parseStore: parseStore,
                 jsonAnalysisStore: jsonAnalysisStore,

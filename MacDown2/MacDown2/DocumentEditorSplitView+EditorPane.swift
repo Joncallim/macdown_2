@@ -10,6 +10,23 @@ import SwiftUI
 extension DocumentEditorSplitView {
     var editorPane: some View {
         VStack(spacing: 0) {
+            // EPIC-22 §6.14, Slice 5a: an inline docked bar, not a floating
+            // panel — see `FindBarView`'s own doc comment. Reading the
+            // model via `findStore.existingModel(for:)` rather than always
+            // calling `findStore.model(for:)` means a tab that has never
+            // had Find opened never allocates one, matching
+            // `editorStore.existingSystem(for:)`'s own lazy convention used
+            // just below for the status bar.
+            if let findModel = findStore.existingModel(for: identity), findModel.isActive {
+                FindBarView(
+                    model: findModel,
+                    text: text,
+                    initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
+                    onMatchesChanged: { applyFindHighlights(findModel) },
+                    onClose: { closeFindBar(findModel) }
+                )
+            }
+
             EditorView(
                 text: $text,
                 identity: identity,
@@ -81,5 +98,27 @@ extension DocumentEditorSplitView {
             languageID: document.format.highlightLanguageID,
             theme: themeController.current
         )
+    }
+
+    /// Pushes `model`'s current match list/index to the text view for
+    /// highlighting, and reveals (selects + scrolls to) the current match —
+    /// called by `FindBarView` after every query/option/text change and
+    /// every Find Next/Previous, so the visible highlight and the live
+    /// selection never lag behind the model by more than one SwiftUI update.
+    func applyFindHighlights(_ model: EditorFindModel) {
+        guard let system = editorStore.existingSystem(for: identity) else { return }
+        system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
+        if let current = model.currentMatch {
+            system.revealSelection(utf16Range: current.range, flash: false, animated: true)
+        }
+    }
+
+    /// Hides the Find bar and clears its highlighting — the model's own
+    /// query/options/matches are left untouched so reopening Find on this
+    /// tab (via `findStore`'s per-identity caching) restores exactly where
+    /// the user left off.
+    func closeFindBar(_ model: EditorFindModel) {
+        model.isActive = false
+        editorStore.existingSystem(for: identity)?.setFindHighlights(ranges: [], currentIndex: nil)
     }
 }

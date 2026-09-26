@@ -30,6 +30,11 @@ import TextSearch
 public final class EditorFindModel {
     public var query: String
     public var options: SearchOptions
+    /// Whether the Find bar is currently docked/visible for this tab. Owned
+    /// here (not by the SwiftUI view) so it survives a tab switch and back
+    /// via `EditorFindModelStore`'s own per-identity caching, exactly like
+    /// `query`/`options`/`matches` already do.
+    public var isActive = false
 
     public private(set) var matches: [SearchMatch] = []
     public private(set) var currentIndex: Int?

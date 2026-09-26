@@ -17,6 +17,9 @@ import Workspace
 final class WindowController: NSWindowController, NSWindowDelegate {
     let model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    /// Current-document Find bar state, one per tab identity (EPIC-22
+    /// §6.14, Slice 5a) — mirrors `editorStore`'s own per-window lifecycle.
+    let findStore: EditorFindModelStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let jsonAnalysisStore: JSONAnalysisStore
@@ -46,6 +49,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         self.coordinator = coordinator
         self.themeController = themeController
         editorStore = EditorTextSystemStore()
+        findStore = EditorFindModelStore()
         highlightStore = SyntaxHighlightStore(registry: grammarRegistry)
         // 100 ms debounce + ≤50 ms parse/slice/render pipeline = the 150 ms
         // keystroke-to-preview budget (plan D8). The package default stays at
@@ -69,6 +73,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         let shell = WorkspaceShellView(
             model: model,
             editorStore: editorStore,
+            findStore: findStore,
             highlightStore: highlightStore,
             parseStore: parseStore,
             jsonAnalysisStore: jsonAnalysisStore,
@@ -204,6 +209,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         observationTask?.cancel()
         externalFileController.dispose()
         editorStore.evictAll()
+        findStore.evictAll()
         highlightStore.evictAll()
         parseStore.evictAll()
         jsonAnalysisStore.evictAll()
