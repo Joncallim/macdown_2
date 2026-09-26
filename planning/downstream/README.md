@@ -12,7 +12,7 @@ Continue current Epic 22 under its existing implementation plan. This documentat
 
 Before downstream code, read [READINESS_REVIEW.md](READINESS_REVIEW.md), [RELEASE_SEQUENCE.md](../RELEASE_SEQUENCE.md), and the applicable hand-off below. Adopt the documentation through the normal PR process, reconcile exact post-E22 master and actual issue/design decisions, then implement dependency-ready units. The dated baseline is not a claim that master will stand still.
 
-The second review covers all **13 downstream issues**. Nine hand-offs were revised in place; four retained their design, with explicit clarifications in the review record. Each still needs its actual implementation/acceptance evidence. Proposed numerical limits are design ceilings to validate, not measured performance passes.
+The renewed review covers all **13 downstream issues**. Nine hand-offs were revised in place; four retained their design, with explicit clarifications in the review record. Two additional focused continuation passes strengthened prerequisite enforcement and retained-resource ownership. Each issue still needs actual implementation/acceptance evidence. Proposed numerical limits are design ceilings to validate, not measured performance passes.
 
 ## Issue hand-offs
 
@@ -42,13 +42,13 @@ LocalResourceAccess (#121) owns contained resource snapshots and explicit none/s
 
 E23 owns semantic palettes/theme catalog; #79 is its renderer unit. #120's save-operation tokens do not become forever document IDs. #18's CLI wait receipts follow stable logical document lifetimes across Save As. #53 owns compatible settings decoding shared by ordinary startup and import; #18 owns bootstrap admission before writers exist.
 
-Read the retained-contract clarifications in READINESS_REVIEW.md before implementing #79/#119/#120. No consumer may infer resource authority from a pathname, worker completion from waiter cancellation, or release readiness from a test count.
+Read the retained-contract clarifications in READINESS_REVIEW.md before implementing #79/#119/#120. Consumer cancellation, actual worker completion and retained payload release are separate events. #121 defines reservation transfer into retained snapshots; #113 applies it to Quick Look reply holders without assuming callback completion frees their bytes. No consumer may infer resource authority from a pathname or release readiness from a test count.
 
 ## Execution order and remaining probes
 
 [readiness.json](readiness.json) is the explicit acyclic unit dependency plan. Its 48 nodes include external inputs, E22, probes, implementation and final gates; they are not new issues or a requirement for 48 PRs. Whole-issue closure is not used where only a tested prerequisite is required. Do not bypass a failed prerequisite or hold all independent work while one external gate is unavailable.
 
-After E22/rebaseline, begin the independent foundations: UI harness, settings compatibility, source-aware math/anchor values, export snapshot, save-progress work and E23 palette. Run the named narrow probes before their dependent integrations: **RESOURCE-OPEN, MATH-ADAPTER, ANCHOR-PARSER, PDF-PRINT, DIAGRAM-CONTEXT and QL-REPLY**. All six are NOT_RUN in this architecture session. Their owning documents specify positive controls, failure cases and the required decision output. A failed probe needs a focused architecture correction, not invented API calls or weakened tests.
+After E22/rebaseline, begin the independent foundations: UI harness, settings compatibility, source-aware math/anchor values, export snapshot, save-progress work and E23 palette. Run the named narrow probes before their dependent integrations: **RESOURCE-OPEN, MATH-ADAPTER, ANCHOR-PARSER, PDF-PRINT, DIAGRAM-CONTEXT and QL-REPLY**. All six are NOT_RUN in this architecture task. Their owning documents specify positive controls, failure cases and the decision output. A failed probe needs a focused architecture correction, not invented API calls or weakened tests.
 
 Integrate Export against tested reader/snapshot/anchor units; integrate shared presentation/Quick Look against actual math/diagram/palette/assembly capabilities. Finish settings/theme-dependent legacy import, bootstrap/CLI/updater and all in-app strings before final localization. Real UI/security/performance/accessibility results remain mandatory at the proper acceptance layer.
 
@@ -66,7 +66,7 @@ The change becomes active repository authority when this documentation PR is ado
 
 ## What was actually verified
 
-The review record lists four same-session passes, 25 specific corrections, retained decisions and per-issue entry conditions. These are not independent-provider reviews or native execution.
+READINESS_REVIEW.md records four complete-coverage review passes plus two focused continuation passes, 28 correction groups, retained decisions and per-issue entry conditions. These are self-reviews, not independent-provider approval or native execution.
 
 Run the planning-only checker from the repository:
 
@@ -74,6 +74,8 @@ Run the planning-only checker from the repository:
 python3 planning/downstream/validate_readiness.py planning/downstream/readiness.json --self-test
 ```
 
-The local static run passed 13 positive/negative checks for complete issue/file coverage, unique units, dependencies/cycles, probe inventory, protected E22 ownership, evidence labels and release-authorization edges. No Swift test, GUI, filesystem-race proof, signing, migration or release occurred. The manifest explicitly cannot authorize publication.
+The current local run passes **39 positive/negative checks**, in normal and optimized Python. It checks issue/file coverage, unique units, known dependencies/acyclicity, probe ownership AND prerequisite reachability, all implementation/probe work upstream of software-S, protected E22 work, required language/signing/authorization inputs and honest evidence labels. Tests mutate by unit identity and verify the intended defect is detected; valid row ordering is immaterial. The unchanged manifest remains 13 hand-offs, 48 nodes and six unrun probes.
 
-At implementation, follow AGENTS.md, EPIC_STANDARD.md, RELEASE_HARDENING.md and each unit's allowed files/tests. Keep the main worktree/branches safe, use the established serial validation discipline, preserve failed evidence and record actual as-built corrections. Complete one reviewable unit, verify its real result and continue to the next eligible unit without starting another broad architecture exercise unless a concrete assumption fails.
+The earlier 13-check run is superseded: it missed three reproduced prerequisite omissions, which have now been corrected. File-presence validation in the local container used actual GitHub-returned filenames, not a full clone; the checker identifies this as supplied_list. No Swift test, GUI, filesystem-race proof, signing, migration or release occurred. A structural PASS does not authorize implementation or publication or authenticate later runtime results.
+
+At implementation, follow AGENTS.md, EPIC_STANDARD.md, RELEASE_HARDENING.md and each unit's allowed files/tests. Keep worktrees/branches safe, use the serial validation discipline, preserve failed evidence and record actual as-built corrections. Complete one reviewable unit, verify its real result and continue to the next eligible unit without another broad architecture exercise unless a concrete assumption fails.
