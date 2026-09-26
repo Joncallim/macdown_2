@@ -28,6 +28,11 @@ surfaces this finding for a decision.** Two secondary items are also flagged
 "MM" monogram in classes 9/42 with a loosely similar angular construction) —
 see the log for details.
 
+**Owner decision, 2026-09-27 (D-030, `design/DECISIONS.md`): Gate 4 is
+HOLD, not closed, pending targeted legal review of the Modern Tech finding.**
+No identity change is authorised on the strength of this screen alone.
+Production design stays exactly as frozen at D-029.
+
 ## What to search
 
 **Word marks**

@@ -57,7 +57,7 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
 - **Handoff and gates:** `design/FIGMA_HANDOFF.md` (everything the Figma session
   needs), `design/brand/PROVENANCE.md` (licences, canonical files),
   `design/validation/read-test/` (blind human test: round 1 exploratory; formal gate waived by the owner, D-026) and
-  `design/brand/TRADEMARK_SEARCH.md` (register search record: word-mark queries run 2026-09-26 on WIPO/USPTO/IPOS, no exact match found; figurative/image search not run — see the file's search log).
+  `design/brand/TRADEMARK_SEARCH.md` (register search record: word-mark and figurative searches complete on WIPO/USPTO/IPOS, 2026-09-26/27; no exact word-mark match found, but **Gate 4 is HOLD, not closed, pending targeted legal review of a flagged live Singapore mark (D-030)** — see the file's owner summary and search log).
 - The mark must work at macOS app-icon size, at favicon size (16 px), in
   monochrome, on light and dark backgrounds, and in a wordmark lockup.
 - Current icon: **placeholder only**. It is a white document glyph on a blue
