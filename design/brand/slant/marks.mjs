@@ -15,7 +15,8 @@ const slant = (key, { angle, cut, diag }) => {
 const v = (key, name, mech, p) => [key, { name, mech, p, svg: slant(key, p) }];
 export const marks = Object.fromEntries([
   v('s8',  'Slant 8°',  '8° lean · wedge cut · diagonals 15', { angle: 8,  cut: 'wedge', diag: 15 }),
-  v('s12', 'Slant 12°', '12° lean · wedge cut · diagonals 15', { angle: 12, cut: 'wedge', diag: 15 }),
+  v('s10', 'Slant 10°', '10° lean · wedge cut · diagonals 15 (production, D-027)', { angle: 10, cut: 'wedge', diag: 15 }),
+  v('s12', 'Slant 12°', '12° lean · wedge cut · diagonals 15 (superseded by s10, D-027)', { angle: 12, cut: 'wedge', diag: 15 }),
   v('s15', 'Slant 15°', '15° lean · wedge cut · diagonals 15', { angle: 15, cut: 'wedge', diag: 15 }),
   v('p12', 'Slant 12°, parallel cut', '12° lean · cut parallel to the lean · diagonals 15', { angle: 12, cut: 'parallel', diag: 15 }),
 ]);

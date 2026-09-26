@@ -12,7 +12,12 @@ for (const k of ['master','s32','s16','i16']) { const s=sources[k]; const all=pi
   const part=P=>{const b=bboxP(P);return {d:toD(P,b[0],b[1]), ox:r(b[0]-bb[0]), oy:r(b[1]-bb[1])};};
   mark[k]={vb:s.vb, bb:bb.map(r), d:toD(all,bb[0],bb[1]), M:part(m), T:part(t)}; }
 // Wordmark groups at FS=100, y-down, origin at text origin on the baseline.
-const k=100/2048, CORR={yT:-60, xt:60};
+// Re-measured at the 10° production lean (D-027), not reused from the 12°/2.6° construction (D-025).
+// yT: at 10° total shear the y/T "wedge hole" from the old 2.6° construction doesn't recur (measured
+// facing-profile minGap stays 376 units with yT=0, far from any collision) -- no correction needed.
+// xt: x's top still meets t's crossbar (minGap -14 at xt=0); xt=56 brings the x/t gap to 42 units,
+// matching ly (42 units), the same "tightest intended pair" target D-025 used at 12°.
+const k=100/2048, CORR={yT:0, xt:56};
 const group=(G,from,to)=>{ const cs=G.glyphs.slice(from,to).flatMap(g=>g.cs); const pts=cs.flatMap(c=>flat([c],24)[0]).map(p=>[p[0]*k,-p[1]*k]);
   const b=[Math.min(...pts.map(p=>p[0])),Math.min(...pts.map(p=>p[1])),Math.max(...pts.map(p=>p[0])),Math.max(...pts.map(p=>p[1]))];
   const d=cs.map(c=>c.map(s=>(s.k==='M'?'M ':s.k==='L'?'L ':'Q ')+s.p.map(q=>r(q[0]*k-b[0])+' '+r(-q[1]*k-b[1])).join(' ')).join(' ')+' Z').join(' ');

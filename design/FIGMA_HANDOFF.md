@@ -18,11 +18,12 @@ needed is on this page. You don't need the exploration history
 
 Provenance, licences and rebuild commands: `design/brand/PROVENANCE.md`.
 
-## Effective decisions (the current state of D-010 to D-021)
+## Effective decisions (the current state of D-010 to D-029)
 
-- **Mark:** Slant is an M and T sharing one stem, leaning 12° forward, with a
-  wedge cut at the end of the crossbar. Stems 17, diagonals 15 (on the
-  100-unit master). (D-010, D-011)
+- **Mark:** Slant is an M and T sharing one stem, leaning **10°** forward
+  (D-027, superseding the original 12°), with a wedge cut at the end of the
+  crossbar. Stems 17, diagonals 15 (on the 100-unit master). (D-010, D-011,
+  D-027)
 - **Canonical lockup:** the mark plus a leaned Inter Tight Bold wordmark in
   **one colour**. It must read fully in monochrome. A two-tone "Text" is a
   secondary promotional treatment only, never canonical. (D-012, D-013)
@@ -34,13 +35,16 @@ Provenance, licences and rebuild commands: `design/brand/PROVENANCE.md`.
   them.** (D-020)
 - **Usage rule:** never pair the mark with parallel stripes or a red-and-blue
   scheme. (D-016)
-- **Status:** geometry is **release-candidate frozen**. Optical corrections from
-  the human read test or the macOS icon render are allowed, but each must be
-  recorded as a new decision (D-023 onwards), never made silently. (D-018)
+- **Status:** the 10° lean and the derive-from-master small-size correction
+  are accepted production geometry, fully cascaded through the repository
+  SVGs, the production pipeline and this Figma file (D-027, D-029). The
+  formal human read-test gate was waived by the owner, not passed (D-026).
 - **Human read test and similarity:** see "Release gates" below. The
-  similarity work is a visual screen, not a legal assessment. If the test
-  shows automotive associations, compare 8°, 10° and 12°; no fallback angle is
-  set in advance. (D-019, D-021)
+  similarity work is a visual screen, not a legal assessment. Round-1
+  evidence showed automotive associations, so a direct 8°/10°/12° comparison
+  was run in Icon Composer (not a panel test); 10° was chosen as the smallest
+  step back from 12° that meaningfully softened the association risk.
+  (D-019, D-021, D-027)
 
 ## Lockup metrics (D-015)
 
@@ -48,8 +52,8 @@ Let **F** be the wordmark's font size.
 
 | Property | Value |
 |---|---|
-| Typeface | Inter Tight **Bold Italic** (700). Its own italic angle is about 9.5°. |
-| Extra lean | Shear the outlined wordmark a further **2.6°** (2.63°) so the total is **12°**, matching the mark. Don't shear upright Bold by 12°. |
+| Typeface | Inter Tight **Bold Italic** (700). Its declared `post.italicAngle` is exactly **9.4°** (verified with `fontTools`). |
+| Extra lean | Shear the outlined wordmark a further **0.6°** (D-027, was 2.6°) so the total is **10°**, matching the mark. Don't shear upright Bold by 10°. |
 | Tracking | −2.5% (−0.025 em) |
 | Cap height | 0.7367 F (measured) |
 | Mark size | The mark's letters are **1.15 × cap height = 0.847 F** tall |
@@ -78,10 +82,10 @@ T `#7EA4FF`. The macOS icon build may change these.
 
 | Gate | Owner / where | Status |
 |---|---|---|
-| 1. Wordmark outlined with curve and "yT" corrections | **Figma** (this handoff) | **Closed.** Outlines, slant stroke compensation, yT −60 and xt +60 are in the Figma file and `design/brand/slant/production/`; accepted by the owner (D-025) |
-| 2. macOS icon set (light, dark, clear, tinted) built in Icon Composer and checked in a real Dock and Finder | **Mac** | Open |
-| 3. Blind human read test passes D-019 (S1-only gate, exactly 8 valid participants: D-023) | **Humans**, using `design/validation/read-test/` | **Waived by the owner (D-026)**, not passed. Round 1 exploratory evidence: M+T 8/8; motorsport/performance associations 6/8; 16 px microglyph 0/8. Lean and small sizes to be settled by direct comparison and macOS validation |
-| 4. Trademark register search (WIPO, USPTO, IPOS) run and reviewed | **Human searcher / reviewer**, using `design/brand/TRADEMARK_SEARCH.md` | Open. No legal conclusion has been drawn |
+| 1. Wordmark outlined with curve and "yT" corrections | **Figma** (this handoff) | **Closed.** Outlines and slant stroke compensation are in the Figma file and `design/brand/slant/production/`; re-measured at the 10° lean (D-029): yT 0 (no correction needed at 10°) and xt +56 (was yT −60/xt +60 at 12°, D-025) |
+| 2. macOS icon set (light, dark, clear, tinted) built in Icon Composer and checked in a real Dock and Finder | **Mac** | **Closed (D-028).** A `.icon` file adjacent to `Assets.xcassets` (not inside it) built correctly and rendered the mark in the live Dock, Finder icon view and Finder list view at true 16 px |
+| 3. Blind human read test passes D-019 (S1-only gate, exactly 8 valid participants: D-023) | **Humans**, using `design/validation/read-test/` | **Waived by the owner (D-026)**, not passed. Round 1 exploratory evidence: M+T 8/8; motorsport/performance associations 6/8; 16 px microglyph 0/8. Lean and small sizes settled by direct comparison and macOS validation (D-027, D-028) |
+| 4. Trademark register search (WIPO, USPTO, IPOS) run and reviewed | **Human searcher / reviewer**, using `design/brand/TRADEMARK_SEARCH.md` | See `design/brand/TRADEMARK_SEARCH.md` for current status. No legal conclusion has been drawn |
 
 ## Record-keeping
 

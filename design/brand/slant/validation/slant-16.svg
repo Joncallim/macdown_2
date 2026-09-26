@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="color:#000"><!-- MostlyText Slant microglyph. For rendering at 17 px or smaller ONLY. It is a deliberate simplification of the mark: never enlarge it or use it as general artwork. Use slant-32.svg for 18–40 px and slant-master.svg above that. --><g transform="translate(1.7757918633803096 0) skewX(-12)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="color:#000"><!-- MostlyText Slant microglyph. For rendering at 17 px or smaller ONLY. It is a deliberate simplification of the mark: never enlarge it or use it as general artwork. Use slant-32.svg for 18–40 px and slant-master.svg above that. --><g transform="translate(1.5405777299185095 0) skewX(-10)">
   <defs><clipPath id="cs"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
-  <g clip-path="url(#cs)" fill="none" stroke="currentColor"><path stroke-width="2" d="M2.6 14V3"/><path stroke-width="1.2" stroke-linejoin="miter" d="M2.1 -0.5999999999999996L6.2 11.3L9 -0.5999999999999996"/></g>
-  <path fill="currentColor" d="M8 3H10V14H8ZM5.6 3H14.2L13.1 5H5.6Z"/></g></svg>
+  <g clip-path="url(#cs)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg>

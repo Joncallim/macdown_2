@@ -41,15 +41,19 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
   Chosen mark: **Slant**, an M and T sharing one stem, leaning forward, with a
   wedge cut on the crossbar. Geometry is release-candidate frozen, not frozen
   (D-018). The 16 px files are microglyphs for ≤17 px only; never enlarge them (D-020).
-  **Production lean is 10°, superseding the checked-in 12° validation/production
-  artwork (D-027, 2026-09-26).** The wordmark/lockup/Figma production files and
-  `slant-16.svg`/`slant-32.svg`/`slant-master.svg` still reflect 12° and have not
-  yet been regenerated at 10° — D-027 records the geometry decision, not the
-  cascade. Read `design/evidence/2026-09-26/icon-art/README.md` before touching
-  any of that production geometry. **Gate 2 (macOS icon set) is closed (D-028):**
-  a `.icon` file built as a project resource adjacent to `Assets.xcassets`
-  (not inside it — see the README for the exact steps) compiles correctly
-  and renders the mark in the real Dock and Finder at true small size.
+  **Production lean is 10°, superseding the original 12° construction
+  (D-027, 2026-09-25/26).** The cascade is complete (D-029): `slant-16.svg`,
+  `slant-32.svg`, `slant-master.svg`, `slant-icon-16-inner.svg`, the production
+  wordmark/lockup pipeline (`design/brand/slant/production/`) and the canonical
+  Figma file are all regenerated at 10°, with the wordmark's three optical
+  corrections re-measured (not reused) from the 12°/2.6° numbers. **Gate 2
+  (macOS icon set) is closed (D-028):** a `.icon` file built as a project
+  resource adjacent to `Assets.xcassets` (not inside it — see
+  `design/evidence/2026-09-26/icon-art/README.md` for the exact steps)
+  compiles correctly and renders the mark in the real Dock and Finder at true
+  small size. The Figma file's own title still reads "(Slant 12°)" — that
+  field can't be renamed via the Plugin API (D-029) and needs a person to
+  update it through the Figma UI.
 - **Handoff and gates:** `design/FIGMA_HANDOFF.md` (everything the Figma session
   needs), `design/brand/PROVENANCE.md` (licences, canonical files),
   `design/validation/read-test/` (blind human test: round 1 exploratory; formal gate waived by the owner, D-026) and

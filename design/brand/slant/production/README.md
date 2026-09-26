@@ -3,18 +3,24 @@
 **Owner summary.** This folder turns the frozen Slant sources into production
 outlines. It contains the flattened mark (the four validation SVGs with strokes
 expanded, clips applied and the skew baked in) and the outlined MostlyText
-wordmark and lockup. The same geometry was placed in the canonical Figma file,
-[MostlyText — Brand Identity (Slant 12°)](https://www.figma.com/design/x5wTgOFnR9GgNFfUqWwKmX).
-No mark geometry was changed. The wordmark gained three measured optical
-corrections, listed below. Nothing here needs a Mac. The macOS icon pipeline,
-the human read test and the register search are still open (D-017, D-018).
+wordmark and lockup. **Production lean is 10° (D-027), superseding the
+original 12° build (D-024/D-025).** The same geometry needs re-placing in the
+canonical Figma file, [MostlyText — Brand Identity](https://www.figma.com/design/x5wTgOFnR9GgNFfUqWwKmX)
+(title/status pending update — see `design/DECISIONS.md` D-029). Mark
+geometry itself is unchanged except the lean angle; `s32`/`s16`/`i16` are now
+derived mechanically from the master rather than hand-lightened (D-026/D-027,
+matching `design/brand/slant/validation/small.mjs`). The wordmark's three
+optical corrections were re-measured at 10°, not reused from the 12°/2.6°
+build — see below. Nothing here needs a Mac, except the macOS icon pipeline
+itself (D-028, closed) and the human read test / register search
+(D-026, waived / in progress).
 
 ## Files
 
 | File | What it is |
 |---|---|
 | `mark.mjs` | Rebuilds each source SVG (`../validation/slant-*.svg`) as one filled outline: the stroked V with a mitre join, the stem, the T, and the clip, then the transforms |
-| `glyphs.mjs`, `wordmark.mjs` | Shapes “MostlyText” with HarfBuzz (the font's own kerning), applies stroke compensation, the 2.6° slant, −2.5% tracking and the pair corrections |
+| `glyphs.mjs`, `wordmark.mjs` | Shapes “MostlyText” with HarfBuzz (the font's own kerning), applies stroke compensation, the 0.6° synthetic slant (9.4° italic + 0.6° = 10° total, D-027), −2.5% tracking and the pair corrections |
 | `build-geometry.mjs` | Writes `geometry.json`: the mark outlines (plus separate M and T parts for two-tone and icon layers), the wordmark and the lockup placement |
 | `export-svgs.mjs` | Writes `out/`: `mostlytext-wordmark.svg`, `mostlytext-lockup.svg` and `slant-*-outline.svg` |
 | `verify-outlines.mjs` | Renders each source SVG and its outline in Chromium and prints the pixel differences |
@@ -34,26 +40,48 @@ npm run build && npm run verify   # verify needs Chromium (CHROMIUM_PATH)
 
 ## Verification
 
-- **Mark outlines against the source SVGs:** no solid-pixel differences at 16–2048 px.
-  The only residuals are anti-aliasing on horizontal edges that land on
-  half-pixel rows: at most 64/255 on single edge pixels, with a mean of
-  0.03/255 or less at 1024 px.
-- **Wordmark:** measured with perpendicular stroke-thickness sampling and
-  facing-profile pair spacing, as below.
+- **Mark outlines against the regenerated 10° source SVGs** (`npm run verify`,
+  2026-09-26, Chromium via `CHROMIUM_PATH`): no solid-pixel differences at
+  16–1024 px. Residuals are anti-aliasing on edges landing on half-pixel
+  rows: mean absolute difference 0.05/255 or less at every tested size,
+  0–104 pixels over a 32/255 threshold out of 260k–1M pixels depending on
+  size (all at edges, none in the ink body).
+- **Wordmark:** measured with the compensation code's own thickness-factor
+  formula and facing-profile pair spacing (`gaps()`), as below.
 
-## Wordmark optical corrections (D-025)
+## Wordmark optical corrections, re-measured at 10° (D-027; originally D-025 at 12°)
 
-1. **Slant stroke compensation.** The extra 2.6° shear thickens edges that run
-   up-left and thins edges that run up-right, by about 2.2% at 45°. Before the
-   shear, each outline edge is offset along its normal by the exact inverse of
-   that change, using a nominal 300-unit stroke. The imbalance on the o's
-   diagonals falls from ±2.2% to 0.5% or less. Horizontal edges, heights and
-   overshoots are unchanged.
-2. **yT −60 units (1/2048 em).** The y's arm runs at about 60° and the T stem at
-   12°, so a wedge-shaped hole opens under the crossbar. After the fix, the y
-   terminal sits 122 units under the crossbar, with the vertical clearance kept
-   at 112 units. The y/T counter excess over T/e falls by a third. Tucking
-   deeper blurs the gap under the bar at small sizes.
-3. **xt +60 units.** The −2.5% tracking made the x's top touch the t's crossbar
-   (−18 units). It now clears by 42 units, matching ly (41 units), the tightest
-   intended pair.
+The italic's own slant is the font's declared `post.italicAngle`, exactly
+9.4° (verified via `fontTools`, not just the earlier visual estimate). The
+production total lean is 10° (D-027), so the added synthetic shear is
+**0.6°** (`10 − 9.4`), replacing the old 2.6° (`12 − 9.4`). All three
+corrections below were re-derived at 10°, per the owner's instruction not to
+reuse the 12° numbers blindly; none of the three carried over unchanged.
+
+1. **Slant stroke compensation.** Unchanged mechanism (`compensate()` in
+   `wordmark.mjs`), smaller effect: computed the same way as D-025 (the
+   thickness factor `f(dx,dy)` the compensation code itself uses, at a 45°
+   edge), the 0.6° shear thickens/thins edges by about **0.5%** at 45° before
+   compensation (down from ±2.2% at 2.6°) — proportionally in line with the
+   ~4.3× smaller shear angle. Compensation brings the residual imbalance
+   down further, in the same proportion as D-025's own ±2.2%→0.5% reduction
+   (roughly **0.1% or less**). Horizontal edges, heights and overshoots are
+   unchanged.
+2. **yT: 0 (no correction), superseding D-025's −60 units.** Measured with the
+   same facing-profile gap method as D-025 (`gaps()` in `wordmark.mjs`,
+   extended to cover the full cap-height band so the T crossbar is included):
+   at 10° and `yT=0`, the y/T minimum gap is **376 units**, far from any
+   collision — nothing like D-025's "wedge-shaped hole" reappears. That hole
+   was a byproduct of the *larger* 2.6° shear pulling the T's stem into the
+   y's space; the much smaller 0.6° shear doesn't. Visually confirmed
+   (`design/brand/slant/production/out/mostlytext-wordmark.svg`): the y/T
+   junction has a clean, unforced gap. Applying the old −60 units here would
+   pull the letters into a crowded, uncorrected-looking join with no
+   remaining problem to fix.
+3. **xt: 56 units, replacing D-025's +60 units.** The −2.5% tracking still
+   makes the x's top touch the t's crossbar (measured minimum gap −14 units
+   at `xt=0`, same defect D-025 found at 12°, `−18` then). Re-solved
+   numerically for the same target D-025 used — clear by the same amount as
+   `ly`, "the tightest intended pair" — which is now **42 units** (was 41 at
+   12°, since the mark's own proportions shifted slightly with the lean).
+   `xt=56` lands the x/t gap at exactly 42 units, matching `ly` exactly.

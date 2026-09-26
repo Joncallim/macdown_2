@@ -1,9 +1,9 @@
-// Builds validation.html: pre-freeze validation of the 12° Slant mark and canonical lockup.
+// Builds validation.html: production validation of the 10° Slant mark and canonical lockup (D-027).
 import { writeFileSync, readFileSync } from 'node:fs';
 import { marks } from '../marks.mjs';
-import { vSmall, P16, PI16, v32 } from './small.mjs';
+import { vSmall, P16, PI16, v32, ANGLE } from './small.mjs';
 let n = 0; const u = s => { n++; return s.replace(/id="([^"]+)"/g, `id="$1-${n}"`).replace(/url\(#([^)]+)\)/g, `url(#$1-${n})`); };
-const M = (tc = 'currentColor') => marks.s12.svg.replaceAll('"TC"', `"${tc}"`);
+const M = (tc = 'currentColor') => marks.s10.svg.replaceAll('"TC"', `"${tc}"`);
 // Size-appropriate artwork: ≤17 px uses the 16 px microglyph (never enlarged), 18–40 px the 32 optical master, above that the vector master.
 // Metrics (fractions of the box): glyph height, glyph bottom, left and right side bearings.
 const MET = { 16: { h: 11 / 16, bot: 14 / 16, l: .4 / 16, r: .66 / 16 }, 32: { h: 22 / 32, bot: 27 / 32, l: 2 / 32, r: .8 / 32 }, 100: { h: .596, bot: .818, l: .07, r: .07 } };
@@ -27,7 +27,7 @@ const lock = (fs, { style = 'hy', two = false, dark = false, align = 'base', k =
   const H = k * CAP / m.h, px = Math.round(H * fs); w = which(px); m = MET[w];
   const Hs = k * CAP / m.h, below = (1 - m.bot) * Hs, va = align === 'base' ? -below : -below - (k - 1) * CAP / 2;
   const acc = dark ? '#7EA4FF' : '#2F5FE6';
-  const tx = { mech: 'font-style:normal;transform:skewX(-12deg)', it: 'font-style:italic', hy: 'font-style:italic;transform:skewX(-2.63deg)' }[style];
+  const tx = { mech: `font-style:normal;transform:skewX(-${ANGLE}deg)`, it: 'font-style:italic', hy: 'font-style:italic;transform:skewX(-0.6deg)' }[style];
   return `<span class="lk" style="font-size:${fs}px"><span style="display:inline-block;width:${Hs}em;height:${Hs}em;vertical-align:${va}em;margin:0 ${gap - m.r * Hs}em 0 ${-m.l * Hs}em">${mark(Math.round(Hs * fs), 'currentColor', 'fill')}</span><span class="wm" style="${tx}">Mostly${two ? `<span style="color:${acc}">Text</span>` : 'Text'}</span></span>`;
 };
 const zoom = (id, W, svg, cap) => `<figure class="zf"><canvas class="zc" data-w="${W}" data-svg='${encodeURIComponent(svg)}' width="${W}" height="${W}"></canvas><figcaption>${cap}</figcaption></figure>`;

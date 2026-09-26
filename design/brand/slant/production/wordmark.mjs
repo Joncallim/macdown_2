@@ -1,7 +1,9 @@
-// Builds the outlined MostlyText wordmark: Inter Tight Bold Italic (9.4°) + 2.6° synthetic slant = 12°,
-// with stroke-weight compensation for the synthetic slant and a measured yT correction.
+// Builds the outlined MostlyText wordmark: Inter Tight Bold Italic (9.4°, the font's own post.italicAngle) +
+// 0.6° synthetic slant = 10° (D-027, matching the production mark's 10° lean), with stroke-weight
+// compensation for the synthetic slant and a measured yT/xt correction (see build-geometry.mjs's CORR,
+// re-measured at 10° rather than reused from the 12°/2.6° construction).
 import {font, shape, parse, mapC, toD, flat} from './glyphs.mjs';
-const K = Math.tan(2.6*Math.PI/180), UPM=2048, TRACK=-0.025*UPM, W=300;
+const K = Math.tan(0.6*Math.PI/180), UPM=2048, TRACK=-0.025*UPM, W=300;
 const f = (dx,dy)=>{ const L=Math.hypot(dx,dy); dx/=L; dy/=L; return 1/Math.hypot(dx+K*dy, dy); }; // thickness factor of an edge under shear
 // Offset every edge along its left normal (away from ink for TrueType winding) by w/2*(1/f-1): restores the drawn stroke weight.
 const compensate = cs => cs.map(c => { const pts=[]; // flatten structure into point list with on/off flags
