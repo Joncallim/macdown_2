@@ -78,6 +78,25 @@ public final class EditorFindModel {
         matches.count
     }
 
+    /// The `EditorSelectionSet` "Select All Matches" (EPIC-22 §6.14, Slice
+    /// 5c) installs, or `nil` if there are no matches. Deliberately reuses
+    /// `EditorSelectionSet(ranges:primaryIndex:)` directly — the exact,
+    /// already-general-purpose constructor Slice 3a/3b's own multi-cursor
+    /// work already validated — rather than `EditorTextSystem`'s own,
+    /// different, word-based `selectAllOccurrences()` (Slice 3c): that is a
+    /// separate, already-shipped feature with its own shortcut and its own
+    /// "the word under the caret" contract, sharing nothing with a Find
+    /// bar's current query/options-driven match list beyond this one
+    /// constructor. `currentIndex` (if any) becomes the resulting
+    /// selection's own primary caret, so the match the user was already
+    /// looking at stays the visually "active" one among the new selections;
+    /// falls back to `0` when there is no current match (e.g. Select All
+    /// pressed before ever navigating).
+    public var selectionSetForAllMatches: EditorSelectionSet? {
+        guard !matches.isEmpty else { return nil }
+        return EditorSelectionSet(ranges: matches.map(\.range), primaryIndex: currentIndex ?? 0)
+    }
+
     /// Recomputes `matches` against `text` for the current `query`/`options`,
     /// then resolves `currentIndex` to the first match starting AT OR AFTER
     /// `anchor` (typically the live caret position when the bar was opened,
@@ -106,8 +125,23 @@ public final class EditorFindModel {
     /// one, exactly as §8 specifies. Returns whether this call's result was
     /// actually committed (`false` for a discarded, superseded call) so a
     /// caller can skip redundantly re-announcing state nothing changed.
+    /// `selection` is the live caret/selection range, in the same UTF-16
+    /// coordinates as `text` — required only to implement
+    /// `options.searchesSelectionOnly` (EPIC-22 §6.14, Slice 5c: the first
+    /// real consumer of that field, per `SearchOptions`' own doc comment —
+    /// `TextSearchEngine.matches` itself has no notion of "the selection,"
+    /// so this is where a caller "passes the selection's own substring as
+    /// `text` and offsets the results itself"). Ignored unless
+    /// `options.searchesSelectionOnly` is true AND `selection` is a real,
+    /// non-empty range; a caret (zero-length) or `nil` selection falls back
+    /// to searching the whole document rather than producing a confusing,
+    /// unexplained zero-result state.
     @discardableResult
-    public func updateMatches(in text: String, preferringLocationNear anchor: Int? = nil) async -> Bool {
+    public func updateMatches(
+        in text: String,
+        selection: NSRange? = nil,
+        preferringLocationNear anchor: Int? = nil
+    ) async -> Bool {
         searchGeneration &+= 1
         let generation = searchGeneration
         let query = query
@@ -115,8 +149,20 @@ public final class EditorFindModel {
         isSearching = true
         let result: Result<[SearchMatch], SearchQueryError> = await Task.detached(priority: .userInitiated) {
             do {
-                let found = try TextSearchEngine.matches(in: text, query: query, options: options)
-                return .success(found)
+                let fullText = text as NSString
+                var scope: NSRange?
+                if options.searchesSelectionOnly, let selection, selection.length > 0 {
+                    let location = max(0, min(selection.location, fullText.length))
+                    let length = max(0, min(selection.length, fullText.length - location))
+                    scope = NSRange(location: location, length: length)
+                }
+                let searchText = scope.map(fullText.substring(with:)) ?? text
+                let found = try TextSearchEngine.matches(in: searchText, query: query, options: options)
+                let offset = scope?.location ?? 0
+                let offsetFound = offset == 0 ? found : found.map {
+                    SearchMatch(range: NSRange(location: $0.range.location + offset, length: $0.range.length))
+                }
+                return .success(offsetFound)
             } catch let error as SearchQueryError {
                 return .failure(error)
             } catch {
