@@ -1,0 +1,119 @@
+# Issue #53 — Compatible settings and deliberate legacy import
+
+## Owner summary
+
+Import useful original-MacDown preferences without changing that app, reviving inert parser toggles or overwriting the new editor's deliberate choices. First preserve development/beta settings across schema changes; then perform the separate opt-in original-MacDown import. Every legacy key receives an explicit disposition.
+
+Reviewed baseline: `b95fe439672dbcad4e5c9d04f7f353ffc85ff26b`, 2026-09-26. Read [README](README.md) and [readiness review](READINESS_REVIEW.md). E22 exclusively owns the inert MarkdownParseOptions cleanup. This document changes no active E22 code and cannot close its parser half. The full issue closes only after both halves have evidence.
+
+## Current source reconciliation
+
+LegacyPreferencesDetector still only checks `com.uranusjr.macdown`. Current settings are whole JSON blobs under appSettings.general/editor/markdown/previewExport/formats. Original MPPreferences.h/.m at upstream `3e2a2bf101c215c143bf00d9f857965f0ee82487` define the legacy keys below. Do not instantiate MPPreferences: its initializer writes defaults/version state and cleans old autosave records.
+
+A newly relevant defect boundary: current EditorSettings added required showsStatusBar, with an initializer default but synthesized Codable decoding. A pre-E22 JSON object missing that field can fail decoding; the existing generic store then returns the WHOLE default domain. If later saved, it can overwrite font/indentation/assist choices. This is not permission to patch Claude's current branch; it is an explicit compatibility prerequisite for migration and final release.
+
+## Settings compatibility — first executable unit
+
+AppSettings owns a typed versioned decode/migration adapter, used by normal startup AND the importer. Do not implement a one-off importer decoder while ordinary startup still falls back destructively. Inspect raw persisted data before constructing mutable models or writing defaults. Distinguish absent, known-compatible older schema, valid current, malformed and unknown future data.
+
+For a known older editor blob missing showsStatusBar, preserve every present valid field and supply true ONLY for the missing new field. A present false remains false. Apply the same additive-field discipline to every final E22/E23 setting. Validate ranges explicitly during decode; constructor clamping is not automatically invoked by synthesized Decodable. Known removed parser keys receive the final E22 disposition, not a fake stored control.
+
+Use explicit migration steps and stable schema/provenance records. Do not add a required schemaVersion key that itself makes all old blobs unreadable. Treat existing schema-less objects as a named historical schema with an exact fixture. Unknown/future or malformed raw blobs are retained and reported; a temporary safe UI fallback does not authorize replacing them with default JSON. Persist a migrated domain only after validated staging and before/desired digest checks through the serialized settings writer. Read-back success is required; user defaults are not a multi-key filesystem transaction.
+
+Regression fixture SETTINGS-COMPAT: pre-E22 valid editor JSON with nondefault font, indentation and disabled assists; same with a present false showsStatusBar; missing optional additive fields; missing old mandatory fields; invalid types/out-of-range values; unknown future version; and corrupt bytes. Assert exact preservation of valid existing values, explicit single-field defaults, original-byte retention on unsupported input and idempotent repeated launch/import. No legacy MacDown account/domain is needed to run this unit.
+
+## Models, admission and ownership
+
+AppSettings owns LegacyPreferenceSnapshot, LegacyImportPlan, LegacyKeyDisposition and pure conversions. E17 owns bootstrap/consent/journal coordination; E23 owns safe theme catalog insertion. A plan freezes source hash, destination raw hashes/schema generations, proposed per-field changes, warnings and dispositions. Separate mapped from applied. Every input key is mapped, equivalent-unconditional, unsupported, obsolete, transient, invalid or unknown.
+
+Initial bounded admission: property-list primitives, 1 MiB source snapshot, 2,048 keys, ordinary strings at most 4 KiB and finite validated numbers. Distinguish CFBoolean from arbitrary numeric/string coercion. Never unarchive arbitrary objects, execute CSS/templates/scripts, replay IPC or turn a stored URL into a filesystem permission. Unknown keys appear in the local report, not the destination settings.
+
+## Complete declared legacy-key disposition
+
+Preserve exact legacy spellings. This table is exhaustive for the stored keys declared in the inspected header; calculated/transient properties are handled below. At final E22/E23 baseline, bind only real exact-equivalent settings to destination symbols and produce a machine-readable map. This is interface rebinding, not permission to add absent product features. A coverage test rejects an unclassified known key.
+
+| Stored legacy key | Disposition / conversion |
+| --- | --- |
+| firstVersionInstalled | Original-app provenance only; never the new app's first-run/migration state. |
+| latestVersionInstalled | Same; not proof the new product completed initialization. |
+| updateIncludesPreReleases | Explicit update-channel suggestion only; no hidden channel/feed/key import. |
+| supressesUntitledDocumentOnLaunch | No baseline equivalent. Untitled suppression is not session restoration; retain misspelling and report unsupported unless final exact behavior exists. |
+| createFileForLinkTarget | Unsupported unless the exact final action policy exists; never enable implicit file creation from import. |
+| extensionIntraEmphasis | Parser-specific grammar difference; no generic Markdown switch. |
+| extensionTables | Consume actual E22 capability/toggle disposition; never import inert Boolean. |
+| extensionFencedCode | Core grammar: true means equivalent unconditional capability; unsupported request to disable on false. |
+| extensionAutolink | Consume actual E22 outcome; do not assume all autolink forms were unconditionally supported. |
+| extensionStrikethough | Preserve misspelling; use actual E22 strikethrough capability, not a guessed corrected source key. |
+| extensionUnderline | Unsupported grammar; not editor underline formatting. |
+| extensionSuperscript | Unsupported unless the actual final grammar supports it. |
+| extensionHighlight | Unsupported grammar; not syntax highlighting. |
+| extensionFootnotes | Actual E22 outcome; do not falsely report current footnote behavior as proven by a stored flag. |
+| extensionQuote | Original extension differs from ordinary block quotes; unsupported unless exact equivalent exists. |
+| extensionSmartyPants | Unsupported typography; no punctuation normalization or hidden system substitution changes. |
+| markdownManualRender | Manual render is not hiding Preview; unsupported at baseline. |
+| editorBaseFontInfo | Validate name/size; resolve installed PostScript name through NSFont to the final FontDescriptor on MainActor. Preserve current font and warn if unavailable; never download. |
+| editorAutoIncrementNumberedLists | Boolean -> editor.autoIncrementOrderedLists. |
+| editorConvertTabs | Boolean -> editor.convertsTabsToSpaces; does not encode indentation width. |
+| editorInsertPrefixInBlock | Boolean -> editor.continuesMarkdownPrefixes after semantic list/quote fixture. |
+| editorCompleteMatchingCharacters | Boolean -> editor.completesMatchingCharacters. |
+| editorSyncScrolling | Only an exact final scroll-sync preference; not preview layout or an invented switch. |
+| editorSmartHome | Boolean -> editor.smartHome. |
+| editorStyleName | Only curated exact compatible theme aliases; no nearest-name guess or executable old-style import. Unknown/custom style remains unsupported with safe explicit conversion outside this import. |
+| editorHorizontalInset | Only same-unit final layout preference; not page width. |
+| editorVerticalInset | Only same-unit equivalent; not line spacing. |
+| editorLineSpacing | Verify points versus multiplier before any real mapping; no newline/font-size rewrite. |
+| editorWidthLimited | Map together with maximum width only if exact final width policy exists; unsupported otherwise. |
+| editorMaximumWidth | Valid finite positive points plus enable flag; saved number alone cannot enable a width restriction. |
+| editorOnRight | Only exact pane-order option; split layout is not equivalent. |
+| editorShowWordCount | Only final word-count visibility. MUST NOT map to showsStatusBar, which also hides line/column and other information. |
+| editorWordCountType | Exact old/new enum conversion only; no raw-integer cast or invented counting mode. |
+| editorScrollsPastEnd | Only exact final preference; otherwise report unsupported. |
+| editorEnsuresNewlineAtEndOfFile | Suggestion only if separately approved final setting exists; do not enable byte-changing save behavior silently. |
+| editorUnorderedListMarkerType | 0='*', 1='+', 2='-'; only exact preferred-new-list setting. Invalid enum rejected; existing source markers never rewritten. |
+| previewZoomRelativeToBaseFontSize | Unsupported coupling unless final equivalent exists; editor font is not a proxy. |
+| htmlTemplateName | Default is equivalent fixed-template policy only; other executable markup templates unsupported. Not an export-format switch. |
+| htmlStyleName | Legacy CSS is not embedded/linked delivery. No arbitrary stylesheet import. |
+| htmlDetectFrontMatter | Actual final parser policy; never blockDirectives. |
+| htmlTaskList | Consume actual E22 task-list capability; no inert toggle. |
+| htmlHardWrap | Rendering hard breaks differ from editor line wrapping; only exact final parser/render option. |
+| htmlMathJax | Explain the engine/capability change; no MathJax runtime/URL/hidden switch. |
+| htmlMathJaxInlineDollar | Explain #116's shared grammar and unsupported disabling behavior; no second grammar. |
+| htmlSyntaxHighlighting | Export code highlighting, not source editor highlighting; map only a real matching control. |
+| htmlHighlightingThemeName | Legacy HTML stylesheet, not an E23 theme ID; no unreviewed alias. |
+| htmlLineNumbers | Exported code line numbers, NOT E22's source gutter. |
+| htmlGraphviz | Report local Graphviz capability; no old scripts or no-op setting. |
+| htmlMermaid | Same for local Mermaid. |
+| htmlCodeBlockAccessory | Unsupported unless exact final enum semantics exist; no raw-value cast. |
+| htmlDefaultDirectoryUrl | Never an access grant. At most a validated picker suggestion with explicit user selection; no background enumeration. |
+| htmlRendersTOC | Explain explicit [TOC] contribution policy; never insert markers or rewrite documents. |
+
+editorBaseFontName/editorBaseFontSize/editorBaseFont/editorUnorderedListMarker are calculated, not independent stored imports. filesToOpen/pipedContentFileToOpen are transient IPC and never replayed. Legacy window/split frames, NSGlobalDomain values and unknown Sparkle metadata are not bulk-copied. Any actually encountered prefixed/PAPreferences aliases need source-verified mapping, not suffix guesses. Preserve the original legacy domain byte-for-byte.
+
+## Destination precedence and consent
+
+Read persistentDomain(forName:), not dictionaryRepresentation with registered/global/argument defaults. Use the compatibility result above before deciding whether a destination field exists. An existing valid persisted value is protected even when equal to the default. A missing domain may be seeded; a known older domain is migrated without resetting unrelated fields. Unknown/corrupt data blocks automatic replacement rather than being treated as absent.
+
+Show proposed applicable changes, retained deliberate settings, unsupported semantics and invalid inputs. Default import fills genuinely absent fields only when provenance proves absence. Replacement of existing fields requires explicit per-field selection. Preserve all unselected fields when serializing the whole domain. Revalidate destination revision/raw hash at commit; a concurrent settings edit requires re-planning its conflicts, not applying a stale summary. Do not silently rerun old import after the original app changes later.
+
+Theme import uses E23's stable custom-ID Replace/Copy/no-op policy and safe validation. Repeating the same migration cannot generate another UUID/file. Record the source-theme-to-destination-ID mapping in the journal before insertion. Unknown legacy executable CSS remains unsupported, not misreported as a migrated theme.
+
+## Restart-safe application and concurrency
+
+One application settings-write coordinator serializes normal edits, compatibility migration and legacy import. #18's bootstrap must use the same admission boundary, not a second lock nobody else honors. Plan all domain/theme changes before writes and create a restricted local transaction journal recording mapping version, source hash, before/desired per-domain digests and theme IDs. No secrets/private preference values appear in public evidence.
+
+Apply staged typed values, record each successful domain/theme operation and read it back. Completion is recorded only after all intended writes are acknowledged. On restart: equals desired means already done; equals captured before allows one planned write; any third value is a conflict to preserve/report. UserDefaults.synchronize does not establish multi-key atomicity. Failed/pending imports cannot be marked complete just because one Boolean persisted.
+
+Decline is a separate opt-out state, not completed migration. Retry preserves already accepted changes, reports outstanding work and never modifies original MacDown. Rollback restores only unchanged transaction-owned destinations and never later user edits. Do not block ordinary safe editing indefinitely on optional legacy import; unsupported authoritative development state is a different #18 bootstrap recovery condition.
+
+## Units, tests and completion
+
+A. SETTINGS-COMPAT pure decode/migration and ordinary-store integration, with historical fixtures and no user-domain access. Final E22 field changes receive the same discipline.
+B. Complete typed legacy map against final settings/theme interface; all declared keys and deliberate unsupported semantics covered. Consume E22 parser evidence without editing its work.
+C. Immutable plan, consent, stable theme mapping and serialized journal implementation. Inject failure before/after every write/read-back/completion and simultaneous normal settings edits.
+D. Existing first-run/Settings integration, all strings before final E16, full regression and real isolated-account migration via #88.
+
+Tests include absent/false/default-valued values, pre-E22 blobs, missing fonts, invalid types/NaN/enum values, malicious URLs/IDs, Unicode names, unknown versions, source changes, repeated runs, partial recovery, consent races, theme ID collision and unchanged legacy domain. Verify actual live apply without relaunch and raw preservation of unsupported destination blobs.
+
+Allowed areas: AppSettings compatible decode/import/store/tests; E17 bootstrap coordinator; existing Settings/first-run/catalog integration; E23 theme API. No original-app writes, E22 parser feature reimplementation or source normalization. Run serial format/strict lint, affected/full package/app tests and Release build, then real user-visible evidence. Stop on protected-value overwrite, unclassified equivalent key, non-idempotent replay or a security grant inferred from stored data.
+
+Second review adds the missing-field migration prerequisite, prevents the word-count/status-bar false equivalent, binds theme retries to stable IDs and unifies bootstrap/settings writer admission. Architecture coverage is complete; final post-E22 field rebinding and runtime evidence are not claimed complete. #53 remains open until both its importer and E22-owned parser obligations pass in #115.

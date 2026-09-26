@@ -159,21 +159,25 @@ E15's whole-app pass consumes the release-evidence ledger and closes release-blo
 
 E16 originally ran after the first public-identity/first-run baseline and has already established the localisation infrastructure and current translated catalog state.
 
-**2026-09-21 sequencing amendment:** E22 and E23 intentionally add bounded user-facing UI after that baseline. Their new strings must enter the normal catalogs in the same implementation slices. The closed-epic debt audit in #115 must then close every historical carried-forward release item; fixes from that gate enter the same localisation pipeline. One final E16 extraction/translation/pseudo-localisation delta is required only after #115 closes. That post-#115 baseline is the macOS 1.0 string freeze consumed by E17.
+**2026-09-26 execution clarification:** E22 and E23 intentionally add bounded user-facing UI after that baseline. Their strings and every required debt fix enter catalogs in the same implementation units. E17's application-side migration, CLI, updater and all associated in-app strings must also be implemented before software/UI stabilization. The precise execution milestones are defined in [RELEASE_SEQUENCE.md](RELEASE_SEQUENCE.md).
 
-Once E16 reaches that **final post-#115** string freeze:
+The final E16 extraction/translation/native-review/plural/pseudo-localisation pass starts after **S — software/UI stabilized**, while #115 remains open awaiting final language and exact-artifact evidence. It does not wait for #115's final issue closure: that closure itself requires these results. This replaces the earlier circular 'final E16 only after #115 closes' wording without removing any acceptance criterion.
+
+Once E16 reaches that final post-S string freeze:
 
 - E17 may update release notes, website copy and other non-app release material;
 - E17 must not introduce new user-facing app strings or new app UI without reopening the affected localisation verification;
 - emergency wording fixes require updating String Catalogs and re-running the relevant localisation/pseudo-localisation checks.
 
-This avoids shipping an English-only release screen after the localisation epic is considered complete.
+This avoids shipping an English-only release screen after the localisation epic is considered complete. Final E16 evidence is retained as a prerequisite for #115's full closure and public release authorization.
 
 ## 8. E17 update and identity migration gate
 
 ### 8.0 Closed-epic debt precondition
 
-Issue #115 is a hard production-release precondition. E17 architecture/signing work may proceed in parallel, but no production release candidate may be authorised, notarised for publication, or released while #115 remains open. A closed epic's earlier `accepted with residual evidence debt`, `unverified`, `environment blocked`, or similar status is historical evidence only, not a final-release pass.
+Issue #115 remains a hard production-release precondition. E17 implementation and private signing/notarization for required evidence may proceed in the explicit S/V sequence, but no public production release candidate may be authorized, notarized for public promotion, published or added to the stable channel while #115 remains open. A private unapproved verification artifact is not production authorization. A closed epic's earlier `accepted with residual evidence debt`, `unverified`, `environment blocked`, or similar status is historical evidence only, not a final-release pass.
+
+**V — final localization and private verification** obtains every required exact signed-artifact UI/VoiceOver/export/Quick Look/migration/update result before #115 closes. **P — public promotion** is separately authorized only after the complete gate passes. Promote the same verified bytes; rebuilding, re-signing or changing identity/resources invalidates affected proof. See [RELEASE_SEQUENCE.md](RELEASE_SEQUENCE.md) for the full contract.
 
 Before production RC authorization, every #115 item must be fixed, proved on a suitable interactive environment, or explicitly rejected only where its original candidate-feature contract allowed rejection. Release-relevant P0/P1/P2 debt must be zero.
 
