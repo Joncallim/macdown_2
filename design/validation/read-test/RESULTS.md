@@ -1,10 +1,32 @@
-# MostlyText Slant human read-test result
+# MostlyText Slant human read-test: round 1 (exploratory)
 
 Date recorded: 2026-09-26
-Protocol: D-023
+Protocol intended: D-023 (not administered as specified; see the classification below)
 Participants: 8 valid participants
 
-## Formal result: FAIL
+## Classification: exploratory evidence, not a formal D-023 result
+
+*Reclassified by the owner on 2026-09-26.* The eight reviewers were real people, but they were **sent
+the stimuli**. They were not run through the timed facilitator protocol (5-second first exposure,
+blank screen, live questions, and the 16 px line-up shown as true pixels on a facilitator screen).
+Round 1 is therefore **protocol-noncompliant exploratory evidence**. It is neither a formal D-023 PASS
+nor a formal D-023 FAIL, and gate 3 (the human read test) remains open.
+
+This correction concerns how the test was administered, not its thresholds, which are unchanged. All
+raw data, the scored output and the findings below are preserved as recorded. The findings still
+direct the next round:
+
+- The 16 px line-up choices (0 of 8 picked the target; all 8 picked Soft) are diagnosed in
+  `../round-2/DIAGNOSIS.md` as a real small-size identity drift. The correction rule and a fresh,
+  facilitated test are in `../round-2/`.
+- The automotive associations (6 of 8 on the round-1 keyword list; 4 of 8 counting only cars and
+  motorsport) justify running the D-021 8°/10°/12° comparison as round-2 tranche A.
+
+~~The formal human gate is round 2, run to `../round-2/PROTOCOL.md`.~~ **Update 2026-09-26:** the owner waived the formal human gate (D-026). Round 2 will not be run. The owner accepts the residual association risk. This record remains the only human evidence, and D-023 is not claimed as passed.
+
+## Original recorded reading (preserved; superseded as a formal verdict by the classification above)
+
+### Scored reading: FAIL
 
 - **Gate 1 — S1 first-exposure M+T reading:** 8 / 8 — PASS.
 - **Gate 2 — 16 px five-glyph recognition:** 0 / 8 — FAIL.
@@ -25,7 +47,7 @@ Every participant selected the **Soft (d4) decoy**, not the 16 px Slant microgly
 
 The automotive/motorsport trigger also independently fired: six participants used sports, motorsport, racing, automotive, speed/performance, esports, or closely related language in their unprompted responses.
 
-## Evidence
+### Evidence
 
 - Raw anonymised reviewer responses: `raw/Reviewer 1.txt` through `raw/Reviewer 8.txt`
 - Structured responses: `responses.csv`
@@ -33,7 +55,7 @@ The automotive/motorsport trigger also independently fired: six participants use
 
 Lineup confidence values were not recorded; D-023 does not use confidence for the pass/fail calculation.
 
-## Consequence under the frozen rules
+### Consequence as originally recorded
 
 Do **not** close the human gate and do **not** change the thresholds after seeing this result.
 
