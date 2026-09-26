@@ -182,14 +182,14 @@ struct FindBarView: View {
                 replaceCurrent()
             }
             .buttonStyle(.bordered)
-            .disabled(model.currentMatch == nil)
+            .disabled(model.currentMatch == nil || model.isSearching)
             .accessibilityIdentifier("findBarReplaceButton")
 
             Button("Replace All") {
                 replaceAll()
             }
             .buttonStyle(.bordered)
-            .disabled(model.matchCount == 0)
+            .disabled(model.matchCount == 0 || model.isSearching)
             .accessibilityIdentifier("findBarReplaceAllButton")
 
             Spacer(minLength: 0)
@@ -262,18 +262,31 @@ struct FindBarView: View {
         }
     }
 
-    /// A no-op (not an error) when there's no current match to replace —
-    /// mirrors the disabled state of the "Replace" button and the Return
-    /// key inside the replace field, both of which can still fire this
-    /// while `model.currentMatch` is nil (e.g. a fast Return press racing
-    /// an in-flight search).
+    /// A no-op (not an error) when there's no current match to replace, or
+    /// while a search is still in flight — mirrors the disabled state of
+    /// the "Replace" button, but this guard is what actually matters: the
+    /// Return key inside the replace field calls this method directly,
+    /// bypassing the button's own `.disabled` modifier entirely. Without
+    /// the `isSearching` check, a Replace fired while `updateMatches(in:)`
+    /// is still resolving (e.g. a slow regex, or the user kept typing) would
+    /// build a transaction from the OLD, pre-edit `matches`/`currentMatch` —
+    /// positions computed against text or a query that no longer applies —
+    /// and apply it straight to the CURRENT live text, silently replacing
+    /// whatever unrelated content now sits at that stale offset. A hostile
+    /// review of this exact slice found this gap; §6.14 never disclosed it
+    /// as an accepted risk, so this is a genuine fix, not new scope.
     private func replaceCurrent() {
-        guard let transaction = model.replaceCurrentTransaction(with: model.replacementText) else { return }
+        guard !model.isSearching, let transaction = model.replaceCurrentTransaction(with: model.replacementText)
+        else { return }
         onReplace(transaction)
     }
 
+    /// See `replaceCurrent()`'s own doc comment — the same staleness risk
+    /// applies here, at N matches instead of one.
     private func replaceAll() {
-        guard let transaction = model.replaceAllTransaction(with: model.replacementText) else { return }
+        guard !model.isSearching, let transaction = model.replaceAllTransaction(with: model.replacementText) else {
+            return
+        }
         onReplace(transaction)
     }
 }
