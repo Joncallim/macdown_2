@@ -130,8 +130,10 @@ public final class EditorFindModel {
     /// `options.searchesSelectionOnly` (EPIC-22 §6.14, Slice 5c: the first
     /// real consumer of that field, per `SearchOptions`' own doc comment —
     /// `TextSearchEngine.matches` itself has no notion of "the selection,"
-    /// so this is where a caller "passes the selection's own substring as
-    /// `text` and offsets the results itself"). Ignored unless
+    /// so this is where a caller filters the full-document match list down
+    /// to the ones fully inside the selection; see the inline comment on the
+    /// search call below for why this searches the FULL text and filters,
+    /// rather than searching a sliced substring). Ignored unless
     /// `options.searchesSelectionOnly` is true AND `selection` is a real,
     /// non-empty range; a caret (zero-length) or `nil` selection falls back
     /// to searching the whole document rather than producing a confusing,
@@ -149,20 +151,38 @@ public final class EditorFindModel {
         isSearching = true
         let result: Result<[SearchMatch], SearchQueryError> = await Task.detached(priority: .userInitiated) {
             do {
-                let fullText = text as NSString
-                var scope: NSRange?
-                if options.searchesSelectionOnly, let selection, selection.length > 0 {
-                    let location = max(0, min(selection.location, fullText.length))
-                    let length = max(0, min(selection.length, fullText.length - location))
-                    scope = NSRange(location: location, length: length)
+                // Always searches the FULL text, never a pre-sliced
+                // substring -- `options.searchesSelectionOnly` below only
+                // FILTERS the already-computed, full-document matches down
+                // to ones fully inside the selection, rather than handing
+                // `TextSearchEngine.matches` a substring and offsetting its
+                // results. An earlier version of this method did slice
+                // first; a hostile review of this exact slice found that
+                // boundary-unsafe for `isWholeWord`: the whole-word check
+                // only ever looks at characters INSIDE whatever string it
+                // was given, so a match sitting at the sliced substring's
+                // own edge was wrongly reported as word-bounded even when,
+                // in the true full document, it was actually a truncated
+                // suffix/prefix of a larger word straddling the selection
+                // boundary -- empirically reproduced ("precat and cat",
+                // selection starting right after "pre", whole-word "cat"
+                // wrongly matched the truncated "cat" at the selection's own
+                // left edge). Searching the full text first and filtering
+                // its own already-correct results is both simpler and
+                // immune to this class of bug by construction.
+                let found = try TextSearchEngine.matches(in: text, query: query, options: options)
+                guard options.searchesSelectionOnly, let selection, selection.length > 0 else {
+                    return .success(found)
                 }
-                let searchText = scope.map(fullText.substring(with:)) ?? text
-                let found = try TextSearchEngine.matches(in: searchText, query: query, options: options)
-                let offset = scope?.location ?? 0
-                let offsetFound = offset == 0 ? found : found.map {
-                    SearchMatch(range: NSRange(location: $0.range.location + offset, length: $0.range.length))
+                let fullLength = (text as NSString).length
+                let location = max(0, min(selection.location, fullLength))
+                let length = max(0, min(selection.length, fullLength - location))
+                let clampedSelection = NSRange(location: location, length: length)
+                let scoped = found.filter { match in
+                    match.range.location >= clampedSelection.location
+                        && NSMaxRange(match.range) <= NSMaxRange(clampedSelection)
                 }
-                return .success(offsetFound)
+                return .success(scoped)
             } catch let error as SearchQueryError {
                 return .failure(error)
             } catch {

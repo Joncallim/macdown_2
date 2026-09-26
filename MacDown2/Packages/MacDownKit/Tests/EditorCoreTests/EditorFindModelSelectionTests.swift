@@ -161,4 +161,30 @@ struct EditorFindModelSelectionTests {
 
         #expect(model.matchCount == 2)
     }
+
+    @Test("whole word + searchesSelectionOnly does not false-match a word truncated at the selection boundary")
+    func wholeWordWithSearchesSelectionOnlyIgnoresTruncationAtSelectionBoundary() async {
+        // Regression test for a hostile-review finding: an earlier
+        // implementation sliced the text down to just the selection's own
+        // substring and searched THAT, so `isWholeWord`'s boundary check
+        // (which only ever looks at characters inside whatever string it
+        // was given) could not see that the selection's left edge fell
+        // mid-word in the true document -- a truncated "cat" fragment (the
+        // tail of "precat") was wrongly reported as a whole-word match.
+        // Searching the full text first and filtering by containment (the
+        // current implementation) is immune to this by construction.
+        var options = SearchOptions()
+        options.isWholeWord = true
+        options.searchesSelectionOnly = true
+        let model = EditorFindModel(query: "cat", options: options)
+        let text = "precat and cat"
+        // Selection starts right after "pre", so its own substring would be
+        // "cat and cat" -- the same shape the reviewer's own repro used.
+        let selection = NSRange(location: 3, length: 11)
+
+        await model.updateMatches(in: text, selection: selection, preferringLocationNear: 0)
+
+        #expect(model.matchCount == 1)
+        #expect(model.currentMatch?.range == NSRange(location: 11, length: 3))
+    }
 }
