@@ -24,7 +24,8 @@ extension DocumentEditorSplitView {
                     resolvedText: { editorStore.existingSystem(for: identity)?.text ?? text },
                     initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
                     onMatchesChanged: { applyFindHighlights(findModel) },
-                    onClose: { closeFindBar(findModel) }
+                    onClose: { closeFindBar(findModel) },
+                    onReplace: { applyFindReplacement($0, model: findModel) }
                 )
             }
 
@@ -121,5 +122,24 @@ extension DocumentEditorSplitView {
     func closeFindBar(_ model: EditorFindModel) {
         model.isActive = false
         editorStore.existingSystem(for: identity)?.setFindHighlights(ranges: [], currentIndex: nil)
+    }
+
+    /// Applies a Replace/Replace All transaction `FindBarView` built
+    /// (EPIC-22 §6.14, Slice 5b) to the live text system — this is the only
+    /// thing that actually mutates the document; `EditorFindModel` itself
+    /// never does (see that type's own doc comment). Re-runs the search
+    /// against the POST-edit text afterward, anchored at the transaction's
+    /// own `resultingSelection` (already computed as "right after the
+    /// last thing this transaction replaced"), since every match after
+    /// what was just replaced has shifted and the replacement text itself
+    /// may have changed which text still matches at all.
+    func applyFindReplacement(_ transaction: EditorEditTransaction, model: EditorFindModel) {
+        guard let system = editorStore.existingSystem(for: identity) else { return }
+        system.apply(transaction)
+        let anchor = transaction.resultingSelection?.primaryRange.location
+        Task {
+            guard await model.updateMatches(in: system.text, preferringLocationNear: anchor) else { return }
+            applyFindHighlights(model)
+        }
     }
 }
