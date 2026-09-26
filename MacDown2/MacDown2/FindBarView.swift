@@ -14,9 +14,23 @@ import TextSearch
 /// the text view and reveal the current match.
 struct FindBarView: View {
     @Bindable var model: EditorFindModel
-    /// The live document text, re-read on every change so an edit made
-    /// while the bar is open keeps match positions correct.
+    /// The SwiftUI-observed document text: used ONLY as a reactive trigger
+    /// (`.onChange(of: text)` below) so a live edit re-runs the search.
+    /// Never read directly to build the search input — see `resolvedText`.
     let text: String
+    /// Returns the text to actually search, read fresh at the moment of
+    /// each search rather than captured once. Callers pass
+    /// `editorStore.existingSystem(for:)?.text`, the live `EditorTextSystem`'s
+    /// own text — NOT this view's own `text` prop above: `DocumentEditorSplitView`'s
+    /// own established precedent (`EditorStatusBarView(text: system.text, ...)`,
+    /// with a doc comment on exactly this) is that the SwiftUI `text`
+    /// binding can trail the live text system by up to one render pass
+    /// while `EditorTextSystem.isPerformingProgrammaticTextUpdate` is set
+    /// (an external file reload/conflict-resolution replacement
+    /// deliberately skips publishing it, `EditorView.swift`'s
+    /// `textDidChange`) — searching that stale snapshot instead of the
+    /// live text could highlight/select the wrong location for one frame.
+    let resolvedText: () -> String
     /// The caret location at the moment the bar was shown, used ONLY by the
     /// very first search on `.onAppear` — so opening Find starts searching
     /// forward from where the user actually was, matching every comparable
@@ -70,6 +84,12 @@ struct FindBarView: View {
             optionToggle("Aa", isOn: $model.options.isCaseSensitive, help: "Case Sensitive")
             optionToggle("W", isOn: $model.options.isWholeWord, help: "Whole Word")
             optionToggle(".*", isOn: $model.options.isRegex, help: "Regular Expression")
+
+            if model.isSearching {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityIdentifier("findBarSearching")
+            }
 
             statusLabel
 
@@ -169,8 +189,19 @@ struct FindBarView: View {
         onMatchesChanged()
     }
 
+    /// `updateMatches(in:)` runs off-main and can be superseded by a later
+    /// call before it resolves (rapid typing, or a slow/pathological regex
+    /// still in flight) — see that method's own doc comment. When that
+    /// happens it returns `false` and this skips `onMatchesChanged()`
+    /// entirely, since `model`'s own state was left untouched by the
+    /// discarded call and re-announcing it would be a redundant, no-op
+    /// re-application of whatever the current, still-authoritative state
+    /// already is.
     private func recomputeMatches(anchor: Int?) {
-        model.updateMatches(in: text, preferringLocationNear: anchor)
-        onMatchesChanged()
+        let text = resolvedText()
+        Task {
+            guard await model.updateMatches(in: text, preferringLocationNear: anchor) else { return }
+            onMatchesChanged()
+        }
     }
 }

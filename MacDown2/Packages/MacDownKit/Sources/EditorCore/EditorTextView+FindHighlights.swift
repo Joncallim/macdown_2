@@ -16,6 +16,7 @@ extension EditorTextView {
     /// highlight sits behind the glyphs, like every comparable editor's own
     /// find highlighting, rather than obscuring the matched text.
     func drawFindHighlights(in dirtyRect: NSRect, layoutManager: NSTextLayoutManager) {
+        guard !findHighlightRanges.isEmpty else { return }
         let inset = textContainerInset
         let containerOrigin = CGPoint(x: dirtyRect.origin.x - inset.width, y: dirtyRect.origin.y - inset.height)
         guard let startFragment = layoutManager.textLayoutFragment(for: containerOrigin) else { return }
@@ -23,6 +24,26 @@ extension EditorTextView {
         let containerDirtyMaxY = dirtyRect.maxY - inset.height
         let currentMatchColor = NSColor.systemOrange.withAlphaComponent(0.55)
         let otherMatchColor = NSColor.systemYellow.withAlphaComponent(0.35)
+
+        // `findHighlightRanges` comes straight from `TextSearchEngine.matches`,
+        // which always returns matches in ascending document order (both its
+        // literal path, which scans forward via repeated `NSString.range(of:)`,
+        // and its regex path, which is `NSRegularExpression.enumerateMatches`'s
+        // own documented left-to-right order) — and `enumerateTextLayoutFragments`
+        // likewise walks fragments top-to-bottom in ascending document order.
+        // `matchCursor` is a single forward-only pointer shared across every
+        // visible line fragment: since neither sequence ever goes backward,
+        // once a match's own END falls behind the CURRENT line's start it can
+        // never be relevant to this or any LATER line, so it is permanently
+        // skipped rather than re-checked against every subsequent line. A
+        // post-review fix: the original version re-scanned the ENTIRE match
+        // array per visible line (O(visible lines × total match count)),
+        // which the file's own original doc comment already flagged as a
+        // risk it hadn't actually addressed — match count is unbounded
+        // (every occurrence in a document that could be many MB), so a
+        // short, frequent query made every scroll/redraw pass measurably
+        // slower even though layout itself stayed correctly viewport-bounded.
+        var matchCursor = 0
 
         layoutManager.enumerateTextLayoutFragments(
             from: startFragment.rangeInElement.location,
@@ -33,10 +54,19 @@ extension EditorTextView {
             guard fragmentFrame.maxY > containerDirtyMinY else { return true }
 
             for lineFragment in fragment.textLineFragments {
-                for (index, matchRange) in findHighlightRanges.enumerated() {
-                    guard let intersection = lineFragment.characterRange.intersection(matchRange),
-                          intersection.length > 0
-                    else { continue }
+                let lineRange = lineFragment.characterRange
+                while matchCursor < findHighlightRanges.count,
+                      findHighlightRanges[matchCursor].location + findHighlightRanges[matchCursor].length
+                      <= lineRange.location {
+                    matchCursor += 1
+                }
+                var index = matchCursor
+                while index < findHighlightRanges.count, findHighlightRanges[index].location < lineRange.upperBound {
+                    defer { index += 1 }
+                    let matchRange = findHighlightRanges[index]
+                    guard let intersection = lineRange.intersection(matchRange), intersection.length > 0 else {
+                        continue
+                    }
                     let startPoint = lineFragment.locationForCharacter(at: intersection.location)
                     let endPoint = lineFragment.locationForCharacter(at: intersection.location + intersection.length)
                     let rect = NSRect(

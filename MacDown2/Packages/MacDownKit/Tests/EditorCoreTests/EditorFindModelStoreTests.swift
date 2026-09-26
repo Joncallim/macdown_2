@@ -79,13 +79,13 @@ struct EditorFindModelStoreTests {
     }
 
     @Test("a model's state, including isActive, survives an evict-less re-fetch")
-    func stateSurvivesReFetch() {
+    func stateSurvivesReFetch() async {
         let store = EditorFindModelStore()
         let identity = UUID().uuidString
         let model = store.model(for: identity)
         model.query = "cat"
         model.isActive = true
-        model.updateMatches(in: "cat and cat", preferringLocationNear: 0)
+        await model.updateMatches(in: "cat and cat", preferringLocationNear: 0)
 
         let reFetched = store.model(for: identity)
 

@@ -35,7 +35,7 @@ public struct SearchOptions: Sendable, Equatable {
     }
 }
 
-public enum SearchQueryError: Error, Equatable {
+public enum SearchQueryError: Error, Equatable, Sendable {
     /// A regex query that failed to compile. Carries a localized,
     /// user-presentable message (from `NSRegularExpression`'s own
     /// diagnostic) — a caller must surface this as a visible diagnostic,

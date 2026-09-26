@@ -21,6 +21,7 @@ extension DocumentEditorSplitView {
                 FindBarView(
                     model: findModel,
                     text: text,
+                    resolvedText: { editorStore.existingSystem(for: identity)?.text ?? text },
                     initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
                     onMatchesChanged: { applyFindHighlights(findModel) },
                     onClose: { closeFindBar(findModel) }

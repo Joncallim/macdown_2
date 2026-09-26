@@ -43,6 +43,22 @@ public final class EditorFindModel {
     /// `SearchQueryError`'s own doc comment ("never silently fall back to a
     /// zero-result state").
     public private(set) var error: SearchQueryError?
+    /// `true` while a search is in flight — surfaced by the Find bar so a
+    /// slow (or pathological) query doesn't look like it silently did
+    /// nothing while `updateMatches(in:)`'s own `Task.detached` is still
+    /// running.
+    public private(set) var isSearching = false
+
+    /// Bumped by every `updateMatches(in:)` call, before it hops off-main.
+    /// The §6.14/§8 "query-generation counter" — mirrors `FileTreeModel.generation`/
+    /// `OutlineController`'s own stale-result guards: whichever call's
+    /// result lands last only commits it if its own generation is still the
+    /// current one, so a slower, now-superseded search (e.g. the user kept
+    /// typing) can never overwrite a newer search's already-committed
+    /// result. This does NOT stop the superseded search's own computation —
+    /// see `updateMatches(in:)`'s own doc comment on why that isn't
+    /// possible for `NSRegularExpression` — only discards its answer.
+    private var searchGeneration: UInt64 = 0
 
     public init(query: String = "", options: SearchOptions = SearchOptions()) {
         self.query = query
@@ -67,15 +83,58 @@ public final class EditorFindModel {
     /// (defaulting to the very first match) or there are no matches at all.
     /// A failed regex compile clears `matches`/`currentIndex` and populates
     /// `error` instead of leaving stale results on screen.
-    public func updateMatches(in text: String, preferringLocationNear anchor: Int? = nil) {
-        do {
-            matches = try TextSearchEngine.matches(in: text, query: query, options: options)
+    ///
+    /// EPIC-22 §6.14/§8: the actual `TextSearchEngine.matches` call runs
+    /// inside a `Task.detached`, off this `@MainActor` type's own actor —
+    /// required because a regex query is user-supplied and can be
+    /// catastrophically slow (pathological backtracking), and this method
+    /// used to call `TextSearchEngine.matches` directly, inline, on the main
+    /// actor: a hostile PR review of this exact slice confirmed that froze
+    /// the ENTIRE app, not just the Find bar, with no way to recover short
+    /// of force-quit — exactly the adversarial case §15 lists by name
+    /// ("cancellation must actually free the main actor"). `Task.detached`
+    /// does NOT stop a pathological regex's own computation once started —
+    /// `NSRegularExpression.enumerateMatches` has no cancellation hook to
+    /// stop mid-call — it only keeps the main actor (and therefore the rest
+    /// of the app's UI) free while that computation runs. `searchGeneration`
+    /// is bumped before the hop so a slower, now-superseded call's result is
+    /// discarded rather than published over a newer call's already-committed
+    /// one, exactly as §8 specifies. Returns whether this call's result was
+    /// actually committed (`false` for a discarded, superseded call) so a
+    /// caller can skip redundantly re-announcing state nothing changed.
+    @discardableResult
+    public func updateMatches(in text: String, preferringLocationNear anchor: Int? = nil) async -> Bool {
+        searchGeneration &+= 1
+        let generation = searchGeneration
+        let query = query
+        let options = options
+        isSearching = true
+        let result: Result<[SearchMatch], SearchQueryError> = await Task.detached(priority: .userInitiated) {
+            do {
+                let found = try TextSearchEngine.matches(in: text, query: query, options: options)
+                return .success(found)
+            } catch let error as SearchQueryError {
+                return .failure(error)
+            } catch {
+                // `TextSearchEngine.matches` is declared `throws(SearchQueryError)`,
+                // so this branch is unreachable in practice -- it exists only
+                // because this closure literal isn't itself typed-throws, so
+                // the compiler can't narrow the catch type above automatically.
+                return .failure(.invalidRegex(error.localizedDescription))
+            }
+        }.value
+        guard generation == searchGeneration else { return false }
+        switch result {
+        case let .success(newMatches):
+            matches = newMatches
             error = nil
-        } catch {
+        case let .failure(searchError):
             matches = []
-            self.error = error
+            error = searchError
         }
         currentIndex = Self.nearestIndex(in: matches, to: anchor)
+        isSearching = false
+        return true
     }
 
     /// Moves to the next match, wrapping to the first if `options.wraps` and
