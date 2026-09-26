@@ -1,101 +1,82 @@
-# Issue #121 — Isolated HTML preview requests and safe resource reads
+# Issue #121 — Isolated preview loads and contained resource reads
 
 ## Owner summary
 
-An HTML preview must only read resources belonging to the document revision that created it. A late image request from an old page must never borrow the next document's directory. Concurrent filesystem changes must not redirect an approved image read outside that directory. The design gives each load an immutable owner and replaces path validation followed by a separate file read with one descriptor-backed read boundary shared with Export.
+A late resource request must belong to the saved document revision that created it, never the next document's folder. Filesystem replacement must not redirect that request outside its approved directory. Implement one contained reader shared with Export, and immutable WebKit loads with bounded asynchronous work.
 
-This is deferred architecture, not implementation or release evidence. Baseline: `83a79a4572e23a781b2cf370dd2b407fe7409d09` on 2026-09-24. Leave #112, PR #124, every E22 slice and `planning/epic-22-implementation.md` untouched. Reconcile the listed interfaces with post-E22 master before implementing. The issue's acceptance criteria remain authoritative.
+Reviewed baseline: `b95fe439672dbcad4e5c9d04f7f353ffc85ff26b`, 2026-09-26. Original design remains in #125 history. Follow [README](README.md) and [readiness review](READINESS_REVIEW.md). No E22 source, active branch, save/recovery authority or editor model is changed here.
 
-## Baseline reconciliation
+## Reconciliation and trust boundary
 
-Read `HTMLPreviewSchemeHandler.swift`, `HTMLPreviewView.swift`, `ExportResourceResolver.swift`, `Package.swift`, `AGENTS.md`, `EPIC_STANDARD.md` and `RELEASE_HARDENING.md` at the baseline. #121 and #118 had no issue comments at review time.
+HTMLPreviewSchemeHandler.swift, HTMLPreviewView.swift and ExportResourceResolver.swift remain unchanged from the original audit. PreviewSchemeHandler has a mutable request, fixed document authority and MainActor Data(contentsOf:) after a separate path approval. Generation-only reload state and early scope release must change together with the reader.
 
-`PreviewSchemeHandler.request` is mutable; both the main page and subresources use the fixed `macdown-preview://document/` authority. `serveSubresource` calls the path validator and then synchronous `Data(contentsOf:)` on MainActor. The coordinator identifies loads with a mutation generation, uses one pending generation and a fixed failing URL, and releases its previous security scope at the next load boundary. These assumptions must change together, not only the handler property. Export has a separate canonical-path/check/read implementation of the same boundary. The new reader is justified by these two real consumers; it does not belong in EditorCore.
+Keep content JavaScript disabled, response-header Content Security Policy authoritative, meta policy defense-in-depth, and no remote resource/popup/download bridge. An authorized directory permits reading its current ordinary contents; this is not a sandbox against a same-user process deliberately placing secrets/hard links in that directory or changing allowed file bytes. Byte-count limits are not proof of decoded browser-media memory bounds.
 
-## Journeys and invariants
+## Shared API and ownership
 
-A saved HTML document renders with readable local images/styles/fonts; typing unsaved changes continues to respect the existing saved-revision policy. Saving creates a new immutable load. Switching documents, moving a backing file or closing a window revokes the old load. Broken or denied resources do not compromise the main source page.
+Add Foundation/Darwin-only LocalResourceAccess, consumed by ExportService and the app. It owns descriptor acquisition/read/close; no Preview/Workspace/QuickLookUI or EditorCore dependency. Package/project declarations follow XcodeGen. New semantic interfaces:
 
-No content JavaScript, script bridge, automatic remote request, popup or download is introduced. Response-header Content Security Policy remains authoritative; meta-policy insertion stays defense in depth. No source text or FileCore state is changed by previewing. Security-scoped access follows actual I/O lifetime, not merely UI lifetime. No shared mutable 'current root' exists.
+- ResourceGrant is none, singleFile(FileLease), or directory(DirectoryLease). A lease owns an opened descriptor and identity; callers cannot close/extract the raw descriptor. A single-file grant cannot derive a parent-directory grant.
+- ResourceReadRequest contains a directory lease plus a normalized relative reference, trusted byte cap and cancellation token. A requested-file snapshot uses the single-file lease directly, not an inferred parent.
+- ResourceSnapshot contains immutable admitted bytes, opened-object identity, validated name and MIME hint. It never returns a URL for a later unguarded reopen.
+- ResourceReadError distinguishes denied/changedRoot/nonRegular/oversized/changedDuringRead/cancelled/unavailable/unsupportedEnforcement.
+- ContainedResourceReader submits blocking metadata/open/read work to a bounded I/O executor. async or nonisolated spelling alone is not proof of leaving MainActor under Swift 6.2 compiler settings.
 
-## Ownership and interfaces
+The app owns immutable HTMLPreviewLoadContext: random load ID, document ID/recovery lifetime, saved generation, source, resource grant and fixed policy. Mutable revocation/task/quota state lives in its owning registry, not inside a retargetable root object. Untitled or ungranted documents can render their main source with grant none; local subresources are denied without failing unrelated source content.
 
-Add `LocalResourceAccess` as a small SwiftPM target depending on Foundation/Darwin only, with tests. ExportService and the app consume it; it does not depend on Preview, ExportService, Workspace, windows or QuickLookUI.
+## Contained-read algorithm
 
-Semantic interfaces (new, not existing symbols):
+Acquire the intended directory's real scope before acquisition and keep it through actual I/O. Canonicalize a legitimate root spelling once, open it, fstat and pin its directory identity. Detect a changed root name before admitting a later read and fail/reload deliberately; do not silently substitute another directory. The pinned descriptor remains the authority, not the pathname recheck.
 
-- `ResourceRootLease`: immutable opened directory capability, root identity `(device,inode)`, canonical acquisition name and revocation state. Descriptor ownership is internal; callers cannot extract or close the descriptor.
-- `ResourceReadRequest`: root lease, normalized reference, trusted byte limit and cancellation token.
-- `ResourceSnapshot`: immutable bytes, actual opened-file identity and size, validated relative name and MIME hint. No mutable URL is returned for a caller to reopen.
-- `ResourceReadError`: denied path, changed root, unsupported safe-open mechanism, non-regular file, unavailable, changed-during-read, oversized, cancelled.
-- `ContainedResourceReader.read`: asynchronous at the application boundary, with blocking filesystem operations dispatched to a bounded I/O worker, never inferred to be off-main merely because the function is `async`.
+Parse URL components once. Strip query/fragment structurally before decoding path components. Reject malformed escapes, NUL, injected authority, unsupported absolute paths and traversal above root. Normalize safe dot segments once; do not double-decode `%252e` or normalize away distinct Unicode filenames. HTML root-relative references are rooted at this load's directory, not `/`. Explicitly test encoded separators and names containing percent, ampersand, quotes and non-ASCII characters. Caller URL policy remains separate from low-level filesystem admission.
 
-The app owns `HTMLPreviewLoadContext`: random load ID, document identity, saved generation, immutable source, root lease, policy and resource counters. An immutable context is installed into one handler and one WKWebView configuration. It cannot be retargeted.
+Preserve legitimate in-root symlinks using a canonical-target hint followed by strict root-relative constrained open. A canonical hint is NOT a read authorization. The security-bearing operation opens that relative path from the pinned directory using `O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOFOLLOW_ANY | O_RESOLVE_BENEATH`, with the actual shipping SDK's symbols. No absolute-path Foundation reopen, component-walk fallback lacking ancestor-rename protection, hardcoded flag numbers or silent omission of flags is allowed.
 
-## Safe-open algorithm
+Apple's inspected XNU `xnu-12377.1.9/bsd/sys/fcntl.h` publicly declares both constraints. That source fact does not prove an installed macOS 26 SDK/runtime implements the required race semantics. Run the probe below before integrating the reader. If enforcement is unsupported or inadequate, revise only this prerequisite; do not weaken callers to obtain a build.
 
-1. Acquire the authorized document-directory security scope, resolve its intended canonical directory, open a directory descriptor and verify its identity. Store this capability, not just its pathname. Acquisition and all metadata calls run off-main. When the original root name no longer identifies that root, fail closed or start a new explicitly authorized load; never silently substitute the replacement directory.
-2. Parse a resource reference once. Remove URL query/fragment before decoding the path. Reject invalid percent escapes, NUL, absolute/authority injection and traversal outside the root. Normalize safe `.`/internal `..` without changing Unicode filename spelling. Bound path length and component count. Do not decode `%252e` twice. Root-relative HTML references map to this load's root, never the filesystem root.
-3. Preserve the existing useful in-root symlink behavior: canonical resolution may identify an in-root target and derive its strict relative path, but that resolution is a hint, not permission to read. The security-bearing open is relative to the pinned root descriptor, with no-follow across the entire final relative path and beneath-root resolution. Do not reopen the canonical absolute path through Foundation.
-4. Use the public Darwin `openat` constrained-resolution flags supported by the shipping macOS 26 SDK/runtime. Apple's published XNU `fcntl.h` defines `O_NOFOLLOW_ANY` and `O_RESOLVE_BENEATH`. The initial implementation gate must compile against the supported SDK and actually demonstrate rejection of leaf/intermediate symlinks and ancestor/root replacement on the minimum supported OS. Do not hardcode undocumented numeric flags, silently omit a constraint, or substitute `realpath` plus `Data(contentsOf:)` on failure. Unsupported enforcement is an explicit release-blocking result, not a weaker fallback.
-5. On the opened descriptor, `fstat` must identify a regular file. Open nonblocking so a replaced FIFO/device cannot hang before that check. Reject directories, sockets and special files. Check size before allocation, then read in bounded chunks with overflow-safe counters and cancellation checks. Stop at the caller's limit plus one byte; a growing file cannot bypass the preflight size check. Never use an unbounded mapped read.
-6. Verify opened-file metadata before/after the snapshot and reject observed mutation. Read and hash the same descriptor's bytes. Close that descriptor exactly once on its owning worker. Cancellation must not close a descriptor from another thread while a read can reuse its integer. No bytes are delivered to WebKit or Export until admission and byte limits pass.
+The opened descriptor must identify a regular file. Nonblocking open prevents a substituted FIFO from hanging before this check. Check size before allocation and then perform overflow-checked bounded reads, stopping at cap+1 and checking cancellation between chunks. Handle EINTR/short reads explicitly. Use the same descriptor for metadata, bytes and hashing. Close exactly once on its owning worker; cancellation must not close a reused descriptor number from another thread.
 
-The boundary authorizes objects reachable under an approved root at constrained open, not the historical provenance of every byte. It cannot protect against the same user deliberately copying secrets into an authorized directory or modifying a permitted file. Hard links do not prove exclusive pathname ownership. Do not claim this is a sandbox against arbitrary same-user code. Tests must nevertheless prove that symlink/path replacement cannot redirect a request to an outside-root target. If the runtime's constrained lookup does not satisfy the ancestor-rename test, stop rather than claiming a path-prefix check repairs it.
+Check relevant metadata before/after reading and reject observed changes. This detects ordinary concurrent modification, not an atomic filesystem snapshot or cryptographic proof that an adversary never changed bytes between checks. The read boundary guarantees constrained object acquisition; the returned immutable Data then represents the bytes actually admitted. No bytes reach the consumer before admission succeeds.
+
+### RESOURCE-OPEN probe — first executable unit
+
+Compile the exact flag-based open on the shipping SDK and execute it on minimum supported macOS 26 and a current supported patch. In a real temporary tree, use barriers before constrained open and during reading to replace a leaf with an outside symlink, replace an intermediate directory, rename an ancestor, replace the root, create a FIFO, grow a file past the cap, and cancel. Include positive ordinary-file and safe in-root-symlink controls. Outside sentinel bytes must never be returned. Descriptors/scopes must return to baseline after failure. Record SDK/OS, syscall/error and sentinel checks, not only test names. Test hooks sit around the real syscall; injected fake reads are not containment proof. This architecture has not executed that probe.
 
 ## Immutable WebKit lifecycle
 
-Change the representable to a stable NSView container that owns a replaceable child WKWebView. Every accepted saved revision receives a fresh configuration, immutable handler and unguessable authority such as `macdown-preview://r-<uuid>/`. Using the authority rather than a path prefix preserves `/image.png` and CSS-relative resolution. Every navigation and scheme request must match that exact authority, scheme and permitted userinfo/port policy. Do not treat 'any preview-scheme URL' as authorized.
+Use a stable NSView host with a replaceable child WKWebView. Each accepted saved revision creates a fresh configuration and handler bound to one context. The unguessable authority is `macdown-preview://r-<uuid>/`, not a path prefix that breaks root-relative CSS. Scheme, exact authority, port/userinfo and navigation policy are checked for every task; any preview-scheme URL is not automatically authorized.
 
-The coordinator's identity is `(documentID, savedGeneration, rootIdentity, loadID)`, not generation alone. Bind returned `WKNavigation` identity to that tuple. Finish/failure callbacks from an old view/navigation cannot complete or fail a newer reload gate. Save As with unchanged generation but a changed resource root must reload. Dirty-state cancellation must rearm a cancelled pending generation so the next clean update can load it.
+A render identity combines document/recovery lifetime, saved generation, resource-root identity and load ID. Bind returned WKNavigation identity to that tuple and view identity. Old finish/failure callbacks cannot complete or rearm another load. Save As with identical text generation but different root reloads. Cancelling a debounced dirty generation rearms the gate for the next permitted clean request.
 
-At supersession, revoke the old handler before stopping/removing its web view. At most the current and one transitioning view may be retained. Old root leases remain alive only for admitted I/O that is draining; no new reads may start after revocation. Do not keep a process-lifetime dictionary of every past preview root. `dispose` is idempotent and balances each successful security-scope acquisition exactly once, after its descriptor work drains.
+On supersession revoke old admission first, cancel its task records, stop/remove the old view, and replace it. Keep at most current and one transitioning view; do not retain every past revision. In-flight worker leases may drain independently after their WebKit references are released. No new reads start for retired contexts. Scope/descriptor ownership ends only after admitted work actually drains, never merely because the UI stopped waiting. Disposal is idempotent.
 
-## Scheme-task state machine
+## Task and quota state machines
 
-On MainActor, keep task records keyed by task identity and a separate unique operation ID: `admitted -> reading -> delivering -> finished/failed`, with `stopped` reachable from every nonterminal state. Store WebKit objects only in this registry. Worker code receives Sendable inputs and returns a snapshot/error, never a WKURLSchemeTask.
+MainActor records WebKit task identity plus a unique operation token: admitted -> queued -> reading -> delivering -> finished/failed; stopped is terminal from every nonterminal state. Workers receive only Sendable inputs and return bytes/errors, never WKURLSchemeTask. Before EVERY callback verify the record/token/context is live, including after reentrant didReceive callbacks. stop removes/revokes first and performs no failure/finish callback on an already stopped task. One terminal path releases all reservations exactly once.
 
-`stop` first marks/removes the task and cancels its operation. It does not call failure or finish on a stopped task. On worker return, verify operation ID, context ID and live state. Check liveness before each response/data/terminal callback, including synchronous reentrancy. There must be no WebKit callback after stop/disposal and no double terminal callback. Remove state on every terminal path. Navigation-policy completion handlers also complete exactly once.
+Choose one bounded I/O admission service for this reader: initially four actual active reads app-wide and two per preview context; at most 32 queued requests per context, with a bounded global queue. Fair admission prevents one window from starving another. A cancelled blocking read retains its worker slot until completion; never spawn unlimited replacement workers behind a timeout.
 
-Retain correct MIME metadata and response CSP for every payload. UTF-8 HTML may receive the existing meta hardening; non-UTF-8 HTML/SVG/XML remain governed by the response header. Do not mislabel all resources as text/html or silently decode arbitrary bytes lossily.
+Trusted preview policy initially allows 16 MiB per resource, 64 MiB admitted resource payload and 512 requests per load. Those are proposed defensive values requiring Release calibration, not new measured passes. Charge request count at admission, including failed/repeated requests. Reserve the maximum permitted read bytes BEFORE enqueueing/awaiting; refund unused bytes or failed reservations on terminal completion. Successful payload bytes remain charged for the load, so cache eviction cannot replenish an unlimited fetch budget. Separate outstanding-buffer reservation from cumulative-delivery accounting and check additions for overflow. Four simultaneous reads cannot each observe the same unreserved remaining 64 MiB.
 
-## Budgets, cancellation and errors
+Bound main-source hardening/encoding before WebKit load under an explicit rich-preview source policy; oversized HTML stays available in source mode with a localized explanation. Do not block file opening or silently truncate authored bytes. Measure WebKit decoded-resource behavior separately, including compressed image/media fixtures; input-byte caps do not prove renderer RSS or a hard total execution deadline.
 
-Reader limits are supplied by trusted destination policy; #118 retains its export-specific budget rather than inheriting a smaller Preview limit accidentally. Establish one Preview resource policy with initial proposed limits of 16 MiB per resource, 64 MiB admitted payload per load and 512 resource requests. These are design ceilings to validate, not measured passes. Count repeated/failed requests as well as unique bytes so request storms cannot bypass the request cap. Bound queued reads and concurrently draining retired loads. Unrelated windows may make progress concurrently; no global lock surrounds an entire preview operation.
+## Response semantics and compatibility
 
-Cancellation stops queued work and discards late results. A synchronous filesystem syscall is not promised to obey a hard wall-clock deadline; never block the main actor waiting for it. A bounded I/O admission service prevents cancellation storms from spawning unlimited workers. Report admission exhaustion/slow unavailable resources as local failures, not whole-page failure or unbounded retry.
+Build response headers explicitly: correct Content-Type from admitted main/source or validated resource type, charset only when known, plus authoritative CSP and other existing hardening headers. The current generic response path does not supply MIME metadata, so this is an explicit implementation requirement rather than an assumption that it already works. HTML/CSS/fonts/SVG/XML/media must not all become text/html. UTF-8 HTML receives meta hardening; non-UTF-8 payloads retain bytes and response-header protection.
 
-New user-visible load/resource diagnostics use the normal String Catalog pipeline. Existing source/rendered controls retain accessibility labels. This issue adds no export or editor behavior other than the shared reader contract.
+Main source failure produces a local load diagnostic/retry; denied/broken subresources do not erase the main page. Preserve saved-only reload semantics, readable code and source/rendered controls. New user-visible strings use correct catalogs/accessibility labels. Keep allowed fragment and local-document navigation compatible; fresh views must restore an explicitly supported view position without letting an old navigation authorize new paths.
 
-## Tests and evidence
+## Tests and implementation sequence
 
-Add `ContainedResourceReaderTests` with real temporary directories and synchronization barriers between resolution, open, metadata inspection and read. Test outside leaf symlink, intermediate directory replacement, parent-directory rename, root replacement, in-root symlink, root path aliases, Unicode/percent names, malformed encoding, traversal, special files, growth past budget, cancellation and repeated descriptor cleanup. Use recognizable outside-root sentinel bytes and assert those bytes never reach the snapshot or response. Stress races supplement deterministic barriers; a stress run alone is not proof.
+A. RESOURCE-OPEN probe and LocalResourceAccess value/reader/limit tests. No caller refactor before a real containment pass.
+B. Immutable contexts, capability variants and replaceable host; identity/reload/scope-lifetime tests.
+C. Async registry, quotas and MIME delivery; deterministically race concurrent reservations, cancellation before queue/start/read/delivery, reentrant stop, duplicate completion, disposal, no-root and two-window cases.
+D. Real WebKit hostile-content and Release UI evidence via #88. #118 may consume tested A without waiting for unrelated preview UI evidence. E23 cannot create a second reader or infer a directory grant.
 
-Add app-level handler tests with controllable reader completions: late A after B, stop before read, stop during delivery, failure then stop, duplicate finish, disposal and two windows. Assert callbacks and balanced resource leases, not only final screenshots. Update reload tests for same generation in different documents, same-document Save As root change and old WKNavigation completion.
+Retain the complete #121 corpus: remote HTTP/HTTPS images/styles/fonts/media/CSS URLs; file/data/javascript top-level navigation; frames/object/embed/base/form/meta refresh; popups/downloads; fake head tags in comments/rawtext/attributes; non-UTF-8 HTML/SVG/XML; rapid save/switch/close; scope and worker cleanup. Observe actual network denial independently of CSP string contents. Run serial format/lint, affected package/app suites, full regression and Release app build. Native GUI evidence is still required.
 
-Run real WebKit integration for header CSP, HTML/CSS/SVG/XML, remote URLs, fake heads in comments/rawtext/attributes, meta refresh, base/form/frame/embed, top-level file/data/javascript navigation, popup/download and relative resources. Observe network denial independently; merely setting a CSP string is not execution evidence. Final Release GUI evidence must cover saved reload, rapid switching, teardown and hostile files.
+## Review disposition
 
-## Implementation sequence and boundaries
+Second review fixed absent/file/directory capability confusion, immutable-state versus mutable-revocation ownership, quota oversubscription across awaits, callback reentrancy, missing MIME assumptions, cancelled-worker slot leakage and overclaims about snapshot/decoded-memory guarantees. SDK/kernel and live WebKit behavior are named execution gates, not waived or asserted. #121 closes only with its full acceptance evidence in #115.
 
-A. Implement and prove the shared descriptor reader plus minimum-OS constrained-open test. Allowed: the new target/tests and package product declarations. Stop on unsupported kernel enforcement or outside-root sentinel delivery.
-
-B. Introduce immutable load contexts and the replaceable WebKit host. Allowed: HTML preview host/handler and its policy/reload tests. Preserve saved-revision semantics. Stop on required changes to FileCore save/recovery ownership.
-
-C. Add asynchronous task delivery, limits and teardown tests. Stop on callbacks after stop, unbalanced scopes or unbounded retired contexts.
-
-D. Execute WebKit/security and Release GUI evidence. #118 may consume the reader after A; it must not create a parallel implementation. E23 Quick Look may consume only capabilities actually granted by its sandbox, never infer access to a parent directory.
-
-Use serial formatting/lint/build/test commands from `AGENTS.md`; run `swift test --no-parallel --filter ContainedResourceReaderTests`, the affected Preview/app suites, the complete package suite and a Release app build. Generate Xcode projects from `project.yml`; do not hand-edit generated projects. Run actual GUI tests through #88's release harness when available.
-
-## Architecture self-review and completion
-
-Review caught and addressed: tokenized paths breaking root-relative CSS (authority token instead); a unique URL alone not isolating an old page (immutable handler/web view); generation collisions across documents (full identity tuple); old failure callbacks rearming new loads (WKNavigation binding); task cancellation followed by illegal callbacks (terminal registry); early security-scope release (I/O-owned lease); size-check races (bounded descriptor reads); safe in-root symlinks being accidentally rejected as a regression (canonical hint plus constrained final open); and assuming newest kernel headers prove minimum-OS behavior (mandatory runtime verification).
-
-Architecture review found no remaining known contradiction within this design. SDK/kernel enforcement, WebKit execution and performance remain implementation verification gates, not asserted facts. #121 closes only when all issue criteria pass and #115 receives exact evidence. Do not close it because this document was committed.
-
-## Primary references
-
-- Apple WebKit `WKURLSchemeHandler` and `webView(_:stop:)` documentation: https://developer.apple.com/documentation/webkit/wkurlschemehandler
-- Apple XNU public flags, source inspected 2026-09-24: https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.1.9/bsd/sys/fcntl.h
-- Apple XNU lookup enforcement: https://github.com/apple-oss-distributions/xnu/blob/main/bsd/vfs/vfs_lookup.c
-- Repository code links use the baseline SHA above; upstream source is supporting design evidence, not proof of the installed SDK or runtime.
+Primary reference inspected: https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.1.9/bsd/sys/fcntl.h . Apple WKURLSchemeHandler lifecycle documentation remains the API authority; use the installed SDK for exact signatures.
