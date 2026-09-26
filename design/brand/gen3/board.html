@@ -1,0 +1,454 @@
+<title>MostlyText M+T Marks</title>
+<style>
+:root{--paper:#F4F5F8;--surface:#FFFFFF;--ink:#11141A;--muted:#5A6270;--line:#DCE0E7;--accent:#2F5FE6;
+ --good:#1D7A45;--good-bg:#E3F3E9;--ok:#8A5A00;--ok-bg:#FBF0D9;--bad:#B3322A;--bad-bg:#FBE5E3;--fin:#E8EEFF;
+ --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+ --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--paper:#0E1014;--surface:#171A20;--ink:#E7EAF0;--muted:#9AA3B1;--line:#2A2F38;--accent:#8AA9FF;
+ --good:#6FD39A;--good-bg:#15301F;--ok:#E8BC62;--ok-bg:#33280F;--bad:#FF8C80;--bad-bg:#3A1A17;--fin:#1B2238}}
+:root[data-theme="dark"]{color-scheme:dark;--paper:#0E1014;--surface:#171A20;--ink:#E7EAF0;--muted:#9AA3B1;--line:#2A2F38;--accent:#8AA9FF;
+ --good:#6FD39A;--good-bg:#15301F;--ok:#E8BC62;--ok-bg:#33280F;--bad:#FF8C80;--bad-bg:#3A1A17;--fin:#1B2238}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans);padding-inline:clamp(16px,4vw,48px);padding-block:32px 64px}
+main{max-width:1180px;margin:0 auto;display:grid;gap:40px}
+h1{font-size:30px;line-height:1.15;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h2{font-size:20px;margin:0;letter-spacing:-.01em}h3{font-size:16px;margin:0 0 6px}
+.eyebrow{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.intro{display:grid;gap:10px;max-width:70ch}.intro p{margin:0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,540px),1fr));gap:20px}
+.concept{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:14px;align-content:start}
+.concept.fin{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.concept header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.verdict{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 9px;white-space:nowrap}
+.verdict.is-fin{color:var(--accent);border-color:var(--accent);background:var(--fin)}
+.mech{margin:0;color:var(--muted)}
+figure{margin:0;display:grid;gap:6px;justify-items:start;align-content:start}
+figcaption{font:11px/1.3 var(--mono);color:var(--muted)}
+.primary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile svg{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;max-width:100%;display:block;border-radius:8px}
+.tile.pos .mk{background:#fff;box-shadow:0 0 0 1px #0000001a inset;padding:14%}
+.tile.neg .mk{background:#000;padding:14%}
+.tile.icons .ic-lg{padding:0}
+.scales{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 18px;padding-top:12px;border-top:1px solid var(--line)}
+.scales figure>svg,.scales figure>canvas,.scales figure>.tb{display:inline-block;vertical-align:middle;margin-right:6px}
+.scales figure{display:block}.scales figcaption{margin-top:6px}
+.ic-64{width:64px;height:64px}
+.tb{display:inline-flex!important;align-items:center;gap:7px;height:30px;padding:0 10px;border-radius:8px;background:#ECEEF2;color:#1B1E24;font-size:13px;margin-bottom:6px}
+.tb.dk{background:#2A2D33;color:#E8EAEE}.mk20{width:20px;height:20px;color:#1B1E24}
+.px canvas{width:64px;height:64px;image-rendering:pixelated;border:1px solid var(--line);border-radius:4px}
+.actual svg{background:#fff;border-radius:3px}.actual .a32{width:32px;height:32px}.actual .a16{width:16px;height:16px}
+.actual svg.a32:first-child,.actual svg.a16:nth-child(2){padding:0;box-shadow:0 0 0 4px #fff}
+.lockup{display:flex;align-items:center;gap:9px;padding:10px 12px;background:#fff;color:#0B0D11;border-radius:10px;box-shadow:0 0 0 1px #0000001a inset;width:max-content;max-width:100%}
+.lockup span{font:700 24px/1 var(--sans);letter-spacing:-.025em}.mk28{width:28px;height:28px}
+.note{margin:0;max-width:70ch}
+.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px}
+th,td{padding:9px 14px;border-bottom:1px solid var(--line);text-align:left}
+thead th{font:600 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+tbody th{font-weight:500}tbody tr:last-child>*{border-bottom:0}
+.rt{display:inline-block;font:600 12px/1 var(--sans);padding:4px 8px;border-radius:6px}
+.rt.g{color:var(--good);background:var(--good-bg)}.rt.o{color:var(--ok);background:var(--ok-bg)}.rt.w{color:var(--bad);background:var(--bad-bg)}
+.final{display:grid;gap:20px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:20px}
+.fcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:14px;align-content:start}
+.fhead{display:flex;gap:14px;align-items:center}.fhead svg{width:72px;height:72px;flex:none}
+.fcard ul{margin:0;padding-left:18px;display:grid;gap:4px}.fcard p{margin:0}
+.diff{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:12px}
+.diff ol{margin:0;padding-left:20px;display:grid;gap:4px}
+</style>
+<main>
+ <div class="intro">
+  <span class="eyebrow">MostlyText identity · generation 3 · 25 Sep 2026</span>
+  <h1>Giving the MT ligature more energy</h1>
+  <p>Owner review of generation 2: Crown looks like an IUD, and Ligature is too plain. Crown, Arch and Gate all hang arms either side of a central stem, which is the outline of an IUD, so that whole family is closed. This round keeps Ligature’s shared stem and tries four different ways to give it energy. Each one has to work in solid black first. Colour is then a two-tone accent on the T, never a way to rescue weak geometry.</p>
+ </div>
+ <div class="grid"><section class="concept fin" id="caret">
+ <header><h2>Caret</h2><span class="verdict is-fin">Finalist</span></header>
+ <p class="mech">Meaning: the shared stem is a text cursor (an I-beam), taller than the M</p>
+ <div class="primary"><figure class="tile pos"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-caret-1"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc-caret-1)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></svg><figcaption>Black on white</figcaption></figure>
+  <figure class="tile neg"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><defs><clipPath id="lc-caret-2"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc-caret-2)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></svg><figcaption>White on black</figcaption></figure>
+  <figure class="tile icons"><svg class="ic-lg" viewBox="0 0 100 100" role="img" aria-label="Caret light app icon">
+  <defs><linearGradient id="bg-light-caret-ic-lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-caret-ic-lg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-caret-ic-lg" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-caret-ic-lg)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-caret-ic-lg)"><defs><clipPath id="lc-caret-3"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="url(#m-light-caret-ic-lg)" stroke-width="16" clip-path="url(#lc-caret-3)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-caret-ic-lg)" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></g></svg><figcaption>macOS icon, colour</figcaption></figure></div>
+ <div class="scales">
+  <figure><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Caret light app icon">
+  <defs><linearGradient id="bg-light-caret-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-caret-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-caret-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-caret-ic-64)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-caret-ic-64)"><defs><clipPath id="lc-caret-4"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="url(#m-light-caret-ic-64)" stroke-width="16" clip-path="url(#lc-caret-4)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-caret-ic-64)" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Caret dark app icon">
+  <defs><linearGradient id="bg-dark-caret-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272F"/><stop offset="1" stop-color="#0D0F13"/></linearGradient>
+  <linearGradient id="m-dark-caret-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#F4F6FA"/></linearGradient>
+  <linearGradient id="fg-dark-caret-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#7EA4FF"/><stop offset="1" stop-color="#9A8CFF"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-dark-caret-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-dark-caret-ic-64)"><defs><clipPath id="lc-caret-5"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="url(#m-dark-caret-ic-64)" stroke-width="16" clip-path="url(#lc-caret-5)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-dark-caret-ic-64)" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Caret tint app icon">
+  <defs><linearGradient id="bg-tint-caret-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E6572"/><stop offset="1" stop-color="#3A3F48"/></linearGradient>
+  <linearGradient id="m-tint-caret-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#F2F4F8"/></linearGradient>
+  <linearGradient id="fg-tint-caret-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#F2F4F8"/><stop offset="1" stop-color="#DADFE7"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-tint-caret-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-tint-caret-ic-64)"><defs><clipPath id="lc-caret-6"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="url(#m-tint-caret-ic-64)" stroke-width="16" clip-path="url(#lc-caret-6)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-tint-caret-ic-64)" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></g></svg><figcaption>Dock 64 · light / dark / tinted</figcaption></figure>
+  <figure><span class="tb"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-caret-7"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc-caret-7)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></svg><span>Untitled.md</span></span><span class="tb dk"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><defs><clipPath id="lc-caret-8"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc-caret-8)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></svg><span>Untitled.md</span></span><figcaption>Toolbar / sidebar 20</figcaption></figure>
+  <figure class="px"><canvas data-k="caret" data-s="32" data-fg="#000" data-bg="#fff" width="32" height="32"></canvas><canvas data-k="caret" data-s="16" data-fg="#000" data-bg="#fff" width="16" height="16"></canvas><canvas data-k="caret" data-s="16" data-fg="#fff" data-bg="#000" width="16" height="16"></canvas><figcaption>32 / 16 / 16 inverted, true pixels, enlarged</figcaption></figure>
+  <figure class="actual"><svg class="a32" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-caret-9"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc-caret-9)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></svg><svg class="a16" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-caret-10"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc-caret-10)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></svg><svg class="a32" viewBox="0 0 100 100" role="img" aria-label="Caret light app icon">
+  <defs><linearGradient id="bg-light-caret-a32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-caret-a32" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-caret-a32" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-caret-a32)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-caret-a32)"><defs><clipPath id="lc-caret-11"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="url(#m-light-caret-a32)" stroke-width="16" clip-path="url(#lc-caret-11)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-caret-a32)" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></g></svg><svg class="a16" viewBox="0 0 100 100" role="img" aria-label="Caret light app icon">
+  <defs><linearGradient id="bg-light-caret-a16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-caret-a16" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-caret-a16" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-caret-a16)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-caret-a16)"><defs><clipPath id="lc-caret-12"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="url(#m-light-caret-a16)" stroke-width="16" clip-path="url(#lc-caret-12)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-caret-a16)" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></g></svg><figcaption>Actual size: mark 32 / 16, icon 32 / 16</figcaption></figure>
+ </div>
+ <div class="lockup"><svg class="mk28" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-caret-13"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="currentColor" stroke-width="16" clip-path="url(#lc-caret-13)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></svg><span>MostlyText</span></div>
+ <p class="note">The T is also the text cursor you type with, so the mark says “editor” without a tagline. The foot serif is the one gesture no other MT monogram has, and it survives at 16 px. In two colours the cursor is the part that lights up. The risk is that the foot pulls the T towards an I, giving “MI”. The weight also sits on the right, so the mark needs optical centring.</p>
+</section><section class="concept fin" id="slant">
+ <header><h2>Slant</h2><span class="verdict is-fin">Finalist</span></header>
+ <p class="mech">Motion: the ligature leans forward like handwriting, and the crossbar ends in an angled cut</p>
+ <div class="primary"><figure class="tile pos"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-slant-14"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="currentColor" stroke-width="17" clip-path="url(#lc-slant-14)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><figcaption>Black on white</figcaption></figure>
+  <figure class="tile neg"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><defs><clipPath id="lc-slant-15"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="currentColor" stroke-width="17" clip-path="url(#lc-slant-15)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><figcaption>White on black</figcaption></figure>
+  <figure class="tile icons"><svg class="ic-lg" viewBox="0 0 100 100" role="img" aria-label="Slant light app icon">
+  <defs><linearGradient id="bg-light-slant-ic-lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-slant-ic-lg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-slant-ic-lg" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-slant-ic-lg)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-slant-ic-lg)"><defs><clipPath id="lc-slant-16"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="url(#m-light-slant-ic-lg)" stroke-width="17" clip-path="url(#lc-slant-16)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-slant-ic-lg)" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><figcaption>macOS icon, colour</figcaption></figure></div>
+ <div class="scales">
+  <figure><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Slant light app icon">
+  <defs><linearGradient id="bg-light-slant-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-slant-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-slant-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-slant-ic-64)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-slant-ic-64)"><defs><clipPath id="lc-slant-17"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="url(#m-light-slant-ic-64)" stroke-width="17" clip-path="url(#lc-slant-17)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-slant-ic-64)" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Slant dark app icon">
+  <defs><linearGradient id="bg-dark-slant-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272F"/><stop offset="1" stop-color="#0D0F13"/></linearGradient>
+  <linearGradient id="m-dark-slant-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#F4F6FA"/></linearGradient>
+  <linearGradient id="fg-dark-slant-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#7EA4FF"/><stop offset="1" stop-color="#9A8CFF"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-dark-slant-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-dark-slant-ic-64)"><defs><clipPath id="lc-slant-18"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="url(#m-dark-slant-ic-64)" stroke-width="17" clip-path="url(#lc-slant-18)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-dark-slant-ic-64)" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Slant tint app icon">
+  <defs><linearGradient id="bg-tint-slant-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E6572"/><stop offset="1" stop-color="#3A3F48"/></linearGradient>
+  <linearGradient id="m-tint-slant-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#F2F4F8"/></linearGradient>
+  <linearGradient id="fg-tint-slant-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#F2F4F8"/><stop offset="1" stop-color="#DADFE7"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-tint-slant-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-tint-slant-ic-64)"><defs><clipPath id="lc-slant-19"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="url(#m-tint-slant-ic-64)" stroke-width="17" clip-path="url(#lc-slant-19)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-tint-slant-ic-64)" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><figcaption>Dock 64 · light / dark / tinted</figcaption></figure>
+  <figure><span class="tb"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-slant-20"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="currentColor" stroke-width="17" clip-path="url(#lc-slant-20)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><span>Untitled.md</span></span><span class="tb dk"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><defs><clipPath id="lc-slant-21"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="currentColor" stroke-width="17" clip-path="url(#lc-slant-21)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><span>Untitled.md</span></span><figcaption>Toolbar / sidebar 20</figcaption></figure>
+  <figure class="px"><canvas data-k="slant" data-s="32" data-fg="#000" data-bg="#fff" width="32" height="32"></canvas><canvas data-k="slant" data-s="16" data-fg="#000" data-bg="#fff" width="16" height="16"></canvas><canvas data-k="slant" data-s="16" data-fg="#fff" data-bg="#000" width="16" height="16"></canvas><figcaption>32 / 16 / 16 inverted, true pixels, enlarged</figcaption></figure>
+  <figure class="actual"><svg class="a32" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-slant-22"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="currentColor" stroke-width="17" clip-path="url(#lc-slant-22)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><svg class="a16" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-slant-23"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="currentColor" stroke-width="17" clip-path="url(#lc-slant-23)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><svg class="a32" viewBox="0 0 100 100" role="img" aria-label="Slant light app icon">
+  <defs><linearGradient id="bg-light-slant-a32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-slant-a32" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-slant-a32" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-slant-a32)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-slant-a32)"><defs><clipPath id="lc-slant-24"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="url(#m-light-slant-a32)" stroke-width="17" clip-path="url(#lc-slant-24)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-slant-a32)" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><svg class="a16" viewBox="0 0 100 100" role="img" aria-label="Slant light app icon">
+  <defs><linearGradient id="bg-light-slant-a16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-slant-a16" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-slant-a16" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-slant-a16)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-slant-a16)"><defs><clipPath id="lc-slant-25"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="url(#m-light-slant-a16)" stroke-width="17" clip-path="url(#lc-slant-25)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-slant-a16)" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><figcaption>Actual size: mark 32 / 16, icon 32 / 16</figcaption></figure>
+ </div>
+ <div class="lockup"><svg class="mk28" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-slant-26"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="currentColor" stroke-width="17" clip-path="url(#lc-slant-26)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><span>MostlyText</span></div>
+ <p class="note">The most energetic: heavy strokes, a forward lean like handwriting, and an angled cut at the end of the crossbar. It is very solid at 16 px. The energy comes from speed, which is less calm than most macOS icons. Italic M monograms are close to sports and car branding (BMW’s M division is the obvious neighbour).</p>
+</section><section class="concept" id="soft">
+ <header><h2>Soft</h2><span class="verdict ">Reserve</span></header>
+ <p class="mech">Personality: one rounded stroke with 01 Fluid’s warmth, carried by the letters themselves</p>
+ <div class="primary"><figure class="tile pos"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="currentColor" d="M19 83V24L42 58L65 24"/><path stroke="currentColor" d="M65 24V83M42 22H88"/></g></svg><figcaption>Black on white</figcaption></figure>
+  <figure class="tile neg"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="currentColor" d="M19 83V24L42 58L65 24"/><path stroke="currentColor" d="M65 24V83M42 22H88"/></g></svg><figcaption>White on black</figcaption></figure>
+  <figure class="tile icons"><svg class="ic-lg" viewBox="0 0 100 100" role="img" aria-label="Soft light app icon">
+  <defs><linearGradient id="bg-light-soft-ic-lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-soft-ic-lg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-soft-ic-lg" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-soft-ic-lg)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-soft-ic-lg)"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="url(#m-light-soft-ic-lg)" d="M19 83V24L42 58L65 24"/><path stroke="url(#fg-light-soft-ic-lg)" d="M65 24V83M42 22H88"/></g></g></svg><figcaption>macOS icon, colour</figcaption></figure></div>
+ <div class="scales">
+  <figure><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Soft light app icon">
+  <defs><linearGradient id="bg-light-soft-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-soft-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-soft-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-soft-ic-64)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-soft-ic-64)"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="url(#m-light-soft-ic-64)" d="M19 83V24L42 58L65 24"/><path stroke="url(#fg-light-soft-ic-64)" d="M65 24V83M42 22H88"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Soft dark app icon">
+  <defs><linearGradient id="bg-dark-soft-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272F"/><stop offset="1" stop-color="#0D0F13"/></linearGradient>
+  <linearGradient id="m-dark-soft-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#F4F6FA"/></linearGradient>
+  <linearGradient id="fg-dark-soft-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#7EA4FF"/><stop offset="1" stop-color="#9A8CFF"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-dark-soft-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-dark-soft-ic-64)"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="url(#m-dark-soft-ic-64)" d="M19 83V24L42 58L65 24"/><path stroke="url(#fg-dark-soft-ic-64)" d="M65 24V83M42 22H88"/></g></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Soft tint app icon">
+  <defs><linearGradient id="bg-tint-soft-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E6572"/><stop offset="1" stop-color="#3A3F48"/></linearGradient>
+  <linearGradient id="m-tint-soft-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#F2F4F8"/></linearGradient>
+  <linearGradient id="fg-tint-soft-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#F2F4F8"/><stop offset="1" stop-color="#DADFE7"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-tint-soft-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-tint-soft-ic-64)"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="url(#m-tint-soft-ic-64)" d="M19 83V24L42 58L65 24"/><path stroke="url(#fg-tint-soft-ic-64)" d="M65 24V83M42 22H88"/></g></g></svg><figcaption>Dock 64 · light / dark / tinted</figcaption></figure>
+  <figure><span class="tb"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="currentColor" d="M19 83V24L42 58L65 24"/><path stroke="currentColor" d="M65 24V83M42 22H88"/></g></svg><span>Untitled.md</span></span><span class="tb dk"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="currentColor" d="M19 83V24L42 58L65 24"/><path stroke="currentColor" d="M65 24V83M42 22H88"/></g></svg><span>Untitled.md</span></span><figcaption>Toolbar / sidebar 20</figcaption></figure>
+  <figure class="px"><canvas data-k="soft" data-s="32" data-fg="#000" data-bg="#fff" width="32" height="32"></canvas><canvas data-k="soft" data-s="16" data-fg="#000" data-bg="#fff" width="16" height="16"></canvas><canvas data-k="soft" data-s="16" data-fg="#fff" data-bg="#000" width="16" height="16"></canvas><figcaption>32 / 16 / 16 inverted, true pixels, enlarged</figcaption></figure>
+  <figure class="actual"><svg class="a32" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="currentColor" d="M19 83V24L42 58L65 24"/><path stroke="currentColor" d="M65 24V83M42 22H88"/></g></svg><svg class="a16" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="currentColor" d="M19 83V24L42 58L65 24"/><path stroke="currentColor" d="M65 24V83M42 22H88"/></g></svg><svg class="a32" viewBox="0 0 100 100" role="img" aria-label="Soft light app icon">
+  <defs><linearGradient id="bg-light-soft-a32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-soft-a32" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-soft-a32" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-soft-a32)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-soft-a32)"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="url(#m-light-soft-a32)" d="M19 83V24L42 58L65 24"/><path stroke="url(#fg-light-soft-a32)" d="M65 24V83M42 22H88"/></g></g></svg><svg class="a16" viewBox="0 0 100 100" role="img" aria-label="Soft light app icon">
+  <defs><linearGradient id="bg-light-soft-a16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-soft-a16" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-soft-a16" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-soft-a16)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-soft-a16)"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="url(#m-light-soft-a16)" d="M19 83V24L42 58L65 24"/><path stroke="url(#fg-light-soft-a16)" d="M65 24V83M42 22H88"/></g></g></svg><figcaption>Actual size: mark 32 / 16, icon 32 / 16</figcaption></figure>
+ </div>
+ <div class="lockup"><svg class="mk28" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><g fill="none" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="currentColor" d="M19 83V24L42 58L65 24"/><path stroke="currentColor" d="M65 24V83M42 22H88"/></g></svg><span>MostlyText</span></div>
+ <p class="note">Friendly and approachable, and the closest to 01 Fluid in personality. It is warm rather than punchy. The round ends blur together at 16 px, and rounded monoline letters are a common look for apps and SaaS products.</p>
+</section><section class="concept" id="contrast">
+ <header><h2>Contrast</h2><span class="verdict ">Dropped</span></header>
+ <p class="mech">Typographic contrast: thick stems and hairline diagonals, like a display serif</p>
+ <div class="primary"><figure class="tile pos"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-contrast-40"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="currentColor" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-40)" d="M18 8L43 68L68 8"/>
+      <path fill="currentColor" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></svg><figcaption>Black on white</figcaption></figure>
+  <figure class="tile neg"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><defs><clipPath id="lc-contrast-41"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="currentColor" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-41)" d="M18 8L43 68L68 8"/>
+      <path fill="currentColor" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></svg><figcaption>White on black</figcaption></figure>
+  <figure class="tile icons"><svg class="ic-lg" viewBox="0 0 100 100" role="img" aria-label="Contrast light app icon">
+  <defs><linearGradient id="bg-light-contrast-ic-lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-contrast-ic-lg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-contrast-ic-lg" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-contrast-ic-lg)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-contrast-ic-lg)"><defs><clipPath id="lc-contrast-42"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="url(#m-light-contrast-ic-lg)" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="url(#m-light-contrast-ic-lg)" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-42)" d="M18 8L43 68L68 8"/>
+      <path fill="url(#fg-light-contrast-ic-lg)" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></g></svg><figcaption>macOS icon, colour</figcaption></figure></div>
+ <div class="scales">
+  <figure><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Contrast light app icon">
+  <defs><linearGradient id="bg-light-contrast-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-contrast-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-contrast-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-contrast-ic-64)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-contrast-ic-64)"><defs><clipPath id="lc-contrast-43"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="url(#m-light-contrast-ic-64)" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="url(#m-light-contrast-ic-64)" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-43)" d="M18 8L43 68L68 8"/>
+      <path fill="url(#fg-light-contrast-ic-64)" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Contrast dark app icon">
+  <defs><linearGradient id="bg-dark-contrast-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23272F"/><stop offset="1" stop-color="#0D0F13"/></linearGradient>
+  <linearGradient id="m-dark-contrast-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#F4F6FA"/></linearGradient>
+  <linearGradient id="fg-dark-contrast-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#7EA4FF"/><stop offset="1" stop-color="#9A8CFF"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-dark-contrast-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-dark-contrast-ic-64)"><defs><clipPath id="lc-contrast-44"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="url(#m-dark-contrast-ic-64)" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="url(#m-dark-contrast-ic-64)" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-44)" d="M18 8L43 68L68 8"/>
+      <path fill="url(#fg-dark-contrast-ic-64)" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></g></svg><svg class="ic-64" viewBox="0 0 100 100" role="img" aria-label="Contrast tint app icon">
+  <defs><linearGradient id="bg-tint-contrast-ic-64" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E6572"/><stop offset="1" stop-color="#3A3F48"/></linearGradient>
+  <linearGradient id="m-tint-contrast-ic-64" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#F2F4F8"/></linearGradient>
+  <linearGradient id="fg-tint-contrast-ic-64" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#F2F4F8"/><stop offset="1" stop-color="#DADFE7"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-tint-contrast-ic-64)"/>
+  
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-tint-contrast-ic-64)"><defs><clipPath id="lc-contrast-45"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="url(#m-tint-contrast-ic-64)" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="url(#m-tint-contrast-ic-64)" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-45)" d="M18 8L43 68L68 8"/>
+      <path fill="url(#fg-tint-contrast-ic-64)" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></g></svg><figcaption>Dock 64 · light / dark / tinted</figcaption></figure>
+  <figure><span class="tb"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-contrast-46"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="currentColor" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-46)" d="M18 8L43 68L68 8"/>
+      <path fill="currentColor" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></svg><span>Untitled.md</span></span><span class="tb dk"><svg class="mk20" viewBox="0 0 100 100" aria-hidden="true" style="color:#fff"><defs><clipPath id="lc-contrast-47"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="currentColor" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-47)" d="M18 8L43 68L68 8"/>
+      <path fill="currentColor" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></svg><span>Untitled.md</span></span><figcaption>Toolbar / sidebar 20</figcaption></figure>
+  <figure class="px"><canvas data-k="contrast" data-s="32" data-fg="#000" data-bg="#fff" width="32" height="32"></canvas><canvas data-k="contrast" data-s="16" data-fg="#000" data-bg="#fff" width="16" height="16"></canvas><canvas data-k="contrast" data-s="16" data-fg="#fff" data-bg="#000" width="16" height="16"></canvas><figcaption>32 / 16 / 16 inverted, true pixels, enlarged</figcaption></figure>
+  <figure class="actual"><svg class="a32" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-contrast-48"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="currentColor" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-48)" d="M18 8L43 68L68 8"/>
+      <path fill="currentColor" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></svg><svg class="a16" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-contrast-49"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="currentColor" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-49)" d="M18 8L43 68L68 8"/>
+      <path fill="currentColor" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></svg><svg class="a32" viewBox="0 0 100 100" role="img" aria-label="Contrast light app icon">
+  <defs><linearGradient id="bg-light-contrast-a32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-contrast-a32" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-contrast-a32" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-contrast-a32)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-contrast-a32)"><defs><clipPath id="lc-contrast-50"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="url(#m-light-contrast-a32)" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="url(#m-light-contrast-a32)" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-50)" d="M18 8L43 68L68 8"/>
+      <path fill="url(#fg-light-contrast-a32)" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></g></svg><svg class="a16" viewBox="0 0 100 100" role="img" aria-label="Contrast light app icon">
+  <defs><linearGradient id="bg-light-contrast-a16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-contrast-a16" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-contrast-a16" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-contrast-a16)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-contrast-a16)"><defs><clipPath id="lc-contrast-51"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="url(#m-light-contrast-a16)" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="url(#m-light-contrast-a16)" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-51)" d="M18 8L43 68L68 8"/>
+      <path fill="url(#fg-light-contrast-a16)" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></g></svg><figcaption>Actual size: mark 32 / 16, icon 32 / 16</figcaption></figure>
+ </div>
+ <div class="lockup"><svg class="mk28" viewBox="0 0 100 100" aria-hidden="true" style="color:currentColor"><defs><clipPath id="lc-contrast-52"><rect x="0" y="14" width="100" height="86"/></clipPath></defs>
+      <path fill="currentColor" d="M8 14H27V88H8Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="miter" clip-path="url(#lc-contrast-52)" d="M18 8L43 68L68 8"/>
+      <path fill="currentColor" d="M59 14H78V88H59ZM34 14H96V30H34Z"/></svg><span>MostlyText</span></div>
+ <p class="note">Elegant and literary, like a book-face capital. The hairline diagonals turn grey at 32 px and are gone at 16. That is exactly where an app icon has to work, so it fails.</p>
+</section></div>
+ <section class="final" aria-labelledby="sc">
+  <h2 id="sc">Scorecard</h2>
+  <div class="tw"><table><thead><tr><th scope="col">Test</th><th scope="col">Caret</th><th scope="col">Slant</th><th scope="col">Soft</th><th scope="col">Contrast</th></tr></thead><tbody>
+<tr><th scope="row">Does the M read?</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Does the T read?</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Both still read at 16 px</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt w">Fails</span></td></tr><tr><th scope="row">Has energy (in one colour)</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td></tr><tr><th scope="row">Silhouette distinctiveness</th><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td></tr><tr><th scope="row">Optical balance</th><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td></tr><tr><th scope="row">Stays clean (no mud)</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td></tr><tr><th scope="row">Monochrome</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Light / dark</th><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Fits a native macOS writing app</th><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td><td><span class="rt g">Passes</span></td></tr><tr><th scope="row">Avoids generic or look-alike marks</th><td><span class="rt g">Passes</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt o">Marginal</span></td><td><span class="rt g">Passes</span></td></tr></tbody></table></div>
+ </section>
+ <section class="final" aria-labelledby="fin">
+  <h2 id="fin">Two finalists</h2>
+  <div class="diff">
+   <h3>What separates them</h3>
+   <p><b>Caret gets its energy from meaning.</b> The T is the text cursor, so the mark is about writing in an editor, and the cursor is the natural place for colour. It is calmer and more native to macOS, and more specific to MostlyText.</p>
+   <p><b>Slant gets its energy from motion.</b> Weight and a forward lean make it the loudest mark here, and the most confident at small sizes. It says “fast” more than “text”. Its neighbours are sports and car marks rather than Mac apps.</p>
+   <p>Neither wins outright on structure. They can also be combined: a Caret with a slight lean of 4–6° instead of 12° is worth one test.</p>
+  </div>
+  <div class="pair">
+   <article class="fcard"><div class="fhead"><svg class="fin" viewBox="0 0 100 100" role="img" aria-label="Caret light app icon">
+  <defs><linearGradient id="bg-light-caret-fin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-caret-fin" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-caret-fin" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-caret-fin)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-caret-fin)"><defs><clipPath id="lc-caret-53"><rect x="10" y="27" width="90" height="73"/></clipPath></defs>
+      <g fill="none" stroke="url(#m-light-caret-fin)" stroke-width="16" clip-path="url(#lc-caret-53)"><path d="M18 86V27"/><path d="M14 20L42 64L70 20" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-caret-fin)" d="M38 12H96V27H75V82H86V94H50V82H61V27H38Z"/></g></svg><div><h3>Caret</h3><p class="mech">The T is the text cursor</p></div></div>
+    <div><h3>Refine next</h3><ul>
+     <li>“MI” risk: keep the foot clearly shorter than the crossbar (36 against 58 now). Test 28 and 44, and a foot on one side only.</li>
+     <li>Balance: the crossbar and foot are both on the right. Move the mark about 3% left and test a slightly wider M.</li>
+     <li>Join: the M’s right peak disappears under the crossbar. Test a hairline gap so the M keeps both peaks.</li>
+     <li>Two-tone: only the cursor carries colour. Check that it still reads when the tinted icon removes the colour.</li></ul></div>
+    <div><h3>Could break in production</h3><ul>
+     <li>At 16 px the foot and the M’s bottom-right can merge into one block. The favicon needs a hand-drawn pixel version.</li>
+     <li>I-beam cursor glyphs are common in text-editor icons. The M next to it has to stay dominant enough that it is not just a cursor icon.</li>
+     <li>The mark is taller than it is wide because the cursor overshoots, so its clear-space rules differ from a square mark.</li></ul></div>
+   </article>
+   <article class="fcard"><div class="fhead"><svg class="fin" viewBox="0 0 100 100" role="img" aria-label="Slant light app icon">
+  <defs><linearGradient id="bg-light-slant-fin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EDF5"/></linearGradient>
+  <linearGradient id="m-light-slant-fin" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop stop-color="#1A1D24"/></linearGradient>
+  <linearGradient id="fg-light-slant-fin" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="90" y2="90"><stop offset="0" stop-color="#2F6BFF"/><stop offset="1" stop-color="#4B4FE6"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="21" fill="url(#bg-light-slant-fin)"/>
+  <rect x="4.25" y="4.25" width="91.5" height="91.5" rx="20.8" fill="none" stroke="#000" stroke-opacity=".08" stroke-width=".5"/>
+  <g transform="translate(21 21) scale(.58)" style="color:url(#fg-light-slant-fin)"><defs><clipPath id="lc-slant-54"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)">
+      <g fill="none" stroke="url(#m-light-slant-fin)" stroke-width="17" clip-path="url(#lc-slant-54)"><path d="M17 88V16"/><path d="M12 7L41 58L70 7" stroke-linejoin="miter"/></g>
+      <path fill="url(#fg-light-slant-fin)" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><div><h3>Slant</h3><p class="mech">The ligature leans forward</p></div></div>
+    <div><h3>Refine next</h3><ul>
+     <li>Angle: compare 8°, 12° (current) and 15°. Less lean is calmer and more Mac-like, more lean is faster.</li>
+     <li>Crossbar cut: match the cut angle to the lean so the end reads as one gesture.</li>
+     <li>Counters: with heavy strokes, the V between the M’s diagonals is small. Open it slightly so it doesn’t fill in on non-Retina screens.</li>
+     <li>Wordmark: should “MostlyText” lean too? Probably not, but test it.</li></ul></div>
+    <div><h3>Could break in production</h3><ul>
+     <li>It is close to BMW M and similar performance marks, so it needs a similarity check early.</li>
+     <li>Slanted shapes sit awkwardly in a square icon, because the corners fill unevenly.</li>
+     <li>“Speed” can promise more than a text editor should.</li></ul></div>
+   </article>
+  </div>
+  <div class="diff">
+   <h3>Tests before freezing either mark</h3>
+   <ol>
+    <li><b>Read test:</b> show 6–8 people who haven’t seen the marks each one for 5 seconds, at 64 px and at 16 px. Ask “Which letters do you see?”. For Caret, also ask “What does this app do?”.</li>
+    <li><b>Look-alike check:</b> ask the same people what the shape reminds them of. This catches problems like the IUD reading before launch.</li>
+    <li><b>Hand-drawn small sizes:</b> 16 and 32 px pixel versions for the favicon, Finder list and menu bar.</li>
+    <li><b>macOS 26 icon:</b> light, dark, clear and tinted versions in Icon Composer, in a real Dock next to Notes, TextEdit and Obsidian.</li>
+    <li><b>Similarity search:</b> trademarks and existing app icons (MT monograms, BMW M, cursor-glyph editor icons).</li>
+    <li><b>Lockup and single colour:</b> the mark with the wordmark at three sizes, one ink, and Increase Contrast.</li>
+   </ol>
+  </div>
+ </section>
+</main>
+<script>
+const S={"slant":"<defs><clipPath id=\"lc-slant\"><rect x=\"0\" y=\"16\" width=\"100\" height=\"72\"/></clipPath></defs>\n      <g transform=\"translate(50 52) scale(.86) translate(-50 -52) translate(8.3 0) skewX(-12)\">\n      <g fill=\"none\" stroke=\"currentColor\" stroke-width=\"17\" clip-path=\"url(#lc-slant)\"><path d=\"M17 88V16\"/><path d=\"M12 7L41 58L70 7\" stroke-linejoin=\"miter\"/></g>\n      <path fill=\"currentColor\" d=\"M57 16H74V88H57ZM34 16H97L89 33H34Z\"/></g>","soft":"<g fill=\"none\" stroke-width=\"18\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n      <path stroke=\"currentColor\" d=\"M19 83V24L42 58L65 24\"/><path stroke=\"currentColor\" d=\"M65 24V83M42 22H88\"/></g>","contrast":"<defs><clipPath id=\"lc-contrast\"><rect x=\"0\" y=\"14\" width=\"100\" height=\"86\"/></clipPath></defs>\n      <path fill=\"currentColor\" d=\"M8 14H27V88H8Z\"/>\n      <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"9\" stroke-linejoin=\"miter\" clip-path=\"url(#lc-contrast)\" d=\"M18 8L43 68L68 8\"/>\n      <path fill=\"currentColor\" d=\"M59 14H78V88H59ZM34 14H96V30H34Z\"/>","caret":"<defs><clipPath id=\"lc-caret\"><rect x=\"10\" y=\"27\" width=\"90\" height=\"73\"/></clipPath></defs>\n      <g fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\" clip-path=\"url(#lc-caret)\"><path d=\"M18 86V27\"/><path d=\"M14 20L42 64L70 20\" stroke-linejoin=\"miter\"/></g>\n      <path fill=\"currentColor\" d=\"M38 12H96V27H75V82H86V94H50V82H61V27H38Z\"/>"};
+document.querySelectorAll('canvas[data-k]').forEach(c=>{const s=+c.dataset.s,x=c.getContext('2d');x.fillStyle=c.dataset.bg;x.fillRect(0,0,s,s);
+ const i=new Image();i.onload=()=>x.drawImage(i,s*.08,s*.08,s*.84,s*.84);
+ i.src='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color:'+c.dataset.fg+'">'+S[c.dataset.k]+'</svg>')});
+</script>

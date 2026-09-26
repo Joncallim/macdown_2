@@ -1,0 +1,13 @@
+Reviewer 8:
+
+**S1**
+- **Letters:** **MT** — italic, condensed, locked together as one mark. Black on white. Could briefly be misread as **NT** or as a single abstract slash if you don’t lock onto the letters.
+- **Reminded me of:** A sports / racing / esports badge. MTV-adjacent energy (italic media monogram), also Motor Trend, or “empty” if you say the letters out loud. Aggressive, fast, slightly military.
+- **Product / company:** Motorsport, performance software, trading/fintech, fitness, or a media brand. Something that wants to feel fast and premium, not friendly or corporate.
+
+**S2**
+- **Letters:** Same **MT**, now split by color — **black M, blue T**. Much easier to read as two letters.
+- **Reminded me of:** An **iOS / macOS app icon**. Rounded square, soft shadow, pale fill. The blue T pulls it from “race team” toward **tech product**. Feels like a Mac utility, productivity app, or fintech client you’d download from the App Store.
+
+**S3**
+- **Reminded me of:** A **SaaS / Mac-app marketing site** — Linear, Raycast, Arc, Stripe-adjacent. Pill navbar, tiny wordmark, muted **Features / Help**, black **Download** pill. Classic “this is a desktop or mobile app you install,” not a social network or ecommerce store.

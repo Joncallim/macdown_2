@@ -1,0 +1,31 @@
+Reviewer 1:
+
+Here are the responses based on the visual stimuli provided in the test sequence:
+
+### For S1 (First Image: Black-on-White Mark)
+
+1. **What letters, if any, did you see?**
+* The letters **"M"** and **"T"** combined in a stylized typographic lockup.
+
+2. **What did it remind you of?**
+* Editorial mastheads, modern publishing brands, and minimalist corporate logos.
+
+3. **What kind of product or company might use it?**
+* A digital publishing platform, tech startup, media company, or creative design agency.
+
+---
+
+### For S2 (Second Image: App Icon Context)
+
+4. **What letters, if any, did you see?**
+* The letters **"M"** and **"T"** featured inside an app icon layout.
+
+5. **What did it remind you of?**
+* A mobile application icon for a productivity tool, content platform, or reader app on a smartphone home screen.
+
+---
+
+### For S3 (Third Image: Website-Header Context)
+
+6. **What did that remind you of?**
+* A clean, minimalist website header or navigation bar for a modern software or media platform.
