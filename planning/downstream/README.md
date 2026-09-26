@@ -1,73 +1,79 @@
-# Downstream architecture hand-offs
+# Downstream architecture — implementation entry point
 
-Reviewed source baseline: `83a79a4572e23a781b2cf370dd2b407fe7409d09` on 2026-09-24.
+Current review: **26 September 2026**, restored master `b95fe439672dbcad4e5c9d04f7f353ffc85ff26b`.
+Current PR: **#147**, branch `docs/downstream-architecture-2026-09-24`.
+Original architecture: **#125**, preserved at `b2c6d19ef453b571f4eb5eb020accfa84305fb60`.
 
-Documentation branch: `docs/downstream-architecture-2026-09-24`.
+## Start here without interrupting E22
 
-## Start here, after the current Epic 22 work
+Continue current Epic 22 under its existing implementation plan. This documentation work does not change Claude's source, active branches, E22 plan, design lane or workflows. The later parser-option portion of #53 and command-registry portion of #117 remain with E22; consume their completed outcomes instead of implementing them again.
 
-These documents cover all **13 open issues outside Epic 22** in the reviewed inventory. They are implementation hand-offs, not completed implementations, test results or release authorization. Each issue has its own source reconciliation, chosen ownership/data flow, lifecycle and failure rules, verification matrix, allowed changes, stop conditions and architecture self-review.
+#125 was accidentally closed during the repository reset, not rejected. GitHub refused reopening it even after restoring common branch ancestry. #147 is the linked replacement, preserving the original commits plus restored master, without force-push or master modification. Do not keep trying to merge the closed #125 or resurrect its old source baseline over new implementation.
 
-**Continue Epic 22 under its existing plan.** This branch changes no application code, existing plan, catalog, project configuration or workflow. It does not change #112, PR #124, its branch/reviews/CI, or the next E22 slices. In particular, #53's inert-parser-option work and #117's command-registry work remain with E22; the downstream plans consume those outcomes rather than supply competing implementations.
+Before downstream code, read [READINESS_REVIEW.md](READINESS_REVIEW.md), [RELEASE_SEQUENCE.md](../RELEASE_SEQUENCE.md), and the applicable hand-off below. Adopt the documentation through the normal PR process, reconcile exact post-E22 master and actual issue/design decisions, then implement dependency-ready units. The dated baseline is not a claim that master will stand still.
 
-When reaching downstream work, read the relevant hand-off and its named shared dependencies. Reconcile the exact then-current master, live issue amendments and completed E22 interfaces before changing code. The reviewed baseline is not a claim that master will remain unchanged. Rebind renamed interfaces; do not undo completed E22 work to match a proposed symbol here. Semantic type names in these plans are proposed interfaces unless identified as existing code.
+The second review covers all **13 downstream issues**. Nine hand-offs were revised in place; four retained their design, with explicit clarifications in the review record. Each still needs its actual implementation/acceptance evidence. Proposed numerical limits are design ceilings to validate, not measured performance passes.
 
-## Issue index
+## Issue hand-offs
 
-| Issue | Hand-off | Implementation focus |
-| --- | --- | --- |
-| #121 | [HTML Preview isolation and contained reads](issue-121-handoff.md) | Immutable WebKit load ownership, race-resistant descriptor reads and exact-once task teardown. |
-| #117 | [Contribution destinations, anchors and export identity](issue-117-handoff.md) | One heading/TOC policy, authored-ID collision handling, explicit command origin and immutable export snapshot. E22 retains registry ownership. |
-| #116 | [Math correctness and accessibility](issue-116-handoff.md) | Shared delimiter grammar, narrow pinned dependency adaptations, structured diagnostics, equation accessibility and source navigation. |
-| #118 | [Bounded HTML/PDF export](issue-118-handoff.md) | Final assembled-byte limits, managed-asset recovery, destination ownership, operation progress and safe PDF cancellation/publication. |
-| #79 | [Diagram presentation coherence](issue-79-handoff.md) | E23-owned neutral diagram canvas, actual render parameters, cache identity and measured print/render limits for all three engines. |
-| #113 / E23 | [Themes, Quick Look and Finder integration](issue-113-handoff.md) | Semantic palettes, safe theme catalog, shared static presentation, least-privilege Quick Look and finalized icon/identity. |
-| #120 | [Save As progress, close prompts and Open latency](issue-120-handoff.md) | Logical save operations across document-ID changes, truthful stable prompts, explicit panel origin and measured latency. |
-| #119 | [External-file behavior and watcher evidence](issue-119-handoff.md) | Complete real-file/UI matrix, bounded probe admission, handle/callback teardown and Release measurements. |
-| #88 | [Interactive UI and exact-artifact verification](issue-88-handoff.md) | Repair the three remaining historical UI paths; repeatable engineering and final-artifact lanes with no false skip/build-only passes. |
-| #53 | [Legacy MacDown preference import](issue-53-handoff.md) | Complete declared-key disposition, explicit consent, destination precedence and restart-safe import. E22 retains parser cleanup. |
-| #18 / E17 | [Migration, CLI, updates and distribution](issue-18-handoff.md) | Bootstrap/namespace preservation, open/stdin/--wait, pinned Sparkle integration, signing and stateful update rehearsal. |
-| #17 / E16 | [Final localization and string freeze](issue-17-handoff.md) | Complete resource/string audit, validated Transifex round trip, plural/native-language/layout QA and a hash-bound freeze. |
-| #115 | [Finite debt closure and release proof](issue-115-handoff.md) | Per-obligation evidence, fresh whole-repository review and an executable exact-artifact release gate. |
+| Issue | Implementation contract |
+| --- | --- |
+| #121 | [Immutable HTML preview loads and contained resource reads](issue-121-handoff.md) |
+| #117 | [Contribution destinations, shared anchors and export identity](issue-117-handoff.md) |
+| #116 | [Source-aware math, diagnostics and accessibility](issue-116-handoff.md) |
+| #118 | [Bounded HTML/PDF export and recoverable publication](issue-118-handoff.md) |
+| #79 | [Mermaid/D2/Graphviz neutral presentation and print coherence](issue-79-handoff.md) |
+| #113 / E23 | [Semantic themes, safe custom themes, Quick Look and Finder](issue-113-handoff.md) |
+| #120 | [Logical Save As progress, close prompts and Open latency](issue-120-handoff.md) |
+| #119 | [External-file behavior, bounded probes and Release evidence](issue-119-handoff.md) |
+| #88 | [Real native UI tests and exact-artifact verification](issue-88-handoff.md) |
+| #53 | [Compatible old settings and deliberate legacy import](issue-53-handoff.md) |
+| #18 / E17 | [Bootstrap migration, CLI, updater and distribution](issue-18-handoff.md) |
+| #17 / E16 | [Final localization, native QA and string freeze](issue-17-handoff.md) |
+| #115 | [Finite debt closure and exact-artifact proof](issue-115-handoff.md) |
 
-## Shared contracts: implement once
+## Implement shared contracts once
 
-#121 owns **LocalResourceAccess**. Export consumes the same opened-object read boundary; Quick Look consumes only the authority actually granted to its request. A source-file grant never implicitly becomes a directory grant.
+LocalResourceAccess (#121) owns contained resource snapshots and explicit none/single-file/directory grants. Export uses the same reader, while Quick Look receives only its actual grant. FileCore's authoritative monitored-document snapshots remain a distinct contract; its bounded executor does not import Preview or DocumentPresentation.
 
-#117 owns **HeadingAnchorIndex**, contribution destination semantics and **ExportSnapshot/origin**. #118 extends that same export operation with progress, destination leases and publication. E23's **DocumentPresentation** orchestrates these existing components rather than creating a second cmark, anchor, contribution or resource pipeline.
+#117 owns destination admission, HeadingAnchorIndex and immutable ExportOrigin/ExportSnapshot. It starts with existing Theme values; E23 later resolves semantic palettes. #118 extends the same export operation with registered resource slots, progress, managed ownership and publication. DocumentPresentation depends on existing ExportService, never the reverse; it orchestrates rather than duplicates rendering.
 
-#116 owns **MathSyntax** and the narrowly adapted dependency boundary. E23 consumes its actual math result/accessibility interfaces, not a copied tokenizer or a second LaTeX validator.
+#116 owns original-source MathSyntax admission and narrow pinned Textual/SwiftUIMath adaptations. Do not run the old post-Markdown dollar tokenizer after transporting admitted spans. Rendering identity, original source identity and transient markers are distinct.
 
-E23 owns the semantic palette and theme catalog. #79 is one implementation unit within that ownership, not an independent competing theming system. Its chosen 1.0 diagram policy is neutral light artwork with readable defaults, not arbitrary recoloring of authored styles.
+E23 owns semantic palettes/theme catalog; #79 is its renderer unit. #120's save-operation tokens do not become forever document IDs. #18's CLI wait receipts follow stable logical document lifetimes across Save As. #53 owns compatible settings decoding shared by ordinary startup and import; #18 owns bootstrap admission before writers exist.
 
-#120 owns logical-save progress and panel-origin behavior. #119 consumes the completed editor/save interfaces for external-file evidence. #88 owns reusable interactive verification infrastructure. None of these rewrites FileStore's conditional publication or recovery authority.
+Read the retained-contract clarifications in READINESS_REVIEW.md before implementing #79/#119/#120. No consumer may infer resource authority from a pathname, worker completion from waiter cancellation, or release readiness from a test count.
 
-#53 owns legacy preference conversion. E17 owns application bootstrap and development-namespace migration; legacy import and development-state preservation are separate tested journeys. E16 owns final language sign-off after all in-app release work has contributed its strings.
+## Execution order and remaining probes
 
-## Dependency order, not a new immediate work queue
+[readiness.json](readiness.json) is the explicit acyclic unit dependency plan. Its 48 nodes include external inputs, E22, probes, implementation and final gates; they are not new issues or a requirement for 48 PRs. Whole-issue closure is not used where only a tested prerequisite is required. Do not bypass a failed prerequisite or hold all independent work while one external gate is unavailable.
 
-After E22 and the identity/interface reconciliation, prepare #88's verification harness and the shared foundations: #121's reader, #117's anchors/snapshot, #116's math boundary, and E23's semantic palette. #120's save-operation work and #119's bounded monitor/probe work are separate units with their own regression coverage.
+After E22/rebaseline, begin the independent foundations: UI harness, settings compatibility, source-aware math/anchor values, export snapshot, save-progress work and E23 palette. Run the named narrow probes before their dependent integrations: **RESOURCE-OPEN, MATH-ADAPTER, ANCHOR-PARSER, PDF-PRINT, DIAGRAM-CONTEXT and QL-REPLY**. All six are NOT_RUN in this architecture session. Their owning documents specify positive controls, failure cases and the required decision output. A failed probe needs a focused architecture correction, not invented API calls or weakened tests.
 
-Integrate #118 against the shared reader/snapshot, and complete #79 inside E23's palette work. E23 then integrates the theme catalog and Quick Look/static presentation against those proven contracts. Do not wait for an entire umbrella issue to close when a tested prerequisite unit is sufficient; equally, a tested prerequisite does not close its owner's remaining acceptance criteria.
+Integrate Export against tested reader/snapshot/anchor units; integrate shared presentation/Quick Look against actual math/diagram/palette/assembly capabilities. Finish settings/theme-dependent legacy import, bootstrap/CLI/updater and all in-app strings before final localization. Real UI/security/performance/accessibility results remain mandatory at the proper acceptance layer.
 
-Once final settings/themes exist, implement #53 and E17's application-side bootstrap, CLI and updater, including their normal catalog entries. Finish all product fixes and engineering checks before the final E16 pass. Keep final public release promotion separate from engineering and private evidence preparation.
+The public name MostlyText and owned mostlytext.app/mostlytext.dev domains are settled. Final technical identifiers, approved artwork, signing/translation access and required native-language review remain separate evidenced inputs. Consume latest actual design decisions and waivers without modifying the active design lane or reviving superseded studies. Do not publish or purchase services from this architecture instruction.
 
-## Resolve the release sequencing loop explicitly
+## Canonical release sequence
 
-The #115/#17/#18 hand-offs specify a shared **S / V / P** amendment which must be reconciled in the canonical release documents before execution. This branch does not silently amend those live contracts.
+This PR stages the explicit correction in RELEASE_HARDENING.md sections 7–8 and RELEASE_SEQUENCE.md, rather than leaving it as a future task:
 
-**S — software/UI stabilized:** required fixes and all application-side release code/strings are present. #115 remains open awaiting final proof. This milestone is E16's prerequisite.
+**S:** software/UI stabilized, including release-app code and strings. #115 remains open.
+**V:** final E16 plus private unapproved signed/notarized exact-artifact verification and stateful update rehearsals. No public promotion.
+**P:** only after the entire #115/final-language gate passes, separately authorize public promotion of the same verified bytes.
 
-**V — final localization and private verification:** E16 freezes the final surface; E17 prepares private, unapproved signed/notarized artifacts for genuine UI, VoiceOver, export, Quick Look and stateful update proof. No public RC, stable-feed entry or production approval is permitted.
+The change becomes active repository authority when this documentation PR is adopted. It changes ordering terminology, not acceptance criteria. Do not close #115 early to start E16, or rebuild/re-sign an artifact after its proof and reuse the old approval.
 
-**P — authorized promotion:** #115 closes only after its complete matrix passes. The separately authorized release promotes the same verified bytes, not a rebuilt or re-signed substitute. Changed artifacts/strings/identity invalidate affected evidence.
+## What was actually verified
 
-## Review and evidence boundaries
+The review record lists four same-session passes, 25 specific corrections, retained decisions and per-issue entry conditions. These are not independent-provider reviews or native execution.
 
-Per-issue reviews and the cross-contract pass addressed stale request/root ownership, resource-size amplification, Save As identity gaps, ambiguous raw HTML heading IDs, protected preference values, detached work that outlives cancellation, skipped native tests and evidence tied to the wrong binary. The #117 hand-off received a corrective commit selecting one authored-ID reservation policy rather than leaving alternatives for the implementer.
+Run the planning-only checker from the repository:
 
-This is architecture-level review, not independent native execution or proof that all possible defects have been eliminated. Numerical limits labelled proposed/initial are defensive design values requiring the specified calibration; they cannot silently replace existing owner-approved performance budgets. No issue is closed by these documents.
+```sh
+python3 planning/downstream/validate_readiness.py planning/downstream/readiness.json --self-test
+```
 
-Required implementation-time facts remain explicit: supported-SDK/minimum-OS contained-open behavior; real Quick Look reply/attachment and sandbox grants; AppKit print/cancellation behavior; actual interactive/VoiceOver/GUI proof; frozen technical identity and approved final artwork; native-speaker review and authorized Transifex/signing infrastructure. Do not infer any of them from a code build or this review. A failed platform probe is a precise stop condition, not permission to weaken security or fabricate passing evidence.
+The local static run passed 13 positive/negative checks for complete issue/file coverage, unique units, dependencies/cycles, probe inventory, protected E22 ownership, evidence labels and release-authorization edges. No Swift test, GUI, filesystem-race proof, signing, migration or release occurred. The manifest explicitly cannot authorize publication.
 
-Use the project's serial validation discipline, follow the issue's acceptance matrix, and record genuine as-built/evidence deltas with each implementation unit. Keep public publication, issue closure and production approval behind their actual gates.
+At implementation, follow AGENTS.md, EPIC_STANDARD.md, RELEASE_HARDENING.md and each unit's allowed files/tests. Keep the main worktree/branches safe, use the established serial validation discipline, preserve failed evidence and record actual as-built corrections. Complete one reviewable unit, verify its real result and continue to the next eligible unit without starting another broad architecture exercise unless a concrete assumption fails.
