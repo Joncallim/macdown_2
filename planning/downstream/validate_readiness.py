@@ -41,11 +41,11 @@ def validate(data: dict, available: set[str] | None = None) -> list[str]:
             errors.append(f"unknown unit kind: {row.get('id')}")
         if row.get("issue") not in EXPECTED | {112}:
             errors.append(f"unknown issue owner: {row.get('id')}")
-        if row.get("issue") == 112 and row.get("kind") != "upstream":
-            errors.append("active E22 may only be an upstream dependency")
         for dep in row.get("requires", []):
             if dep not in nodes:
                 errors.append(f"unknown dependency {dep}")
+        if row.get("issue") == 112 and row.get("kind") != "upstream":
+            errors.append("active E22 may only be an upstream dependency")
     if {row.get("probe") for row in units if row.get("kind") == "probe"} != PROBES:
         errors.append("probe inventory mismatch")
     visiting: set[str] = set()
@@ -89,6 +89,8 @@ def validate(data: dict, available: set[str] | None = None) -> list[str]:
 
 
 def self_test(data: dict, available: set[str]) -> int:
+    if not __debug__:
+        raise ValueError("Self-tests require assertions; run Python without -O.")
     assert not validate(data, available), "valid fixture rejected"
     mutations = []
     a = copy.deepcopy(data); a["handoffs"].pop(); mutations.append(a)
