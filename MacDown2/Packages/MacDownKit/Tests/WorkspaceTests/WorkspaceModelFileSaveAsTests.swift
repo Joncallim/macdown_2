@@ -25,7 +25,18 @@ struct WorkspaceModelFileSaveAsTests {
         await document.saveRecovery()
 
         let saveAs = Task { @MainActor in await model.saveAs() }
-        await waitUntil { barrier.hasArrived }
+        // `onTimeout` MUST unblock the barrier's own stored continuation
+        // (`cancelWaiters()`), not just record the issue -- see
+        // WorkspaceModelFileTests.swift's identical twin call site for the
+        // full explanation of why an un-resumed `withCheckedContinuation`
+        // hangs `waitForSignal` forever instead of failing.
+        await waitForSignal(
+            wait: { await barrier.waitForFirstPublication() },
+            onTimeout: {
+                barrier.cancelWaiters()
+                Issue.record("Timed out waiting for delayed save publication")
+            }
+        )
         model.tabStore.updateActiveDocument { $0.edited(text: "later local") }
         await model.save()
         barrier.allowPublication()
@@ -45,18 +56,5 @@ struct WorkspaceModelFileSaveAsTests {
         await model.save()
         #expect(model.activeDocument?.state == .clean)
         #expect(try FileStore().read(from: destination).content == "later local")
-    }
-
-    private func waitUntil(
-        _ condition: @escaping @Sendable () -> Bool,
-        limit: Int = 200
-    ) async {
-        for _ in 0 ..< limit {
-            if condition() {
-                return
-            }
-            await Task.yield()
-        }
-        Issue.record("Timed out waiting for delayed save publication")
     }
 }
