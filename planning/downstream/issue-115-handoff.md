@@ -2,100 +2,83 @@
 
 ## Owner summary
 
-Close the promises already made, prove the finished application and stop treating green package tests or old epic closure as release approval. This is a finite hardening/evidence gate, not another feature epic or a new historical-debt hunt. Its output is an auditable go/no-go decision for one exact release artifact.
+Close existing promises, verify the actual finished application and produce an auditable go/no-go for one exact artifact. This is an evidence/hardening gate, not another feature epic or a repeated historical-debt hunt. Architecture coverage, merged PRs and green package tests are not release authorization.
 
-Baseline: `83a79a4572e23a781b2cf370dd2b407fe7409d09`, reviewed 2026-09-24. Leave Claude's E22 implementation entirely alone. Consume its eventual completed evidence along with E23 and the issue-specific hand-offs in this directory. This document supplies no runtime PASS, closes no issue and grants no release authorization.
+Reviewed baseline: `b95fe439672dbcad4e5c9d04f7f353ffc85ff26b`, 2026-09-26. Read [README](README.md), [readiness review](READINESS_REVIEW.md), readiness.json and [canonical release sequence](../RELEASE_SEQUENCE.md). Claude retains all current E22 implementation ownership. This document closes no issue and supplies no runtime PASS.
 
-## Reconciled authority
+## Reconciled authority and finite scope
 
-Read the live #115 body, both 2026-09-21 checkpoint comments, RELEASE_HARDENING and the release ledger's current header/audit. The final historical search was already completed and reconciled at master f7080338951860bd823f2d3b8164360d40733254 through PR #122. PR #114's planning/as-built reconciliation is already merged. Do not reopen these completed searches or manufacture new issues from old words such as 'deferred' without checking their current disposition.
+The historical debt search was already completed through PR #122; PR #114's as-built reconciliation is merged. Preserve its conclusions unless a new concrete defect disproves one. Do not resurrect resolved #34/#36/#37, #62/#63 or old evidence waivers without reading their actual current disposition.
 
-The finite capability closure set is #53, #79, #88, E22 #112, E23 #113 and #116–#121. E16 #17 and E17 #18 supply final localization/distribution evidence. Existing non-goals remain non-goals: full TeX compilation, generic third-party plugin loading, interactive Mermaid click features, visual diagram authoring and iPad. WaveDrom is explicitly rejected for 1.0; it does not remain an unresolved renderer promise.
+The implementation closure set is #53, #79, #88, #112/E22, #113/E23 and #116–#121. #17/E16 and #18/E17 provide final language/distribution proof. Full TeX compilation, generic plugins/marketplaces, visual diagram authoring, interactive Mermaid click features and iPad remain non-goals. WaveDrom remains rejected for 1.0 under its original optional-renderer contract; rejection cannot be reused to waive required features.
 
-## Explicit sequencing reconciliation
+## Non-circular sequence
 
-The current wording contains a real dependency loop: the #115 final matrix requires final E16 and exact signed candidate evidence; E16 follows #115's software/UI debt closure; E17 must not authorize a production RC while #115 is open. Resolve the vocabulary before execution rather than dropping a check.
+The staged canonical RELEASE_SEQUENCE.md supplies explicit S/V/P semantics and overrides the old linear shorthand when this PR is adopted. It preserves all acceptance requirements:
 
-Adopt the following precise amendment in the canonical #115/E16/E17/hardening documentation as one later documentation change. This isolated hand-off does not itself edit those live contracts:
+**S — software/UI stabilized.** E22/E23 and required product fixes, plus E17's bootstrap/migration/CLI/updater application code and strings, are implemented and engineering-verified. #115 stays OPEN. This milestone—not final issue closure—is E16's prerequisite.
 
-1. **S — Software/UI debt stabilized.** E22/E23 and the required product fixes, including E17's application-side migration/CLI/updater and their user-visible strings, are implemented and engineering-verified. The current source/identity/UI is frozen for final localization. #115 remains OPEN because final proof is not complete. This milestone, not issue closure, is E16's prerequisite.
-2. **V — Final localization and private verification candidate.** E16 completes native-language, plural, extraction and layout QA. E17 produces a private, unapproved signed/notarized candidate and update-rehearsal artifacts solely for required evidence. #88 and this gate exercise the exact immutable bytes. No public RC/stable appcast entry, production approval or release announcement is allowed. Missing permissions/credentials/QA keep V incomplete.
-3. **P — Production authorization and promotion.** Only after every required #115 row and final E16 record passes may #115 close and the owner/release process authorize public promotion. Promote the SAME V artifact; do not rebuild/re-sign it after proof. Thus the final public RC is the exact signed artifact that passed verification. Changed bytes, identity, entitlements, strings, source or failed final checks invalidate the relevant proof and reopen the gate.
+**V — final localization and private proof.** E16 freezes the final string/UI/resource surface. E17 creates private unapproved signed/notarized candidates and controlled update rehearsals. #88 and the gate exercise exact immutable bytes. This is evidence preparation, not a public RC or production authorization. Missing Mac access, credentials, native review or other required proof keeps V incomplete.
 
-This preserves the issue's hard production-authorization precondition and its exact-artifact requirement. A private verification build is never described as an authorized production RC. The amendment must explicitly replace ambiguous 'after #115' references with S or P as appropriate; do not leave two contradictory checklists and rely on agent interpretation. No required test is downgraded to 'manual later' to break the loop.
+**P — authorized public promotion.** Only once every required obligation and final E16 record passes may #115 close and public release be separately authorized. Promote the SAME V artifact; no rebuild/re-sign afterwards. Changed bytes/identity/entitlements/resources invalidate affected proof. No author can describe a private candidate as authorized merely because its build succeeded.
 
-## Evidence model and ownership
+Issue bodies and historical ledger rows may retain their original wording. At adoption, add concise links identifying S versus final closure where required; do not rewrite historical results, modify E22's active plan or mark checkboxes automatically. Repository hardening contract is the cross-epic authority. No required GUI/security/manual test is removed to resolve the loop.
 
-Add a versioned machine-readable current gate manifest alongside the owner-readable ledger, with immutable historical evidence records. Separate obligation state from execution state. During work a result may truthfully be NOT_RUN/RUNNING/BLOCKED/FAIL; none permits closure. Final required dispositions are exactly FIXED with passing evidence, PROVED with passing evidence, or REJECTED_FOR_1_0 only where the original optional-feature contract allowed rejection.
+## Evidence model
 
-Each obligation record contains a stable ID, original issue/epic/source paragraph, exact behavior, required evidence kinds, current owner, code/contract baseline, severity, applicability rationale, current disposition and evidence references. Each evidence record contains run ID, source and test-driver SHA, app artifact identity/hash/CDHash, dependency/toolchain/OS/hardware, fixture hashes, command/test selection, actual discovered/executed/passed/failed/skipped cases, result-bundle/log/artifact hashes and a named manual reviewer where applicable.
+Create a versioned current obligation manifest with stable IDs, original epic/issue paragraph, precise behavior, owner, evidence kinds, source/contract baseline, severity, applicability and references. Preserve historical records separately. During execution NOT_RUN/RUNNING/BLOCKED/FAIL are truthful states, but none permits final closure. Final required dispositions are FIXED with passing evidence, PROVED with passing evidence, or REJECTED_FOR_1_0 only for originally optional candidates.
 
-Evidence references point to retained readable artifacts, not an expired /tmp path or an unsupported 'tested locally' sentence. Scrub unrelated personal data, signing tokens and real document contents. Preserve failed and superseded runs. A hash establishes the identity of evidence bytes, not by itself that the test ran; verify result-bundle contents and the actual assertion/outcome. The script must not fill PASS from a supplied status string alone.
+Each evidence record identifies actual run, source/test-driver SHA, app path/tree/hash/CDHash, nested executable identities, OS/SDK/toolchain/hardware, fixtures, selected/discovered/executed/failed/skipped tests and retained result/log/output artifacts. Manual observations include the actual reviewer and reviewed artifact. Hashes establish identity, not proof that an assertion ran; inspect result contents and counts. No expired /tmp pointer or 'tested locally' statement suffices. Preserve failed/superseded attempts and redact unrelated personal data/secrets.
 
-Do not grep the entire historical ledger for the word 'unverified' and treat preserved history as a current failure. Parse the current manifest and its explicit links to historical rows. Conversely, do not delete historical failure text to make a text-search gate green. Current authoritative rows must account for every required historical obligation one by one.
+A superseded old test needs its exact behavior and a named stronger current proof; SUPERSEDED is a relationship, not a fourth waiver disposition. A deleted/renamed test cannot reduce required behavior silently. Do not grep preserved historical words such as unverified and confuse them with current manifest status; equally, do not delete them to make a gate green.
 
-## Complete ownership and acceptance mapping
+## Required coverage
 
-| Obligation family | Implementation/evidence owner and required closure |
+| Family | Required ownership and evidence |
 | --- | --- |
-| E00–E04 foundations, format fidelity, native-window tabs, session restore, editor | Preserve the audited resolved architecture; final current-app open/edit/save/restore, data-safety, selection/lifecycle proof. Do not restore obsolete single-window assumptions. |
-| E05 highlighting performance/current-line/themes | E22 supplies real Release/full-path and main-actor measurements and chrome behavior; E23 wires semantic roles, at least eight themes and safe custom themes. This gate verifies actual evidence and unchanged declared budgets. |
-| E06–E09 parsing, native Preview, outline, folder browser | Map each still-applicable old manual/Release row to final same-behavior or stronger evidence. Already resolved #34/#36/#37 are not reopened absent a concrete regression. Include links/images/selection and FileTree application integration. |
-| E10/E11 editing, multi-format and TeX | Consume E22's final language profiles/TeX recognition and real round trips; TeX source never enters Markdown Preview. Highlighting claims need actual maintained grammar proof or the contract-approved deliberate fallback. Full TeX compilation stays out of scope. |
-| E12 static/export/PDF | #118 plus #88: real menu/save-panel export, executed pagination, independently inspected artifacts, parity, bounded assembly, safe resource reads and crash/asset recovery. Preserve PR #114's completed as-built reconciliation and update only genuine later drift. |
-| E13 settings | #53/E17 legacy import and state rehearsal; E22 no inert parser fields; E23 theme settings. Live-apply tests on already-open documents for editor/parser/preview/export/format/theme choices, no relaunch or source mutation. |
-| E14 contributions/filters/palette | #117 destination/anchor/snapshot contract and E22 command registry. Actual built-in/discovered filter, selection replacement, undo, error, timeout/cancel, close/supersession and multi-window targeting under #88. |
-| E15 identity/visual/accessibility | E23 final approved icon/Finder integration; real VoiceOver, keyboard-only, light/dark, Increase Contrast, Reduce Transparency, Reduce Motion and supported text/window sizes across final surfaces. A screenshot's nonblank assertion is not enough. |
-| E18 external-file changes | #119/#120/#88: clean/dirty changes, own-save, conflict actions, moves/deletion, native conflict-close, view-state restoration, watcher/probe limits and measured Release performance. |
-| E19 math | All six #116 residual areas, including structured errors, accessible equations, delimiter/currency parity, source identity/navigation and live post-#62 re-verification. |
-| E20/E21 diagrams | #79/E23: Mermaid/D2/Graphviz neutral/default contrast and print policy, real renderer limits/memory/cancellation, offline containment. D2's internal WASM unsafe-eval remains confined to its trusted local harness; it is not permission for active Quick Look output. |
-| E11 HTML Preview races | #121: immutable request/root identity, contained opened-object reads, task-stop and stale navigation behavior, actual hostile WebKit/network fixtures. |
-| Final language/product/distribution | #17 final catalog/locale freeze; #18 actual CLI, development-state/legacy/theme migration, clean Gatekeeper install and two consecutive signed-build Sparkle update rehearsal. All exact-candidate required checks belong to V before P. |
+| E00–E04 foundations/document/native-tab/editor | Current real open/edit/save/restore, encoding/source fidelity, selection/lifetime and recovery. Preserve audited resolved architecture; no obsolete single-window assumption. |
+| E05 highlighting/chrome/themes | E22's real Release hot/full paths and synchronous main-actor budgets; E23's semantic roles/eight themes/custom themes. A best-of-five microbenchmark is best-case evidence, not p95 or whole-app latency. |
+| E06–E09 parse/Preview/outline/FileTree | Map all applicable historical manual/Release rows to current evidence, including links/images/selection and smaller FileTree app-layer paths. |
+| E10/E11 source editing/TeX | E22's multi-selection/language/fence mechanics, actual TeX recognition/highlighter-or-approved-fallback and real byte-preserving round trips; no Markdown Preview for TeX. |
+| E12 export/PDF | #118/#121/#88: real menu/save-panel HTML/PDF, genuine pagination/searchable text, parity, final-byte/memory limits, contained reads, asset crash recovery and cancellation. PR #114's as-built work is historical completed work, not new scope. |
+| E13 settings | #53 compatible old schemas/import; E22 real parser capability; E23 theme catalog and live apply. Older EditorSettings cannot silently become whole-domain defaults. |
+| E14 contributions/palette/filters | #117 anchors/destinations/snapshot and E22 registry. Actual built-in/discovered filter, selection/undo, failure/timeout/cancel/close/supersession/multi-window journeys. |
+| E15 identity/accessibility | Final approved artwork and actual Finder/Dock/small-size presentation; keyboard/VoiceOver/light/dark/Increase Contrast/Reduce Transparency/Reduce Motion/resizing across all completed UI. |
+| E18 external changes | #119/#120/#88: clean/dirty/own-save, newest disk conflict choices, move/delete, native close sheet, recovery and view-state behavior; real 1/10 MiB timings and bounded watcher/probe lifetime. |
+| E19 math | All SIX #116 areas, including pre-parse escape/currency grammar, structured diagnostics, accessible attachments and own-span source identity; actual post-#62 visual/export sizing and 100-equation performance. |
+| E20/E21 diagrams | #79/E23 all three engines, structured palette/opaque canvas, actual defaults/print legibility, offline containment, output/queue/memory/cancellation calibration. Internal D2 WASM exception never permits active Quick Look output. |
+| HTML Preview isolation | #121's immutable root/load ownership, actual constrained opened-object races, MIME/CSP/network/teardown and resource accounting. |
+| E16/E17 final product | Native-reviewed language/plurals/layout and exact freeze; real CLI/open/stdin/wait; legacy and development-state migration including themes/snippets; clean Gatekeeper and signed N -> N+1 update preserving state. |
 
-In the implementation pass, generate individual IDs under each family, not one green umbrella row. #116's six areas and #118's multiple obligations cannot be collapsed into 'issue closed'. Keep old real performance/UI proofs as historical evidence and name precisely which current behavior and artifact they do or do not establish.
+Expand these into individual obligations; one green issue number is not evidence for its constituent behaviors. All still-applicable manual/Release/XCUITest rows from closed epics remain accounted for. New defect work stays focused under an existing owner where possible, not speculative backlog growth.
 
-## Supersession and scope discipline
+## Fresh orthogonal reviews
 
-A stale test can be retired only with its old behavior and a named stronger current test/evidence, or an original approved non-goal citation. 'SUPERSEDED' is a relationship between records, not a fourth way to waive a required behavior. The current required behavior still ends FIXED or PROVED. An optional REJECTED_FOR_1_0 row names the original permission and confirms no unsupported runtime/public claim ships.
+At stabilized source, run separately scoped reviews of: data/recovery/lifetimes and asynchronous publication; resource/security/HTML/renderer/Quick Look/filter/CLI/update boundaries; behavioral integration/Unicode/encoding/commands and actual FileTree/Preview/JSONSupport glue; Release performance/cold starts/retained workers/descriptors/cache bytes; and evidence/UX/accessibility/localization/public claims.
 
-No new capability, speculative edge-case epic or repeated full historical search is authorized here. A newly observed crash, data-loss/security failure, broken workflow or disproved previous proof is a concrete defect: preserve a reproduction and trace it to the existing owner, adding a focused issue only when it genuinely has no owner. Issue count is not the progress metric; resolved required behaviors and valid evidence are.
+Review actual source and tests, not summaries of old bots. Explicitly cover the less-reviewed FileTree app layer, CLI and smaller Preview/JSONSupport code plus every E22/E23/#116–#121 change. Record provenance, inspected scope, concrete reproductions, severity, tests and fixes. Multiple lenses in one session are self-review passes, not independent reviewers. Separate actual executions/readers are required before claiming independence.
 
-## Fresh orthogonal whole-repository review
+Service quota exhaustion is external unavailability, not a code finding or a successful review. Use another already-authorized viable review route where permitted, with truthful provenance. Do not repeatedly request an exhausted bot, buy services, weaken required checks or describe self-review as independent. A mandatory unavailable review blocks its unit/merge, not unrelated independent preparation.
 
-Freeze an exact S/V source and give each review pass a distinct question. Review source and tests, not only summaries of prior bot findings:
+Re-review changed invariants after fixes and keep every failed run. Timing reruns may diagnose noise, but minimum/median/p95/cold/whole-path measures must retain distinct meanings and original threshold semantics. No repeated rerun-until-green, skipped native test or weakened assertion can clear an obligation.
 
-- Data/lifetime correctness: FileCore/Workspace save, recovery, identity transfer, session restore, multiple windows, CLI and update termination; stale completions and cancellation after durable writes.
-- Security/resource admission: contained filesystem reads, HTML/CSP, renderer/WebKit workers, Quick Look grants, custom themes, user filters, CLI framing and update-signature/publishing boundaries.
-- Behavioral integration: command/menu/palette eligibility, actual FileTree app layer, smaller Preview/JSONSupport paths, Unicode/encoding/line endings, source positions and new E22/E23 interfaces.
-- Performance/lifecycle: real Release hot paths, cold starts, long documents, repeated renderer/theme/Quick Look cycles, detached work, queues/descriptors/cache bytes and main-actor stalls.
-- Evidence/UX/accessibility: whether tests exercise the claimed route; native alerts/menus/first-run/import/update/VoiceOver; final translation/identity/print claims and unsupported fallback disclosure.
+## Validator and execution
 
-Record reviewer provenance, inspected scope, concrete findings, discriminating reproduction/tests and resolution. Different lenses are not automatically independent reviewers; claim independent review only when separate actual executions/readers are evidenced. Re-review changed areas and their affected contracts after fixes. A global zero-findings message or zero TODO markers is not a proof of correctness.
+Implement an offline validator for schema/coverage/links/digests/artifact identity plus independently retained actual results. Reject missing/duplicate obligations, unsupported rejection, stale source/string/artifact identity, unresolved critical failures/skips and release-relevant P0/P1/P2. Cosmetic P3 requires explicit owner acceptance and cannot conceal functional/data/security impact. A separate read-only live-repository check confirms current blockers/ref before authorization; unavailable access yields BLOCKED.
 
-Prioritize the areas PR #51 read less deeply: FileTree app glue, CLI and smaller Preview/JSONSupport paths, plus all E22/E23/#116–#121 changes. Do not spend the final review repeatedly rediscovering already resolved historical issues while leaving those seams unread.
+The validator never closes issues, manufactures pass results or publishes. The architecture readiness.json in this PR is a UNIT DEPENDENCY plan only, not the future runtime release-evidence manifest. Passing its static graph tests cannot pass #115 or any application test.
 
-## Gate validator and final execution
+At S execute required engineering suites/Release measurements and applicable interactive work. At V use #88's exact-artifact procedure with actual Mac permissions and public UI, VoiceOver, HTML/PDF independent inspection, themes/math/diagrams, Finder/Quick Look, first run/import/update and at least one accepted non-English locale. Verify actual app/CLI/extension executable paths so a nearby Debug build cannot masquerade as the candidate.
 
-Implement a deterministic offline validator for the manifest/schema/links/digests and artifact identity. It rejects missing/duplicate obligation IDs, unmapped required rows, unknown final states, unsupported rejection, failed/blocked/skipped critical tests, stale source/strings/artifact hashes, unverifiable result references and unresolved release-relevant P0/P1/P2. Cosmetic P3 needs explicit owner acceptance with no functional/security/data-loss impact hidden by reclassification.
+Run real stateful migration and two signed-build update rehearsals via #18. Every product fix invalidates affected binary/string evidence and requires a new identified candidate plus affected checks and final critical regression. Never sign new bytes after manual proof and copy the old approval over them.
 
-A separate read-only live repository check captures current issue/PR dispositions and the exact candidate ref. If repository access is unavailable, report BLOCKED; do not use an old issue snapshot as current release authorization. The validator never closes issues, publishes releases, alters test results or requests a merge itself. Keep immutable validation output with the inputs it evaluated.
+## Units and completion
 
-At S run affected and full package/app suites, current real Release benchmarks and engineering UI lane. At V run the exact-artifact lane from #88 on the supported interactive Mac: complete critical native UI, external-file/conflict-close, HTML/PDF and independent artifact inspection, math/diagrams, custom themes, Finder/Quick Look, first run/import/update, non-English and VoiceOver. Capture positive controls and failure diagnostics. A rejected automation permission is a blocked run, not a product pass or permission to bypass the assertion.
+A. Adopt explicit sequencing documentation, inventory finite obligations and implement evidence-validator/test infrastructure without touching E22.
+B. Consume tested owner implementation units; perform fresh scoped review and resolve concrete defects; establish S only after all release-app strings exist.
+C. Complete E16, build private V artifacts and execute the full evidence matrix. #115 remains open while anything required is missing.
+D. Validate actual results, live blockers and exact identity; close #115 only on a genuine pass. P is separately authorized and not an automatic side effect of documentation/CI.
 
-Run the stateful migration and signed N -> N+1 update rehearsal with #18's preserved fixture manifests. Verify all selected app/extension/CLI binaries come from the candidate, not a similarly named Debug installation. After every fix create/reidentify the candidate, repeat affected proof and the final critical regression suite, and recompute localization/artifact records. Never select only the first successful rerun while hiding failed attempts.
+Allowed changes are release-contract/evidence/validation documents and scripts; production fixes remain their owner PRs. Stop on lost data, wrong artifact, missing proof, contradictory authority, unauthorized budget relaxation or public publication before P.
 
-## Implementation sequence and stop conditions
-
-1. Reconcile the S/V/P sequencing wording explicitly without touching E22's work; create the finite per-obligation manifest from existing authoritative rows and current issue criteria.
-2. Consume implementation and evidence from each owner, preserve previous completed as-built work and perform only the authorized delta reconciliation.
-3. Execute fresh orthogonal review and resolve concrete findings; establish S with all application-side release code/strings present.
-4. Complete #17, construct private V artifacts and execute the complete final evidence matrix. Keep #115 open while any required row is unresolved.
-5. Validate manifests, actual results, live blockers and exact artifact/strings. Close #115 only when its full final matrix is satisfied. P remains a separately authorized action by the release process, never an automatic side effect of a documentation commit.
-
-Allowed files: current/historical evidence manifests, validation scripts/tests, narrow release-contract sequencing documentation and true as-built corrections. Product fixes stay in their existing owner PRs. Stop on any missing required proof, contradictory authority, unapproved budget relaxation, lost authored data, artifact mismatch, unsupported security guarantee or attempted public publication before P.
-
-## Self-review and completion
-
-Review addressed the localization/candidate loop, old scaffolds mistaken for current status, issue closure mistaken for evidence, ignored prior audit completion, blanket 'superseded' waivers, skipped UI/PDF tests, hashes mistaken for execution proof, correlated reviews described as independent, and newly signed bytes after a completed manual pass.
-
-This is a design for obtaining and validating proof, not proof itself. The only permitted final gate outcomes are GO for the exact verified artifact or NO-GO with the precise remaining obligations. There is no 'ready except for manual testing' release state.
+Second review resolves the issue-closure/freeze loop, distinguishes structural plan validation from actual release evidence, preserves benchmark meaning and names genuine review-service failure behavior. No full source audit, independent review or native execution is claimed to have happened merely because this architecture was reviewed. Final outcome is GO for one proved artifact or NO-GO with exact remaining obligations, never 'ready except for manual testing'.
