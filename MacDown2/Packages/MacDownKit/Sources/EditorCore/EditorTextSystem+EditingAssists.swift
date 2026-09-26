@@ -98,7 +98,8 @@ extension EditorTextSystem {
             for: .markdownCommand(command),
             text: source,
             selection: selectedRange,
-            configuration: editingAssistConfiguration
+            configuration: editingAssistConfiguration,
+            profile: languageEditingProfile
         )
         return applyAssistOutcome(outcome)
     }

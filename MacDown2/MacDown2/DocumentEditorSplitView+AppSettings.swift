@@ -46,15 +46,24 @@ extension DocumentEditorSplitView {
         MarkdownParseOptions(blockDirectives: markdownSettings?.parsesBlockDirectives ?? true)
     }
 
-    static func assistConfiguration(from editorSettings: EditorSettings?) -> EditingAssistConfiguration {
-        guard let editorSettings else { return .markdownDefault }
+    /// `isMarkdown` gates exactly the Markdown-*specific* behaviors
+    /// (list/blockquote/task continuation, symmetric `*`/`_`/backtick
+    /// delimiter pairing, ordered-list auto-increment) off for every other
+    /// format (EPIC-22 §6.11, Slice 4a) — the general mechanics (structural
+    /// pairing, Tab/Shift-Tab indent, Smart Home, generic Return-maintains-
+    /// indentation) still respect the user's own settings for every format.
+    static func assistConfiguration(from editorSettings: EditorSettings?,
+                                    isMarkdown: Bool) -> EditingAssistConfiguration {
+        guard let editorSettings else { return isMarkdown ? .markdownDefault : .general }
         return EditingAssistConfiguration(
             isEnabled: editorSettings.assistsEnabled,
-            continuesMarkdownPrefixes: editorSettings.continuesMarkdownPrefixes,
+            isMarkdownFormat: isMarkdown,
+            continuesMarkdownPrefixes: isMarkdown && editorSettings.continuesMarkdownPrefixes,
             completesMatchingCharacters: editorSettings.completesMatchingCharacters,
+            completesMarkdownDelimiters: isMarkdown && editorSettings.completesMatchingCharacters,
             convertsTabsToSpaces: editorSettings.convertsTabsToSpaces,
             smartHome: editorSettings.smartHome,
-            autoIncrementOrderedLists: editorSettings.autoIncrementOrderedLists,
+            autoIncrementOrderedLists: isMarkdown && editorSettings.autoIncrementOrderedLists,
             indentationWidth: editorSettings.indentationWidth
         )
     }

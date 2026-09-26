@@ -356,7 +356,7 @@ responsiveness in mixed technical documents.
 
 | # | Question | Blocks |
 |---|----------|--------|
-| O1 | Final public product name, bundle/update identity, CLI public name where affected, repository/public-link strategy and development→release namespace migration plan | **E23 final identifiers / final E16 freeze / E17** |
+| O1 | **Partially resolved 2026-09-25:** the owner has settled the public product name as **MostlyText**, with domains `mostlytext.app` and `mostlytext.dev` owned (not `mostlytext.org`). This settles the *name* only — domain ownership does not by itself establish the bundle ID, signing identity, appcast URL, DNS configuration, or approved artwork/icon, all of which remain concrete inputs to prepare once (not to reopen) before E23 commits final identifiers. CLI public name, repository/public-link strategy, and the development→release namespace migration plan (E17) are still open. | **E23 final identifiers / final E16 freeze / E17** |
 | O2 | Where does the app live long-term: rename this fork, or fresh repo? | Public identity re-freeze before E23 final identifiers |
 | O3 | Import old MacDown prefs/themes on first run? | E13; if approved, must be stable before E15/E16 first-run/string freeze |
 | O4 | **Resolved 2026-09-21:** E23 expands to at least 8 deliberate bundled themes (>=4 light, >=4 dark) plus safe declarative custom themes; provenance/licensing and contrast are release gates. | E23 |

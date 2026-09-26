@@ -31,8 +31,16 @@ public struct EditorConfiguration: @unchecked Sendable, Equatable {
     public var showsInvisibles: Bool
 
     /// E10 editing assists. `.default` intentionally stays `.disabled`; the
-    /// app boundary enables `.markdownDefault` only for Markdown documents.
+    /// app boundary enables `.markdownDefault`/`.general` per the document's
+    /// own format (EPIC-22 §6.11, Slice 4a).
     public var editingAssists: EditingAssistConfiguration
+
+    /// The active document format's editor mechanics (comment delimiters,
+    /// paired delimiters, indent-after-trailing triggers, indent-width
+    /// override) — `.plainText` by default. Resolved by the app boundary via
+    /// `LanguageEditingProfileRegistry.profile(for:)`, keyed off the
+    /// document's own `FileFormat.id` (EPIC-22 §6.11, Slice 4a).
+    public var languageProfile: LanguageEditingProfile
 
     public init(
         font: NSFont,
@@ -41,7 +49,8 @@ public struct EditorConfiguration: @unchecked Sendable, Equatable {
         wrapsLines: Bool = true,
         scrollsPastEnd: Bool = true,
         showsInvisibles: Bool = false,
-        editingAssists: EditingAssistConfiguration = .disabled
+        editingAssists: EditingAssistConfiguration = .disabled,
+        languageProfile: LanguageEditingProfile = .plainText
     ) {
         self.font = font
         self.lineHeightMultiple = lineHeightMultiple
@@ -50,6 +59,7 @@ public struct EditorConfiguration: @unchecked Sendable, Equatable {
         self.scrollsPastEnd = scrollsPastEnd
         self.showsInvisibles = showsInvisibles
         self.editingAssists = editingAssists
+        self.languageProfile = languageProfile
     }
 
     /// A sensible default configuration using the system monospaced font.

@@ -38,13 +38,23 @@ public final class EditorTextSystem {
     private let fallbackUndoManager = UndoManager()
     private var lastAppliedConfiguration: EditorConfiguration?
     private var lastAppliedOverscroll: OverscrollState?
-    private var lastFrameSyncSignature: FrameSyncSignature?
-    private var measuredContentHeight: CGFloat = 0
+    /// Not `private`: `EditorTextSystem+Content.swift`'s `setText`/
+    /// `replaceTextFromExternal` also reset this on a whole-document
+    /// replacement.
+    var lastFrameSyncSignature: FrameSyncSignature?
+    /// Not `private`: see `lastFrameSyncSignature`'s note above.
+    var measuredContentHeight: CGFloat = 0
     private var frameSyncTask: Task<Void, Never>?
-    private var editRevision: UInt64 = 0
+    /// Not `private`: `EditorTextSystem+Content.swift`'s `setText`/
+    /// `replaceTextFromExternal` bump this on every whole-document
+    /// replacement, mirroring the incremental-edit path's own bump in
+    /// `noteTextEdit()` below.
+    var editRevision: UInt64 = 0
     /// Prevents a disk-driven replacement from flowing back through the
-    /// editor binding as a user edit.
-    public private(set) var isPerformingProgrammaticTextUpdate = false
+    /// editor binding as a user edit. Setter is `internal` (not `private`)
+    /// so `EditorTextSystem+Content.swift`'s `replaceTextFromExternal` can
+    /// raise/lower it.
+    public internal(set) var isPerformingProgrammaticTextUpdate = false
     /// Set while an E10 assist edit is being applied, so the nested
     /// `shouldChangeTextIn` callback does not re-transform the assist.
     /// The setter is internal so the adapter in
@@ -64,9 +74,36 @@ public final class EditorTextSystem {
     /// Storage lives here (extensions cannot hold stored properties);
     /// the E10 methods live in `EditorTextSystem+EditingAssists.swift`.
     public private(set) var editingAssistConfiguration: EditingAssistConfiguration = .disabled
+    /// The active document format's editor mechanics (EPIC-22 §6.11,
+    /// Slice 4a) — set alongside `editingAssistConfiguration`, from the same
+    /// `EditorConfiguration.apply(_:)` call.
+    public private(set) var languageEditingProfile: LanguageEditingProfile = .plainText
     /// Set by `scrollOffset`'s setter before the scroll view exists yet
     /// (session restore); applied by `applyPendingScrollOffset()` once it does.
     var pendingScrollOffset: CGFloat?
+    /// Kept current with every edit this text system observes, incrementally
+    /// (never a full rescan except on whole-document replacement). Powers
+    /// the gutter, status bar, and Go to Line/Column. Setter is `internal`
+    /// (not `private`) so `EditorTextSystem+LineIndex.swift` can maintain
+    /// it — see that file for the update/rebuild methods and the
+    /// undo/redo observer that keeps it correct across those, which bypass
+    /// the normal incremental-edit path entirely.
+    public internal(set) var lineIndex: EditorLineIndex
+    /// See `EditorTextSystem+LineIndex.swift`'s `registerUndoRedoObservers()`.
+    var undoRedoObservers: [NSObjectProtocol] = []
+    /// Backing storage for `selectionSet` (`EditorTextSystem+Selection.swift`)
+    /// — see that property's doc comment for why a plain computed
+    /// reconstruction from `textView.selectedRanges` cannot, on its own,
+    /// preserve a non-zero `primaryIndex` across a read-after-write.
+    var storedSelectionSet: EditorSelectionSet?
+    /// Set while `selectionSet`'s own setter is writing to
+    /// `textView.selectedRanges` (including its own AppKit-collapse-revert
+    /// branch), so `EditorView.Coordinator.textViewDidChangeSelection`'s
+    /// staleness check on that same notification does not immediately
+    /// invalidate the cache the setter just wrote. See
+    /// `EditorTextSystem+Selection.swift` for the full mechanism this
+    /// guards.
+    var isUpdatingSelectionSet = false
 
     /// Snapshot of the inputs that produced the current overscroll inset so we
     /// can skip redundant updates.
@@ -78,8 +115,9 @@ public final class EditorTextSystem {
 
     /// Snapshot of the inputs that produced the last frame-height sync, so
     /// `syncFrameHeightToContent()` can skip the (TextKit 2 layout) work when
-    /// neither has changed.
-    private struct FrameSyncSignature: Equatable {
+    /// neither has changed. Not `private`: `lastFrameSyncSignature`'s own
+    /// type must be at least as visible as that property.
+    struct FrameSyncSignature: Equatable {
         let textLength: Int
         let width: CGFloat
         let editRevision: UInt64
@@ -96,49 +134,26 @@ public final class EditorTextSystem {
     public init(identity: String, initialText: String, configuration: EditorConfiguration) {
         self.identity = identity
         stack = TextKitStack()
+        // `setText` below performs the single authoritative
+        // `lineIndex.rebuild` scan of `initialText`; starting from an empty
+        // index here avoids scanning the same text twice on every open.
+        lineIndex = EditorLineIndex(text: "" as NSString)
+        // `self` is fully initialized as of this point (every stored
+        // property without a default has now been assigned), so it is safe
+        // to hand a reference to the text view here — see
+        // `EditorTextView.owningSystem`'s doc comment for why it needs one.
+        (stack.textView as? EditorTextView)?.owningSystem = self
         apply(configuration)
         setText(initialText)
+        registerUndoRedoObservers()
     }
 
     // MARK: - Content
 
-    /// Replaces the entire document text. This is intended for external reloads
-    /// and conflict resolution; it resets selection and scroll.
-    public func setText(_ text: String) {
-        textView.string = text
-        editRevision &+= 1
-        // A wholesale text replacement invalidates any measured height from
-        // the previous document — see `syncFrameHeightToContent`.
-        measuredContentHeight = 0
-        lastFrameSyncSignature = nil
-    }
-
-    /// Captures the selection and vertical viewport before an external reload.
-    public func viewportSnapshot() -> EditorViewportSnapshot {
-        EditorViewportSnapshot(selectedRange: selectedRange, scrollOffset: scrollOffset)
-    }
-
-    /// Replaces editor content from a stable external snapshot without
-    /// creating a user edit or losing the visible location where possible.
-    public func replaceTextFromExternal(
-        _ text: String,
-        preserving snapshot: EditorViewportSnapshot,
-        clearUndo: Bool
-    ) {
-        isPerformingProgrammaticTextUpdate = true
-        defer { isPerformingProgrammaticTextUpdate = false }
-
-        textView.string = text
-        editRevision &+= 1
-        measuredContentHeight = 0
-        lastFrameSyncSignature = nil
-        textView.setSelectedRange(clampedToLiveText(snapshot.selectedRange))
-        pendingScrollOffset = max(0, snapshot.scrollOffset)
-        if clearUndo {
-            undoManager.removeAllActions()
-        }
-        scheduleFrameHeightSync()
-    }
+    // `setText`/`viewportSnapshot`/`replaceTextFromExternal` live in
+    // `EditorTextSystem+Content.swift` (extracted to keep this file under
+    // its line-count limit, mirroring the established
+    // `DocumentEditorSplitView+EditorPane.swift` precedent).
 
     /// The current plain-text content of the editor.
     public var text: String {
@@ -163,9 +178,11 @@ public final class EditorTextSystem {
         if configurationChanged {
             lastAppliedConfiguration = configuration
             editingAssistConfiguration = configuration.editingAssists
+            languageEditingProfile = configuration.languageProfile
 
             textView.font = configuration.font
             textView.textContainerInset = configuration.textInsets
+            (textView as? EditorTextView)?.showsInvisibles = configuration.showsInvisibles
 
             // Plain-text editing: Markdown source must not be silently mutated by
             // smart substitutions or rich-text parsing. These are applied here so
@@ -352,5 +369,7 @@ public final class EditorTextSystem {
         frameSyncTask = nil
         textView.delegate = nil
         stack.layoutManager.textContainer = nil
+        undoRedoObservers.forEach(NotificationCenter.default.removeObserver)
+        undoRedoObservers = []
     }
 }

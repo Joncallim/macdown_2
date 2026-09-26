@@ -165,6 +165,31 @@ public struct EditorLineIndex: Sendable, Equatable {
         return substring.count + 1
     }
 
+    /// UTF-16 offset for a 1-based (line, column) pair — the inverse of
+    /// `column(atUTF16Offset:onLine:in:)`. `column` is a 1-based character
+    /// (grapheme-cluster) count, matching that method's convention: column 1
+    /// is the line's own start. Powers Go to Line/Column.
+    ///
+    /// Out-of-range `line` clamps to `1...lineCount`; out-of-range `column`
+    /// (below 1, or beyond the line's actual length) clamps to the line's
+    /// start or end respectively — it never advances into or past the line's
+    /// terminator, matching this type's clamping convention throughout.
+    public func utf16Offset(forLine line: Int, column: Int, in text: NSString) -> Int {
+        let clampedLine = min(max(1, line), lineCount)
+        let lineStart = lineStartOffsets[clampedLine - 1]
+        guard column > 1 else { return lineStart }
+
+        let lineContent = text.substring(with: utf16Range(ofLine: clampedLine, in: text))
+        var remaining = column - 1
+        var utf16Advance = 0
+        for character in lineContent {
+            guard remaining > 0 else { break }
+            utf16Advance += character.utf16.count
+            remaining -= 1
+        }
+        return lineStart + utf16Advance
+    }
+
     /// Scans `[start, end)` of `text` for LF/CRLF/CR line starts, returning
     /// them (including `firstLineStart` itself) plus the scanned length.
     /// Used by both the full-document `init` (`start == 0`) and the
