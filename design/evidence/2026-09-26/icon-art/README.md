@@ -13,18 +13,15 @@ owner/design judgment call (D-026), not a statistical human-test gate.
   16×16 px render of the chosen lean in all six system appearances (Default,
   Dark, Clear Light, Clear Dark, Tinted Light, Tinted Dark), exported through
   Icon Composer's own production rendering pipeline (`File > Export…`), which
-  is the same renderer the OS uses.
-- **Not covered:** a live app icon in the real Dock and Finder. Wiring the
-  `.icon` file into `MacDown2/MacDown2/Assets.xcassets/AppIcon.icon` and
-  building via `xcodebuild` produced an app with **no icon at all** (see
-  "Toolchain finding" below) rather than the new mark — that path needs a
-  fix before Dock/Finder screenshots are meaningful. The 16 px exports above
-  are the practical substitute: same renderer, true pixel size, all system
-  appearances, just not inside a running `.app` bundle. The full UI screenshot
-  set from `DESIGN_CONTEXT.md`'s capture protocol (editor, preview, settings,
-  etc.) was not attempted, since it depends on a working Release build with
-  the real icon and normal app launch, which the same toolchain issue
-  blocks confidently attributing to icon changes alone.
+  is the same renderer the OS uses; **a live app icon built through the
+  normal `xcodebuild` pipeline and checked in the real Dock, Finder icon view
+  and Finder list view** (see `design/evidence/2026-09-26/dock-finder/`) —
+  Gate 2 (D-017 item 2) is now closed on that basis.
+- **Not covered:** the full UI screenshot set from `DESIGN_CONTEXT.md`'s
+  capture protocol (editor, preview, settings, etc.) — out of scope for this
+  pass, since it wasn't blocked by anything specific to the icon work and
+  would need a separate session. Also not covered: cascading the 10° lean
+  into the production wordmark/lockup/Figma files (see D-027).
 
 ## 1. Lean comparison (8° / 10° / 12°)
 
@@ -95,35 +92,63 @@ microglyph; the master is sufficient. The derive-from-master correction in
 render those files directly outside Icon Composer (favicon, in-app chrome at
 small size), where no such renderer-side rescue is available.
 
-## Toolchain finding: `.icon` catalog members don't compile via `xcodebuild`/`actool` on this machine
+## Corrected finding: the first attempt used the wrong integration path, not a broken toolchain
 
-Copying the Icon Composer `.icon` bundle into
-`MacDown2/MacDown2/Assets.xcassets/AppIcon.icon` (replacing
-`AppIcon.appiconset`) and building with `xcodebuild -configuration Release
-build` (Xcode 26.6, build 17F113) produces an app with **no
-`Assets.car`, no icon at all** in `Contents/Resources`. A minimal direct
-repro confirms it:
+The first pass put the `.icon` file **inside** `Assets.xcassets`
+(`Assets.xcassets/AppIcon.icon`, replacing `AppIcon.appiconset`) and built
+with plain `xcodebuild`. That produced an app with no `Assets.car` and no
+icon at all, and a minimal `actool Assets.xcassets --compile …` repro showed
+`actool` silently writing nothing for the catalog. The evidence record
+initially diagnosed this as an `actool`/toolchain version gap. **That
+diagnosis was wrong.** Apple's current Icon Composer documentation (and the
+WWDC26 Icon Composer session) says a `.icon` file is added as a normal
+top-level project resource **adjacent to** `Assets.xcassets`, not nested
+inside it. Nesting it inside the catalog folder meant `actool` treated the
+whole `Assets.xcassets` as one opaque `folder.assetcatalog` unit, didn't
+recognise the unfamiliar `.icon` child inside it, and silently produced an
+empty catalog — an integration-path error, not an `actool` defect.
 
-```
-actool Assets.xcassets --compile <out> --app-icon AppIcon --output-partial-info-plist <out>/partial.plist ...
-```
+**Corrected path, verified working:**
 
-exits 0 with no errors or warnings about the icon itself, but writes nothing
-but an empty `partial.plist` — the `.icon` bundle's `icon.json` (a valid
-Icon-Composer-exported document; layers, fill and `supported-platforms` all
-present) is silently not recognised as icon content by this system's
-command-line `actool`. This looks like a genuine version gap between Icon
-Composer's `.icon` export format and this machine's bundled `actool`, not a
-project configuration error (`ASSETCATALOG_COMPILER_APPICON_NAME` is
-correctly set to `AppIcon`, and the classic `.appiconset` compiles and links
-into a working `.icns` normally). This needs a person with Xcode.app's own
-GUI build (which may invoke a newer/different icon-compilation path) or an
-updated Xcode/actool to resolve, before the real Dock/Finder/full-UI-screenshot
-checks in `DESIGN_CONTEXT.md` can be completed. **The implementation-side
-files this required (`Assets.xcassets/AppIcon.icon`, the removed
-`AppIcon.appiconset`, the regenerated `.xcodeproj`) were reverted after
-testing** — the design lane stays read-only toward implementation code; only
-this evidence and the `.icon` source file are new.
+1. Place the file at `MacDown2/MacDown2/AppIcon.icon` — a sibling of
+   `Assets.xcassets`, not inside it.
+2. Remove/rename the old `Assets.xcassets/AppIcon.appiconset` so there's only
+   one app-icon source (kept both temporarily is untested and not
+   recommended).
+3. Regenerate the Xcode project. **XcodeGen 2.46.0 already has native
+   support for this** — no manual `.pbxproj` surgery was needed. It adds the
+   file with `lastKnownFileType = wrapper.icon`, includes it in the target's
+   Resources build phase, and the existing
+   `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` build setting (already in
+   `project.yml`) picks it up unchanged, matching the file's basename minus
+   extension.
+4. A normal `xcodebuild -configuration Release build` (no Xcode.app GUI
+   needed) then compiles it correctly: `Contents/Resources/Assets.car` and
+   `AppIcon.icns` are both produced, and `assetutil -I Assets.car` shows
+   `NSAppearanceNameAqua`/`NSAppearanceNameDarkAqua`/`NSAppearanceNameSystem`/`ISAppearanceTintable`
+   renditions (10 tintable renditions were generated for this icon).
+
+**Live verification:** built and launched the real `.app`, then checked it
+in `design/evidence/2026-09-26/dock-finder/`:
+
+- `dock-light.png` — the real Dock, running app, light appearance.
+- `finder-icon-view-light.png` — Finder icon (grid) view.
+- `finder-list-view-light.png` — Finder list view at the true 16 px row-icon
+  size.
+
+All three read clearly as the Slant "MT" mark. **Gate 2 (D-017 item 2,
+"macOS icon set in Icon Composer and checked in Dock and Finder") is now
+closed.** Dark-appearance Dock/Finder screenshots and the full
+`DESIGN_CONTEXT.md` UI screenshot set were not captured in this pass (not
+blocked by anything specific to the icon work; left for a follow-up
+session). **The implementation-side files this required
+(`MacDown2/MacDown2/AppIcon.icon`, the removed `AppIcon.appiconset`, the
+regenerated `.xcodeproj`) were reverted after testing** — the design lane
+stays read-only toward implementation code; only this evidence and the
+`.icon` source file under `design/` are new. The correct integration steps
+above (steps 1–4) are recorded here for whoever next needs to wire the real
+icon into the app permanently — that's an implementation-lane change, not
+a design-lane one.
 
 ## Files
 

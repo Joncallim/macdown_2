@@ -46,7 +46,10 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
   `slant-16.svg`/`slant-32.svg`/`slant-master.svg` still reflect 12° and have not
   yet been regenerated at 10° — D-027 records the geometry decision, not the
   cascade. Read `design/evidence/2026-09-26/icon-art/README.md` before touching
-  any of that production geometry.
+  any of that production geometry. **Gate 2 (macOS icon set) is closed (D-028):**
+  a `.icon` file built as a project resource adjacent to `Assets.xcassets`
+  (not inside it — see the README for the exact steps) compiles correctly
+  and renders the mark in the real Dock and Finder at true small size.
 - **Handoff and gates:** `design/FIGMA_HANDOFF.md` (everything the Figma session
   needs), `design/brand/PROVENANCE.md` (licences, canonical files),
   `design/validation/read-test/` (blind human test: round 1 exploratory; formal gate waived by the owner, D-026) and
