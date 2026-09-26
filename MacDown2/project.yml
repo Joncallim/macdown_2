@@ -31,6 +31,8 @@ targets:
     - package: MacDownKit
       product: EditorCore
     - package: MacDownKit
+      product: TextSearch
+    - package: MacDownKit
       product: Highlighting
     - package: MacDownKit
       product: MarkdownEngine

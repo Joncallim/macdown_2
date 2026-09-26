@@ -23,6 +23,7 @@ struct DocumentEditorSplitView: View {
     let identity: String
     @Binding var text: String
     let editorStore: EditorTextSystemStore
+    let findStore: EditorFindModelStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let jsonAnalysisStore: JSONAnalysisStore

@@ -19,6 +19,7 @@ import Workspace
 struct WorkspaceShellView: View {
     @State private var model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    let findStore: EditorFindModelStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let jsonAnalysisStore: JSONAnalysisStore
@@ -32,6 +33,7 @@ struct WorkspaceShellView: View {
     init(
         model: WorkspaceModel,
         editorStore: EditorTextSystemStore,
+        findStore: EditorFindModelStore,
         highlightStore: SyntaxHighlightStore,
         parseStore: MarkdownParseStore,
         jsonAnalysisStore: JSONAnalysisStore,
@@ -42,6 +44,7 @@ struct WorkspaceShellView: View {
     ) {
         _model = State(initialValue: model)
         self.editorStore = editorStore
+        self.findStore = findStore
         self.highlightStore = highlightStore
         self.parseStore = parseStore
         self.jsonAnalysisStore = jsonAnalysisStore
@@ -63,6 +66,7 @@ struct WorkspaceShellView: View {
             ContentAreaView(
                 model: model,
                 editorStore: editorStore,
+                findStore: findStore,
                 highlightStore: highlightStore,
                 parseStore: parseStore,
                 jsonAnalysisStore: jsonAnalysisStore,

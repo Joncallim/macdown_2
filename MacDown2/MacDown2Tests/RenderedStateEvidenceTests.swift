@@ -133,6 +133,7 @@ struct RenderedStateEvidenceTests {
         let view = ContentAreaView(
             model: model,
             editorStore: EditorTextSystemStore(),
+            findStore: EditorFindModelStore(),
             highlightStore: SyntaxHighlightStore(),
             parseStore: MarkdownParseStore(),
             jsonAnalysisStore: JSONAnalysisStore(),
