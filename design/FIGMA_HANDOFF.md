@@ -85,7 +85,7 @@ T `#7EA4FF`. The macOS icon build may change these.
 | 1. Wordmark outlined with curve and "yT" corrections | **Figma** (this handoff) | **Closed.** Outlines and slant stroke compensation are in the Figma file and `design/brand/slant/production/`; re-measured at the 10° lean (D-029): yT 0 (no correction needed at 10°) and xt +56 (was yT −60/xt +60 at 12°, D-025) |
 | 2. macOS icon set (light, dark, clear, tinted) built in Icon Composer and checked in a real Dock and Finder | **Mac** | **Closed (D-028).** A `.icon` file adjacent to `Assets.xcassets` (not inside it) built correctly and rendered the mark in the live Dock, Finder icon view and Finder list view at true 16 px |
 | 3. Blind human read test passes D-019 (S1-only gate, exactly 8 valid participants: D-023) | **Humans**, using `design/validation/read-test/` | **Waived by the owner (D-026)**, not passed. Round 1 exploratory evidence: M+T 8/8; motorsport/performance associations 6/8; 16 px microglyph 0/8. Lean and small sizes settled by direct comparison and macOS validation (D-027, D-028) |
-| 4. Trademark register search (WIPO, USPTO, IPOS) run and reviewed | **Human searcher / reviewer**, using `design/brand/TRADEMARK_SEARCH.md` | See `design/brand/TRADEMARK_SEARCH.md` for current status. No legal conclusion has been drawn |
+| 4. Trademark register search (WIPO, USPTO, IPOS) run and reviewed | **Human searcher / reviewer**, using `design/brand/TRADEMARK_SEARCH.md` | **Deferred by the owner for 1.0 (D-031)**, not passed. Searches complete (D-030 flagged Modern Tech TM 40201616062P); registration and legal review deferred, no legal clearance claimed. Revisit if the brand gains material value |
 
 ## Record-keeping
 

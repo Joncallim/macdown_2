@@ -11,7 +11,9 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
 - **MostlyText** is a native macOS (26+) text and Markdown editor descended
   from MacDown. The development codename in the code is still `MacDown 2`.
   The name was settled 2026-09-25 (`planning/MIGRATION_PLAN.md`, open item O1).
-  The bundle ID, CLI name, icon and artwork are **not** settled yet.
+  The mark and artwork are frozen for 1.0 (D-031). The bundle ID and CLI
+  name are set by the release-hardening identity cutover
+  (`planning/RELEASE_HARDENING.md` §5.1), not by the design lane.
 - It should work well for everyday text, not only as a Markdown or developer
   tool.
 - Only features that are already built count. Design and marketing must not
@@ -57,7 +59,8 @@ Decisions live in [`DECISIONS.md`](DECISIONS.md).
 - **Handoff and gates:** `design/FIGMA_HANDOFF.md` (everything the Figma session
   needs), `design/brand/PROVENANCE.md` (licences, canonical files),
   `design/validation/read-test/` (blind human test: round 1 exploratory; formal gate waived by the owner, D-026) and
-  `design/brand/TRADEMARK_SEARCH.md` (register search record: word-mark and figurative searches complete on WIPO/USPTO/IPOS, 2026-09-26/27; no exact word-mark match found, but **Gate 4 is HOLD, not closed, pending targeted legal review of a flagged live Singapore mark (D-030)** — see the file's owner summary and search log).
+  `design/brand/TRADEMARK_SEARCH.md` (register search record: word-mark and figurative searches complete on WIPO/USPTO/IPOS, 2026-09-26/27; no exact word-mark match found; one live Singapore "MT" mark flagged (D-030). **Gate 4 is owner-waived/deferred for the 1.0 open-source release (D-031), not passed**: formal registration and legal review are deferred on proportionality and privacy grounds, no legal clearance is claimed, and registration is revisited if the brand gains material value — see the file's owner summary and search log).
+- **Freeze status for 1.0 (D-031):** Gates 1 and 2 closed, Gate 3 waived (D-026), Gate 4 deferred (D-031). The public identity is frozen for 1.0; the branding cutover in `planning/RELEASE_HARDENING.md` §5.1 can proceed.
 - The mark must work at macOS app-icon size, at favicon size (16 px), in
   monochrome, on light and dark backgrounds, and in a wordmark lockup.
 - Current icon: **placeholder only**. It is a white document glyph on a blue

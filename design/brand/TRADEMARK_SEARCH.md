@@ -33,6 +33,18 @@ HOLD, not closed, pending targeted legal review of the Modern Tech finding.**
 No identity change is authorised on the strength of this screen alone.
 Production design stays exactly as frozen at D-029.
 
+**Owner decision, 2026-09-27 (D-031), superseding D-030's release-blocking
+HOLD: Gate 4 is owner-waived/deferred for the initial open-source 1.0
+release, not passed.** Formal registration and the targeted legal review are
+deferred for proportionality and privacy reasons: registration isn't justified
+for a hobby open-source project when filing personally would put a
+residential address on public registers or need a paid address-for-service.
+**No legal clearance is claimed.** Every row in this log, including the Modern
+Tech 40201616062P finding, stays as recorded; no further searching is planned
+for 1.0. Revisit registration if MostlyText gains material adoption,
+revenue or sponsorship, press recognition, third-party use of the brand, or
+other meaningful brand value.
+
 ## What to search
 
 **Word marks**
@@ -126,3 +138,6 @@ Domains held by the owner, per `planning/MIGRATION_PLAN.md` O1:
 Give the reviewer this file, `slant-master.svg`, the lockup specification
 (D-015) and the intended classes. The reviewer's conclusion should be recorded
 as a new decision in `design/DECISIONS.md`, not in this log.
+
+This hand-off is deferred under D-031 and is the starting point when the
+revisit trigger fires.
