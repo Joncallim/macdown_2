@@ -21,6 +21,10 @@ as a read-only porting source in `legacy-reference/`.
   slice, Definition of Done, and human-readability rules for new epic work.
 - `planning/RELEASE_HARDENING.md` — binding cross-epic macOS 1.0 integration,
   identity, evidence, offline/privacy, fidelity, localisation and release gates.
+- `planning/RELEASE_PATH.md` — coordination map from current `master` to public
+  MostlyText 1.0: order, cloud/Mac split, open owner decisions. Adds no scope.
+- `design/` — MostlyText design packet (`DESIGN_CONTEXT.md`, `DECISIONS.md`)
+  and the canonical brand assets.
 
 ## Commands (from repo root)
 
