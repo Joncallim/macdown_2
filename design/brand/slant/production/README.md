@@ -43,9 +43,20 @@ npm run build && npm run verify   # verify needs Chromium (CHROMIUM_PATH)
 - **Mark outlines against the regenerated 10° source SVGs** (`npm run verify`,
   2026-09-26, Chromium via `CHROMIUM_PATH`): no solid-pixel differences at
   16–1024 px. Residuals are anti-aliasing on edges landing on half-pixel
-  rows: mean absolute difference 0.05/255 or less at every tested size,
-  0–104 pixels over a 32/255 threshold out of 260k–1M pixels depending on
-  size (all at edges, none in the ink body).
+  rows (all at edges, none in the ink body).
+- **Corrected figures (re-run 2026-09-27** after `npm run build` reproduced
+  `geometry.json` and `out/*.svg` byte-for-byte). The 2026-09-26 figures
+  above understated the residuals: they said "mean ≤0.05/255 at every size"
+  and "0–104 pixels over 32/255". The largest per-pixel difference at any
+  size is 64/255, so the conclusion stands: no solid-pixel differences.
+  Mean absolute difference (/255) per tested size:
+
+  | Artwork | Sizes | Mean | Pixels over 32/255 |
+  |---|---|---|---|
+  | master | 64 / 128 / 512 / 1024 px | 0.40 / 0.26 / 0.06 / 0.06 | 19 / 40 / 76 / 701 |
+  | 32 px | 32 / 128 / 256 px | 0.39 / 0.06 / 0.04 | 2 / 0 / 2 |
+  | 16 px | 16 / 64 / 256 px | 0.92 / 0.16 / 0.04 | 3 / 1 / 1 |
+  | icon-16 inner | 16 / 64 / 256 px | 0.83 / 0.08 / 0.02 | 2 / 1 / 0 |
 - **Wordmark:** measured with the compensation code's own thickness-factor
   formula and facing-profile pair spacing (`gaps()`), as below.
 
