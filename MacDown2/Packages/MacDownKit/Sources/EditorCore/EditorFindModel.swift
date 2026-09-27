@@ -78,6 +78,33 @@ public final class EditorFindModel {
         matches.count
     }
 
+    /// The `EditorSelectionSet` "Select All Matches" (EPIC-22 §6.14, Slice
+    /// 5c) installs, or `nil` if there are no matches. Deliberately reuses
+    /// `EditorSelectionSet(ranges:primaryIndex:)` directly — the exact,
+    /// already-general-purpose constructor Slice 3a/3b's own multi-cursor
+    /// work already validated — rather than `EditorTextSystem`'s own,
+    /// different, word-based `selectAllOccurrences()` (Slice 3c): that is a
+    /// separate, already-shipped feature with its own shortcut and its own
+    /// "the word under the caret" contract, sharing nothing with a Find
+    /// bar's current query/options-driven match list beyond this one
+    /// constructor. `currentIndex` (if any) becomes the resulting
+    /// selection's own primary caret, so the match the user was already
+    /// looking at stays the visually "active" one among the new selections;
+    /// falls back to `0` when there is no current match (e.g. Select All
+    /// pressed before ever navigating).
+    public var selectionSetForAllMatches: EditorSelectionSet? {
+        guard !matches.isEmpty else { return nil }
+        // `currentIndex` is never `nil` here in practice: every path that
+        // populates a non-empty `matches` (`updateMatches`'s own
+        // `nearestIndex` call, `advance(by:)`) also sets `currentIndex` to a
+        // real index whenever `matches` is non-empty. The `?? 0` is a
+        // defensive fallback for that invariant, not a reachable case — a
+        // review of this exact line found the test named for "no current
+        // index" didn't actually exercise a nil `currentIndex` at the point
+        // this property was read, since `updateMatches` had already set one.
+        return EditorSelectionSet(ranges: matches.map(\.range), primaryIndex: currentIndex ?? 0)
+    }
+
     /// Recomputes `matches` against `text` for the current `query`/`options`,
     /// then resolves `currentIndex` to the first match starting AT OR AFTER
     /// `anchor` (typically the live caret position when the bar was opened,
@@ -106,8 +133,25 @@ public final class EditorFindModel {
     /// one, exactly as §8 specifies. Returns whether this call's result was
     /// actually committed (`false` for a discarded, superseded call) so a
     /// caller can skip redundantly re-announcing state nothing changed.
+    /// `selection` is the live caret/selection range, in the same UTF-16
+    /// coordinates as `text` — required only to implement
+    /// `options.searchesSelectionOnly` (EPIC-22 §6.14, Slice 5c: the first
+    /// real consumer of that field, per `SearchOptions`' own doc comment —
+    /// `TextSearchEngine.matches` itself has no notion of "the selection,"
+    /// so this is where a caller filters the full-document match list down
+    /// to the ones fully inside the selection; see the inline comment on the
+    /// search call below for why this searches the FULL text and filters,
+    /// rather than searching a sliced substring). Ignored unless
+    /// `options.searchesSelectionOnly` is true AND `selection` is a real,
+    /// non-empty range; a caret (zero-length) or `nil` selection falls back
+    /// to searching the whole document rather than producing a confusing,
+    /// unexplained zero-result state.
     @discardableResult
-    public func updateMatches(in text: String, preferringLocationNear anchor: Int? = nil) async -> Bool {
+    public func updateMatches(
+        in text: String,
+        selection: NSRange? = nil,
+        preferringLocationNear anchor: Int? = nil
+    ) async -> Bool {
         searchGeneration &+= 1
         let generation = searchGeneration
         let query = query
@@ -115,8 +159,38 @@ public final class EditorFindModel {
         isSearching = true
         let result: Result<[SearchMatch], SearchQueryError> = await Task.detached(priority: .userInitiated) {
             do {
+                // Always searches the FULL text, never a pre-sliced
+                // substring -- `options.searchesSelectionOnly` below only
+                // FILTERS the already-computed, full-document matches down
+                // to ones fully inside the selection, rather than handing
+                // `TextSearchEngine.matches` a substring and offsetting its
+                // results. An earlier version of this method did slice
+                // first; a hostile review of this exact slice found that
+                // boundary-unsafe for `isWholeWord`: the whole-word check
+                // only ever looks at characters INSIDE whatever string it
+                // was given, so a match sitting at the sliced substring's
+                // own edge was wrongly reported as word-bounded even when,
+                // in the true full document, it was actually a truncated
+                // suffix/prefix of a larger word straddling the selection
+                // boundary -- empirically reproduced ("precat and cat",
+                // selection starting right after "pre", whole-word "cat"
+                // wrongly matched the truncated "cat" at the selection's own
+                // left edge). Searching the full text first and filtering
+                // its own already-correct results is both simpler and
+                // immune to this class of bug by construction.
                 let found = try TextSearchEngine.matches(in: text, query: query, options: options)
-                return .success(found)
+                guard options.searchesSelectionOnly, let selection, selection.length > 0 else {
+                    return .success(found)
+                }
+                let fullLength = (text as NSString).length
+                let location = max(0, min(selection.location, fullLength))
+                let length = max(0, min(selection.length, fullLength - location))
+                let clampedSelection = NSRange(location: location, length: length)
+                let scoped = found.filter { match in
+                    match.range.location >= clampedSelection.location
+                        && NSMaxRange(match.range) <= NSMaxRange(clampedSelection)
+                }
+                return .success(scoped)
             } catch let error as SearchQueryError {
                 return .failure(error)
             } catch {

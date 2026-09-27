@@ -22,10 +22,12 @@ extension DocumentEditorSplitView {
                     model: findModel,
                     text: text,
                     resolvedText: { editorStore.existingSystem(for: identity)?.text ?? text },
+                    resolvedSelection: { editorStore.existingSystem(for: identity)?.selectedRange },
                     initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
                     onMatchesChanged: { applyFindHighlights(findModel) },
                     onClose: { closeFindBar(findModel) },
-                    onReplace: { applyFindReplacement($0, model: findModel) }
+                    onReplace: { applyFindReplacement($0, model: findModel) },
+                    onSelectAll: { applySelectAllMatches($0) }
                 )
             }
 
@@ -141,5 +143,17 @@ extension DocumentEditorSplitView {
             guard await model.updateMatches(in: system.text, preferringLocationNear: anchor) else { return }
             applyFindHighlights(model)
         }
+    }
+
+    /// Installs "Select All Matches" (EPIC-22 §6.14, Slice 5c) on the live
+    /// text system. Deliberately does NOT call `revealSelection(utf16Range:)`
+    /// afterward — that method collapses to a SINGLE range internally
+    /// (`textView.setSelectedRange`), which would destroy the multi-selection
+    /// this just installed. `scrollToVisible(utf16Range:)` only scrolls, so
+    /// the primary match comes into view without touching selection at all.
+    func applySelectAllMatches(_ selection: EditorSelectionSet) {
+        guard let system = editorStore.existingSystem(for: identity) else { return }
+        system.selectionSet = selection
+        system.scrollToVisible(utf16Range: selection.primaryRange)
     }
 }

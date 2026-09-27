@@ -31,6 +31,11 @@ struct FindBarView: View {
     /// `textDidChange`) — searching that stale snapshot instead of the
     /// live text could highlight/select the wrong location for one frame.
     let resolvedText: () -> String
+    /// Returns the live selection/caret range, read fresh at the moment of
+    /// each search — same "read live, never capture once" discipline as
+    /// `resolvedText`. Used only to implement `options.searchesSelectionOnly`
+    /// (EPIC-22 §6.14, Slice 5c); ignored entirely unless that option is on.
+    let resolvedSelection: () -> NSRange?
     /// The caret location at the moment the bar was shown, used ONLY by the
     /// very first search on `.onAppear` — so opening Find starts searching
     /// forward from where the user actually was, matching every comparable
@@ -53,6 +58,10 @@ struct FindBarView: View {
     /// live `EditorTextSystem` — this view never mutates text itself,
     /// matching `EditorFindModel`'s own "never mutates live text" contract.
     let onReplace: (EditorEditTransaction) -> Void
+    /// EPIC-22 §6.14, Slice 5c: called with the `EditorSelectionSet` "Select
+    /// All Matches" built, so the caller can install it on the live
+    /// `EditorTextSystem`. This view never touches selection itself.
+    let onSelectAll: (EditorSelectionSet) -> Void
 
     @FocusState private var isQueryFocused: Bool
 
@@ -91,6 +100,7 @@ struct FindBarView: View {
                 optionToggle("Aa", isOn: $model.options.isCaseSensitive, help: "Case Sensitive")
                 optionToggle("W", isOn: $model.options.isWholeWord, help: "Whole Word")
                 optionToggle(".*", isOn: $model.options.isRegex, help: "Regular Expression")
+                optionToggle("Sel", isOn: $model.options.searchesSelectionOnly, help: "In Selection")
 
                 if model.isSearching {
                     ProgressView()
@@ -119,6 +129,15 @@ struct FindBarView: View {
                 .disabled(model.matchCount == 0)
                 .help("Find Next")
                 .accessibilityIdentifier("findBarNextButton")
+
+                Button {
+                    selectAllMatches()
+                } label: {
+                    Image(systemName: "selection.pin.in.out")
+                }
+                .disabled(model.matchCount == 0)
+                .help("Select All Matches")
+                .accessibilityIdentifier("findBarSelectAllButton")
 
                 Divider().frame(height: 16)
 
@@ -256,8 +275,11 @@ struct FindBarView: View {
     /// already is.
     private func recomputeMatches(anchor: Int?) {
         let text = resolvedText()
+        let selection = resolvedSelection()
         Task {
-            guard await model.updateMatches(in: text, preferringLocationNear: anchor) else { return }
+            guard await model.updateMatches(in: text, selection: selection, preferringLocationNear: anchor) else {
+                return
+            }
             onMatchesChanged()
         }
     }
@@ -288,5 +310,18 @@ struct FindBarView: View {
             return
         }
         onReplace(transaction)
+    }
+
+    /// A no-op while a search is still in flight, same staleness reasoning
+    /// as `replaceCurrent()`/`replaceAll()` — installing a selection built
+    /// from stale, pre-edit match positions would put the caret(s) at the
+    /// wrong offsets. Closes the bar afterward, matching every comparable
+    /// editor's own "Select All Matches hands off to ordinary multi-cursor
+    /// editing" convention — the Find bar has done its job once the
+    /// selection is installed.
+    private func selectAllMatches() {
+        guard !model.isSearching, let selection = model.selectionSetForAllMatches else { return }
+        onSelectAll(selection)
+        onClose()
     }
 }
