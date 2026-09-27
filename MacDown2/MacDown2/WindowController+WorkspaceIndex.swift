@@ -25,6 +25,18 @@ extension WindowController {
     /// never leak into a later Quick Open query in this same window.
     func setFileTreeRoot(_ url: URL?, accessURL: URL? = nil) async {
         await fileTreeModel.setRoot(url, accessURL: accessURL)
+        // Closes Quick Open (Slice 6b) if it's open against this window —
+        // an independent hostile review of that slice found the panel's
+        // own results/selection could otherwise resolve against a folder
+        // root that no longer matches what `fileTreeModel`/
+        // `workspaceFileIndex` now point to: `removeController`'s own
+        // force-close guard only fires when the WINDOW closes, never when
+        // an already-open window's root changes underneath it (Open
+        // Folder…/Open Recent Folder/session restore all route through
+        // this exact method without ever closing the window), so a stale
+        // Quick Open result could resolve `path.relativePath` against the
+        // NEW root and silently open the wrong file (or fail silently).
+        coordinator?.closeQuickOpenIfOrigin(self)
         guard let indexRoot = fileTreeModel.rootAccessURL else {
             await workspaceFileIndex.clear()
             return

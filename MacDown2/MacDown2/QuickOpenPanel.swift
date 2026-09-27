@@ -50,13 +50,18 @@ final class QuickOpenPanel: NSPanel, NSWindowDelegate {
                 // state at the moment of the action, not a stale snapshot"
                 // discipline `CommandPaletteView`'s filter handler already
                 // established for the identical reason (post-review finding
-                // #7 on that slice): the origin window's root cannot change
-                // while this floating panel is open (closing the folder
-                // would already have force-closed this panel via
-                // `removeController`'s own guard — see
-                // `WindowCoordinator+QuickOpen.swift`), but reading it live
-                // rather than capturing it is still the more defensive,
-                // consistent choice.
+                // #7 on that slice). This is a REAL requirement here, not
+                // just defensive style: an independent hostile review of
+                // this slice found the origin window's root CAN change
+                // while this panel stays open (Open Folder…/Open Recent
+                // Folder/session restore all switch an already-open
+                // window's root without closing it) — fixed by having
+                // `WindowController.setFileTreeRoot` close this panel via
+                // `WindowCoordinator.closeQuickOpenIfOrigin` whenever that
+                // happens, so this guard should never actually observe a
+                // root that moved out from under it, but resolving live
+                // rather than from a captured value is the correct,
+                // consistent choice regardless.
                 guard let coordinator, let originController,
                       let root = originController.fileTreeModel.rootAccessURL
                 else { return }

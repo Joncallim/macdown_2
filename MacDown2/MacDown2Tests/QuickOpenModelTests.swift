@@ -59,10 +59,20 @@ struct QuickOpenModelTests {
         #expect(model.results.first?.relativePath == "WindowCoordinator.swift")
     }
 
-    @Test func rapidTypingDiscardsSupersededQueryResults() async throws {
-        // Mirrors `EditorFindModel`'s own query-generation-counter
-        // discipline (§8): a slower, now-superseded query's result must
-        // never overwrite a newer query's already-committed one.
+    @Test func rapidTypingEndsOnTheLastTypedQuerysResults() async throws {
+        // A real end-to-end smoke test that typing two characters in a row
+        // settles on the LAST one's results -- but against the real
+        // `WorkspaceFileIndex` actor, whose calls are always processed (and
+        // therefore always COMPLETE) in the order they were submitted, this
+        // alone cannot distinguish "the generation guard correctly
+        // discarded a late, stale result" from "the two queries just
+        // happened to finish in submission order anyway", since a single
+        // actor never lets that order invert on its own. See
+        // `lateArrivingStaleQueryResultIsDiscarded` below for a test that
+        // actually forces and proves the inversion the guard exists to
+        // handle (an independent hostile review of this exact test found
+        // it passed unchanged even with the generation guard deleted
+        // entirely).
         let tree = try TempTree(["apple.txt", "banana.txt"])
         let index = WorkspaceFileIndex()
         await index.rebuild(root: tree.root)
@@ -73,6 +83,46 @@ struct QuickOpenModelTests {
         await waitUntil { model.results.count == 1 }
 
         #expect(model.results.first?.relativePath == "banana.txt")
+    }
+
+    @Test func lateArrivingStaleQueryResultIsDiscarded() async {
+        // Forces the exact completion-order inversion
+        // `QuickOpenModel.scheduleQuery()`'s generation counter exists to
+        // handle -- a NEWER query's result committing before an OLDER,
+        // now-superseded query's result arrives late -- via a controllable
+        // `performQuery` seam instead of the real `WorkspaceFileIndex`
+        // actor (whose own call-ordering guarantees make this inversion
+        // impossible to observe naturally; see the sibling test above).
+        let gate = QueryGate()
+        let staleResult = [IndexedPath(relativePath: "stale.txt", basename: "stale.txt")]
+        let freshResult = [IndexedPath(relativePath: "fresh.txt", basename: "fresh.txt")]
+        let model = QuickOpenModel(performQuery: { query in await gate.hold(query) })
+
+        model.query = "app" // generation 1 -- will resolve to staleResult, held for now
+        model.query = "ban" // generation 2 -- will resolve to freshResult, held for now
+
+        // Both `Task`s spawned by the two `scheduleQuery()` calls above are
+        // merely CREATED at this point, not necessarily already running --
+        // releasing a query before its own `hold(_:)` call has actually
+        // registered would silently no-op (nothing pending to resume yet),
+        // then strand that query's real, later `hold(_:)` call waiting on a
+        // release that already "happened". Waiting for both to genuinely
+        // be pending first closes that race.
+        await gate.waitUntilPending("app")
+        await gate.waitUntilPending("ban")
+
+        // Resolve the NEWER query first, exactly the inversion a real
+        // single-actor index could never produce on its own.
+        await gate.release("ban", with: freshResult)
+        await waitUntil { model.results == freshResult }
+
+        // Now let the OLDER, already-superseded query complete LATE. A
+        // broken (or deleted) generation guard would let this overwrite
+        // the newer, already-committed result.
+        await gate.release("app", with: staleResult)
+        await Task.yield()
+
+        #expect(model.results == freshResult, "a late-arriving stale query result must not overwrite the newer one")
     }
 
     @Test func moveSelectionWrapsAroundInBothDirections() async throws {
@@ -115,6 +165,42 @@ struct QuickOpenModelTests {
         model.moveSelection(by: 1)
 
         #expect(model.selectedResult?.relativePath == model.results[1].relativePath)
+    }
+}
+
+/// A controllable stand-in for `WorkspaceFileIndex.query(_:limit:)`: each
+/// distinct query string is held (via a real continuation, not a fixed
+/// delay) until the test explicitly releases it with a chosen result,
+/// letting a test force any completion order it wants — including one a
+/// real single actor's own call-ordering guarantees could never produce.
+private actor QueryGate {
+    private var pending: [String: CheckedContinuation<[IndexedPath], Never>] = [:]
+
+    func hold(_ query: String) async -> [IndexedPath] {
+        await withCheckedContinuation { pending[query] = $0 }
+    }
+
+    func release(_ query: String, with result: [IndexedPath]) {
+        pending.removeValue(forKey: query)?.resume(returning: result)
+    }
+
+    /// Waits until `query`'s own `hold(_:)` call has actually registered
+    /// its continuation — a real wall-clock deadline, not a fixed
+    /// iteration/yield-count budget, same shape as this file's own
+    /// `waitUntil`. Closes the "release before hold" race `release(_:with:)`
+    /// would otherwise silently no-op on: a `Task` spawned by
+    /// `QuickOpenModel.scheduleQuery()` is merely CREATED when that method
+    /// returns, not necessarily already running.
+    func waitUntilPending(_ query: String, timeout: Duration = .seconds(5)) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now + timeout
+        while clock.now < deadline {
+            if pending[query] != nil {
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(1))
+        }
+        Issue.record("Timed out waiting for query '\(query)' to become pending")
     }
 }
 

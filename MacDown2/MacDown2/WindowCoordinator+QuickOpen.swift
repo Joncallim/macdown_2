@@ -63,4 +63,26 @@ extension WindowCoordinator {
         guard quickOpen === panel else { return }
         quickOpen = nil
     }
+
+    /// Closes Quick Open if it is open against `controller`, called from
+    /// `WindowController.setFileTreeRoot(_:accessURL:)` whenever that
+    /// controller's folder root changes — not just when the controller
+    /// itself closes (`removeController`'s own, separate guard, for the
+    /// window-closing case). An independent hostile review of this slice
+    /// found that without this, switching an already-open window to a
+    /// different folder (Open Folder…, Open Recent Folder, or session
+    /// restore) while Quick Open was still showing results from the OLD
+    /// root left `quickOpen` open and pointing at a `WorkspaceFileIndex`
+    /// that had just been rebuilt for the NEW root: resolving an
+    /// already-selected, now-stale result's `relativePath` against the new
+    /// root could silently open the wrong file, or fail with no visible
+    /// error. Closing outright, rather than trying to keep the panel open
+    /// but refreshed, matches `removeController`'s own "just close it"
+    /// choice for the equivalent window-closing case — reopening Quick
+    /// Open fresh against the new root is unambiguous, a silently
+    /// re-filtered result set is not.
+    func closeQuickOpenIfOrigin(_ controller: WindowController) {
+        guard quickOpen?.originController === controller else { return }
+        quickOpen?.close()
+    }
 }

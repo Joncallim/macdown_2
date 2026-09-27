@@ -24,11 +24,32 @@ final class QuickOpenModel {
     private(set) var selectedIndex = 0
     private(set) var isSearching = false
 
-    private let index: WorkspaceFileIndex
+    private let performQuery: @Sendable (String) async -> [IndexedPath]
     private var queryGeneration = 0
 
     init(index: WorkspaceFileIndex) {
-        self.index = index
+        performQuery = { query in await index.query(query, limit: 100) }
+    }
+
+    /// Test-only seam: substitutes a caller-controlled query function for
+    /// the real `WorkspaceFileIndex.query(_:limit:)` call, matching this
+    /// project's established injectable-dependency shape for testing
+    /// actor-based async work deterministically (`DocumentFileMonitor`'s
+    /// injectable `sleeper`/`prober`/`watcher`, `WorkspaceFileIndex`'s own
+    /// injectable `walk`). Needed because `WorkspaceFileIndex` is a single
+    /// actor whose calls are always processed in the order they're
+    /// submitted — two real queries issued back to back always COMPLETE in
+    /// that same order too, so a test built only on the real actor cannot
+    /// distinguish "the generation guard correctly discarded a late,
+    /// stale result" from "the two queries just happened to finish in
+    /// submission order anyway" (a hostile review of this exact slice
+    /// proved this empirically: deleting the generation guard entirely
+    /// still left every existing test passing). This seam lets a test
+    /// force the actual inversion the guard exists to handle — a newer
+    /// query's result committed before an older, now-stale query's
+    /// late-arriving one — via controlled continuations.
+    init(performQuery: @escaping @Sendable (String) async -> [IndexedPath]) {
+        self.performQuery = performQuery
     }
 
     /// Runs the current query once against the index. Intended to be called
@@ -48,7 +69,7 @@ final class QuickOpenModel {
         let currentQuery = query
         isSearching = true
         Task {
-            let matches = await index.query(currentQuery, limit: 100)
+            let matches = await performQuery(currentQuery)
             guard generation == queryGeneration else { return } // superseded by a newer query
             results = matches
             selectedIndex = results.isEmpty ? 0 : min(selectedIndex, results.count - 1)
