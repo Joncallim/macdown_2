@@ -20,14 +20,14 @@ struct DocumentFileMonitorRecoveryTests {
         let recorder = MonitorRecoveryRecorder()
         let monitor = makeMonitor(watcher: watcher, prober: prober)
         try await monitor.bind(to: fileURL, priorFileObjectID: nil) { observation in
-            Task { await recorder.append(observation) }
+            recorder.append(observation)
         }
-        await waitUntil { await recorder.count == 1 }
+        await waitUntil { recorder.count == 1 }
 
         watcher.signal(.parentVanished)
 
-        await waitUntil { await recorder.count == 3 }
-        #expect(await recorder.values == [.available(initial), .missing(fileURL), .available(replacement)])
+        await waitUntil { recorder.count == 3 }
+        #expect(recorder.values == [.available(initial), .missing(fileURL), .available(replacement)])
         #expect(await prober.callCount == 4)
     }
 
@@ -42,16 +42,16 @@ struct DocumentFileMonitorRecoveryTests {
         let recorder = MonitorRecoveryRecorder()
         let monitor = makeMonitor(watcher: watcher, prober: prober)
         try await monitor.bind(to: fileURL, priorFileObjectID: nil) { observation in
-            Task { await recorder.append(observation) }
+            recorder.append(observation)
         }
-        await waitUntil { await recorder.count == 1 }
+        await waitUntil { recorder.count == 1 }
 
         watcher.signal(.parentVanished)
         watcher.signal(.changed)
 
         await waitUntil { watcher.watchedDirectories.count == 2 }
-        await waitUntil { await recorder.values.last == .available(recovered) }
-        #expect(await recorder.values.last == .available(recovered))
+        await waitUntil { recorder.values.last == .available(recovered) }
+        #expect(recorder.values.last == .available(recovered))
     }
 
     @Test func parentVanishedReinstallsTheDirectoryWatcherAfterTheProbe() async throws {
@@ -67,13 +67,13 @@ struct DocumentFileMonitorRecoveryTests {
         let recorder = MonitorRecoveryRecorder()
         let monitor = makeMonitor(watcher: watcher, prober: prober)
         try await monitor.bind(to: fileURL, priorFileObjectID: nil) { observation in
-            Task { await recorder.append(observation) }
+            recorder.append(observation)
         }
-        await waitUntil { await recorder.count == 1 }
+        await waitUntil { recorder.count == 1 }
 
         watcher.signal(.parentVanished)
 
-        await waitUntil { await recorder.count == 3 }
+        await waitUntil { recorder.count == 3 }
         await waitUntil { watcher.watchedDirectories.count == 2 }
         #expect(watcher.cancelCount == 1)
     }
@@ -125,14 +125,43 @@ struct DocumentFileMonitorRecoveryTests {
     }
 }
 
-private actor MonitorRecoveryRecorder {
-    private(set) var values: [DocumentFileObservation] = []
+/// A lock-based, synchronously-appending recorder -- matching
+/// `DocumentFileMonitorTests.swift`'s own `HealthRecorder` -- not an actor.
+/// `DocumentFileMonitor.emit(_:generation:sequence:)` calls `onObservation`
+/// synchronously from within its own actor-serialized execution, so the
+/// callback closures below can (and must) append synchronously too. An
+/// earlier `actor`-based version instead wrapped every append in
+/// `Task { await recorder.append(observation) }`, which independently
+/// schedules a new unstructured task per observation; nothing guarantees
+/// those tasks reach the recorder's actor executor in the same order they
+/// were created under scheduler contention (e.g. the full package suite's
+/// ~1,700 other tests all competing for the same global executor), so the
+/// recorded `values` could land out of order even though `waitUntil`'s own
+/// count-based wait had already succeeded. This was independently
+/// documented (`planning/issue-57-findings.md`, predating #150 by over a
+/// month) and only partially mitigated by #150's own unrelated timeout
+/// widening (2s -> 10s) here, which raises the odds of the race resolving
+/// in time but does not eliminate it. Appending synchronously via a lock
+/// removes the extra scheduling hop -- and therefore the race -- entirely.
+final class MonitorRecoveryRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedValues: [DocumentFileObservation] = []
+
+    var values: [DocumentFileObservation] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValues
+    }
 
     var count: Int {
-        values.count
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValues.count
     }
 
     func append(_ observation: DocumentFileObservation) {
-        values.append(observation)
+        lock.lock()
+        storedValues.append(observation)
+        lock.unlock()
     }
 }

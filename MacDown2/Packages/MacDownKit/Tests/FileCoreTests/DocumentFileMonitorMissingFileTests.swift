@@ -19,30 +19,44 @@ struct DocumentFileMonitorMissingFileTests {
         )
 
         try await monitor.bind(to: fileURL, priorFileObjectID: nil) { observation in
-            Task { await recorder.append(observation) }
+            recorder.append(observation)
         }
-        await waitUntil { await recorder.count == 1 }
-        #expect(await recorder.values == [.missing(fileURL)])
+        await waitUntil { recorder.count == 1 }
+        #expect(recorder.values == [.missing(fileURL)])
         #expect(watcher.watchedDirectories.count == 1)
         #expect(watcher.fileWatchCount == 0)
 
         watcher.signal(.changed)
         await waitUntil {
             guard watcher.fileWatchCount == 1 else { return false }
-            return await recorder.count == 2
+            return recorder.count == 2
         }
-        #expect(await recorder.values == [.missing(fileURL), .available(replacement)])
+        #expect(recorder.values == [.missing(fileURL), .available(replacement)])
     }
 }
 
-private actor MissingObservationRecorder {
-    private(set) var values: [DocumentFileObservation] = []
+/// Lock-based, synchronously-appending recorder -- see
+/// `DocumentFileMonitorTests.swift`'s own `ObservationRecorder` doc comment
+/// for why this isn't an actor fed via `Task { await recorder.append(...) }`.
+private final class MissingObservationRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedValues: [DocumentFileObservation] = []
+
+    var values: [DocumentFileObservation] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValues
+    }
 
     var count: Int {
-        values.count
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValues.count
     }
 
     func append(_ observation: DocumentFileObservation) {
-        values.append(observation)
+        lock.lock()
+        storedValues.append(observation)
+        lock.unlock()
     }
 }
