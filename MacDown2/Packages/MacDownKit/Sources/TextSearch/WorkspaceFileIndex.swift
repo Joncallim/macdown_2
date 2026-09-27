@@ -7,10 +7,19 @@ public struct IndexedPath: Sendable, Equatable, Hashable {
     /// Root-relative path, `/`-separated, no leading slash.
     public let relativePath: String
     public let basename: String
+    /// Folded and decomposed once at construction (index-build time, which
+    /// happens far less often than every Quick Open keystroke), not
+    /// recomputed on every `query(_:)` call — see
+    /// `FuzzyPathScore.score(foldedQuery:foldedPath:foldedBasename:)`'s own
+    /// doc comment for the 100k-path performance finding this avoids.
+    let foldedRelativePath: FuzzyPathScore.FoldedText
+    let foldedBasename: FuzzyPathScore.FoldedText
 
     public init(relativePath: String, basename: String) {
         self.relativePath = relativePath
         self.basename = basename
+        foldedRelativePath = FuzzyPathScore.FoldedText(relativePath)
+        foldedBasename = FuzzyPathScore.FoldedText(basename)
     }
 }
 
@@ -35,10 +44,35 @@ public actor WorkspaceFileIndex {
 
     public private(set) var state: State = .empty
     private var paths: [IndexedPath] = []
+    /// Inverted index: ASCII byte value -> ascending indices into `paths`
+    /// whose folded basename or relative path contains that byte anywhere.
+    /// Built once whenever `paths` changes (index-build time), not on every
+    /// `query(_:)` call — see `query`'s own doc comment for why a per-byte
+    /// postings list, not just `FoldedText.asciiMask`'s own O(1)-per-candidate
+    /// reject, was needed to meet the 100k-path budget (issue #112).
+    private var postingsByASCIIByte: [UInt8: [Int]] = [:]
     private var generation = 0
     private var currentWalkTask: Task<[IndexedPath], Never>?
+    private let walk: @Sendable (URL, Set<String>) -> [IndexedPath]
 
-    public init() {}
+    public init() {
+        walk = { root, excludedDirectoryNames in
+            DirectoryWalker().walk(root: root, excludedDirectoryNames: excludedDirectoryNames)
+        }
+    }
+
+    /// Test-only seam (package-internal, not part of the public API):
+    /// substitutes the real `DirectoryWalker` with a caller-controlled
+    /// closure, matching `DocumentFileMonitor`'s own established
+    /// injectable-dependency shape for testing actor-based async work
+    /// deterministically. Used to prove `rebuild` genuinely surfaces
+    /// `.building` while a walk is in flight without depending on real
+    /// disk-I/O timing being slow enough to observe -- a wall-clock race
+    /// would be exactly the kind of non-deterministic test this project's
+    /// own `RELEASE_HARDENING.md` §12 rules out.
+    init(walk: @escaping @Sendable (URL, Set<String>) -> [IndexedPath]) {
+        self.walk = walk
+    }
 
     /// Rebuilds the index from `root`, discarding any previous snapshot
     /// only once the new one is ready (a query made while a rebuild is in
@@ -56,34 +90,134 @@ public actor WorkspaceFileIndex {
         let currentGeneration = generation
         state = .building
         currentWalkTask?.cancel()
-        let walker = DirectoryWalker()
+        let walk = walk
         let task = Task.detached(priority: .utility) {
-            walker.walk(root: root, excludedDirectoryNames: excludedDirectoryNames)
+            walk(root, excludedDirectoryNames)
         }
         currentWalkTask = task
         let result = await task.value
         guard currentGeneration == generation else { return } // superseded by a newer rebuild
-        paths = result
+        setPaths(result)
         state = .ready(count: result.count)
+    }
+
+    /// Discards the current snapshot and returns to `.empty` -- for when the
+    /// workspace root closes (no folder open), so a stale snapshot from a
+    /// previously-open folder can never leak into a later query against an
+    /// empty workspace. Cancels any in-flight rebuild the same way a
+    /// superseding `rebuild(root:)` would (EPIC-22 §6.15, Slice 6a).
+    public func clear() {
+        generation += 1
+        currentWalkTask?.cancel()
+        currentWalkTask = nil
+        setPaths([])
+        state = .empty
     }
 
     /// Ranked matches for `query`, capped at `limit`. Never touches disk —
     /// operates entirely on the last-built in-memory snapshot, so a
     /// keystroke never triggers a new traversal (the epic's explicit
     /// "Quick Open queries an in-memory snapshot" requirement).
+    ///
+    /// Scans only `candidateIndices(for:)`'s own postings-list result, not
+    /// every one of `paths` — see that method's own doc comment. Folds/
+    /// decomposes `query` exactly ONCE for the whole call, then reuses each
+    /// candidate's own precomputed `foldedRelativePath`/`foldedBasename` --
+    /// see `FuzzyPathScore.score(foldedQuery:foldedPath:foldedBasename:)`'s
+    /// own doc comment for why the naive per-path-redo-everything approach,
+    /// even after adding the postings filter, would still miss the 100k-path
+    /// budget (issue #112) by a wide margin.
     public func query(_ query: String, limit: Int = 100) -> [IndexedPath] {
         guard !query.isEmpty else { return Array(paths.prefix(limit)) }
-        let scored: [(path: IndexedPath, score: Double)] = paths.compactMap { path in
-            guard let score = FuzzyPathScore.score(query: query, path: path.relativePath, basename: path.basename)
-            else {
-                return nil
+        let foldedQuery = FuzzyPathScore.FoldedText(query)
+        let candidates = candidateIndices(for: foldedQuery)
+        var scored: [(path: IndexedPath, score: Double)] = []
+        scored.reserveCapacity(candidates.count)
+        for index in candidates {
+            let path = paths[index]
+            guard let score = FuzzyPathScore.score(
+                foldedQuery: foldedQuery,
+                foldedPath: path.foldedRelativePath,
+                foldedBasename: path.foldedBasename
+            ) else {
+                continue
             }
-            return (path, score)
+            scored.append((path, score))
         }
         return scored
             .sorted { $0.score != $1.score ? $0.score > $1.score : $0.path.relativePath < $1.path.relativePath }
             .prefix(limit)
             .map(\.path)
+    }
+
+    /// Indices into `paths` that could possibly fuzzy-match `foldedQuery`,
+    /// using `postingsByASCIIByte` to avoid ever visiting the full `paths`
+    /// array at query time. Picks the query's own RAREST ASCII character
+    /// (the one with the fewest postings) and returns that character's
+    /// postings list directly: every genuine match must appear in every one
+    /// of the query's own characters' postings lists, so any single one of
+    /// them is already a valid (if not maximally tight) superset — a
+    /// necessary, not sufficient, filter. `FuzzyPathScore.score` itself
+    /// still runs against each returned index to confirm an actual match;
+    /// this only decides which indices are even worth checking. A
+    /// non-ASCII-only query (no ASCII character to pick a postings list by)
+    /// falls back to every index, matching `query`'s own pre-postings
+    /// behavior for that rare case.
+    private func candidateIndices(for foldedQuery: FuzzyPathScore.FoldedText) -> [Int] {
+        var rarestBucket: [Int]?
+        var rarestCount = Int.max
+        for scalar in foldedQuery.scalars where scalar.isASCII {
+            let byte = UInt8(scalar.value)
+            let bucket = postingsByASCIIByte[byte] ?? []
+            if bucket.count < rarestCount {
+                rarestCount = bucket.count
+                rarestBucket = bucket
+            }
+        }
+        return rarestBucket ?? Array(paths.indices)
+    }
+
+    /// Replaces `paths` and rebuilds `postingsByASCIIByte` to match —
+    /// callers are responsible for setting `state` themselves afterward,
+    /// since `.ready(count:)` (a real rebuild/seed) and `.empty` (`clear()`)
+    /// mean different things this helper has no way to infer from `paths`
+    /// alone (an empty root is `.empty`, not `.ready(count: 0)`).
+    private func setPaths(_ newPaths: [IndexedPath]) {
+        paths = newPaths
+        var postings: [UInt8: [Int]] = [:]
+        for (index, path) in newPaths.enumerated() {
+            var seenBytes: Set<UInt8> = []
+            for scalar in path.foldedBasename.scalars where scalar.isASCII {
+                let byte = UInt8(scalar.value)
+                if seenBytes.insert(byte).inserted {
+                    postings[byte, default: []].append(index)
+                }
+            }
+            for scalar in path.foldedRelativePath.scalars where scalar.isASCII {
+                let byte = UInt8(scalar.value)
+                if seenBytes.insert(byte).inserted {
+                    postings[byte, default: []].append(index)
+                }
+            }
+        }
+        postingsByASCIIByte = postings
+    }
+
+    /// Test-only seam (package-internal, not part of the public API):
+    /// installs a synthetic path list directly and marks the index
+    /// `.ready`, bypassing `rebuild`'s real directory walk entirely. Lets
+    /// the 100k-path query-performance budget (EPIC-22 §11) be measured
+    /// without needing 100k real files on disk — `rebuild`'s own existing
+    /// tests, against real (much smaller) trees, already cover directory-walk
+    /// correctness; this seam isolates `query`'s own in-memory cost, the
+    /// thing the budget is actually about (a Quick Open keystroke never
+    /// touches disk — see `query`'s own doc comment).
+    func seedForTesting(_ paths: [IndexedPath]) {
+        generation += 1
+        currentWalkTask?.cancel()
+        currentWalkTask = nil
+        setPaths(paths)
+        state = .ready(count: paths.count)
     }
 
     /// Directory names never worth indexing — build output, VCS metadata,

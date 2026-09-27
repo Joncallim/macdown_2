@@ -180,4 +180,18 @@ struct WorkspaceFileIndexTests {
         let finalState = await index.state
         #expect(finalState == .ready(count: 1))
     }
+
+    @Test func clearDiscardsTheSnapshotAndReturnsToEmpty() async throws {
+        let tree = try TempTree { _ in }
+        try tree.write("a.txt")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        #expect(await index.state == .ready(count: 1))
+
+        await index.clear()
+
+        #expect(await index.state == .empty)
+        #expect(await index.query("").isEmpty)
+    }
 }
