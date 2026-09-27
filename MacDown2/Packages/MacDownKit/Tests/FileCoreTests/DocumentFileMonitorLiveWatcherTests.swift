@@ -16,10 +16,24 @@ import Testing
 /// no UI/XCUITest/Accessibility-automation dependency at all.
 @Suite("Document file monitor — real watcher (#59)")
 struct DocumentFileMonitorLiveWatcherTests {
-    private actor Recorder {
-        private(set) var observations: [DocumentFileObservation] = []
+    /// Lock-based, synchronously-appending recorder -- see
+    /// `DocumentFileMonitorTestSupport.swift`'s own `ObservationRecorder` doc
+    /// comment for why this isn't an actor fed via
+    /// `Task { await recorder.append(...) }`.
+    private final class Recorder: @unchecked Sendable {
+        private let lock = NSLock()
+        private var storedObservations: [DocumentFileObservation] = []
+
+        var observations: [DocumentFileObservation] {
+            lock.lock()
+            defer { lock.unlock() }
+            return storedObservations
+        }
+
         func append(_ observation: DocumentFileObservation) {
-            observations.append(observation)
+            lock.lock()
+            storedObservations.append(observation)
+            lock.unlock()
         }
     }
 
@@ -39,10 +53,10 @@ struct DocumentFileMonitorLiveWatcherTests {
         let monitor = DocumentFileMonitor()
         let recorder = Recorder()
         try await monitor.bind(to: fileURL, priorFileObjectID: nil) { observation in
-            Task { await recorder.append(observation) }
+            recorder.append(observation)
         }
-        await waitUntil({ await recorder.observations.count == 1 }, timeout: .seconds(5))
-        let initialCount = await recorder.observations.count
+        await waitUntil({ recorder.observations.count == 1 }, timeout: .seconds(5))
+        let initialCount = recorder.observations.count
         #expect(initialCount == 1, "the initial bind-time probe must observe the file exists before we delete it")
 
         // The exact repro from #59: delete the backing file externally
@@ -56,7 +70,7 @@ struct DocumentFileMonitorLiveWatcherTests {
         // mechanism itself is not delivering the event in this
         // environment — the exact ambiguity #59 asks to resolve.
         await waitUntil({
-            await recorder.observations.contains {
+            recorder.observations.contains {
                 if case .missing = $0 {
                     return true
                 }
@@ -64,7 +78,7 @@ struct DocumentFileMonitorLiveWatcherTests {
             }
         }, timeout: .seconds(5))
 
-        let observations = await recorder.observations
+        let observations = recorder.observations
         let sawMissing = observations.contains {
             if case .missing = $0 {
                 return true
@@ -98,16 +112,16 @@ struct DocumentFileMonitorLiveWatcherTests {
                 Task { @MainActor in
                     let currentRequest = await monitor.currentRequestGeneration()
                     guard context.requestGeneration == currentRequest else { return }
-                    await recorder.append(context.observation)
+                    recorder.append(context.observation)
                 }
             }
         )
-        await waitUntil({ await recorder.observations.count == 1 }, timeout: .seconds(5))
+        await waitUntil({ recorder.observations.count == 1 }, timeout: .seconds(5))
 
         try FileManager.default.removeItem(at: fileURL)
 
         await waitUntil({
-            await recorder.observations.contains {
+            recorder.observations.contains {
                 if case .missing = $0 {
                     return true
                 }
@@ -115,7 +129,7 @@ struct DocumentFileMonitorLiveWatcherTests {
             }
         }, timeout: .seconds(5))
 
-        let observations = await recorder.observations
+        let observations = recorder.observations
         let sawMissing = observations.contains {
             if case .missing = $0 {
                 return true
@@ -132,9 +146,9 @@ struct DocumentFileMonitorLiveWatcherTests {
         let monitor = DocumentFileMonitor()
         let recorder = Recorder()
         try await monitor.bind(to: fileURL, priorFileObjectID: nil) { observation in
-            Task { await recorder.append(observation) }
+            recorder.append(observation)
         }
-        await waitUntil({ await recorder.observations.count == 1 }, timeout: .seconds(5))
+        await waitUntil({ recorder.observations.count == 1 }, timeout: .seconds(5))
 
         // Common atomic-save pattern: write to a sibling temp file, then
         // replace the original — what many editors (including this app's
@@ -145,7 +159,7 @@ struct DocumentFileMonitorLiveWatcherTests {
         _ = try FileManager.default.replaceItemAt(fileURL, withItemAt: replacementURL)
 
         await waitUntil({
-            await recorder.observations.contains {
+            recorder.observations.contains {
                 if case let .available(snapshot) = $0 {
                     return snapshot.text == "# Disk Version\n"
                 }
@@ -153,7 +167,7 @@ struct DocumentFileMonitorLiveWatcherTests {
             }
         }, timeout: .seconds(5))
 
-        let observations = await recorder.observations
+        let observations = recorder.observations
         let sawReplacement = observations.contains {
             if case let .available(snapshot) = $0 {
                 return snapshot.text == "# Disk Version\n"
