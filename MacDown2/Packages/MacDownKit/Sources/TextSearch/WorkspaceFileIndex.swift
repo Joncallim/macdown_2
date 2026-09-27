@@ -152,29 +152,61 @@ public actor WorkspaceFileIndex {
 
     /// Indices into `paths` that could possibly fuzzy-match `foldedQuery`,
     /// using `postingsByASCIIByte` to avoid ever visiting the full `paths`
-    /// array at query time. Picks the query's own RAREST ASCII character
-    /// (the one with the fewest postings) and returns that character's
-    /// postings list directly: every genuine match must appear in every one
-    /// of the query's own characters' postings lists, so any single one of
-    /// them is already a valid (if not maximally tight) superset — a
-    /// necessary, not sufficient, filter. `FuzzyPathScore.score` itself
-    /// still runs against each returned index to confirm an actual match;
-    /// this only decides which indices are even worth checking. A
-    /// non-ASCII-only query (no ASCII character to pick a postings list by)
+    /// array at query time. Every genuine match must appear in EVERY one of
+    /// the query's own distinct ASCII characters' postings lists (a
+    /// necessary, not sufficient, condition — `FuzzyPathScore.score` itself
+    /// still runs against each returned index to confirm an actual match),
+    /// so this intersects all of them, not just the single rarest one:
+    /// picking only the rarest character alone was found, under adversarial
+    /// review, to still occasionally miss the 100k-path budget (issue #112)
+    /// when that "rarest" character wasn't rare enough on its own — the
+    /// full intersection is both correct (still a superset of every real
+    /// match, by the same reasoning) and meaningfully smaller in practice.
+    /// Sorts postings lists smallest-first before intersecting (the
+    /// standard multi-way set-intersection optimization) so the result
+    /// shrinks as early as possible and a query with any one truly rare
+    /// character short-circuits to empty immediately. A non-ASCII-only
+    /// query (no ASCII character to build a postings intersection from)
     /// falls back to every index, matching `query`'s own pre-postings
     /// behavior for that rare case.
     private func candidateIndices(for foldedQuery: FuzzyPathScore.FoldedText) -> [Int] {
-        var rarestBucket: [Int]?
-        var rarestCount = Int.max
+        var buckets: [[Int]] = []
+        var seenBytes: Set<UInt8> = []
         for scalar in foldedQuery.scalars where scalar.isASCII {
             let byte = UInt8(scalar.value)
-            let bucket = postingsByASCIIByte[byte] ?? []
-            if bucket.count < rarestCount {
-                rarestCount = bucket.count
-                rarestBucket = bucket
+            guard seenBytes.insert(byte).inserted else { continue }
+            buckets.append(postingsByASCIIByte[byte] ?? [])
+        }
+        guard !buckets.isEmpty else { return Array(paths.indices) }
+        buckets.sort { $0.count < $1.count }
+        var intersected = buckets[0]
+        for bucket in buckets.dropFirst() where !intersected.isEmpty {
+            intersected = Self.intersectSortedAscending(intersected, bucket)
+        }
+        return intersected
+    }
+
+    /// Merge-based intersection of two ascending, duplicate-free index
+    /// arrays — both always are, since `setPaths` appends each path's index
+    /// to a given byte's postings list at most once, in ascending
+    /// enumeration order.
+    private static func intersectSortedAscending(_ first: [Int], _ second: [Int]) -> [Int] {
+        var result: [Int] = []
+        result.reserveCapacity(min(first.count, second.count))
+        var firstIndex = first.startIndex
+        var secondIndex = second.startIndex
+        while firstIndex < first.count, secondIndex < second.count {
+            if first[firstIndex] == second[secondIndex] {
+                result.append(first[firstIndex])
+                firstIndex += 1
+                secondIndex += 1
+            } else if first[firstIndex] < second[secondIndex] {
+                firstIndex += 1
+            } else {
+                secondIndex += 1
             }
         }
-        return rarestBucket ?? Array(paths.indices)
+        return result
     }
 
     /// Replaces `paths` and rebuilds `postingsByASCIIByte` to match —
