@@ -90,4 +90,81 @@ struct QuickOpenStaleOriginTests {
 
         #expect(coordinator.quickOpen === panel)
     }
+
+    // MARK: - The origin's folder root changes without the window closing
+
+    // A follow-up independent review of this fix flagged that the two
+    // tests above only cover `removeController`'s own guard (the window
+    // closing) — the actual bug this slice's second review round found and
+    // fixed (`WindowController.setFileTreeRoot` calling
+    // `closeQuickOpenIfOrigin`) had no permanent regression test of its
+    // own. These three close that gap.
+
+    @Test func switchingTheOriginsFolderRootClosesTheOpenPanel() async throws {
+        let (coordinator, controller) = Self.makeCoordinatorAndController()
+        let firstRoot = try Self.makeTempDirectory()
+        let secondRoot = try Self.makeTempDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: firstRoot)
+            try? FileManager.default.removeItem(at: secondRoot)
+        }
+        await controller.setFileTreeRoot(firstRoot)
+        let panel = QuickOpenPanel(
+            coordinator: coordinator,
+            originController: controller,
+            index: controller.workspaceFileIndex
+        )
+        coordinator.quickOpen = panel
+
+        await controller.setFileTreeRoot(secondRoot)
+
+        #expect(coordinator.quickOpen == nil)
+    }
+
+    @Test func closingTheOriginsFolderRootClosesTheOpenPanel() async throws {
+        let (coordinator, controller) = Self.makeCoordinatorAndController()
+        let root = try Self.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        await controller.setFileTreeRoot(root)
+        let panel = QuickOpenPanel(
+            coordinator: coordinator,
+            originController: controller,
+            index: controller.workspaceFileIndex
+        )
+        coordinator.quickOpen = panel
+
+        await controller.setFileTreeRoot(nil)
+
+        #expect(coordinator.quickOpen == nil)
+    }
+
+    @Test func switchingAnUnrelatedControllersFolderRootLeavesTheOpenPanelAlone() async throws {
+        let (coordinator, controller) = Self.makeCoordinatorAndController()
+        let other = WindowController(
+            model: coordinator.makeWindowModel(),
+            coordinator: coordinator,
+            themeController: coordinator.themeController,
+            grammarRegistry: coordinator.grammarRegistry,
+            fileTreePreferences: coordinator.fileTreePreferences
+        )
+        coordinator.controllers.append(other)
+        let panel = QuickOpenPanel(
+            coordinator: coordinator,
+            originController: controller,
+            index: controller.workspaceFileIndex
+        )
+        coordinator.quickOpen = panel
+
+        let otherRoot = try Self.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: otherRoot) }
+        await other.setFileTreeRoot(otherRoot)
+
+        #expect(coordinator.quickOpen === panel)
+    }
+
+    private static func makeTempDirectory() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
 }
