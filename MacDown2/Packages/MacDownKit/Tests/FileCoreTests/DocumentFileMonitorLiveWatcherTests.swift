@@ -17,7 +17,7 @@ import Testing
 @Suite("Document file monitor — real watcher (#59)")
 struct DocumentFileMonitorLiveWatcherTests {
     /// Lock-based, synchronously-appending recorder -- see
-    /// `DocumentFileMonitorTests.swift`'s own `ObservationRecorder` doc
+    /// `DocumentFileMonitorTestSupport.swift`'s own `ObservationRecorder` doc
     /// comment for why this isn't an actor fed via
     /// `Task { await recorder.append(...) }`.
     private final class Recorder: @unchecked Sendable {

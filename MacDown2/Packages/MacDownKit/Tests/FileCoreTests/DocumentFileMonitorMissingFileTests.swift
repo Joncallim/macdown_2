@@ -36,8 +36,9 @@ struct DocumentFileMonitorMissingFileTests {
 }
 
 /// Lock-based, synchronously-appending recorder -- see
-/// `DocumentFileMonitorTests.swift`'s own `ObservationRecorder` doc comment
-/// for why this isn't an actor fed via `Task { await recorder.append(...) }`.
+/// `DocumentFileMonitorTestSupport.swift`'s own `ObservationRecorder` doc
+/// comment for why this isn't an actor fed via
+/// `Task { await recorder.append(...) }`.
 private final class MissingObservationRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private var storedValues: [DocumentFileObservation] = []
