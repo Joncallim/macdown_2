@@ -1,0 +1,14 @@
+16 px (reference: master at the same 11 px glyph height, best of 153 sub-pixel alignments; ink 87 px)
+  Round-1 target (slant-16.svg)    ink  83%  match 0.866  match at viewing blur 0.942
+  d1 Crown                         ink  91%  match 0.635  match at viewing blur 0.765
+  d2 Gate                          ink  94%  match 0.729  match at viewing blur 0.849
+  d3 Caret                         ink  81%  match 0.792  match at viewing blur 0.883
+  d4 Soft                          ink  94%  match 0.904  match at viewing blur 0.959
+  Round-2 candidate R2-16          ink 120%  match 0.943  match at viewing blur 0.976
+
+32 px (reference: master at the same 22 px glyph height, best of 153 sub-pixel alignments; ink 380 px)
+  Current slant-32.svg             ink  77%  match 0.786  match at viewing blur 0.864
+  d4 Soft                          ink  86%  match 0.859  match at viewing blur 0.926
+  Round-2 candidate R2-32          ink  97%  match 0.937  match at viewing blur 0.969
+
+lean-12 stimulus vs slant-master.svg at 256 px: max pixel difference 0/255

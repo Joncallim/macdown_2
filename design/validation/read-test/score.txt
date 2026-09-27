@@ -1,0 +1,17 @@
+Valid participants: 8 of 8 rows (the formal test needs exactly 8)
+P1	S1 M+T: yes	16 px line-up: wrong  	automotive: no
+P2	S1 M+T: yes	16 px line-up: wrong  	automotive: YES
+P3	S1 M+T: yes	16 px line-up: wrong  	automotive: no
+P4	S1 M+T: yes	16 px line-up: wrong  	automotive: YES
+P5	S1 M+T: yes	16 px line-up: wrong  	automotive: YES
+P6	S1 M+T: yes	16 px line-up: wrong  	automotive: YES
+P7	S1 M+T: yes	16 px line-up: wrong  	automotive: YES
+P8	S1 M+T: yes	16 px line-up: wrong  	automotive: YES
+
+Gate 1, logo-scale reading (S1 only, 64 px mark, first exposure): 8/8  (pass needs 6/8; target 7/8)
+  Diagnostic only, never counted: S2 icon letters named 8/8
+Gate 2, 16 px recognition (correct line-up pick): 0/8  (pass needs 6/8; chance is 1 in 5)
+Trigger, automotive or motorsport association: 6 participant(s)  (3 or more means HOLD, D-021)
+
+RESULT: FAIL (a D-019 gate was missed); the automotive trigger also fired
+Review every verbatim association by hand as well; the keyword check only catches the automotive trigger.
