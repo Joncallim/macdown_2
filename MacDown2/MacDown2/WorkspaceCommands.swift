@@ -55,6 +55,13 @@ struct WorkspaceCommands: Commands {
                 Divider()
                 Button("Clear Menu") { coordinator?.recentFolderRoots.clear() }
             }
+
+            Divider()
+
+            Button("Quick Open…") {
+                coordinator?.toggleQuickOpen()
+            }
+            .keyboardShortcut("p", modifiers: .command)
         }
 
         CommandGroup(replacing: .saveItem) {

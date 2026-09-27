@@ -84,6 +84,10 @@ final class WindowCoordinator {
     /// `WindowCoordinator+GoToLine.swift` and `GoToLinePanel`'s doc comment
     /// for why this coordinator must hold it strongly.
     @ObservationIgnored var goToLinePanel: GoToLinePanel?
+    /// The one currently open Quick Open panel, if any — see
+    /// `WindowCoordinator+QuickOpen.swift` and `QuickOpenPanel`'s doc
+    /// comment for why this coordinator must hold it strongly.
+    @ObservationIgnored var quickOpen: QuickOpenPanel?
     /// The one currently open first-run welcome window, if any — see
     /// `WindowCoordinator+FirstRun.swift`. Held strongly for the same reason
     /// as `commandPalette`: nothing else references it while it is open.
@@ -318,6 +322,12 @@ final class WindowCoordinator {
         // (found by hostile review of PR #126).
         if goToLinePanel?.originController === controller {
             goToLinePanel?.close()
+        }
+        // Same reasoning again: a Quick Open panel left open against a
+        // closed controller would point at an already-deallocated
+        // `workspaceFileIndex`/`fileTreeModel`.
+        if quickOpen?.originController === controller {
+            quickOpen?.close()
         }
         scheduleSaveSession()
         updateKeyModel()
