@@ -149,7 +149,7 @@ extension WindowCoordinator {
         guard let controller = controller ?? controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
         controller.model.setFolderRoot(url)
         recentFolderRoots.record(url)
-        Task { await controller.fileTreeModel.setRoot(url, accessURL: accessURL) }
+        Task { await controller.setFileTreeRoot(url, accessURL: accessURL) }
         scheduleSaveSession()
     }
 
@@ -183,7 +183,7 @@ extension WindowCoordinator {
                 let root = url.deletingLastPathComponent()
                 controller.model.setFolderRoot(root)
                 self.recentFolderRoots.record(root)
-                await controller.fileTreeModel.setRoot(root)
+                await controller.setFileTreeRoot(root)
                 _ = await controller.fileTreeModel.reveal(url)
                 self.scheduleSaveSession()
             }

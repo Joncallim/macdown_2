@@ -132,7 +132,7 @@ final class WindowCoordinator {
         if let existing = controllerForDocument(url: url), let window = existing.window {
             if let folderRoot, existing.fileTreeModel.root == nil {
                 existing.model.setFolderRoot(folderRoot)
-                await existing.fileTreeModel.setRoot(folderRoot, accessURL: folderAccessURL)
+                await existing.setFileTreeRoot(folderRoot, accessURL: folderAccessURL)
             }
             existing.fileTreeModel.selectedURL = folderSelectionURL
             existing.fileTreeModel.renamingURL = folderRenameURL
@@ -161,7 +161,7 @@ final class WindowCoordinator {
             fileTreePreferences: fileTreePreferences
         )
         if let folderRoot {
-            await controller.fileTreeModel.setRoot(folderRoot, accessURL: folderAccessURL)
+            await controller.setFileTreeRoot(folderRoot, accessURL: folderAccessURL)
         }
         controller.fileTreeModel.selectedURL = folderSelectionURL
         controller.fileTreeModel.renamingURL = folderRenameURL

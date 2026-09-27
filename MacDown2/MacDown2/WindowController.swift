@@ -8,6 +8,7 @@ import JSONSupport
 import MarkdownEngine
 import OutlineUI
 import SwiftUI
+import TextSearch
 import Themes
 import Workspace
 
@@ -26,6 +27,11 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let themeController: ThemeController
     let outlineController: OutlineController
     let fileTreeModel: FileTreeModel
+    /// One index per window, mirroring `fileTreeModel`'s own per-window
+    /// scope (EPIC-22 §6.15, Slice 6a) — kept in sync with
+    /// `fileTreeModel.root` exclusively through `setFolderRoot(_:accessURL:)`
+    /// below, never mutated directly by any other call site.
+    let workspaceFileIndex: WorkspaceFileIndex
     let externalFileController: ExternalFileController
     weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
@@ -60,6 +66,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         jsonAnalysisStore = JSONAnalysisStore(debounce: .milliseconds(100))
         outlineController = OutlineController()
         fileTreeModel = Self.makeFileTreeModel(preferences: fileTreePreferences)
+        workspaceFileIndex = WorkspaceFileIndex()
         externalFileController = Self.makeExternalFileController(
             model: model,
             editorStore: editorStore,
