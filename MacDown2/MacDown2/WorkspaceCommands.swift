@@ -56,6 +56,26 @@ struct WorkspaceCommands: Commands {
                 Button("Clear Menu") { coordinator?.recentFolderRoots.clear() }
             }
 
+            // EPIC-22 issue #112, Slice 6c. Unlike `RecentFolderRoots`
+            // (whose stale-bookmark cleanup happens reactively inside
+            // `resolve(_:)`, called constantly during ordinary folder
+            // browsing), `RecentFileDocuments.pruneMissingFiles()` is called
+            // from `record(_:)` and at launch (`reload()`) rather than from
+            // this menu's own body — a SwiftUI `Commands` menu has no
+            // reliable per-open lifecycle hook to run it from immediately
+            // before display, and every real file open already routes
+            // through `record(_:)` (see `openDocument(at:...)`'s own doc
+            // comment), so a moved/deleted entry is pruned the next time the
+            // user opens anything, not just when they happen to look at
+            // this specific menu.
+            Menu("Open Recent File") {
+                ForEach(coordinator?.recentFileDocuments.documents ?? [], id: \.self) { url in
+                    Button(url.lastPathComponent) { coordinator?.openRecentFile(url) }
+                }
+                Divider()
+                Button("Clear Menu") { coordinator?.recentFileDocuments.clear() }
+            }
+
             Divider()
 
             Button("Quick Open…") {

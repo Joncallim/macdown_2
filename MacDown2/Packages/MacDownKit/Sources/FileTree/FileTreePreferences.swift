@@ -6,6 +6,7 @@ public protocol FileTreePreferenceStoring: Sendable {
     var filter: FileTreeFilter { get set }
     var opensOnSingleClick: Bool { get set }
     var recentRootBookmarks: [Data] { get set }
+    var recentFileBookmarks: [Data] { get set }
 }
 
 @MainActor
@@ -31,6 +32,11 @@ public struct UserDefaultsFileTreePreferenceStore: FileTreePreferenceStoring {
     public var recentRootBookmarks: [Data] {
         get { defaults.array(forKey: "fileTree.recentRoots") as? [Data] ?? [] }
         set { defaults.set(newValue, forKey: "fileTree.recentRoots") }
+    }
+
+    public var recentFileBookmarks: [Data] {
+        get { defaults.array(forKey: "fileTree.recentFiles") as? [Data] ?? [] }
+        set { defaults.set(newValue, forKey: "fileTree.recentFiles") }
     }
 }
 

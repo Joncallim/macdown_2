@@ -43,6 +43,7 @@ final class WindowCoordinator {
     let grammarRegistry: GrammarRegistry
     let fileTreePreferences: FileTreePreferences
     let recentFolderRoots: RecentFolderRoots
+    let recentFileDocuments: RecentFileDocuments
     let appSettings: AppSettingsModel
     private let workspaceStateStore: any WorkspaceStateStoring
     /// Shared by every `WorkspaceModel` this coordinator creates, so a
@@ -101,6 +102,7 @@ final class WindowCoordinator {
         grammarRegistry: GrammarRegistry,
         fileTreePreferences: FileTreePreferences,
         recentFolderRoots: RecentFolderRoots,
+        recentFileDocuments: RecentFileDocuments,
         appSettings: AppSettingsModel,
         workspaceStateStore: any WorkspaceStateStoring = WorkspaceStateStore()
     ) {
@@ -111,6 +113,7 @@ final class WindowCoordinator {
         self.grammarRegistry = grammarRegistry
         self.fileTreePreferences = fileTreePreferences
         self.recentFolderRoots = recentFolderRoots
+        self.recentFileDocuments = recentFileDocuments
         self.appSettings = appSettings
         self.workspaceStateStore = workspaceStateStore
     }
@@ -118,7 +121,9 @@ final class WindowCoordinator {
     // MARK: - Window lifecycle
 
     /// Opens a file in a new window, or activates the existing window if the
-    /// same file is already open.
+    /// same file is already open. The single choke point every real file
+    /// open routes through — see `WindowCoordinator+RecentFiles.swift` for
+    /// why `recentFileDocuments.record(_:)` is called from here.
     /// - Parameter relativeTo: when non-`nil`, used as the tab host instead
     ///   of `NSApp.keyWindow` — the command palette (via `createInFolder`,
     ///   whose "New File" this backs) passes its captured origin window
@@ -142,6 +147,7 @@ final class WindowCoordinator {
             existing.fileTreeModel.renamingURL = folderRenameURL
             window.tabGroup?.selectedWindow = window
             window.makeKeyAndOrderFront(nil)
+            recentFileDocuments.record(url)
             return
         }
 
@@ -170,6 +176,7 @@ final class WindowCoordinator {
         controller.fileTreeModel.selectedURL = folderSelectionURL
         controller.fileTreeModel.renamingURL = folderRenameURL
         addController(controller, addingAsTab: true, keyWindow: keyWindow)
+        recentFileDocuments.record(url)
     }
 
     /// Shows the open panel and opens the chosen file.

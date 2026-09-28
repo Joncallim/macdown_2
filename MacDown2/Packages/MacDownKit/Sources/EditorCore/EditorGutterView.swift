@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 
 /// Line-number gutter for the editor's `NSScrollView`, backed by
 /// `EditorTextSystem.lineIndex` and `enumerateVisibleLineFragments(_:)`.
@@ -66,31 +67,39 @@ public final class EditorGutterView: NSRulerView {
     }
 
     override public func drawHashMarksAndLabels(in _: NSRect) {
-        guard let system else { return }
+        guard let system, let cgContext = NSGraphicsContext.current?.cgContext else { return }
         let font = system.textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
         let textColor = system.textView.textColor?.withAlphaComponent(0.5) ?? .secondaryLabelColor
         system.textView.backgroundColor.setFill()
         bounds.fill()
 
-        var fragments: [(utf16Offset: Int, minY: CGFloat)] = []
-        system.enumerateVisibleLineFragments { offset, minY in
-            fragments.append((offset, minY))
+        var fragments: [(utf16Offset: Int, baselineY: CGFloat)] = []
+        system.enumerateVisibleLineFragments { offset, baselineY in
+            fragments.append((offset, baselineY))
         }
         let labels = EditorGutterLayout.labels(for: fragments, lineIndex: system.lineIndex)
 
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
         let insetTop = system.textView.textContainerInset.height
         for label in labels {
-            let string = String(label.lineNumber) as NSString
-            let size = string.size(withAttributes: attributes)
-            let convertedOrigin = convert(NSPoint(x: 0, y: label.minY + insetTop), from: system.textView)
-            let rect = NSRect(
-                x: bounds.width - size.width - Self.horizontalPadding,
-                y: convertedOrigin.y,
-                width: size.width,
-                height: size.height
-            )
-            string.draw(in: rect, withAttributes: attributes)
+            let string = String(label.lineNumber)
+            // Drawn via CoreText's own baseline-relative `textPosition`,
+            // not `NSString.draw(in:withAttributes:)` -- see
+            // `EditorTextSystem.enumerateVisibleLineFragments`'s own doc
+            // comment for why: this editor's `lineHeightMultiple` (default
+            // 1.2) makes each real text row TALLER than its font's natural
+            // line height and pushes the glyphs' baseline down within that
+            // taller box by an amount `NSStringDrawing`'s own
+            // positioning-within-a-rect has no way to reproduce (it knows
+            // nothing about `label.baselineY`, which is TextKit's own
+            // already-computed real answer). `textPosition` sidesteps that
+            // ambiguity entirely: it is CoreText's literal, unambiguous "the
+            // NEXT glyph run's baseline goes exactly here" contract.
+            let ctLine = CTLineCreateWithAttributedString(NSAttributedString(string: string, attributes: attributes))
+            let width = CGFloat(CTLineGetTypographicBounds(ctLine, nil, nil, nil))
+            let baselinePoint = convert(NSPoint(x: 0, y: label.baselineY + insetTop), from: system.textView)
+            cgContext.textPosition = CGPoint(x: bounds.width - width - Self.horizontalPadding, y: baselinePoint.y)
+            CTLineDraw(ctLine, cgContext)
         }
     }
 }

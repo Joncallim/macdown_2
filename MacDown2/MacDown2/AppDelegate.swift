@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var grammarRegistry: GrammarRegistry!
     private(set) var fileTreePreferences: FileTreePreferences!
     private(set) var recentFolderRoots: RecentFolderRoots!
+    private(set) var recentFileDocuments: RecentFileDocuments!
     private(set) var appSettings: AppSettingsModel!
     private let sessionStore: WorkspaceSessionStoring
     private let recoveryBuffer: RecoveryBuffer
@@ -74,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         grammarRegistry = GrammarRegistry()
         fileTreePreferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
         recentFolderRoots = RecentFolderRoots(preferences: fileTreePreferences)
+        recentFileDocuments = RecentFileDocuments(preferences: fileTreePreferences)
         appSettings = AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults))
         super.init()
 
@@ -85,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             grammarRegistry: grammarRegistry,
             fileTreePreferences: fileTreePreferences,
             recentFolderRoots: recentFolderRoots,
+            recentFileDocuments: recentFileDocuments,
             appSettings: appSettings,
             workspaceStateStore: workspaceStateStore
         )

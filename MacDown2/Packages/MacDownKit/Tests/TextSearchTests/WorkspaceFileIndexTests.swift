@@ -76,6 +76,45 @@ struct WorkspaceFileIndexTests {
         #expect(results.first?.relativePath == "WindowCoordinator.swift")
     }
 
+    @Test func recentRelativePathBreaksATieInFavorOfTheRecentFile() async throws {
+        // Both basenames are non-prefix subsequence matches for "xax" at the
+        // identical position (1), so `FuzzyPathScore` gives them an
+        // identical base score — without a bonus, `query`'s own path-string
+        // tiebreak would rank "1xax.txt" first (alphabetically earlier).
+        // Marking "2xax.txt" recent must be what flips that order, not mere
+        // coincidence.
+        let tree = try TempTree { _ in }
+        try tree.write("1xax.txt")
+        try tree.write("2xax.txt")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        let results = await index.query("xax", recentRelativePaths: ["2xax.txt"])
+
+        #expect(results.map(\.relativePath) == ["2xax.txt", "1xax.txt"])
+    }
+
+    @Test func recentRelativePathBonusNeverOutranksAHigherMatchTier() async throws {
+        // Issue #112's own ordering: "exact basename, ... then recent/
+        // open-file bonus" -- the bonus must only break ties WITHIN a tier,
+        // never promote a lower tier above a higher one. "axc" is an exact
+        // basename match (score 1000); "a/xc.txt" only matches via its path
+        // (basename "xc.txt" is missing the query's own "a", so the
+        // basename-level checks never run at all -- see
+        // `FuzzyPathScore.score`'s own ASCII-bitmask gate), scoring well
+        // under 100. Marking the low-tier match recent (+10) must not be
+        // anywhere near enough to leapfrog the untouched exact match.
+        let tree = try TempTree { _ in }
+        try tree.write("axc")
+        try tree.write("a/xc.txt")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        let results = await index.query("axc", recentRelativePaths: ["a/xc.txt"])
+
+        #expect(results.first?.relativePath == "axc")
+    }
+
     @Test func queryLimitCapsResults() async throws {
         let tree = try TempTree { _ in }
         for index in 0 ..< 20 {
