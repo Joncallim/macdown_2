@@ -27,8 +27,15 @@ final class QuickOpenModel {
     private let performQuery: @Sendable (String) async -> [IndexedPath]
     private var queryGeneration = 0
 
-    init(index: WorkspaceFileIndex) {
-        performQuery = { query in await index.query(query, limit: 100) }
+    /// `recentRelativePaths` implements issue #112's "Recent-file history
+    /// feeds Quick Open ranking" (Slice 6c) — computed once by the caller
+    /// (`QuickOpenPanel.init`, from `RecentFileDocuments.relativePaths(under:)`)
+    /// at panel-open time, not re-read live for the panel's whole lifetime:
+    /// a short-lived filtering session has no real staleness concern, and
+    /// `WorkspaceFileIndex.query` itself already has no other reason to
+    /// accept live, ongoing state.
+    init(index: WorkspaceFileIndex, recentRelativePaths: Set<String> = []) {
+        performQuery = { query in await index.query(query, limit: 100, recentRelativePaths: recentRelativePaths) }
     }
 
     /// Test-only seam: substitutes a caller-controlled query function for
