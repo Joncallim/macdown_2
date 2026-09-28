@@ -7,7 +7,7 @@ binding contracts. This page shows:
 - the order the work must happen in;
 - what can start now;
 - which steps need a Mac rather than a cloud session;
-- which decisions only the owner can make.
+- the owner decisions that fix the release identity (§4).
 
 The brand identity is now frozen for 1.0: design gates 1 and 2 are closed,
 gate 3 was waived (D-026) and gate 4 is deferred (D-031). Brand decisions are
@@ -35,7 +35,8 @@ Terms used here:
 - **SBOM:** software bill of materials, a machine-readable list of every
   component shipped.
 
-Status as of 2026-09-27, after #136 merged (`d13f3d1`).
+Status as of 2026-09-27, after #136 merged (`d13f3d1`). Owner decisions
+recorded 2026-09-28 (§4).
 
 ## 1. Critical path
 
@@ -63,14 +64,14 @@ on this page interrupts that work.
 | Workstream | Owning issue | Can start now? | Where | Next concrete step |
 |---|---|---|---|---|
 | Brand identity | D-001–D-031 (`design/`) | **Done for 1.0** | — | None. Rename the Figma file title from "(Slant 12°)" in the Figma UI (D-029) |
-| Branding cutover (repository, README, public copy) | #158 | Record only. #158 runs after E22 | Cloud | Draft the §1 identity-freeze record (name, links, repository name, CLI, bundle/update strategy) as a proposal for the owner decisions in §4, then execute once E22 closes |
+| Branding cutover (repository, README, public copy) | #158 | Record only. #158 runs after E22 | Cloud | Inputs are decided (§4). Execute once E22 closes: rename the repository to `Joncallim/mostlytext`, rebrand the README and public copy, and classify the remaining `MacDown 2` references as #158 §4 requires |
 | App-icon integration | E23 (#113); inputs from #158 | No. E23 follows #158 | Cloud edits; **Mac** to verify | Move `design/evidence/2026-09-26/icon-art/MostlyText-lean10.icon` into the app **next to** `Assets.xcassets`, not inside it, and remove `AppIcon.appiconset` and the placeholder script. See that folder's README (D-028). Verify in a Release build in the Dock and Finder, light and dark |
-| Bundle identity and versioning | Strategy: #158. Migration: #18 | Proposal now | Cloud | Today the app is `com.joncallim.MacDown2`, `0.1.0 (1)`, and the CLI is `macdown2`. Propose the final bundle ID, CLI name and version scheme (§4). E17 owns the migration from the development namespaces |
-| Licensing and notices | #148 (LC-01–LC-10) | **Yes.** LC-02–LC-07 are identity-neutral | Cloud | Start with LC-05 (pin SwiftTreeSitter to an immutable revision) and LC-04 (TreeSitterMarkdown provenance), then the SBOM and notice generator (LC-01/07). LC-08's About → Licences UI must land before the final E16 freeze |
+| Bundle identity and versioning | Strategy: #158. Migration: #18 | Decided | Cloud | Decided (§4): `app.mostlytext.MostlyText`, CLI `mostlytext`, version `1.0.0` with independent build numbers. Today the app is `com.joncallim.MacDown2`, `0.1.0 (1)`, CLI `macdown2`. E17 owns the switch and the migration of development-namespace state; E23 derives its Quick Look and theme identifiers from the new prefix |
+| Licensing and notices | #148 (LC-01–LC-10) | **Yes.** LC-02–LC-07 are identity-neutral | Cloud | 1.0 ships under MIT; #148 LC-10 was reframed on 2026-09-28 to match. Third-party notices (LC-01 to LC-09) stay a hard gate. Start with LC-05 (pin SwiftTreeSitter to an immutable revision) and LC-04 (TreeSitterMarkdown provenance), then the SBOM and notice generator (LC-01/07). LC-08's About → Licences UI must land before the final E16 freeze |
 | Trademark | D-031 | Nothing for 1.0 | — | Ship with no "®" and no clearance claim. Revisit if MostlyText gains material adoption, revenue or sponsorship, press recognition, third-party brand use or other brand value |
-| Signing and notarisation | E17 (#18) | **Groundwork, yes** | **Mac** | Owner confirms Apple Developer Program membership. A Mac session runs a non-publishing Developer ID and notarisation dry run on current `master` (§3) to find hardened-runtime and entitlement problems early. No entitlements file exists yet, and the hardened runtime isn't enabled |
-| Packaging and downloads | E17 (#18) | Decisions only | Cloud decides; Mac builds | Choose the download format and host (§4). The Sparkle EdDSA key is generated once, on a Mac, and stored in the owner's keychain or password manager, never in the repository |
-| Website and deployment | E17 (#18); LC-09 (#148) | Yes, as a draft | Cloud | Nothing exists in the repository yet. Decide the host and repository location (§4), then build a static site at `mostlytext.app` covering the download, appcast, `/opensource` compliance archive (LC-09) and privacy statement. Public copy claims only capabilities with release evidence |
+| Signing and notarisation | E17 (#18) | **Groundwork, yes** | **Mac** | Enrolment is assumed to be required (§4); the owner confirms actual status. A Mac session runs a non-publishing Developer ID and notarisation dry run on current `master` (§3) to find hardened-runtime and entitlement problems early. No entitlements file exists yet, and the hardened runtime isn't enabled |
+| Packaging and downloads | E17 (#18) | Decided; build at E17 | Cloud plans; Mac builds | Decided (§4): a signed, notarised DMG on GitHub Releases, linked from `mostlytext.app`. The Sparkle EdDSA key is generated once, on a Mac, and stored in the owner's keychain or password manager, never in the repository |
+| Website and deployment | E17 (#18); LC-09 (#148) | Yes, as a draft | Cloud | Nothing exists in the repository yet. Build a static site at `mostlytext.app` (the public download page) covering the download, appcast, `/opensource` compliance archive (LC-09) and privacy statement. Public copy claims only capabilities with release evidence |
 | Clean-install and update verification | E17 (#18); #115 | No. Needs the exact RC | **Mac** | On the signed, notarised RC: clean install on macOS 26 in a fresh user account or VM, Gatekeeper, first run, CLI, Sparkle N→N+1, migration from development state, legacy MacDown preference import (#53) |
 
 ## 3. Cloud and Mac split
@@ -112,36 +113,21 @@ The first Mac brief is the signing and notarisation dry run described in
 the table. It is queued for the owner to start when their Developer ID is
 ready.
 
-## 4. Owner decisions needed
+## 4. Owner decisions (2026-09-28)
 
-These block the cutover or E17. Each has a recommendation, but the owner
-decides.
+These fix the inputs #158 freezes and E17 applies.
 
-1. **Product licence (#148 LC-10).** #148 records a *proposed* product-licence
-   boundary with proprietary terms for future work. The 2026-09-27 direction
-   describes the initial release as **open source**, and `LICENSE` is MIT.
-   Confirm whether 1.0 ships under MIT. If it does, LC-10 reduces to keeping
-   the MIT lineage and attribution accurate under the new name. Either way,
-   `LICENSE`'s "MacDown 2 is free and open-source software" line needs
-   deliberate wording for the new name; #158 does not authorise that edit.
-2. **Repository name** (#158 §2). Recommendation: `Joncallim/mostlytext`.
-   GitHub redirects old clone and web URLs after a rename.
-3. **Bundle ID** (#158 §1, #18). Recommendation: `app.mostlytext.MostlyText`,
-   based on the owned domain, or keep the `com.joncallim.` prefix. Changing
-   the ID means E17 must migrate `com.joncallim.MacDown2` defaults, Application
-   Support, session and recovery state.
-4. **CLI name** (#158 §1). Today it is `macdown2`. Recommendation:
-   `mostlytext`, with `macdown2` kept as a compatibility alias through 1.x if
-   the migration rehearsal needs it.
-5. **Version scheme.** Recommendation: marketing version `1.0.0` and a
-   `CFBundleVersion` that only ever increases, set by the release build.
-   Sparkle compares `CFBundleVersion`.
-6. **Distribution and hosting.** Recommendations:
-   - A notarised, stapled **DMG** on GitHub Releases.
-   - The Sparkle appcast at `https://mostlytext.app/appcast.xml`.
-   - The website and LC-09 archive on a static host serving `mostlytext.app`.
-   Decide where the website source lives: a `website/` folder here or a
-   separate repository.
-7. **Apple Developer Program.** Confirm membership and Team ID. Choose where
-   notarisation credentials live: local keychain only, or CI secrets if E17
-   signs in CI as its issue states.
+| Topic | Decision |
+|---|---|
+| Product licence | **MIT** for 1.0 and normal 1.x releases, continuing MacDown's lineage. The proposed proprietary boundary in #148 LC-10 is withdrawn for 1.0, and LC-10 is reframed to keep the MIT licence and attribution accurate under the new name. Third-party licence notices, source availability and the SBOM check (LC-01 to LC-09) remain a **hard release gate** |
+| Repository | Rename to **`Joncallim/mostlytext`** during #158. GitHub redirects old clone and web URLs, but CI, badges and links are still checked deliberately |
+| Bundle ID | **`app.mostlytext.MostlyText`** (canonical). Extensions and theme or document identifiers use the `app.mostlytext.` prefix. E17 migrates state from the development ID `com.joncallim.MacDown2` |
+| CLI | **`mostlytext`**. Whether `macdown2` survives as a temporary compatibility alias is an E17 migration detail, not a public name |
+| Versioning | Marketing version starts at **1.0.0** and follows normal 1.x semantic versioning. `CFBundleVersion` is an **independent build number that only ever increases**, never reset per release (Sparkle compares it) |
+| Distribution | Primary download is a **signed, notarised DMG on GitHub Releases**. **`mostlytext.app`** is the public download site. The appcast location and the website's source location are E17 architecture details that follow from this, with `https://mostlytext.app/appcast.xml` as the default |
+| Apple Developer Program | Treated as **required** for public release: Developer ID signing and notarisation depend on it |
+
+**Open item for the owner:** confirm your actual Apple Developer Program
+enrolment status and Team ID. If you aren't enrolled yet, enrol early:
+approval can take days, and the §3 dry run and all of E17's signing work
+wait on it.
