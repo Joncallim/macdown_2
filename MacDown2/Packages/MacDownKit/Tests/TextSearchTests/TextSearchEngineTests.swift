@@ -156,4 +156,46 @@ struct TextSearchEngineTests {
         let matches = try TextSearchEngine.matches(in: "テスト", query: "テスト", options: SearchOptions(isWholeWord: true))
         #expect(matches.count == 1)
     }
+
+    // MARK: - matchLimit (WorkspaceSearchEngine's own bounded-accumulation
+
+    // requirement, issue #112, is only genuinely real if the underlying
+    // matcher actually stops early rather than computing every match and
+    // discarding the excess afterward -- these tests pin that directly,
+    // independent of `WorkspaceSearchEngine`'s own tests of the same
+    // property at the folder-search level.)
+
+    @Test func matchLimitStopsLiteralMatchingExactlyAtTheLimit() throws {
+        let text = String(repeating: "a", count: 1_000_000)
+        let matches = try TextSearchEngine.matches(in: text, query: "a", options: SearchOptions(), matchLimit: 5)
+        #expect(matches.count == 5)
+    }
+
+    @Test func matchLimitStopsRegexMatchingExactlyAtTheLimit() throws {
+        let text = String(repeating: "a", count: 1_000_000)
+        let matches = try TextSearchEngine.matches(
+            in: text,
+            query: "a",
+            options: SearchOptions(isRegex: true),
+            matchLimit: 5
+        )
+        #expect(matches.count == 5)
+    }
+
+    @Test func matchLimitLargerThanTheActualMatchCountChangesNothing() throws {
+        let matches = try TextSearchEngine.matches(in: "aaa", query: "a", options: SearchOptions(), matchLimit: 1000)
+        #expect(matches.count == 3)
+    }
+
+    @Test func nilMatchLimitIsFullyUnboundedMatchingTheDefaultParameterOmitted() throws {
+        let withDefault = try TextSearchEngine.matches(in: "aaaaa", query: "a", options: SearchOptions())
+        let withExplicitNil = try TextSearchEngine.matches(
+            in: "aaaaa",
+            query: "a",
+            options: SearchOptions(),
+            matchLimit: nil
+        )
+        #expect(withDefault.count == 5)
+        #expect(withDefault == withExplicitNil)
+    }
 }
