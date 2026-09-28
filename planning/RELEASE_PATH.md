@@ -62,11 +62,12 @@ landed; 6c (recent files) is in PR #161, and 7 (folder search/replace), 8 and
 
 Two technical fixes that blocked this path have landed (updated 2026-09-28,
 after the status line above). Each was done on its own:
-- **FileCore red `master` — fixed in #166.** The recurring
+- **FileCore red `master` — fixed by PR #166 (`82ae971`).** The recurring
   `parentVanishedLatchSurvivesAChangedEventDuringDebounce()` failure was a
-  test-harness race: a superseded debounce probe consumed the scripted prober's
-  answers. It was reproduced (21 of 900 loaded iterations) and fixed by gating
-  the interleaving deterministically, with exact-sequence assertions and a new
+  test-harness race, separate from the recorder-ordering race fixed in #154: a
+  superseded debounce probe consumed the test's scripted prober answers. It
+  was reproduced (21 of 900 loaded iterations) and fixed by gating the
+  interleaving deterministically, with exact-sequence assertions and a new
   regression test for the other ordering. No skips, and no longer timeouts.
   Product code was unchanged.
 - **LC-05 (SwiftTreeSitter immutability, #148) — landed in #165**, after being
@@ -81,8 +82,8 @@ after the status line above). Each was done on its own:
 
   The enforcement covers CI only. A plain local `xcodebuild` resolves on its
   own unless the pin step in `AGENTS.md` is used; the same applies to any
-  future release pipeline that does not use that step. The lock fixes *which* revisions are built. Checking
-  them against a registered inventory is LC-07's job, and LC-07 is still open.
+  future release pipeline that does not use that step. The lock fixes *which*
+  revisions are built. Checking them against a registered inventory is LC-07's job, and LC-07 is still open.
   Changing the lock is a deliberate dependency update, reviewed like code.
 
 ## 2. Workstreams
