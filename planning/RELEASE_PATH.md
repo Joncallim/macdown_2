@@ -36,7 +36,7 @@ Terms used here:
 - **SBOM:** software bill of materials, a machine-readable list of every
   component shipped.
 
-Status as of 2026-09-28, at `master` `e702b5b`. Owner decisions recorded
+Status as of 2026-09-28, at `master` `8a05703`. Owner decisions recorded
 2026-09-28 (§4).
 
 ## 1. Critical path
@@ -52,13 +52,13 @@ E22 (#112, in progress) ─▶ identity cutover (#158) ─▶ E23 (#113)
 Runs alongside, and must pass before #115 closes and before E17 promotes:
     #148 licensing/provenance (LC-01–LC-10)
 Can be prepared early, used at E17:
-    Apple Developer ID + notarisation credentials, Sparkle EdDSA key,
+    Developer ID certificate + notarisation profile (Mac tranche), Sparkle EdDSA key,
     website/archive hosting
 ```
 
-E22 is being delivered slice by slice by its own session. Slices 1–6b have
-landed; 6c (recent files) is in PR #161, and 7 (folder search/replace), 8 and
-9 remain. Nothing on this page interrupts that work.
+E22 is being delivered slice by slice by its own session. Slices 1–6 have
+landed (6c, recent files, in PR #161); 7 (folder search/replace), 8 and 9
+remain. Nothing on this page interrupts that work.
 
 Two technical fixes are in flight, each owned by its own dedicated task. They
 are dependencies, not work for release coordination:
@@ -82,7 +82,7 @@ are dependencies, not work for release coordination:
 | Bundle identity and versioning | Strategy: #158. Migration: #18 | Decided | Cloud | Decided (§4): `app.mostlytext.MostlyText`, CLI `mostlytext`, version `1.0.0` with independent build numbers. Today the app is `com.joncallim.MacDown2`, `0.1.0 (1)`, CLI `macdown2`. E17 owns the switch and the migration of development-namespace state; E23 derives its Quick Look and theme identifiers from the new prefix |
 | Licensing and notices | #148 (LC-01–LC-10) | **Yes.** LC-02–LC-07 are identity-neutral | Cloud | 1.0 ships under MIT; #148 LC-10 was reframed on 2026-09-28 to match. Third-party notices (LC-01 to LC-09) stay a hard gate. LC-05 (make SwiftTreeSitter immutable) needs a lock file, not a manifest pin: a `revision:` pin fails resolution because Neon's own manifest requires SwiftTreeSitter `branch: "main"`, and SwiftPM refuses two different revision-based requirements (CI, 2026-09-28). The fix, a committed `Package.resolved` that CI enforces, is owned by a dedicated task (§1; details in #148). The gate itself is in `compliance/` (2026-09-28): a checked inventory of all 33 shipped components, generated notices and SBOM, and a CI check with negative tests. LC-04 and LC-06 provenance are recorded there. `compliance.py check --release` lists what remains. Next: Mermaid's bundled npm dependencies (LC-01), the Graphviz and D2 source packages (LC-02/03, plan in `compliance/ARCHIVE_PLAN.md`), and reconciling the inventory with the LC-05 lock file once it lands. LC-08's licences screen (`compliance/LICENCES_UI.md`) starts after E22 and must land before the final E16 freeze |
 | Trademark | D-031 | Nothing for 1.0 | — | Registration and legal review are **deferred by the owner, not passed**. The WIPO, USPTO and IPOS search record, including the flagged Modern Tech Pte. Ltd. mark (Singapore 40201616062P), stays in `design/brand/TRADEMARK_SEARCH.md` unchanged. Ship with no "®" and no clearance claim. Revisit if MostlyText gains material adoption, revenue or sponsorship, press recognition, third-party brand use or other brand value |
-| Signing and notarisation | E17 (#18) | **Waiting on Apple enrolment** | **Mac** | Enrolment is in progress (2026-09-28). The dry-run brief is written and held: `planning/MAC_SIGNING_BRIEF.md`. This is an active dependency being resolved, not a release-risk decision. Once Apple approves it and the Team ID and Developer ID certificate exist, a Mac session runs a non-publishing Developer ID and notarisation dry run on current `master` (§3) to find hardened-runtime and entitlement problems early. Until then all signing work stays paused, and all other release work continues. No entitlements file exists yet, and the hardened runtime isn't enabled |
+| Signing and notarisation | E17 (#18) | **Yes: Mac tranche ready** | **Mac** | Apple Developer Program enrolment is confirmed. `planning/MAC_SIGNING_BRIEF.md` is the bounded Mac task: confirm the Team ID and Developer ID Application certificate (create it first if missing), then run `release/macos/sign-notarize-dmg.sh`. The script does a Release build with the hardened runtime, checks every binary's signature, notarises and staples the app, notarises the CLI, builds, signs, notarises and staples a DMG, and validates with codesign, spctl and syspolicy_check. After that comes a clean-install Gatekeeper test in a fresh account. It runs on current `master` under the development identity as a pre-cutover candidate, publishes nothing, and returns evidence through a PR. The expected outcome is hardened runtime with no entitlements, made permanent for Release builds only |
 | Packaging and downloads | E17 (#18) | Decided; build at E17 | Cloud plans; Mac builds | Decided (§4): a signed, notarised DMG on GitHub Releases, linked from `mostlytext.app`. The Sparkle EdDSA key is generated once, on a Mac, and stored in the owner's keychain or password manager, never in the repository |
 | Website and deployment | E17 (#18); LC-09 (#148) | Draft exists | Cloud | `website/` (2026-09-28) has a static draft of `mostlytext.app`: home and download, `/opensource` archive and privacy pages. **Not deployed.** Its README has a claims ledger; every public statement needs release evidence before E17 deploys it. Hosting and the appcast are E17 decisions |
 | Clean-install and update verification | E17 (#18); #115 | No. Needs the exact RC | **Mac** | On the signed, notarised RC: clean install on macOS 26 in a fresh user account or VM, Gatekeeper, first run, CLI, Sparkle N→N+1, migration from development state, legacy MacDown preference import (#53) |
@@ -123,9 +123,9 @@ brief. Each Mac brief must:
    never passed.
 
 The first Mac brief is the signing and notarisation dry run described in
-the table, written in `planning/MAC_SIGNING_BRIEF.md`. It is held until
-Apple Developer Program enrolment is approved and the Team ID and Developer
-ID certificate exist, and is queued then.
+the table, written in `planning/MAC_SIGNING_BRIEF.md`. Enrolment is
+confirmed, so it is ready to run. If the Developer ID certificate doesn't
+exist yet, creating it is the brief's first bounded step.
 
 ## 4. Owner decisions (2026-09-28)
 
@@ -141,8 +141,6 @@ These fix the inputs #158 freezes and E17 applies.
 | Distribution | Primary download is a **signed, notarised DMG on GitHub Releases**. **`mostlytext.app`** is the public download site. The appcast location and the website's source location are E17 architecture details that follow from this, with `https://mostlytext.app/appcast.xml` as the default |
 | Apple Developer Program | Treated as **required** for public release: Developer ID signing and notarisation depend on it |
 
-**Apple Developer Program status (2026-09-28): enrolment in progress.** This
-is an active dependency being resolved, not a release-risk decision. Developer
-ID signing, notarisation and the Mac dry run stay paused until Apple approves
-the enrolment and the Team ID and certificate are available. All other release
-work continues meanwhile.
+**Apple Developer Program status: enrolment confirmed** (owner, after
+2026-09-28). It is no longer an open dependency. The Mac signing and
+notarisation tranche (§2, §3) is ready to run.

@@ -37,7 +37,7 @@ evidence can't be produced, change or remove the statement.
 | Claim (page) | Evidence required before deployment | Status |
 |---|---|---|
 | Version 1.0.0; requires macOS 26 or later (home) | Release candidate `CFBundleShortVersionString` and `LSMinimumSystemVersion` | unverified |
-| Signed and notarised by Apple (home) | `codesign --verify`, `spctl --assess` and the notarisation ticket for the published DMG (Mac, E17) | blocked: Apple Developer Program enrolment in progress |
+| Signed and notarised by Apple (home) | `codesign --verify`, `spctl --assess` and the notarisation ticket for the published DMG (Mac, E17) | unverified: the Mac tranche (`planning/MAC_SIGNING_BRIEF.md`) proves the pipeline; the published DMG is checked at E17 |
 | Opening, editing, preview, math, diagrams and export work offline (home, privacy) | The RELEASE_HARDENING §1.1 offline run on the release candidate | unverified |
 | Documents aren't sent to any service (home, privacy) | Same offline run, plus a network capture during normal use | unverified |
 | Markdown stays plain text on disk (home) | RELEASE_HARDENING §1.2 evidence | unverified |
