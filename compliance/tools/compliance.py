@@ -205,19 +205,60 @@ def parse_manifest(text: str) -> tuple[list[tuple[str, dict]], list[str], list[s
     return urls, paths, unknown
 
 
-def parse_xcodegen_packages(text: str) -> tuple[list[str], list[str]]:
-    """Remote (`url:`) and local (`path:`) packages from project.yml's top-level `packages:`."""
-    urls, paths, inside = [], [], False
+XCODEGEN_REQUIREMENT = {"exactVersion": "exact", "version": "exact", "from": "from", "majorVersion": "from",
+                        "minorVersion": "from", "branch": "branch", "revision": "revision"}
+
+
+def parse_xcodegen_packages(text: str) -> tuple[list[tuple[str, dict]], list[str], list[str]]:
+    """Remote packages (with requirements), local paths and unreadable entries from project.yml's `packages:`.
+
+    XcodeGen's requirement keys are mapped onto the same form the
+    Package.swift scanner produces, so both are compared with the inventory
+    the same way. `minorVersion` is recorded as the upToNextMinor form; any
+    other key (such as minVersion/maxVersion) is kept as `unparsed`. The
+    indentation is taken from the file. Any `url:` or `path:` under
+    `packages:` that isn't read as a block-style field (for example a
+    flow-style `{url: …}` entry) is returned as unreadable, so the check
+    fails closed.
+    """
+    packages: dict[str, dict] = {}
+    unknown: list[str] = []
+    inside, name, name_indent = False, None, None
     for raw in text.splitlines():
         line = raw.split("#", 1)[0].rstrip()
         if not line.strip():
             continue
-        if not raw[0].isspace():
-            inside = line.strip() == "packages:"
+        indent = len(line) - len(line.lstrip())
+        if indent == 0:
+            inside, name, name_indent = line.strip() == "packages:", None, None
             continue
-        if inside and (match := re.match(r"\s+(url|path)\s*:\s*['\"]?([^'\"\s]+)", line)):
-            (urls if match.group(1) == "url" else paths).append(match.group(2))
-    return urls, paths
+        if not inside:
+            continue
+        name_indent = indent if name_indent is None else name_indent
+        if indent == name_indent and (match := re.fullmatch(r"(\S[^:]*):", line.strip())):
+            name = match.group(1)
+            packages[name] = {}
+        elif indent > name_indent and name and (match := re.fullmatch(r"(\w+)\s*:\s*['\"]?([^'\"\s]+)['\"]?", line.strip())):
+            packages[name][match.group(1)] = match.group(2)
+        elif re.search(r"\b(url|path)\s*:", line):
+            unknown.append(line.strip())
+    urls, paths = [], []
+    for fields in packages.values():
+        if "path" in fields:
+            paths.append(fields["path"])
+        if "url" in fields:
+            requirement: dict = {}
+            for key, value in fields.items():
+                if key in ("url", "path", "github"):
+                    continue
+                if key in XCODEGEN_REQUIREMENT:
+                    requirement[XCODEGEN_REQUIREMENT[key]] = value
+                    if key == "minorVersion":
+                        requirement["form"] = "upToNextMinor"
+                else:
+                    requirement["unparsed"] = f"{key}: {value}"
+            urls.append((fields["url"], requirement))
+    return urls, paths, unknown
 
 
 def parse_lockfile(path: Path) -> list[dict]:
@@ -312,15 +353,33 @@ def check(root: Path, release: bool = False, artifact: Path | None = None) -> Re
             for item in component.get("open_items", []):
                 report.error(f"{cid}: open item: {item}")
 
-    # Unregistered distributed content.
+    # Unregistered distributed content. `owns` says which component a path
+    # belongs to; it doesn't make the path compliant. A file inside a
+    # wildcard-owned boundary (for example a vendored package's `**`) must
+    # also be accounted for by that component: in its audited `files`, its
+    # licence texts or its runtime resources. It can't fall back to the
+    # first-party globs, so a file added to a vendored package can't pass as
+    # first-party code either. Exact-path `owns` entries are already an
+    # explicit enumeration.
     owned = [(c["id"], p) for c in components for p in c.get("owns", [])]
+    accounted = {
+        c["id"]: {f["path"] for f in c.get("files", [])}
+        | {t["path"] for t in c.get("licence_texts", [])}
+        | {r["path"] for r in c.get("runtime_resources", []) if r.get("path")}
+        for c in components
+    }
     registered_files = {f["path"] for c in components for f in c.get("files", [])}
     for rel in walk_distributable(root):
         if matches_any(rel, inventory.get("not_distributed", [])):
             continue
-        if rel in registered_files or any(glob_to_regex(p).match(rel) for _, p in owned):
+        owners = [cid for cid, pattern in owned if glob_to_regex(pattern).match(rel)]
+        if owners:
+            wildcard_owners = [cid for cid, pattern in owned if "*" in pattern and glob_to_regex(pattern).match(rel)]
+            unaccounted = [cid for cid in wildcard_owners if rel not in accounted[cid]]
+            if unaccounted and len(unaccounted) == len(owners):
+                report.error(f"{unaccounted[0]}: file inside its owned boundary is not in its audited files (add it with its digest, or mark it not_distributed): {rel}")
             continue
-        if matches_any(rel, inventory["first_party"]["paths"]):
+        if rel in registered_files or matches_any(rel, inventory["first_party"]["paths"]):
             continue
         report.error(f"unregistered distributed file (add it to {INVENTORY} or to first_party): {rel}")
     for cid, pattern in owned:
@@ -359,10 +418,18 @@ def check(root: Path, release: bool = False, artifact: Path | None = None) -> Re
     # XcodeGen can add packages to the app directly, bypassing Package.swift.
     project = root / "MacDown2/project.yml"
     if project.is_file():
-        urls, paths = parse_xcodegen_packages(project.read_text(encoding="utf-8"))
-        for url in urls:
-            if normalise_url(url) not in by_url and normalise_url(url) not in build_only:
+        urls, paths, unknown = parse_xcodegen_packages(project.read_text(encoding="utf-8"))
+        for entry in unknown:
+            report.error(f"MacDown2/project.yml: unrecognised package entry (only block-style url:/path: entries can be checked): {entry}")
+        for url, requirement in urls:
+            key = normalise_url(url)
+            if key in build_only:
+                continue
+            component = by_url.get(key)
+            if component is None:
                 report.error(f"MacDown2/project.yml: package {url} is not registered in the inventory")
+            elif component.get("manifest_requirement") is not None and component["manifest_requirement"] != requirement:
+                report.error(f"{component['id']}: stale mapping: MacDown2/project.yml requires {requirement}, inventory records {component['manifest_requirement']}")
         for rel in paths:
             target = (project.parent / rel).resolve()
             try:

@@ -30,6 +30,9 @@ LIB_LICENCE = "MacDown2/Packages/MacDownKit/Sources/Widget/Resources/LIB-LICENSE
 REMOTE_URL = "https://github.com/example/remote-kit"
 REMOTE_REV = "1111111111111111111111111111111111111111"
 FONT_BYTES = "OTTO pretend font bytes\n"
+VENDORED = "MacDown2/Packages/Vendored"
+QUERY = f"{VENDORED}/Sources/VendoredResources/queries/highlights.scm"
+QUERY_BYTES = "(atx_heading) @markup.heading\n"
 
 
 def sha(text: str) -> str:
@@ -47,6 +50,10 @@ class Fixture:
         self.write(LIB_LICENCE, "Example library licence\n")
         self.write("compliance/licenses/remote-kit--LICENSE.txt", "Remote kit licence\n")
         self.write("MacDown2/Packages/MacDownKit/Sources/Widget/Widget.swift", "struct Widget {}\n")
+        self.write(f"{VENDORED}/Package.swift", "// swift-tools-version: 6.2\n")
+        self.write(f"{VENDORED}/LICENSE", "Vendored grammar licence\n")
+        self.write(f"{VENDORED}/Sources/Vendored/src/parser.c", "int parse;\n")
+        self.write(QUERY, QUERY_BYTES)
         self.write(
             "MacDown2/Packages/MacDownKit/Package.swift",
             f'dependencies: [\n    .package(url: "{REMOTE_URL}", exact: "1.0.0"),\n]\n',
@@ -55,14 +62,14 @@ class Fixture:
             "schema": 1,
             "product": {"name": "Example", "version": "1.0.0"},
             "first_party": {"licence": "MIT", "licence_text": "LICENSE", "paths": ["MacDown2/**/*.swift"]},
-            "not_distributed": ["MacDown2/**/Package.swift", "MacDown2/**/Package.resolved"],
+            "not_distributed": ["MacDown2/**/Package.swift", "MacDown2/**/Package.resolved", "MacDown2/project.yml"],
             "manifests": ["MacDown2/Packages/MacDownKit/Package.swift"],
             "lockfiles": ["MacDown2/Packages/MacDownKit/Package.resolved"],
             "build_only_packages": [],
             "lockfile_enforced": True,
             "artifact": {
                 "required_first_party": ["LICENSE", compliance.NOTICES],
-                "registered_extensions": [".js", ".otf", ".wasm"],
+                "registered_extensions": [".js", ".otf", ".wasm", ".scm"],
             },
             "components": [
                 {
@@ -80,6 +87,23 @@ class Fixture:
                     "files": [{"path": LIB_JS, "sha256": sha("window.lib = 1;\n")}],
                     "runtime_resources": [{"name": "lib.js", "sha256": sha("window.lib = 1;\n"), "path": LIB_JS}],
                     "source_offer": {"required": True, "reason": "MPL-2.0", "location": "https://example.org/src/", "status": "verified"},
+                    "provenance": "verified",
+                },
+                {
+                    "id": "vendored-grammar",
+                    "name": "Vendored grammar",
+                    "kind": "vendored-source",
+                    "version": "1.0.0",
+                    "upstream": "https://github.com/example/grammar",
+                    "revision": "5555555555555555555555555555555555555555",
+                    "resolution": "exact",
+                    "licence": "MIT",
+                    "copyright": ["Copyright Grammar"],
+                    "licence_texts": [{"path": f"{VENDORED}/LICENSE", "sha256": sha("Vendored grammar licence\n")}],
+                    "owns": [f"{VENDORED}/**"],
+                    "files": [{"path": f"{VENDORED}/Sources/Vendored/src/parser.c", "sha256": sha("int parse;\n")},
+                              {"path": QUERY, "sha256": sha(QUERY_BYTES)}],
+                    "runtime_resources": [{"name": "highlights.scm", "sha256": sha(QUERY_BYTES), "path": QUERY}],
                     "provenance": "verified",
                 },
                 {
@@ -123,9 +147,11 @@ class Fixture:
         shutil.rmtree(app, ignore_errors=True)
         resources = app / "Contents/Resources"
         (resources / "Remote_Kit.bundle").mkdir(parents=True)
+        (resources / "Vendored_Resources.bundle/queries").mkdir(parents=True)
         files = {
             "lib.js": (self.root / LIB_JS).read_text(),
             "Remote_Kit.bundle/Remote-Font.otf": FONT_BYTES,
+            "Vendored_Resources.bundle/queries/highlights.scm": QUERY_BYTES,
             "LICENSE": (self.root / "LICENSE").read_text(),
             "THIRD_PARTY_NOTICES.md": (self.root / compliance.NOTICES).read_text(),
             **(extra or {}),
@@ -226,18 +252,18 @@ class ComplianceCheckTests(unittest.TestCase):
         self.assertFailsWith("no Package.resolved", release=True)
 
     def test_pending_component_fails_release(self) -> None:
-        self.fx.inventory["components"][1]["resolution"] = "pending-lockfile"
-        self.fx.inventory["components"][1]["provenance"] = "pending"
+        self.fx.inventory["components"][2]["resolution"] = "pending-lockfile"
+        self.fx.inventory["components"][2]["provenance"] = "pending"
         self.fx.save()
         self.assertFailsWith("revision still pending", release=True)
 
     def test_open_item_fails_release(self) -> None:
-        self.fx.inventory["components"][1]["open_items"] = ["needs a look"]
+        self.fx.inventory["components"][2]["open_items"] = ["needs a look"]
         self.fx.save()
         self.assertFailsWith("open item: needs a look", release=True)
 
     def test_stale_generated_notices_fail(self) -> None:
-        self.fx.inventory["components"][1]["copyright"] = ["Copyright Someone Else"]
+        self.fx.inventory["components"][2]["copyright"] = ["Copyright Someone Else"]
         self.fx.write("compliance/inventory.json", json.dumps(self.fx.inventory, indent=2))
         self.assertFailsWith("generated file is stale")
 
@@ -286,6 +312,52 @@ class ComplianceCheckTests(unittest.TestCase):
         del self.fx.inventory["components"][0]["runtime_resources"]
         self.fx.save()
         self.assertFailsWith("must declare runtime_resources")
+
+    # ------------------------------------------------ wildcard-owned packages
+
+    def test_unregistered_query_inside_wildcard_owned_package_fails(self) -> None:
+        """The original bypass: `owns: Vendored/**` must not make a new shipped query compliant."""
+        self.fx.write(f"{VENDORED}/Sources/VendoredResources/queries/extra.scm", "(x) @y\n")
+        self.assertFailsWith("vendored-grammar: file inside its owned boundary is not in its audited files")
+
+    def test_swift_file_inside_vendored_package_cannot_pass_as_first_party(self) -> None:
+        self.fx.write(f"{VENDORED}/Sources/Vendored/Helper.swift", "struct Helper {}\n")
+        self.assertFailsWith("file inside its owned boundary is not in its audited files")
+
+    def test_registered_query_inside_wildcard_owned_package_passes(self) -> None:
+        self.assertEqual(self.fx.check().errors, [])
+        self.assertEqual(self.fx.check(release=True, artifact=self.fx.make_app()).errors, [])
+
+    def test_artifact_missing_registered_query_fails(self) -> None:
+        self.assertFailsWith("required runtime resource highlights.scm", artifact=self.fx.make_app(skip={"Vendored_Resources.bundle/queries/highlights.scm"}))
+
+    def test_artifact_shipping_unknown_query_fails(self) -> None:
+        app = self.fx.make_app(extra={"Vendored_Resources.bundle/queries/extra.scm": "(x) @y\n"})
+        self.assertFailsWith("unregistered runtime file: Contents/Resources/Vendored_Resources.bundle/queries/extra.scm", artifact=app)
+
+    # ------------------------------------------------ project.yml requirements
+
+    def test_xcodegen_requirement_matching_inventory_passes(self) -> None:
+        self.fx.write("MacDown2/project.yml", f"packages:\n  RemoteKit:\n    url: {REMOTE_URL}\n    exactVersion: 1.0.0\n")
+        self.assertEqual(self.fx.check().errors, [])
+
+    def test_xcodegen_requirement_change_is_a_stale_mapping(self) -> None:
+        for requirement in ("exactVersion: 1.1.0", "branch: main", "minorVersion: 1.0.0", "minVersion: 1.0.0"):
+            with self.subTest(requirement=requirement):
+                self.fx.write("MacDown2/project.yml", f"packages:\n  RemoteKit:\n    url: {REMOTE_URL}\n    {requirement}\n")
+                self.assertFailsWith("stale mapping: MacDown2/project.yml requires")
+
+    def test_xcodegen_packages_are_read_at_any_indentation(self) -> None:
+        for indent in (2, 4):
+            with self.subTest(indent=indent):
+                pad = " " * indent
+                self.fx.write("MacDown2/project.yml",
+                              f"packages:\n{pad}Sneaky:\n{pad * 2}url: https://github.com/example/indented\n{pad * 2}from: 1.0.0\n")
+                self.assertFailsWith("project.yml: package https://github.com/example/indented is not registered")
+
+    def test_unreadable_xcodegen_package_entry_fails_closed(self) -> None:
+        self.fx.write("MacDown2/project.yml", "packages:\n  Sneaky: {url: https://github.com/example/flow, from: 1.0.0}\n")
+        self.assertFailsWith("project.yml: unrecognised package entry")
 
     def test_missing_artifact_fails(self) -> None:
         self.assertFailsWith("artifact not found", artifact=self.fx.root / "build/Nope.app")
@@ -420,6 +492,12 @@ class RepositoryTests(unittest.TestCase):
         for component in inventory["components"]:
             if component["kind"] == "vendored-bundle":
                 self.assertTrue(component.get("runtime_resources"), component["id"])
+        # Tree-sitter query files ship as resources (vendored and remote
+        # grammars copy their queries/ folders), so they must stay controlled.
+        self.assertIn(".scm", inventory["artifact"]["registered_extensions"])
+        for component in inventory["components"]:
+            if component["id"].startswith("tree-sitter-") and component["kind"] in ("swiftpm", "vendored-source"):
+                self.assertTrue(any(r["name"].endswith(".scm") for r in component.get("runtime_resources", [])), component["id"])
         fonts = {r["name"] for r in by_id["swiftui-math-fonts"]["runtime_resources"]}
         self.assertEqual(len(fonts), len(by_id["swiftui-math-fonts"]["fonts"]))
         self.assertTrue(all(name.endswith(".otf") for name in fonts))

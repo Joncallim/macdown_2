@@ -55,6 +55,8 @@ exists. The strict version runs in the signing script's
 | Rule | Tree check | `--release` |
 |---|---|---|
 | A file under `MacDown2/` that is neither first-party nor owned by a component | fail | fail |
+| A file inside a component's wildcard-owned boundary (such as a vendored package's `**`) that isn't in that component's audited `files`, licence texts or runtime resources. `owns` says which component a file belongs to; it doesn't make the file compliant, and such a file can't pass as first-party | fail | fail |
+| A `project.yml` package requirement (`exactVersion`, `from`, `minorVersion`, `branch`, `revision`…) that differs from the inventory, or a `packages:` entry the checker can't read (it fails closed) | fail | fail |
 | A SwiftPM dependency not in the inventory, in any `Package.swift` under `MacDown2/` (found automatically) or in `project.yml`'s `packages:` | fail | fail |
 | A local package that no component owns, or an XcodeGen local package outside `MacDown2/` | fail | fail |
 | A `.package(...)` declaration the checker can't read, such as a registry `id:` or an interpolated URL (it fails closed) | fail | fail |
@@ -84,21 +86,23 @@ The inventory separates two records:
 With `--artifact`, the check fails if any of these is true:
 
 1. A runtime resource is missing from the app, or its bytes differ. The
-   resources are the Mermaid, Viz.js and D2 engines, both themes, the
-   vendored grammars' query files, and all 12 SwiftUIMath fonts, which are
-   matched against their upstream digests.
+   resources are the Mermaid, Viz.js and D2 engines, both themes, every
+   tree-sitter query file that ships (the vendored grammars' files, plus the
+   `queries/` folders that the remote grammar packages copy into the app,
+   matched against their upstream digests), and all 12 SwiftUIMath fonts,
+   also matched against their upstream digests.
 2. The app doesn't contain this repository's `LICENSE` and generated
    `THIRD_PARTY_NOTICES.md`, byte for byte.
-3. The app ships a script, WebAssembly or font file (the extensions listed in
+3. The app ships a script, WebAssembly, font or tree-sitter query (`.scm`) file (the extensions listed in
    `inventory.json` → `artifact.registered_extensions`) whose digest isn't a
    known runtime resource or a first-party source file.
 
 It does **not** prove anything about compiled code. Swift packages and the C
 grammar parsers are linked into the binary and can't be matched by digest.
 For those, the evidence is the source-tree check, the exact revisions in the
-SBOM and, once LC-05 lands, the lock file. Other data files that dependencies
-copy in (for example the remote grammars' query files) are covered by the
-notices but aren't matched individually.
+SBOM and, once LC-05 lands, the lock file. Data files that dependencies
+copy in with extensions outside that list (for example SwiftUIMath's font
+`.plist` metrics) are covered by the notices but aren't matched individually.
 
 The Compliance workflow runs on every pull request and every push to
 `master`, with no path filter. A test (`test_compliance_workflow_cannot_be_skipped_by_path_filters`)
