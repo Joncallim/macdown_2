@@ -31,14 +31,7 @@ let package = Package(
         .library(name: "TextSearch", targets: ["TextSearch"]),
     ],
     dependencies: [
-        // Pinned to an immutable commit for reproducible release builds (#148
-        // LC-05). This is the `main` head every build since 2026-08-12 already
-        // resolved (0.10.0 plus six commits), so pinning changes no code. Neon's
-        // own manifest asks for `branch: "main"`; this root pin overrides that.
-        .package(
-            url: "https://github.com/ChimeHQ/SwiftTreeSitter",
-            revision: "cbe31cb3601aa29c1f64b6e4328733511126d6d5"
-        ),
+        .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
         .package(url: "https://github.com/ChimeHQ/Neon", revision: "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-json", from: "0.24.8"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-html", from: "0.23.2"),
