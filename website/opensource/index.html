@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open source — MostlyText</title>
+  <meta name="description" content="MostlyText's licence, third-party notices and the corresponding source code for each release.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <a href="/" aria-label="MostlyText home"><span class="logo" role="img" aria-label="MostlyText"></span></a>
+      <nav class="site" aria-label="Site">
+        <a href="https://github.com/Joncallim/mostlytext">Source</a>
+        <a href="/opensource/" aria-current="page">Open source</a>
+        <a href="/privacy/">Privacy</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap prose">
+      <h1>Open source</h1>
+      <p>MostlyText is released under the <a href="https://github.com/Joncallim/mostlytext/blob/master/LICENSE">MIT licence</a>. It continues <a href="https://github.com/MacDownApp/macdown">MacDown</a>, which is also MIT licensed, and keeps its original copyright lines.</p>
+      <p>MostlyText also includes third-party components, each under its own licence. The full notices ship inside the app (<b>MostlyText › About MostlyText › Open Source Licences</b>) and are listed for each release below.</p>
+
+      <h2>Source code for each release</h2>
+      <p>Some bundled components are licensed under terms that require their source code to be available when they're distributed. For each release, this archive keeps that source and our changes to it. The release's software bill of materials (SBOM) links every shipped component to its exact upstream revision.</p>
+
+      <div class="table-scroll">
+        <table class="archive">
+          <thead>
+            <tr><th scope="col">Release</th><th scope="col">Notices</th><th scope="col">SBOM</th><th scope="col">Corresponding source</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1.0.0</td>
+              <td><a href="/opensource/1.0.0/THIRD_PARTY_NOTICES.md">Notices</a></td>
+              <td><a href="/opensource/1.0.0/sbom.cdx.json">CycloneDX JSON</a></td>
+              <td>
+                <a href="/opensource/1.0.0/graphviz/">Graphviz (EPL-2.0), via Viz.js</a><br>
+                <a href="/opensource/1.0.0/d2/">D2 (MPL-2.0), with our one-line change</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Each download page lists SHA-256 checksums so you can match what you download with what shipped in the app.</p>
+
+      <h2>Questions</h2>
+      <p>If a notice is missing or wrong, please <a href="https://github.com/Joncallim/mostlytext/issues">open an issue</a>.</p>
+    </div>
+  </main>
+
+  <footer class="site">
+    <div class="wrap">
+      <p>MostlyText is MIT licensed and descends from <a href="https://github.com/MacDownApp/macdown">MacDown</a> by Tzu-ping Chung and contributors.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,313 @@
+Math fonts bundled by swiftui-math 0.1.0 (Sources/SwiftUIMath/mathFonts.bundle).
+Copyright, licence description and licence URL are quoted verbatim from each
+font's own OpenType 'name' table (name IDs 4, 5, 0, 13, 14).
+
+========================================================================
+Asana Math (Asana-Math.otf, Version 000.958)
+SHA-256: b0d9e681c08ff1f4dc6ebf085cc962585ec12cdbd25dc6225890b9f8fd12d568
+
+Copyright (C) 2007-2019 Apostolos Syropoulos. 
+Copyright (C) 2000 Young Ryu.
+Copyright (C) 1997, 1999 Claudio Beccari.
+
+Copyright (c) 2007-2019, Apostolos Syropoulos (<asyropoulos@yahoo.com),
+with Reserved Font Name Asana Math.
+Copyright (c) 2000 Young Ryu,
+with Reserved Font Name pxfonts.
+Copyright (c) 1997, 1999 Claudio Beccari, 
+with Reserved Font Name gsmn1000.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied below, and is also available with a FAQ at:
+http://scripts.sil.org/OFL
+
+
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded, 
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+
+Licence URL: http://scripts.sil.org/ofl
+
+========================================================================
+Euler Math (Euler-Math.otf, Version 0.61)
+SHA-256: bd07fef1faecea7fa4a89256e4e06ef94b19e23b1785db6e420229fda37c2efb
+
+Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org).
+Copyright (c) 2009, 2021 Khaled Hosny (khaledhosny@eglug.org).
+Copyright (c) 2022-2024, Daniel Flipo (daniel.flipo@free.fr)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+
+Licence URL: http://scripts.sil.org/OFL
+
+========================================================================
+Fira Math Regular (FiraMath-Regular.otf, Version 0.3.4)
+SHA-256: 2028cbd3dd4d8c0cf1608520eb4759956a83a67931d7b6d8e7c313520186e35b
+
+Copyright (C) 2018–2020 Xiangdong Zeng
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.
+
+Licence URL: http://scripts.sil.org/OFL
+
+========================================================================
+Garamond-Math (Garamond-Math.otf, Version 2022-01-03)
+SHA-256: c6161377e97084152b948f62abe874cbe27405938956346b54a4c6488a5009f1
+
+Copyleft (C) 2018-2022 Yuansheng Zhao and Xiangdong Zeng
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+
+Licence URL: http://scripts.sil.org/OFL
+
+========================================================================
+KpMath Light (KpMath-Light.otf, Version 0.63)
+SHA-256: aa6713ae76838a7db9eefe4f503b963dad50df77555ff67a50b72eb832221660
+
+Copyright (c) 2007-2018, Christophe Caignaert (c.caignaert@free.fr),
+with Reserved Font Name <Kp>.
+Copyright (c) 2019-2024, Daniel Flipo (daniel.flipo@free.fr),
+with Reserved Font Name <KpMath-Light>.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+
+Licence URL: http://scripts.sil.org/OFL
+
+========================================================================
+KpMath Sans (KpMath-Sans.otf, Version 0.63)
+SHA-256: a9e82575a514f10ceed193d393bf2ea6ac82980ce7eb8c81be085df159a8c253
+
+Copyright (c) 2007-2018, Christophe Caignaert (c.caignaert@free.fr),
+with Reserved Font Name <Kp>.
+Copyright (c) 2019-2024, Daniel Flipo (daniel.flipo@free.fr),
+with Reserved Font Name <KpMath-Sans>.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+
+Licence URL: http://scripts.sil.org/OFL
+
+========================================================================
+LatinModernMath-Regular (latinmodern-math.otf, Version 1.959)
+SHA-256: 6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f
+
+Copyright 2012--2014 for Latin Modern Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.
+
+========================================================================
+Lete Sans Math (LeteSansMath.otf, Version 0.41)
+SHA-256: b9242115e4d41b9ccbe179340d4ddaf5598863389a23677eefb87e8950781313
+
+Lete Sans Math (c) 2024 Chenjing Bu, Daniel Flipo.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied below, and is also available with a FAQ at:
+http://scripts.sil.org/OFL
+
+
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded, 
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+
+Licence URL: http://scripts.sil.org/OFL
+
+========================================================================
+Libertinus Math Regular (LibertinusMath-Regular.otf, Version 7.051;RELEASE)
+SHA-256: e81bd44acbb7119c8f00128b36fecc5d980e10d2450a226ba52402ccf4da9d32
+
+Copyright © 2012-2024 The Libertinus Project Authors.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org
+
+Licence URL: https://openfontlicense.org
+
+========================================================================
+Noto Sans Math Regular (NotoSansMath-Regular.otf, Version 3.000)
+SHA-256: 9dda7e17fa67b7e34083798f56faf5e53ac524456e730ead35c2957e4397ca28
+
+Copyright 2022 Google LLC. All Rights Reserved.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL
+
+Licence URL: https://scripts.sil.org/OFL
+
+========================================================================
+TeXGyreTermesMath-Regular (texgyretermes-math.otf, Version 1.543)
+SHA-256: e5ce42b4fe826b7ea4c0874359decf0b294439355c511a4794107a9924e2cd5a
+
+Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.
+
+========================================================================
+XITS Math (xits-math.otf, Version 1.108)
+SHA-256: d76666cb2dc222b4a811db96c41cc1853988b91008ec44a194126b4e010a5c6c
+
+Copyright (c) 2001-2011 by the STI Pub Companies, consisting of the American Chemical Society, the American Institute of Physics, the American Mathematical Society, the American Physical Society, Elsevier, Inc., and The Institute of Electrical and Electronic Engineers, Inc.  Portions copyright (c) 1998-2003 by MicroPress, Inc.  Portions copyright (c) 1990 by Elsevier, Inc.  Portions copyright (c) 2009-2012 by Khaled Hosny.  All rights reserved.
+
+As a condition for receiving these fonts at no charge, each person downloading the fonts must agree to some simple license terms. The license is based on the SIL Open Font License <http://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL>. The SIL License is a free and open source license specifically designed for fonts and related software. The basic terms are that the recipient will not remove the copyright and trademark statements from the fonts and that, if the person decides to create a derivative work based on the STIX Fonts but incorporating some changes or enhancements, the derivative work ("Modified Version") will carry a different name. The copyright and trademark restrictions are part of the agreement between the STI Pub companies and the typeface designer. The "renaming" restriction results from the desire of the STI Pub companies to assure that the STIX Fonts will continue to function in a predictable fashion for all that use them. No copy of one or more of the individual Font typefaces that form the STIX Fonts(TM) set may be sold by itself, but other than this one restriction, licensees are free to sell the fonts either separately or as part of a package that combines other software or fonts with this font set.
+
+Licence URL: http://www.stixfonts.org/user_license.html
+
