@@ -16,13 +16,33 @@ public extension FileDocument {
     /// Persists the current text under the document identity immediately.
     /// Saved documents need this just as much as untitled ones while their
     /// original backing path is unavailable or in conflict.
+    ///
+    /// Returns `true` when this exact text is durably recorded for this
+    /// lifetime, including when another writer (such as the debounced session
+    /// save) already recorded the same version first. The buffer refuses to
+    /// re-apply a recorded version, so without that check a retry would
+    /// report failure for a snapshot that is already safe. A stale version,
+    /// different recorded text, or a retired lifetime still fails.
     func persistRecovery() async -> Bool {
-        await (try? recoveryBuffer.saveCurrentLifetime(
-            content: text,
-            for: id,
-            version: mutationGeneration,
-            epoch: recoveryEpoch
-        )) ?? false
+        let content = text
+        do {
+            if try await recoveryBuffer.saveCurrentLifetime(
+                content: content,
+                for: id,
+                version: mutationGeneration,
+                epoch: recoveryEpoch
+            ) {
+                return true
+            }
+            return try await recoveryBuffer.hasRecordedSnapshot(
+                content: content,
+                for: id,
+                version: mutationGeneration,
+                epoch: recoveryEpoch
+            )
+        } catch {
+            return false
+        }
     }
 
     func saveRecovery() async {
