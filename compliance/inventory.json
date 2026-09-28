@@ -23,6 +23,7 @@
     "MacDown2/MacDown2UITests/**",
     "MacDown2/README.md",
     "MacDown2/project.yml",
+    "MacDown2/scripts/**",
     "MacDown2/**/Package.swift",
     "MacDown2/**/Package.resolved",
     "MacDown2/*.xcodeproj/**",

@@ -60,19 +60,31 @@ E22 is being delivered slice by slice by its own session. Slices 1–6 have
 landed (6c, recent files, in PR #161); 7 (folder search/replace), 8 and 9
 remain. Nothing on this page interrupts that work.
 
-Two technical fixes are tracked here, each owned by its own dedicated task. They
-are dependencies, not work for release coordination:
-- **LC-05 (SwiftTreeSitter immutability, #148).** A committed, CI-enforced
-  `Package.resolved` with proof of immutable resolution in CI. No other session
-  pins dependencies or edits the lock file or its CI enforcement in parallel.
-- **FileCore red `master` — fixed by PR #166 (`82ae971`).** The failing test
-  `parentVanishedLatchSurvivesAChangedEventDuringDebounce()` had a test-harness
-  race, separate from the recorder-ordering race fixed in #154: under load the
-  first signal's probe could start before the second signal arrived, and that
-  discarded probe used up the test's fixed script of answers. The test now
-  forces each interleaving deterministically; product code was unchanged. The
-  LC-05 branch still needs to update onto this `master` and get a fresh green
-  CI run before it merges.
+Two technical fixes that blocked this path have landed (updated 2026-09-28,
+after the status line above). Each was done on its own:
+- **FileCore red `master` — fixed by PR #166 (`82ae971`).** The recurring
+  `parentVanishedLatchSurvivesAChangedEventDuringDebounce()` failure was a
+  test-harness race, separate from the recorder-ordering race fixed in #154: a
+  superseded debounce probe consumed the test's scripted prober answers. It
+  was reproduced (21 of 900 loaded iterations) and fixed by gating the
+  interleaving deterministically, with exact-sequence assertions and a new
+  regression test for the other ordering. No skips, and no longer timeouts.
+  Product code was unchanged.
+- **LC-05 (SwiftTreeSitter immutability, #148) — landed in #165**, after being
+  updated onto the corrected `master` and getting a fresh green CI run.
+  `MacDown2/Packages/MacDownKit/Package.resolved` is committed and pins
+  SwiftTreeSitter at `cbe31cb3601aa29c1f64b6e4328733511126d6d5` (still
+  declared `branch: "main"`, because Neon requires it). CI builds only locked
+  revisions:
+  - `swift build`/`swift test` run with `--force-resolved-versions`;
+  - the Xcode builds copy the lock into the generated project, pass
+    `-onlyUsePackageVersionsFromResolvedFile`, then check the copy survived.
+
+  The enforcement covers CI only. A plain local `xcodebuild` resolves on its
+  own unless the pin step in `AGENTS.md` is used; the same applies to any
+  future release pipeline that does not use that step. The lock fixes *which*
+  revisions are built. Checking them against a registered inventory is LC-07's job, and LC-07 is still open.
+  Changing the lock is a deliberate dependency update, reviewed like code.
 
 ## 2. Workstreams
 
@@ -82,7 +94,7 @@ are dependencies, not work for release coordination:
 | Branding cutover (repository, README, public copy) | #158 | Record only. #158 runs after E22 | Cloud | Inputs are decided (§4). Execute once E22 closes: rename the repository to `Joncallim/mostlytext`, rebrand the README and public copy, and classify the remaining `MacDown 2` references as #158 §4 requires |
 | App-icon integration | E23 (#113); inputs from #158 | No. E23 follows #158 | Cloud edits; **Mac** to verify | Move `design/evidence/2026-09-26/icon-art/MostlyText-lean10.icon` into the app **next to** `Assets.xcassets`, not inside it, and remove `AppIcon.appiconset` and the placeholder script. See that folder's README (D-028). Verify in a Release build in the Dock and Finder, light and dark |
 | Bundle identity and versioning | Strategy: #158. Migration: #18 | Decided | Cloud | Decided (§4): `app.mostlytext.MostlyText`, CLI `mostlytext`, version `1.0.0` with independent build numbers. Today the app is `com.joncallim.MacDown2`, `0.1.0 (1)`, CLI `macdown2`. E17 owns the switch and the migration of development-namespace state; E23 derives its Quick Look and theme identifiers from the new prefix |
-| Licensing and notices | #148 (LC-01–LC-10) | **Yes.** LC-02–LC-07 are identity-neutral | Cloud | 1.0 ships under MIT; #148 LC-10 was reframed on 2026-09-28 to match. Third-party notices (LC-01 to LC-09) stay a hard gate. LC-05 (make SwiftTreeSitter immutable) needs a lock file, not a manifest pin: a `revision:` pin fails resolution because Neon's own manifest requires SwiftTreeSitter `branch: "main"`, and SwiftPM refuses two different revision-based requirements (CI, 2026-09-28). The fix, a committed `Package.resolved` that CI enforces, is owned by a dedicated task (§1; details in #148). The gate itself is in `compliance/` (2026-09-28): a checked inventory of all 33 shipped components, generated notices and SBOM, and a CI check with negative tests. LC-04 and LC-06 provenance are recorded there. `compliance.py check --release` lists what remains. Next: Mermaid's bundled npm dependencies (LC-01), the Graphviz and D2 source packages (LC-02/03, plan in `compliance/ARCHIVE_PLAN.md`), and reconciling the inventory with the LC-05 lock file once it lands. LC-08's licences screen (`compliance/LICENCES_UI.md`) starts after E22 and must land before the final E16 freeze |
+| Licensing and notices | #148 (LC-01–LC-10) | **Yes.** LC-02–LC-07 are identity-neutral | Cloud | 1.0 ships under MIT; #148 LC-10 was reframed on 2026-09-28 to match. Third-party notices (LC-01 to LC-09) stay a hard gate. LC-05 (make SwiftTreeSitter immutable) needs a lock file, not a manifest pin: a `revision:` pin fails resolution because Neon's own manifest requires SwiftTreeSitter `branch: "main"`, and SwiftPM refuses two different revision-based requirements (CI, 2026-09-28). That fix landed in #165: a committed `Package.resolved` that CI enforces (§1; evidence in #148). The gate itself is in `compliance/` (2026-09-28): a checked inventory of all 33 shipped components, generated notices and SBOM, and a CI check with negative tests. LC-04 and LC-06 provenance are recorded there. `compliance.py check --release` lists what remains. Next: Mermaid's bundled npm dependencies (LC-01), the Graphviz and D2 source packages (LC-02/03, plan in `compliance/ARCHIVE_PLAN.md`), and reconciling the inventory with the #165 lock file: its 22 pinned revisions already match the inventory, so the remaining step is to mark those components verified and switch on `lockfile_enforced`. LC-08's licences screen (`compliance/LICENCES_UI.md`) starts after E22 and must land before the final E16 freeze |
 | Trademark | D-031 | Nothing for 1.0 | — | Registration and legal review are **deferred by the owner, not passed**. The WIPO, USPTO and IPOS search record, including the flagged Modern Tech Pte. Ltd. mark (Singapore 40201616062P), stays in `design/brand/TRADEMARK_SEARCH.md` unchanged. Ship with no "®" and no clearance claim. Revisit if MostlyText gains material adoption, revenue or sponsorship, press recognition, third-party brand use or other brand value |
 | Signing and notarisation | E17 (#18) | **Yes: Mac tranche ready** | **Mac** | Apple Developer Program enrolment is confirmed. `planning/MAC_SIGNING_BRIEF.md` is the bounded Mac task. It first confirms the Team ID and the Developer ID Application certificate, creating the certificate if it's missing. It then runs `release/macos/sign-notarize-dmg.sh --dry-run`, which: does a Release build with the hardened runtime; checks every binary's signature; checks the built app against the licence inventory; notarises and staples the app; notarises the CLI ZIP; builds, signs, notarises and staples a DMG; and validates everything with codesign, spctl and syspolicy_check. Last comes a clean-install Gatekeeper test of the DMG and the CLI ZIP in a fresh account. **The mode is explicit:** `--dry-run` records incomplete release gates as UNVERIFIED and continues. `--release-candidate` (E17 only) needs a clean tree and stops on any licence-gate failure, before anything is sent to Apple, and on a missing notarisation log. This tranche is a pre-cutover pipeline proof under the development identity, and it publishes nothing. The expected outcome is hardened runtime with no entitlements, made permanent for Release builds only. How the CLI finally ships (inside the app or as a separate download) is still an E17 decision |
 | Packaging and downloads | E17 (#18) | Decided; build at E17 | Cloud plans; Mac builds | Decided (§4): a signed, notarised DMG on GitHub Releases, linked from `mostlytext.app`. The Sparkle EdDSA key is generated once, on a Mac, and stored in the owner's keychain or password manager, never in the repository |
