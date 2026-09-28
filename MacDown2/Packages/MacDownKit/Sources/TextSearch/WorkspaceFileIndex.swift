@@ -114,6 +114,15 @@ public actor WorkspaceFileIndex {
         state = .empty
     }
 
+    /// Every currently-indexed path, in the last rebuild's own walk order.
+    /// Unlike `query(_:limit:)` (a fuzzy-ranked, capped subset for Quick
+    /// Open), folder search (`WorkspaceSearchEngine`, Slice 7) needs every
+    /// path the index knows about, since it is deciding which FILES to open
+    /// and search, not ranking path strings against a typed query.
+    public func allPaths() -> [IndexedPath] {
+        paths
+    }
+
     /// Ranked matches for `query`, capped at `limit`. Never touches disk —
     /// operates entirely on the last-built in-memory snapshot, so a
     /// keystroke never triggers a new traversal (the epic's explicit
