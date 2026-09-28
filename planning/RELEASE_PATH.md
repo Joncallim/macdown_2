@@ -10,7 +10,8 @@ binding contracts. This page shows:
 - the owner decisions that fix the release identity (§4).
 
 The brand identity is now frozen for 1.0: design gates 1 and 2 are closed,
-gate 3 was waived (D-026) and gate 4 is deferred (D-031). Brand decisions are
+gate 3 was waived (D-026) and gate 4 is deferred by the owner (D-031), not
+passed. Brand decisions are
 therefore off the critical path. What remains is:
 - finishing E22;
 - the identity cutover (#158);
@@ -35,8 +36,8 @@ Terms used here:
 - **SBOM:** software bill of materials, a machine-readable list of every
   component shipped.
 
-Status as of 2026-09-27, after #136 merged (`d13f3d1`). Owner decisions
-recorded 2026-09-28 (§4).
+Status as of 2026-09-28, at `master` `e702b5b`. Owner decisions recorded
+2026-09-28 (§4).
 
 ## 1. Critical path
 
@@ -56,8 +57,20 @@ Can be prepared early, used at E17:
 ```
 
 E22 is being delivered slice by slice by its own session. Slices 1–6b have
-landed; 6c (recent files), 7 (folder search/replace), 8 and 9 remain. Nothing
-on this page interrupts that work.
+landed; 6c (recent files) is in PR #161, and 7 (folder search/replace), 8 and
+9 remain. Nothing on this page interrupts that work.
+
+Two technical fixes are in flight, each owned by its own dedicated task. They
+are dependencies, not work for release coordination:
+- **LC-05 (SwiftTreeSitter immutability, #148).** A committed, CI-enforced
+  `Package.resolved` with proof of immutable resolution in CI. No other session
+  pins dependencies or edits the lock file or its CI enforcement in parallel.
+- **FileCore red `master`.** The failing test
+  `parentVanishedLatchSurvivesAChangedEventDuringDebounce()` is being
+  root-caused and fixed on its own. It is not folded into LC-05, and it is not
+  to be hidden with skips or longer timeouts. Once that fix lands, the LC-05
+  branch updates onto the corrected `master` and needs a fresh green CI run
+  before it merges.
 
 ## 2. Workstreams
 
@@ -67,8 +80,8 @@ on this page interrupts that work.
 | Branding cutover (repository, README, public copy) | #158 | Record only. #158 runs after E22 | Cloud | Inputs are decided (§4). Execute once E22 closes: rename the repository to `Joncallim/mostlytext`, rebrand the README and public copy, and classify the remaining `MacDown 2` references as #158 §4 requires |
 | App-icon integration | E23 (#113); inputs from #158 | No. E23 follows #158 | Cloud edits; **Mac** to verify | Move `design/evidence/2026-09-26/icon-art/MostlyText-lean10.icon` into the app **next to** `Assets.xcassets`, not inside it, and remove `AppIcon.appiconset` and the placeholder script. See that folder's README (D-028). Verify in a Release build in the Dock and Finder, light and dark |
 | Bundle identity and versioning | Strategy: #158. Migration: #18 | Decided | Cloud | Decided (§4): `app.mostlytext.MostlyText`, CLI `mostlytext`, version `1.0.0` with independent build numbers. Today the app is `com.joncallim.MacDown2`, `0.1.0 (1)`, CLI `macdown2`. E17 owns the switch and the migration of development-namespace state; E23 derives its Quick Look and theme identifiers from the new prefix |
-| Licensing and notices | #148 (LC-01–LC-10) | **Yes.** LC-02–LC-07 are identity-neutral | Cloud | 1.0 ships under MIT; #148 LC-10 was reframed on 2026-09-28 to match. Third-party notices (LC-01 to LC-09) stay a hard gate. LC-05 (make SwiftTreeSitter immutable) needs a lock file, not a manifest pin: a `revision:` pin fails resolution because Neon's own manifest requires SwiftTreeSitter `branch: "main"`, and SwiftPM refuses two different revision-based requirements (CI, 2026-09-28). The fix is a committed `Package.resolved` that CI enforces, generated on a Mac (details in #148). Next: LC-04 (TreeSitterMarkdown provenance), then the SBOM and notice generator (LC-01/07). LC-08's About → Licences UI must land before the final E16 freeze |
-| Trademark | D-031 | Nothing for 1.0 | — | Ship with no "®" and no clearance claim. Revisit if MostlyText gains material adoption, revenue or sponsorship, press recognition, third-party brand use or other brand value |
+| Licensing and notices | #148 (LC-01–LC-10) | **Yes.** LC-02–LC-07 are identity-neutral | Cloud | 1.0 ships under MIT; #148 LC-10 was reframed on 2026-09-28 to match. Third-party notices (LC-01 to LC-09) stay a hard gate. LC-05 (make SwiftTreeSitter immutable) needs a lock file, not a manifest pin: a `revision:` pin fails resolution because Neon's own manifest requires SwiftTreeSitter `branch: "main"`, and SwiftPM refuses two different revision-based requirements (CI, 2026-09-28). The fix, a committed `Package.resolved` that CI enforces, is owned by a dedicated task (§1; details in #148). Next for this workstream: LC-04 (TreeSitterMarkdown provenance), LC-06 (Tomorrow theme provenance), then the SBOM and notice generator (LC-01/07) and the LC-09 archive plan. LC-08's About → Licences UI must land before the final E16 freeze |
+| Trademark | D-031 | Nothing for 1.0 | — | Registration and legal review are **deferred by the owner, not passed**. The WIPO, USPTO and IPOS search record, including the flagged Modern Tech Pte. Ltd. mark (Singapore 40201616062P), stays in `design/brand/TRADEMARK_SEARCH.md` unchanged. Ship with no "®" and no clearance claim. Revisit if MostlyText gains material adoption, revenue or sponsorship, press recognition, third-party brand use or other brand value |
 | Signing and notarisation | E17 (#18) | **Waiting on Apple enrolment** | **Mac** | Enrolment is in progress (2026-09-28). This is an active dependency being resolved, not a release-risk decision. Once Apple approves it and the Team ID and Developer ID certificate exist, a Mac session runs a non-publishing Developer ID and notarisation dry run on current `master` (§3) to find hardened-runtime and entitlement problems early. Until then all signing work stays paused, and all other release work continues. No entitlements file exists yet, and the hardened runtime isn't enabled |
 | Packaging and downloads | E17 (#18) | Decided; build at E17 | Cloud plans; Mac builds | Decided (§4): a signed, notarised DMG on GitHub Releases, linked from `mostlytext.app`. The Sparkle EdDSA key is generated once, on a Mac, and stored in the owner's keychain or password manager, never in the repository |
 | Website and deployment | E17 (#18); LC-09 (#148) | Yes, as a draft | Cloud | Nothing exists in the repository yet. Build a static site at `mostlytext.app` (the public download page) covering the download, appcast, `/opensource` compliance archive (LC-09) and privacy statement. Public copy claims only capabilities with release evidence |
