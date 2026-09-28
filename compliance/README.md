@@ -21,9 +21,10 @@ A single machine-checked inventory catches a new library, a changed file or a
 deleted licence text in CI, instead of in a manual audit before release.
 
 Risks and limits: this is evidence gathering, not legal advice, and no legal
-clearance is claimed. Three things can't be proved from this repository
-alone: the exact SwiftPM revisions (they come from the LC-05 lock file, which
-another task owns), the runtime resources inside the final signed app (checked
+clearance is claimed. The exact SwiftPM revisions are proved by the committed
+lock file (`MacDown2/Packages/MacDownKit/Package.resolved`, LC-05, #165), which
+this check enforces against the inventory. Two things can't be proved from this
+repository alone: the runtime resources inside the final signed app (checked
 on a Mac with `--artifact`; compiled code can't be checked this way, see below),
 and public source availability (checked when LC-09 hosting
 exists). Those stay **unverified**, never passed, until they are checked.
@@ -65,7 +66,7 @@ exists. The strict version runs in the signing script's
 | A runtime resource whose recorded digest no longer matches its source file, or a vendored bundle with no runtime resources declared | fail | fail |
 | A copyleft component with no source location recorded | fail | fail |
 | Generated notices or SBOM out of date with the inventory | fail | fail |
-| No lock file, an unregistered resolved package, or a resolved revision that differs from the inventory | unverified until `lockfile_enforced` is `true` | fail |
+| No lock file, an unregistered resolved package, a registered package missing from the lock, or a resolved revision that differs from the inventory (`lockfile_enforced` is `true`) | fail | fail |
 | A component still `pending`, or with open items | allowed | fail |
 | A source location not yet verified by anonymous download | allowed | fail |
 
@@ -100,7 +101,7 @@ With `--artifact`, the check fails if any of these is true:
 It does **not** prove anything about compiled code. Swift packages and the C
 grammar parsers are linked into the binary and can't be matched by digest.
 For those, the evidence is the source-tree check, the exact revisions in the
-SBOM and, once LC-05 lands, the lock file. Data files that dependencies
+SBOM and the enforced lock file. Data files that dependencies
 copy in with extensions outside that list (for example SwiftUIMath's font
 `.plist` metrics) are covered by the notices but aren't matched individually.
 
@@ -133,10 +134,11 @@ either.
 2. Run `notices` and `sbom`, then `check`.
 3. Commit the inventory, the licence texts and `generated/` together.
 
-**After the LC-05 lock file lands:** update each `pending-lockfile` component
-to the locked revision, re-check its licence text at that revision, register
-any additional resolved packages, and then set `"lockfile_enforced": true`.
-From then on a lock-file change that isn't reflected here fails CI.
+**The lock file is enforced** (`"lockfile_enforced": true`). A dependency
+update that changes `MacDown2/Packages/MacDownKit/Package.resolved` must update
+the matching components in the same change: the new revision, the licence
+text re-checked at that revision, and any newly resolved package registered.
+Otherwise CI fails.
 
 ## Provenance findings (2026-09-28)
 
@@ -157,7 +159,6 @@ file names or comments alone.
 | libyaml in Yams | LC-01 | New finding: Yams ships libyaml's C sources without libyaml's licence file. The libyaml MIT notice is added. |
 
 Open items per component are listed in `inventory.json` and by
-`check --release`. The main ones: exact SwiftPM revisions (waiting on LC-05),
-Mermaid's bundled npm dependencies, the Graphviz and D2 corresponding-source
+`check --release`. The main ones: Mermaid's bundled npm dependencies, the Graphviz and D2 corresponding-source
 packages (LC-02, LC-03 and LC-09), and confirming the font set in the signed
 app.

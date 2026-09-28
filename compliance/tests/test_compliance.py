@@ -233,6 +233,14 @@ class ComplianceCheckTests(unittest.TestCase):
         self.assertEqual(self.fx.check().errors, [])
         self.assertFailsWith("not verified by anonymous retrieval", release=True)
 
+    def test_enforced_lockfile_missing_fails_tree_check(self) -> None:
+        (self.fx.root / "MacDown2/Packages/MacDownKit/Package.resolved").unlink()
+        self.assertFailsWith("no Package.resolved found")
+
+    def test_enforced_registered_package_missing_from_lockfile_fails(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Package.resolved", json.dumps({"pins": [], "version": 3}))
+        self.assertFailsWith("remote-kit: registered SwiftPM component is absent from the lock file")
+
     def test_lockfile_findings_are_unverified_until_enforced(self) -> None:
         self.fx.inventory["lockfile_enforced"] = False
         self.fx.save()
@@ -475,6 +483,14 @@ class RepositoryTests(unittest.TestCase):
                 reflowed = reflowed.replace(".package(", ".package(\n        ")
                 self.assertNotEqual(reflowed, text)
                 self.assertEqual(compliance.parse_manifest(reflowed), (urls, paths, unknown))
+
+    def test_lockfile_is_enforced_and_nothing_is_pending_it(self) -> None:
+        """LC-05 landed in #165; the committed lock file is now a hard part of the gate."""
+        inventory = compliance.load_inventory(REPO)
+        self.assertIs(inventory["lockfile_enforced"], True)
+        self.assertTrue((REPO / "MacDown2/Packages/MacDownKit/Package.resolved").is_file())
+        pending = [c["id"] for c in inventory["components"] if c.get("resolution") == "pending-lockfile"]
+        self.assertEqual(pending, [])
 
     def test_compliance_workflow_cannot_be_skipped_by_path_filters(self) -> None:
         """The check walks the whole tree, so the workflow must run on every change."""

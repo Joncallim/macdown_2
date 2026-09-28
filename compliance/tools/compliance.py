@@ -447,7 +447,7 @@ def check(root: Path, release: bool = False, artifact: Path | None = None) -> Re
     lock_problem = report.error if strict_lock else report.warn
     lockfiles = [root / p for p in inventory.get("lockfiles", []) if (root / p).is_file()]
     if not lockfiles:
-        lock_problem("no Package.resolved found; SwiftPM revisions are unverified until the LC-05 lock file lands")
+        lock_problem("no Package.resolved found; SwiftPM revisions cannot be verified without the committed lock file (LC-05)")
     pinned_urls: set[str] = set()
     for lockfile in lockfiles:
         rel = lockfile.relative_to(root).as_posix()

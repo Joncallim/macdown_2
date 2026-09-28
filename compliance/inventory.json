@@ -39,7 +39,7 @@
     "MacDown2/Packages/MacDownKit/Package.resolved",
     "MacDown2/MacDown2.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
   ],
-  "lockfile_enforced": false,
+  "lockfile_enforced": true,
   "build_only_packages": [
     "https://github.com/pointfreeco/swift-snapshot-testing",
     "https://github.com/apple/swift-docc-plugin",
@@ -352,7 +352,7 @@
       "version": "2.1.1",
       "upstream": "https://github.com/ChimeHQ/Rearrange",
       "revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
-      "resolution": "pending-lockfile",
+      "resolution": "lockfile",
       "licence": "BSD-3-Clause",
       "copyright": [
         "Copyright (c) 2019, Chime Systems Inc."
@@ -366,18 +366,14 @@
           "upstream_path": "LICENSE"
         }
       ],
-      "provenance": "pending",
+      "provenance": "verified",
       "lc": [
         "LC-01",
         "LC-07"
       ],
-      "manifest_requirement": {
-        "transitive_via": "neon",
-        "range": ">=2.0.0 <3.0.0"
-      },
-      "open_items": [
-        "Exact revision is fixed by the LC-05 Package.resolved (owned by the dedicated LC-05 task). The licence text was captured from the candidate revision shown and must be re-checked against the locked revision."
-      ]
+      "transitive_via": "neon",
+      "declared_range": ">=2.0.0 <3.0.0",
+      "evidence": "Locked at 4de8be41dba304192e87dc0a11e0aa39e72aa2e8 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag 2.1.1 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
     },
     {
       "id": "swift-cmark",
@@ -418,7 +414,7 @@
       "version": "1.4.1",
       "upstream": "https://github.com/pointfreeco/swift-concurrency-extras",
       "revision": "5fa253428866f2360c3754e88537f700ed2656b5",
-      "resolution": "pending-lockfile",
+      "resolution": "lockfile",
       "licence": "MIT",
       "copyright": [
         "Copyright (c) 2023 Point-Free"
@@ -432,18 +428,14 @@
           "upstream_path": "LICENSE"
         }
       ],
-      "provenance": "pending",
+      "provenance": "verified",
       "lc": [
         "LC-01",
         "LC-07"
       ],
-      "manifest_requirement": {
-        "transitive_via": "textual",
-        "range": ">=1.3.1 <2.0.0"
-      },
-      "open_items": [
-        "Exact revision is fixed by the LC-05 Package.resolved (owned by the dedicated LC-05 task). The licence text was captured from the candidate revision shown and must be re-checked against the locked revision."
-      ]
+      "transitive_via": "textual",
+      "declared_range": ">=1.3.1 <2.0.0",
+      "evidence": "Locked at 5fa253428866f2360c3754e88537f700ed2656b5 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag 1.4.1 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
     },
     {
       "id": "swift-markdown",
@@ -489,7 +481,7 @@
       "version": "main",
       "upstream": "https://github.com/ChimeHQ/SwiftTreeSitter",
       "revision": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
-      "resolution": "pending-lockfile",
+      "resolution": "lockfile",
       "licence": "BSD-3-Clause",
       "copyright": [
         "Copyright (c) 2021, Chime"
@@ -503,7 +495,7 @@
           "upstream_path": "LICENSE"
         }
       ],
-      "provenance": "pending",
+      "provenance": "verified",
       "lc": [
         "LC-01",
         "LC-05",
@@ -512,9 +504,7 @@
       "manifest_requirement": {
         "branch": "main"
       },
-      "open_items": [
-        "Exact revision is fixed by the LC-05 Package.resolved (owned by the dedicated LC-05 task). The licence text was captured from the candidate revision shown and must be re-checked against the locked revision."
-      ]
+      "evidence": "Locked at cbe31cb3601aa29c1f64b6e4328733511126d6d5 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; declared as branch main, so the lock is what fixes the revision; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
     },
     {
       "id": "swiftui-math",
@@ -848,7 +838,7 @@
       "version": "0.25.10",
       "upstream": "https://github.com/tree-sitter/tree-sitter",
       "revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
-      "resolution": "pending-lockfile",
+      "resolution": "lockfile",
       "licence": "MIT",
       "copyright": [
         "Copyright (c) 2018-2024 Max Brunsfeld"
@@ -862,18 +852,14 @@
           "upstream_path": "LICENSE"
         }
       ],
-      "provenance": "pending",
+      "provenance": "verified",
       "lc": [
         "LC-01",
         "LC-07"
       ],
-      "manifest_requirement": {
-        "transitive_via": "swifttreesitter",
-        "range": ">=0.25.0 <0.26.0"
-      },
-      "open_items": [
-        "Exact revision is fixed by the LC-05 Package.resolved (owned by the dedicated LC-05 task). The licence text was captured from the candidate revision shown and must be re-checked against the locked revision."
-      ]
+      "transitive_via": "swifttreesitter",
+      "declared_range": ">=0.25.0 <0.26.0",
+      "evidence": "Locked at da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag v0.25.10 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
     },
     {
       "id": "tree-sitter-bash",
@@ -1003,7 +989,7 @@
       "version": "0.23.2",
       "upstream": "https://github.com/tree-sitter/tree-sitter-html",
       "revision": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
-      "resolution": "pending-lockfile",
+      "resolution": "lockfile",
       "licence": "MIT",
       "copyright": [
         "Copyright (c) 2014 Max Brunsfeld"
@@ -1017,7 +1003,7 @@
           "upstream_path": "LICENSE"
         }
       ],
-      "provenance": "pending",
+      "provenance": "verified",
       "lc": [
         "LC-01",
         "LC-07"
@@ -1025,9 +1011,6 @@
       "manifest_requirement": {
         "from": "0.23.2"
       },
-      "open_items": [
-        "Manifest uses `from: \"0.23.2\"`; the shipped revision is fixed by the LC-05 Package.resolved. Revision shown is the 0.23.2 tag."
-      ],
       "runtime_resources": [
         {
           "name": "highlights.scm",
@@ -1039,7 +1022,8 @@
           "sha256": "6faa29537e952ee444aaa6ac00f72956d13f65616aade74bd665f5ac405f9c32",
           "source": "tree-sitter-html v0.23.2 queries/injections.scm"
         }
-      ]
+      ],
+      "evidence": "Locked at 5a5ca8551a179998360b4a4ca2c0f366a35acc03 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag v0.23.2 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
     },
     {
       "id": "tree-sitter-javascript",
@@ -1175,7 +1159,7 @@
       "version": "0.24.8",
       "upstream": "https://github.com/tree-sitter/tree-sitter-json",
       "revision": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
-      "resolution": "pending-lockfile",
+      "resolution": "lockfile",
       "licence": "MIT",
       "copyright": [
         "Copyright (c) 2014 Max Brunsfeld"
@@ -1189,7 +1173,7 @@
           "upstream_path": "LICENSE"
         }
       ],
-      "provenance": "pending",
+      "provenance": "verified",
       "lc": [
         "LC-01",
         "LC-07"
@@ -1197,16 +1181,14 @@
       "manifest_requirement": {
         "from": "0.24.8"
       },
-      "open_items": [
-        "Manifest uses `from: \"0.24.8\"`; the shipped revision is fixed by the LC-05 Package.resolved. Revision shown is the 0.24.8 tag."
-      ],
       "runtime_resources": [
         {
           "name": "highlights.scm",
           "sha256": "0511524465b56aed122580792254e68b6abbbfde7119f1d02b135acbe278233f",
           "source": "tree-sitter-json v0.24.8 queries/highlights.scm"
         }
-      ]
+      ],
+      "evidence": "Locked at ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag v0.24.8 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
     },
     {
       "id": "tree-sitter-markdown",

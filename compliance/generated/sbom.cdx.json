@@ -204,11 +204,11 @@
         },
         {
           "name": "mostlytext:provenance",
-          "value": "pending"
+          "value": "verified"
         },
         {
           "name": "mostlytext:resolution",
-          "value": "pending-lockfile"
+          "value": "lockfile"
         }
       ],
       "purl": "pkg:github/chimehq/rearrange@4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
@@ -268,11 +268,11 @@
         },
         {
           "name": "mostlytext:provenance",
-          "value": "pending"
+          "value": "verified"
         },
         {
           "name": "mostlytext:resolution",
-          "value": "pending-lockfile"
+          "value": "lockfile"
         }
       ],
       "purl": "pkg:github/pointfreeco/swift-concurrency-extras@5fa253428866f2360c3754e88537f700ed2656b5",
@@ -332,11 +332,11 @@
         },
         {
           "name": "mostlytext:provenance",
-          "value": "pending"
+          "value": "verified"
         },
         {
           "name": "mostlytext:resolution",
-          "value": "pending-lockfile"
+          "value": "lockfile"
         }
       ],
       "purl": "pkg:github/chimehq/swifttreesitter@cbe31cb3601aa29c1f64b6e4328733511126d6d5",
@@ -550,11 +550,11 @@
         },
         {
           "name": "mostlytext:provenance",
-          "value": "pending"
+          "value": "verified"
         },
         {
           "name": "mostlytext:resolution",
-          "value": "pending-lockfile"
+          "value": "lockfile"
         }
       ],
       "purl": "pkg:github/tree-sitter/tree-sitter@da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
@@ -678,11 +678,11 @@
         },
         {
           "name": "mostlytext:provenance",
-          "value": "pending"
+          "value": "verified"
         },
         {
           "name": "mostlytext:resolution",
-          "value": "pending-lockfile"
+          "value": "lockfile"
         }
       ],
       "purl": "pkg:github/tree-sitter/tree-sitter-html@5a5ca8551a179998360b4a4ca2c0f366a35acc03",
@@ -752,11 +752,11 @@
         },
         {
           "name": "mostlytext:provenance",
-          "value": "pending"
+          "value": "verified"
         },
         {
           "name": "mostlytext:resolution",
-          "value": "pending-lockfile"
+          "value": "lockfile"
         }
       ],
       "purl": "pkg:github/tree-sitter/tree-sitter-json@ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
@@ -1204,7 +1204,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:85b5fe79-a607-52ee-9af2-a1bbf86d7ab4",
+  "serialNumber": "urn:uuid:1edc9b08-a6f2-554a-a165-edeb4ebca570",
   "specVersion": "1.5",
   "version": 1
 }
