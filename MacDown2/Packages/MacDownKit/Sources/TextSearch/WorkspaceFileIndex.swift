@@ -127,7 +127,18 @@ public actor WorkspaceFileIndex {
     /// own doc comment for why the naive per-path-redo-everything approach,
     /// even after adding the postings filter, would still miss the 100k-path
     /// budget (issue #112) by a wide margin.
-    public func query(_ query: String, limit: Int = 100) -> [IndexedPath] {
+    ///
+    /// `recentRelativePaths` implements issue #112's "Recent-file history
+    /// feeds Quick Open ranking": a small, tier-safe (see
+    /// `recentFileBonus`'s own doc comment) bonus applied to any candidate
+    /// whose `relativePath` is in the set, so it wins ties against an
+    /// otherwise-equal-tier match rather than reordering across tiers.
+    /// `TextSearch` has no knowledge of "recent files" as its own concept —
+    /// per `FuzzyPathScore`'s own doc comment, the caller (`QuickOpenModel`)
+    /// computes this plain set of strings and passes it in fresh each call,
+    /// the same way `rebuild(root:)` takes an external `URL` without
+    /// depending on `FileTreeModel` itself.
+    public func query(_ query: String, limit: Int = 100, recentRelativePaths: Set<String> = []) -> [IndexedPath] {
         guard !query.isEmpty else { return Array(paths.prefix(limit)) }
         let foldedQuery = FuzzyPathScore.FoldedText(query)
         let candidates = candidateIndices(for: foldedQuery)
@@ -142,13 +153,21 @@ public actor WorkspaceFileIndex {
             ) else {
                 continue
             }
-            scored.append((path, score))
+            let bonus = recentRelativePaths.contains(path.relativePath) ? Self.recentFileBonus : 0
+            scored.append((path, score + bonus))
         }
         return scored
             .sorted { $0.score != $1.score ? $0.score > $1.score : $0.path.relativePath < $1.path.relativePath }
             .prefix(limit)
             .map(\.path)
     }
+
+    /// Every gap between `FuzzyPathScore`'s own tiers (exact 1000, prefix
+    /// 900, basename-fuzzy (500, 599], path-fuzzy (0, 99]) is at least 100,
+    /// so adding this to any one candidate's score can never lift it into
+    /// the next tier up — it only ever breaks a tie within the tier its
+    /// underlying match quality already earned.
+    private static let recentFileBonus: Double = 10
 
     /// Indices into `paths` that could possibly fuzzy-match `foldedQuery`,
     /// using `postingsByASCIIByte` to avoid ever visiting the full `paths`

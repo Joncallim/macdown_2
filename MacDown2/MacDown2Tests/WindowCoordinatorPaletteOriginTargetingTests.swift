@@ -57,6 +57,7 @@ struct PaletteOriginTargetingTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
             appSettings: AppSettingsModel()
         )
         let controllerA = WindowController(

@@ -299,4 +299,5 @@ final class MemoryPreferenceStore: FileTreePreferenceStoring {
     var filter = FileTreeFilter()
     var opensOnSingleClick = false
     var recentRootBookmarks: [Data] = []
+    var recentFileBookmarks: [Data] = []
 }

@@ -35,6 +35,7 @@ struct GoToLinePanelTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
             appSettings: AppSettingsModel()
         )
         let model = coordinator.makeWindowModel()
@@ -162,6 +163,7 @@ struct GoToLinePanelTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
             appSettings: AppSettingsModel()
         )
         let panel = GoToLinePanel(coordinator: orphanCoordinator, originController: nil)
