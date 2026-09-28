@@ -41,7 +41,14 @@ final class QuickOpenPanel: NSPanel, NSWindowDelegate {
         level = .floating
         delegate = self
 
-        let model = QuickOpenModel(index: index)
+        // Issue #112, Slice 6c: "Recent-file history feeds Quick Open
+        // ranking." Computed once here, from the origin's own root at the
+        // moment Quick Open opens — see `QuickOpenModel.init`'s own doc
+        // comment for why a live-updating signal isn't needed for a
+        // short-lived filtering session.
+        let recentRelativePaths = originController.fileTreeModel.rootAccessURL
+            .map { coordinator.recentFileDocuments.relativePaths(under: $0) } ?? []
+        let model = QuickOpenModel(index: index, recentRelativePaths: recentRelativePaths)
         let view = QuickOpenView(
             model: model,
             onOpen: { [weak coordinator, weak originController] path in
