@@ -75,7 +75,7 @@ struct WorkspaceFileIndexPerformanceTests {
         // including the candidate-filtering step, not just a trivial
         // no-op.
         //
-        // Best-of-5, not a single measurement: an independent review found
+        // Minimum of multiple trials, not a single measurement: an independent review found
         // this test still occasionally (roughly 1 in 10-20 runs) exceeded
         // 30 ms on a real, otherwise-busy machine (up to ~88 ms observed in
         // one run) despite the algorithm itself consistently completing in
@@ -92,7 +92,7 @@ struct WorkspaceFileIndexPerformanceTests {
         // the minimum is a sound way to isolate the algorithm's own floor
         // from transient noise -- a genuine regression that raises that
         // floor would still fail every trial, including the minimum,
-        // whereas one noisy trial among five does not.
+        // whereas transiently noisy trials do not.
         //
         // Best of up to 20 trials, spread over time, stopping at the first
         // one under budget. Five back-to-back trials cover only ~150 ms, and
