@@ -290,23 +290,11 @@ func snapshot(_ text: String, at url: URL) -> FileSnapshot {
     )
 }
 
-/// Already the right shape (a real wall-clock deadline, not a fixed
-/// iteration/yield-count budget), unlike the busy-poll anti-pattern #150
-/// found and fixed in `WorkspaceModelRecoveryTests`/`WorkspaceModelFileTests`/
-/// `WorkspaceModelFileSaveAsTests` (see `AsyncBarrierWaiting.swift`,
-/// `WorkspaceTests`). The one thing #150 did change here: the default
-/// timeout widened from 2 to 10 seconds. Two of this exact helper's own
-/// call sites (`replacementWatcherProbesAReappearedFileWithoutAnotherEvent`,
-/// `parentVanishedLatchSurvivesAChangedEventDuringDebounce`, both in
-/// `DocumentFileMonitorRecoveryTests.swift`) were independently documented
-/// flaking under CI-runner load in `planning/issue-57-findings.md`, over a
-/// month before #150 — each observation is delivered through a fire-and-
-/// forget `Task { await recorder.append(observation) }` in the monitor's
-/// own callback, adding a layer of scheduler-timing indeterminism on top of
-/// an otherwise-synthetic, instant watcher/prober. 2 seconds was tight
-/// enough for that extra scheduling hop to occasionally miss under load;
-/// 10 seconds is the same "generous outer safety bound" #150's other fixes
-/// use, not a new synchronization mechanism.
+/// Polls against a real wall-clock deadline. The 10 second timeout is only an
+/// outer safety bound: a test that needs a particular interleaving must force
+/// it (for example with `GateSleeper` or `DeferredProber`) rather than rely on
+/// the scheduler reaching it within the timeout. Recorders append
+/// synchronously for the same reason (see `DocumentFileMonitorTestSupport`).
 func waitUntil(
     _ condition: @escaping @Sendable () async -> Bool,
     timeout: Duration = .seconds(10)
@@ -322,30 +310,9 @@ func waitUntil(
     Issue.record("Timed out waiting for asynchronous monitor output")
 }
 
-// `ObservationRecorder`, `ContextRecorder`, and `HealthRecorder` moved to
+// `ObservationRecorder`, `ContextRecorder`, `HealthRecorder` and
+// `GateSleeper` moved to
 // `DocumentFileMonitorTestSupport.swift` (shared with the other test files
 // in this suite) to stay under swiftlint's file-length budget -- see that
 // file for their doc comment explaining why they're lock-based classes
 // rather than actors.
-
-private actor GateSleeper {
-    private var waiters: [CheckedContinuation<Void, Never>] = []
-
-    var waiterCount: Int {
-        waiters.count
-    }
-
-    func sleep() async {
-        await withCheckedContinuation { continuation in
-            waiters.append(continuation)
-        }
-    }
-
-    func resumeAll() {
-        let pending = waiters
-        waiters.removeAll()
-        for continuation in pending {
-            continuation.resume()
-        }
-    }
-}

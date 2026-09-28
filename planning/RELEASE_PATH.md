@@ -60,17 +60,19 @@ E22 is being delivered slice by slice by its own session. Slices 1–6 have
 landed (6c, recent files, in PR #161); 7 (folder search/replace), 8 and 9
 remain. Nothing on this page interrupts that work.
 
-Two technical fixes are in flight, each owned by its own dedicated task. They
+Two technical fixes are tracked here, each owned by its own dedicated task. They
 are dependencies, not work for release coordination:
 - **LC-05 (SwiftTreeSitter immutability, #148).** A committed, CI-enforced
   `Package.resolved` with proof of immutable resolution in CI. No other session
   pins dependencies or edits the lock file or its CI enforcement in parallel.
-- **FileCore red `master`.** The failing test
-  `parentVanishedLatchSurvivesAChangedEventDuringDebounce()` is being
-  root-caused and fixed on its own. It is not folded into LC-05, and it is not
-  to be hidden with skips or longer timeouts. Once that fix lands, the LC-05
-  branch updates onto the corrected `master` and needs a fresh green CI run
-  before it merges.
+- **FileCore red `master` — fixed by PR #166 (`82ae971`).** The failing test
+  `parentVanishedLatchSurvivesAChangedEventDuringDebounce()` had a test-harness
+  race, separate from the recorder-ordering race fixed in #154: under load the
+  first signal's probe could start before the second signal arrived, and that
+  discarded probe used up the test's fixed script of answers. The test now
+  forces each interleaving deterministically; product code was unchanged. The
+  LC-05 branch still needs to update onto this `master` and get a fresh green
+  CI run before it merges.
 
 ## 2. Workstreams
 
