@@ -165,6 +165,7 @@ public actor WorkspaceSearchEngine {
         }
 
         let paths = await index.allPaths(includeHidden: filter.includeHidden)
+        let context = SearchContext(root: root, query: query, options: options, filter: filter)
         var filesSearched = 0
         var filesSkipped = 0
         var totalMatches = 0
@@ -180,37 +181,31 @@ public actor WorkspaceSearchEngine {
                 return .truncated(filesSearched: filesSearched, filesSkipped: filesSkipped, matchCount: totalMatches)
             }
 
-            switch await processFile(
-                path,
-                root: root,
-                query: query,
-                options: options,
-                filter: filter,
-                remaining: remaining,
-                onMatch: onMatch
+            let stepOutcome = await processFile(path, context: context, remaining: remaining, onMatch: onMatch)
+            switch apply(
+                stepOutcome,
+                filesSearched: &filesSearched,
+                filesSkipped: &filesSkipped,
+                totalMatches: &totalMatches
             ) {
-            case .skippedByFilter:
+            case .keepGoing:
                 continue
-            case .skippedUnreadable:
-                filesSkipped += 1
-            case .cancelled:
-                return .cancelled
-            case .noMatches:
-                filesSearched += 1
-            case let .published(matchCount, wasCapped):
-                filesSearched += 1
-                totalMatches += matchCount
-                if wasCapped {
-                    return .truncated(
-                        filesSearched: filesSearched,
-                        filesSkipped: filesSkipped,
-                        matchCount: totalMatches
-                    )
-                }
+            case let .stop(outcome):
+                return outcome
             }
         }
 
         return .completed(filesSearched: filesSearched, filesSkipped: filesSkipped, matchCount: totalMatches)
+    }
+
+    /// The per-file inputs that stay constant across one whole `search`
+    /// call, bundled so `processFile` takes one value instead of four
+    /// separate parameters (SwiftLint's `function_parameter_count` limit).
+    private struct SearchContext {
+        let root: URL
+        let query: String
+        let options: SearchOptions
+        let filter: FolderSearchFilter
     }
 
     private enum FileStepOutcome {
@@ -219,6 +214,40 @@ public actor WorkspaceSearchEngine {
         case cancelled
         case noMatches
         case published(matchCount: Int, wasCapped: Bool)
+    }
+
+    private enum LoopSignal {
+        case keepGoing
+        case stop(FolderSearchOutcome)
+    }
+
+    /// Turns one file's `FileStepOutcome` into the loop's own counter
+    /// updates and next action, so `search`'s own body stays a plain
+    /// dispatch instead of absorbing this switch's own branching into its
+    /// cyclomatic complexity (SwiftLint's `cyclomatic_complexity` limit).
+    private func apply(
+        _ stepOutcome: FileStepOutcome,
+        filesSearched: inout Int,
+        filesSkipped: inout Int,
+        totalMatches: inout Int
+    ) -> LoopSignal {
+        switch stepOutcome {
+        case .skippedByFilter:
+            return .keepGoing
+        case .skippedUnreadable:
+            filesSkipped += 1
+            return .keepGoing
+        case .cancelled:
+            return .stop(.cancelled)
+        case .noMatches:
+            filesSearched += 1
+            return .keepGoing
+        case let .published(matchCount, wasCapped):
+            filesSearched += 1
+            totalMatches += matchCount
+            guard wasCapped else { return .keepGoing }
+            return .stop(.truncated(filesSearched: filesSearched, filesSkipped: filesSkipped, matchCount: totalMatches))
+        }
     }
 
     /// Searches exactly one file and reports what happened, so `search`'s
@@ -232,29 +261,35 @@ public actor WorkspaceSearchEngine {
     /// result is itself the one that trips truncation.
     private func processFile(
         _ path: IndexedPath,
-        root: URL,
-        query: String,
-        options: SearchOptions,
-        filter: FolderSearchFilter,
+        context: SearchContext,
         remaining: Int,
         onMatch: @escaping @Sendable (FolderSearchMatch) async -> Void
     ) async -> FileStepOutcome {
-        guard filter.matches(path) else { return .skippedByFilter }
-        guard let snapshot = readSnapshot(root: root, path: path) else { return .skippedUnreadable }
+        guard context.filter.matches(path) else { return .skippedByFilter }
+        guard let snapshot = readSnapshot(root: context.root, path: path) else { return .skippedUnreadable }
 
         // `remaining + 1`, not `remaining`: lets a file with exactly
         // `remaining` matches be distinguished from one with MORE than
         // `remaining` (truncation), while still bounding the matcher's own
         // per-file work to at most one match beyond what could ever
         // actually be published.
-        let found = Self.matches(in: snapshot.text, query: query, options: options, matchLimit: remaining + 1)
+        let found = Self.matches(
+            in: snapshot.text,
+            query: context.query,
+            options: context.options,
+            matchLimit: remaining + 1
+        )
         await seams.afterMatchingFile?()
-        if Task.isCancelled { return .cancelled }
+        if Task.isCancelled {
+            return .cancelled
+        }
         guard !found.isEmpty else { return .noMatches }
 
         let capped = found.count > remaining ? Array(found.prefix(remaining)) : found
         await onMatch(FolderSearchMatch(relativePath: path.relativePath, matches: capped, revision: snapshot.revision))
-        if Task.isCancelled { return .cancelled }
+        if Task.isCancelled {
+            return .cancelled
+        }
         return .published(matchCount: capped.count, wasCapped: capped.count < found.count)
     }
 

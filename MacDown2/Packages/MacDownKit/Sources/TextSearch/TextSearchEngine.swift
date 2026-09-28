@@ -54,7 +54,9 @@ public enum TextSearchEngine {
         var results: [SearchMatch] = []
         var searchStart = 0
         while searchStart <= nsText.length {
-            if let matchLimit, results.count >= matchLimit { break }
+            if let matchLimit, results.count >= matchLimit {
+                break
+            }
             let searchRange = NSRange(location: searchStart, length: nsText.length - searchStart)
             let found = nsText.range(of: query, options: compareOptions, range: searchRange)
             guard found.location != NSNotFound else { break }

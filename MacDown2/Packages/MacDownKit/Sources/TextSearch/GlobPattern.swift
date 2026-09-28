@@ -69,22 +69,39 @@ enum GlobPattern {
         guard let first = tokens.first else { return text.isEmpty }
         switch first {
         case let .literal(character):
-            guard let firstText = text.first, firstText == character else { return false }
-            return matches(tokens: tokens.dropFirst(), text: text.dropFirst())
+            return matchesLiteral(character, tokens: tokens, text: text)
         case .star:
-            var index = text.startIndex
-            while true {
-                if matches(tokens: tokens.dropFirst(), text: text[index...]) { return true }
-                guard index < text.endIndex, text[index] != "/" else { return false }
-                index += 1
-            }
+            return matchesWildcard(tokens: tokens, text: text, crossesSlash: false)
         case .doubleStar:
-            var index = text.startIndex
-            while true {
-                if matches(tokens: tokens.dropFirst(), text: text[index...]) { return true }
-                guard index < text.endIndex else { return false }
-                index += 1
+            return matchesWildcard(tokens: tokens, text: text, crossesSlash: true)
+        }
+    }
+
+    private static func matchesLiteral(
+        _ character: Character,
+        tokens: ArraySlice<Token>,
+        text: ArraySlice<Character>
+    ) -> Bool {
+        guard let firstText = text.first, firstText == character else { return false }
+        return matches(tokens: tokens.dropFirst(), text: text.dropFirst())
+    }
+
+    /// `crossesSlash` is the only difference between `*` and `**`: both try
+    /// every possible consumption length (shortest first) and recurse on
+    /// the remaining tokens, but `*` refuses to consume past a `/` while
+    /// `**` does not.
+    private static func matchesWildcard(
+        tokens: ArraySlice<Token>,
+        text: ArraySlice<Character>,
+        crossesSlash: Bool
+    ) -> Bool {
+        var index = text.startIndex
+        while true {
+            if matches(tokens: tokens.dropFirst(), text: text[index...]) {
+                return true
             }
+            guard index < text.endIndex, crossesSlash || text[index] != "/" else { return false }
+            index += 1
         }
     }
 }

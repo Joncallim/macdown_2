@@ -158,6 +158,7 @@ struct TextSearchEngineTests {
     }
 
     // MARK: - matchLimit (WorkspaceSearchEngine's own bounded-accumulation
+
     // requirement, issue #112, is only genuinely real if the underlying
     // matcher actually stops early rather than computing every match and
     // discarding the excess afterward -- these tests pin that directly,
