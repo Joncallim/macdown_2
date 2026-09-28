@@ -191,6 +191,9 @@ struct WorkspaceSearchEngineTests {
         #expect(results.first?.matches.count == 1)
     }
 
+    // MARK: - Result bounding: exact boundary, over boundary, a single
+    // pathological file, and multi-file total-cap behavior.
+
     @Test func resultsAreTruncatedAtMaxMatchesAndReportedExplicitly() async throws {
         let tree = try TempTree()
         // 5 files, 10 matches each = 50 total matches.
@@ -211,7 +214,61 @@ struct WorkspaceSearchEngineTests {
         #expect(results.reduce(0) { $0 + $1.matches.count } == 25)
     }
 
-    @Test func filterRestrictsSearchToTheIncludedExtension() async throws {
+    @Test func exactlyReachingMaxMatchesWithNoMoreAvailableIsCompletedNotTruncated() async throws {
+        let tree = try TempTree()
+        try tree.write("a.txt", text: "needle needle needle") // exactly 3 matches
+        let index = await tree.makeIndex()
+
+        let (outcome, results) = await run(root: tree.root, index: index, query: "needle", maxMatches: 3)
+
+        #expect(outcome == .completed(filesSearched: 1, filesSkipped: 0, matchCount: 3))
+        #expect(results.first?.matches.count == 3)
+    }
+
+    @Test func oneMoreMatchThanMaxMatchesIsTruncatedNotSilentlyCapped() async throws {
+        let tree = try TempTree()
+        try tree.write("a.txt", text: "needle needle needle needle") // 4 matches, cap is 3
+        let index = await tree.makeIndex()
+
+        let (outcome, results) = await run(root: tree.root, index: index, query: "needle", maxMatches: 3)
+
+        guard case let .truncated(filesSearched, filesSkipped, matchCount) = outcome else {
+            Issue.record("expected .truncated, got \(outcome)")
+            return
+        }
+        #expect(filesSearched == 1)
+        #expect(filesSkipped == 0)
+        #expect(matchCount == 3)
+        #expect(results.first?.matches.count == 3)
+    }
+
+    /// A single file whose own match count vastly exceeds `maxMatches`,
+    /// proving bounding happens INSIDE the matcher (`TextSearchEngine`'s own
+    /// `matchLimit`), not by computing every match and discarding the
+    /// excess afterward.
+    /// `TextSearchEngineTests.matchLimitStopsLiteralMatchingExactlyAtTheLimit`
+    /// already proves the underlying mechanism directly; this proves
+    /// `WorkspaceSearchEngine` actually wires it through end-to-end.
+    @Test func aSinglePathologicalFileWithFarMoreMatchesThanTheCapIsBoundedNotFullyMaterialized() async throws {
+        let tree = try TempTree()
+        try tree.write("huge.txt", text: String(repeating: "a", count: 1_000_000))
+        let index = await tree.makeIndex()
+
+        let (outcome, results) = await run(root: tree.root, index: index, query: "a", maxMatches: 5)
+
+        guard case let .truncated(filesSearched, filesSkipped, matchCount) = outcome else {
+            Issue.record("expected .truncated, got \(outcome)")
+            return
+        }
+        #expect(filesSearched == 1)
+        #expect(filesSkipped == 0)
+        #expect(matchCount == 5)
+        #expect(results.first?.matches.count == 5)
+    }
+
+    // MARK: - FolderSearchFilter: glob include/exclude
+
+    @Test func filterRestrictsSearchToTheIncludedExtensionGlob() async throws {
         let tree = try TempTree()
         try tree.write("a.swift", text: "needle in swift")
         try tree.write("b.md", text: "needle in markdown")
@@ -221,7 +278,7 @@ struct WorkspaceSearchEngineTests {
             root: tree.root,
             index: index,
             query: "needle",
-            filter: FolderSearchFilter(includedExtensions: ["swift"])
+            filter: FolderSearchFilter(includeGlobs: ["*.swift"])
         )
 
         guard case let .completed(filesSearched, _, matchCount) = outcome else {
@@ -233,32 +290,143 @@ struct WorkspaceSearchEngineTests {
         #expect(results.map(\.relativePath) == ["a.swift"])
     }
 
-    /// `FolderSearchFilter.matches(_:)` directly, not through the full
-    /// engine: a dotfile (e.g. `.gitignore`) never actually reaches this
-    /// filter in production (`DirectoryWalker` excludes every hidden entry
-    /// before it reaches the index), but an independent review of this
-    /// slice found a hand-rolled `lastIndex(of: ".")` split would have
-    /// treated its own leading dot as an extension separator
-    /// (`.gitignore` -> "gitignore") had it ever been reached — fixed to
-    /// use `NSString.pathExtension`'s own platform-standard semantics
-    /// instead. Tests the filter directly, against a synthetic
-    /// `IndexedPath`, so this stays correct even if a later slice reuses
-    /// `FolderSearchFilter` against a path source that does not already
-    /// exclude dotfiles.
-    @Test func extensionMatchingUsesPlatformSemanticsForDotfilesAndExtensionlessNames() {
-        let filter = FolderSearchFilter(includedExtensions: ["gitignore"])
-        let dotfile = IndexedPath(relativePath: ".gitignore", basename: ".gitignore")
-        #expect(!filter.matches(dotfile), "a dotfile's own leading dot must never be read as its extension")
-
-        let extensionless = IndexedPath(relativePath: "Makefile", basename: "Makefile")
-        #expect(!filter.matches(extensionless))
-
-        let trailingDot = IndexedPath(relativePath: "file.", basename: "file.")
-        #expect(!filter.matches(trailingDot))
-
-        let real = IndexedPath(relativePath: "a.gitignore", basename: "a.gitignore")
-        #expect(filter.matches(real))
+    @Test func globStarMatchesWithinASingleSegmentOnlyAndByBasenameWhenPatternHasNoSlash() {
+        let filter = FolderSearchFilter(includeGlobs: ["*.swift"])
+        #expect(filter.matches(IndexedPath(relativePath: "a.swift", basename: "a.swift")))
+        #expect(
+            filter.matches(IndexedPath(relativePath: "src/nested/a.swift", basename: "a.swift")),
+            "a pattern with no '/' matches the basename anywhere in the tree"
+        )
+        #expect(!filter.matches(IndexedPath(relativePath: "a.swift.bak", basename: "a.swift.bak")))
     }
+
+    @Test func globDoubleStarCrossesDirectoryBoundariesIncludingZero() {
+        let filter = FolderSearchFilter(includeGlobs: ["docs/**/*.md"])
+        #expect(
+            filter.matches(IndexedPath(relativePath: "docs/README.md", basename: "README.md")),
+            "'**/' must also match zero directories"
+        )
+        #expect(filter.matches(IndexedPath(relativePath: "docs/guide/intro.md", basename: "intro.md")))
+        #expect(
+            !filter.matches(IndexedPath(relativePath: "src/docs/readme.md", basename: "readme.md")),
+            "a slash-containing pattern matches the full relative path, not 'basename anywhere'"
+        )
+    }
+
+    /// No separate "extension extraction" step exists in a glob-string
+    /// match (unlike the `includedExtensions`-based implementation this
+    /// replaces), so the dotfile edge case an earlier review found --
+    /// `NSString.lastIndex(of: ".")`-style parsing treating a dotfile's own
+    /// leading dot as an extension separator -- is structurally impossible
+    /// here: `*` matches zero characters, so `*.gitignore` matches the
+    /// literal filename ".gitignore" directly, with nothing to parse wrong.
+    @Test func globMatchesExtensionlessAndDotfileNamesAsLiteralPatterns() {
+        let filter = FolderSearchFilter(includeGlobs: ["*.gitignore", "Makefile"])
+        #expect(filter.matches(IndexedPath(relativePath: ".gitignore", basename: ".gitignore")))
+        #expect(filter.matches(IndexedPath(relativePath: "Makefile", basename: "Makefile")))
+        #expect(!filter.matches(IndexedPath(relativePath: "other.txt", basename: "other.txt")))
+    }
+
+    @Test func excludeGlobsTakePrecedenceOverIncludeGlobsOnConflict() {
+        let filter = FolderSearchFilter(includeGlobs: ["*.swift"], excludeGlobs: ["**/Generated/*.swift"])
+        #expect(filter.matches(IndexedPath(relativePath: "Sources/Model.swift", basename: "Model.swift")))
+        #expect(
+            !filter.matches(IndexedPath(relativePath: "Sources/Generated/Model.swift", basename: "Model.swift")),
+            "a path matching both an include and an exclude pattern must be excluded"
+        )
+    }
+
+    @Test func noIncludeGlobsMeansEveryPathPassesSubjectOnlyToExcludes() {
+        let filter = FolderSearchFilter(excludeGlobs: ["*.log"])
+        #expect(filter.matches(IndexedPath(relativePath: "a.swift", basename: "a.swift")))
+        #expect(!filter.matches(IndexedPath(relativePath: "a.log", basename: "a.log")))
+    }
+
+    // MARK: - Hidden-file toggle (issue #112)
+
+    @Test func includeHiddenSearchesDotfilesTheDefaultFilterSkips() async throws {
+        let tree = try TempTree()
+        try tree.write("visible.txt", text: "needle")
+        try tree.write(".hidden.txt", text: "needle")
+        let index = await tree.makeIndex()
+
+        let (defaultOutcome, defaultResults) = await run(root: tree.root, index: index, query: "needle")
+        #expect(defaultOutcome == .completed(filesSearched: 1, filesSkipped: 0, matchCount: 1))
+        #expect(defaultResults.map(\.relativePath) == ["visible.txt"])
+
+        let (hiddenOutcome, hiddenResults) = await run(
+            root: tree.root,
+            index: index,
+            query: "needle",
+            filter: FolderSearchFilter(includeHidden: true)
+        )
+        guard case let .completed(filesSearched, filesSkipped, matchCount) = hiddenOutcome else {
+            Issue.record("expected .completed, got \(hiddenOutcome)")
+            return
+        }
+        #expect(filesSearched == 2)
+        #expect(filesSkipped == 0)
+        #expect(matchCount == 2)
+        #expect(Set(hiddenResults.map(\.relativePath)) == ["visible.txt", ".hidden.txt"])
+    }
+
+    // MARK: - Symlink loops (provenance: the loop guard itself lives in
+    // `DirectoryWalker`, already proven not to hang by
+    // `WorkspaceFileIndexTests.symlinkLoopDoesNotHang` -- this proves
+    // `WorkspaceSearchEngine` genuinely inherits that guard end-to-end,
+    // rather than re-deriving or duplicating it.)
+
+    @Test func searchingAWorkspaceContainingASymlinkLoopCompletesAndFindsTheRealFile() async throws {
+        let tree = try TempTree()
+        try tree.write("real.txt", text: "needle")
+        let looped = tree.root.appendingPathComponent("looped", isDirectory: true)
+        try FileManager.default.createDirectory(at: looped, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: looped.appendingPathComponent("self"),
+            withDestinationURL: looped
+        )
+        let index = await tree.makeIndex()
+
+        let (outcome, results) = await run(root: tree.root, index: index, query: "needle")
+
+        #expect(outcome == .completed(filesSearched: 1, filesSkipped: 0, matchCount: 1))
+        #expect(results.map(\.relativePath) == ["real.txt"])
+    }
+
+    // MARK: - Permission failures (a deterministic read seam, not chmod's
+    // own platform/sandbox-dependent timing -- a sandboxed test runner, or
+    // running as root, can silently ignore permission bits entirely).
+
+    @Test func aSimulatedPermissionFailureIsSkippedAndCountedDeterministically() async throws {
+        let tree = try TempTree()
+        try tree.write("readable.txt", text: "needle")
+        try tree.write("locked.txt", text: "needle")
+        let index = await tree.makeIndex()
+
+        let seams = WorkspaceSearchEngine.TestSeams(readSnapshot: { root, path in
+            guard path.relativePath != "locked.txt" else { return nil }
+            return try? FileStore().readSnapshot(from: root.appendingPathComponent(path.relativePath))
+        })
+        let engine = WorkspaceSearchEngine(seams: seams)
+        let box = ResultsBox()
+        let outcome = await engine.search(
+            root: tree.root,
+            index: index,
+            query: "needle",
+            options: SearchOptions()
+        ) { match in await box.append(match) }
+
+        guard case let .completed(filesSearched, filesSkipped, matchCount) = outcome else {
+            Issue.record("expected .completed, got \(outcome)")
+            return
+        }
+        #expect(filesSearched == 1)
+        #expect(filesSkipped == 1, "a permission failure must be skipped and counted, never crash or vanish silently")
+        #expect(matchCount == 1)
+        #expect(await box.all.map(\.relativePath) == ["readable.txt"])
+    }
+
+    // MARK: - Cancellation
 
     @Test func cancellingBeforeTheSearchStartsReturnsCancelledWithoutStreamingAnyResult() async throws {
         let tree = try TempTree()
@@ -273,7 +441,7 @@ struct WorkspaceSearchEngineTests {
         // observed. `beforeEachFile` gives this test a real, deterministic
         // pause point instead of hoping to win that race.
         let gate = PauseGate()
-        let engine = WorkspaceSearchEngine(beforeEachFile: { await gate.waitUntilReleased() })
+        let engine = WorkspaceSearchEngine(seams: .init(beforeEachFile: { await gate.waitUntilReleased() }))
         let box = ResultsBox()
         let task = Task {
             await engine.search(root: tree.root, index: index, query: "needle", options: SearchOptions()) { match in
@@ -290,10 +458,101 @@ struct WorkspaceSearchEngineTests {
         #expect(collected.isEmpty, "a search cancelled before its first file was released must never stream a result")
     }
 
-    /// Blocks the engine's own loop at `beforeEachFile` until the test
+    /// Closes the gap an independent review found in the original
+    /// implementation: it only checked `Task.isCancelled` once per file,
+    /// BEFORE that file was read. A cancellation landing while a (possibly
+    /// slow) file's matches are being computed, or while its result is
+    /// being published, could still let that one extra result through and
+    /// turn what should be `.cancelled` into `.completed`/`.truncated`.
+    /// `afterMatchingFile` gives this test a real pause point exactly where
+    /// that gap was: after a file's matches are computed, before they are
+    /// published — a naive "cancel before the first file" test (above)
+    /// could never have caught this, since it never lets any file's
+    /// matching actually run.
+    @Test func cancellingAfterAFilesMatchesAreComputedDiscardsThatFilesResult() async throws {
+        let tree = try TempTree()
+        try tree.write("a.txt", text: "needle")
+        try tree.write("b.txt", text: "needle")
+        let index = await tree.makeIndex()
+
+        let gate = PauseGate()
+        let engine = WorkspaceSearchEngine(seams: .init(afterMatchingFile: { await gate.waitUntilReleased() }))
+        let box = ResultsBox()
+        let task = Task {
+            await engine.search(root: tree.root, index: index, query: "needle", options: SearchOptions()) { match in
+                await box.append(match)
+            }
+        }
+        await gate.waitUntilPaused()
+        task.cancel()
+        await gate.release()
+        let outcome = await task.value
+
+        #expect(outcome == .cancelled)
+        #expect(
+            await box.all.isEmpty,
+            "the first file's already-computed match must never be published once cancellation is discovered"
+        )
+    }
+
+    /// EPIC-22 §6.16 keeps the generation-counter/workspace-root identity
+    /// itself as 7b's own UI-layer responsibility — `WorkspaceSearchEngine`
+    /// has no notion of "the current root" to compare against. Root-change
+    /// safety therefore reduces entirely to cancellation being watertight
+    /// even after a file's matches are already computed (the SAME guarantee
+    /// `cancellingAfterAFilesMatchesAreComputedDiscardsThatFilesResult`
+    /// proves generically); this test exercises that guarantee against the
+    /// specific scenario issue #112 actually names — the workspace root
+    /// changing mid-search — and additionally proves the engine carries no
+    /// leftover state across calls: a fresh search against the NEW root,
+    /// after the old one was cancelled, completes normally.
+    @Test func rootReplacementDuringSearchNeverPublishesStaleResultsFromTheAbandonedRoot() async throws {
+        let oldTree = try TempTree()
+        try oldTree.write("old-a.txt", text: "needle")
+        try oldTree.write("old-b.txt", text: "needle")
+        let oldIndex = await oldTree.makeIndex()
+
+        let gate = PauseGate()
+        let engine = WorkspaceSearchEngine(seams: .init(afterMatchingFile: { await gate.waitUntilReleased() }))
+        let box = ResultsBox()
+        let task = Task {
+            await engine.search(
+                root: oldTree.root,
+                index: oldIndex,
+                query: "needle",
+                options: SearchOptions()
+            ) { match in await box.append(match) }
+        }
+        await gate.waitUntilPaused()
+        // Simulates the caller's own generation-counter reaction (§6.16):
+        // the workspace root changed underneath the in-flight search, so
+        // the caller cancels it.
+        task.cancel()
+        await gate.release()
+        let outcome = await task.value
+
+        #expect(outcome == .cancelled)
+        #expect(
+            await box.all.isEmpty,
+            "a search abandoned by a root change must never publish a result from the old root"
+        )
+
+        // The engine carries no per-search state of its own: a fresh search
+        // against the NEW root works normally.
+        let newTree = try TempTree()
+        try newTree.write("new.txt", text: "needle")
+        let newIndex = await newTree.makeIndex()
+        let (newOutcome, newResults) = await run(root: newTree.root, index: newIndex, query: "needle")
+        #expect(newOutcome == .completed(filesSearched: 1, filesSkipped: 0, matchCount: 1))
+        #expect(newResults.map(\.relativePath) == ["new.txt"])
+    }
+
+    /// Blocks the engine's own loop at a named seam until the test
     /// explicitly releases it, so a test can cancel the surrounding `Task`
     /// at a known, real pause point rather than racing a hopeful
-    /// "cancel immediately after creation" against the loop's own scheduling.
+    /// "cancel immediately after creation" against the loop's own
+    /// scheduling. Reused for both `beforeEachFile` and `afterMatchingFile`
+    /// pause points — the gate itself doesn't care which seam calls it.
     private actor PauseGate {
         private var isPaused = false
         private var releaseContinuation: CheckedContinuation<Void, Never>?

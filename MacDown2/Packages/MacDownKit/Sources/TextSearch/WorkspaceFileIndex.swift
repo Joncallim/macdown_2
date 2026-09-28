@@ -7,6 +7,14 @@ public struct IndexedPath: Sendable, Equatable, Hashable {
     /// Root-relative path, `/`-separated, no leading slash.
     public let relativePath: String
     public let basename: String
+    /// True when this entry's own basename starts with `.`, OR any
+    /// directory component between the root and this entry does. Computed
+    /// once at walk time (issue #112's own "hidden-file toggle" needs to
+    /// know this per entry) so Quick Open (`query(_:)`, always excludes
+    /// hidden entries — unchanged behavior) and folder search
+    /// (`allPaths(includeHidden:)`, opt-in) can both read the same single
+    /// walk's result rather than needing two separate directory walks.
+    public let isHidden: Bool
     /// Folded and decomposed once at construction (index-build time, which
     /// happens far less often than every Quick Open keystroke), not
     /// recomputed on every `query(_:)` call — see
@@ -15,9 +23,10 @@ public struct IndexedPath: Sendable, Equatable, Hashable {
     let foldedRelativePath: FuzzyPathScore.FoldedText
     let foldedBasename: FuzzyPathScore.FoldedText
 
-    public init(relativePath: String, basename: String) {
+    public init(relativePath: String, basename: String, isHidden: Bool = false) {
         self.relativePath = relativePath
         self.basename = basename
+        self.isHidden = isHidden
         foldedRelativePath = FuzzyPathScore.FoldedText(relativePath)
         foldedBasename = FuzzyPathScore.FoldedText(basename)
     }
@@ -119,8 +128,15 @@ public actor WorkspaceFileIndex {
     /// Open), folder search (`WorkspaceSearchEngine`, Slice 7) needs every
     /// path the index knows about, since it is deciding which FILES to open
     /// and search, not ranking path strings against a typed query.
-    public func allPaths() -> [IndexedPath] {
-        paths
+    ///
+    /// `includeHidden` is folder search's own opt-in (issue #112's
+    /// hidden-file toggle, `FolderSearchFilter.includeHidden`): `false` (the
+    /// default) matches every existing caller's expectations exactly,
+    /// including this method's own pre-existing behavior before hidden
+    /// entries were tagged rather than dropped at walk time. Quick Open's
+    /// `query(_:)` never calls this with `true` and has no way to.
+    public func allPaths(includeHidden: Bool = false) -> [IndexedPath] {
+        includeHidden ? paths : paths.filter { !$0.isHidden }
     }
 
     /// Ranked matches for `query`, capped at `limit`. Never touches disk —
@@ -148,13 +164,20 @@ public actor WorkspaceFileIndex {
     /// the same way `rebuild(root:)` takes an external `URL` without
     /// depending on `FileTreeModel` itself.
     public func query(_ query: String, limit: Int = 100, recentRelativePaths: Set<String> = []) -> [IndexedPath] {
-        guard !query.isEmpty else { return Array(paths.prefix(limit)) }
+        guard !query.isEmpty else { return Array(paths.lazy.filter { !$0.isHidden }.prefix(limit)) }
         let foldedQuery = FuzzyPathScore.FoldedText(query)
         let candidates = candidateIndices(for: foldedQuery)
         var scored: [(path: IndexedPath, score: Double)] = []
         scored.reserveCapacity(candidates.count)
         for index in candidates {
             let path = paths[index]
+            // Quick Open never surfaces hidden files (issue #112's
+            // hidden-file toggle is a folder-search-only concern, per
+            // `IndexedPath.isHidden`'s own doc comment) -- `paths` now
+            // contains hidden entries too (tagged, not dropped, so folder
+            // search can opt into them via `allPaths(includeHidden:)`), so
+            // this filter is what keeps Quick Open's own behavior unchanged.
+            guard !path.isHidden else { continue }
             guard let score = FuzzyPathScore.score(
                 foldedQuery: foldedQuery,
                 foldedPath: path.foldedRelativePath,
@@ -311,6 +334,7 @@ struct DirectoryWalker: Sendable {
             directory: root.standardizedFileURL,
             relativeTo: root.standardizedFileURL,
             excludedDirectoryNames: excludedDirectoryNames,
+            ancestorHidden: false,
             visited: &visitedDirectoryIdentities,
             into: &results
         )
@@ -328,6 +352,7 @@ struct DirectoryWalker: Sendable {
         directory: URL,
         relativeTo root: URL,
         excludedDirectoryNames: Set<String>,
+        ancestorHidden: Bool,
         visited: inout Set<PhysicalFileIdentity.FileObjectID>,
         into results: inout [IndexedPath]
     ) {
@@ -343,7 +368,18 @@ struct DirectoryWalker: Sendable {
         for child in children {
             guard !Task.isCancelled else { return }
             guard let values = try? child.resourceValues(forKeys: Self.resourceKeys) else { continue }
-            guard values.isHidden != true else { continue }
+            // Hidden entries are tagged, not dropped: an entry is hidden if
+            // its own basename starts with `.` OR any ancestor directory
+            // (below `root`) already is, so a non-dotfile inside a hidden
+            // directory (e.g. `.github/workflows/ci.yml`) still counts as
+            // hidden -- matching how every comparable tool treats hidden
+            // directories, not just hidden filenames. Tagging (rather than
+            // the previous unconditional skip) is what lets folder search
+            // opt into hidden entries later without a second directory walk
+            // (`IndexedPath.isHidden`'s own doc comment); Quick Open's
+            // `query(_:)` filters them back out, so its own behavior is
+            // unchanged.
+            let isHidden = ancestorHidden || values.isHidden == true
             let name = child.lastPathComponent
             // Resource values describe the link itself on some file
             // systems, so a symlink to a directory can report
@@ -368,13 +404,15 @@ struct DirectoryWalker: Sendable {
                     directory: lexicalChild,
                     relativeTo: root,
                     excludedDirectoryNames: excludedDirectoryNames,
+                    ancestorHidden: isHidden,
                     visited: &visited,
                     into: &results
                 )
             } else {
                 results.append(IndexedPath(
                     relativePath: relativePath(of: lexicalChild, relativeTo: root),
-                    basename: name
+                    basename: name,
+                    isHidden: isHidden
                 ))
             }
         }

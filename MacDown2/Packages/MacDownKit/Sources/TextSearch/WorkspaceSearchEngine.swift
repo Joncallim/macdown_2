@@ -53,7 +53,10 @@ public enum FolderSearchOutcome: Sendable, Equatable {
 /// happened once when the index itself was built
 /// (`WorkspaceFileIndex.defaultExcludedDirectoryNames`); a symlink LOOP
 /// during that walk is likewise already guarded by
-/// `DirectoryWalker`'s own `visited` set — neither is repeated here.
+/// `DirectoryWalker`'s own `visited` set — neither is repeated here (see
+/// `WorkspaceSearchEngineTests.searchingAWorkspaceContainingASymlinkLoopCompletesAndFindsTheRealFile`,
+/// which proves this engine inherits that guard rather than needing its
+/// own).
 public actor WorkspaceSearchEngine {
     /// A generous default — large enough that an ordinary project's search
     /// never hits it, small enough that a genuinely pathological query (a
@@ -61,24 +64,50 @@ public actor WorkspaceSearchEngine {
     /// set without bound before the caller even sees the first result.
     public static let defaultMaxMatches = 5000
 
-    /// Test-only seam (package-internal, not part of the public API):
-    /// called once per file, immediately before that file's own
-    /// cancellation check — mirrors `WorkspaceFileIndex`'s own established
-    /// `init(walk:)` injectable-dependency precedent for testing actor-based
-    /// async work deterministically. A real caller's own `Task.cancel()`
-    /// races `search`'s own loop with no guaranteed ordering (confirmed
-    /// empirically: a naive "cancel immediately after creating the task"
-    /// test was found to let 2 of 200 files through before the cancellation
-    /// flag was observed), so a genuine test of "cancelling produces no
-    /// result" needs a real pause point to cancel from, not a hopeful race.
-    private let beforeEachFile: (@Sendable () async -> Void)?
-
-    public init() {
-        beforeEachFile = nil
+    /// Test-only injectable seams (package-internal, not part of the public
+    /// API), bundled into one struct so `init(seams:)` can stay a single,
+    /// always-non-optional-parameter overload distinct from `public init()`
+    /// — three individually-defaulted closures would make `init()` itself
+    /// ambiguous between the public and test-only initializers.
+    struct TestSeams: Sendable {
+        /// Called once per file, immediately before that file's own
+        /// cancellation check — mirrors `WorkspaceFileIndex`'s own
+        /// established `init(walk:)` injectable-dependency precedent for
+        /// testing actor-based async work deterministically. A real
+        /// caller's own `Task.cancel()` races `search`'s own loop with no
+        /// guaranteed ordering (confirmed empirically: a naive "cancel
+        /// immediately after creating the task" test was found to let 2 of
+        /// 200 files through before the cancellation flag was observed), so
+        /// a genuine test of "cancelling produces no result" needs a real
+        /// pause point to cancel from, not a hopeful race.
+        var beforeEachFile: (@Sendable () async -> Void)?
+        /// Called once per file that was actually read, immediately after
+        /// that file's own matches have been computed but before they are
+        /// published — the pause point a test needs to prove that
+        /// cancellation discovered AFTER a (possibly slow) per-file match is
+        /// still honored: without this seam, a naive test can only cancel
+        /// BEFORE a file starts, never mid-file, so it could never have
+        /// caught the gap this seam's own test
+        /// (`cancellingAfterAFilesMatchesAreComputedDiscardsThatFilesResult`)
+        /// exists to close.
+        var afterMatchingFile: (@Sendable () async -> Void)?
+        /// Substitutes the real `FileStore.readSnapshot` call for one
+        /// specific path (returning the real read for every other path) —
+        /// lets a permission-failure test be deterministic rather than
+        /// depending on `chmod`'s own platform/sandbox-dependent timing
+        /// (a sandboxed test runner, or running as root, can silently
+        /// ignore permission bits entirely).
+        var readSnapshot: (@Sendable (URL, IndexedPath) -> FileSnapshot?)?
     }
 
-    init(beforeEachFile: @escaping @Sendable () async -> Void) {
-        self.beforeEachFile = beforeEachFile
+    private let seams: TestSeams
+
+    public init() {
+        seams = TestSeams()
+    }
+
+    init(seams: TestSeams) {
+        self.seams = seams
     }
 
     /// Streams one `FolderSearchMatch` per file with at least one match, in
@@ -90,13 +119,27 @@ public actor WorkspaceSearchEngine {
     /// an actor boundary to record a result (a `@MainActor` view model,
     /// say) can do so deterministically, with `search` itself not moving on
     /// to the next file until that hop completes — no unstructured `Task`
-    /// the engine has no way to wait for. `Task.isCancelled` is checked
-    /// between every file (not mid-file): `TextSearchEngine`'s own
-    /// `NSRegularExpression`-backed matching has no cooperative-cancellation
-    /// hook mid-evaluation — the same limitation Slice 5a's own
-    /// current-document search already lives with, worked around there (and
-    /// here) by never blocking a caller on the result rather than by making
-    /// the underlying regex engine itself interruptible mid-pattern.
+    /// the engine has no way to wait for.
+    ///
+    /// Cancellation is checked at three points per file, not just one:
+    /// before it is read (between files), immediately after its matches are
+    /// computed (a slow regex against a large file is exactly where a
+    /// superseded search must still stop promptly, even though
+    /// `TextSearchEngine`'s own `NSRegularExpression`-backed matching has no
+    /// cooperative-cancellation hook mid-evaluation), and immediately after
+    /// the awaited `onMatch` callback returns — so a cancellation observed
+    /// during any of those three windows always yields `.cancelled` with no
+    /// further file's result published, never a late `.completed`/
+    /// `.truncated` outcome carrying one extra, stale result computed after
+    /// the caller had already moved on (a changed workspace root, a
+    /// superseded query generation).
+    ///
+    /// Bounded accumulation (issue #112) is enforced at the matching layer
+    /// itself, not just by truncating an already-fully-computed result
+    /// afterward: each file is matched with `TextSearchEngine`'s own
+    /// `matchLimit` set to this file's remaining share of `maxMatches`, so
+    /// a single pathological file (millions of matches) can never force an
+    /// unbounded `[SearchMatch]` allocation before its result is capped.
     public func search(
         root: URL,
         index: WorkspaceFileIndex,
@@ -121,44 +164,105 @@ public actor WorkspaceSearchEngine {
             break
         }
 
-        let paths = await index.allPaths()
+        let paths = await index.allPaths(includeHidden: filter.includeHidden)
         var filesSearched = 0
         var filesSkipped = 0
         var totalMatches = 0
 
         for path in paths {
-            await beforeEachFile?()
+            await seams.beforeEachFile?()
             if Task.isCancelled {
                 return .cancelled
             }
-            guard filter.matches(path) else { continue }
-
-            guard let snapshot = Self.readSnapshot(root: root, path: path) else {
-                filesSkipped += 1
-                continue
-            }
-            filesSearched += 1
-
-            let found = Self.matches(in: snapshot.text, query: query, options: options)
-            guard !found.isEmpty else { continue }
 
             let remaining = maxMatches - totalMatches
             guard remaining > 0 else {
                 return .truncated(filesSearched: filesSearched, filesSkipped: filesSkipped, matchCount: totalMatches)
             }
-            let capped = found.count > remaining ? Array(found.prefix(remaining)) : found
-            totalMatches += capped.count
-            await onMatch(FolderSearchMatch(
-                relativePath: path.relativePath,
-                matches: capped,
-                revision: snapshot.revision
-            ))
-            if capped.count < found.count {
-                return .truncated(filesSearched: filesSearched, filesSkipped: filesSkipped, matchCount: totalMatches)
+
+            switch await processFile(
+                path,
+                root: root,
+                query: query,
+                options: options,
+                filter: filter,
+                remaining: remaining,
+                onMatch: onMatch
+            ) {
+            case .skippedByFilter:
+                continue
+            case .skippedUnreadable:
+                filesSkipped += 1
+            case .cancelled:
+                return .cancelled
+            case .noMatches:
+                filesSearched += 1
+            case let .published(matchCount, wasCapped):
+                filesSearched += 1
+                totalMatches += matchCount
+                if wasCapped {
+                    return .truncated(
+                        filesSearched: filesSearched,
+                        filesSkipped: filesSkipped,
+                        matchCount: totalMatches
+                    )
+                }
             }
         }
 
         return .completed(filesSearched: filesSearched, filesSkipped: filesSkipped, matchCount: totalMatches)
+    }
+
+    private enum FileStepOutcome {
+        case skippedByFilter
+        case skippedUnreadable
+        case cancelled
+        case noMatches
+        case published(matchCount: Int, wasCapped: Bool)
+    }
+
+    /// Searches exactly one file and reports what happened, so `search`'s
+    /// own loop stays a plain dispatch over this outcome rather than a
+    /// 50+-line body (SwiftLint's `function_body_length` limit) mixing
+    /// per-file mechanics with the loop's own counter bookkeeping.
+    /// `remaining` is this file's own share of the total `maxMatches`
+    /// budget still available — used both to bound `TextSearchEngine`'s own
+    /// per-file matching (never materializing more than one match beyond
+    /// what could ever be published) and to decide whether this file's
+    /// result is itself the one that trips truncation.
+    private func processFile(
+        _ path: IndexedPath,
+        root: URL,
+        query: String,
+        options: SearchOptions,
+        filter: FolderSearchFilter,
+        remaining: Int,
+        onMatch: @escaping @Sendable (FolderSearchMatch) async -> Void
+    ) async -> FileStepOutcome {
+        guard filter.matches(path) else { return .skippedByFilter }
+        guard let snapshot = readSnapshot(root: root, path: path) else { return .skippedUnreadable }
+
+        // `remaining + 1`, not `remaining`: lets a file with exactly
+        // `remaining` matches be distinguished from one with MORE than
+        // `remaining` (truncation), while still bounding the matcher's own
+        // per-file work to at most one match beyond what could ever
+        // actually be published.
+        let found = Self.matches(in: snapshot.text, query: query, options: options, matchLimit: remaining + 1)
+        await seams.afterMatchingFile?()
+        if Task.isCancelled { return .cancelled }
+        guard !found.isEmpty else { return .noMatches }
+
+        let capped = found.count > remaining ? Array(found.prefix(remaining)) : found
+        await onMatch(FolderSearchMatch(relativePath: path.relativePath, matches: capped, revision: snapshot.revision))
+        if Task.isCancelled { return .cancelled }
+        return .published(matchCount: capped.count, wasCapped: capped.count < found.count)
+    }
+
+    private func readSnapshot(root: URL, path: IndexedPath) -> FileSnapshot? {
+        if let override = seams.readSnapshot {
+            return override(root, path)
+        }
+        return Self.readSnapshot(root: root, path: path)
     }
 
     private static func readSnapshot(root: URL, path: IndexedPath) -> FileSnapshot? {
@@ -171,8 +275,13 @@ public actor WorkspaceSearchEngine {
     /// failure, which cannot happen twice for an unchanged pattern+options
     /// pair, so this collapses that (unreachable in practice) case to "no
     /// matches" rather than threading a second error path through here.
-    private static func matches(in text: String, query: String, options: SearchOptions) -> [SearchMatch] {
-        (try? TextSearchEngine.matches(in: text, query: query, options: options)) ?? []
+    private static func matches(
+        in text: String,
+        query: String,
+        options: SearchOptions,
+        matchLimit: Int
+    ) -> [SearchMatch] {
+        (try? TextSearchEngine.matches(in: text, query: query, options: options, matchLimit: matchLimit)) ?? []
     }
 
     private enum ValidationResult {
