@@ -42,7 +42,7 @@ cloud sessions.
 3. **Stop and report** instead of improvising if any of these happen: the
    Apple account lacks the role needed to create a Developer ID certificate;
    notarisation rejects something that needs a code or architecture change;
-   or the app needs an entitlement that isn't covered by step 4 below.
+   or the app needs an entitlement that isn't covered by step 2 below.
    Report the exact output; the fix is planned in the cloud.
 4. **Only the changes listed here.** Don't change app code, and don't add
    entitlements "just in case".
@@ -69,7 +69,26 @@ cloud sessions.
    (it prompts for an app-specific password from appleid.apple.com), or use
    `--key/--key-id/--issuer` with an App Store Connect API key.
 6. Run the preflight:
-   `TEAM_ID=<TEAM_ID> NOTARY_PROFILE=mostlytext-notary release/macos/sign-notarize-dmg.sh --preflight-only`
+   `TEAM_ID=<TEAM_ID> NOTARY_PROFILE=mostlytext-notary release/macos/sign-notarize-dmg.sh --preflight-only`.
+   It checks the identity and the profile only. It performs no build,
+   signing or notarisation submission, and makes no repository changes. It
+   does write its log and evidence to the git-ignored `build/` folder.
+
+## The script's three modes
+
+The mode is a required argument, so the script never has to guess from a
+file name or label whether a failure is acceptable.
+
+| Mode | Use | If the licence gate or notarisation log fails |
+|---|---|---|
+| `--preflight-only` | Step 0 | Not reached; nothing is built |
+| `--dry-run` | **This tranche.** Proves the pipeline on a pre-cutover build that is never published | Recorded as `UNVERIFIED (dry run)` in `summary.txt`; the run continues |
+| `--release-candidate` | **E17 only**, for a build that may be published | The run stops. A failing licence gate stops it before anything is sent to Apple. It also refuses to start from a working tree with uncommitted changes |
+
+The licence gate is `compliance.py check --release --artifact <app>`. It is
+expected to fail in this dry run: the licences screen (LC-08), the LC-05 lock
+file and the source archive (LC-09) don't exist yet. A dry run records that;
+a release candidate can't be produced until it passes.
 
 ## Step 1: build, sign, notarise and package
 
@@ -79,7 +98,7 @@ PR's branch instead of `origin/master`:
 ```sh
 git fetch origin
 git switch -c release/signing-dry-run origin/master   # or origin/claude/beautiful-ramanujan-bq0a0w before #164 merges
-TEAM_ID=<TEAM_ID> NOTARY_PROFILE=mostlytext-notary release/macos/sign-notarize-dmg.sh
+TEAM_ID=<TEAM_ID> NOTARY_PROFILE=mostlytext-notary release/macos/sign-notarize-dmg.sh --dry-run
 ```
 
 `release/macos/sign-notarize-dmg.sh` stops at the first failure. It does the
@@ -89,17 +108,24 @@ following:
    Developer ID identity and secure timestamps.
 2. **Signature check.** It verifies that every Mach-O binary is signed by
    this Team ID's Developer ID, with the hardened runtime and a timestamp.
-3. **Notarise the app** (zipped), save Apple's log, and staple the app.
-4. **Notarise the CLI.** A bare command-line binary can't be stapled, so
-   Gatekeeper checks it online.
-5. **Build the DMG,** containing the app and an Applications shortcut. Then
+3. **Licence gate** against the built app, before anything goes to Apple.
+   It confirms by SHA-256 that every inventoried runtime resource is in the
+   app (the diagram engines, themes, grammar queries and all 12 SwiftUIMath
+   fonts), along with the notices file and `LICENSE`, and that no
+   unregistered script, WebAssembly or font file ships. In a dry run the
+   result is recorded (see the modes table).
+4. **Notarise the app** (zipped) and staple it, and download Apple's
+   notarisation log. A log that can't be downloaded is recorded as
+   `UNVERIFIED` in a dry run and stops a release candidate.
+5. **Notarise the CLI ZIP.** A bare command-line binary can't be stapled, so
+   Gatekeeper checks its ticket online. The notarised ZIP is the CLI's
+   distributable form for now (see the note in step 3 below).
+6. **Build the DMG,** containing the app and an Applications shortcut. Then
    sign it, notarise it and staple it.
-6. **Validate** with `stapler validate`, `spctl` (app and DMG),
+7. **Validate** with `stapler validate`, `spctl` (app and DMG),
    `codesign --verify`, and `syspolicy_check distribution`, Apple's
    pre-distribution check.
-7. **Record** SHA-256 hashes and run the licence gate against the signed app.
-   That gate is expected to fail until the licences screen (LC-08) bundles
-   the notices file.
+8. **Record** SHA-256 hashes. The distributables are the DMG and the CLI ZIP.
 
 Output goes to `build/release-<timestamp>/`, which is git-ignored.
 
@@ -153,8 +179,22 @@ trust decisions.
 
    Record any feature that fails and the console errors (Console.app, filtered
    on the app).
-5. CLI: copy `macdown2` to `~/bin` in the fresh account, run
-   `macdown2 formats`, and record any Gatekeeper prompt.
+5. CLI, starting from the file a user would download:
+   - get `macdown2.zip` (the notarised ZIP from `build/`) into the fresh
+     account **with the quarantine flag set**, as for the DMG in item 1, and
+     confirm it with `xattr -p com.apple.quarantine macdown2.zip`;
+   - extract it with Finder (double-click), which carries the quarantine flag
+     over to the extracted `macdown2`; confirm that with `xattr -l macdown2`;
+   - run `./macdown2 formats` from Terminal, first online and then offline,
+     and record any Gatekeeper prompt or refusal.
+
+   **How the CLI finally ships is not decided.** E17 (#18) still has to choose
+   between shipping it inside the app bundle (and how it gets onto the user's
+   `PATH`) and shipping it as a separate download. Today's CLI is also a
+   placeholder. This test therefore proves only what exists now: the
+   notarised CLI ZIP, downloaded and run under quarantine. It says nothing
+   about an in-app install path. Record it in the evidence as
+   "CLI: notarised ZIP path only; final topology pending E17".
 6. Remove the test account or VM afterwards.
 
 ## Evidence to return
@@ -170,6 +210,10 @@ Open **one pull request** from `release/signing-dry-run` containing:
     `macho-signatures.txt`, `codesign-display-*.txt`, `notary-*-submit.json`,
     `notary-*-log.json`, `SHA256SUMS`, `compliance-artifact.txt`. These
     contain no secrets. Read them once before committing anyway.
+  - Copy every `UNVERIFIED (dry run)` line from `summary.txt` into the README
+    table. In particular, list each `compliance-artifact.txt` failure as a
+    known release gate (for example "LC-08: notices file not bundled"), not
+    as a pass.
   - The clean-install and smoke-test results, with screenshots of the
     Gatekeeper dialogs. Screenshots must show no keychain or account details.
 - If step 2 passed cleanly: the Release-only hardened-runtime change to

@@ -7,9 +7,26 @@
 #   2. build      Release build of the app and CLI with the hardened runtime
 #   3. sign-check confirm Xcode signed every Mach-O binary with this Developer
 #                 ID, the hardened runtime and a secure timestamp
-#   4. notarise   submit the app (zip) and CLI (zip), wait, save logs, staple the app
-#   5. dmg        build a DMG (app + /Applications link), sign, notarise, staple
-#   6. verify     codesign, spctl, stapler validate, syspolicy_check
+#   4. licences   compliance.py check --release --artifact against the built app
+#   5. notarise   submit the app (zip) and CLI (zip), wait, save logs, staple the app
+#   6. dmg        build a DMG (app + /Applications link), sign, notarise, staple
+#   7. verify     codesign, spctl, stapler validate, syspolicy_check
+#
+# The mode is a required argument, so failure tolerance is always a
+# deliberate choice, never inferred from a file name or label:
+#   --preflight-only     step 1 only. No build, no signing, no notarisation
+#                        submission, and no repository changes. It does write
+#                        its log and evidence to the git-ignored output folder.
+#   --dry-run            the whole pipeline, as a pipeline proof. Known-incomplete
+#                        release gates are recorded, not fatal: a failing
+#                        licence check (step 4) or a notarisation log that
+#                        can't be downloaded is written to the evidence as
+#                        UNVERIFIED and the run continues. Never publish its output.
+#   --release-candidate  the whole pipeline for a candidate that may be
+#                        published. Requires a clean working tree. Any licence
+#                        check failure stops the run before anything is sent to
+#                        Apple, and a notarisation log that can't be downloaded
+#                        stops it too. Used by E17.
 #
 # Secrets never pass through this script or its logs. Signing uses the
 # certificate already in the login keychain; notarisation uses a keychain
@@ -19,22 +36,23 @@
 #
 # Usage:
 #   TEAM_ID=ABCDE12345 NOTARY_PROFILE=mostlytext-notary \
-#     release/macos/sign-notarize-dmg.sh [--preflight-only]
+#     release/macos/sign-notarize-dmg.sh --preflight-only|--dry-run|--release-candidate
 #
 # Optional environment:
 #   ENTITLEMENTS  path to an .entitlements file (default: none)
 #   OUT           output directory (default: build/release-<UTC timestamp>)
-#   LABEL         DMG name suffix (default: devid-dryrun). Never "release"
-#                 unless E17's release process is running this.
 
 set -euo pipefail
 
 : "${TEAM_ID:?set TEAM_ID to the Apple Developer Team ID}"
 : "${NOTARY_PROFILE:?set NOTARY_PROFILE to the notarytool keychain profile name}"
 ENTITLEMENTS="${ENTITLEMENTS:-}"
-LABEL="${LABEL:-devid-dryrun}"
-PREFLIGHT_ONLY=0
-[[ "${1:-}" == "--preflight-only" ]] && PREFLIGHT_ONLY=1
+case "${1:-}" in
+  --preflight-only)    MODE=preflight ;;
+  --dry-run)           MODE=dry-run ;;
+  --release-candidate) MODE=release-candidate ;;
+  *) echo "usage: $0 --preflight-only|--dry-run|--release-candidate" >&2; exit 2 ;;
+esac
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -55,6 +73,21 @@ record "dirty: $(git -C "$REPO" status --porcelain | wc -l | tr -d ' ') changed 
 record "macOS: $(sw_vers -productVersion) ($(sw_vers -buildVersion))"
 record "xcode: $(xcodebuild -version | tr '\n' ' ')"
 record "team: $TEAM_ID"
+record "mode: $MODE"
+
+# In dry-run mode a known-incomplete gate is recorded and the run continues;
+# in release-candidate mode the same condition stops it.
+gate() {  # $1 message
+  if [[ "$MODE" == "release-candidate" ]]; then
+    fail "$1"
+  fi
+  record "UNVERIFIED (dry run): $1"
+  printf '\nUNVERIFIED (dry run, continuing): %s\n' "$1"
+}
+
+if [[ "$MODE" == "release-candidate" && -n "$(git -C "$REPO" status --porcelain)" ]]; then
+  fail "a release candidate must be built from a clean working tree; commit or stash first"
+fi
 
 # ---------------------------------------------------------------- 1. preflight
 step "Preflight: Developer ID Application identity for team $TEAM_ID"
@@ -77,8 +110,8 @@ else
   record "entitlements: none"
 fi
 
-if (( PREFLIGHT_ONLY )); then
-  echo "Preflight passed. Evidence: $EVIDENCE"
+if [[ "$MODE" == "preflight" ]]; then
+  echo "Preflight passed. Nothing was built, signed or submitted. Evidence: $EVIDENCE"
   exit 0
 fi
 
@@ -129,29 +162,58 @@ while IFS= read -r -d '' binary; do
 done < <(find "$APP" "$CLI" -type f -print0)
 record "mach-o binaries checked: $(wc -l < "$EVIDENCE/macho-signatures.txt" | tr -d ' ')"
 
-# ---------------------------------------------------------------- 4. notarise
+# ---------------------------------------------------------------- 4. licences
+# Before anything is sent to Apple: the built app must match the licence
+# inventory's artifact contract (runtime resources, notices, licence) and all
+# release rules. Stapling later adds only the notarisation ticket, which
+# doesn't change these resources.
+step "Licence gate against the built app"
+if python3 "$REPO/compliance/tools/compliance.py" check --release --artifact "$APP" \
+     > "$EVIDENCE/compliance-artifact.txt" 2>&1; then
+  record "licence gate: passed"
+else
+  record "licence gate: $(grep -c '^FAIL:' "$EVIDENCE/compliance-artifact.txt" || true) failure(s), see compliance-artifact.txt"
+  gate "licence gate (compliance.py check --release --artifact) failed; see compliance-artifact.txt"
+fi
+
+# ---------------------------------------------------------------- 5. notarise
 notarise() {  # $1 file to submit, $2 evidence name
   local json id status
   json="$(xcrun notarytool submit "$1" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json)"
   printf '%s\n' "$json" > "$EVIDENCE/notary-$2-submit.json"
-  id="$(/usr/bin/plutil -extract id raw -o - - <<<"$json")"
-  status="$(/usr/bin/plutil -extract status raw -o - - <<<"$json")"
-  xcrun notarytool log "$id" --keychain-profile "$NOTARY_PROFILE" "$EVIDENCE/notary-$2-log.json" || true
+  id="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<<"$json")"
+  status="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$json")"
   record "notarisation $2: $id $status"
-  [[ "$status" == "Accepted" ]] || fail "notarisation of $2 returned '$status'; see notary-$2-log.json"
+  # Fetch Apple's log before judging the status: it explains a rejection.
+  local log_ok=1
+  if xcrun notarytool log "$id" --keychain-profile "$NOTARY_PROFILE" "$EVIDENCE/notary-$2-log.json"; then
+    record "notarisation log $2: captured"
+  else
+    log_ok=0
+    record "notarisation log $2: NOT captured"
+  fi
+  [[ "$status" == "Accepted" ]] || fail "notarisation of $2 returned '$status'; see notary-$2-log.json and notary-$2-submit.json"
+  (( log_ok )) || gate "the notarisation log for $2 ($id) could not be downloaded"
 }
 step "Notarise the app"
 ditto -c -k --keepParent "$APP" "$OUT/$APP_NAME.zip"
 notarise "$OUT/$APP_NAME.zip" app
 xcrun stapler staple "$APP"
-step "Notarise the CLI (a bare binary can't be stapled; Gatekeeper checks it online)"
+# A bare command-line binary can't be stapled, so its notarisation ticket is
+# checked online. The notarised ZIP is the CLI's distributable form until E17
+# decides how the CLI ships (inside the app or separately).
+step "Notarise the CLI ZIP"
 ditto -c -k "$CLI" "$OUT/$CLI_NAME.zip"
 notarise "$OUT/$CLI_NAME.zip" cli
 
-# ---------------------------------------------------------------- 5. dmg
+# ---------------------------------------------------------------- 6. dmg
 VERSION="$(defaults read "$APP/Contents/Info" CFBundleShortVersionString)"
 BUILD="$(defaults read "$APP/Contents/Info" CFBundleVersion)"
-DMG="$OUT/$APP_NAME-$VERSION-$BUILD-$LABEL.dmg"
+if [[ "$MODE" == "release-candidate" ]]; then
+  DMG="$OUT/$APP_NAME-$VERSION-$BUILD.dmg"
+else
+  DMG="$OUT/$APP_NAME-$VERSION-$BUILD-dryrun.dmg"
+fi
 step "Build the DMG"
 STAGE="$OUT/dmg-stage"
 rm -rf "$STAGE" && mkdir -p "$STAGE"
@@ -163,7 +225,7 @@ step "Notarise the DMG"
 notarise "$DMG" dmg
 xcrun stapler staple "$DMG"
 
-# ---------------------------------------------------------------- 6. verify
+# ---------------------------------------------------------------- 7. verify
 step "Verify"
 {
   echo "## stapler validate app";  xcrun stapler validate "$APP"
@@ -177,14 +239,17 @@ step "Verify"
 } 2>&1 | tee "$EVIDENCE/verify.txt"
 
 step "Hashes"
+# Distributables: the DMG and the CLI ZIP. The app ZIP is only the vehicle
+# for notarising the app; the bare CLI hash ties the ZIP to its contents.
 {
-  shasum -a 256 "$DMG" "$OUT/$APP_NAME.zip" "$CLI"
+  shasum -a 256 "$DMG" "$OUT/$CLI_NAME.zip"
+  echo "# not distributed: notarisation vehicle and CLI binary"
+  shasum -a 256 "$OUT/$APP_NAME.zip" "$CLI"
 } | tee "$EVIDENCE/SHA256SUMS"
 
-step "Licence gate against the signed app (evidence; failures expected until LC-08)"
-python3 "$REPO/compliance/tools/compliance.py" check --release --artifact "$APP" \
-  > "$EVIDENCE/compliance-artifact.txt" 2>&1 || true
-
 echo
-echo "Done. DMG: $DMG"
+echo "Done ($MODE). DMG: $DMG  CLI: $OUT/$CLI_NAME.zip"
+if [[ "$MODE" == "dry-run" ]] && grep -q '^UNVERIFIED' "$EVIDENCE/summary.txt"; then
+  echo "Dry run recorded UNVERIFIED items (see summary.txt). This output is not a release."
+fi
 echo "Evidence: $EVIDENCE (contains no secrets; review before committing)"

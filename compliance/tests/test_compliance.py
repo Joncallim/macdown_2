@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import sys
 import tempfile
 import unittest
+import textwrap
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -27,6 +29,7 @@ LIB_JS = "MacDown2/Packages/MacDownKit/Sources/Widget/Resources/lib.js"
 LIB_LICENCE = "MacDown2/Packages/MacDownKit/Sources/Widget/Resources/LIB-LICENSE.txt"
 REMOTE_URL = "https://github.com/example/remote-kit"
 REMOTE_REV = "1111111111111111111111111111111111111111"
+FONT_BYTES = "OTTO pretend font bytes\n"
 
 
 def sha(text: str) -> str:
@@ -57,6 +60,10 @@ class Fixture:
             "lockfiles": ["MacDown2/Packages/MacDownKit/Package.resolved"],
             "build_only_packages": [],
             "lockfile_enforced": True,
+            "artifact": {
+                "required_first_party": ["LICENSE", compliance.NOTICES],
+                "registered_extensions": [".js", ".otf", ".wasm"],
+            },
             "components": [
                 {
                     "id": "lib",
@@ -71,6 +78,7 @@ class Fixture:
                     "licence_texts": [{"path": LIB_LICENCE, "sha256": sha("Example library licence\n")}],
                     "owns": [LIB_JS, LIB_LICENCE],
                     "files": [{"path": LIB_JS, "sha256": sha("window.lib = 1;\n")}],
+                    "runtime_resources": [{"name": "lib.js", "sha256": sha("window.lib = 1;\n"), "path": LIB_JS}],
                     "source_offer": {"required": True, "reason": "MPL-2.0", "location": "https://example.org/src/", "status": "verified"},
                     "provenance": "verified",
                 },
@@ -86,6 +94,7 @@ class Fixture:
                     "licence": "MIT",
                     "copyright": ["Copyright Remote"],
                     "licence_texts": [{"path": "compliance/licenses/remote-kit--LICENSE.txt", "sha256": sha("Remote kit licence\n")}],
+                    "runtime_resources": [{"name": "Remote-Font.otf", "sha256": sha(FONT_BYTES), "source": "remote-kit 1.0.0"}],
                     "provenance": "verified",
                 },
             ],
@@ -107,6 +116,24 @@ class Fixture:
         self.write("compliance/inventory.json", json.dumps(self.inventory, indent=2))
         compliance.main(["--root", str(self.root), "notices"])
         compliance.main(["--root", str(self.root), "sbom"])
+
+    def make_app(self, *, skip: set[str] = frozenset(), extra: dict[str, str] | None = None) -> Path:
+        """A pretend built .app holding what the fixture's contract says ships."""
+        app = self.root / "build/Example.app"
+        shutil.rmtree(app, ignore_errors=True)
+        resources = app / "Contents/Resources"
+        (resources / "Remote_Kit.bundle").mkdir(parents=True)
+        files = {
+            "lib.js": (self.root / LIB_JS).read_text(),
+            "Remote_Kit.bundle/Remote-Font.otf": FONT_BYTES,
+            "LICENSE": (self.root / "LICENSE").read_text(),
+            "THIRD_PARTY_NOTICES.md": (self.root / compliance.NOTICES).read_text(),
+            **(extra or {}),
+        }
+        for name, body in files.items():
+            if name not in skip:
+                (resources / name).write_text(body, encoding="utf-8")
+        return app
 
     def check(self, **kwargs) -> compliance.Report:
         return compliance.check(self.root, **kwargs)
@@ -214,24 +241,140 @@ class ComplianceCheckTests(unittest.TestCase):
         self.fx.write("compliance/inventory.json", json.dumps(self.fx.inventory, indent=2))
         self.assertFailsWith("generated file is stale")
 
-    def test_artifact_missing_bundle_fails(self) -> None:
-        app = self.fx.root / "build/Example.app/Contents/Resources"
-        app.mkdir(parents=True)
-        shutil.copy(self.fx.root / compliance.NOTICES, app / "THIRD_PARTY_NOTICES.md")
-        self.assertFailsWith("is not in the artifact", artifact=self.fx.root / "build/Example.app")
-        shutil.copy(self.fx.root / LIB_JS, app / "lib.js")
-        self.assertEqual(self.fx.check(artifact=self.fx.root / "build/Example.app").errors, [])
+    # ------------------------------------------------------------ artifact
+
+    def test_complete_artifact_passes_release_check(self) -> None:
+        self.assertEqual(self.fx.check(release=True, artifact=self.fx.make_app()).errors, [])
+
+    def test_artifact_missing_vendored_engine_fails(self) -> None:
+        self.assertFailsWith("required runtime resource lib.js", artifact=self.fx.make_app(skip={"lib.js"}))
+
+    def test_artifact_missing_dependency_font_fails(self) -> None:
+        self.assertFailsWith("required runtime resource Remote-Font.otf", artifact=self.fx.make_app(skip={"Remote_Kit.bundle/Remote-Font.otf"}))
+
+    def test_artifact_with_modified_runtime_resource_fails(self) -> None:
+        app = self.fx.make_app(extra={"lib.js": "window.lib = 'patched after build';\n"})
+        self.assertFailsWith("required runtime resource lib.js", artifact=app)
 
     def test_artifact_without_notices_fails(self) -> None:
-        app = self.fx.root / "build/Example.app/Contents/Resources"
-        app.mkdir(parents=True)
-        shutil.copy(self.fx.root / LIB_JS, app / "lib.js")
-        self.assertFailsWith("does not contain the generated THIRD_PARTY_NOTICES.md", artifact=self.fx.root / "build/Example.app")
+        self.assertFailsWith("does not contain the generated THIRD_PARTY_NOTICES.md", artifact=self.fx.make_app(skip={"THIRD_PARTY_NOTICES.md"}))
+
+    def test_artifact_with_stale_notices_fails(self) -> None:
+        app = self.fx.make_app(extra={"THIRD_PARTY_NOTICES.md": "# an older notices file\n"})
+        self.assertFailsWith("does not contain the generated THIRD_PARTY_NOTICES.md", artifact=app)
+
+    def test_artifact_without_first_party_licence_fails(self) -> None:
+        self.assertFailsWith("does not contain first-party LICENSE", artifact=self.fx.make_app(skip={"LICENSE"}))
+
+    def test_artifact_shipping_unregistered_font_or_script_fails(self) -> None:
+        for name in ("Surprise.otf", "tracker.js", "engine.wasm"):
+            with self.subTest(name=name):
+                self.assertFailsWith(f"unregistered runtime file: Contents/Resources/{name}", artifact=self.fx.make_app(extra={name: "unknown\n"}))
+
+    def test_artifact_may_ship_first_party_scripts(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Sources/Widget/Resources/render.js", "render();\n")
+        self.fx.inventory["first_party"]["paths"].append("MacDown2/**/render.js")
+        self.fx.save()
+        self.assertEqual(self.fx.check(artifact=self.fx.make_app(extra={"render.js": "render();\n"})).errors, [])
+
+    def test_stale_runtime_resource_digest_fails_in_tree_mode(self) -> None:
+        self.fx.inventory["components"][0]["runtime_resources"][0]["sha256"] = "0" * 64
+        self.fx.save()
+        self.assertFailsWith("runtime resource digest is stale")
+
+    def test_vendored_bundle_without_runtime_resources_fails(self) -> None:
+        del self.fx.inventory["components"][0]["runtime_resources"]
+        self.fx.save()
+        self.assertFailsWith("must declare runtime_resources")
+
+    def test_missing_artifact_fails(self) -> None:
+        self.assertFailsWith("artifact not found", artifact=self.fx.root / "build/Nope.app")
+
+    # ------------------------------------------------------------ manifests
+
+    def test_unregistered_multiline_dependency_fails(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Package.swift", textwrap.dedent(f"""\
+            dependencies: [
+                .package(url: "{REMOTE_URL}", exact: "1.0.0"),
+                .package(
+                    url: "https://github.com/example/sneaky",
+                    exact: "2.0.0"
+                ),
+            ]
+            """))
+        self.assertFailsWith("dependency https://github.com/example/sneaky is not registered")
+
+    def test_multiline_requirement_change_is_a_stale_mapping(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Package.swift",
+                      f'.package(\n    url: "{REMOTE_URL}",\n    branch: "main"\n)\n')
+        self.assertFailsWith("stale mapping")
+
+    def test_range_requirement_never_matches_a_recorded_one(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Package.swift", f'.package(url: "{REMOTE_URL}", "1.0.0"..<"2.0.0")\n')
+        self.assertFailsWith("stale mapping")
+
+    def test_commented_out_dependencies_are_ignored(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Package.swift", textwrap.dedent(f"""\
+            // .package(url: "https://github.com/example/old", exact: "1.0.0"),
+            /* .package(
+                url: "https://github.com/example/older", exact: "1.0.0") */
+            .package(url: "{REMOTE_URL}", exact: "1.0.0"), // "https://not/a/dep"
+            """))
+        self.assertEqual(self.fx.check().errors, [])
+
+    def test_unrecognised_package_declaration_fails_closed(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Package.swift",
+                      f'.package(url: "{REMOTE_URL}", exact: "1.0.0"),\n.package(id: "example.registry", from: "1.0.0"),\n')
+        self.assertFailsWith("unrecognised package declaration")
+
+    def test_unowned_multiline_local_package_fails(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Package.swift",
+                      f'.package(url: "{REMOTE_URL}", exact: "1.0.0"),\n.package(\n    path: "../Sneaky"\n),\n')
+        self.assertFailsWith("local package MacDown2/Packages/Sneaky is not owned")
+
+    def test_new_local_package_manifest_is_checked_automatically(self) -> None:
+        self.fx.write("MacDown2/Packages/Helper/Package.swift", '.package(url: "https://github.com/example/transitive-sneak", from: "1.0.0")\n')
+        self.assertFailsWith("MacDown2/Packages/Helper/Package.swift: dependency https://github.com/example/transitive-sneak is not registered")
+
+    def test_unregistered_xcodegen_package_fails(self) -> None:
+        self.fx.write("MacDown2/project.yml", textwrap.dedent("""\
+            name: Example
+            packages:
+              Sneaky:
+                url: https://github.com/example/xcodegen-sneak
+                from: 1.0.0
+            targets: {}
+            """))
+        self.assertFailsWith("project.yml: package https://github.com/example/xcodegen-sneak is not registered")
+
+    def test_xcodegen_package_outside_the_checked_tree_fails(self) -> None:
+        self.fx.write("MacDown2/project.yml", "packages:\n  Outside:\n    path: ../../elsewhere\n")
+        self.assertFailsWith("outside MacDown2/")
+
+    def test_unregistered_file_in_existing_target_fails(self) -> None:
+        self.fx.write("MacDown2/Packages/MacDownKit/Sources/Widget/vendor.c", "int x;\n")
+        self.assertFailsWith("unregistered distributed file")
 
     def test_generation_is_deterministic(self) -> None:
         inventory = compliance.load_inventory(self.fx.root)
         self.assertEqual(compliance.render_notices(self.fx.root, inventory), compliance.render_notices(self.fx.root, inventory))
         self.assertEqual(compliance.render_sbom(self.fx.root, inventory), compliance.render_sbom(self.fx.root, inventory))
+
+
+class ManifestParserTests(unittest.TestCase):
+    def test_single_and_multiline_forms_agree(self) -> None:
+        single = '.package(url: "https://github.com/a/b", exact: "1.0.0")\n.package(path: "../X")\n'
+        multi = '.package(\n    url: "https://github.com/a/b",\n    exact: "1.0.0"\n)\n.package(\n  path: "../X"\n)\n'
+        self.assertEqual(compliance.parse_manifest(single), compliance.parse_manifest(multi))
+        self.assertEqual(compliance.parse_manifest(single), ([("https://github.com/a/b", {"exact": "1.0.0"})], ["../X"], []))
+
+    def test_requirement_keywords(self) -> None:
+        for requirement, expected in (('exact: "1.0.0"', {"exact": "1.0.0"}), ('from: "1.0.0"', {"from": "1.0.0"}),
+                                      ('branch: "main"', {"branch": "main"}), ('revision: "abc"', {"revision": "abc"}),
+                                      ('.upToNextMinor(from: "0.25.0")', {"from": "0.25.0", "form": "upToNextMinor"})):
+            with self.subTest(requirement=requirement):
+                urls, _, _ = compliance.parse_manifest(f'.package(url: "https://github.com/a/b", {requirement})')
+                self.assertEqual(urls[0][1], expected)
 
 
 class RepositoryTests(unittest.TestCase):
@@ -240,10 +383,46 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(report.errors, [], "\n".join(report.errors))
 
     def test_every_manifest_dependency_is_parsed(self) -> None:
-        text = (REPO / "MacDown2/Packages/MacDownKit/Package.swift").read_text(encoding="utf-8")
-        urls, paths = compliance.parse_manifest(text)
-        self.assertEqual(len(urls), text.count(".package(url:"))
-        self.assertEqual(len(paths), text.count(".package(path:"))
+        """Checks the parser against oracles that don't share its logic.
+
+        1. Every quoted http(s) URL outside a // comment line is a dependency.
+        2. The number of `.package(` tokens outside // comment lines equals
+           the number of parsed declarations, and none is unrecognised.
+        3. Reflowing every declaration onto multiple lines changes nothing.
+        """
+        for manifest in sorted(REPO.glob("MacDown2/Packages/*/Package.swift")):
+            with self.subTest(manifest=manifest.relative_to(REPO).as_posix()):
+                text = manifest.read_text(encoding="utf-8")
+                code_lines = [line for line in text.splitlines() if not line.lstrip().startswith("//")]
+                code = "\n".join(code_lines)
+                urls, paths, unknown = compliance.parse_manifest(text)
+                self.assertEqual(unknown, [])
+                self.assertEqual({u for u, _ in urls}, set(re.findall(r'"(https?://[^"]+)"', code)))
+                self.assertEqual(len(urls) + len(paths), len(re.findall(r"\.package\s*\(", code)))
+                reflowed = re.sub(r",\s*(url|path|exact|from|branch|revision|name):", r",\n        \1:", text)
+                reflowed = reflowed.replace(".package(", ".package(\n        ")
+                self.assertNotEqual(reflowed, text)
+                self.assertEqual(compliance.parse_manifest(reflowed), (urls, paths, unknown))
+
+    def test_compliance_workflow_cannot_be_skipped_by_path_filters(self) -> None:
+        """The check walks the whole tree, so the workflow must run on every change."""
+        workflow = (REPO / ".github/workflows/compliance.yml").read_text(encoding="utf-8")
+        triggers = workflow.split("\njobs:", 1)[0]
+        self.assertNotRegex(triggers, r"(?m)^\s*(paths|paths-ignore|branches-ignore)\s*:")
+        self.assertRegex(triggers, r"(?m)^  pull_request:")
+        self.assertRegex(triggers, r"(?m)^  push:")
+        self.assertIn("python3 compliance/tools/compliance.py check\n", workflow)
+        self.assertIn("python3 -m unittest discover -s compliance/tests", workflow)
+
+    def test_every_vendored_bundle_and_math_font_is_in_the_artifact_contract(self) -> None:
+        inventory = compliance.load_inventory(REPO)
+        by_id = {c["id"]: c for c in inventory["components"]}
+        for component in inventory["components"]:
+            if component["kind"] == "vendored-bundle":
+                self.assertTrue(component.get("runtime_resources"), component["id"])
+        fonts = {r["name"] for r in by_id["swiftui-math-fonts"]["runtime_resources"]}
+        self.assertEqual(len(fonts), len(by_id["swiftui-math-fonts"]["fonts"]))
+        self.assertTrue(all(name.endswith(".otf") for name in fonts))
 
 
 if __name__ == "__main__":

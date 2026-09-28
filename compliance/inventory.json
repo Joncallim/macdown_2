@@ -45,6 +45,23 @@
     "https://github.com/swiftlang/swift-docc-plugin",
     "https://github.com/swiftlang/swift-docc-symbolkit"
   ],
+  "artifact": {
+    "note": "What `check --artifact` proves about a built .app. Every component's runtime_resources must be present (by SHA-256), the required first-party files must be present, and no file with a registered extension may ship unless its digest is a known runtime resource or first-party file. Compiled code (Swift packages, C parsers) cannot be matched by digest; it is covered by the source-tree check and the SBOM.",
+    "required_first_party": [
+      "LICENSE",
+      "compliance/generated/THIRD_PARTY_NOTICES.md"
+    ],
+    "registered_extensions": [
+      ".js",
+      ".mjs",
+      ".wasm",
+      ".otf",
+      ".ttf",
+      ".ttc",
+      ".woff",
+      ".woff2"
+    ]
+  },
   "components": [
     {
       "id": "d2",
@@ -96,6 +113,13 @@
       },
       "open_items": [
         "LC-03: identify the D2 Go source revision and the Go modules compiled into the embedded WebAssembly, record their licences, and publish the upstream package plus the one-line patch through LC-09."
+      ],
+      "runtime_resources": [
+        {
+          "name": "d2-browser.js",
+          "sha256": "991a44779c91b74cbdf141228a6ba34592fe9b708fe19c221eba9ef4a7cfe33e",
+          "path": "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/d2-browser.js"
+        }
       ]
     },
     {
@@ -252,6 +276,13 @@
       ],
       "open_items": [
         "mermaid.min.js is a single-file bundle of the runtime dependencies listed in `nested` (from mermaid@11.17.2 package.json). Resolve their exact bundled versions from the mermaid v11.17.2 release lockfile, record each licence (dompurify is MPL-2.0 OR Apache-2.0; d3 is ISC; most others MIT) and add the required texts."
+      ],
+      "runtime_resources": [
+        {
+          "name": "mermaid.min.js",
+          "sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+          "path": "MacDown2/Packages/MacDownKit/Sources/DiagramRendering/Resources/mermaid.min.js"
+        }
       ]
     },
     {
@@ -610,10 +641,72 @@
         "LC-01",
         "LC-07"
       ],
-      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence).",
       "open_items": [
-        "Confirm in the signed release candidate which fonts actually land in the app bundle; if the app never selects some fonts, removing them is a product decision for E19, not this gate."
-      ]
+        "Product decision, not a licensing gap: SwiftUIMath copies its whole font bundle, so all 12 fonts ship whether or not MostlyText ever selects them. The notices cover all 12, and the artifact check requires all 12 to be present with these digests. Whether to keep them all or trim unused fonts (which needs a patched or forked dependency) is for E19 and the owner to decide. Until that decision is recorded, this item stays open."
+      ],
+      "runtime_resources": [
+        {
+          "name": "Asana-Math.otf",
+          "sha256": "b0d9e681c08ff1f4dc6ebf085cc962585ec12cdbd25dc6225890b9f8fd12d568",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/Asana-Math.otf"
+        },
+        {
+          "name": "Euler-Math.otf",
+          "sha256": "bd07fef1faecea7fa4a89256e4e06ef94b19e23b1785db6e420229fda37c2efb",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/Euler-Math.otf"
+        },
+        {
+          "name": "FiraMath-Regular.otf",
+          "sha256": "2028cbd3dd4d8c0cf1608520eb4759956a83a67931d7b6d8e7c313520186e35b",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/FiraMath-Regular.otf"
+        },
+        {
+          "name": "Garamond-Math.otf",
+          "sha256": "c6161377e97084152b948f62abe874cbe27405938956346b54a4c6488a5009f1",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/Garamond-Math.otf"
+        },
+        {
+          "name": "KpMath-Light.otf",
+          "sha256": "aa6713ae76838a7db9eefe4f503b963dad50df77555ff67a50b72eb832221660",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/KpMath-Light.otf"
+        },
+        {
+          "name": "KpMath-Sans.otf",
+          "sha256": "a9e82575a514f10ceed193d393bf2ea6ac82980ce7eb8c81be085df159a8c253",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/KpMath-Sans.otf"
+        },
+        {
+          "name": "latinmodern-math.otf",
+          "sha256": "6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/latinmodern-math.otf"
+        },
+        {
+          "name": "LeteSansMath.otf",
+          "sha256": "b9242115e4d41b9ccbe179340d4ddaf5598863389a23677eefb87e8950781313",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/LeteSansMath.otf"
+        },
+        {
+          "name": "LibertinusMath-Regular.otf",
+          "sha256": "e81bd44acbb7119c8f00128b36fecc5d980e10d2450a226ba52402ccf4da9d32",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/LibertinusMath-Regular.otf"
+        },
+        {
+          "name": "NotoSansMath-Regular.otf",
+          "sha256": "9dda7e17fa67b7e34083798f56faf5e53ac524456e730ead35c2957e4397ca28",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/NotoSansMath-Regular.otf"
+        },
+        {
+          "name": "texgyretermes-math.otf",
+          "sha256": "e5ce42b4fe826b7ea4c0874359decf0b294439355c511a4794107a9924e2cd5a",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/texgyretermes-math.otf"
+        },
+        {
+          "name": "xits-math.otf",
+          "sha256": "d76666cb2dc222b4a811db96c41cc1853988b91008ec44a194126b4e010a5c6c",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/xits-math.otf"
+        }
+      ],
+      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence). runtime_resources records the 12 font files by upstream digest; they are not in this repository."
     },
     {
       "id": "textual",
@@ -689,7 +782,14 @@
         "LC-01",
         "LC-06"
       ],
-      "evidence": "Every colour is in Chris Kempson's Tomorrow Night Eighties palette (textmate2 Tomorrow-Night-Eighties.tmTheme at ccf6666) except the comment grey #888888, which comes from MacDown's legacy Tomorrow.style (MacDownApp/macdown 3e2a2bf, itself a Night Eighties adaptation). Background #2d2d2d, foreground #cccccc, caret #cc99cc and selection #515151 match Tomorrow.style exactly."
+      "evidence": "Every colour is in Chris Kempson's Tomorrow Night Eighties palette (textmate2 Tomorrow-Night-Eighties.tmTheme at ccf6666) except the comment grey #888888, which comes from MacDown's legacy Tomorrow.style (MacDownApp/macdown 3e2a2bf, itself a Night Eighties adaptation). Background #2d2d2d, foreground #cccccc, caret #cc99cc and selection #515151 match Tomorrow.style exactly.",
+      "runtime_resources": [
+        {
+          "name": "Tomorrow Dark.json",
+          "sha256": "0c383c0c91be8258b9a61788ebafdc6bd68f2079f60debd509bc3e80a706836e",
+          "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Dark.json"
+        }
+      ]
     },
     {
       "id": "theme-tomorrow-light",
@@ -730,6 +830,13 @@
       "evidence": "All seven token colours (#a71d5d, #183691, #969896, #0086b3, #795da3, #ed6a43, #333333) appear in primer/github-syntax-light v0.4.1 lib/github-light.css. None of the canonical Tomorrow (light) palette colours are used.",
       "open_items": [
         "Naming, not licensing: the theme is called \"Tomorrow Light\" but is not derived from Tomorrow. E23 (#113), which owns theme integration, decides whether to rename it or re-source it from canonical Tomorrow. Either way this record must follow the shipped values."
+      ],
+      "runtime_resources": [
+        {
+          "name": "Tomorrow Light.json",
+          "sha256": "87fee559710cc21c85a8fb424a2e62b191f5bc7c80c4abad208f55d5a3165be9",
+          "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Light.json"
+        }
       ]
     },
     {
@@ -982,6 +1089,38 @@
       "lc": [
         "LC-01",
         "LC-07"
+      ],
+      "runtime_resources": [
+        {
+          "name": "highlights-jsx.scm",
+          "sha256": "0cad1712acaf40804bc5dc7c8476858752c1f549cdf7d8c63c747317be0f8fa6",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights-jsx.scm"
+        },
+        {
+          "name": "highlights-params.scm",
+          "sha256": "bbe7a58cacfb1c954cb0eab44779fd80421ed59b762b975723447207635de50d",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights-params.scm"
+        },
+        {
+          "name": "highlights.scm",
+          "sha256": "d3630ae6dc9b2b27b230b5f8bb92b05cd491fb12bff353dae62a0a6d780461ee",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "bea345407ce1f24bccf2b3c1a128acc14e19301327074285368586e793dcb86d",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/injections.scm"
+        },
+        {
+          "name": "locals.scm",
+          "sha256": "c1dd2cfa1400d397fa974208fc9edfe817be4a3c8b42bb99af5c8d193b1bb753",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/locals.scm"
+        },
+        {
+          "name": "tags.scm",
+          "sha256": "6ef988cce5a428a15b5460e3ee96f1478705f965fc6e848a91a18bfa6c6f0212",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/tags.scm"
+        }
       ]
     },
     {
@@ -1131,6 +1270,28 @@
         "LC-01",
         "LC-04",
         "LC-07"
+      ],
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "b1b2604561026c3701aedbf0f594f69aa0571656eed9d62d139980721e9cdfa9",
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInlineResources/queries/highlights.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "97bf17b9a973db8ee6868f543dd1eabdd81f19b8751a4fcf92db45f74462f4c5",
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInlineResources/queries/injections.scm"
+        },
+        {
+          "name": "highlights.scm",
+          "sha256": "ea193ee33a84d76d1cf5d84f73f438b2a1f13fc59be79ef457cfbd6b264490e6",
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownResources/queries/highlights.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "64b1a6006b40176d8db986cc41350e4f9b292fd06bfedb0abfcdb1fb989aca3e",
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownResources/queries/injections.scm"
+        }
       ]
     },
     {
@@ -1271,7 +1432,19 @@
         "LC-01",
         "LC-07"
       ],
-      "source_revision": "3c99273f9b32a00e38a737e8a0dd37397f931916"
+      "source_revision": "3c99273f9b32a00e38a737e8a0dd37397f931916",
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "25b2a7b5e60f04012c28a5cf2a224311bdb213361ba2c6439bd50ea3fafb0c64",
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQLResources/queries/highlights.scm"
+        },
+        {
+          "name": "indents.scm",
+          "sha256": "c90c797ffe6ccee5912eab2c9b8644ba0db0477ed93cbfefa10c574552348b32",
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQLResources/queries/indents.scm"
+        }
+      ]
     },
     {
       "id": "tree-sitter-swift",
@@ -1488,6 +1661,13 @@
       "open_items": [
         "LC-02: pin the exact Graphviz 16.0.0 source archive and the viz-js 3.30.0 build scripts, record their hashes and publish them through LC-09.",
         "Confirm whether the Graphviz WebAssembly build links other libraries (for example expat) that need their own notices."
+      ],
+      "runtime_resources": [
+        {
+          "name": "viz-global.js",
+          "sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
+          "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/viz-global.js"
+        }
       ]
     },
     {

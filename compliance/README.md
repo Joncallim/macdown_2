@@ -23,8 +23,9 @@ deleted licence text in CI, instead of in a manual audit before release.
 Risks and limits: this is evidence gathering, not legal advice, and no legal
 clearance is claimed. Three things can't be proved from this repository
 alone: the exact SwiftPM revisions (they come from the LC-05 lock file, which
-another task owns), the contents of the final signed app (checked on a Mac
-with `--artifact`), and public source availability (checked when LC-09 hosting
+another task owns), the runtime resources inside the final signed app (checked
+on a Mac with `--artifact`; compiled code can't be checked this way, see below),
+and public source availability (checked when LC-09 hosting
 exists). Those stay **unverified**, never passed, until they are checked.
 
 Non-goals: this doesn't change the app, its dependencies or the lock file,
@@ -38,34 +39,86 @@ Run from the repository root. They need only Python 3.11 or later.
 |---|---|
 | Check the inventory against the tree | `python3 compliance/tools/compliance.py check` |
 | Show everything still blocking public 1.0 | `python3 compliance/tools/compliance.py check --release` |
-| Check a built app or mounted DMG (Mac) | `python3 compliance/tools/compliance.py check --release --artifact /path/MostlyText.app` |
+| Check a built app or mounted DMG (Mac; the signing script runs this) | `python3 compliance/tools/compliance.py check --release --artifact /path/MostlyText.app` |
 | Regenerate the notices file | `python3 compliance/tools/compliance.py notices` |
 | Regenerate the SBOM | `python3 compliance/tools/compliance.py sbom` |
 | Run the tool's own tests | `python3 -m unittest discover -s compliance/tests` |
 
-The `Compliance` workflow runs the tests and the tree check on any change to
-this directory, bundled resources, vendored packages, manifests or lock files.
-It also prints the release ledger for information; that step is expected to
-fail until the release candidate exists.
+The `Compliance` workflow runs the tests and the tree check on every pull
+request and push to `master`. It also prints the release ledger for
+information; that step is expected to fail until the release candidate
+exists. The strict version runs in the signing script's
+`--release-candidate` mode, against the built app.
 
 ## What the check rejects
 
 | Rule | Tree check | `--release` |
 |---|---|---|
 | A file under `MacDown2/` that is neither first-party nor owned by a component | fail | fail |
-| A SwiftPM dependency or local package not in the inventory | fail | fail |
+| A SwiftPM dependency not in the inventory, in any `Package.swift` under `MacDown2/` (found automatically) or in `project.yml`'s `packages:` | fail | fail |
+| A local package that no component owns, or an XcodeGen local package outside `MacDown2/` | fail | fail |
+| A `.package(...)` declaration the checker can't read, such as a registry `id:` or an interpolated URL (it fails closed) | fail | fail |
 | A manifest requirement that differs from the inventory (stale mapping) | fail | fail |
 | A missing or edited licence/notice text, or a vendored file whose digest changed | fail | fail |
+| A runtime resource whose recorded digest no longer matches its source file, or a vendored bundle with no runtime resources declared | fail | fail |
 | A copyleft component with no source location recorded | fail | fail |
 | Generated notices or SBOM out of date with the inventory | fail | fail |
 | No lock file, an unregistered resolved package, or a resolved revision that differs from the inventory | unverified until `lockfile_enforced` is `true` | fail |
 | A component still `pending`, or with open items | allowed | fail |
 | A source location not yet verified by anonymous download | allowed | fail |
-| With `--artifact`: a bundled engine or the notices file missing from the app | — | fail |
+
+Manifests are read by a small comment-aware scanner, not a Swift parser. It
+handles single-line and multi-line `.package(...)` declarations, ignores
+commented-out ones, and extracts `exact:`, `from:`, `branch:` and `revision:`
+requirements, noting `.upToNextMinor/Major`. A range requirement (`"1.0"..<"2.0"`)
+is kept verbatim so it can't silently match a recorded one.
+
+## What `--artifact` proves about a built app
+
+The inventory separates two records:
+- **`files`** is provenance: the source-tree files a component owns, with
+  their digests.
+- **`runtime_resources`** is the must-ship contract: files that must appear
+  in the built `.app`, identified by name and SHA-256.
+
+With `--artifact`, the check fails if any of these is true:
+
+1. A runtime resource is missing from the app, or its bytes differ. The
+   resources are the Mermaid, Viz.js and D2 engines, both themes, the
+   vendored grammars' query files, and all 12 SwiftUIMath fonts, which are
+   matched against their upstream digests.
+2. The app doesn't contain this repository's `LICENSE` and generated
+   `THIRD_PARTY_NOTICES.md`, byte for byte.
+3. The app ships a script, WebAssembly or font file (the extensions listed in
+   `inventory.json` → `artifact.registered_extensions`) whose digest isn't a
+   known runtime resource or a first-party source file.
+
+It does **not** prove anything about compiled code. Swift packages and the C
+grammar parsers are linked into the binary and can't be matched by digest.
+For those, the evidence is the source-tree check, the exact revisions in the
+SBOM and, once LC-05 lands, the lock file. Other data files that dependencies
+copy in (for example the remote grammars' query files) are covered by the
+notices but aren't matched individually.
+
+The Compliance workflow runs on every pull request and every push to
+`master`, with no path filter. A test (`test_compliance_workflow_cannot_be_skipped_by_path_filters`)
+fails if anyone narrows it.
 
 The tests in `tests/test_compliance.py` break a passing fixture one way at a
-time (unregistered component, deleted notice, wrong digest, stale lock-file
-and manifest mapping, missing source location) and assert each fails.
+time and assert that each break fails, including:
+- an unregistered multi-line dependency;
+- an unowned local package;
+- a new nested manifest;
+- an XcodeGen package;
+- a missing or modified runtime resource;
+- a stray font in the app;
+- missing or stale notices;
+- stale digests and mappings.
+
+`tests/test_release_script.py` runs the signing script against stub Apple
+tools. It proves that `--dry-run` records a failing licence gate or a missing
+notarisation log as UNVERIFIED, and that `--release-candidate` stops on
+either.
 
 ## When you change a dependency or bundled file
 

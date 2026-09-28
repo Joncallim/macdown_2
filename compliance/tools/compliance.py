@@ -103,22 +103,120 @@ def walk_distributable(root: Path) -> list[str]:
 # --------------------------------------------------------------------------
 # Manifest and lock-file parsing
 
-PACKAGE_URL = re.compile(r'\.package\(\s*url:\s*"([^"]+)"\s*,(.*)')
-PACKAGE_PATH = re.compile(r'\.package\(\s*path:\s*"([^"]+)"\s*\)')
-REQUIREMENT = re.compile(r'(branch|revision|exact|from):\s*"([^"]+)"')
+PACKAGE_CALL = re.compile(r"\.package\s*\(")
+URL_ARG = re.compile(r'\burl\s*:\s*"([^"\\]*)"')
+PATH_ARG = re.compile(r'\bpath\s*:\s*"([^"\\]*)"')
+REQUIREMENT = re.compile(r'\b(branch|revision|exact|from)\s*:\s*"([^"]+)"')
+RANGE_FORM = re.compile(r"\.(upToNextMinor|upToNextMajor)\s*\(")
 
 
-def parse_manifest(text: str) -> tuple[list[tuple[str, dict]], list[str]]:
-    """Return the url and local-path package dependencies of a Package.swift."""
-    urls, paths = [], []
+def strip_swift_comments(text: str) -> str:
+    """Remove // and /* */ comments, keeping string literals and line breaks.
+
+    This is a lexer for comments and strings only, not a Swift parser: it is
+    just enough to stop a commented-out `.package(...)` from counting and a
+    `//` inside a URL from being mistaken for a comment.
+    """
+    out: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        if text.startswith('"""', i):  # multi-line string literal
+            end = text.find('"""', i + 3)
+            end = n if end < 0 else end + 3
+            out.append(text[i:end])
+            i = end
+        elif text[i] == '"':
+            j = i + 1
+            while j < n and text[j] not in '"\n':
+                j += 2 if text[j] == "\\" else 1
+            out.append(text[i:j + 1])
+            i = j + 1
+        elif text.startswith("//", i):
+            end = text.find("\n", i)
+            i = n if end < 0 else end
+        elif text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            end = n if end < 0 else end + 2
+            out.append("\n" * text.count("\n", i, end))
+            i = end
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
+
+
+def call_arguments(text: str, start: int) -> str | None:
+    """Text between the parenthesis before `start` and its matching close."""
+    depth, i, n = 1, start, len(text)
+    while i < n:
+        char = text[i]
+        if char == '"':
+            i += 1
+            while i < n and text[i] != '"':
+                i += 2 if text[i] == "\\" else 1
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return text[start:i]
+        i += 1
+    return None
+
+
+def requirement_of(args: str) -> dict:
+    """The version requirement of a `.package(url:…)` call, in a comparable form.
+
+    Keyword forms (`exact:`, `from:`, `branch:`, `revision:`) become
+    {keyword: value}. `.upToNextMinor/Major(from:)` also records the form.
+    Anything else (for example a `"1.0.0"..<"2.0.0"` range) is kept verbatim
+    under `unparsed`, so it can never silently match a recorded requirement.
+    """
+    requirement = dict(REQUIREMENT.findall(args))
+    if form := RANGE_FORM.search(args):
+        requirement["form"] = form.group(1)
+    if not requirement:
+        remainder = URL_ARG.sub("", args)
+        requirement["unparsed"] = " ".join(remainder.replace(",", " ").split())
+    return requirement
+
+
+def parse_manifest(text: str) -> tuple[list[tuple[str, dict]], list[str], list[str]]:
+    """Return (url dependencies, local-path dependencies, unrecognised calls).
+
+    Works on single-line and multi-line `.package(...)` declarations alike.
+    Anything that looks like a package declaration but isn't a plain `url:`
+    or `path:` form (a registry `id:`, an interpolated URL, unbalanced
+    parentheses) is returned as unrecognised so the check fails closed.
+    """
+    code = strip_swift_comments(text)
+    urls, paths, unknown = [], [], []
+    for call in PACKAGE_CALL.finditer(code):
+        args = call_arguments(code, call.end())
+        snippet = " ".join(code[call.start():call.end() + 80].split())
+        if args is None:
+            unknown.append(snippet)
+        elif url := URL_ARG.search(args):
+            urls.append((url.group(1), requirement_of(args)))
+        elif path := PATH_ARG.search(args):
+            paths.append(path.group(1))
+        else:
+            unknown.append(" ".join(f".package({args})".split()))
+    return urls, paths, unknown
+
+
+def parse_xcodegen_packages(text: str) -> tuple[list[str], list[str]]:
+    """Remote (`url:`) and local (`path:`) packages from project.yml's top-level `packages:`."""
+    urls, paths, inside = [], [], False
     for raw in text.splitlines():
-        line = raw.strip()
-        if not line.startswith(".package("):
-            continue  # also skips commented-out lines, which start with //
-        if match := PACKAGE_URL.search(line):
-            urls.append((match.group(1), dict(REQUIREMENT.findall(match.group(2)))))
-        elif match := PACKAGE_PATH.search(line):
-            paths.append(match.group(1))
+        line = raw.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+        if not raw[0].isspace():
+            inside = line.strip() == "packages:"
+            continue
+        if inside and (match := re.match(r"\s+(url|path)\s*:\s*['\"]?([^'\"\s]+)", line)):
+            (urls if match.group(1) == "url" else paths).append(match.group(2))
     return urls, paths
 
 
@@ -184,6 +282,21 @@ def check(root: Path, release: bool = False, artifact: Path | None = None) -> Re
             elif sha256_file(path) != entry["sha256"]:
                 report.error(f"{cid}: distributed file digest mismatch: {entry['path']}")
 
+        # Runtime resources: what must appear in the built app. An entry with
+        # a repository path must still match that file, so a changed engine
+        # or theme can't leave a stale artifact contract behind.
+        if component.get("kind") == "vendored-bundle" and not component.get("runtime_resources"):
+            report.error(f"{cid}: a vendored bundle must declare runtime_resources so the built app can be checked")
+        for resource in component.get("runtime_resources", []):
+            if not resource.get("name") or not re.fullmatch(r"[0-9a-f]{64}", resource.get("sha256", "")):
+                report.error(f"{cid}: runtime resource needs a name and a SHA-256: {resource}")
+            elif resource.get("path"):
+                path = root / resource["path"]
+                if not path.is_file():
+                    report.error(f"{cid}: runtime resource source missing: {resource['path']}")
+                elif sha256_file(path) != resource["sha256"]:
+                    report.error(f"{cid}: runtime resource digest is stale: {resource['path']}")
+
         offer = component.get("source_offer")
         if offer and offer.get("required"):
             if not offer.get("location"):
@@ -214,14 +327,19 @@ def check(root: Path, release: bool = False, artifact: Path | None = None) -> Re
         if "*" not in pattern and not (root / pattern).exists():
             report.error(f"{cid}: owned path does not exist: {pattern}")
 
-    # SwiftPM manifests.
+    # SwiftPM manifests: the listed ones plus every Package.swift under
+    # MacDown2/, so a newly added local package can't bring in an unchecked
+    # dependency.
     build_only = {normalise_url(u) for u in inventory.get("build_only_packages", [])}
-    for manifest in inventory.get("manifests", []):
+    manifests = sorted(set(inventory.get("manifests", [])) | {p for p in walk_distributable(root) if p.endswith("/Package.swift")})
+    for manifest in manifests:
         manifest_path = root / manifest
         if not manifest_path.is_file():
             report.error(f"manifest listed in inventory is missing: {manifest}")
             continue
-        urls, paths = parse_manifest(manifest_path.read_text(encoding="utf-8"))
+        urls, paths, unknown = parse_manifest(manifest_path.read_text(encoding="utf-8"))
+        for snippet in unknown:
+            report.error(f"{manifest}: unrecognised package declaration (only url: and path: forms can be checked): {snippet}")
         for url, requirement in urls:
             key = normalise_url(url)
             if key in build_only:
@@ -237,6 +355,22 @@ def check(root: Path, release: bool = False, artifact: Path | None = None) -> Re
             target = (manifest_path.parent / rel).resolve().relative_to(root.resolve()).as_posix()
             if not any(glob_to_regex(p).match(target + "/Package.swift") for _, p in owned):
                 report.error(f"{manifest}: local package {target} is not owned by any inventory component")
+
+    # XcodeGen can add packages to the app directly, bypassing Package.swift.
+    project = root / "MacDown2/project.yml"
+    if project.is_file():
+        urls, paths = parse_xcodegen_packages(project.read_text(encoding="utf-8"))
+        for url in urls:
+            if normalise_url(url) not in by_url and normalise_url(url) not in build_only:
+                report.error(f"MacDown2/project.yml: package {url} is not registered in the inventory")
+        for rel in paths:
+            target = (project.parent / rel).resolve()
+            try:
+                inside = target.relative_to((root / "MacDown2").resolve())
+            except ValueError:
+                inside = None
+            if inside is None or not (target / "Package.swift").is_file():
+                report.error(f"MacDown2/project.yml: local package {rel} is outside MacDown2/ or has no Package.swift, so its dependencies can't be checked")
 
     # Lock file. Until the inventory has been reconciled with the LC-05 lock
     # file (`lockfile_enforced`), lock-file findings are reported as
@@ -284,26 +418,53 @@ def check(root: Path, release: bool = False, artifact: Path | None = None) -> Re
 
 
 def check_artifact(root: Path, inventory: dict, artifact: Path, report: Report) -> None:
-    """Compare a built app (or mounted DMG) with the inventory."""
+    """Compare a built app (or mounted DMG) with the inventory's artifact contract.
+
+    Proves three things by SHA-256, anywhere inside the artifact:
+    1. every component's runtime_resources is present;
+    2. the required first-party files (licence, generated notices) are present;
+    3. no file with a registered extension (scripts, WebAssembly, fonts) ships
+       unless it is a known runtime resource or a first-party source file.
+    Compiled code can't be matched this way; the source-tree check and the
+    SBOM cover it.
+    """
     if not artifact.exists():
         report.error(f"artifact not found: {artifact}")
         return
-    digests: dict[str, list[str]] = {}
+    contract = inventory.get("artifact", {})
+    shipped: dict[str, list[str]] = {}
     for dirpath, _, filenames in os.walk(artifact):
         for name in filenames:
             path = Path(dirpath) / name
             if path.is_symlink() or not path.is_file():
                 continue
-            digests.setdefault(sha256_file(path), []).append(path.relative_to(artifact).as_posix())
+            shipped.setdefault(sha256_file(path), []).append(path.relative_to(artifact).as_posix())
+
+    known: set[str] = set()
     for component in inventory["components"]:
-        if component.get("kind") != "vendored-bundle":
-            continue
-        for entry in component.get("files", []):
-            if entry["sha256"] not in digests:
-                report.error(f"{component['id']}: {Path(entry['path']).name} with the inventoried digest is not in the artifact")
-    notices = sha256_file(root / NOTICES) if (root / NOTICES).is_file() else None
-    if notices is None or notices not in digests:
-        report.error("artifact does not contain the generated THIRD_PARTY_NOTICES.md from this inventory")
+        for resource in component.get("runtime_resources", []):
+            known.add(resource["sha256"])
+            if resource["sha256"] not in shipped:
+                report.error(f"{component['id']}: required runtime resource {resource['name']} ({resource['sha256'][:12]}…) is not in the artifact")
+
+    for rel in contract.get("required_first_party", []):
+        path = root / rel
+        digest = sha256_file(path) if path.is_file() else None
+        if digest is None or digest not in shipped:
+            report.error(f"artifact does not contain the generated {Path(rel).name} from this repository" if rel.startswith(GENERATED)
+                         else f"artifact does not contain first-party {rel} from this repository")
+        if digest:
+            known.add(digest)
+
+    extensions = tuple(contract.get("registered_extensions", []))
+    first_party = inventory["first_party"]["paths"]
+    for rel in walk_distributable(root):
+        if rel.endswith(extensions) and matches_any(rel, first_party):
+            known.add(sha256_file(root / rel))
+    for digest, paths in sorted(shipped.items()):
+        for rel in paths:
+            if rel.lower().endswith(extensions) and digest not in known:
+                report.error(f"artifact ships an unregistered runtime file: {rel}")
 
 
 # --------------------------------------------------------------------------

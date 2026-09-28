@@ -3,30 +3,18 @@ name: Compliance
 # Third-party licence, provenance and SBOM gate (#148, LC-01/LC-07).
 # Runs on Linux with the Python standard library only; it needs no Xcode,
 # network access or credentials. Kept separate from ci.yml on purpose.
+#
+# Deliberately NO `paths:` filter. The check walks the whole MacDown2/ tree,
+# every Package.swift and project.yml, so any path filter narrower than the
+# repository risks letting a new bundled file or dependency merge without the
+# check running. The job takes about ten seconds; running it on every change
+# is cheaper than maintaining a path list. compliance/tests asserts this.
 
 on:
   push:
     branches: [master]
-    paths:
-      - 'compliance/**'
-      - 'LICENSE'
-      - 'MacDown2/Packages/**/Resources/**'
-      - 'MacDown2/Packages/MacDownKit/Sources/Themes/Themes/**'
-      - 'MacDown2/Packages/TreeSitter*/**'
-      - 'MacDown2/Packages/**/Package.swift'
-      - 'MacDown2/**/Package.resolved'
-      - '.github/workflows/compliance.yml'
   pull_request:
     branches: [master]
-    paths:
-      - 'compliance/**'
-      - 'LICENSE'
-      - 'MacDown2/Packages/**/Resources/**'
-      - 'MacDown2/Packages/MacDownKit/Sources/Themes/Themes/**'
-      - 'MacDown2/Packages/TreeSitter*/**'
-      - 'MacDown2/Packages/**/Package.swift'
-      - 'MacDown2/**/Package.resolved'
-      - '.github/workflows/compliance.yml'
   workflow_dispatch: {}
 
 permissions:
@@ -51,6 +39,7 @@ jobs:
       - name: Release-gate ledger (informational until the release candidate)
         # Lists what still blocks public 1.0 (pending lock file, open items,
         # unverified source locations). It is expected to fail until then,
-        # so it does not fail this job; E17 runs it without this override
-        # against the exact signed candidate.
+        # so it does not fail this job. The strict release check runs in
+        # release/macos/sign-notarize-dmg.sh --release-candidate, against the
+        # exact signed app, where any failure stops the pipeline.
         run: python3 compliance/tools/compliance.py check --release || true
