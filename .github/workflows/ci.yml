@@ -57,20 +57,32 @@ jobs:
           brew install xcodegen
       - name: Package build + tests
         working-directory: MacDown2/Packages/MacDownKit
+        # --force-resolved-versions builds exactly the revisions in the
+        # committed Package.resolved and fails if it is missing, stale or
+        # unresolvable, instead of re-resolving. SwiftTreeSitter tracks
+        # `branch: "main"`, so re-resolving could silently change it (#148 LC-05).
         run: |
-          swift build
+          swift build --force-resolved-versions
           # Monitor/save-queue/performance tests share temporary filesystem
           # resources; concurrent XCTest scheduling makes these load-sensitive
           # tests exceed their bounded coordination timeouts on CI. Keep the
           # full suite and its assertions intact, but serialize execution.
-          swift test --no-parallel
+          swift test --no-parallel --force-resolved-versions
       - name: Generate Xcode project
         working-directory: MacDown2
         run: xcodegen generate
+      - name: Pin Xcode to the committed package versions
+        id: pin-xcode-packages
+        # The generated project is git-ignored, so copy MacDownKit's committed
+        # lock file into its workspace. Every xcodebuild below passes
+        # -onlyUsePackageVersionsFromResolvedFile. Xcode ignores that flag and
+        # re-resolves if the file is absent, so the copy is checked again after
+        # the builds.
+        run: MacDown2/scripts/pin-xcode-package-versions.sh
       - name: Build app + CLI
         run: |
-          xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' build
-          xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme macdown2 -destination 'platform=macOS' build
+          xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build
+          xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme macdown2 -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build
       - name: Build app + CLI (Release)
         # EPIC-14B second-adversarial-pass finding #6: the DoD evidence
         # claimed "app/CLI/Release all green" without this ever actually
@@ -81,9 +93,9 @@ jobs:
         # PR without this.
         run: |
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -configuration Release \
-            -destination 'platform=macOS' build
+            -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme macdown2 -configuration Release \
-            -destination 'platform=macOS' build
+            -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build
       - name: Build for testing (app + UI tests; UI tests run requires macOS 26+ GUI)
         # -enableCodeCoverage NO: documented in planning/epic-10-implementation.md
         # ("Local build-for-testing coverage quirk"). Xcode 26's build-for-testing
@@ -96,7 +108,7 @@ jobs:
         # locally. No coverage report is consumed anywhere in this pipeline.
         run: |
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 \
-            -destination 'platform=macOS' -enableCodeCoverage NO build-for-testing
+            -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -enableCodeCoverage NO build-for-testing
       - name: Run MacDown2Tests (non-UI app-target tests)
         # EPIC-14B adversarial-review finding #12: app-target adapter/undo/
         # lifecycle tests (e.g. TextFilterCoordinatorTests) previously had
@@ -111,5 +123,13 @@ jobs:
         # manual/unverified in the release ledger, not run here.
         run: |
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 \
-            -destination 'platform=macOS' -enableCodeCoverage NO -parallel-testing-enabled NO \
+            -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -enableCodeCoverage NO -parallel-testing-enabled NO \
             -only-testing:MacDown2Tests test-without-building
+      - name: Verify every build used the committed package versions
+        # Runs after all xcodebuild calls, including when a later build or test
+        # step failed, so a removed or rewritten lock is always reported once the
+        # pin step has run.
+        if: ${{ !cancelled() && steps.pin-xcode-packages.outcome == 'success' }}
+        run: |
+          MacDown2/scripts/pin-xcode-package-versions.sh --check
+          git diff --exit-code -- MacDown2/Packages/MacDownKit/Package.resolved
