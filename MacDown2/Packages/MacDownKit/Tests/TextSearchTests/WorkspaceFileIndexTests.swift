@@ -65,6 +65,49 @@ struct WorkspaceFileIndexTests {
         #expect(results.map(\.relativePath) == ["visible.txt"])
     }
 
+    /// Hidden entries are indexed (tagged, not dropped by the walk itself —
+    /// see `IndexedPath.isHidden`'s own doc comment), so folder search
+    /// (`WorkspaceSearchEngine`, Slice 7, issue #112's own "hidden-file
+    /// toggle") can opt into them via `allPaths(includeHidden: true)`
+    /// without a second directory walk, while Quick Open's `query(_:)`
+    /// keeps excluding them unconditionally (`excludesHiddenFiles` above)
+    /// regardless of this same underlying data.
+    @Test func allPathsIncludeHiddenSurfacesHiddenEntriesQuickOpenNeverDoes() async throws {
+        let tree = try TempTree { _ in }
+        try tree.write("visible.txt")
+        try tree.write(".hidden")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+
+        let defaultPaths = await index.allPaths()
+        #expect(defaultPaths.map(\.relativePath) == ["visible.txt"], "default matches Quick Open's own behavior")
+
+        let withHidden = await Set(index.allPaths(includeHidden: true).map(\.relativePath))
+        #expect(withHidden == ["visible.txt", ".hidden"])
+
+        // Quick Open itself is unaffected either way -- there is no way to
+        // ask `query(_:)` for hidden entries.
+        #expect(await index.query("").map(\.relativePath) == ["visible.txt"])
+    }
+
+    /// A non-dotfile INSIDE a hidden directory (e.g. `.github/workflows/`)
+    /// must itself be treated as hidden too, matching how every comparable
+    /// tool (ripgrep, VS Code, `.gitignore`) treats hidden directories --
+    /// not just files whose own basename starts with `.`.
+    @Test func filesInsideAHiddenDirectoryAreThemselvesTaggedHidden() async throws {
+        let tree = try TempTree { _ in }
+        try tree.write("visible.txt")
+        try tree.write(".github/workflows/ci.yml")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+
+        #expect(await index.query("").map(\.relativePath) == ["visible.txt"])
+        let withHidden = await Set(index.allPaths(includeHidden: true).map(\.relativePath))
+        #expect(withHidden == ["visible.txt", ".github/workflows/ci.yml"])
+    }
+
     @Test func queryRanksFuzzyMatches() async throws {
         let tree = try TempTree { _ in }
         try tree.write("WindowCoordinator.swift")

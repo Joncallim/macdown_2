@@ -7,6 +7,14 @@ public struct IndexedPath: Sendable, Equatable, Hashable {
     /// Root-relative path, `/`-separated, no leading slash.
     public let relativePath: String
     public let basename: String
+    /// True when this entry's own basename starts with `.`, OR any
+    /// directory component between the root and this entry does. Computed
+    /// once at walk time (issue #112's own "hidden-file toggle" needs to
+    /// know this per entry) so Quick Open (`query(_:)`, always excludes
+    /// hidden entries — unchanged behavior) and folder search
+    /// (`allPaths(includeHidden:)`, opt-in) can both read the same single
+    /// walk's result rather than needing two separate directory walks.
+    public let isHidden: Bool
     /// Folded and decomposed once at construction (index-build time, which
     /// happens far less often than every Quick Open keystroke), not
     /// recomputed on every `query(_:)` call — see
@@ -15,9 +23,10 @@ public struct IndexedPath: Sendable, Equatable, Hashable {
     let foldedRelativePath: FuzzyPathScore.FoldedText
     let foldedBasename: FuzzyPathScore.FoldedText
 
-    public init(relativePath: String, basename: String) {
+    public init(relativePath: String, basename: String, isHidden: Bool = false) {
         self.relativePath = relativePath
         self.basename = basename
+        self.isHidden = isHidden
         foldedRelativePath = FuzzyPathScore.FoldedText(relativePath)
         foldedBasename = FuzzyPathScore.FoldedText(basename)
     }
@@ -114,6 +123,22 @@ public actor WorkspaceFileIndex {
         state = .empty
     }
 
+    /// Every currently-indexed path, in the last rebuild's own walk order.
+    /// Unlike `query(_:limit:)` (a fuzzy-ranked, capped subset for Quick
+    /// Open), folder search (`WorkspaceSearchEngine`, Slice 7) needs every
+    /// path the index knows about, since it is deciding which FILES to open
+    /// and search, not ranking path strings against a typed query.
+    ///
+    /// `includeHidden` is folder search's own opt-in (issue #112's
+    /// hidden-file toggle, `FolderSearchFilter.includeHidden`): `false` (the
+    /// default) matches every existing caller's expectations exactly,
+    /// including this method's own pre-existing behavior before hidden
+    /// entries were tagged rather than dropped at walk time. Quick Open's
+    /// `query(_:)` never calls this with `true` and has no way to.
+    public func allPaths(includeHidden: Bool = false) -> [IndexedPath] {
+        includeHidden ? paths : paths.filter { !$0.isHidden }
+    }
+
     /// Ranked matches for `query`, capped at `limit`. Never touches disk —
     /// operates entirely on the last-built in-memory snapshot, so a
     /// keystroke never triggers a new traversal (the epic's explicit
@@ -139,13 +164,20 @@ public actor WorkspaceFileIndex {
     /// the same way `rebuild(root:)` takes an external `URL` without
     /// depending on `FileTreeModel` itself.
     public func query(_ query: String, limit: Int = 100, recentRelativePaths: Set<String> = []) -> [IndexedPath] {
-        guard !query.isEmpty else { return Array(paths.prefix(limit)) }
+        guard !query.isEmpty else { return Array(paths.lazy.filter { !$0.isHidden }.prefix(limit)) }
         let foldedQuery = FuzzyPathScore.FoldedText(query)
         let candidates = candidateIndices(for: foldedQuery)
         var scored: [(path: IndexedPath, score: Double)] = []
         scored.reserveCapacity(candidates.count)
         for index in candidates {
             let path = paths[index]
+            // Quick Open never surfaces hidden files (issue #112's
+            // hidden-file toggle is a folder-search-only concern, per
+            // `IndexedPath.isHidden`'s own doc comment) -- `paths` now
+            // contains hidden entries too (tagged, not dropped, so folder
+            // search can opt into them via `allPaths(includeHidden:)`), so
+            // this filter is what keeps Quick Open's own behavior unchanged.
+            guard !path.isHidden else { continue }
             guard let score = FuzzyPathScore.score(
                 foldedQuery: foldedQuery,
                 foldedPath: path.foldedRelativePath,
@@ -279,102 +311,4 @@ public actor WorkspaceFileIndex {
     public static let defaultExcludedDirectoryNames: Set<String> = [
         ".git", ".build", ".swiftpm", "node_modules", "DerivedData", ".DS_Store",
     ]
-}
-
-/// The recursive walk itself, isolated from the actor so it can run inside
-/// `Task.detached` without capturing actor state, and so its symlink-loop
-/// safety (new; `FileTree`'s own traversal is single-level/lazy and has no
-/// equivalent guard — see `planning/epic-22-implementation.md` §2.1) is
-/// independently testable.
-///
-/// Deliberately does not depend on `FileTree`'s `DirectoryReading`/
-/// `FileSystemDirectoryReader`/`DirectoryEntry` (single-level-listing types
-/// designed for the sidebar's lazy, expand-on-click model) — `TextSearch`
-/// depends only on `FileCore` + Foundation (architecture doc §5.1), so this
-/// is a small, deliberate, local duplication of "list one directory's
-/// entries with the resource keys a recursive walk needs," not a shared
-/// primitive.
-struct DirectoryWalker: Sendable {
-    func walk(root: URL, excludedDirectoryNames: Set<String>) -> [IndexedPath] {
-        var results: [IndexedPath] = []
-        var visitedDirectoryIdentities: Set<PhysicalFileIdentity.FileObjectID> = []
-        walk(
-            directory: root.standardizedFileURL,
-            relativeTo: root.standardizedFileURL,
-            excludedDirectoryNames: excludedDirectoryNames,
-            visited: &visitedDirectoryIdentities,
-            into: &results
-        )
-        return results
-    }
-
-    private static let resourceKeys: Set<URLResourceKey> = [
-        .isDirectoryKey,
-        .isHiddenKey,
-        .isPackageKey,
-        .isSymbolicLinkKey,
-    ]
-
-    private func walk(
-        directory: URL,
-        relativeTo root: URL,
-        excludedDirectoryNames: Set<String>,
-        visited: inout Set<PhysicalFileIdentity.FileObjectID>,
-        into results: inout [IndexedPath]
-    ) {
-        guard !Task.isCancelled else { return }
-        guard let identity = PhysicalFileIdentity(url: directory).fileObjectID else { return }
-        guard visited.insert(identity).inserted else { return } // symlink loop guard
-        guard let children = try? FileManager.default.contentsOfDirectory(
-            at: directory.resolvingSymlinksInPath(),
-            includingPropertiesForKeys: Array(Self.resourceKeys),
-            options: []
-        ) else { return }
-
-        for child in children {
-            guard !Task.isCancelled else { return }
-            guard let values = try? child.resourceValues(forKeys: Self.resourceKeys) else { continue }
-            guard values.isHidden != true else { continue }
-            let name = child.lastPathComponent
-            // Resource values describe the link itself on some file
-            // systems, so a symlink to a directory can report
-            // `isDirectory == false` when queried unresolved — mirrors
-            // `FileSystemDirectoryReader.contents(of:)`'s existing
-            // resolve-and-recheck for symlinks (`DirectoryReading.swift`),
-            // without which a symlinked directory would be misclassified as
-            // a file and its subtree silently dropped from the index.
-            let isSymbolicLink = values.isSymbolicLink == true
-            let targetValues = isSymbolicLink
-                ? try? child.resolvingSymlinksInPath().resourceValues(forKeys: Self.resourceKeys)
-                : nil
-            let isDirectory = values.isDirectory == true || targetValues?.isDirectory == true
-            let isPackage = values.isPackage == true || targetValues?.isPackage == true
-            // Rebind to the lexical parent so a symlinked root's children
-            // keep the user-facing path, matching `FileTree`'s own
-            // lexical-parent convention (`DirectoryReading.swift`).
-            let lexicalChild = directory.appendingPathComponent(name, isDirectory: isDirectory)
-            if isDirectory, !isPackage {
-                guard !excludedDirectoryNames.contains(name) else { continue }
-                walk(
-                    directory: lexicalChild,
-                    relativeTo: root,
-                    excludedDirectoryNames: excludedDirectoryNames,
-                    visited: &visited,
-                    into: &results
-                )
-            } else {
-                results.append(IndexedPath(
-                    relativePath: relativePath(of: lexicalChild, relativeTo: root),
-                    basename: name
-                ))
-            }
-        }
-    }
-
-    private func relativePath(of url: URL, relativeTo root: URL) -> String {
-        let rootComponents = root.pathComponents
-        let components = url.pathComponents
-        guard components.count > rootComponents.count else { return url.lastPathComponent }
-        return components[rootComponents.count...].joined(separator: "/")
-    }
 }

@@ -10,21 +10,37 @@ public enum TextSearchEngine {
     /// not a malformed one, it simply matches nothing) or when the query
     /// truly does not occur. Throws only for a regex query that fails to
     /// compile.
+    ///
+    /// `matchLimit`, when non-`nil`, stops scanning as soon as that many
+    /// matches have been found, rather than finding every match and only
+    /// discarding the excess afterward — needed so a single pathological
+    /// file (e.g. a common single character repeated millions of times)
+    /// cannot defeat `WorkspaceSearchEngine`'s own bounded-accumulation
+    /// requirement (issue #112) by forcing a full-file, unbounded
+    /// `[SearchMatch]` allocation before its result is truncated. `nil` (the
+    /// default) is fully unbounded — current-document Find's own behavior
+    /// is unchanged by this parameter's existence.
     public static func matches(
         in text: String,
         query: String,
-        options: SearchOptions
+        options: SearchOptions,
+        matchLimit: Int? = nil
     ) throws(SearchQueryError) -> [SearchMatch] {
         guard !query.isEmpty else { return [] }
         if options.isRegex {
-            return try regexMatches(in: text, pattern: query, options: options)
+            return try regexMatches(in: text, pattern: query, options: options, matchLimit: matchLimit)
         }
-        return literalMatches(in: text, query: query, options: options)
+        return literalMatches(in: text, query: query, options: options, matchLimit: matchLimit)
     }
 
     // MARK: - Literal
 
-    private static func literalMatches(in text: String, query: String, options: SearchOptions) -> [SearchMatch] {
+    private static func literalMatches(
+        in text: String,
+        query: String,
+        options: SearchOptions,
+        matchLimit: Int?
+    ) -> [SearchMatch] {
         let nsText = text as NSString
         guard nsText.length > 0 else { return [] }
         var compareOptions: NSString.CompareOptions = options.isCaseSensitive ? [] : [.caseInsensitive]
@@ -38,6 +54,9 @@ public enum TextSearchEngine {
         var results: [SearchMatch] = []
         var searchStart = 0
         while searchStart <= nsText.length {
+            if let matchLimit, results.count >= matchLimit {
+                break
+            }
             let searchRange = NSRange(location: searchStart, length: nsText.length - searchStart)
             let found = nsText.range(of: query, options: compareOptions, range: searchRange)
             guard found.location != NSNotFound else { break }
@@ -106,7 +125,8 @@ public enum TextSearchEngine {
     private static func regexMatches(
         in text: String,
         pattern: String,
-        options: SearchOptions
+        options: SearchOptions,
+        matchLimit: Int?
     ) throws(SearchQueryError) -> [SearchMatch] {
         var regexOptions: NSRegularExpression.Options = []
         if !options.isCaseSensitive {
@@ -128,9 +148,12 @@ public enum TextSearchEngine {
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
         var results: [SearchMatch] = []
-        regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
+        regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, stop in
             guard let match else { return }
             results.append(SearchMatch(range: match.range))
+            if let matchLimit, results.count >= matchLimit {
+                stop.pointee = true
+            }
         }
         return results
     }
