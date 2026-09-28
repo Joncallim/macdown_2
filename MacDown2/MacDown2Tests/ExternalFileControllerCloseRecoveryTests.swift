@@ -113,6 +113,62 @@ struct ExternalFileControllerCloseRecoveryTests {
         #expect(restored.activeDocument?.text == edited.text)
     }
 
+    /// Issue #168. The window's debounced session save writes the same dirty
+    /// snapshot (same document, version and lifetime) that a pending persist
+    /// retry is about to write. The buffer refuses to re-apply a version it
+    /// has already recorded, so the retry must accept the already-secured
+    /// snapshot rather than re-arm itself and keep the cleanup notice forever.
+    /// The session save is forced between the failure and the retry here;
+    /// on CI it happened there by timing.
+    @Test func persistRetryAcceptsASnapshotTheSessionSaveAlreadySecured() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let buffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let session = WorkspaceSessionStore(fileURL: directory.appendingPathComponent("session.json"))
+        let store = TabStore(sessionStore: session, recoveryBuffer: buffer)
+        let document = FileDocument(text: "draft", recoveryBuffer: buffer).updatingText("draft")
+        store.newTab(document: document)
+        let model = WorkspaceModel(tabStore: store)
+        let helpers = ExternalFileControllerRecoveryTests()
+        guard let coordinator = helpers.makeCoordinator(directory: directory, recoveryBuffer: buffer) else {
+            Issue.record("Unable to create isolated coordinator")
+            return
+        }
+        let executor = FailOnceClosePreservationExecutor()
+        let controller = helpers.makeWindowController(
+            model: model,
+            coordinator: coordinator,
+            recoveryExecutor: executor
+        )
+        coordinator.controllers = [controller]
+
+        #expect(await document.persistRecovery())
+        await executor.failNext(.retire)
+        #expect(await !(controller.externalFileController.retireRecovery(
+            for: document,
+            resumeCloseOnSuccess: true
+        )).isAbsent)
+        store.updateActiveDocument { _ in document.updatingText("edited before close retry") }
+        await executor.failNext(.persist)
+        controller.externalFileController.retryRecoveryCleanup()
+        await controller.externalFileController.drainRecovery()
+        #expect(controller.externalFileController.recoveryRetryKind == .persist)
+        let fresh = try #require(model.activeDocument)
+
+        #expect(await coordinator.saveSession())
+
+        controller.externalFileController.retryRecoveryCleanup()
+        await controller.externalFileController.drainRecovery()
+
+        #expect(controller.externalFileController.recoveryRetryKind == nil)
+        #expect(controller.externalFileController.notice == .none)
+        let relaunched = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        #expect(try await relaunched.load(for: fresh.id, epoch: fresh.recoveryEpoch) == fresh.text)
+    }
+
     @Test func nativeCloseRefusesAWindowWithPendingWorkspaceRecoveryCleanup() async throws {
         let fixture = try await pendingCleanupFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }

@@ -1,0 +1,1210 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "d2",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/terrastruct/d2"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "62d683916809e58087f04e2555b9c2ccb06a3f7241dffc991addccd978134394"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MPL-2.0"
+        }
+      ],
+      "name": "D2 (@terrastruct/d2)",
+      "pedigree": {
+        "notes": "Trailing `export{lw as D2}` replaced with `window.D2=lw;` (one statement; every other byte identical). Documented in NOTICE.txt."
+      },
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "vendored-bundle"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        },
+        {
+          "name": "mostlytext:file-count",
+          "value": "1"
+        }
+      ],
+      "purl": "pkg:npm/%40terrastruct/d2@0.1.33",
+      "type": "library",
+      "version": "0.1.33"
+    },
+    {
+      "bom-ref": "libyaml",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/yaml/libyaml"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "libyaml (vendored inside Yams as CYaml)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/yaml/libyaml@2c891fc7a770e8ba2fec34fc6b545c672beb37e6",
+      "type": "library",
+      "version": "0.2.5 (Yams import 2021-03, plus Yams' 2024 nesting-depth fix)"
+    },
+    {
+      "bom-ref": "mermaid",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/mermaid-js/mermaid"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "33c18335cf2cb0d2d3b9f2abdb38f81f346bd88d23e34255633b60c73b13709c"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Mermaid",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "vendored-bundle"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        },
+        {
+          "name": "mostlytext:file-count",
+          "value": "1"
+        }
+      ],
+      "purl": "pkg:npm/mermaid@11.17.2",
+      "type": "library",
+      "version": "11.17.2"
+    },
+    {
+      "bom-ref": "neon",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/ChimeHQ/Neon"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "Neon",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/chimehq/neon@484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+      "type": "library",
+      "version": "484d6fb"
+    },
+    {
+      "bom-ref": "nvim-treesitter-markdown-queries",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/nvim-treesitter/nvim-treesitter"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "name": "nvim-treesitter Markdown highlight queries (via tree-sitter-markdown)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "attribution"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "not-applicable"
+        }
+      ],
+      "type": "library",
+      "version": "2022-06 import"
+    },
+    {
+      "bom-ref": "rearrange",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/ChimeHQ/Rearrange"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "Rearrange",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "lockfile"
+        }
+      ],
+      "purl": "pkg:github/chimehq/rearrange@4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+      "type": "library",
+      "version": "2.1.1"
+    },
+    {
+      "bom-ref": "swift-cmark",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/swiftlang/swift-cmark"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-2-Clause AND MIT"
+        }
+      ],
+      "name": "swift-cmark (cmark-gfm)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/swiftlang/swift-cmark@924936d0427cb25a61169739a7660230bffa6ea6",
+      "type": "library",
+      "version": "0.8.0"
+    },
+    {
+      "bom-ref": "swift-concurrency-extras",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/pointfreeco/swift-concurrency-extras"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "swift-concurrency-extras",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "lockfile"
+        }
+      ],
+      "purl": "pkg:github/pointfreeco/swift-concurrency-extras@5fa253428866f2360c3754e88537f700ed2656b5",
+      "type": "library",
+      "version": "1.4.1"
+    },
+    {
+      "bom-ref": "swift-markdown",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/swiftlang/swift-markdown"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "name": "swift-markdown",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/swiftlang/swift-markdown@3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+      "type": "library",
+      "version": "0.8.0"
+    },
+    {
+      "bom-ref": "swifttreesitter",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/ChimeHQ/SwiftTreeSitter"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "name": "SwiftTreeSitter",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "lockfile"
+        }
+      ],
+      "purl": "pkg:github/chimehq/swifttreesitter@cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+      "type": "library",
+      "version": "main"
+    },
+    {
+      "bom-ref": "swiftui-math",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/gonzalezreal/swiftui-math"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "SwiftUIMath",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/gonzalezreal/swiftui-math@0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+      "type": "library",
+      "version": "0.1.0"
+    },
+    {
+      "bom-ref": "swiftui-math-fonts",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/gonzalezreal/swiftui-math"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "OFL-1.1 AND LicenseRef-GUST-Font-License AND MIT"
+        }
+      ],
+      "name": "Math fonts bundled by SwiftUIMath",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm-resource"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/gonzalezreal/swiftui-math@0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+      "type": "library",
+      "version": "0.1.0"
+    },
+    {
+      "bom-ref": "textual",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/gonzalezreal/textual"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Textual",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/gonzalezreal/textual@01b51875a5406eefc95f52a058cb059e7bc94dc4",
+      "type": "library",
+      "version": "0.5.0"
+    },
+    {
+      "bom-ref": "theme-tomorrow-dark",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/chriskempson/tomorrow-theme"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2f6debe020ccc248035b394ba5bb3c1720130c086384b9c1f1ceeb535495eb61"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Editor theme “Tomorrow Dark” (colour values)",
+      "pedigree": {
+        "notes": "Colour values re-expressed as this app's JSON theme format and mapped to tree-sitter capture names."
+      },
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "data"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        },
+        {
+          "name": "mostlytext:file-count",
+          "value": "1"
+        }
+      ],
+      "purl": "pkg:github/chriskempson/tomorrow-theme@ccf6666d888198d341b26b3a99d0bc96500ad503",
+      "type": "data",
+      "version": "n/a"
+    },
+    {
+      "bom-ref": "theme-tomorrow-light",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/primer/github-syntax-light"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e69b56879eda7abdcc84a51158ae5a3c4669aad4343e7631298f35329412e3e6"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Editor theme “Tomorrow Light” (colour values)",
+      "pedigree": {
+        "notes": "Token colours taken from GitHub Light syntax v0.4.1; chrome colours (#2d2d2d text, #6c4f6c caret, #b4d7ff selection) are local choices with no identified upstream."
+      },
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "data"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        },
+        {
+          "name": "mostlytext:file-count",
+          "value": "1"
+        }
+      ],
+      "purl": "pkg:github/primer/github-syntax-light@9b5f41973c9d804164b52a99d3adb61c56c29d36",
+      "type": "data",
+      "version": "n/a"
+    },
+    {
+      "bom-ref": "tree-sitter",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter (runtime)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "lockfile"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter@da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+      "type": "library",
+      "version": "0.25.10"
+    },
+    {
+      "bom-ref": "tree-sitter-bash",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-bash"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-bash",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-bash@a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+      "type": "library",
+      "version": "0.25.1"
+    },
+    {
+      "bom-ref": "tree-sitter-cpp",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-cpp"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-cpp",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-cpp@f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+      "type": "library",
+      "version": "0.23.4"
+    },
+    {
+      "bom-ref": "tree-sitter-css",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-css"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-css",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-css@c0d581e32d183a536731ed6c3a72758b27e20411",
+      "type": "library",
+      "version": "0.23.2"
+    },
+    {
+      "bom-ref": "tree-sitter-html",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-html"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-html",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "lockfile"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-html@5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+      "type": "library",
+      "version": "0.23.2"
+    },
+    {
+      "bom-ref": "tree-sitter-javascript",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-javascript"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "00b52ab8cc62972e3467cf8692201ee44ffdbf9fb124ee9743daa66cb2d3ae00"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-javascript",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "vendored-source"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        },
+        {
+          "name": "mostlytext:file-count",
+          "value": "16"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-javascript@44c892e0be055ac465d5eeddae6d3e194424e7de",
+      "type": "library",
+      "version": "0.25.0"
+    },
+    {
+      "bom-ref": "tree-sitter-json",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-json"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-json",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "lockfile"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-json@ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+      "type": "library",
+      "version": "0.24.8"
+    },
+    {
+      "bom-ref": "tree-sitter-markdown",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "51d3e2059e7a2f7616a89cae0f384cb94b7c1a97f97e88846f34b28c87ac665a"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-markdown",
+      "pedigree": {
+        "notes": "Capture names in the two highlights.scm query files rewritten to this app's theme key space; see the package README."
+      },
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "vendored-source"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        },
+        {
+          "name": "mostlytext:file-count",
+          "value": "21"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter-grammars/tree-sitter-markdown@f969cd3ae3f9fbd4e43205431d0ae286014c05b5",
+      "type": "library",
+      "version": "0.5.3"
+    },
+    {
+      "bom-ref": "tree-sitter-python",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-python"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-python",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-python@bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+      "type": "library",
+      "version": "0.23.6"
+    },
+    {
+      "bom-ref": "tree-sitter-ruby",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-ruby"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-ruby",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-ruby@71bd32fb7607035768799732addba884a37a6210",
+      "type": "library",
+      "version": "0.23.1"
+    },
+    {
+      "bom-ref": "tree-sitter-sql",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/DerekStride/tree-sitter-sql"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1f49ecd97cf52d63edfac47331c2082527089424af6b605bf2a932e61ead58bb"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-sql",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "vendored-source"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        },
+        {
+          "name": "mostlytext:file-count",
+          "value": "12"
+        }
+      ],
+      "purl": "pkg:github/derekstride/tree-sitter-sql@851e9cb257ba7c66cc8c14214a31c44d2f1e954e",
+      "type": "library",
+      "version": "0.3.11-55-g3c99273"
+    },
+    {
+      "bom-ref": "tree-sitter-swift",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/alex-pinkus/tree-sitter-swift"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-swift",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/alex-pinkus/tree-sitter-swift@31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+      "type": "library",
+      "version": "0.7.3-with-generated-files"
+    },
+    {
+      "bom-ref": "tree-sitter-toml",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter-grammars/tree-sitter-toml"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-toml",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter-grammars/tree-sitter-toml@64b56832c2cffe41758f28e05c756a3a98d16f41",
+      "type": "library",
+      "version": "0.7.0"
+    },
+    {
+      "bom-ref": "tree-sitter-typescript",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter/tree-sitter-typescript"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-typescript",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter/tree-sitter-typescript@f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+      "type": "library",
+      "version": "0.23.2"
+    },
+    {
+      "bom-ref": "tree-sitter-xml",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter-grammars/tree-sitter-xml"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-xml",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter-grammars/tree-sitter-xml@4b64dd3a03ec002258d6268d712fd93716d6ab57",
+      "type": "library",
+      "version": "0.7.0"
+    },
+    {
+      "bom-ref": "tree-sitter-yaml",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tree-sitter-grammars/tree-sitter-yaml"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "tree-sitter-yaml",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/tree-sitter-grammars/tree-sitter-yaml@b733d3f5f5005890f324333dd57e1f0badec5c87",
+      "type": "library",
+      "version": "0.7.0"
+    },
+    {
+      "bom-ref": "viz-js",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/mdaines/viz-js"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ae6930127530c568c6b5ababad77ee1a266dc4486183f661f7194b3ad8071df5"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT AND EPL-2.0"
+        }
+      ],
+      "name": "Viz.js (@viz-js/viz)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "vendored-bundle"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        },
+        {
+          "name": "mostlytext:file-count",
+          "value": "1"
+        }
+      ],
+      "purl": "pkg:npm/%40viz-js/viz@3.30.0",
+      "type": "library",
+      "version": "3.30.0"
+    },
+    {
+      "bom-ref": "yams",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/jpsim/Yams"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Yams",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/jpsim/yams@a27b21e0c81c5bf42049b897a62aaf387e80f279",
+      "type": "library",
+      "version": "6.2.2"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "d2",
+        "libyaml",
+        "mermaid",
+        "neon",
+        "nvim-treesitter-markdown-queries",
+        "rearrange",
+        "swift-cmark",
+        "swift-concurrency-extras",
+        "swift-markdown",
+        "swifttreesitter",
+        "swiftui-math",
+        "swiftui-math-fonts",
+        "textual",
+        "theme-tomorrow-dark",
+        "theme-tomorrow-light",
+        "tree-sitter",
+        "tree-sitter-bash",
+        "tree-sitter-cpp",
+        "tree-sitter-css",
+        "tree-sitter-html",
+        "tree-sitter-javascript",
+        "tree-sitter-json",
+        "tree-sitter-markdown",
+        "tree-sitter-python",
+        "tree-sitter-ruby",
+        "tree-sitter-sql",
+        "tree-sitter-swift",
+        "tree-sitter-toml",
+        "tree-sitter-typescript",
+        "tree-sitter-xml",
+        "tree-sitter-yaml",
+        "viz-js",
+        "yams"
+      ],
+      "ref": "product"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "product",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "MostlyText",
+      "type": "application",
+      "version": "1.0.0"
+    }
+  },
+  "serialNumber": "urn:uuid:1edc9b08-a6f2-554a-a165-edeb4ebca570",
+  "specVersion": "1.5",
+  "version": 1
+}
