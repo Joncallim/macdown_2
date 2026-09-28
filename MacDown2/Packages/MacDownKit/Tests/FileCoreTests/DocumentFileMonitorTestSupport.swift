@@ -36,6 +36,10 @@ actor DeferredProber: DocumentFileProbing {
         waiters.count
     }
 
+    var callCount: Int {
+        calls
+    }
+
     func observe(
         expectedURL _: URL,
         priorFileObjectID _: PhysicalFileIdentity.FileObjectID?
@@ -295,5 +299,30 @@ final class HealthRecorder: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return values.contains(value)
+    }
+}
+
+/// Parks every sleeper call until the test releases it, so a test can decide
+/// exactly which debounce, confirmation or backoff waits have happened before
+/// the monitor is allowed to probe.
+actor GateSleeper {
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    var waiterCount: Int {
+        waiters.count
+    }
+
+    func sleep() async {
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func resumeAll() {
+        let pending = waiters
+        waiters.removeAll()
+        for continuation in pending {
+            continuation.resume()
+        }
     }
 }

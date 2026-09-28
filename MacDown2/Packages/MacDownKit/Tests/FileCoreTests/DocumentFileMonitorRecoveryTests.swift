@@ -31,6 +31,13 @@ struct DocumentFileMonitorRecoveryTests {
         #expect(await prober.callCount == 4)
     }
 
+    /// Both signals must land while the debounce is still pending. The debounce
+    /// is therefore gated rather than a bare `Task.yield()`: with a yield, the
+    /// `.parentVanished` debounce task can start probing before `.changed` is
+    /// delivered (each signal reaches the actor through its own unstructured
+    /// task), and that superseded probe consumes one of the scripted answers.
+    /// See `changedEventDuringAnInFlightParentProbeKeepsTheRecoveryLatch` for
+    /// that interleaving.
     @Test func parentVanishedLatchSurvivesAChangedEventDuringDebounce() async throws {
         let fileURL = URL(fileURLWithPath: "/tmp/epic18/parent-latch.md")
         let watcher = MonitorWatcher()
@@ -40,7 +47,13 @@ struct DocumentFileMonitorRecoveryTests {
             .available(initial), .missing(fileURL), .missing(fileURL), .available(recovered),
         ])
         let recorder = MonitorRecoveryRecorder()
-        let monitor = makeMonitor(watcher: watcher, prober: prober)
+        let sleeper = GateSleeper()
+        let monitor = DocumentFileMonitor(
+            debounce: .zero,
+            watcher: watcher,
+            prober: prober,
+            sleeper: { _ in await sleeper.sleep() }
+        )
         try await monitor.bind(to: fileURL, priorFileObjectID: nil) { observation in
             recorder.append(observation)
         }
@@ -48,10 +61,60 @@ struct DocumentFileMonitorRecoveryTests {
 
         watcher.signal(.parentVanished)
         watcher.signal(.changed)
+        // Two parked debounce tasks means both signals reached the monitor
+        // before either could probe; the earlier one is already cancelled.
+        await waitUntil { await sleeper.waiterCount == 2 }
+        await sleeper.resumeAll()
+        // The surviving probe saw `.missing` and parks on the confirmation wait.
+        await waitUntil { await sleeper.waiterCount == 1 }
+        await sleeper.resumeAll()
 
-        await waitUntil { watcher.watchedDirectories.count == 2 }
         await waitUntil { recorder.values.last == .available(recovered) }
-        #expect(recorder.values.last == .available(recovered))
+        #expect(recorder.values == [.available(initial), .missing(fileURL), .available(recovered)])
+        #expect(watcher.watchedDirectories.count == 2)
+        #expect(await prober.callCount == 4)
+    }
+
+    /// The interleaving that failed on CI: the `.parentVanished` debounce has
+    /// already started its probe when `.changed` arrives. The in-flight probe
+    /// is superseded and its answer discarded, yet the latch still reinstalls
+    /// the parent watcher, and the reinstall probe is what gets published.
+    /// This costs one extra probe compared with the coalesced path above.
+    @Test func changedEventDuringAnInFlightParentProbeKeepsTheRecoveryLatch() async throws {
+        let fileURL = URL(fileURLWithPath: "/tmp/epic18/parent-latch-in-flight.md")
+        let watcher = MonitorWatcher()
+        let initial = snapshot("initial", at: fileURL)
+        let superseded = snapshot("superseded", at: fileURL)
+        let recovered = snapshot("recovered", at: fileURL)
+        let prober = DeferredProber(initial: initial)
+        let recorder = MonitorRecoveryRecorder()
+        let monitor = DocumentFileMonitor(
+            debounce: .zero,
+            watcher: watcher,
+            prober: prober,
+            sleeper: { _ in await Task.yield() }
+        )
+        try await monitor.bind(to: fileURL, priorFileObjectID: nil) { observation in
+            recorder.append(observation)
+        }
+        await waitUntil { recorder.count == 1 }
+
+        watcher.signal(.parentVanished)
+        await waitUntil { await prober.waiterCount == 1 }
+        watcher.signal(.changed)
+        await waitUntil { await prober.waiterCount == 2 }
+
+        await prober.resume(superseded, at: 0)
+        await prober.resume(.missing(fileURL), at: 1)
+        await waitUntil { await prober.waiterCount == 3 }
+        await prober.resume(.missing(fileURL), at: 2)
+        await waitUntil { await prober.waiterCount == 4 }
+        #expect(watcher.watchedDirectories.count == 2)
+        await prober.resume(recovered, at: 3)
+
+        await waitUntil { recorder.values.last == .available(recovered) }
+        #expect(recorder.values == [.available(initial), .missing(fileURL), .available(recovered)])
+        #expect(await prober.callCount == 5)
     }
 
     @Test func parentVanishedReinstallsTheDirectoryWatcherAfterTheProbe() async throws {
