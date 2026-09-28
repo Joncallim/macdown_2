@@ -72,6 +72,7 @@ jobs:
         working-directory: MacDown2
         run: xcodegen generate
       - name: Pin Xcode to the committed package versions
+        id: pin-xcode-packages
         # The generated project is git-ignored, so copy MacDownKit's committed
         # lock file into its workspace. Every xcodebuild below passes
         # -onlyUsePackageVersionsFromResolvedFile. Xcode ignores that flag and
@@ -95,10 +96,6 @@ jobs:
             -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme macdown2 -configuration Release \
             -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile build
-      - name: Verify Xcode used the committed package versions
-        run: |
-          MacDown2/scripts/pin-xcode-package-versions.sh --check
-          git diff --exit-code -- MacDown2/Packages/MacDownKit/Package.resolved
       - name: Build for testing (app + UI tests; UI tests run requires macOS 26+ GUI)
         # -enableCodeCoverage NO: documented in planning/epic-10-implementation.md
         # ("Local build-for-testing coverage quirk"). Xcode 26's build-for-testing
@@ -128,3 +125,11 @@ jobs:
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 \
             -destination 'platform=macOS' -onlyUsePackageVersionsFromResolvedFile -enableCodeCoverage NO -parallel-testing-enabled NO \
             -only-testing:MacDown2Tests test-without-building
+      - name: Verify every build used the committed package versions
+        # Runs after all xcodebuild calls, including when a later build or test
+        # step failed, so a removed or rewritten lock is always reported once the
+        # pin step has run.
+        if: ${{ !cancelled() && steps.pin-xcode-packages.outcome == 'success' }}
+        run: |
+          MacDown2/scripts/pin-xcode-package-versions.sh --check
+          git diff --exit-code -- MacDown2/Packages/MacDownKit/Package.resolved

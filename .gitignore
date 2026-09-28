@@ -18,10 +18,11 @@ xcuserdata/
 # ---- Swift Package Manager ----
 .swiftpm/
 Package.resolved
-# Exception: MacDownKit's lock file is committed so every build, including
-# release builds, uses the same dependency revisions. SwiftTreeSitter can only
-# be declared as `branch: "main"` (Neon requires that), so this file is what
-# stops it moving (#148 LC-05). CI enforces it with --force-resolved-versions.
+# Exception: MacDownKit's lock file is committed so CI builds the same
+# dependency revisions every time. SwiftTreeSitter can only be declared as
+# `branch: "main"` (Neon requires that), so this file is what stops it moving
+# (#148 LC-05). CI enforces it with --force-resolved-versions and the Xcode pin
+# step; local builds need the same flags (see AGENTS.md).
 !MacDown2/Packages/MacDownKit/Package.resolved
 # Scoped to MacDown2 on purpose: a bare `/.build/` would ignore any `.build/`
 # anywhere in the repo and could suppress unexpected assets.
