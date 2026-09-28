@@ -25,6 +25,11 @@ as a read-only porting source in `legacy-reference/`.
   MostlyText 1.0: order, cloud/Mac split, open owner decisions. Adds no scope.
 - `design/` — MostlyText design packet (`DESIGN_CONTEXT.md`, `DECISIONS.md`)
   and the canonical brand assets.
+- `compliance/` — third-party licence/provenance gate (#148): `inventory.json`,
+  generated notices and SBOM, and `tools/compliance.py`. Update the inventory in
+  the same change as any new dependency or bundled file.
+- `website/` — draft of the `mostlytext.app` download site. Not deployed before
+  E17; see its claims ledger.
 
 ## Commands (from repo root)
 
