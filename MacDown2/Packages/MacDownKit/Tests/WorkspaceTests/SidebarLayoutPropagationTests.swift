@@ -34,13 +34,13 @@ struct SidebarLayoutPropagationTests {
 
     @Test func reorderingInOneWindowUpdatesAnotherOpenWindowImmediately() {
         let windows = makeTwoWindows()
-        #expect(windows.windowB.sectionOrder == [.folder, .outline])
+        #expect(windows.windowB.sectionOrder == [.folder, .outline, .search])
 
         windows.windowA.moveSections(fromOffsets: [0], toOffset: 2)
 
-        #expect(windows.windowA.sectionOrder == [.outline, .folder])
+        #expect(windows.windowA.sectionOrder == [.outline, .folder, .search])
         #expect(
-            windows.windowB.sectionOrder == [.outline, .folder],
+            windows.windowB.sectionOrder == [.outline, .folder, .search],
             "window B's in-memory cache must follow window A's edit without window B doing anything"
         )
     }
@@ -73,16 +73,16 @@ struct SidebarLayoutPropagationTests {
     @Test func aSecondWindowsReorderAppliesOnTopOfTheFirstWindowsEditRatherThanDiscardingIt() {
         let windows = makeTwoWindows()
 
-        // Window A: folder, outline -> outline, folder
+        // Window A: folder, outline, search -> outline, folder, search
         windows.windowA.moveSections(fromOffsets: [0], toOffset: 2)
-        #expect(windows.windowB.sectionOrder == [.outline, .folder])
+        #expect(windows.windowB.sectionOrder == [.outline, .folder, .search])
 
         // Window B now drags the (now-first) item to the end, against its
-        // own up-to-date [.outline, .folder] — not the original
-        // [.folder, .outline] it was constructed with.
+        // own up-to-date [.outline, .folder, .search] — not the original
+        // [.folder, .outline, .search] it was constructed with.
         windows.windowB.moveSections(fromOffsets: [0], toOffset: 2)
 
-        let expected: [SidebarSection] = [.folder, .outline]
+        let expected: [SidebarSection] = [.folder, .outline, .search]
         #expect(windows.windowB.sectionOrder == expected)
         #expect(windows.windowA.sectionOrder == expected, "window A must also learn about window B's edit")
         #expect(
@@ -101,14 +101,14 @@ struct SidebarLayoutPropagationTests {
 
         windowB.moveSections(fromOffsets: [0], toOffset: 2)
 
-        #expect(windowB.sectionOrder == [.outline, .folder])
+        #expect(windowB.sectionOrder == [.outline, .folder, .search])
     }
 
     @Test func aWindowWithNoBroadcasterBehavesExactlyAsBeforeThisTypeExisted() {
         let store = FakeStateStore()
         let model = WorkspaceModel(stateStore: store)
         model.moveSections(fromOffsets: [0], toOffset: 2)
-        #expect(model.sectionOrder == [.outline, .folder])
-        #expect(store.sidebarSectionOrder == ["outline", "folder"])
+        #expect(model.sectionOrder == [.outline, .folder, .search])
+        #expect(store.sidebarSectionOrder == ["outline", "folder", "search"])
     }
 }

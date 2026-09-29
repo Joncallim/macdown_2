@@ -188,9 +188,12 @@ struct WorkspaceModelTests {
 
     @Test func modelHydratesSectionOrderFromStore() {
         let store = FakeStateStore()
+        // Only two of `SidebarSection`'s three cases are stored here
+        // deliberately: hydration must reconcile in the missing `.search`
+        // case too, not just replay the stored order verbatim.
         store.sidebarSectionOrder = ["outline", "folder"]
         let model = WorkspaceModel(stateStore: store)
-        #expect(model.sectionOrder == [.outline, .folder])
+        #expect(model.sectionOrder == [.outline, .folder, .search])
     }
 
     @Test func modelDefaultsSectionOrderWhenStoreIsEmpty() {
@@ -208,48 +211,58 @@ struct WorkspaceModelTests {
         let expected: [String]
     }
 
+    // `initial` is always `["folder", "outline"]` -- two of `SidebarSection`'s
+    // three cases -- so `WorkspaceModel`'s own hydration (`SidebarSection
+    // .reconcile(_:)`) always appends the missing `.search` case, making
+    // the actual starting order `["folder", "outline", "search"]` in every
+    // case below. `expected` values account for that third element even
+    // where a case's own `offsets`/`offset` only ever touch the first two.
     @Test(arguments: [
         MoveSectionsCase(
             name: "single item to end",
             initial: ["folder", "outline"],
             offsets: IndexSet(integer: 0),
             offset: 2,
-            expected: ["outline", "folder"]
+            expected: ["outline", "folder", "search"]
         ),
         MoveSectionsCase(
             name: "single item to beginning",
             initial: ["folder", "outline"],
             offsets: IndexSet(integer: 1),
             offset: 0,
-            expected: ["outline", "folder"]
+            expected: ["outline", "folder", "search"]
         ),
         MoveSectionsCase(
             name: "single item to current position",
             initial: ["folder", "outline"],
             offsets: IndexSet(integer: 0),
             offset: 0,
-            expected: ["folder", "outline"]
+            expected: ["folder", "outline", "search"]
         ),
         MoveSectionsCase(
             name: "all items moved (empty remaining)",
             initial: ["folder", "outline"],
-            offsets: IndexSet([0, 1]),
-            offset: 2,
-            expected: ["folder", "outline"]
+            // Covers all THREE hydrated sections (not just the two named
+            // in `initial`) so this case still actually exercises "every
+            // element selected, remaining is empty" against the array
+            // `moveSections` truly operates on.
+            offsets: IndexSet([0, 1, 2]),
+            offset: 3,
+            expected: ["folder", "outline", "search"]
         ),
         MoveSectionsCase(
             name: "out-of-bounds index",
             initial: ["folder", "outline"],
             offsets: IndexSet(integer: 999),
             offset: 0,
-            expected: ["folder", "outline"]
+            expected: ["folder", "outline", "search"]
         ),
         MoveSectionsCase(
             name: "negative offset clamped to zero",
             initial: ["folder", "outline"],
             offsets: IndexSet(integer: 1),
             offset: -1,
-            expected: ["outline", "folder"]
+            expected: ["outline", "folder", "search"]
         ),
     ])
     private func modelMoveSectionsUpdatesOrderAndStore(_ testCase: MoveSectionsCase) {

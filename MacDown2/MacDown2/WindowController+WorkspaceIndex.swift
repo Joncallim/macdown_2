@@ -39,8 +39,15 @@ extension WindowController {
         coordinator?.closeQuickOpenIfOrigin(self)
         guard let indexRoot = fileTreeModel.rootAccessURL else {
             await workspaceFileIndex.clear()
+            folderSearchModel.setRoot(nil)
             return
         }
         await workspaceFileIndex.rebuild(root: indexRoot)
+        // After the rebuild, not before: a folder search re-run by
+        // `setRoot(_:)` reads `workspaceFileIndex` through the closure
+        // captured at `FolderSearchModel.init` time, so it must see the
+        // freshly-rebuilt snapshot for the new root, not the old (or
+        // `.empty`) one.
+        folderSearchModel.setRoot(indexRoot)
     }
 }

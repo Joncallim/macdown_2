@@ -6,6 +6,12 @@ import Observation
 public enum SidebarSection: String, Sendable, CaseIterable, Identifiable {
     case folder
     case outline
+    /// Folder-wide search (EPIC-22 §6.16, Slice 7b) — a persistent sidebar
+    /// section rather than a floating panel like Quick Open/Command
+    /// Palette, since a search session is browsed for far longer per
+    /// invocation (the same reasoning §6.14 used for the current-document
+    /// Find bar, applied one level further).
+    case search
 
     public var id: String {
         rawValue
