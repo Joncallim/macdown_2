@@ -19,14 +19,21 @@ actor DocumentWriter {
         self.onRequestQueued = onRequestQueued
     }
 
-    func save(_ document: FileDocument) async throws(FileStoreError) -> DocumentWriteResult {
+    func save(
+        _ document: FileDocument,
+        encodingOverride: FileEncodingMetadata? = nil
+    ) async throws(FileStoreError) -> DocumentWriteResult {
         let key = DocumentKey(document)
         let sourceRevision = document.lastKnownRevision
         registerPendingSource(sourceRevision, for: key)
         await acquireLane(for: key)
         let expectedRevision = baseline(for: document)
         do {
-            let saved = try await write(document, expectedRevision: expectedRevision)
+            let saved = try await write(
+                document,
+                expectedRevision: expectedRevision,
+                encodingOverride: encodingOverride
+            )
             record(saved, source: sourceRevision, expected: expectedRevision)
             let resultID = UUID()
             unacknowledgedResults[resultID] = PendingWriteResult(
@@ -177,11 +184,12 @@ actor DocumentWriter {
 
     private func write(
         _ document: FileDocument,
-        expectedRevision: FileRevision?
+        expectedRevision: FileRevision?,
+        encodingOverride: FileEncodingMetadata?
     ) async throws(FileStoreError) -> FileDocument {
         do {
             return try await Task.detached(priority: .userInitiated) {
-                try document.saving(expectedRevision: expectedRevision)
+                try document.saving(expectedRevision: expectedRevision, encodingOverride: encodingOverride)
             }.value
         } catch let error as FileStoreError {
             throw error

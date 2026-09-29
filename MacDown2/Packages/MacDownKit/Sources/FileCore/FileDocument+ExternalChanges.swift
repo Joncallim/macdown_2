@@ -159,7 +159,9 @@ public extension FileDocument {
             setLastKnownRevision: true,
             pendingExternalRevision: nil,
             setPendingExternalRevision: true,
-            backingState: .available
+            backingState: .available,
+            encoding: saved.encoding,
+            setEncoding: true
         )
         copy.state = .dirty
         copy.advanceMutation()

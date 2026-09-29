@@ -265,6 +265,23 @@ private struct WorkspaceRecoveryRequiredNotice: View {
             .background(.orange.opacity(0.15))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("recoveryCleanupRequiredNotice")
+        } else if case let .textNotRepresentable(encodingName) = model.lastError {
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                Text(verbatim: WorkspaceError.textNotRepresentable(encodingName: encodingName).errorDescription ?? "")
+                    .font(.callout)
+                Spacer()
+                Button("Dismiss") {
+                    model.dismissLastError()
+                }
+                .accessibilityIdentifier("textNotRepresentableDismissButton")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(.orange.opacity(0.15))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("textNotRepresentableNotice")
         } else if case let .saveFailed(underlying) = model.lastError {
             // #57: previously nothing rendered this case at all. A save
             // that failed (permission denied, disk full, a write raced by

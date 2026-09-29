@@ -15,6 +15,9 @@ public enum WorkspaceError: Error {
     case noActiveDocument
     case unresolvedExternalConflict
     case backingFileUnavailable(FileBackingIssue)
+    /// The text contains characters the target encoding cannot hold. Nothing
+    /// was written and the document's encoding is unchanged.
+    case textNotRepresentable(encodingName: String)
 }
 
 extension WorkspaceError: LocalizedError {
@@ -42,6 +45,13 @@ extension WorkspaceError: LocalizedError {
             String(localized: "There is no active document.")
         case .unresolvedExternalConflict:
             String(localized: "Resolve the external file change before saving, or use Save As to keep this copy.")
+        case let .textNotRepresentable(encodingName):
+            String(
+                localized: """
+                This text cannot be saved as \(encodingName) without losing characters. \
+                Nothing was changed; choose another encoding.
+                """
+            )
         case let .backingFileUnavailable(issue):
             switch issue {
             case .missingOrMoved, .parentUnavailable:

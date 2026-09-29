@@ -16,7 +16,7 @@ public enum FileBOM: String, Sendable, Equatable, Codable {
 ///
 /// `encodingRawValue` is the `String.Encoding.rawValue` used to decode the
 /// bytes; `bom` records the byte-order mark that was present (or absent).
-public struct FileEncodingMetadata: Sendable, Equatable, Codable {
+public struct FileEncodingMetadata: Sendable, Equatable, Hashable, Codable {
     public let encodingRawValue: UInt
     public let bom: FileBOM
 

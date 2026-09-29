@@ -97,6 +97,8 @@ struct WorkspaceCommands: Commands {
             .keyboardShortcut("s", modifiers: [.command, .shift])
             .disabled(coordinator?.keyModel?.hasActiveDocument != true)
 
+            encodingMenus
+
             Button("Close Tab") {
                 coordinator?.closeKeyWindow()
             }
