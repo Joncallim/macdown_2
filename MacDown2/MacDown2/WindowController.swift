@@ -109,6 +109,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         super.init(window: window)
         makeSessionsForActiveTab()
         externalFileController.attach(owner: self)
+        installFolderSearchHooks()
         window.delegate = self
         fileTreeModel.startObservingPreferences()
         updateTitleAndEditedState()

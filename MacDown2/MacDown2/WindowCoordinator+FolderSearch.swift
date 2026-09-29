@@ -1,4 +1,5 @@
 import AppKit
+import FileCore
 import TextSearch
 
 /// Opens a folder-search result and reveals the matched range (EPIC-22
@@ -56,6 +57,19 @@ extension WindowCoordinator {
                 return
             }
             await Task.yield()
+        }
+    }
+
+    /// Whether any window has `url` open with edits not yet on disk (dirty,
+    /// mid-close-prompt, or in an unresolved external-change conflict).
+    /// Replace in Folder must never rewrite such a file underneath its
+    /// in-memory buffer.
+    func hasUnsavedOpenDocument(at url: URL) -> Bool {
+        controllers.contains { controller in
+            controller.model.tabStore.tabs.contains { tab in
+                tab.document.state != .clean
+                    && (tab.document.fileURL.map { PhysicalFileIdentity.matches($0, url) } ?? false)
+            }
         }
     }
 }
