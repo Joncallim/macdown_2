@@ -46,6 +46,32 @@ final class FolderSearchModel {
     private(set) var outcome: FolderSearchOutcome?
     private(set) var root: URL?
 
+    /// Replace in Folder (Slice 7c) state. Stored here because `@Observable`
+    /// requires stored properties in the class body; the behavior lives in
+    /// `FolderSearchModel+Replace.swift`.
+    var replacement = "" {
+        didSet { replacementDidChange() }
+    }
+
+    var isReplaceVisible = false
+    var isConfirmingReplace = false
+    var excludedPaths: Set<String> = []
+    var expandedPaths: Set<String> = []
+    var previews: [String: ReplacementFilePreview] = [:]
+    var isReplacing = false
+    var replaceCompleted = 0
+    var replaceTotal = 0
+    var replaceSummary: FolderReplaceSummary?
+    /// Consulted (on the main actor) immediately before each file is
+    /// rewritten: a document open with unsaved edits must never be
+    /// overwritten on disk. Assigned by `WindowController`, which knows the
+    /// coordinator that can see every window's tabs.
+    var hasUnsavedOpenDocument: @MainActor (URL) -> Bool = { _ in false }
+    let performReplace: FolderReplaceRunner
+    let performPreview: FolderReplacePreviewBuilder
+    var replaceTask: Task<Void, Never>?
+    var previewGeneration = 0
+
     private let performSearch: @Sendable (
         URL,
         String,
@@ -74,6 +100,9 @@ final class FolderSearchModel {
         debounce: Duration = .milliseconds(150)
     ) {
         let engine = WorkspaceSearchEngine()
+        let replaceEngine = Self.makeReplaceEngine()
+        performReplace = replaceEngine.run
+        performPreview = replaceEngine.preview
         performSearch = { root, query, onMatch in
             await engine.search(
                 root: root,
@@ -100,10 +129,15 @@ final class FolderSearchModel {
             String,
             @escaping @Sendable (FolderSearchMatch) async -> Void
         ) async -> FolderSearchOutcome,
-        debounce: Duration = .zero
+        debounce: Duration = .zero,
+        performReplace: FolderReplaceRunner? = nil,
+        performPreview: FolderReplacePreviewBuilder? = nil
     ) {
         self.performSearch = performSearch
         self.debounce = debounce
+        let real = Self.makeReplaceEngine()
+        self.performReplace = performReplace ?? real.run
+        self.performPreview = performPreview ?? real.preview
     }
 
     /// Sets (or clears) the folder root this model searches, cancelling any
@@ -117,13 +151,14 @@ final class FolderSearchModel {
         scheduleSearch(debounced: false)
     }
 
-    private func scheduleSearch(debounced: Bool = true) {
+    func scheduleSearch(debounced: Bool = true, keepingReplaceSummary: Bool = false) {
         generation += 1
         let thisGeneration = generation
         currentTask?.cancel()
         currentTask = nil
         results = []
         outcome = nil
+        resetReplaceReview(keepingSummary: keepingReplaceSummary)
 
         let currentQuery = query
         guard let root, !currentQuery.isEmpty else {

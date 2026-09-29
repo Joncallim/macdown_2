@@ -5,6 +5,14 @@ import Foundation
 /// reason `WindowController+Close.swift`/`WindowController+TextFilterTasks.swift`
 /// are: a distinct, self-contained ownership concern kept in one place.
 extension WindowController {
+    /// Lets Replace in Folder (Slice 7c) ask the coordinator whether any
+    /// window holds unsaved edits for a file it is about to rewrite.
+    func installFolderSearchHooks() {
+        folderSearchModel.hasUnsavedOpenDocument = { [weak coordinator] url in
+            coordinator?.hasUnsavedOpenDocument(at: url) ?? false
+        }
+    }
+
     /// Sets `fileTreeModel`'s root and rebuilds `workspaceFileIndex` to
     /// match it in one step. Deliberately not named `setFolderRoot` —
     /// `WorkspaceModel.setFolderRoot(_:)` is a different, pre-existing
