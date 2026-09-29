@@ -76,7 +76,7 @@ public struct FormatManifest: Sendable, Equatable {
             extensions: [
                 "js", "jsx", "ts", "tsx", "py", "rb", "css", "swift",
                 "c", "cpp", "cc", "cxx", "h", "hpp", "sh", "bash", "zsh",
-                "sql", "xml",
+                "sql", "xml", "tex", "latex",
             ]
         ),
     ])

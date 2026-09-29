@@ -57,6 +57,7 @@ public enum LanguageEditingProfileRegistry {
         "c": LanguageEditingProfile(lineComment: "//", blockComment: cStyleComment, indentAfterTrailing: ["{"]),
         "bash": LanguageEditingProfile(lineComment: "#"),
         "sql": LanguageEditingProfile(lineComment: "--"),
+        "tex": LanguageEditingProfile(lineComment: "%"),
         "plaintext": .plainText,
     ]
 }
