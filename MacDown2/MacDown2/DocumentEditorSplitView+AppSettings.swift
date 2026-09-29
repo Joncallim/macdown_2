@@ -38,10 +38,6 @@ extension DocumentEditorSplitView {
         ) ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
     }
 
-    /// Only `blockDirectives` is wired to a real swift-markdown parse flag
-    /// today; the other five `MarkdownParseOptions` fields stay at their
-    /// documented always-on default regardless of settings
-    /// (epic-13-implementation.md §2.1/§9 — verified against `ParseEngine`).
     static func markdownParseOptions(from markdownSettings: MarkdownSettings?) -> MarkdownParseOptions {
         MarkdownParseOptions(blockDirectives: markdownSettings?.parsesBlockDirectives ?? true)
     }
