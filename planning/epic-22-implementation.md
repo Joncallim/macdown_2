@@ -899,6 +899,10 @@ Per the owner's explicit technical-dependency-order instruction, slices are orde
 **Dependencies:** Slice 4 (`LanguageEditingProfile` needed for TeX mechanics and snippet syntax-scoping).
 **Tests:** snippet expansion corpus; `FormatRegistryConsistencyTests` extension for `.tex`/`.latex`; the new palette-consistency test.
 
+**Status:**
+
+- **9c** — implemented: `tex` `FileFormat` (extensions `tex`, `latex`; source-only, no preview capability, so it can never enter the Markdown parse/preview path), `FormatManifest`/`project.yml` `public.source-code` Alternate entries, and a `tex` `LanguageEditingProfile` (`%` line comment, no block comment, no auto-indent triggers). **§9.6 decision — plain-text-styled fallback, no local highlighter for 1.0:** the only maintained tree-sitter grammar (`latex-lsp/tree-sitter-latex`, MIT) does not check in its generated `src/parser.c` (upstream deliberately gitignores it), so it cannot be consumed as a normal SwiftPM dependency the way the other grammars are, and there is no published "with-generated-files" tag. Vendoring a generated parser would add an unreviewed multi-megabyte artefact plus a build-time generation step; that is disproportionate to a lightweight-source-editing requirement. `highlightLanguageID` is therefore `nil` (the registry-consistency test treats `nil` as always acceptable) and the editor renders TeX with the theme's plain text style — documented, tested, safe. Tests: format resolution for `tex`/`latex`/upper-case, no-preview invariants, open→edit→save byte-exact CRLF round-trip, Save As to/from `.tex` re-routing the format, and Toggle Comment with the TeX profile. **Carried forward:** a TeX highlighter if upstream publishes generated sources (or as a Slice 10 vendoring decision).
+
 ### Slice 10 — Orthogonal hardening
 
 **Goal:** the full adversarial/performance/accessibility pass across every slice's surface together (interactions between multi-cursor + search, multi-cursor + snippets, encoding conversion + external edit, etc.), plus the corrected E05 Release performance evidence (§11).
@@ -1098,3 +1102,4 @@ Per `EPIC_STANDARD.md` §4, plus the epic issue's own acceptance criteria (both 
 - 2026-09-29: **Slice 8a implemented (FileCore encoding foundation).** Design pass §6.17. Discovered while designing: every verification read shared the strict decode, so non-automatic encodings could not be saved/probed without decode-free revision reads; Foundation composes NFD to Latin-1 bytes, so `canRepresent` refuses lossy scalar round trips. 8b (document operations + UI) and 8c (line endings) follow.
 - 2026-09-29: **Slice 8b implemented (encoding operations + UI).** See the Slice 8 status block for review findings and carried-forward items.
 - 2026-09-29: **Slice 8c implemented (line endings).** See the Slice 8 status block; new-line insertion following the document's EOL carried to Slice 10.
+- 2026-09-29: **Slice 9c implemented (`.tex`/`.latex` source format).** §9.6 decided as plain-text-styled fallback; see the Slice 9 status block.

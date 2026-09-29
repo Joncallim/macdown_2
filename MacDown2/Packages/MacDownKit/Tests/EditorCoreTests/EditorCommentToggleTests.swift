@@ -9,6 +9,7 @@ struct EditorCommentToggleTests {
     private let swiftProfile = LanguageEditingProfileRegistry.profile(for: "swift")
     private let markdownProfile = LanguageEditingProfileRegistry.profile(for: "markdown")
     private let plainTextProfile = LanguageEditingProfile.plainText
+    private let texProfile = LanguageEditingProfileRegistry.profile(for: "tex")
 
     // MARK: - Line comment: add
 
@@ -280,5 +281,27 @@ struct EditorCommentToggleTests {
             profile: markdownProfile
         )
         #expect(transaction == nil)
+    }
+
+    // MARK: - TeX (Slice 9c)
+
+    @Test("TeX profile comments with % and has no block comment")
+    func texProfileUsesPercentLineComment() {
+        #expect(texProfile.lineComment == "%")
+        #expect(texProfile.blockComment == nil)
+
+        let text = "\\section{A}\nbody" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(single: NSRange(location: 0, length: text.length))
+        let transaction = EditorCommentToggle.toggleCommentTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection,
+            isMarkdownFormat: false,
+            profile: texProfile
+        )
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+
+        #expect(applied?.text == "% \\section{A}\n% body")
     }
 }
