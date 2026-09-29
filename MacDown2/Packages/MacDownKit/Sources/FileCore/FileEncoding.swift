@@ -47,30 +47,42 @@ public struct FileEncodingMetadata: Sendable, Equatable, Codable {
     }
 
     /// The encoding a BOM kind may pair with; `nil` for inconsistent pairs.
-    /// The decode paths produce exactly these pairs (UTF-8 for the UTF-8
-    /// BOM, the matching endianness for each UTF-16 BOM).
-    private static func consistentEncoding(for rawValue: UInt, bom: FileBOM) -> String.Encoding? {
+    /// A BOM implies its own encoding; without a BOM any encoding the app
+    /// can read and write (`FileEncodingCatalog`) is valid.
+    static func consistentEncoding(for rawValue: UInt, bom: FileBOM) -> String.Encoding? {
         switch bom {
         case .none:
-            let encoding = String.Encoding(rawValue: rawValue)
-            return supportedEncodingRawValues.contains(rawValue) ? encoding : nil
+            FileEncodingCatalog.isSupported(rawValue: rawValue) ? String.Encoding(rawValue: rawValue) : nil
         case .utf8:
-            return rawValue == String.Encoding.utf8.rawValue ? .utf8 : nil
+            rawValue == String.Encoding.utf8.rawValue ? .utf8 : nil
         case .utf16LittleEndian:
-            return rawValue == String.Encoding.utf16LittleEndian.rawValue ? .utf16LittleEndian : nil
+            rawValue == String.Encoding.utf16LittleEndian.rawValue ? .utf16LittleEndian : nil
         case .utf16BigEndian:
-            return rawValue == String.Encoding.utf16BigEndian.rawValue ? .utf16BigEndian : nil
+            rawValue == String.Encoding.utf16BigEndian.rawValue ? .utf16BigEndian : nil
         }
     }
 
-    /// The encodings the app can read and write; everything else in a
-    /// persisted session is malformed.
-    private static let supportedEncodingRawValues: Set<UInt> = [
-        String.Encoding.utf8.rawValue,
-        String.Encoding.utf16.rawValue,
-        String.Encoding.utf16LittleEndian.rawValue,
-        String.Encoding.utf16BigEndian.rawValue,
-    ]
+    /// Whether `FileStore`'s automatic decode can reproduce this metadata
+    /// from the bytes alone: UTF-8 with or without a BOM, or UTF-16 with its
+    /// own BOM. Everything else (a legacy encoding, or BOM-less UTF-16) was
+    /// chosen explicitly and must be re-decoded explicitly, or an external
+    /// reload would fail or silently revert the choice.
+    public var isAutomaticallyDetectable: Bool {
+        switch (bom, encodingRawValue) {
+        case (.none, String.Encoding.utf8.rawValue),
+             (.utf8, String.Encoding.utf8.rawValue),
+             (.utf16LittleEndian, String.Encoding.utf16LittleEndian.rawValue),
+             (.utf16BigEndian, String.Encoding.utf16BigEndian.rawValue):
+            true
+        default:
+            false
+        }
+    }
+
+    /// How to decode this document's bytes when they are re-read from disk.
+    public var decodingPolicy: FileDecodingPolicy {
+        isAutomaticallyDetectable ? .automatic : .explicit(encoding)
+    }
 
     /// The encoding used to decode the text.
     public var encoding: String.Encoding {
@@ -80,6 +92,16 @@ public struct FileEncodingMetadata: Sendable, Equatable, Codable {
     /// The documented default for new documents and legacy/malformed session
     /// metadata: UTF-8 without a BOM.
     public static let utf8Default = FileEncodingMetadata(encoding: .utf8, bom: .none)
+}
+
+/// How `FileStore` interprets bytes.
+public enum FileDecodingPolicy: Sendable, Equatable {
+    /// UTF-8 BOM, UTF-16 BOM, then strict UTF-8. Never guesses.
+    case automatic
+    /// The caller chose `encoding`. Decoding is lossless or it fails: the
+    /// text must re-encode to exactly the bytes read, so saving unchanged
+    /// text can never alter the file.
+    case explicit(String.Encoding)
 }
 
 /// One decoding problem found in a file's raw bytes.

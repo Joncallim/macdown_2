@@ -12,7 +12,8 @@ actor ScriptedProber: DocumentFileProbing {
 
     func observe(
         expectedURL: URL,
-        priorFileObjectID _: PhysicalFileIdentity.FileObjectID?
+        priorFileObjectID _: PhysicalFileIdentity.FileObjectID?,
+        decoding _: FileDecodingPolicy
     ) async -> DocumentFileObservation {
         callCount += 1
         lastExpectedURL = expectedURL
@@ -42,7 +43,8 @@ actor DeferredProber: DocumentFileProbing {
 
     func observe(
         expectedURL _: URL,
-        priorFileObjectID _: PhysicalFileIdentity.FileObjectID?
+        priorFileObjectID _: PhysicalFileIdentity.FileObjectID?,
+        decoding _: FileDecodingPolicy
     ) async -> DocumentFileObservation {
         calls += 1
         guard calls > 1 else { return .available(initial) }
@@ -65,15 +67,17 @@ actor RecordingProber: DocumentFileProbing {
     struct Request: Sendable {
         let url: URL
         let priorFileObjectID: PhysicalFileIdentity.FileObjectID?
+        let decoding: FileDecodingPolicy
     }
 
     private(set) var lastRequest: Request?
 
     func observe(
         expectedURL: URL,
-        priorFileObjectID: PhysicalFileIdentity.FileObjectID?
+        priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
+        decoding: FileDecodingPolicy
     ) async -> DocumentFileObservation {
-        lastRequest = Request(url: expectedURL, priorFileObjectID: priorFileObjectID)
+        lastRequest = Request(url: expectedURL, priorFileObjectID: priorFileObjectID, decoding: decoding)
         return .missing(expectedURL)
     }
 }
@@ -324,5 +328,14 @@ actor GateSleeper {
         for continuation in pending {
             continuation.resume()
         }
+    }
+}
+
+extension DocumentFileProbing {
+    func observe(
+        expectedURL: URL,
+        priorFileObjectID: PhysicalFileIdentity.FileObjectID?
+    ) async -> DocumentFileObservation {
+        await observe(expectedURL: expectedURL, priorFileObjectID: priorFileObjectID, decoding: .automatic)
     }
 }

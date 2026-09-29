@@ -20,8 +20,18 @@ public struct DocumentFileObservationContext: Sendable, Equatable {
 protocol DocumentFileProbing: Sendable {
     func observe(
         expectedURL: URL,
-        priorFileObjectID: PhysicalFileIdentity.FileObjectID?
+        priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
+        decoding: FileDecodingPolicy
     ) async -> DocumentFileObservation
+}
+
+struct SnapshotReader: Sendable {
+    let store: FileStore
+    let policy: FileDecodingPolicy
+
+    func snapshot(_ url: URL) throws(FileStoreError) -> FileSnapshot {
+        try store.readSnapshot(from: url, decoding: policy)
+    }
 }
 
 struct DocumentFileProbe: DocumentFileProbing, Sendable {
@@ -33,14 +43,15 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
 
     func observe(
         expectedURL: URL,
-        priorFileObjectID: PhysicalFileIdentity.FileObjectID?
+        priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
+        decoding: FileDecodingPolicy
     ) async -> DocumentFileObservation {
         let store = fileStore
         return await Task.detached(priority: .utility) {
             Self.observeSynchronously(
                 expectedURL: expectedURL.standardizedFileURL,
                 priorFileObjectID: priorFileObjectID,
-                fileStore: store
+                reader: SnapshotReader(store: store, policy: decoding)
             )
         }.value
     }
@@ -48,10 +59,10 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
     private static func observeSynchronously(
         expectedURL: URL,
         priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
-        fileStore: FileStore
+        reader: SnapshotReader
     ) -> DocumentFileObservation {
         do {
-            let snapshot = try fileStore.readSnapshot(from: expectedURL)
+            let snapshot = try reader.snapshot(expectedURL)
             guard let priorFileObjectID, let currentID = snapshot.revision.fileObjectID,
                   priorFileObjectID != currentID
             else {
@@ -62,7 +73,7 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
                 in: expectedURL.deletingLastPathComponent(),
                 matching: priorFileObjectID,
                 excluding: expectedURL,
-                fileStore: fileStore
+                reader: reader
             ) {
             case let .one(snapshot): return .moved(snapshot)
             case .ambiguous: return .unavailable(expectedURL, .ambiguousMove)
@@ -74,7 +85,7 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
                 after: error,
                 expectedURL: expectedURL,
                 priorFileObjectID: priorFileObjectID,
-                fileStore: fileStore
+                reader: reader
             )
         }
     }
@@ -83,14 +94,14 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
         after error: FileStoreError,
         expectedURL: URL,
         priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
-        fileStore: FileStore
+        reader: SnapshotReader
     ) -> DocumentFileObservation {
         switch error {
         case .fileMissing:
             missingOrMoved(
                 expectedURL: expectedURL,
                 priorFileObjectID: priorFileObjectID,
-                fileStore: fileStore
+                reader: reader
             )
         case .permissionDenied:
             .unavailable(expectedURL, .permissionDenied)
@@ -114,14 +125,14 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
     private static func missingOrMoved(
         expectedURL: URL,
         priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
-        fileStore: FileStore
+        reader: SnapshotReader
     ) -> DocumentFileObservation {
         guard let priorFileObjectID else { return .missing(expectedURL) }
         switch findMovedSnapshot(
             in: expectedURL.deletingLastPathComponent(),
             matching: priorFileObjectID,
             excluding: expectedURL,
-            fileStore: fileStore
+            reader: reader
         ) {
         case let .one(snapshot): return .moved(snapshot)
         case .ambiguous: return .unavailable(expectedURL, .ambiguousMove)
@@ -134,7 +145,7 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
         in directory: URL,
         matching objectID: PhysicalFileIdentity.FileObjectID,
         excluding expectedURL: URL,
-        fileStore: FileStore
+        reader: SnapshotReader
     ) -> MoveSearchResult {
         let urls: [URL]
         do {
@@ -166,7 +177,7 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
                       volume: volume.stringValue,
                       file: file.stringValue
                   ) == objectID,
-                  let snapshot = try? fileStore.readSnapshot(from: url)
+                  let snapshot = try? reader.snapshot(url)
             else { continue }
             matches.append(snapshot)
             if matches.count > 1 {

@@ -95,7 +95,23 @@ public struct FileStore: Sendable {
         return (snapshot.text, snapshot.encoding)
     }
 
-    public func readSnapshot(from url: URL) throws(FileStoreError) -> FileSnapshot {
+    public func readSnapshot(
+        from url: URL,
+        decoding policy: FileDecodingPolicy = .automatic
+    ) throws(FileStoreError) -> FileSnapshot {
+        let (data, revision) = try readStableBytes(from: url)
+        let payload = try decode(data, policy: policy)
+        return FileSnapshot(text: payload.text, encoding: payload.encoding, bom: payload.bom, revision: revision)
+    }
+
+    /// The file's revision (identity, size, modification date, SHA-256)
+    /// without decoding it. Baseline checks and publication verification use
+    /// this so they work for any on-disk encoding, decodable or not.
+    public func readRevision(from url: URL) throws(FileStoreError) -> FileRevision {
+        try readStableBytes(from: url).revision
+    }
+
+    private func readStableBytes(from url: URL) throws(FileStoreError) -> (data: Data, revision: FileRevision) {
         guard url.isFileURL else { throw .invalidURL }
 
         for attempt in 0 ..< 2 {
@@ -121,12 +137,9 @@ public struct FileStore: Sendable {
                 throw .fileChangedDuringRead
             }
 
-            let payload = try decode(data)
-            return FileSnapshot(
-                text: payload.text,
-                encoding: payload.encoding,
-                bom: payload.bom,
-                revision: FileRevision(
+            return (
+                data,
+                FileRevision(
                     url: url.standardizedFileURL,
                     modificationDate: after.modificationDate,
                     fileSize: data.count,
@@ -167,43 +180,61 @@ public struct FileStore: Sendable {
 
         do {
             return try FilePublicationLocks.shared.withLock(for: url.standardizedFileURL) {
-                try writeLocked(content, to: url, data: data, expectedRevision: expectedRevision)
+                try writeLocked(to: url, data: data, expectedRevision: expectedRevision)
             }
         } catch {
             throw mapWriteError(error)
         }
     }
 
-    /// Encodes `content` for disk, emitting the requested BOM byte prefix.
-    /// Returns `nil` when the encoding cannot represent the text losslessly.
-    private func encodedData(_ content: String, encoding: String.Encoding, bom: FileBOM) -> Data? {
-        guard let body = content.data(using: encoding, allowLossyConversion: false) else { return nil }
-        switch bom {
-        case .none:
-            return body
-        case .utf8:
-            var data = Data([0xEF, 0xBB, 0xBF])
-            data.append(body)
-            return data
-        case .utf16LittleEndian:
-            var data = Data([0xFF, 0xFE])
-            data.append(body)
-            return data
-        case .utf16BigEndian:
-            var data = Data([0xFE, 0xFF])
-            data.append(body)
-            return data
-        }
+    /// Whether `content` can be written in `encoding` without loss. Callers
+    /// check this before committing to an encoding change so a failure
+    /// changes neither the file nor the document's metadata.
+    public func canRepresent(_ content: String, encoding: String.Encoding, bom: FileBOM = .none) -> Bool {
+        encodedData(content, encoding: encoding, bom: bom) != nil
     }
 
+    /// Encodes `content` for disk, emitting the requested BOM byte prefix.
+    /// Returns `nil` unless the encoding represents the text losslessly: a
+    /// converter that silently normalises (composing a decomposed sequence,
+    /// say) is refused rather than trusted, since the reopened text would no
+    /// longer be what the user wrote.
+    private func encodedData(_ content: String, encoding: String.Encoding, bom: FileBOM) -> Data? {
+        guard let body = content.data(using: encoding, allowLossyConversion: false) else { return nil }
+        // A leading U+FEFF written without a BOM is byte-identical to a BOM
+        // and would be consumed as one on reopen, dropping the scalar.
+        if bom == .none, Self.bomCapableEncodings.contains(encoding), content.unicodeScalars.first == "\u{FEFF}" {
+            return nil
+        }
+        if !Self.unicodeEncodings.contains(encoding) {
+            guard let roundTripped = String(data: body, encoding: encoding),
+                  roundTripped.unicodeScalars.elementsEqual(content.unicodeScalars)
+            else { return nil }
+        }
+        let prefix: [UInt8] = switch bom {
+        case .none: []
+        case .utf8: [0xEF, 0xBB, 0xBF]
+        case .utf16LittleEndian: [0xFF, 0xFE]
+        case .utf16BigEndian: [0xFE, 0xFF]
+        }
+        return prefix.isEmpty ? body : Data(prefix) + body
+    }
+
+    private static let bomCapableEncodings: Set<String.Encoding> = [
+        .utf8, .utf16, .utf16LittleEndian, .utf16BigEndian,
+    ]
+
+    private static let unicodeEncodings: Set<String.Encoding> = [
+        .utf8, .utf16, .utf16LittleEndian, .utf16BigEndian, .utf32, .utf32LittleEndian, .utf32BigEndian,
+    ]
+
     private func writeLocked(
-        _ content: String,
         to url: URL,
         data: Data,
         expectedRevision: FileRevision?
     ) throws(FileStoreError) -> FileRevision {
         if let expectedRevision {
-            let actual = try readSnapshot(from: url).revision
+            let actual = try readRevision(from: url)
             guard actual == expectedRevision else { throw .fileChangedDuringRead }
         }
 
@@ -221,7 +252,7 @@ public struct FileStore: Sendable {
             // non-cooperating writer that wins after this check is therefore
             // restored instead of being overwritten.
             if let expectedRevision {
-                let actual = try readSnapshot(from: url).revision
+                let actual = try readRevision(from: url)
                 guard actual == expectedRevision else { throw FileStoreError.fileChangedDuringRead }
             }
             // Test seam deliberately positioned in the former verification to
@@ -255,17 +286,14 @@ public struct FileStore: Sendable {
             throw mapped
         }
 
-        let snapshot = try readSnapshot(from: url)
-        guard snapshot.text == content,
-              snapshot.revision.fileSize == data.count,
-              snapshot.revision.sha256 == sha256(data)
-        else {
+        let published = try readRevision(from: url)
+        guard published.fileSize == data.count, published.sha256 == sha256(data) else {
             // A concurrent writer replaced our destination before we could
             // establish its baseline. Do not return that foreign revision as a
             // successful save: callers must remain dirty and reconcile it.
             throw .fileChangedDuringRead
         }
-        return snapshot.revision
+        return published
     }
 
     private func metadata(at url: URL) throws(FileStoreError) -> FileMetadata {

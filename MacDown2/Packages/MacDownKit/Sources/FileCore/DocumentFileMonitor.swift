@@ -17,6 +17,7 @@ public actor DocumentFileMonitor {
     var probeSequence: UInt = 0
     var boundURL: URL?
     private var priorFileObjectID: PhysicalFileIdentity.FileObjectID?
+    private var decoding: FileDecodingPolicy = .automatic
     private var handle: (any DocumentDirectoryWatcherHandle)?
     var fileHandle: (any DocumentDirectoryWatcherHandle)?
     private var watcherHealthy = false
@@ -53,6 +54,7 @@ public actor DocumentFileMonitor {
     public func bind(
         to fileURL: URL,
         priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
+        decoding: FileDecodingPolicy = .automatic,
         onObservation: @escaping @Sendable (DocumentFileObservation) -> Void,
         onHealthChange: @escaping @Sendable (DocumentFileMonitorHealth) -> Void = { _ in },
         onContext: @escaping @Sendable (DocumentFileObservationContext) -> Void = { _ in }
@@ -71,6 +73,7 @@ public actor DocumentFileMonitor {
         let standardized = fileURL.standardizedFileURL
         boundURL = standardized
         self.priorFileObjectID = priorFileObjectID
+        self.decoding = decoding
         callback = onObservation
         contextCallback = onContext
         healthCallback = onHealthChange
@@ -80,22 +83,30 @@ public actor DocumentFileMonitor {
         fileHandle = try watchFileIfAvailable(standardized, generation: currentGeneration)
         watcherHealthy = true
         healthCallback?(.healthy)
-        let initial = await prober.observe(expectedURL: standardized, priorFileObjectID: priorFileObjectID)
+        let initial = await prober.observe(
+            expectedURL: standardized,
+            priorFileObjectID: priorFileObjectID,
+            decoding: decoding
+        )
         guard isCurrent(generation: currentGeneration, sequence: initialSequence) else { return }
         emit(initial, generation: currentGeneration, sequence: initialSequence)
     }
 
-    public func updatePriorFileObjectID(
-        _ id: PhysicalFileIdentity.FileObjectID?,
+    /// Updates the baseline identity and decoding policy in one actor turn so
+    /// no probe can observe one without the other.
+    public func updateBaseline(
+        priorFileObjectID id: PhysicalFileIdentity.FileObjectID?,
+        decoding policy: FileDecodingPolicy,
         expectedURL: URL
     ) {
         guard boundURL == expectedURL.standardizedFileURL else { return }
         priorFileObjectID = id
+        decoding = policy
     }
 
     public func snapshotNow() async -> DocumentFileObservation {
         guard let boundURL else { return .missing(URL(fileURLWithPath: "")) }
-        return await prober.observe(expectedURL: boundURL, priorFileObjectID: priorFileObjectID)
+        return await prober.observe(expectedURL: boundURL, priorFileObjectID: priorFileObjectID, decoding: decoding)
     }
 
     public func currentRequestGeneration() -> UInt {
@@ -124,7 +135,11 @@ public actor DocumentFileMonitor {
         fileHandle = replacementFile
         watcherHealthy = true
         healthCallback?(.healthy)
-        let initial = await prober.observe(expectedURL: boundURL, priorFileObjectID: priorFileObjectID)
+        let initial = await prober.observe(
+            expectedURL: boundURL,
+            priorFileObjectID: priorFileObjectID,
+            decoding: decoding
+        )
         guard isCurrent(generation: currentGeneration, sequence: sequence) else { return }
         self.callback = callback
         emit(initial, generation: currentGeneration, sequence: sequence)
@@ -170,12 +185,20 @@ public actor DocumentFileMonitor {
         sequence: UInt
     ) async {
         guard isCurrent(generation: generation, sequence: sequence), let boundURL else { return }
-        let first = await prober.observe(expectedURL: boundURL, priorFileObjectID: priorFileObjectID)
+        let first = await prober.observe(
+            expectedURL: boundURL,
+            priorFileObjectID: priorFileObjectID,
+            decoding: decoding
+        )
         guard !Task.isCancelled, isCurrent(generation: generation, sequence: sequence) else { return }
         if case .missing = first {
             await sleeper(.milliseconds(75))
             guard !Task.isCancelled, isCurrent(generation: generation, sequence: sequence) else { return }
-            let confirmed = await prober.observe(expectedURL: boundURL, priorFileObjectID: priorFileObjectID)
+            let confirmed = await prober.observe(
+                expectedURL: boundURL,
+                priorFileObjectID: priorFileObjectID,
+                decoding: decoding
+            )
             guard !Task.isCancelled, isCurrent(generation: generation, sequence: sequence) else { return }
             await installFileWatcherIfNeeded(generation: generation, sequence: sequence, observation: confirmed)
             emit(confirmed, generation: generation, sequence: sequence)
@@ -249,7 +272,8 @@ public actor DocumentFileMonitor {
                 let replacementSequence = probeSequence
                 let observation = await prober.observe(
                     expectedURL: boundURL,
-                    priorFileObjectID: priorFileObjectID
+                    priorFileObjectID: priorFileObjectID,
+                    decoding: decoding
                 )
                 guard isCurrent(generation: generation, sequence: replacementSequence) else { return }
                 emit(observation, generation: generation, sequence: replacementSequence)

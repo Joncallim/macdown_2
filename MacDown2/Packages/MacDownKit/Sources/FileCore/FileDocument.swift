@@ -156,7 +156,7 @@ public struct FileDocument: Sendable {
         guard let fileURL else {
             throw .invalidURL
         }
-        let snapshot = try fileStore.readSnapshot(from: fileURL)
+        let snapshot = try fileStore.readSnapshot(from: fileURL, decoding: encoding.decodingPolicy)
         var copy = self
         copy.text = snapshot.text
         copy.encoding = snapshot.encodingMetadata

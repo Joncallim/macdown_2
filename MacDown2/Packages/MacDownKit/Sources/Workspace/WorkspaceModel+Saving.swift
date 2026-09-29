@@ -104,7 +104,7 @@ extension WorkspaceModel {
         guard let current = tabStore.activeDocument,
               isSameDocumentLifetime(current, document),
               let url = current.fileURL,
-              let snapshot = try? current.fileStore.readSnapshot(from: url)
+              let snapshot = try? current.fileStore.readSnapshot(from: url, decoding: current.encoding.decodingPolicy)
         else {
             lastError = .unresolvedExternalConflict
             return .handled

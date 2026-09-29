@@ -218,7 +218,7 @@ struct DocumentFileMonitorTests {
 
         try await monitor.bind(to: firstURL, priorFileObjectID: firstID) { _ in }
         try await monitor.bind(to: secondURL, priorFileObjectID: secondID) { _ in }
-        await monitor.updatePriorFileObjectID(firstID, expectedURL: firstURL)
+        await monitor.updateBaseline(priorFileObjectID: firstID, decoding: .automatic, expectedURL: firstURL)
         _ = await monitor.snapshotNow()
 
         #expect(await prober.lastRequest?.url == secondURL.standardizedFileURL)
