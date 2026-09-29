@@ -94,11 +94,13 @@ extension ExternalFileController {
         guard let url = document.fileURL?.standardizedFileURL else { return }
         let lifecycleGeneration = lifecycleGeneration
         let revision = document.lastKnownRevision?.fileObjectID
+        let decoding = document.encoding.decodingPolicy
         Task { @MainActor [weak self] in
             guard let self,
                   isBindingCurrent(generation: lifecycleGeneration, url: url)
             else { return }
             await monitor.updatePriorFileObjectID(revision, expectedURL: url)
+            await monitor.updateDecoding(decoding, expectedURL: url)
         }
     }
 

@@ -13,14 +13,14 @@ extension FileStore {
         hooks: ConditionalPublicationTestHooks?
     ) throws(FileStoreError) {
         var ownership: ConditionalPublicationOwnership = .oursAtTemporary
-        let publishedRevision = try readSnapshot(from: temporaryURL).revision
+        let publishedRevision = try readRevision(from: temporaryURL)
         try renameSwap(temporaryURL, destinationURL)
         ownership = .displacedExternalAtTemporary
 
-        let displaced: FileSnapshot
+        let displaced: FileRevision
         do {
             try hooks?.beforeDisplacedRead?(temporaryURL)
-            displaced = try readSnapshot(from: temporaryURL)
+            displaced = try readRevision(from: temporaryURL)
         } catch {
             guard rollbackDisplacedFile(
                 temporaryURL,
@@ -36,7 +36,7 @@ extension FileStore {
             throw mapWriteError(error)
         }
 
-        guard matchesExpectedBaseline(displaced.revision, expectedRevision) else {
+        guard matchesExpectedBaseline(displaced, expectedRevision) else {
             guard rollbackDisplacedFile(
                 temporaryURL,
                 destinationURL,
@@ -70,16 +70,16 @@ extension FileStore {
         // It owns the destination now; preserve the earlier displaced writer
         // instead of swapping either external version away.
         do {
-            let destination = try readSnapshot(from: destinationURL)
-            guard matchesPublishedObject(destination.revision, publishedRevision) else { return false }
+            let destination = try readRevision(from: destinationURL)
+            guard matchesPublishedObject(destination, publishedRevision) else { return false }
             try hooks?.beforeRollbackSwap?(temporaryURL, destinationURL)
             try renameSwap(temporaryURL, destinationURL)
             // The destination can change after the pre-swap validation. In
             // that case the exchange leaves the newer external object at the
             // temporary path. It must be preserved, never mistaken for our
             // bytes and deleted by the write cleanup path.
-            let displacedAfterRollback = try readSnapshot(from: temporaryURL)
-            guard matchesPublishedObject(displacedAfterRollback.revision, publishedRevision) else {
+            let displacedAfterRollback = try readRevision(from: temporaryURL)
+            guard matchesPublishedObject(displacedAfterRollback, publishedRevision) else {
                 return false
             }
             return true

@@ -57,6 +57,7 @@ extension ExternalFileController {
               boundURL == fileURL.standardizedFileURL
         else { return false }
         let priorFileObjectID = document.lastKnownRevision?.fileObjectID
+        let decoding = document.encoding.decodingPolicy
         let expectedURL = fileURL.standardizedFileURL
         let generation = lifecycleGeneration
         Task { @MainActor [weak self] in
@@ -64,6 +65,7 @@ extension ExternalFileController {
                   isBindingCurrent(generation: generation, url: expectedURL)
             else { return }
             await monitor.updatePriorFileObjectID(priorFileObjectID, expectedURL: expectedURL)
+            await monitor.updateDecoding(decoding, expectedURL: expectedURL)
         }
         return true
     }
@@ -76,6 +78,7 @@ extension ExternalFileController {
     private func bind(fileURL: URL, document: FileDocument, generation: UInt) {
         boundURL = fileURL
         let priorID = document.lastKnownRevision?.fileObjectID
+        let decoding = document.encoding.decodingPolicy
         bindTask = Task { [weak self] in
             guard let self else { return }
             // #59 root cause: `monitor.bind(to:...)` below already performs a
@@ -100,6 +103,7 @@ extension ExternalFileController {
                 try await monitor.bind(
                     to: fileURL,
                     priorFileObjectID: priorID,
+                    decoding: decoding,
                     onObservation: { _ in },
                     onHealthChange: { [weak self] health in
                         Task { @MainActor [weak self] in
