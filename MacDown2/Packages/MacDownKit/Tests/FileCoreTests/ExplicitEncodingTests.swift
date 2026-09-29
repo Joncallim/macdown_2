@@ -217,12 +217,12 @@ struct ExplicitEncodingTests {
         try await monitor.bind(to: firstURL, priorFileObjectID: nil, decoding: .explicit(.isoLatin1)) { _ in }
         #expect(await prober.lastRequest?.decoding == .explicit(.isoLatin1))
 
-        await monitor.updateDecoding(.explicit(.shiftJIS), expectedURL: firstURL)
+        await monitor.updateBaseline(priorFileObjectID: nil, decoding: .explicit(.shiftJIS), expectedURL: firstURL)
         _ = await monitor.snapshotNow()
         #expect(await prober.lastRequest?.decoding == .explicit(.shiftJIS))
 
         try await monitor.bind(to: secondURL, priorFileObjectID: nil) { _ in }
-        await monitor.updateDecoding(.explicit(.isoLatin1), expectedURL: firstURL)
+        await monitor.updateBaseline(priorFileObjectID: nil, decoding: .explicit(.isoLatin1), expectedURL: firstURL)
         _ = await monitor.snapshotNow()
         #expect(await prober.lastRequest?.decoding == .automatic)
     }

@@ -99,8 +99,7 @@ extension ExternalFileController {
             guard let self,
                   isBindingCurrent(generation: lifecycleGeneration, url: url)
             else { return }
-            await monitor.updatePriorFileObjectID(revision, expectedURL: url)
-            await monitor.updateDecoding(decoding, expectedURL: url)
+            await monitor.updateBaseline(priorFileObjectID: revision, decoding: decoding, expectedURL: url)
         }
     }
 

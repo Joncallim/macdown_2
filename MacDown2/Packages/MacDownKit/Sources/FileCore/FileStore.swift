@@ -201,6 +201,11 @@ public struct FileStore: Sendable {
     /// longer be what the user wrote.
     private func encodedData(_ content: String, encoding: String.Encoding, bom: FileBOM) -> Data? {
         guard let body = content.data(using: encoding, allowLossyConversion: false) else { return nil }
+        // A leading U+FEFF written without a BOM is byte-identical to a BOM
+        // and would be consumed as one on reopen, dropping the scalar.
+        if bom == .none, Self.bomCapableEncodings.contains(encoding), content.unicodeScalars.first == "\u{FEFF}" {
+            return nil
+        }
         if !Self.unicodeEncodings.contains(encoding) {
             guard let roundTripped = String(data: body, encoding: encoding),
                   roundTripped.unicodeScalars.elementsEqual(content.unicodeScalars)
@@ -214,6 +219,10 @@ public struct FileStore: Sendable {
         }
         return prefix.isEmpty ? body : Data(prefix) + body
     }
+
+    private static let bomCapableEncodings: Set<String.Encoding> = [
+        .utf8, .utf16, .utf16LittleEndian, .utf16BigEndian,
+    ]
 
     private static let unicodeEncodings: Set<String.Encoding> = [
         .utf8, .utf16, .utf16LittleEndian, .utf16BigEndian, .utf32, .utf32LittleEndian, .utf32BigEndian,

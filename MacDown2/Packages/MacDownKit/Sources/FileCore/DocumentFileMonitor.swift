@@ -92,18 +92,15 @@ public actor DocumentFileMonitor {
         emit(initial, generation: currentGeneration, sequence: initialSequence)
     }
 
-    public func updatePriorFileObjectID(
-        _ id: PhysicalFileIdentity.FileObjectID?,
+    /// Updates the baseline identity and decoding policy in one actor turn so
+    /// no probe can observe one without the other.
+    public func updateBaseline(
+        priorFileObjectID id: PhysicalFileIdentity.FileObjectID?,
+        decoding policy: FileDecodingPolicy,
         expectedURL: URL
     ) {
         guard boundURL == expectedURL.standardizedFileURL else { return }
         priorFileObjectID = id
-    }
-
-    /// The bound document's encoding was chosen explicitly (or changed), so
-    /// later probes must decode with it instead of guessing.
-    public func updateDecoding(_ policy: FileDecodingPolicy, expectedURL: URL) {
-        guard boundURL == expectedURL.standardizedFileURL else { return }
         decoding = policy
     }
 
