@@ -32,6 +32,11 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     /// `fileTreeModel.root` exclusively through `setFolderRoot(_:accessURL:)`
     /// below, never mutated directly by any other call site.
     let workspaceFileIndex: WorkspaceFileIndex
+    /// Folder-wide search sidebar state (EPIC-22 §6.16, Slice 7b), one per
+    /// window mirroring `workspaceFileIndex`'s own scope and kept in sync
+    /// with `fileTreeModel.root` through the same
+    /// `setFileTreeRoot(_:accessURL:)` call site (`WindowController+WorkspaceIndex.swift`).
+    let folderSearchModel: FolderSearchModel
     let externalFileController: ExternalFileController
     weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
@@ -67,6 +72,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         outlineController = OutlineController()
         fileTreeModel = Self.makeFileTreeModel(preferences: fileTreePreferences)
         workspaceFileIndex = WorkspaceFileIndex()
+        folderSearchModel = FolderSearchModel(index: workspaceFileIndex)
         externalFileController = Self.makeExternalFileController(
             model: model,
             editorStore: editorStore,
@@ -87,6 +93,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             themeController: themeController,
             outlineController: outlineController,
             fileTreeModel: fileTreeModel,
+            folderSearchModel: folderSearchModel,
             externalFileController: externalFileController
         )
         .environment(\.windowCoordinator, coordinator)

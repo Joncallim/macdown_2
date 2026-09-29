@@ -56,6 +56,7 @@ extension SidebarSection {
         switch self {
         case .folder: "Folder"
         case .outline: "Outline"
+        case .search: "Search"
         }
     }
 
@@ -63,6 +64,7 @@ extension SidebarSection {
         switch self {
         case .folder: "folder"
         case .outline: "list.bullet"
+        case .search: "magnifyingglass"
         }
     }
 }

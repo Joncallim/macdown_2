@@ -12,22 +12,22 @@ struct SidebarSectionOrderTests {
 
     @Test func reconcileIgnoresUnknownIDs() {
         let order = SidebarSection.reconcile(["unknown", "folder"])
-        #expect(order == [.folder, .outline])
+        #expect(order == [.folder, .outline, .search])
     }
 
     @Test func reconcileDeduplicatesIDs() {
         let order = SidebarSection.reconcile(["folder", "folder", "outline", "outline"])
-        #expect(order == [.folder, .outline])
+        #expect(order == [.folder, .outline, .search])
     }
 
     @Test func reconcileAppendsMissingCases() {
         let order = SidebarSection.reconcile(["outline"])
-        #expect(order == [.outline, .folder])
+        #expect(order == [.outline, .folder, .search])
     }
 
     @Test func reconcilePreservesPartialReverse() {
         let order = SidebarSection.reconcile(["outline", "folder"])
-        #expect(order == [.outline, .folder])
+        #expect(order == [.outline, .folder, .search])
     }
 
     @Test func reconcileIsIdempotent() {
@@ -38,10 +38,10 @@ struct SidebarSectionOrderTests {
     }
 }
 
-/// `SidebarSection` only has two cases today, so the `onMove` offset
-/// convention — where `toOffset` is an insertion point in the *pre-move*
-/// ordering — is only observable on three or more elements. These exercise
-/// `reorder` directly so a future third section inherits correct behavior.
+/// Exercises `reorder` directly (independent of `SidebarSection` itself) so
+/// the `onMove` offset convention — where `toOffset` is an insertion point
+/// in the *pre-move* ordering — is covered generically, not just against
+/// whatever cases `SidebarSection` happens to have today.
 @Suite("reorder(_:fromOffsets:toOffset:)")
 struct ReorderTests {
     private struct ReorderCase: Sendable {

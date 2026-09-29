@@ -26,6 +26,7 @@ struct WorkspaceShellView: View {
     let themeController: ThemeController
     let outlineController: OutlineController
     let fileTreeModel: FileTreeModel
+    let folderSearchModel: FolderSearchModel
     let externalFileController: ExternalFileController
 
     @Environment(\.appSettings) private var appSettings
@@ -40,6 +41,7 @@ struct WorkspaceShellView: View {
         themeController: ThemeController,
         outlineController: OutlineController,
         fileTreeModel: FileTreeModel,
+        folderSearchModel: FolderSearchModel,
         externalFileController: ExternalFileController
     ) {
         _model = State(initialValue: model)
@@ -51,6 +53,7 @@ struct WorkspaceShellView: View {
         self.themeController = themeController
         self.outlineController = outlineController
         self.fileTreeModel = fileTreeModel
+        self.folderSearchModel = folderSearchModel
         self.externalFileController = externalFileController
     }
 
@@ -61,7 +64,12 @@ struct WorkspaceShellView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: sidebarVisibilityBinding) {
-            SidebarView(model: model, outlineController: outlineController, fileTreeModel: fileTreeModel)
+            SidebarView(
+                model: model,
+                outlineController: outlineController,
+                fileTreeModel: fileTreeModel,
+                folderSearchModel: folderSearchModel
+            )
         } detail: {
             ContentAreaView(
                 model: model,
