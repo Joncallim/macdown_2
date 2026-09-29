@@ -199,6 +199,13 @@ public final class FileFormatRegistry: Sendable {
             highlightLanguageID: "xml"
         ),
         FileFormat(
+            id: "tex",
+            name: "TeX/LaTeX",
+            utType: UTType(filenameExtension: "tex") ?? .plainText,
+            extensions: ["tex", "latex"],
+            highlightLanguageID: nil
+        ),
+        FileFormat(
             id: "plaintext",
             name: "Plain Text",
             utType: .plainText,
