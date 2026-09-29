@@ -75,7 +75,7 @@ struct WorkspaceFileIndexPerformanceTests {
         // including the candidate-filtering step, not just a trivial
         // no-op.
         //
-        // Best-of-5, not a single measurement: an independent review found
+        // Minimum of multiple trials, not a single measurement: an independent review found
         // this test still occasionally (roughly 1 in 10-20 runs) exceeded
         // 30 ms on a real, otherwise-busy machine (up to ~88 ms observed in
         // one run) despite the algorithm itself consistently completing in
@@ -92,20 +92,42 @@ struct WorkspaceFileIndexPerformanceTests {
         // the minimum is a sound way to isolate the algorithm's own floor
         // from transient noise -- a genuine regression that raises that
         // floor would still fail every trial, including the minimum,
-        // whereas one noisy trial among five does not.
+        // whereas transiently noisy trials do not.
+        //
+        // Best of up to 20 trials, spread over time, stopping at the first
+        // one under budget. Five back-to-back trials cover only ~150 ms, and
+        // a shared CI runner can slow down for longer than that: CI run
+        // 36393545868 failed with all five trials at 30-45 ms, while a
+        // 100-trial CI sample of the same Debug build measured 20.5 ms
+        // minimum and 25.1 ms maximum. The pause between trials spreads them
+        // across ~2 s of wall time so one slow patch cannot cover them all.
+        // The assertion is unchanged, the fastest trial must beat 30 ms, and
+        // stopping early cannot change its outcome: if any trial is under
+        // budget, so is the minimum. `swift test` measures unoptimized
+        // Debug code; an optimized build runs this query in about 1 ms.
+        let budget = Duration.milliseconds(30)
         let clock = ContinuousClock()
         var durations: [Duration] = []
-        for _ in 0 ..< 5 {
+        for trial in 0 ..< 20 {
+            if trial > 0 {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
             let elapsed = await clock.measure {
                 _ = await index.query("wico")
             }
             durations.append(elapsed)
+            if elapsed < budget {
+                break
+            }
         }
         let best = durations.min() ?? .zero
 
         #expect(
-            best < .milliseconds(30),
-            "query(_:) took \(best) (best of 5: \(durations)) for 100k paths, over the 30 ms budget (issue #112)"
+            best < budget,
+            """
+            query(_:) took \(best) (best of \(durations.count): \(durations)) for 100k paths, \
+            over the 30 ms budget (issue #112)
+            """
         )
     }
 
