@@ -65,7 +65,7 @@ struct FolderSearchModelTests {
         #expect(!model.isSearching)
     }
 
-    @Test func rapidQueryEditsAreDebouncedIntoASingleRealSearch() async throws {
+    @Test func rapidQueryEditsAreDebouncedIntoASingleRealSearch() async {
         // Coalesces rapid keystrokes into one real search, mirroring
         // `MarkdownParseSession.textDidChange`'s own acceptance test shape
         // -- but tests this end-to-end through `scheduleSearch`'s own
