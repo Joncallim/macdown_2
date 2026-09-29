@@ -76,12 +76,62 @@ struct EditorTextTransformsLineEndingsTests {
             == NSRange(location: 3, length: 0))
     }
 
-    @Test func caretInsideACRLFClampsWithinTheNewTerminator() {
-        // Between the CR and LF (offset 2) → after the single LF's start + 1 clamp.
+    @Test func caretInsideACRLFLandsAfterTheReplacementTerminator() {
+        // Offset 2 is between the CR and LF; the single-unit replacement ends at 2.
         #expect(convert("a\r\nb", to: .lineFeed, selection: NSRange(location: 2, length: 0))?.selection
             == NSRange(location: 2, length: 0))
         #expect(convert("a\r\nb", to: .carriageReturn, selection: NSRange(location: 2, length: 0))?.selection
             == NSRange(location: 2, length: 0))
+        // A later terminator still shifts the caret by the earlier one's delta.
+        #expect(convert("a\r\nb\r\nc", to: .lineFeed, selection: NSRange(location: 5, length: 0))?.selection
+            == NSRange(location: 4, length: 0))
+    }
+
+    @Test func rangeEndingInsideACRLFKeepsTheWholeTerminator() {
+        let result = convert("ab\r\ncd", to: .lineFeed, selection: NSRange(location: 0, length: 3))
+        #expect(result?.text == "ab\ncd")
+        #expect(result?.selection == NSRange(location: 0, length: 3))
+    }
+
+    @Test func rangeStartingInsideACRLFExcludesTheWholeTerminator() {
+        let result = convert("ab\r\ncd", to: .lineFeed, selection: NSRange(location: 3, length: 2))
+        #expect(result?.selection == NSRange(location: 3, length: 1))
+    }
+
+    @Test func caretAfterTheChangedSpanShiftsByTheTotalDelta() {
+        // Two changed terminators, caret in the unchanged tail.
+        #expect(convert("a\nb\nc\r\nd", to: .crlf, selection: NSRange(location: 8, length: 0))?.selection
+            == NSRange(location: 10, length: 0))
+    }
+
+    @Test func caretBetweenUnchangedTerminatorsInsideTheSpanShiftsByThoseBefore() {
+        // "a\nb\r\nc\nd": the middle CRLF is already the target; the caret after
+        // 'c' (offset 6) has one earlier LF→CRLF change (+1) and one later one.
+        #expect(convert("a\nb\r\nc\nd", to: .crlf, selection: NSRange(location: 6, length: 0))?.selection
+            == NSRange(location: 7, length: 0))
+    }
+
+    @Test func trailingLoneCarriageReturnConverts() {
+        #expect(convert("a\r", to: .crlf)?.text == "a\r\n")
+        #expect(convert("a\r", to: .lineFeed)?.text == "a\n")
+        #expect(convert("a\r\n\r", to: .lineFeed)?.text == "a\n\n")
+    }
+
+    @Test func everySelectionIsRemappedAndThePrimaryIndexIsPreserved() {
+        let source = "ab\ncd\nef" as NSString
+        let selection = EditorSelectionSet(
+            ranges: [NSRange(location: 1, length: 0), NSRange(location: 4, length: 0), NSRange(location: 7, length: 1)],
+            primaryIndex: 1
+        )
+        let transaction = EditorTextTransforms.convertLineEndingsTransaction(
+            text: source, selection: selection, target: .crlf
+        )
+        #expect(transaction?.resultingSelection?.ranges == [
+            NSRange(location: 1, length: 0),
+            NSRange(location: 5, length: 0),
+            NSRange(location: 9, length: 1),
+        ])
+        #expect(transaction?.resultingSelection?.primaryIndex == 1)
     }
 
     @Test func selectionSpanningTerminatorsKeepsItsContent() {
@@ -99,6 +149,11 @@ struct EditorTextTransformsLineEndingsTests {
         )
         #expect(transaction?.replacements.count == 1)
         #expect(transaction?.undoActionName == "Convert Line Endings")
+        let replacement = transaction?.replacements.first
+        #expect(replacement?.range == NSRange(location: 4, length: 5 * 20000 - 4))
+        #expect(replacement?.replacementText.utf16.count == 2 + 19999 * 6)
+        #expect(replacement?.replacementText.hasSuffix("line\r\n") == true)
+        #expect(replacement?.replacementText.contains("\n\n") == false)
     }
 }
 
@@ -118,6 +173,18 @@ struct EditorTextSystemLineEndingsTests {
         system.textView.undoManager?.undo()
         #expect(system.textView.string == "a\nb\r\nc\rd")
         #expect(system.lineIndex.lineCount == 4)
+        system.textView.undoManager?.redo()
+        #expect(system.textView.string == "a\r\nb\r\nc\r\nd")
+    }
+
+    @Test func undoActionIsNamedConvertLineEndings() {
+        let system = support.makeSystem(text: "a\nb")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        system.textView.delegate = support.makeCoordinator(system: system)
+
+        #expect(system.convertLineEndings(to: .carriageReturn))
+        #expect(system.textView.undoManager?.undoActionName == "Convert Line Endings")
     }
 
     @Test func returnsFalseWhenNothingChanges() {

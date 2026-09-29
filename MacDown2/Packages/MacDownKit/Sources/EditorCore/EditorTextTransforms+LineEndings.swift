@@ -77,24 +77,32 @@ extension EditorTextTransforms {
         return result
     }
 
+    /// Maps each endpoint through the terminator length changes in
+    /// O(log n) using prefix sums of the replaced lengths. An endpoint that
+    /// falls between the CR and LF of a CRLF lands after that terminator's
+    /// replacement, so a selection starting there no longer includes it.
     private static func remapPosition(
         _ range: NSRange,
         throughTerminators changed: [Terminator],
         newLength: Int
     ) -> NSRange {
+        var replacedLengthBefore = [0]
+        replacedLengthBefore.reserveCapacity(changed.count + 1)
+        for terminator in changed {
+            replacedLengthBefore.append(replacedLengthBefore[replacedLengthBefore.count - 1] + terminator.length)
+        }
         func remap(_ offset: Int) -> Int {
-            var shifted = offset
-            for terminator in changed {
-                let end = terminator.location + terminator.length
-                if offset >= end {
-                    shifted += newLength - terminator.length
-                } else if offset > terminator.location {
-                    shifted += min(offset - terminator.location, newLength) - (offset - terminator.location)
+            var low = 0
+            var high = changed.count
+            while low < high {
+                let middle = (low + high) / 2
+                if changed[middle].location + changed[middle].length <= offset {
+                    low = middle + 1
                 } else {
-                    break
+                    high = middle
                 }
             }
-            return shifted
+            return offset + low * newLength - replacedLengthBefore[low]
         }
         let start = remap(range.location)
         let end = remap(range.location + range.length)

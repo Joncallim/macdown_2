@@ -6,27 +6,20 @@ import FileCore
 
 extension WindowCoordinator {
     /// `true` when the key window has an active editor. Unlike the other text
-    /// transforms this does not require the text view to be first responder:
-    /// the status-bar item is a menu, and clicking it need not move focus.
+    /// transforms this does not require the text view to be first responder.
+    /// The status-bar item converts its own pane's text system directly; this
+    /// serves the menu bar, which always targets the key window.
     var canConvertLineEndings: Bool {
         _ = commandStateRevision
         return keyLineEndingTextSystem != nil
     }
 
-    /// The key document's terminators as they are right now, or `nil` when
-    /// there is no key editor.
-    var keyDocumentLineEndingProfile: LineEndingProfile? {
-        keyLineEndingTextSystem.map { LineEndingProfile(detecting: $0.text) }
-    }
-
     /// Rewrites every line terminator in the key document as one undoable edit.
     @discardableResult
     func convertKeyDocumentLineEndings(to target: LineEnding) -> Bool {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
-              let system = keyLineEndingTextSystem
-        else { return false }
-        controller.window?.makeFirstResponder(system.textView)
-        return system.convertLineEndings(to: target)
+        guard let system = keyLineEndingTextSystem, system.convertLineEndings(to: target) else { return false }
+        system.textView.window?.makeFirstResponder(system.textView)
+        return true
     }
 
     private var keyLineEndingTextSystem: EditorTextSystem? {
