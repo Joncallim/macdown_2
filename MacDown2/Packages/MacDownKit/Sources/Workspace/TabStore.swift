@@ -10,7 +10,16 @@ import Observation
 /// session schema stays stable across save-as and untitled recovery buffer keys.
 public struct WorkspaceTab: Identifiable, Sendable {
     public let id: UUID
-    public var document: FileDocument
+    public var document: FileDocument {
+        didSet {
+            // A Save As / rename into another format ends the override for
+            // good, so returning to the original format later cannot revive it.
+            if syntaxOverride != nil, oldValue.format.id != document.format.id {
+                syntaxOverride = nil
+            }
+        }
+    }
+
     public var isPinned: Bool
 
     /// Transient editor state captured at session-save time. Applied by the
@@ -34,6 +43,19 @@ public struct WorkspaceTab: Identifiable, Sendable {
     /// it to `nil` when the format's capability changes).
     public var previewMode: PreviewMode?
 
+    /// The user's explicit Syntax Mode for this tab, or `nil` to follow the
+    /// file's format. Persisted with the session. Cleared when `document`'s
+    /// format id changes; `SyntaxModeOverride.baseFormatID` additionally makes
+    /// a stale override inert.
+    public var syntaxOverride: SyntaxModeOverride?
+
+    /// The format whose grammar and editing profile drive the editor.
+    public var syntaxFormat: FileFormat {
+        Self.registry.syntaxFormat(for: document.format, override: syntaxOverride)
+    }
+
+    private static let registry = FileFormatRegistry()
+
     /// Per-window folder root persisted alongside this native-window tab.
     public var folderRootBookmark: Data?
     public var folderRootAlias: URL?
@@ -47,6 +69,7 @@ public struct WorkspaceTab: Identifiable, Sendable {
         scrollOffset: Double? = nil,
         previewLayout: PreviewLayoutMode? = nil,
         previewMode: PreviewMode? = nil,
+        syntaxOverride: SyntaxModeOverride? = nil,
         folderRootBookmark: Data? = nil,
         folderRootAlias: URL? = nil
     ) {
@@ -58,6 +81,7 @@ public struct WorkspaceTab: Identifiable, Sendable {
         self.scrollOffset = scrollOffset
         self.previewLayout = previewLayout
         self.previewMode = previewMode
+        self.syntaxOverride = syntaxOverride
         self.folderRootBookmark = folderRootBookmark
         self.folderRootAlias = folderRootAlias
     }

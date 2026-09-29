@@ -25,6 +25,8 @@ struct EditorStatusBarView: View {
     /// The document's line-ending state and the conversion action; `nil`
     /// omits the item.
     var lineEnding: LineEndingStatusItem?
+    /// The document's syntax mode and its override action; `nil` omits it.
+    var syntaxMode: SyntaxModeStatusItem?
 
     /// Not `private`: read directly by `EditorStatusBarViewTests`, which
     /// tests these pure computations without needing a full SwiftUI render
@@ -65,6 +67,10 @@ struct EditorStatusBarView: View {
                 .accessibilityIdentifier("statusBarCount")
 
             Spacer()
+
+            if let syntaxMode {
+                SyntaxModeStatusItemView(item: syntaxMode)
+            }
 
             if let encoding {
                 EncodingStatusItemView(

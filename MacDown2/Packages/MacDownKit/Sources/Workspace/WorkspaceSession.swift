@@ -46,6 +46,9 @@ public struct TabRecord: Codable, Sendable, Equatable {
     /// The preview pane's display mode, or `nil` for the format's default.
     /// Optional so sessions written before EPIC-11 still decode.
     public var previewMode: PreviewMode?
+    /// The tab's explicit Syntax Mode. Optional so sessions written before
+    /// Slice 9d still decode.
+    public var syntaxOverride: SyntaxModeOverride?
     /// Decoding metadata needed to interpret the restored text. Optional so
     /// sessions written before EPIC-11 still decode; absent metadata uses the
     /// documented default (UTF-8, no BOM). Raw bytes are never persisted.
@@ -66,6 +69,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         scrollOffset: Double? = nil,
         previewLayout: PreviewLayoutMode? = nil,
         previewMode: PreviewMode? = nil,
+        syntaxOverride: SyntaxModeOverride? = nil,
         encoding: FileEncodingMetadata? = nil,
         folderRootBookmark: Data? = nil,
         folderRootAlias: URL? = nil
@@ -80,6 +84,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         self.scrollOffset = scrollOffset
         self.previewLayout = previewLayout
         self.previewMode = previewMode
+        self.syntaxOverride = syntaxOverride
         self.encoding = encoding
         self.folderRootBookmark = folderRootBookmark
         self.folderRootAlias = folderRootAlias

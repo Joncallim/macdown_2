@@ -84,7 +84,8 @@ extension DocumentEditorSplitView {
                             guard let system, system.convertLineEndings(to: $0) else { return }
                             system.textView.window?.makeFirstResponder(system.textView)
                         }
-                    )
+                    ),
+                    syntaxMode: syntaxModeItem
                 )
             }
         }
@@ -109,12 +110,22 @@ extension DocumentEditorSplitView {
         outlineController.referenceOffsetDidChange(utf16Offset)
     }
 
+    var syntaxModeItem: SyntaxModeStatusItem {
+        SyntaxModeStatusItem(autoFormat: document.format, syntaxFormat: tab.syntaxFormat) { formatID in
+            model.tabStore.setSyntaxMode(formatID, for: tab.id)
+            coordinator?.scheduleSaveSession()
+            if let system = editorStore.existingSystem(for: identity) {
+                system.textView.window?.makeFirstResponder(system.textView)
+            }
+        }
+    }
+
     func attachHighlighter() {
         guard let textSystem = editorStore.existingSystem(for: identity) else { return }
         _ = highlightStore.highlighter(
             for: identity,
             textSystem: textSystem,
-            languageID: document.format.highlightLanguageID,
+            languageID: tab.syntaxFormat.highlightLanguageID,
             theme: themeController.current
         )
     }

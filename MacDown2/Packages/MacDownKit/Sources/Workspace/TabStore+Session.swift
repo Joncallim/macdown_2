@@ -22,6 +22,7 @@ extension TabStore {
                 scrollOffset: nil,
                 previewLayout: tab.previewLayout,
                 previewMode: tab.previewMode,
+                syntaxOverride: tab.syntaxOverride,
                 encoding: tab.document.encoding,
                 folderRootBookmark: tab.folderRootBookmark,
                 folderRootAlias: tab.folderRootAlias
@@ -55,6 +56,7 @@ extension TabStore {
                 scrollOffset: record.scrollOffset,
                 previewLayout: record.previewLayout,
                 previewMode: record.previewMode,
+                syntaxOverride: record.syntaxOverride,
                 folderRootBookmark: record.folderRootBookmark,
                 folderRootAlias: record.folderRootAlias
             )
@@ -121,6 +123,7 @@ extension TabStore {
             scrollOffset: record.scrollOffset,
             previewLayout: record.previewLayout,
             previewMode: record.previewMode,
+            syntaxOverride: record.syntaxOverride,
             folderRootBookmark: record.folderRootBookmark,
             folderRootAlias: record.folderRootAlias
         )

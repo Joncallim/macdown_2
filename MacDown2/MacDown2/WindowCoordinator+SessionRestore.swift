@@ -55,6 +55,12 @@ extension WindowCoordinator {
         if let previewLayout = tab.previewLayout {
             controller.model.tabStore.setPreviewLayout(previewLayout, for: tab.id)
         }
+        if let previewMode = tab.previewMode {
+            controller.model.tabStore.setPreviewMode(previewMode, for: tab.id)
+        }
+        if tab.syntaxFormat.id != tab.document.format.id {
+            controller.model.tabStore.setSyntaxMode(tab.syntaxFormat.id, for: tab.id)
+        }
         if let bookmark = tab.folderRootBookmark {
             var stale = false
             if let root = try? URL(
