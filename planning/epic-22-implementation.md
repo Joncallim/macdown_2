@@ -899,6 +899,9 @@ Per the owner's explicit technical-dependency-order instruction, slices are orde
 **Dependencies:** Slice 4 (`LanguageEditingProfile` needed for TeX mechanics and snippet syntax-scoping).
 **Tests:** snippet expansion corpus; `FormatRegistryConsistencyTests` extension for `.tex`/`.latex`; the new palette-consistency test.
 
+**Status:**
+- **9b** — implemented: `CommandDescriptor.catalog` (every literal-titled menu item in the `Commands` sources, each either bound to a palette id or excluded with a named reason), `CommandRegistryConsistency.validate(...) -> Report`, and `CommandRegistryConsistencyTests`, which scans `WorkspaceCommands*.swift`/`TextFilterCommands.swift` for their literal `Button`/`Menu`/`CommandMenu` titles so a menu item added, renamed or removed without touching the catalog fails, plus drift-injection tests for each failure kind. Exclusions are typed (`menuContainer`, `dynamicItems`, `debugOnly`, `paletteItself`, `notYetWired`). **Carried forward → Slice 10:** the `notYetWired` commands (editing/line transforms/encoding/EOL/find/go-to-line/tabs/export) are palette-eligible in principle but need explicit origin-window capture to be added; the scan cannot see titles supplied through label closures (Layout choices) or variables (theme and text-filter names), which sit inside catalogued container menus.
+
 ### Slice 10 — Orthogonal hardening
 
 **Goal:** the full adversarial/performance/accessibility pass across every slice's surface together (interactions between multi-cursor + search, multi-cursor + snippets, encoding conversion + external edit, etc.), plus the corrected E05 Release performance evidence (§11).
@@ -1097,3 +1100,4 @@ Per `EPIC_STANDARD.md` §4, plus the epic issue's own acceptance criteria (both 
 - 2026-09-29: **Slice 7c landed (PR #175, `7d5f2be1`); Slice 7 complete.** Replace in Folder over the 7a/7b search — see §17 for the safety model, deviations and carried-forward items (FileStore metadata loss #174 → Slice 10). Slice 8 begins next.
 - 2026-09-29: **Slice 8a implemented (FileCore encoding foundation).** Design pass §6.17. Discovered while designing: every verification read shared the strict decode, so non-automatic encodings could not be saved/probed without decode-free revision reads; Foundation composes NFD to Latin-1 bytes, so `canRepresent` refuses lossy scalar round trips. 8b (document operations + UI) and 8c (line endings) follow.
 - 2026-09-29: **Slice 8b implemented (encoding operations + UI).** See the Slice 8 status block for review findings and carried-forward items.
+- 2026-09-29: **Slice 9b implemented (command-registry consistency, #117 item 4).**
