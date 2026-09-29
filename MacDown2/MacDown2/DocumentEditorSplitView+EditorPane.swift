@@ -1,4 +1,5 @@
 import EditorCore
+import FileCore
 import SwiftUI
 
 /// The editor pane and its status bar (epic-22-implementation.md §6.7, §17
@@ -63,8 +64,9 @@ extension DocumentEditorSplitView {
             // real, mounted-window integration test).
             if appSettings?.editor.showsStatusBar != false,
                let system = editorStore.existingSystem(for: identity) {
+                let text = system.text
                 EditorStatusBarView(
-                    text: system.text,
+                    text: text,
                     selectedRange: statusBarSelection,
                     lineIndex: system.lineIndex,
                     indentationWidth: appSettings?.editor.indentationWidth ?? 4,
@@ -75,6 +77,13 @@ extension DocumentEditorSplitView {
                         isChangeable: document.hasEncodableBackingFile,
                         onReopen: { coordinator?.reopenKeyDocument(withEncoding: $0) },
                         onSave: { coordinator?.saveKeyDocument(withEncoding: $0) }
+                    ),
+                    lineEnding: LineEndingStatusItem(
+                        profile: LineEndingProfile(detecting: text),
+                        onConvert: { [weak system] in
+                            guard let system, system.convertLineEndings(to: $0) else { return }
+                            system.textView.window?.makeFirstResponder(system.textView)
+                        }
                     )
                 )
             }

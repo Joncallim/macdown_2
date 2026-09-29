@@ -73,6 +73,8 @@ extension WorkspaceCommands {
             }
             .disabled(coordinator?.canPerformTextTransform != true)
 
+            convertLineEndingsMenu
+
             Divider()
 
             Menu("Convert Case") {
