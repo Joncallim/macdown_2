@@ -1,4 +1,5 @@
 import EditorCore
+import FileCore
 import SwiftUI
 
 /// The editor pane and its status bar (epic-22-implementation.md §6.7, §17
@@ -75,6 +76,10 @@ extension DocumentEditorSplitView {
                         isChangeable: document.hasEncodableBackingFile,
                         onReopen: { coordinator?.reopenKeyDocument(withEncoding: $0) },
                         onSave: { coordinator?.saveKeyDocument(withEncoding: $0) }
+                    ),
+                    lineEnding: LineEndingStatusItem(
+                        profile: LineEndingProfile(detecting: system.text),
+                        onConvert: { coordinator?.convertKeyDocumentLineEndings(to: $0) }
                     )
                 )
             }
