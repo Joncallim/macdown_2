@@ -102,9 +102,13 @@ struct DocumentEditorSplitView: View {
         // this format-specific configuration arrives, so a document can
         // never receive a transient assist configuration meant for a
         // different format.
-        let isMarkdown = document.format.id == "markdown"
+        // The per-document Syntax Mode override (Slice 9d) governs editing
+        // behaviour only; preview and outline gates keep using the file's
+        // real `document.format`.
+        let syntaxFormatID = tab.syntaxFormat.id
+        let isMarkdown = syntaxFormatID == "markdown"
         config.editingAssists = Self.assistConfiguration(from: appSettings?.editor, isMarkdown: isMarkdown)
-        config.languageProfile = LanguageEditingProfileRegistry.profile(for: document.format.id)
+        config.languageProfile = LanguageEditingProfileRegistry.profile(for: syntaxFormatID)
         return config
     }
 
@@ -131,6 +135,9 @@ struct DocumentEditorSplitView: View {
                 if isJSON {
                     jsonSession.textDidChange(newText)
                 }
+            }
+            .onChange(of: tab.syntaxFormat.id) { _, _ in
+                attachHighlighter()
             }
             .onChange(of: document.format.id) { _, _ in
                 // Save As format transitions re-gate both outline channels so

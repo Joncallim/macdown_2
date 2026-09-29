@@ -91,6 +91,8 @@ extension WindowCoordinator {
                         selectionLength: selectedRange?.length,
                         scrollOffset: system.map { Double($0.scrollOffset) },
                         previewLayout: tab.previewLayout,
+                        previewMode: tab.previewMode,
+                        syntaxOverride: tab.syntaxOverride,
                         folderRootBookmark: bookmark,
                         folderRootAlias: lexicalRoot ?? tab.folderRootAlias
                     ),

@@ -1063,24 +1063,24 @@
         }
       }
     },
-    "Tables, task lists, strikethrough, autolinks, and footnotes always parse — MacDown 2's current Markdown engine does not yet support turning them off individually.": {
+    "Tables, task lists, and strikethrough always parse and cannot be turned off. Autolinks are recognised only in <https://…> form, and footnotes are not supported yet.": {
       "localizations": {
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les tableaux, listes de tâches, textes barrés, liens automatiques et notes de bas de page sont toujours interprétés — le moteur Markdown actuel de MacDown 2 ne permet pas encore de les désactiver individuellement."
+            "value": "Les tableaux, listes de tâches et textes barrés sont toujours interprétés et ne peuvent pas être désactivés. Les liens automatiques ne sont reconnus que sous la forme <https://…>, et les notes de bas de page ne sont pas encore prises en charge."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "テーブル、タスクリスト、取り消し線、自動リンク、脚注は常に解析されます。MacDown 2の現在のMarkdownエンジンでは、これらを個別に無効にすることはまだサポートされていません。"
+            "value": "テーブル、タスクリスト、取り消し線は常に解析され、無効にすることはできません。自動リンクは <https://…> の形式のみ認識され、脚注はまだサポートされていません。"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tabele, listy zadań, przekreślenia, automatyczne odnośniki i przypisy są zawsze analizowane — obecny silnik Markdown MacDown 2 nie obsługuje jeszcze ich osobnego wyłączania."
+            "value": "Tabele, listy zadań i przekreślenia są zawsze analizowane i nie można ich wyłączyć. Automatyczne odnośniki są rozpoznawane tylko w postaci <https://…>, a przypisy nie są jeszcze obsługiwane."
           }
         }
       }

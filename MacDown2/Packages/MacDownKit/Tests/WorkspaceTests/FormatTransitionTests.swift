@@ -132,4 +132,64 @@ struct FormatTransitionTests {
         #expect(snapshot.bom == .none)
         #expect(snapshot.encoding == .utf8)
     }
+
+    // MARK: - TeX / LaTeX (EPIC-22 E11, Slice 9c)
+
+    @Test(arguments: ["tex", "latex"])
+    func texFilesOpenAsSourceOnlyAndNeverReachMarkdown(ext: String) throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("paper.\(ext)")
+        _ = try FileStore().write("\\documentclass{article}\n% note\n", to: source)
+
+        let document = try FileDocument(fileURL: source).load()
+        #expect(document.format.id == "tex")
+        #expect(document.format.previewCapability == .none)
+        #expect(document.format.defaultPreviewMode == nil)
+        #expect(document.format.supportedPreviewModes.isEmpty)
+        #expect(document.format.highlightLanguageID == nil)
+    }
+
+    @Test func texOpenEditSaveRoundTripPreservesBytesExactly() throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("paper.tex")
+        let original = "\\documentclass{article}\r\n\\begin{document}\r\nHi $x^2$ % c\r\n\\end{document}\r\n"
+        _ = try FileStore().write(original, to: source)
+
+        var document = try FileDocument(fileURL: source).load()
+        document.text += "\\section{New}\r\n"
+        let saved = try document.save()
+
+        #expect(saved.format.id == "tex")
+        #expect(try FileStore().read(from: source).content == original + "\\section{New}\r\n")
+    }
+
+    @Test func saveAsToTexFromMarkdownAdoptsTheSourceOnlyFormat() throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("note.md")
+        let destination = directory.appendingPathComponent("note.tex")
+        _ = try FileStore().write("# Title\n", to: source)
+        let document = try FileDocument(fileURL: source).load()
+        #expect(document.format.previewCapability == .markdown)
+
+        let saved = try document.saveAs(destination)
+        #expect(saved.format.id == "tex")
+        #expect(saved.format.previewCapability == .none)
+        #expect(saved.format.defaultPreviewMode == nil)
+    }
+
+    @Test func saveAsFromTexToMarkdownReRoutesToMarkdownPreview() throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("paper.tex")
+        let destination = directory.appendingPathComponent("paper.md")
+        _ = try FileStore().write("\\section{A}\n", to: source)
+        let document = try FileDocument(fileURL: source).load()
+
+        let saved = try document.saveAs(destination)
+        #expect(saved.format.id == "markdown")
+        #expect(saved.format.previewCapability == .markdown)
+    }
 }

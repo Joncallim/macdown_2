@@ -203,7 +203,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // (e.g., after Save As). The `highlighter(for:)` method on
         // `SyntaxHighlightStore` detects the language mismatch and calls
         // `setLanguage` automatically.
-        let currentLanguageID = document?.format.highlightLanguageID
+        let currentLanguageID = model.tabStore.activeTab?.syntaxFormat.highlightLanguageID
         if lastObservedLanguageID != currentLanguageID {
             lastObservedLanguageID = currentLanguageID
             guard let activeTab = model.tabStore.activeTab,
