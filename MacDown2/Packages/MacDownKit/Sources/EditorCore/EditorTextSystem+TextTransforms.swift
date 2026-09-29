@@ -1,4 +1,5 @@
 import AppKit
+import FileCore
 
 // MARK: - Sort/Dedupe/Trim/Case/Indent transform commands (EPIC-22 §6.13, Slice 4c-ii)
 
@@ -49,6 +50,13 @@ public extension EditorTextSystem {
     @discardableResult
     func decreaseIndent() -> Bool {
         performIndentTransform(decrease: true)
+    }
+
+    @discardableResult
+    func convertLineEndings(to target: LineEnding) -> Bool {
+        performTextTransform { text, _, selection in
+            EditorTextTransforms.convertLineEndingsTransaction(text: text, selection: selection, target: target)
+        }
     }
 
     private func performIndentTransform(decrease: Bool) -> Bool {
