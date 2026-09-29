@@ -22,6 +22,9 @@ struct EditorStatusBarView: View {
     /// default) omits the item, e.g. for callers that only render the
     /// original three status items.
     var encoding: EncodingStatusItem?
+    /// The document's line-ending state and the conversion action; `nil`
+    /// omits the item.
+    var lineEnding: LineEndingStatusItem?
 
     /// Not `private`: read directly by `EditorStatusBarViewTests`, which
     /// tests these pure computations without needing a full SwiftUI render
@@ -72,6 +75,10 @@ struct EditorStatusBarView: View {
                 )
             }
 
+            if let lineEnding {
+                LineEndingStatusItemView(profile: lineEnding.profile, onConvert: lineEnding.onConvert)
+            }
+
             Text(indentationText)
                 .accessibilityIdentifier("statusBarIndentation")
         }
@@ -114,4 +121,10 @@ struct EncodingStatusItem {
     let isChangeable: Bool
     let onReopen: (String.Encoding) -> Void
     let onSave: (FileEncodingMetadata) -> Void
+}
+
+/// Inputs for the status bar's line-ending indicator.
+struct LineEndingStatusItem {
+    let profile: LineEndingProfile
+    let onConvert: (LineEnding) -> Void
 }
