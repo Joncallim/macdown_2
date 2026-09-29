@@ -1,0 +1,85 @@
+import AppSettings
+import FileCore
+import FileTree
+import Foundation
+import Highlighting
+@testable import MacDown2
+import Testing
+import Themes
+import Workspace
+
+/// The coordinator's real session writer/restorer must carry per-tab view
+/// state (Preview Mode and Syntax Mode, EPIC-22 Slice 9d) — `TabStore`'s own
+/// `currentSession()` is not what the app publishes.
+@MainActor
+struct SessionViewStateRoundTripTests {
+    private final class MemorySessionStore: WorkspaceSessionStoring {
+        var session: WorkspaceSession?
+        func loadSession() -> WorkspaceSession? {
+            session
+        }
+
+        func saveSession(_ session: WorkspaceSession) {
+            self.session = session
+        }
+    }
+
+    private func makeCoordinator(sessions: MemorySessionStore, recovery: RecoveryBuffer) -> WindowCoordinator {
+        let preferences = FileTreePreferences()
+        return WindowCoordinator(
+            sessionStore: sessions,
+            recoveryBuffer: recovery,
+            themeController: ThemeController(),
+            grammarRegistry: GrammarRegistry(),
+            fileTreePreferences: preferences,
+            recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
+            appSettings: AppSettingsModel()
+        )
+    }
+
+    @Test func previewModeAndSyntaxModeSurviveSaveAndRestore() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let fileURL = directory.appendingPathComponent("notes.txt")
+        try "hello".write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let sessions = MemorySessionStore()
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let coordinator = makeCoordinator(sessions: sessions, recovery: recovery)
+        let preferences = FileTreePreferences()
+
+        let model = coordinator.makeWindowModel()
+        let document = try FileDocument(fileURL: fileURL, recoveryBuffer: recovery).load()
+        model.tabStore.newTab(document: document)
+        let tabID = try #require(model.tabStore.activeTabID)
+        model.tabStore.setPreviewMode(.source, for: tabID)
+        model.tabStore.setSyntaxMode("python", for: tabID)
+        let controller = WindowController(
+            model: model,
+            coordinator: coordinator,
+            themeController: ThemeController(),
+            grammarRegistry: GrammarRegistry(),
+            fileTreePreferences: preferences
+        )
+        coordinator.controllers = [controller]
+
+        #expect(await coordinator.saveSessionResult().persisted)
+        let record = try #require(sessions.session?.tabs.first)
+        #expect(record.previewMode == .source)
+        #expect(record.syntaxOverride == SyntaxModeOverride(modeFormatID: "python", baseFormatID: "plaintext"))
+
+        let restoringStore = TabStore(sessionStore: sessions, recoveryBuffer: recovery)
+        await restoringStore.restoreSessionIfNeeded()
+        let restoredTab = try #require(restoringStore.tabs.first)
+        let restoredController = coordinator.makeRestoredController(tab: restoredTab)
+        coordinator.applyRestoredState(controller: restoredController, tab: restoredTab)
+
+        let live = try #require(restoredController.model.tabStore.activeTab)
+        #expect(live.previewMode == .source)
+        #expect(live.syntaxFormat.id == "python")
+        #expect(live.document.format.id == restoredTab.document.format.id)
+    }
+}

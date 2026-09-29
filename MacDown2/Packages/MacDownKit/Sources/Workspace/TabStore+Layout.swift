@@ -28,6 +28,22 @@ public extension TabStore {
         persist()
     }
 
+    /// Sets the Syntax Mode for the tab identified by `id` to the registered
+    /// format `formatID`. `nil` — or the document's own format — restores
+    /// automatic detection; an unregistered id is ignored. Editing-only: the
+    /// document's format, preview and file are untouched.
+    func setSyntaxMode(_ formatID: String?, for id: UUID) {
+        guard let index = tabIndex(of: id) else { return }
+        let base = tabs[index].document.format.id
+        if let formatID, formatID != base {
+            guard FileFormatRegistry.defaultFormats.contains(where: { $0.id == formatID }) else { return }
+            tabs[index].syntaxOverride = SyntaxModeOverride(modeFormatID: formatID, baseFormatID: base)
+        } else {
+            tabs[index].syntaxOverride = nil
+        }
+        persist()
+    }
+
     func selectNextTab() {
         guard let activeTabID, tabs.count > 1 else { return }
         guard let index = tabIndex(of: activeTabID) else { return }
@@ -66,6 +82,7 @@ public extension TabStore {
                 scrollOffset: tab.scrollOffset,
                 previewLayout: tab.previewLayout,
                 previewMode: tab.previewMode,
+                syntaxOverride: tab.syntaxOverride,
                 folderRootBookmark: tab.folderRootBookmark,
                 folderRootAlias: tab.folderRootAlias
             ), at: pinnedCount)
@@ -79,6 +96,7 @@ public extension TabStore {
                 scrollOffset: tab.scrollOffset,
                 previewLayout: tab.previewLayout,
                 previewMode: tab.previewMode,
+                syntaxOverride: tab.syntaxOverride,
                 folderRootBookmark: tab.folderRootBookmark,
                 folderRootAlias: tab.folderRootAlias
             ), at: pinnedCount)
