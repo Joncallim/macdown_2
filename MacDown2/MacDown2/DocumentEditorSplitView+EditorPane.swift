@@ -69,7 +69,13 @@ extension DocumentEditorSplitView {
                     lineIndex: system.lineIndex,
                     indentationWidth: appSettings?.editor.indentationWidth ?? 4,
                     convertsTabsToSpaces: appSettings?.editor.convertsTabsToSpaces ?? true,
-                    onGoToLine: { coordinator?.toggleGoToLine() }
+                    onGoToLine: { coordinator?.toggleGoToLine() },
+                    encoding: EncodingStatusItem(
+                        metadata: document.encoding,
+                        isChangeable: document.hasEncodableBackingFile,
+                        onReopen: { coordinator?.reopenKeyDocument(withEncoding: $0) },
+                        onSave: { coordinator?.saveKeyDocument(withEncoding: $0) }
+                    )
                 )
             }
         }

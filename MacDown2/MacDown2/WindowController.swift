@@ -181,7 +181,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
-    private func updateTitleAndEditedState() {
+    func updateTitleAndEditedState() {
         let document = model.activeDocument
         let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
         let isDirty = document?.state == .dirty || document?.state == .conflict

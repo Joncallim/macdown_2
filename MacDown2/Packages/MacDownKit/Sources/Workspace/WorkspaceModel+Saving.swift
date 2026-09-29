@@ -2,12 +2,12 @@ import FileCore
 import Foundation
 
 @MainActor
-extension WorkspaceModel {
+public extension WorkspaceModel {
     /// Result of a Save attempt that is forbidden from presenting a
     /// destination picker. The command palette uses this so its explicit
     /// origin remains authoritative even if the document becomes untitled
     /// or its backing disappears immediately before the save starts.
-    public enum NonPromptingSaveResult: Sendable, Equatable {
+    enum NonPromptingSaveResult: Sendable, Equatable {
         case handled
         case requiresDestination
     }
@@ -18,7 +18,7 @@ extension WorkspaceModel {
     }
 
     /// Saves the active document. Untitled documents prompt for a location.
-    public func save() async {
+    func save() async {
         _ = await save(isRetry: false, destinationPolicy: .promptIfNeeded)
     }
 
@@ -28,8 +28,23 @@ extension WorkspaceModel {
     /// scoped Save As UI. The policy is threaded through the metadata-conflict
     /// retry too, so no later re-check can silently fall back to an ambient
     /// panel after the caller chose the non-prompting route.
-    public func saveWithoutDestinationPrompt() async -> NonPromptingSaveResult {
+    func saveWithoutDestinationPrompt() async -> NonPromptingSaveResult {
         await save(isRetry: false, destinationPolicy: .reportRequirement)
+    }
+
+    /// Saves the active document to its own file in a different encoding
+    /// ("Save with Encoding"). The document's encoding metadata changes only
+    /// once the write succeeds: text the encoding cannot hold fails with
+    /// `.textNotRepresentable` and leaves both the file and the document as
+    /// they were. Never prompts; a document without a usable backing file
+    /// reports `.requiresDestination`.
+    func saveWithoutDestinationPrompt(encoding: FileEncodingMetadata) async -> NonPromptingSaveResult {
+        await save(isRetry: false, destinationPolicy: .reportRequirement, encodingOverride: encoding)
+    }
+
+    /// Clears a surfaced error the user has read and chosen to ignore.
+    func dismissLastError() {
+        lastError = nil
     }
 
     /// Advisory snapshot of whether a Save *right now* needs a destination.
@@ -37,7 +52,7 @@ extension WorkspaceModel {
     /// backing file can disappear immediately after this property is read.
     /// Callers that must guarantee they never prompt ambiently should use
     /// `saveWithoutDestinationPrompt()` instead.
-    public var requiresDestinationToSave: Bool {
+    var requiresDestinationToSave: Bool {
         guard let document = tabStore.activeDocument else { return false }
         return document.fileURL == nil || isBackingUnavailable(document)
     }
@@ -50,7 +65,8 @@ extension WorkspaceModel {
     ///     an explicit-origin caller instead.
     private func save(
         isRetry: Bool,
-        destinationPolicy: SaveDestinationPolicy
+        destinationPolicy: SaveDestinationPolicy,
+        encodingOverride: FileEncodingMetadata? = nil
     ) async -> NonPromptingSaveResult {
         guard let document = tabStore.activeDocument else {
             lastError = .noActiveDocument
@@ -73,7 +89,7 @@ extension WorkspaceModel {
         beginSavingIndicator(for: document.id)
         defer { endSavingIndicator(for: document.id) }
         do {
-            let result = try await documentWriter.save(document)
+            let result = try await documentWriter.save(document, encodingOverride: encodingOverride)
             await applySuccessfulSave(
                 result.document,
                 originatingFrom: document,
@@ -87,11 +103,16 @@ extension WorkspaceModel {
                 return await reconcileSaveConflict(
                     for: document,
                     isRetry: isRetry,
-                    destinationPolicy: destinationPolicy
+                    destinationPolicy: destinationPolicy,
+                    encodingOverride: encodingOverride
                 )
             }
             guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return .handled }
-            lastError = workspaceError(for: error)
+            if case FileStoreError.encodingDetectionFailed = error {
+                lastError = .textNotRepresentable(encodingName: (encodingOverride ?? document.encoding).displayName)
+            } else {
+                lastError = workspaceError(for: error)
+            }
         }
         return .handled
     }
@@ -99,7 +120,8 @@ extension WorkspaceModel {
     private func reconcileSaveConflict(
         for document: FileDocument,
         isRetry: Bool,
-        destinationPolicy: SaveDestinationPolicy
+        destinationPolicy: SaveDestinationPolicy,
+        encodingOverride: FileEncodingMetadata?
     ) async -> NonPromptingSaveResult {
         guard let current = tabStore.activeDocument,
               isSameDocumentLifetime(current, document),
@@ -122,7 +144,13 @@ extension WorkspaceModel {
         // without ever reaching `.clean`; the close flow then treats that as
         // a failed save and silently reverts to `.dirty` with the prompt
         // dismissed — save-and-close would do nothing and say nothing.
-        guard reconciliation.document.state == .dirty || reconciliation.document.state == .promptingClose else {
+        // An encoding change is a request to rewrite the file even when the
+        // text is unedited, so a clean document must still retry it rather
+        // than end silently with the old bytes.
+        let hasEncodingChange = encodingOverride.map { $0 != reconciliation.document.encoding } ?? false
+        guard reconciliation.document.state == .dirty || reconciliation.document.state == .promptingClose
+            || hasEncodingChange
+        else {
             return .handled
         }
         guard !isRetry else {
@@ -142,7 +170,7 @@ extension WorkspaceModel {
         // something external is outpacing us, and that deserves a real error
         // rather than another silent attempt. Preserve the caller's
         // destination policy across that retry.
-        return await save(isRetry: true, destinationPolicy: destinationPolicy)
+        return await save(isRetry: true, destinationPolicy: destinationPolicy, encodingOverride: encodingOverride)
     }
 
     /// Saves the active document to a user-chosen location, prompted via
@@ -154,7 +182,7 @@ extension WorkspaceModel {
     /// and cannot guarantee it is still key by the time this `await`
     /// resolves. Such a caller should use `saveAs(to:)` instead, having
     /// already presented its own panel explicitly against that window.
-    public func saveAs() async {
+    func saveAs() async {
         guard let document = tabStore.activeDocument else {
             lastError = .noActiveDocument
             return
@@ -184,7 +212,7 @@ extension WorkspaceModel {
     /// it. Re-reading `tabStore.activeDocument` here and checking
     /// `isCurrent` against it cannot express that guard: it compares the
     /// active document with itself and is always true.
-    public func saveAs(to url: URL, expecting expected: FileDocument) async {
+    func saveAs(to url: URL, expecting expected: FileDocument) async {
         guard isCurrent(expected) else { return }
         await publishSaveAs(expected, to: url)
     }
@@ -192,11 +220,11 @@ extension WorkspaceModel {
     /// The filename `saveAs()`'s own panel prompt defaults to — exposed so
     /// a caller presenting its own panel (via `saveAs(to:)`) can offer the
     /// same default without duplicating the fallback-extension logic.
-    public static func defaultSaveAsName(for document: FileDocument) -> String {
+    static func defaultSaveAsName(for document: FileDocument) -> String {
         document.fileURL?.lastPathComponent ?? "Untitled.\(document.format.extensions.first ?? "md")"
     }
 
-    func saveInternalForClose() async {
+    internal func saveInternalForClose() async {
         guard tabStore.activeDocument != nil else { return }
         await save()
     }

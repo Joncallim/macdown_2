@@ -1,4 +1,5 @@
 import EditorCore
+import FileCore
 import Foundation
 import SwiftUI
 
@@ -17,6 +18,10 @@ struct EditorStatusBarView: View {
     let indentationWidth: Int
     let convertsTabsToSpaces: Bool
     let onGoToLine: () -> Void
+    /// The document's encoding and what may be done with it; `nil` (the
+    /// default) omits the item, e.g. for callers that only render the
+    /// original three status items.
+    var encoding: EncodingStatusItem?
 
     /// Not `private`: read directly by `EditorStatusBarViewTests`, which
     /// tests these pure computations without needing a full SwiftUI render
@@ -58,6 +63,15 @@ struct EditorStatusBarView: View {
 
             Spacer()
 
+            if let encoding {
+                EncodingStatusItemView(
+                    encoding: encoding.metadata,
+                    isChangeable: encoding.isChangeable,
+                    onReopen: encoding.onReopen,
+                    onSave: encoding.onSave
+                )
+            }
+
             Text(indentationText)
                 .accessibilityIdentifier("statusBarIndentation")
         }
@@ -92,4 +106,12 @@ struct EditorStatusBarView: View {
         }
         return count
     }
+}
+
+/// Inputs for the status bar's encoding indicator.
+struct EncodingStatusItem {
+    let metadata: FileEncodingMetadata
+    let isChangeable: Bool
+    let onReopen: (String.Encoding) -> Void
+    let onSave: (FileEncodingMetadata) -> Void
 }

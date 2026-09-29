@@ -176,21 +176,30 @@ public struct FileDocument: Sendable {
     /// Saves using a caller-owned baseline. The workspace save serializer uses
     /// this to let a later queued save adopt the revision accepted by an
     /// earlier save without losing edits made in between.
-    public func saving(expectedRevision: FileRevision?) throws(FileStoreError) -> FileDocument {
+    ///
+    /// `encodingOverride` writes the text in a different encoding. The result
+    /// carries the override as its metadata only because the write succeeded;
+    /// a failure throws and the receiver is unchanged.
+    public func saving(
+        expectedRevision: FileRevision?,
+        encodingOverride: FileEncodingMetadata? = nil
+    ) throws(FileStoreError) -> FileDocument {
         guard let fileURL else {
             // Untitled documents are not saved to disk; their recovery buffer
             // is maintained separately by `autosave()`.
             throw .invalidURL
         }
 
+        let destinationEncoding = encodingOverride ?? encoding
         let revision = try fileStore.write(
             text,
             to: fileURL,
-            encoding: encoding.encoding,
-            bom: encoding.bom,
+            encoding: destinationEncoding.encoding,
+            bom: destinationEncoding.bom,
             expectedRevision: expectedRevision
         )
         var copy = self
+        copy.encoding = destinationEncoding
         copy.lastKnownRevision = revision
         copy.pendingExternalRevision = nil
         copy.backingState = .available
@@ -342,12 +351,6 @@ public struct FileDocument: Sendable {
     // MARK: - External change detection
 
     // MARK: - Helpers
-
-    private static func format(for url: URL) -> FileFormat {
-        FileFormat.format(for: url, in: FileFormatRegistry())
-            ?? FileFormatRegistry.defaultFormats.first { $0.id == "plaintext" }
-            ?? FileFormat(id: "plaintext", name: "Plain Text", utType: .plainText, extensions: ["txt"])
-    }
 
     /// Internal mutation seam so the public state remains externally read-only
     /// while pure transitions can stay in their own source file.
