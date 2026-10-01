@@ -1,3 +1,4 @@
+import Darwin
 import FileCore
 import Foundation
 import Testing
@@ -54,6 +55,22 @@ struct WorkspaceReplaceEngineTests {
         #expect(try read(tree, "a.md") == "quux! bar quux!\nquux!")
         #expect(try read(tree, "sub/b.md") == "no match here\nprefix quux! suffix")
         #expect(try read(tree, "untouched.md") == "nothing")
+    }
+
+    @Test
+    func replaceKeepsEachFilesPermissionBits() async throws {
+        let tree = try WorkspaceSearchEngineTempTree()
+        try tree.write("script.md", text: "foo")
+        let path = tree.root.appendingPathComponent("script.md").path
+        #expect(chmod(path, 0o700) == 0)
+        let results = await searchResults(tree, query: "foo")
+
+        _ = await WorkspaceReplaceEngine().replace(root: tree.root, plans: plans(results, replacement: "bar"))
+
+        #expect(try read(tree, "script.md") == "bar")
+        var info = stat()
+        #expect(stat(path, &info) == 0)
+        #expect(info.st_mode & 0o7777 == 0o700)
     }
 
     @Test
