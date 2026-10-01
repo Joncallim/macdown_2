@@ -42,7 +42,7 @@ struct WorkspaceIndexFreshnessTests {
     }
 
     private func paths(_ controller: WindowController) async -> Set<String> {
-        Set(await controller.workspaceFileIndex.allPaths().map(\.relativePath))
+        await Set(controller.workspaceFileIndex.allPaths().map(\.relativePath))
     }
 
     private func tempRoot(_ files: [String]) throws -> URL {
@@ -87,7 +87,9 @@ struct WorkspaceIndexFreshnessTests {
         var found = false
         for _ in 0 ..< 200 where !found {
             found = await paths(controller).contains(created.url.lastPathComponent)
-            if !found { try await Task.sleep(for: .milliseconds(25)) }
+            if !found {
+                try await Task.sleep(for: .milliseconds(25))
+            }
         }
         #expect(found)
     }
