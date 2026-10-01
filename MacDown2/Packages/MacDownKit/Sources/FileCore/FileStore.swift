@@ -244,6 +244,12 @@ public struct FileStore: Sendable {
 
         do {
             try data.write(to: temporaryURL, options: .atomic)
+            if expectedRevision != nil {
+                // The conditional path publishes the temporary file itself, so
+                // it must already carry the destination's metadata (#174);
+                // the unconditional path's `replaceItemAt` preserves it.
+                try carryMetadata(from: url, to: temporaryURL)
+            }
             try beforePublication?(url)
             // Re-check immediately before publishing the replacement. A
             // conditional publication then uses `RENAME_SWAP`: the previous
