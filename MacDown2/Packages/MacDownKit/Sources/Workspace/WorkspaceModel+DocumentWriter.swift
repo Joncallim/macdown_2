@@ -4,6 +4,11 @@ import Foundation
 actor DocumentWriter {
     private let onRequestQueued: (@Sendable () -> Void)?
     private var acceptedLineage: [DocumentKey: [RevisionLineageKey: FileRevision]] = [:]
+    /// The encoding each accepted output revision was written in, so a queued
+    /// ordinary save built from an older snapshot cannot silently revert an
+    /// encoding/BOM choice an earlier save in the same lineage already made
+    /// (#183 F10).
+    private var acceptedEncodings: [DocumentKey: [RevisionLineageKey: FileEncodingMetadata]] = [:]
     /// Inputs captured by requests which have entered a document lane but may
     /// not yet have selected their conditional-write baseline. Keep lineage
     /// only while one of these callers can still need to follow it.
@@ -28,11 +33,12 @@ actor DocumentWriter {
         registerPendingSource(sourceRevision, for: key)
         await acquireLane(for: key)
         let expectedRevision = baseline(for: document)
+        let effectiveEncoding = encodingOverride ?? inheritedEncoding(for: document, expected: expectedRevision)
         do {
             let saved = try await write(
                 document,
                 expectedRevision: expectedRevision,
-                encodingOverride: encodingOverride
+                encodingOverride: effectiveEncoding
             )
             record(saved, source: sourceRevision, expected: expectedRevision)
             let resultID = UUID()
@@ -77,6 +83,7 @@ actor DocumentWriter {
             destinationBaseline: destinationBaseline
         )
         acceptedLineage.removeValue(forKey: key)
+        acceptedEncodings.removeValue(forKey: key)
         return saved
     }
 
@@ -84,6 +91,7 @@ actor DocumentWriter {
         let key = DocumentKey(document)
         await acquireLane(for: key)
         acceptedLineage.removeValue(forKey: key)
+        acceptedEncodings.removeValue(forKey: key)
         releaseLane(for: key)
     }
 
@@ -140,9 +148,12 @@ actor DocumentWriter {
         }
         guard !retainedKeys.isEmpty else {
             acceptedLineage[key] = nil
+            acceptedEncodings[key] = nil
             return
         }
         acceptedLineage[key] = acceptedLineage[key]?.filter { retainedKeys.contains($0.key) }
+        let reachableOutputs = Set(acceptedLineage[key]?.values.map { RevisionLineageKey($0) } ?? [])
+        acceptedEncodings[key] = acceptedEncodings[key]?.filter { reachableOutputs.contains($0.key) }
     }
 
     private func baseline(for document: FileDocument) -> FileRevision? {
@@ -157,6 +168,16 @@ actor DocumentWriter {
         return revision
     }
 
+    /// The encoding an earlier accepted save in this lineage wrote, when this
+    /// request's snapshot predates it and would otherwise write something else.
+    private func inheritedEncoding(for document: FileDocument, expected: FileRevision?) -> FileEncodingMetadata? {
+        guard let expected, expected != document.lastKnownRevision,
+              let accepted = acceptedEncodings[DocumentKey(document)]?[RevisionLineageKey(expected)],
+              accepted != document.encoding
+        else { return nil }
+        return accepted
+    }
+
     private func record(
         _ document: FileDocument,
         source: FileRevision?,
@@ -164,6 +185,7 @@ actor DocumentWriter {
     ) {
         guard let source, let output = document.lastKnownRevision else { return }
         let key = DocumentKey(document)
+        acceptedEncodings[key, default: [:]][RevisionLineageKey(output)] = document.encoding
         acceptedLineage[key, default: [:]][RevisionLineageKey(source)] = output
         if let expected, expected != source {
             acceptedLineage[key, default: [:]][RevisionLineageKey(expected)] = output
