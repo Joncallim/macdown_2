@@ -94,6 +94,18 @@ extension FolderSearchModel {
         replaceTask?.cancel()
     }
 
+    /// The root this run was authorised against is going away: cancel it and
+    /// make sure nothing it later reports is published against the new root
+    /// (#183 F14). Files already written stay written; the engine stops at the
+    /// next file boundary.
+    func retireReplaceRun() {
+        replaceGeneration += 1
+        replaceTask?.cancel()
+        replaceTask = nil
+        isReplacing = false
+        replaceSummary = nil
+    }
+
     func confirmReplace() {
         isConfirmingReplace = false
         guard canReplace, let root else { return }
@@ -103,14 +115,20 @@ extension FolderSearchModel {
         replaceCompleted = 0
         replaceTotal = plans.count
         let hasUnsaved = hasUnsavedOpenDocument
+        replaceGeneration += 1
+        let thisGeneration = replaceGeneration
         replaceTask = Task { [weak self] in
             guard let self else { return }
             let results = await performReplace(
                 root,
                 plans,
                 { @MainActor path in hasUnsaved(root.appendingPathComponent(path)) },
-                { @MainActor [weak self] _ in self?.replaceCompleted += 1 }
+                { @MainActor [weak self] _ in
+                    guard let self, replaceGeneration == thisGeneration else { return }
+                    replaceCompleted += 1
+                }
             )
+            guard replaceGeneration == thisGeneration else { return }
             replaceSummary = Self.summarize(results)
             isReplacing = false
             replaceTask = nil
