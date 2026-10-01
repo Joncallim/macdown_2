@@ -185,4 +185,61 @@ struct RecentFileDocumentsTests {
 
         #expect(reloaded.documents.isEmpty)
     }
+
+    // MARK: - #183 F21: bookmark vs lexical identity
+
+    @Test func resolveFollowsAFileThatMovedAndAdoptsItsNewPath() throws {
+        let original = try TempFile(name: "notes.md")
+        try Data("original".utf8).write(to: original.url)
+        let store = try RecentFileDocuments(preferences: makePreferences())
+        store.record(original.url)
+        let oldPath = original.url
+        let movedPath = oldPath.deletingLastPathComponent().appendingPathComponent("moved-notes.md")
+        try FileManager.default.moveItem(at: oldPath, to: movedPath)
+
+        let resolution = try #require(store.resolve(oldPath))
+
+        #expect(resolution.lexicalURL.lastPathComponent == "moved-notes.md")
+        #expect(try String(contentsOf: resolution.lexicalURL, encoding: .utf8) == "original")
+    }
+
+    /// Bookmarks resolve path-first, so with an unrelated file at the old path
+    /// they resolve to *it*. It must be refused, not opened as the recent file.
+    @Test func anUnrelatedFileAtTheOldPathIsNeverOpenedAsTheRecentFile() throws {
+        let original = try TempFile(name: "notes.md")
+        try Data("original".utf8).write(to: original.url)
+        let store = try RecentFileDocuments(preferences: makePreferences())
+        store.record(original.url)
+        let oldPath = original.url
+        try FileManager.default.moveItem(
+            at: oldPath,
+            to: oldPath.deletingLastPathComponent().appendingPathComponent("moved-notes.md")
+        )
+        try Data("unrelated".utf8).write(to: oldPath)
+
+        #expect(store.resolve(oldPath) == nil)
+        #expect(store.documents.isEmpty)
+    }
+
+    @Test func aWorkingLexicalAliasIsKept() throws {
+        let file = try TempFile(name: "keep.md")
+        let store = try RecentFileDocuments(preferences: makePreferences())
+        store.record(file.url)
+
+        let resolution = try #require(store.resolve(file.url))
+
+        #expect(resolution.lexicalURL.standardizedFileURL == file.url.standardizedFileURL)
+    }
+
+    @Test func pruningKeepsAMovedFileItsBookmarkStillFinds() throws {
+        let original = try TempFile(name: "before.md")
+        let store = try RecentFileDocuments(preferences: makePreferences())
+        store.record(original.url)
+        let movedPath = original.url.deletingLastPathComponent().appendingPathComponent("after.md")
+        try FileManager.default.moveItem(at: original.url, to: movedPath)
+
+        store.pruneMissingFiles()
+
+        #expect(store.documents.map(\.lastPathComponent) == ["after.md"])
+    }
 }
