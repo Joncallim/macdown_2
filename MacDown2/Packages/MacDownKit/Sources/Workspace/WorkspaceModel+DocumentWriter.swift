@@ -55,7 +55,11 @@ actor DocumentWriter {
         }
     }
 
-    func saveAs(_ document: FileDocument, to url: URL) async throws(FileStoreError) -> FileDocument {
+    func saveAs(
+        _ document: FileDocument,
+        to url: URL,
+        destinationBaseline: DestinationBaseline? = nil
+    ) async throws(FileStoreError) -> FileDocument {
         let key = DocumentKey(document)
         await acquireLane(for: key)
         defer { releaseLane(for: key) }
@@ -66,7 +70,12 @@ actor DocumentWriter {
         } catch {
             throw .writeFailed(underlying: error)
         }
-        let saved = try await writeSaveAs(document, to: url, recoveryEpoch: recoveryEpoch)
+        let saved = try await writeSaveAs(
+            document,
+            to: url,
+            recoveryEpoch: recoveryEpoch,
+            destinationBaseline: destinationBaseline
+        )
         acceptedLineage.removeValue(forKey: key)
         return saved
     }
@@ -201,11 +210,12 @@ actor DocumentWriter {
     private func writeSaveAs(
         _ document: FileDocument,
         to url: URL,
-        recoveryEpoch: UUID
+        recoveryEpoch: UUID,
+        destinationBaseline: DestinationBaseline?
     ) async throws(FileStoreError) -> FileDocument {
         do {
             return try await Task.detached(priority: .userInitiated) {
-                try document.saveAs(url, recoveryEpoch: recoveryEpoch)
+                try document.saveAs(url, recoveryEpoch: recoveryEpoch, destinationBaseline: destinationBaseline)
             }.value
         } catch let error as FileStoreError {
             throw error
