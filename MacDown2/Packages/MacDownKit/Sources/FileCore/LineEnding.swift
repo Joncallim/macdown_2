@@ -24,13 +24,24 @@ public extension LineEnding {
     /// (the common case, without scanning `document`) or when `document` has no
     /// terminator of its own to follow.
     static func adaptingLineBreaks(in fragment: String, toMatch document: String) -> String {
-        guard fragment.utf8.contains(where: { $0 == 0x0A || $0 == 0x0D }),
-              let target = LineEndingProfile(detecting: document).dominantEnding
-        else { return fragment }
+        guard fragment.containsLineBreak else { return fragment }
+        return adaptingLineBreaks(in: fragment, to: LineEndingProfile(detecting: document).dominantEnding)
+    }
+
+    /// As above, for a caller that already knows the target ending; `nil`
+    /// leaves `fragment` untouched.
+    static func adaptingLineBreaks(in fragment: String, to target: LineEnding?) -> String {
+        guard fragment.containsLineBreak, let target else { return fragment }
         return fragment
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")
             .replacingOccurrences(of: "\n", with: target.text)
+    }
+}
+
+private extension String {
+    var containsLineBreak: Bool {
+        utf8.contains { $0 == 0x0A || $0 == 0x0D }
     }
 }
 

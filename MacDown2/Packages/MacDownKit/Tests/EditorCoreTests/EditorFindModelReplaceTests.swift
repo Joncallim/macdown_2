@@ -146,4 +146,15 @@ struct EditorFindModelReplaceTests {
 
         #expect(applied?.text == "a x\r\ny")
     }
+
+    @Test("the replacement follows the document's current ending after a re-search")
+    func replacementFollowsTheEndingOfTheLatestSearch() async {
+        let model = EditorFindModel(query: "cat")
+        await model.updateMatches(in: "one\r\ncat", preferringLocationNear: 0)
+        await model.updateMatches(in: "one\ncat", preferringLocationNear: 0)
+
+        let applied = LineTransformTestSupport.applied(model.replaceCurrentTransaction(with: "a\r\nb"), to: "one\ncat")
+
+        #expect(applied?.text == "one\na\nb")
+    }
 }

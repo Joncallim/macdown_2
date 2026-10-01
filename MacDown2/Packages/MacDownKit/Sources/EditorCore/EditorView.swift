@@ -335,8 +335,8 @@ public struct EditorView: NSViewRepresentable {
             if !textView.hasMarkedText(), handleSynchronizedMovement(selector, system: system) {
                 return true
             }
-            if selector == #selector(NSResponder.insertNewline(_:)),
-               handleLineEndingAwareNewline(textView, system: system) {
+            if Self.isNewlineSelector(selector),
+               handleLineEndingAwareNewline(textView, system: system, selector: selector) {
                 return true
             }
             guard system.editingAssistConfiguration.isEnabled else { return false }

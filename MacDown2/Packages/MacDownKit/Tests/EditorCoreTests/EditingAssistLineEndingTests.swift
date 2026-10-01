@@ -66,7 +66,7 @@ struct EditingAssistLineEndingTests {
     }
 
     @Test func plainReturnInACRLFDocumentInsertsCRLFWithAssistsOff() {
-        let result = returnKey(in: "alpha\r\nbeta", at: 12, assistsEnabled: false)
+        let result = returnKey(in: "alpha\r\nbeta", at: 11, assistsEnabled: false)
         #expect(result.handled)
         #expect(result.text == "alpha\r\nbeta\r\n")
     }
@@ -77,7 +77,7 @@ struct EditingAssistLineEndingTests {
     }
 
     @Test func listContinuationStillWinsOverTheLineEndingFallback() {
-        let result = returnKey(in: "- one\r\n- two", at: 13, assistsEnabled: true)
+        let result = returnKey(in: "- one\r\n- two", at: 12, assistsEnabled: true)
         #expect(result.handled)
         #expect(result.text == "- one\r\n- two\r\n- ")
     }
@@ -96,5 +96,77 @@ struct EditingAssistLineEndingTests {
         let handled = coordinator.textView(system.textView, doCommandBy: #selector(NSResponder.insertNewline(_:)))
 
         #expect(!handled)
+    }
+
+    @Test func returnReplacesASelectionWithTheDocumentsSeparator() {
+        let system = EditingAssistIntegrationSupport.makeSystem(text: "ab\r\ncd")
+        let window = EditingAssistIntegrationSupport.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        let coordinator = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        system.selectedRange = NSRange(location: 0, length: 1)
+
+        let handled = coordinator.textView(system.textView, doCommandBy: #selector(NSResponder.insertNewline(_:)))
+
+        #expect(handled)
+        #expect(system.text == "\r\nb\r\ncd")
+        #expect(system.selectedRange == NSRange(location: 2, length: 0))
+    }
+
+    @Test func everyRangeOfAMultiSelectionIsReplacedWithTheDocumentsSeparator() {
+        let system = EditingAssistIntegrationSupport.makeSystem(text: "ab\r\ncd\r\nef")
+        let window = EditingAssistIntegrationSupport.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        let coordinator = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        system.selectionSet = EditorSelectionSet(
+            ranges: [NSRange(location: 0, length: 1), NSRange(location: 4, length: 1)],
+            primaryIndex: 0
+        )
+
+        let handled = coordinator.textView(system.textView, doCommandBy: #selector(NSResponder.insertNewline(_:)))
+
+        #expect(handled)
+        #expect(system.text == "\r\nb\r\n\r\nd\r\nef")
+    }
+
+    @Test(arguments: [
+        #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:)),
+        #selector(NSResponder.insertLineBreak(_:)),
+        #selector(NSResponder.insertParagraphSeparator(_:)),
+    ])
+    func theOtherNewlineSelectorsAlsoFollowTheDocument(_ selector: Selector) {
+        let system = EditingAssistIntegrationSupport.makeSystem(text: "ab\r\ncd")
+        let window = EditingAssistIntegrationSupport.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        let coordinator = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        system.selectedRange = NSRange(location: 1, length: 0)
+
+        #expect(coordinator.textView(system.textView, doCommandBy: selector))
+        #expect(system.text == "a\r\nb\r\ncd")
+    }
+
+    @Test func aReadOnlyEditorIsNotIntercepted() {
+        let system = EditingAssistIntegrationSupport.makeSystem(text: "ab\r\ncd")
+        let window = EditingAssistIntegrationSupport.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        let coordinator = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        system.textView.isEditable = false
+        system.selectedRange = NSRange(location: 1, length: 0)
+
+        #expect(!coordinator.textView(system.textView, doCommandBy: #selector(NSResponder.insertNewline(_:))))
+        #expect(system.text == "ab\r\ncd")
+    }
+
+    @Test func imeCompositionIsNotInterceptedWithAssistsOn() {
+        let system = EditingAssistIntegrationSupport.makeMarkdownSystem(text: "a\r\nb")
+        let window = EditingAssistIntegrationSupport.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        let coordinator = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        system.textView.setMarkedText(
+            "か",
+            selectedRange: NSRange(location: 1, length: 0),
+            replacementRange: NSRange(location: 4, length: 0)
+        )
+
+        #expect(!coordinator.textView(system.textView, doCommandBy: #selector(NSResponder.insertNewline(_:))))
     }
 }

@@ -1,23 +1,38 @@
 import AppKit
 
 extension EditorView.Coordinator {
-    /// Return where no assist applies would let AppKit insert a bare `\n`,
+    /// The Return-family selectors that insert a line break.
+    nonisolated static func isNewlineSelector(_ selector: Selector) -> Bool {
+        selector == #selector(NSResponder.insertNewline(_:))
+            || selector == #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:))
+            || selector == #selector(NSResponder.insertLineBreak(_:))
+            || selector == #selector(NSResponder.insertParagraphSeparator(_:))
+    }
+
+    /// A Return that no assist handles would let AppKit insert a bare `\n`,
     /// adding a second line-ending convention to a CRLF (or bare-CR) document
-    /// — invariant #5. When the engine would pass the key through and the
-    /// document's own separator is not `\n`, insert that separator instead.
-    /// Fails open (returns `false`) for IME composition, read-only editors,
-    /// multiple selections and the programmatic-update guards.
-    @MainActor func handleLineEndingAwareNewline(_ textView: NSTextView, system: EditorTextSystem) -> Bool {
+    /// — invariant #5. When the document's own separator is not `\n`, insert
+    /// that separator instead (over every range of a multi-selection). The
+    /// Markdown assist outcome for plain Return is applied here when it is not
+    /// a passthrough, so it is computed once. Fails open for IME composition,
+    /// read-only editors and the programmatic-update guards.
+    @MainActor
+    func handleLineEndingAwareNewline(
+        _ textView: NSTextView,
+        system: EditorTextSystem,
+        selector: Selector
+    ) -> Bool {
         guard !isApplyingModelText,
               !system.isPerformingProgrammaticTextUpdate,
               !system.isPerformingEditingAssist,
               !textView.hasMarkedText(),
               textView.isEditable,
-              textView.selectedRanges.count == 1,
               let source = system.assistTextSource
         else { return false }
         let selection = system.selectedRange
-        if system.editingAssistConfiguration.isEnabled {
+        let separator = MarkdownEditingAssistEngine.lineSeparator(ofLineContaining: selection.location, in: source)
+        guard separator != "\n" else { return false }
+        if selector == #selector(NSResponder.insertNewline(_:)), system.editingAssistConfiguration.isEnabled {
             let outcome = MarkdownEditingAssistEngine.outcome(
                 for: .insertNewline,
                 text: source,
@@ -25,10 +40,15 @@ extension EditorView.Coordinator {
                 configuration: system.editingAssistConfiguration,
                 profile: system.languageEditingProfile
             )
-            guard outcome == .passthrough else { return false }
+            if outcome != .passthrough {
+                return system.applyAssistOutcome(outcome)
+            }
         }
-        let separator = MarkdownEditingAssistEngine.lineSeparator(ofLineContaining: selection.location, in: source)
-        guard separator != "\n" else { return false }
+        // Real multi-selections fan out; bare secondary carets are not typed
+        // into by native input either, so those fall to the primary edit below.
+        if system.selectionSet.isMultiple, system.applyMultiCursorInsert(separator) {
+            return true
+        }
         return system.applyAssistOutcome(.edit(EditingAssistEdit(
             replacementRange: selection,
             replacementString: separator,
