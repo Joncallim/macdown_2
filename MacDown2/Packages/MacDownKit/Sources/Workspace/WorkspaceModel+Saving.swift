@@ -297,7 +297,7 @@ public extension WorkspaceModel {
         latestSaveGenerationByDocumentID.removeValue(forKey: oldID)
         await documentWriter.retire(document)
         if pendingRecoveryCleanupActions.isEmpty {
-            lastError = nil
+            clearLastError(ifUnchangedSince: context.errorRevision)
         }
     }
 
@@ -356,7 +356,7 @@ public extension WorkspaceModel {
             if !cleanup.isAbsent {
                 pendingRecoveryCleanupActions.insert(.remove(for: saved))
             }
-            lastError = cleanup.isAbsent ? nil : recoveryCleanupError(cleanup, document: saved)
+            publishCleanupResult(cleanup, document: saved, since: context.errorRevision)
             return
         }
         guard current.state != .conflict,
@@ -376,7 +376,7 @@ public extension WorkspaceModel {
             if !cleanup.isAbsent {
                 pendingRecoveryCleanupActions.insert(.remove(for: saved))
             }
-            lastError = cleanup.isAbsent ? nil : recoveryCleanupError(cleanup, document: saved)
+            publishCleanupResult(cleanup, document: saved, since: context.errorRevision)
             return
         }
         let merged = current.adoptingSavedBaseline(from: saved)
@@ -387,13 +387,13 @@ public extension WorkspaceModel {
             return
         }
         if isLatestSave(context) {
-            lastError = nil
+            clearLastError(ifUnchangedSince: context.errorRevision)
         }
     }
 
     private func beginSave(for document: FileDocument) -> SaveContext {
         nextSaveGeneration &+= 1
-        let context = SaveContext(documentID: document.id, generation: nextSaveGeneration)
+        let context = SaveContext(documentID: document.id, generation: nextSaveGeneration, errorRevision: errorRevision)
         latestSaveGenerationByDocumentID[document.id] = context.generation
         return context
     }

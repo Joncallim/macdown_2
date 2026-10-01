@@ -208,7 +208,7 @@ struct WorkspaceCleanupRetryTests {
         model.pendingSaveAsRecoveryContinuations[migration] = SaveAsRecoveryContinuation(
             source: source,
             replacement: destination,
-            context: SaveContext(documentID: source.id, generation: 1),
+            context: SaveContext(documentID: source.id, generation: 1, errorRevision: 0),
             phase: .publishDestination
         )
         let publication = SessionPublicationGate()
@@ -250,7 +250,7 @@ struct WorkspaceCleanupRetryTests {
         model.pendingSaveAsRecoveryContinuations[migration] = SaveAsRecoveryContinuation(
             source: source,
             replacement: destination,
-            context: SaveContext(documentID: source.id, generation: 1),
+            context: SaveContext(documentID: source.id, generation: 1, errorRevision: 0),
             phase: .publishDestination
         )
 
