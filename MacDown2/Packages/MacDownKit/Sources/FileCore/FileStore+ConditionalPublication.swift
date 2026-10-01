@@ -60,6 +60,28 @@ extension FileStore {
         assert(ownership == .accepted)
     }
 
+    /// Carries the destination's permission bits, owner/flags, ACL and extended
+    /// attributes (Finder tags, quarantine) onto the staged file before it is
+    /// published. If the combined copy fails (a protected attribute, say), the
+    /// permission bits are still applied explicitly — a save never silently
+    /// widens a 0600 file — and only then is the failure surfaced.
+    func carryMetadata(from destination: URL, to staged: URL) throws(FileStoreError) {
+        let copied = destination.path.withCString { source in
+            staged.path.withCString { target in
+                copyfile(source, target, nil, copyfile_flags_t(COPYFILE_STAT | COPYFILE_XATTR | COPYFILE_ACL))
+            }
+        }
+        if copied == 0 {
+            return
+        }
+        var info = stat()
+        guard stat(destination.path, &info) == 0,
+              chmod(staged.path, info.st_mode & 0o7777) == 0
+        else {
+            throw mapWriteError(POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO))
+        }
+    }
+
     private func rollbackDisplacedFile(
         _ temporaryURL: URL,
         _ destinationURL: URL,
