@@ -171,11 +171,21 @@ struct EditorPerformanceTests {
             )
         }
 
+        // The 8 ms budget is a Release (optimized) figure — measured 0.35 ms/op
+        // there (planning/epic-22-implementation.md, Slice 10s). `swift test`
+        // runs unoptimized Debug code that already costs 5-10 ms/op on a quiet
+        // machine and flaked on loaded CI runners, so Debug keeps a 5x
+        // documentation ceiling and `swift test -c release` enforces the budget.
+        #if DEBUG
+            let budgetMilliseconds = 40.0
+        #else
+            let budgetMilliseconds = 8.0
+        #endif
         #expect(
-            bestPerOperationMilliseconds < 8,
+            bestPerOperationMilliseconds < budgetMilliseconds,
             """
             gutter/status caret update averaged \(bestPerOperationMilliseconds) ms/op at its best trial \
-            (budget: < 8 ms main-actor work, epic-22-implementation.md §11)
+            (budget: < \(budgetMilliseconds) ms main-actor work; 8 ms in Release, epic-22-implementation.md §11)
             """
         )
     }
