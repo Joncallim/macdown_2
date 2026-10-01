@@ -311,6 +311,39 @@ import Testing
     #expect(try Data(contentsOf: root.appendingPathComponent("untitled.md")) == Data("race winner".utf8))
 }
 
+private final class MutationCounter {
+    var count = 0
+}
+
+/// #183 F18 — dependents that cache the folder (the workspace file index) are told
+/// after every successful mutation, and only then.
+@MainActor
+@Test func successfulFileOperationsNotifyDependentsAndFailedOnesDoNot() async throws {
+    let root = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = FileTreeModel(
+        reader: StaticReader(contents: [root: []]),
+        mutator: FileSystemMutator(),
+        watcher: TestWatching(),
+        preferences: FileTreePreferences(store: MemoryPreferenceStore()),
+        supportedExtensions: ["md"]
+    )
+    await model.setRoot(root)
+    let counter = MutationCounter()
+    model.onDidMutate = { counter.count += 1 }
+
+    let created = try await model.createFile(in: root)
+    #expect(counter.count == 1)
+
+    _ = try await model.rename(created.url, to: "renamed.md")
+    #expect(counter.count == 2)
+
+    await #expect(throws: (any Error).self) {
+        _ = try await model.rename(root.appendingPathComponent("missing.md"), to: "other.md")
+    }
+    #expect(counter.count == 2)
+}
+
 @MainActor
 @Test func modelRetriesFolderCreationAfterCocoaFileExistsRace() async throws {
     let root = temporaryDirectory()

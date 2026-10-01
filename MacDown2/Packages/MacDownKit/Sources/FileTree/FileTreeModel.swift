@@ -149,6 +149,10 @@ public final class FileTreeModel {
         lastOperationError = error as? FileTreeOperationError ?? .underlying(error.localizedDescription)
     }
 
+    /// Called after every successful file-tree mutation so dependents that cache
+    /// the folder's contents (the workspace file index) can refresh.
+    public var onDidMutate: (@MainActor () -> Void)?
+
     public func clearOperationError() {
         lastOperationError = nil
     }
