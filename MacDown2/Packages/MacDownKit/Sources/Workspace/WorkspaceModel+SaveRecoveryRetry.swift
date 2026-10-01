@@ -7,6 +7,7 @@ extension WorkspaceModel {
     /// It can never retire a later Save As descendant by pathname alone.
     public func retryRecoveryCleanup() async {
         var failed = false
+        let errorRevisionAtStart = errorRevision
         let pendingActions = pendingRecoveryCleanupActions
         for pending in pendingActions {
             guard await preserveEditedCleanupDocument(for: pending) else {
@@ -31,7 +32,7 @@ extension WorkspaceModel {
             pendingSaveAsRecoveryContinuations.removeValue(forKey: pending)
         }
         if !failed, pendingRecoveryCleanupActions.isEmpty {
-            lastError = nil
+            clearLastError(ifUnchangedSince: errorRevisionAtStart)
         }
     }
 

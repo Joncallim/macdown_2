@@ -153,7 +153,12 @@ public final class WorkspaceModel {
     }
 
     /// The most recent error surfaced to the user. Views may present this.
-    public internal(set) var lastError: WorkspaceError?
+    public internal(set) var lastError: WorkspaceError? {
+        didSet { errorRevision &+= 1 }
+    }
+
+    /// Bumped on every `lastError` assignment; see `WorkspaceModel+ErrorOwnership.swift`.
+    @ObservationIgnored var errorRevision: UInt64 = 0
 
     /// True from the moment `newManagedDocument` starts until its tab is
     /// published. The window is shown before this resolves (`WindowCoordinator

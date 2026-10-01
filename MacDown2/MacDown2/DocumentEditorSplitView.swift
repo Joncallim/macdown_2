@@ -143,10 +143,11 @@ struct DocumentEditorSplitView: View {
                 // Save As format transitions re-gate both outline channels so
                 // a stale Markdown outline never survives a move to JSON (and
                 // vice versa), and invalidate a persisted preview mode the new
-                // format cannot display.
-                refreshOutline()
-                refreshJSONOutline()
+                // format cannot display. A format that gains a parser must
+                // also START its analysis: the text did not change, so nothing
+                // else would (#183 F05).
                 resetInvalidPreviewMode()
+                Task { await loadInitialContent() }
             }
             .onChange(of: parseSession.document) { _, _ in
                 refreshPreviewBlocks()
