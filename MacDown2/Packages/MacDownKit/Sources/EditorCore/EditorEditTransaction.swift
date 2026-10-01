@@ -219,11 +219,29 @@ public extension EditorTextSystem {
             // design) stays correct — including a non-zero `primaryIndex`
             // — for whatever reads `selectionSet` next, not just AppKit's
             // own range array.
-            selectionSet = resultingSelection
+            selectionSet = Self.clamped(resultingSelection, toLength: textView.textStorage?.length ?? 0)
         }
         if let undoActionName = transaction.undoActionName, undoManager.canUndo {
             undoManager.setActionName(undoActionName)
         }
         textView.breakUndoCoalescing()
+    }
+}
+
+extension EditorTextSystem {
+    /// A transform computes its resulting selection from pre-edit geometry; a
+    /// selection that included a terminator the edit relocated can end past the
+    /// new text. AppKit clamps a single range, but the cached multi-selection
+    /// would keep the out-of-bounds range (and make later multi-cursor edits
+    /// fail closed), so clamp here.
+    static func clamped(_ selection: EditorSelectionSet, toLength length: Int) -> EditorSelectionSet {
+        guard selection.ranges.contains(where: { NSMaxRange($0) > length || $0.location > length }) else {
+            return selection
+        }
+        let ranges = selection.ranges.map { range -> NSRange in
+            let location = min(max(0, range.location), length)
+            return NSRange(location: location, length: min(range.length, length - location))
+        }
+        return EditorSelectionSet(ranges: ranges, primaryIndex: selection.primaryIndex)
     }
 }
