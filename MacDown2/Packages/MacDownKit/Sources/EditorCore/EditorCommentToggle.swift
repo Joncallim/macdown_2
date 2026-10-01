@@ -123,9 +123,10 @@ enum EditorCommentToggle {
         let groupContent = text.substring(with: groupRange)
 
         if let lineComment = profile.lineComment {
-            let lines = groupContent.components(separatedBy: "\n")
+            let splitter = EditorLineTransforms.lineSplitSeparator(for: groupContent)
+            let lines = groupContent.components(separatedBy: splitter)
             let result = lineCommentToggle(lines: lines, prefix: lineComment)
-            let newContent = result.lines.joined(separator: "\n")
+            let newContent = result.lines.joined(separator: splitter)
             let lineLengths = lines.map { ($0 as NSString).length }
             let newLength = (newContent as NSString).length
             return ToggleOutcome(range: groupRange, newContent: newContent) { original in
@@ -191,8 +192,11 @@ enum EditorCommentToggle {
         func leadingWhitespace(of line: String) -> Substring {
             line.prefix { $0 == " " || $0 == "\t" }
         }
+        /// A CRLF document's lines keep their trailing "\r" after the "\n" split,
+        /// which must not make an otherwise-blank line look non-blank.
         func isBlank(_ line: String) -> Bool {
-            leadingWhitespace(of: line).count == line.count
+            let body = line.hasSuffix("\r") ? String(line.dropLast()) : line
+            return leadingWhitespace(of: body).count == body.count
         }
         let allCommented = lines.allSatisfy { line in
             isBlank(line) || line.dropFirst(leadingWhitespace(of: line).count).hasPrefix(prefix)

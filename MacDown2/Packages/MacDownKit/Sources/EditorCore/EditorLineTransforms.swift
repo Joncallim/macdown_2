@@ -56,9 +56,7 @@ enum EditorLineTransforms {
             // (nothing before the block to infer a style from) falls back
             // to "\n".
             let separator = needsLeadingSeparator
-                ? (group.startLine > 1
-                    ? terminatorText(afterLine: group.startLine - 1, lineIndex: lineIndex, text: text)
-                    : "\n")
+                ? synthesizedSeparator(before: group, lineIndex: lineIndex, text: text)
                 : ""
             let replacementText = separator + blockContent
             let insertionPoint = blockRange.location + blockRange.length
@@ -321,6 +319,27 @@ enum EditorLineTransforms {
         let precedingLineContent = lineIndex.utf16Range(ofLine: startLine - 1, in: text)
         let precedingLineContentEnd = precedingLineContent.location + precedingLineContent.length
         return NSRange(location: precedingLineContentEnd, length: lineIndex.utf16Length - precedingLineContentEnd)
+    }
+
+    /// The separator to put before a duplicated final block: the terminator
+    /// already used before the block, else — for a block that starts at line 1 —
+    /// the document's first terminator (inside the block itself), and `"\n"`
+    /// only for a single-line document with nothing to infer a style from.
+    static func synthesizedSeparator(before group: LineBlockGroup, lineIndex: EditorLineIndex,
+                                     text: NSString) -> String {
+        if group.startLine > 1 {
+            return terminatorText(afterLine: group.startLine - 1, lineIndex: lineIndex, text: text)
+        }
+        return lineIndex.lineCount > 1 ? terminatorText(afterLine: 1, lineIndex: lineIndex, text: text) : "\n"
+    }
+
+    /// The single character to split a line group's content on: `"\n"` (also
+    /// right for CRLF, whose `"\r"` stays attached to its line), or `"\r"` for
+    /// a bare-CR document that contains no `"\n"` at all.
+    static func lineSplitSeparator(for content: String) -> String {
+        // utf8 scan: `String.contains("\n")` is false for a "\r\n" grapheme.
+        let hasLinefeed = content.utf8.contains(0x0A)
+        return hasLinefeed || !content.utf8.contains(0x0D) ? "\n" : "\r"
     }
 
     /// Builds the final `EditorEditTransaction`, remapping `resultsByOriginalIndex`
