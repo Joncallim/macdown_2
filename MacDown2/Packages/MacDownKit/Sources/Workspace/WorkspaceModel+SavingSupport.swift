@@ -6,16 +6,18 @@ extension WorkspaceModel {
     func shouldSurfaceSaveFailure(
         for document: FileDocument,
         context: SaveContext,
-        error: Error
+        error _: Error
     ) -> Bool {
         guard isLatestSave(context),
               let current = tabStore.activeDocument,
               isSameDocumentLifetime(current, document)
         else { return false }
-        if case .conditionalPublicationRecoveryRequired = cast(error) {
-            return true
-        }
-        return isCurrent(document)
+        // Relevance is ownership — the latest save of the same document
+        // lifetime — not equality with the attempted text: a failure the user
+        // is waiting on must be visible even if they typed (or edited and
+        // undid) meanwhile. The document stays dirty and its text, undo
+        // history and recovery are untouched (#183 F15).
+        return true
     }
 
     func isLatestSave(_ context: SaveContext) -> Bool {
@@ -216,6 +218,9 @@ extension WorkspaceModel {
 struct SaveContext: Sendable {
     let documentID: String
     let generation: UInt
+    /// `lastError`'s revision when the save began, so a late success cannot
+    /// erase an error another operation published meanwhile (#183 F15).
+    let errorRevision: UInt64
 }
 
 struct PendingRecoveryCleanupAction: Sendable, Hashable {
