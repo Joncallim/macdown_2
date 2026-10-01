@@ -71,7 +71,9 @@ extension WindowCoordinator {
         let snapshot = controllers.compactMap { controller -> ControllerTabSnapshot? in
             guard let tab = controller.model.tabStore.tabs.first else { return nil }
             let system = controller.editorStore.existingSystem(for: tab.id.uuidString)
-            let selectedRange = system?.selectedRange
+            // The editor's true primary selection, not AppKit's topmost range:
+            // with several selections they differ (#183 F23).
+            let selectedRange = system?.selectionSet.primaryRange
             let lexicalRoot = controller.model.folderURL
             let physicalRoot = lexicalRoot?.resolvingSymlinksInPath().standardizedFileURL
             let scope = physicalRoot.map(FolderAccessScope.init)
