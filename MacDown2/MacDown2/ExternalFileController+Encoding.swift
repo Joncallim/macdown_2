@@ -12,6 +12,9 @@ extension ExternalFileController {
         /// The document changed while the file was being read or the
         /// confirmation was up; nothing was replaced.
         case superseded
+        /// The requested encoding is the one the document already uses. Nothing
+        /// was read, prompted, replaced or cleared (a Reopen is not a Revert).
+        case unchanged
         /// No usable backing file, or an unresolved external conflict.
         case unavailable
         /// The file's bytes are not a lossless representation in that
@@ -36,6 +39,7 @@ extension ExternalFileController {
         if case .unavailable = document.backingState {
             return .unavailable
         }
+        guard document.encoding.encoding != encoding else { return .unchanged }
 
         let store = document.fileStore
         let snapshot: FileSnapshot
