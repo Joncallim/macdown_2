@@ -161,10 +161,15 @@ struct FindBarView: View {
         .accessibilityIdentifier("findBar")
         .onAppear {
             isQueryFocused = true
-            recomputeMatches(anchor: model.currentMatch?.range.location ?? initialAnchor)
+            recomputeMatches(anchor: model.currentMatch?.range.location ?? initialAnchor, sampleSelection: true)
         }
         .onChange(of: model.query) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
-        .onChange(of: model.options) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
+        .onChange(of: model.options) { old, new in
+            recomputeMatches(
+                anchor: model.currentMatch?.range.location,
+                sampleSelection: new.searchesSelectionOnly && !old.searchesSelectionOnly
+            )
+        }
         .onChange(of: text) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
     }
 
@@ -273,9 +278,11 @@ struct FindBarView: View {
     /// discarded call and re-announcing it would be a redundant, no-op
     /// re-application of whatever the current, still-authoritative state
     /// already is.
-    private func recomputeMatches(anchor: Int?) {
+    private func recomputeMatches(anchor: Int?, sampleSelection: Bool = false) {
         let text = resolvedText()
-        let selection = resolvedSelection()
+        // Sampled only when "In Selection" is being (re)established; every
+        // other refresh uses the model's retained domain (#183 F03).
+        let selection = sampleSelection ? resolvedSelection() : nil
         Task {
             guard await model.updateMatches(in: text, selection: selection, preferringLocationNear: anchor) else {
                 return
