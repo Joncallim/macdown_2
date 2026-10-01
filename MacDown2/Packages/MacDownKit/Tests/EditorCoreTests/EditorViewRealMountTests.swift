@@ -137,7 +137,7 @@ struct EditorViewRealMountTests {
     /// after dismantle, restoring a non-nil target so a still-registered
     /// observer would have something to visibly act on.
     private func assertDismantleLeavesNoObserver(
-        mounted: Mounted,
+        mounted _: Mounted,
         scrollView: NSScrollView,
         system: EditorTextSystem
     ) throws {
@@ -146,14 +146,7 @@ struct EditorViewRealMountTests {
             "expected the real Coordinator to still be the text view's delegate before dismantle"
         )
 
-        let throwawayBinding = Binding<String>(get: { "" }, set: { _ in })
-        let editorView = EditorView(
-            text: throwawayBinding,
-            identity: mounted.identity,
-            configuration: .default,
-            store: mounted.store
-        )
-        editorView.dismantleNSView(scrollView, coordinator: coordinator)
+        Self.dismantleThroughTheProtocol(EditorView.self, scrollView, coordinator)
 
         #expect(coordinator.gutterView == nil, "dismantleNSView did not clear the coordinator's gutterView")
 
@@ -268,5 +261,46 @@ struct EditorViewRealMountTests {
             }
         }
         return nil
+    }
+
+    /// SwiftUI reaches teardown through the `NSViewRepresentable` requirement
+    /// (`static func dismantleNSView`). Dispatching through the generic
+    /// constraint is what proves the implementation is the protocol witness; an
+    /// instance method of the same name is never called this way (#183 F09).
+    private static func dismantleThroughTheProtocol<V: NSViewRepresentable>(
+        _: V.Type,
+        _ view: V.NSViewType,
+        _ coordinator: V.Coordinator
+    ) {
+        V.dismantleNSView(view, coordinator: coordinator)
+    }
+
+    @Test func anOlderMountsTeardownDoesNotDetachANewerMount() {
+        let system = EditingAssistIntegrationSupport.makeSystem(text: "text")
+        let older = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        let olderScroll = NSScrollView(frame: .zero)
+        system.scrollView = olderScroll
+
+        let newer = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        let newerScroll = NSScrollView(frame: .zero)
+        system.scrollView = newerScroll
+        system.textView.delegate = newer
+
+        Self.dismantleThroughTheProtocol(EditorView.self, olderScroll, older)
+
+        #expect(system.textView.delegate === newer)
+        #expect(system.scrollView === newerScroll)
+    }
+
+    @Test func theCurrentMountsTeardownDetachesTheSharedTextViewAndScrollView() {
+        let system = EditingAssistIntegrationSupport.makeSystem(text: "text")
+        let coordinator = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        let scroll = NSScrollView(frame: .zero)
+        system.scrollView = scroll
+
+        Self.dismantleThroughTheProtocol(EditorView.self, scroll, coordinator)
+
+        #expect(system.textView.delegate == nil)
+        #expect(system.scrollView == nil)
     }
 }
