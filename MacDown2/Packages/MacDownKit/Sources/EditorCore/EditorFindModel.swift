@@ -67,6 +67,13 @@ public final class EditorFindModel {
     /// The dominant line ending of the text the current matches were computed
     /// against, used to adapt a multi-line replacement.
     private var searchedLineEnding: LineEnding?
+    /// The range "In Selection" searches, retained across refreshes and
+    /// remapped through Replace edits (#183 F03). It is sampled from the live
+    /// selection only when a caller passes `selection` to `updateMatches`
+    /// (Find opened with the option on, or the option turned on) — never
+    /// re-sampled from the current selection, which Find itself changes to the
+    /// current match or a caret. `nil` means the whole document.
+    public private(set) var searchDomain: NSRange?
 
     public init(query: String = "", options: SearchOptions = SearchOptions()) {
         self.query = query
@@ -158,6 +165,12 @@ public final class EditorFindModel {
     ) async -> Bool {
         searchGeneration &+= 1
         let generation = searchGeneration
+        if !options.searchesSelectionOnly {
+            searchDomain = nil
+        } else if let selection, selection.length > 0 {
+            searchDomain = selection
+        }
+        let domain = options.searchesSelectionOnly ? searchDomain : nil
         searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
         let query = query
         let options = options
@@ -184,12 +197,12 @@ public final class EditorFindModel {
                 // its own already-correct results is both simpler and
                 // immune to this class of bug by construction.
                 let found = try TextSearchEngine.matches(in: text, query: query, options: options)
-                guard options.searchesSelectionOnly, let selection, selection.length > 0 else {
+                guard let domain else {
                     return .success(found)
                 }
                 let fullLength = (text as NSString).length
-                let location = max(0, min(selection.location, fullLength))
-                let length = max(0, min(selection.length, fullLength - location))
+                let location = max(0, min(domain.location, fullLength))
+                let length = max(0, min(domain.length, fullLength - location))
                 let clampedSelection = NSRange(location: location, length: length)
                 let scoped = found.filter { match in
                     match.range.location >= clampedSelection.location
@@ -218,6 +231,32 @@ public final class EditorFindModel {
         currentIndex = Self.nearestIndex(in: matches, to: anchor)
         isSearching = false
         return true
+    }
+
+    /// Forgets the retained domain (Find closed), so a later session samples afresh.
+    public func clearSearchDomain() {
+        searchDomain = nil
+    }
+
+    /// Shifts the retained search domain through `transaction`'s replacements,
+    /// so a Replace inside it neither narrows nor widens what "In Selection"
+    /// means. Call before the transaction is applied (it only reads the
+    /// pre-edit ranges); the replacements are disjoint, per
+    /// `EditorEditTransaction`'s own validation.
+    public func remapSearchDomain(through transaction: EditorEditTransaction) {
+        guard let domain = searchDomain else { return }
+        var start = domain.location
+        var end = NSMaxRange(domain)
+        for replacement in transaction.replacements {
+            let delta = (replacement.replacementText as NSString).length - replacement.range.length
+            if NSMaxRange(replacement.range) <= domain.location {
+                start += delta
+                end += delta
+            } else if NSMaxRange(replacement.range) <= NSMaxRange(domain) {
+                end += delta
+            }
+        }
+        searchDomain = NSRange(location: max(0, start), length: max(0, end - start))
     }
 
     /// Moves to the next match, wrapping to the first if `options.wraps` and
