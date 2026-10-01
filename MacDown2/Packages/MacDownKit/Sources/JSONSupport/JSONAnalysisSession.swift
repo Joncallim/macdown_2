@@ -57,6 +57,7 @@ public final class JSONAnalysisSession {
     public private(set) var completedAnalysisCount = 0
 
     private let debounce: Duration
+    private let analyze: @Sendable (String) -> JSONAnalysisResult
     private var pendingTask: Task<Void, Never>?
     private var pendingGeneration = 0
     private var lastText = ""
@@ -64,6 +65,14 @@ public final class JSONAnalysisSession {
     /// `debounce` is injectable so tests run fast; production uses the default.
     public init(debounce: Duration = .milliseconds(150)) {
         self.debounce = debounce
+        analyze = JSONAnalyzer.analyze
+    }
+
+    /// Test seam: substitutes the analyzer so a test can hold an analysis in
+    /// flight and release it after the request has been superseded.
+    init(debounce: Duration, analyze: @escaping @Sendable (String) -> JSONAnalysisResult) {
+        self.debounce = debounce
+        self.analyze = analyze
     }
 
     /// Debounced: cancels any pending analysis and schedules a new one after
@@ -91,7 +100,7 @@ public final class JSONAnalysisSession {
                 clearIfCurrent(generation: generation)
                 return
             }
-            await analyzeAndPublish(text: text)
+            await analyzeAndPublish(text: text, generation: generation)
             clearIfCurrent(generation: generation)
         }
     }
@@ -99,19 +108,23 @@ public final class JSONAnalysisSession {
     /// Immediate analysis, bypassing the debounce (document open, tests).
     /// Cancels any pending debounced analysis first. Publishes AND returns.
     ///
-    /// If the calling task is cancelled before the analysis completes, the
-    /// result is discarded and no state is published.
+    /// If the calling task is cancelled, or this request is superseded (a
+    /// newer edit, another immediate analysis, or `cancelPending()`) before
+    /// the analysis completes, the result is still returned but never
+    /// published. An already-cancelled caller's result is computed off the
+    /// main actor and returned without touching any state.
     @discardableResult
     public func analyzeNow(_ text: String) async -> JSONAnalysisResult {
         guard !Task.isCancelled else {
-            return JSONAnalyzer.analyze(text)
+            let analyze = analyze
+            return await Task.detached(priority: .utility) { analyze(text) }.value
         }
         lastText = text
         pendingGeneration += 1
         let generation = pendingGeneration
         pendingTask?.cancel()
 
-        let result = await analyzeAndPublish(text: text)
+        let result = await analyzeAndPublish(text: text, generation: generation)
         clearIfCurrent(generation: generation)
         return result
     }
@@ -128,16 +141,19 @@ public final class JSONAnalysisSession {
 
     /// Runs the analysis off the main actor and publishes the result.
     @discardableResult
-    private func analyzeAndPublish(text: String) async -> JSONAnalysisResult {
+    private func analyzeAndPublish(text: String, generation: Int) async -> JSONAnalysisResult {
         isAnalyzing = true
         defer { isAnalyzing = pendingTask != nil }
 
+        let analyze = analyze
         let outcome = await Task.detached(priority: .utility) {
-            JSONAnalyzer.analyze(text)
+            analyze(text)
         }.value
-        // A cancelled task must not publish: the identity that requested this
-        // analysis may have been switched away by the time it completes.
-        guard !Task.isCancelled else { return outcome }
+        // Publish only for the request that is still current. Cancelling the
+        // task is not enough: `cancelPending()` and newer requests invalidate
+        // a request by generation, and an analyzeNow caller's own task is not
+        // the stored pending task (#183 F04).
+        guard !Task.isCancelled, pendingGeneration == generation else { return outcome }
         result = outcome
         completedAnalysisCount += 1
         return outcome
