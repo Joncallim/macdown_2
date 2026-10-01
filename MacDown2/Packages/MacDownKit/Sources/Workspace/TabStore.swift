@@ -333,7 +333,7 @@ public final class TabStore {
                 // when the recovery record still verifies the captured text;
                 // a stale/rejected write never gets this exception.
                 guard let recovered = try? await recoveryBuffer.load(for: documentID, epoch: lifetime),
-                      recovered == content
+                      recovered.isExactlyEqual(to: content)
                 else { return false }
             }
         }

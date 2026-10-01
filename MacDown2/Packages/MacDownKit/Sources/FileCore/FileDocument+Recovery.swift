@@ -9,7 +9,7 @@ public extension FileDocument {
     /// recovery-buffer restore) where a no-op change should **not** mark the
     /// document dirty. For user edits, use `edited(text:)` instead.
     func updatingText(_ newText: String) -> FileDocument {
-        guard newText != text else { return self }
+        guard !newText.isExactlyEqual(to: text) else { return self }
         return edited(text: newText)
     }
 

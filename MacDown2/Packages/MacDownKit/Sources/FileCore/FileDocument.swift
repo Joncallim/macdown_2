@@ -258,7 +258,7 @@ public struct FileDocument: Sendable {
     public func rebindingSavedDestination(from saved: FileDocument) -> FileDocument {
         var copy = saved
         copy.text = text
-        copy.state = text == saved.text ? .clean : .dirty
+        copy.state = text.isExactlyEqual(to: saved.text) ? .clean : .dirty
         // Preserve the fact that this is a post-save local transition while
         // making it newer than both inputs for recovery ordering.
         copy.mutationGeneration = max(mutationGeneration, saved.mutationGeneration)

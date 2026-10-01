@@ -84,7 +84,7 @@ public extension TabStore {
         return current.id == document.id
             && current.fileURL?.standardizedFileURL == document.fileURL?.standardizedFileURL
             && current.recoveryEpoch == document.recoveryEpoch
-            && current.text == document.text
+            && current.text.isExactlyEqual(to: document.text)
             && current.state == document.state
             && current.mutationGeneration == document.mutationGeneration
     }
