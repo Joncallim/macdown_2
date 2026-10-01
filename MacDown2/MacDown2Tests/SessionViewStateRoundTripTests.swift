@@ -1,4 +1,5 @@
 import AppSettings
+import EditorCore
 import FileCore
 import FileTree
 import Foundation
@@ -81,5 +82,40 @@ struct SessionViewStateRoundTripTests {
         #expect(live.previewMode == .source)
         #expect(live.syntaxFormat.id == "python")
         #expect(live.document.format.id == restoredTab.document.format.id)
+    }
+
+    @Test func sessionSavesTheEditorsPrimarySelectionNotTheTopmostRange() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let fileURL = directory.appendingPathComponent("notes.txt")
+        try "alpha beta gamma delta".write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let sessions = MemorySessionStore()
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let coordinator = makeCoordinator(sessions: sessions, recovery: recovery)
+        let model = coordinator.makeWindowModel()
+        try model.tabStore.newTab(document: FileDocument(fileURL: fileURL, recoveryBuffer: recovery).load())
+        let tabID = try #require(model.tabStore.activeTabID)
+        let controller = WindowController(
+            model: model,
+            coordinator: coordinator,
+            themeController: ThemeController(),
+            grammarRegistry: GrammarRegistry(),
+            fileTreePreferences: FileTreePreferences()
+        )
+        coordinator.controllers = [controller]
+        let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        system.selectionSet = EditorSelectionSet(
+            ranges: [NSRange(location: 0, length: 5), NSRange(location: 11, length: 5)],
+            primaryIndex: 1
+        )
+
+        #expect(await coordinator.saveSessionResult().persisted)
+
+        let record = try #require(sessions.session?.tabs.first)
+        #expect(record.cursorPosition == 11)
+        #expect(record.selectionLength == 5)
     }
 }
