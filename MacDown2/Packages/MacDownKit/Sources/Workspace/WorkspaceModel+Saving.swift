@@ -214,7 +214,15 @@ public extension WorkspaceModel {
     /// active document with itself and is always true.
     func saveAs(to url: URL, expecting expected: FileDocument) async {
         guard isCurrent(expected) else { return }
-        await publishSaveAs(expected, to: url)
+        // Captured at authorization: publication is conditional on it (#183 F22).
+        let baseline: DestinationBaseline?
+        do {
+            baseline = try expected.saveAsBaseline(for: url)
+        } catch {
+            lastError = workspaceError(for: error)
+            return
+        }
+        await publishSaveAs(expected, to: url, destinationBaseline: baseline)
     }
 
     /// The filename `saveAs()`'s own panel prompt defaults to — exposed so
@@ -229,7 +237,11 @@ public extension WorkspaceModel {
         await save()
     }
 
-    private func publishSaveAs(_ document: FileDocument, to url: URL) async {
+    private func publishSaveAs(
+        _ document: FileDocument,
+        to url: URL,
+        destinationBaseline: DestinationBaseline?
+    ) async {
         let context = beginSave(for: document)
         inFlightSaveAsByDocumentID[document.id] = context.generation
         beginSavingIndicator(for: document.id)
@@ -240,7 +252,7 @@ public extension WorkspaceModel {
             }
         }
         do {
-            let saved = try await documentWriter.saveAs(document, to: url)
+            let saved = try await documentWriter.saveAs(document, to: url, destinationBaseline: destinationBaseline)
             await applySaveAs(saved, from: document, context: context)
         } catch {
             guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return }

@@ -211,21 +211,15 @@ public struct FileDocument: Sendable {
     /// Saves the current text to a new URL and updates the document identity.
     /// The source document's encoding/BOM metadata is preserved unless an
     /// explicit `encodingOverride` is supplied.
-    public func saveAs(
-        _ url: URL,
-        encodingOverride: FileEncodingMetadata? = nil
-    ) throws(FileStoreError) -> FileDocument {
-        try saveAs(url, recoveryEpoch: UUID(), encodingOverride: encodingOverride)
-    }
-
     /// Saves to a new URL while adopting a caller-prepared recovery lifetime.
     /// Workspace production paths obtain this epoch from `RecoveryBuffer`
     /// before entering the write lane, so the resulting identity participates
     /// in the durable bounded-generation protocol.
     public func saveAs(
         _ url: URL,
-        recoveryEpoch: UUID,
-        encodingOverride: FileEncodingMetadata? = nil
+        recoveryEpoch: UUID = UUID(),
+        encodingOverride: FileEncodingMetadata? = nil,
+        destinationBaseline: DestinationBaseline? = nil
     ) throws(FileStoreError) -> FileDocument {
         let destination = url.standardizedFileURL
         // The destination encoding becomes document metadata only after the
@@ -237,7 +231,8 @@ public struct FileDocument: Sendable {
             text,
             to: destination,
             encoding: destinationEncoding.encoding,
-            bom: destinationEncoding.bom
+            bom: destinationEncoding.bom,
+            destinationBaseline: destinationBaseline
         )
         var copy = self
         copy.fileURL = destination
