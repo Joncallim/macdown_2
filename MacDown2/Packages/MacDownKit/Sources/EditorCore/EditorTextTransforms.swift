@@ -169,9 +169,10 @@ enum EditorTextTransforms {
     }
 
     /// Shared shape for Sort/Dedupe: merge line-blocks (`EditorLineTransforms`'
-    /// own grouping, reused rather than reimplemented), drop any group
-    /// confined to a single line (nothing to sort/dedupe), and apply
-    /// `transform` to each qualifying group's own content model.
+    /// own grouping, reused rather than reimplemented), leave any group
+    /// confined to a single line untouched (nothing to sort/dedupe; #183 F12),
+    /// and apply `transform` to each qualifying group's own content model.
+    /// The command is a no-op only when no group spans more than one line.
     private static func multiLineGroupTransform(
         text: NSString,
         lineIndex: EditorLineIndex,
@@ -180,14 +181,26 @@ enum EditorTextTransforms {
         transform: (LineBlockContent) -> String
     ) -> EditorEditTransaction? {
         let groups = EditorLineTransforms.mergedLineBlockGroups(for: selection, lineIndex: lineIndex)
-            .filter { $0.endLine > $0.startLine }
-        guard !groups.isEmpty else { return nil }
+        guard groups.contains(where: { $0.endLine > $0.startLine }) else { return nil }
 
         var replacements: [TextReplacement] = []
         var resultsByOriginalIndex: [Int: NSRange] = [:]
         var delta = 0
 
         for group in groups {
+            // A group confined to one line has nothing to sort/dedupe: it is
+            // left untouched (only shifted by earlier groups' edits) rather
+            // than rejecting the whole command alongside multi-line groups.
+            guard group.endLine > group.startLine else {
+                for index in group.memberIndices {
+                    let original = selection.ranges[index]
+                    resultsByOriginalIndex[index] = NSRange(
+                        location: original.location + delta,
+                        length: original.length
+                    )
+                }
+                continue
+            }
             let blockStart = lineIndex.lineStartOffsets[group.startLine - 1]
             let lastLineContentRange = lineIndex.utf16Range(ofLine: group.endLine, in: text)
             let range = NSRange(
