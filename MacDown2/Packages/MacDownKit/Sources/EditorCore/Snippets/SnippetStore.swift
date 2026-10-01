@@ -62,6 +62,16 @@ public struct SnippetStore: Sendable {
         try encoder.encode(library).write(to: fileURL, options: .atomic)
     }
 
+    private func createEmptyWithoutOverwriting() throws {
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(SnippetLibrary()).write(to: fileURL, options: .withoutOverwriting)
+    }
+
     /// Creates an empty snippet file when — and only when — none exists, so
     /// "Edit Snippets…" has something to open without ever clobbering a file
     /// the user (or a newer version) wrote. Returns whether a file now exists.
@@ -70,6 +80,11 @@ public struct SnippetStore: Sendable {
         if FileManager.default.fileExists(atPath: fileURL.path) {
             return true
         }
-        return (try? save(SnippetLibrary())) != nil
+        // `.withoutOverwriting` (exclusive create; Foundation forbids combining
+        // it with `.atomic`): a file created by another window, a sync client
+        // or the user between the check above and this write wins. The content
+        // is a tiny fixed document, so a torn write is not a concern.
+        try? createEmptyWithoutOverwriting()
+        return FileManager.default.fileExists(atPath: fileURL.path)
     }
 }

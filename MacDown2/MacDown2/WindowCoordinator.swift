@@ -85,10 +85,10 @@ final class WindowCoordinator {
     /// `WindowCoordinator+GoToLine.swift` and `GoToLinePanel`'s doc comment
     /// for why this coordinator must hold it strongly.
     @ObservationIgnored var goToLinePanel: GoToLinePanel?
-    /// The one currently open Quick Open panel, if any — see
-    /// `WindowCoordinator+QuickOpen.swift` and `QuickOpenPanel`'s doc
-    /// comment for why this coordinator must hold it strongly.
+    /// The one open Quick Open panel / Insert Snippet picker, if any — held
+    /// strongly; see `QuickOpenPanel`'s doc comment for why.
     @ObservationIgnored var quickOpen: QuickOpenPanel?
+    @ObservationIgnored var snippetPanel: SnippetPickerPanel?
     /// The one currently open first-run welcome window, if any — see
     /// `WindowCoordinator+FirstRun.swift`. Held strongly for the same reason
     /// as `commandPalette`: nothing else references it while it is open.

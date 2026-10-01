@@ -271,6 +271,7 @@ struct WorkspaceCommands: Commands {
 
         textFormattingCommands
         lineTransformCommands
+        snippetCommands
 
         #if DEBUG
             CommandMenu("Debug") {

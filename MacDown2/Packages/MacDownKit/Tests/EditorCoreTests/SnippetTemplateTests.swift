@@ -93,4 +93,27 @@ struct SnippetTemplateTests {
         #expect(result.text.isEmpty)
         #expect(result.caretOffset == 0)
     }
+
+    @Test func aTrailingLoneBackslashStaysLiteral() {
+        #expect(expand("a\\").text == "a\\")
+    }
+
+    @Test func finalCaretFollowedByDigitsIsStillTheFinalCaret() {
+        let result = expand("a$01")
+        #expect(result.text == "a1")
+        #expect(result.caretOffset == 1)
+    }
+
+    @Test func anEscapedSelectionTokenIsLiteralNotSubstituted() {
+        #expect(expand("\\${selection}", selection: "X").text == "${selection}")
+    }
+
+    @Test func crlfAndLoneCRInABodyEachBecomeOneTerminator() {
+        #expect(expand("a\r\nb\rc", lineEnding: "\r\n").text == "a\r\nb\r\nc")
+    }
+
+    @Test func selectionInsideAMultiLineBodyKeepsTheIndentOnLaterBodyLinesOnly() {
+        let result = expand("a\n${selection}", selection: "x\ny", indent: "  ")
+        #expect(result.text == "a\n  x\ny")
+    }
 }

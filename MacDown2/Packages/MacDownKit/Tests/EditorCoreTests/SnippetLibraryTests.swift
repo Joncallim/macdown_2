@@ -68,6 +68,15 @@ struct SnippetLibraryTests {
         #expect(store.load() == .loaded(SnippetLibrary()))
     }
 
+    @Test func createIfMissingNeverReplacesAFileThatAppearedFirst() throws {
+        let url = tempFile()
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"{"version":1,"snippets":[{"id":"k","name":"Keep","body":"k"}]}"#.utf8).write(to: url)
+        #expect(SnippetStore(fileURL: url).createIfMissing())
+        let kept = SnippetStore(fileURL: url).load().snippets.map(\.id)
+        #expect(kept == ["k"])
+    }
+
     @Test func catalogScopesByFormatAndSortsByName() {
         let user = [
             Snippet(id: "u1", name: "Zeta", body: "z"),
