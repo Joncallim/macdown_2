@@ -145,19 +145,6 @@ public struct EditorView: NSViewRepresentable {
         )
     }
 
-    public func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
-        NotificationCenter.default.removeObserver(
-            coordinator,
-            name: NSView.boundsDidChangeNotification,
-            object: scrollView.contentView
-        )
-        NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidUndoChange, object: nil)
-        NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidRedoChange, object: nil)
-        coordinator.system?.textView.delegate = nil
-        coordinator.system?.scrollView = nil
-        coordinator.gutterView = nil
-    }
-
     public func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let system = context.coordinator.system else { return }
 
