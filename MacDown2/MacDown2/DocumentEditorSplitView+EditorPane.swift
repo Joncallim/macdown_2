@@ -150,6 +150,7 @@ extension DocumentEditorSplitView {
     /// the user left off.
     func closeFindBar(_ model: EditorFindModel) {
         model.isActive = false
+        model.clearSearchDomain()
         editorStore.existingSystem(for: identity)?.setFindHighlights(ranges: [], currentIndex: nil)
     }
 
@@ -164,10 +165,13 @@ extension DocumentEditorSplitView {
     /// may have changed which text still matches at all.
     func applyFindReplacement(_ transaction: EditorEditTransaction, model: EditorFindModel) {
         guard let system = editorStore.existingSystem(for: identity) else { return }
+        model.remapSearchDomain(through: transaction)
         system.apply(transaction)
         let anchor = transaction.resultingSelection?.primaryRange.location
         Task {
-            guard await model.updateMatches(in: system.text, preferringLocationNear: anchor) else { return }
+            guard await model.updateMatches(in: system.text, preferringLocationNear: anchor),
+                  model.isActive
+            else { return }
             applyFindHighlights(model)
         }
     }
