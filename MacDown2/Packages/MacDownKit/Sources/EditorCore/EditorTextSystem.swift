@@ -50,6 +50,7 @@ public final class EditorTextSystem {
     /// replacement, mirroring the incremental-edit path's own bump in
     /// `noteTextEdit()` below.
     var editRevision: UInt64 = 0
+    let metricsCache = EditorDocumentMetricsCache()
     /// Prevents a disk-driven replacement from flowing back through the
     /// editor binding as a user edit. Setter is `internal` (not `private`)
     /// so `EditorTextSystem+Content.swift`'s `replaceTextFromExternal` can
