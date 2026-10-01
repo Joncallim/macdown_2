@@ -84,6 +84,44 @@ struct WorkspaceModelSaveQueueTests {
         #expect(await writer.lineageCount(for: second.document) == 0)
     }
 
+    /// #183 F10: an ordinary save built from a snapshot that predates an accepted
+    /// encoding save must not write the old encoding back.
+    @Test func aQueuedOrdinarySaveDoesNotRevertAnAcceptedEncodingChoice() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("encoding-lineage.txt")
+        try "café".write(to: url, atomically: true, encoding: .utf8)
+        let writer = DocumentWriter()
+        let latin1 = FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        let original = try FileDocument(fileURL: url).load().edited(text: "café 1")
+
+        let encodingSave = try await writer.save(original, encodingOverride: latin1)
+        let staleSnapshot = original.edited(text: "café 2")
+        let queuedOrdinary = try await writer.save(staleSnapshot)
+
+        #expect(queuedOrdinary.document.encoding == latin1)
+        #expect(try Data(contentsOf: url) == Data("café 2".data(using: .isoLatin1) ?? Data()))
+        await writer.acknowledge(encodingSave)
+        await writer.acknowledge(queuedOrdinary)
+    }
+
+    @Test func anExplicitEncodingOnALaterSaveStillWins() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("encoding-explicit.txt")
+        try "cafe".write(to: url, atomically: true, encoding: .utf8)
+        let writer = DocumentWriter()
+        let latin1 = FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        let original = try FileDocument(fileURL: url).load().edited(text: "cafe 1")
+
+        let first = try await writer.save(original, encodingOverride: latin1)
+        let second = try await writer.save(original.edited(text: "cafe 2"), encodingOverride: .utf8Default)
+
+        #expect(second.document.encoding == .utf8Default)
+        await writer.acknowledge(first)
+        await writer.acknowledge(second)
+    }
+
     @Test func unacknowledgedResultsRetainReachableExpectedLineage() async throws {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
