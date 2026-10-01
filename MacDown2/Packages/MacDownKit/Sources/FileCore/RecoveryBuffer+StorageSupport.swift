@@ -73,7 +73,7 @@ extension RecoveryBuffer {
         guard epoch != nil, let consumed = fenceLedger.consumedLegacy[documentID] else { return }
         let legacy = recoveryDirectory.appendingPathComponent(consumed.fileName)
         guard consumed.isUnambiguous,
-              let content = try? String(contentsOf: legacy, encoding: .utf8),
+              let content = try? Self.readExactUTF8(at: legacy),
               digest(content) == consumed.digest
         else { return }
         let result = removeRecoveryFile(at: legacy, sourceRemoval: true)
@@ -126,6 +126,6 @@ extension RecoveryBuffer {
               latestMutations[lifetime] == RecoveryMutation(version: version, kind: .persist)
         else { return false }
         let url = recoveryURL(for: documentID, epoch: epoch)
-        return try String(contentsOf: url, encoding: .utf8) == content
+        return try Self.readExactUTF8(at: url) == content
     }
 }
