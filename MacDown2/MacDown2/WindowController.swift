@@ -47,6 +47,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private var lastObservedDirty: Bool = false
     private var lastObservedURL: URL?
     private var lastObservedLanguageID: String?
+    /// When the workspace index was last re-walked (`refreshWorkspaceIndex`).
+    var lastWorkspaceIndexRefresh: Date?
 
     init(
         model: WorkspaceModel,
@@ -242,7 +244,10 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // synchronously when a native tab becomes visible again.
         updateTitleAndEditedState()
         externalFileController.retryMonitoring()
-        Task { await fileTreeModel.rescanExpandedDirectories() }
+        Task {
+            await fileTreeModel.rescanExpandedDirectories()
+            await refreshWorkspaceIndex(minInterval: 5)
+        }
     }
 
     /// Explicit-target Save never calls a model method that is permitted to

@@ -282,7 +282,10 @@ public extension FileTreeModel {
     }
 
     private func operationResult(_ url: URL, context: FileTreeOperationContext) -> FileTreeOperationResult {
-        FileTreeOperationResult(url: url.standardizedFileURL, isCurrent: operationIsCurrent(context))
+        // Every successful create/rename/duplicate/move/trash lands here, having
+        // already changed the disk: tell the workspace index (#183 F18).
+        onDidMutate?()
+        return FileTreeOperationResult(url: url.standardizedFileURL, isCurrent: operationIsCurrent(context))
     }
 
     private func operationError(_ error: Error) -> FileTreeOperationError {

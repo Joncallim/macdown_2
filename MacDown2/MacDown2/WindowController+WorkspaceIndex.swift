@@ -11,6 +11,26 @@ extension WindowController {
         folderSearchModel.hasUnsavedOpenDocument = { [weak coordinator] url in
             coordinator?.hasUnsavedOpenDocument(at: url) ?? false
         }
+        fileTreeModel.onDidMutate = { [weak self] in
+            Task { await self?.refreshWorkspaceIndex() }
+        }
+    }
+
+    /// Re-walks the open folder so Quick Open and Folder Search follow changes
+    /// made by this app's own file operations and by other programs (#183
+    /// F18). A newer call supersedes an in-flight walk
+    /// (`WorkspaceFileIndex.rebuild`), the old snapshot stays queryable until
+    /// the new one lands, and no folder (or a closed one) is a no-op.
+    ///
+    /// `minInterval` lets a frequent trigger (a native tab becoming key) skip a
+    /// walk that just finished; file operations always walk.
+    func refreshWorkspaceIndex(minInterval: TimeInterval = 0) async {
+        guard let root = fileTreeModel.rootAccessURL else { return }
+        if minInterval > 0, let last = lastWorkspaceIndexRefresh, Date().timeIntervalSince(last) < minInterval {
+            return
+        }
+        lastWorkspaceIndexRefresh = Date()
+        await workspaceFileIndex.rebuild(root: root)
     }
 
     /// Sets `fileTreeModel`'s root and rebuilds `workspaceFileIndex` to
