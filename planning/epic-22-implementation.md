@@ -911,6 +911,9 @@ Per the owner's explicit technical-dependency-order instruction, slices are orde
 **Goal:** the full adversarial/performance/accessibility pass across every slice's surface together (interactions between multi-cursor + search, multi-cursor + snippets, encoding conversion + external edit, etc.), plus the corrected E05 Release performance evidence (§11).
 **Dependencies:** Slices 1-9.
 
+**Status (Slice 10 is split into sub-slices, one concern per PR; routing source of truth is the #183 audit):**
+- **10d** — implemented (#183 F12): Sort Lines / Remove Duplicate Lines no longer reject the whole command when the selection set mixes multi-line groups with single-line ones — single-line groups are left untouched and only shifted by earlier groups' edits; the command stays a no-op only when no group spans more than one line.
+
 ### Slice 11 — Release re-gate
 
 **Goal:** re-run affected E15 evidence rows, produce E16's post-E22 localisation delta (extraction + fr/pl/ja translation + pseudo-localisation, per `epic-16-implementation.md`'s established workflow) **only if** the owner has by then also completed E23 per the current sequencing (E22 → identity re-freeze → E23 → #115 → final E16 freeze) — otherwise this slice records E22's own string/UI delta honestly as a partial update to the interim baseline and defers the *final* freeze declaration to after E23/#115, per §12 above. Confirm zero unresolved P0/P1 introduced by E22 before considering the epic release-complete.
