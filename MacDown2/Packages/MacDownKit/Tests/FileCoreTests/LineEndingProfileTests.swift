@@ -77,4 +77,16 @@ struct LineEndingProfileTests {
         #expect(profile.kind == .crlf)
         #expect(profile.crlfCount == 200_000)
     }
+
+    @Test func adaptingLineBreaksRewritesEveryBreakToTheDocumentsDominantEnding() {
+        #expect(LineEnding.adaptingLineBreaks(in: "a\nb\r\nc\rd", toMatch: "x\r\ny\r\n") == "a\r\nb\r\nc\r\nd")
+        #expect(LineEnding.adaptingLineBreaks(in: "a\r\nb", toMatch: "x\ny\n") == "a\nb")
+        #expect(LineEnding.adaptingLineBreaks(in: "a\nb", toMatch: "x\ry\r") == "a\rb")
+    }
+
+    @Test func adaptingLineBreaksLeavesTextWithoutBreaksOrWithoutATargetAlone() {
+        #expect(LineEnding.adaptingLineBreaks(in: "plain", toMatch: "x\r\ny") == "plain")
+        #expect(LineEnding.adaptingLineBreaks(in: "a\nb", toMatch: "no terminators") == "a\nb")
+        #expect(LineEnding.adaptingLineBreaks(in: "a\nb", toMatch: "") == "a\nb")
+    }
 }

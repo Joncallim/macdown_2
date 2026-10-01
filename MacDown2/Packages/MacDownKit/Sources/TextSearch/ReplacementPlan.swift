@@ -45,8 +45,9 @@ public struct ReplacementPlan: Sendable, Equatable {
             previousEnd = NSMaxRange(range)
         }
         var result = text as NSString
+        let replacement = LineEnding.adaptingLineBreaks(in: replacementText, toMatch: text)
         for match in matches.reversed() {
-            result = result.replacingCharacters(in: match.range, with: replacementText) as NSString
+            result = result.replacingCharacters(in: match.range, with: replacement) as NSString
         }
         return result as String
     }
