@@ -95,7 +95,7 @@ public actor RecoveryBuffer {
     public func load(for documentID: String, epoch: UUID? = nil) throws -> String? {
         try loadFenceLedgerIfNeeded()
         guard let url = recoveryURLToLoad(for: documentID, epoch: epochIdentifier(epoch)) else { return nil }
-        let content = try String(contentsOf: url, encoding: .utf8)
+        let content = try Self.readExactUTF8(at: url)
         try recordConsumedLegacyIfNeeded(documentID: documentID, url: url, content: content)
         return content
     }

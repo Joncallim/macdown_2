@@ -19,7 +19,7 @@ public extension RecoveryBuffer {
     func load(for documentID: String, epoch: UInt) throws -> String? {
         try loadFenceLedgerIfNeeded()
         guard let url = recoveryURLToLoad(for: documentID, epoch: legacyLifetime(epoch)) else { return nil }
-        return try String(contentsOf: url, encoding: .utf8)
+        return try Self.readExactUTF8(at: url)
     }
 
     func remove(for documentID: String, version: UInt? = nil, epoch: UInt) {

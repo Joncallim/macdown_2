@@ -17,7 +17,7 @@ extension RecoveryBuffer {
                       try authorizeLifetime(id, epoch: epoch, maySupersede: true)
                 else { return .rejected }
                 try content.write(to: destination, atomically: true, encoding: .utf8)
-                guard try String(contentsOf: destination, encoding: .utf8) == content else {
+                guard try Self.readExactUTF8(at: destination) == content else {
                     return .failed(.verificationFailed(destination))
                 }
                 record(version, kind: .persist, for: id, epoch: epoch)

@@ -117,7 +117,7 @@ extension RecoveryBuffer {
                   version: version,
                   kind: .persist
               ),
-              let stored = try? String(contentsOf: url, encoding: .utf8)
+              let stored = try? Self.readExactUTF8(at: url)
         else { return false }
         return stored == content
     }
