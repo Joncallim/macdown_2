@@ -105,18 +105,49 @@ extension MarkdownEditingAssistEngine {
         return index
     }
 
-    /// The line separator following the line containing `location`:
-    /// `"\r\n"` when the line has an observable CRLF separator, else `"\n"`.
+    /// The separator to insert for a new line after the line containing
+    /// `location`, so Enter never introduces a second line-ending convention
+    /// into a document (invariant #5): the line's own `\r\n` or `\n` when it
+    /// has one; otherwise (the last line, or a bare-CR document this engine
+    /// sees as one line) the nearest terminator before `location`, then the
+    /// nearest after it, and only then `"\n"` for text with no terminator.
     static func lineSeparator(ofLineContaining location: Int, in text: NSString) -> String {
         let contentEnd = lineContentEnd(of: location, in: text)
-        if contentEnd + 1 < text.length,
-           character(at: contentEnd, in: text) == 0x0D,
-           character(at: contentEnd + 1, in: text) == 0x0A
-        // swiftlint:disable:next opening_brace
-        {
+        if contentEnd < text.length {
+            if character(at: contentEnd, in: text) == 0x0A {
+                return "\n"
+            }
             return "\r\n"
         }
+        var index = min(max(0, location), text.length)
+        while index > 0 {
+            index -= 1
+            if let found = terminator(endingAt: index, in: text) {
+                return found
+            }
+        }
+        index = min(max(0, location), text.length)
+        while index < text.length {
+            if let found = terminator(endingAt: index, in: text) {
+                return found
+            }
+            index += 1
+        }
         return "\n"
+    }
+
+    /// The terminator whose last unit is at `index`, if any: `\n` (or `\r\n`
+    /// when preceded by `\r`), or a lone `\r` not followed by `\n`.
+    private static func terminator(endingAt index: Int, in text: NSString) -> String? {
+        switch character(at: index, in: text) {
+        case 0x0A:
+            return index > 0 && character(at: index - 1, in: text) == 0x0D ? "\r\n" : "\n"
+        case 0x0D:
+            let followedByLF = index + 1 < text.length && character(at: index + 1, in: text) == 0x0A
+            return followedByLF ? nil : "\r"
+        default:
+            return nil
+        }
     }
 
     static func firstNonWhitespace(in text: NSString, from start: Int, to end: Int) -> Int? {

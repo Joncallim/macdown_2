@@ -1,3 +1,4 @@
+import FileCore
 import Foundation
 import Observation
 import TextSearch
@@ -63,6 +64,9 @@ public final class EditorFindModel {
     /// see `updateMatches(in:)`'s own doc comment on why that isn't
     /// possible for `NSRegularExpression` — only discards its answer.
     private var searchGeneration: UInt64 = 0
+    /// The dominant line ending of the text the current matches were computed
+    /// against, used to adapt a multi-line replacement.
+    private var searchedLineEnding: LineEnding?
 
     public init(query: String = "", options: SearchOptions = SearchOptions()) {
         self.query = query
@@ -154,6 +158,7 @@ public final class EditorFindModel {
     ) async -> Bool {
         searchGeneration &+= 1
         let generation = searchGeneration
+        searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
         let query = query
         let options = options
         isSearching = true
@@ -280,7 +285,10 @@ public final class EditorFindModel {
     /// matches at all.
     public func replaceCurrentTransaction(with replacement: String) -> EditorEditTransaction? {
         guard let match = currentMatch else { return nil }
-        let textReplacement = TextReplacement(range: match.range, replacementText: replacement)
+        let textReplacement = TextReplacement(
+            range: match.range,
+            replacementText: LineEnding.adaptingLineBreaks(in: replacement, to: searchedLineEnding)
+        )
         guard let caretRange = EditorEditTransaction.resultingCaretRanges(for: [textReplacement]).first else {
             return nil
         }
@@ -301,7 +309,8 @@ public final class EditorFindModel {
     /// `resultingCaretRanges(for:)` already computes for free.
     public func replaceAllTransaction(with replacement: String) -> EditorEditTransaction? {
         guard !matches.isEmpty else { return nil }
-        let textReplacements = matches.map { TextReplacement(range: $0.range, replacementText: replacement) }
+        let adapted = LineEnding.adaptingLineBreaks(in: replacement, to: searchedLineEnding)
+        let textReplacements = matches.map { TextReplacement(range: $0.range, replacementText: adapted) }
         guard let caretRange = EditorEditTransaction.resultingCaretRanges(for: textReplacements).last else {
             return nil
         }
