@@ -70,6 +70,9 @@ final class FolderSearchModel {
     let performReplace: FolderReplaceRunner
     let performPreview: FolderReplacePreviewBuilder
     var replaceTask: Task<Void, Never>?
+    /// Identifies the one Replace run allowed to publish; bumped whenever the
+    /// run is retired (root change) so a late completion is discarded.
+    var replaceGeneration = 0
     var previewGeneration = 0
 
     private let performSearch: @Sendable (
@@ -147,6 +150,9 @@ final class FolderSearchModel {
     /// never a mix of old and new" discipline, applied to the model's own
     /// query/results pair instead of the index's own snapshot.
     func setRoot(_ root: URL?) {
+        if root != self.root {
+            retireReplaceRun()
+        }
         self.root = root
         scheduleSearch(debounced: false)
     }

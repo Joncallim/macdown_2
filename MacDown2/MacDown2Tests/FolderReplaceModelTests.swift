@@ -168,6 +168,72 @@ struct FolderReplaceModelTests {
         #expect(try tree.read("a.txt") == "one foo two")
     }
 
+    @Test func changingTheRootCancelsARunningReplaceAndDiscardsItsLateSummary() async throws {
+        let gate = ReplaceGate()
+        let model = FolderSearchModel(
+            performSearch: { _, _, onMatch in
+                await onMatch(FolderSearchMatch(
+                    relativePath: "a.txt",
+                    matches: [SearchMatch(range: NSRange(location: 0, length: 1))],
+                    revision: Self.dummyRevision
+                ))
+                return .completed(filesSearched: 1, filesSkipped: 0, matchCount: 1)
+            },
+            performReplace: { _, plans, _, _ in
+                await gate.enterAndWait()
+                return plans.map { ReplacementFileResult(relativePath: $0.relativePath, outcome: .replaced(count: 1)) }
+            }
+        )
+        let oldRoot = URL(fileURLWithPath: "/tmp/old-root")
+        model.setRoot(oldRoot)
+        model.query = "x"
+        await waitUntil { model.outcome != nil }
+        model.requestReplace()
+        model.confirmReplace()
+        await gate.waitUntilEntered()
+        #expect(model.isReplacing)
+
+        model.setRoot(URL(fileURLWithPath: "/tmp/new-root"))
+        await gate.release()
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(!model.isReplacing)
+        #expect(model.replaceSummary == nil)
+        #expect(model.replaceTask == nil)
+    }
+
+    @Test func settingTheSameRootAgainDoesNotRetireARunningReplace() async {
+        let gate = ReplaceGate()
+        let root = URL(fileURLWithPath: "/tmp/same-root")
+        let model = FolderSearchModel(
+            performSearch: { _, _, onMatch in
+                await onMatch(FolderSearchMatch(
+                    relativePath: "a.txt",
+                    matches: [SearchMatch(range: NSRange(location: 0, length: 1))],
+                    revision: Self.dummyRevision
+                ))
+                return .completed(filesSearched: 1, filesSkipped: 0, matchCount: 1)
+            },
+            performReplace: { _, plans, _, _ in
+                await gate.enterAndWait()
+                return plans.map { ReplacementFileResult(relativePath: $0.relativePath, outcome: .replaced(count: 1)) }
+            }
+        )
+        model.setRoot(root)
+        model.query = "x"
+        await waitUntil { model.outcome != nil }
+        model.requestReplace()
+        model.confirmReplace()
+        await gate.waitUntilEntered()
+
+        model.setRoot(root)
+        #expect(model.isReplacing)
+        await gate.release()
+        await waitUntil { model.replaceSummary != nil }
+
+        #expect(model.replaceSummary?.replacedFiles == 1)
+    }
+
     @Test func summaryCountsReplacedAndSkippedResults() {
         let summary = FolderSearchModel.summarize([
             ReplacementFileResult(relativePath: "a", outcome: .replaced(count: 2)),
@@ -187,6 +253,30 @@ struct FolderReplaceModelTests {
         fileObjectID: nil,
         sha256: ""
     )
+}
+
+private actor ReplaceGate {
+    private(set) var entered = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var released = false
+
+    func enterAndWait() async {
+        entered = true
+        guard !released else { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func waitUntilEntered() async {
+        while !entered {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+    }
+
+    func release() {
+        released = true
+        continuation?.resume()
+        continuation = nil
+    }
 }
 
 private actor ReplaceRunCounter {
