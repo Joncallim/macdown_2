@@ -85,7 +85,9 @@ struct PaletteOriginTargetingTests {
     }
 
     private static func waitUntil(
-        timeout: Duration = .seconds(3),
+        // Generous: a condition wait returns the moment it holds, and a loaded CI
+        // runner can starve the main actor for far longer than a few seconds.
+        timeout: Duration = .seconds(60),
         _ condition: () -> Bool
     ) async {
         let deadline = ContinuousClock.now.advanced(by: timeout)
@@ -110,7 +112,13 @@ struct PaletteOriginTargetingTests {
 
         let controllersBefore = fixture.coordinator.controllers.count
         fixture.coordinator.createInFolder(isDirectory: false, controller: fixture.controllerA)
-        await Self.waitUntil { fixture.coordinator.controllers.count > controllersBefore }
+        // The whole post-creation sequence, not just the new window: the file is
+        // selected under A's root and the opened document has loaded.
+        await Self.waitUntil {
+            fixture.coordinator.controllers.count > controllersBefore
+                && fixture.controllerA.fileTreeModel.selectedURL != nil
+                && fixture.coordinator.controllers.last?.model.activeDocument?.fileURL != nil
+        }
         defer { fixture.coordinator.controllers.last?.close() }
 
         // The created file itself lives under A's folder root, not B's.
