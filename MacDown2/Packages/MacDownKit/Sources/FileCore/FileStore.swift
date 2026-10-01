@@ -33,7 +33,7 @@ public struct FileStore: Sendable {
     private let afterReplacement: (@Sendable (URL) throws -> Void)?
     private let beforePublication: (@Sendable (URL) throws -> Void)?
     private let afterBaselineVerification: (@Sendable (URL) throws -> Void)?
-    private let conditionalPublicationHooks: ConditionalPublicationTestHooks?
+    let conditionalPublicationHooks: ConditionalPublicationTestHooks?
 
     public init() {
         afterReplacement = nil
@@ -170,9 +170,11 @@ public struct FileStore: Sendable {
         to url: URL,
         encoding: String.Encoding = FileStore.defaultEncoding,
         bom: FileBOM = .none,
-        expectedRevision: FileRevision? = nil
+        expectedRevision: FileRevision? = nil,
+        destinationBaseline: DestinationBaseline? = nil
     ) throws(FileStoreError) -> FileRevision {
         guard url.isFileURL else { throw .invalidURL }
+        let (expectedRevision, requireAbsent) = Self.resolveBaseline(expectedRevision, destinationBaseline)
 
         guard let data = encodedData(content, encoding: encoding, bom: bom) else {
             throw .encodingDetectionFailed
@@ -180,7 +182,7 @@ public struct FileStore: Sendable {
 
         do {
             return try FilePublicationLocks.shared.withLock(for: url.standardizedFileURL) {
-                try writeLocked(to: url, data: data, expectedRevision: expectedRevision)
+                try writeLocked(to: url, data: data, expectedRevision: expectedRevision, requireAbsent: requireAbsent)
             }
         } catch {
             throw mapWriteError(error)
@@ -231,12 +233,14 @@ public struct FileStore: Sendable {
     private func writeLocked(
         to url: URL,
         data: Data,
-        expectedRevision: FileRevision?
+        expectedRevision: FileRevision?,
+        requireAbsent: Bool = false
     ) throws(FileStoreError) -> FileRevision {
         if let expectedRevision {
             let actual = try readRevision(from: url)
             guard actual == expectedRevision else { throw .fileChangedDuringRead }
         }
+        try requireAbsentIfNeeded(requireAbsent, at: url)
 
         let directory = url.deletingLastPathComponent()
         let temporaryURL = directory
@@ -265,18 +269,7 @@ public struct FileStore: Sendable {
             // replacement window. The conditional swap below must preserve a
             // direct, non-cooperating write issued here.
             try afterBaselineVerification?(url)
-            if let expectedRevision {
-                try conditionallyPublish(
-                    temporaryURL: temporaryURL,
-                    destinationURL: url,
-                    expectedRevision: expectedRevision,
-                    hooks: conditionalPublicationHooks
-                )
-            } else if FileManager.default.fileExists(atPath: url.path) {
-                _ = try FileManager.default.replaceItemAt(url, withItemAt: temporaryURL)
-            } else {
-                try FileManager.default.moveItem(at: temporaryURL, to: url)
-            }
+            try publishStaged(temporaryURL, to: url, expectedRevision: expectedRevision, requireAbsent: requireAbsent)
             try afterReplacement?(url)
         } catch {
             let mapped = mapWriteError(error)

@@ -57,6 +57,58 @@ struct WorkspaceModelSaveAsExpectationTests {
         #expect(try FileStore().read(from: sourceB).content == "beta")
     }
 
+    /// #183 F22: the destination is captured as a baseline when the user
+    /// authorises it, and publication is conditional on it. A file another
+    /// process creates in between is never overwritten.
+    @Test func saveAsDoesNotOverwriteADestinationCreatedAfterAuthorization() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let destination = directory.appendingPathComponent("destination.md")
+        _ = try FileStore().write("on disk", to: source)
+        let racingStore = FileStore(afterBaselineVerification: { url in
+            if url.standardizedFileURL == destination.standardizedFileURL {
+                try Data("external winner".utf8).write(to: url)
+            }
+        })
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source, fileStore: racingStore).load())
+        let model = WorkspaceModel(
+            tabStore: tabStore,
+            stateStore: FakeStateStore(),
+            panel: InterposingPanelProvider(destination: destination) {}
+        )
+
+        await model.saveAs()
+
+        #expect(try FileStore().read(from: destination).content == "external winner")
+        #expect(model.lastError != nil)
+        #expect(model.activeDocument?.fileURL?.standardizedFileURL == source.standardizedFileURL)
+    }
+
+    @Test func saveAsOverwritesAnExistingDestinationThatIsUnchangedSinceAuthorization() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let destination = directory.appendingPathComponent("destination.md")
+        _ = try FileStore().write("on disk", to: source)
+        _ = try FileStore().write("old destination", to: destination)
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load())
+        let model = WorkspaceModel(
+            tabStore: tabStore,
+            stateStore: FakeStateStore(),
+            panel: InterposingPanelProvider(destination: destination) {}
+        )
+
+        await model.saveAs()
+
+        #expect(try FileStore().read(from: destination).content == "on disk")
+        #expect(model.lastError == nil)
+    }
+
     /// The same guard for the more ordinary case: the *same* document is
     /// replaced (an external-change reload) while the panel is up.
     @Test func saveAsAbandonsTheSaveIfItsOwnDocumentWasReplacedWhileThePanelWasUp() async throws {
