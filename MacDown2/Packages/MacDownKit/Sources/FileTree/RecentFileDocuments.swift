@@ -1,3 +1,4 @@
+import Darwin
 import FileCore
 import Foundation
 import Observation
@@ -20,9 +21,33 @@ public struct RecentFileDocumentResolution: Sendable, Equatable {
 /// analog in the current feature set.
 @MainActor @Observable
 public final class RecentFileDocuments {
+    /// Identifies the recorded file object itself, so an unrelated file that
+    /// later appears at the old path is never mistaken for it (#183 F21). An
+    /// inode plus creation time is stable across launches, unlike the volume
+    /// and file-resource identifiers used for in-session equivalence.
+    private struct Fingerprint: Codable, Equatable {
+        let inode: UInt64
+        let created: TimeInterval?
+
+        init?(of url: URL) {
+            var info = stat()
+            guard stat(url.path, &info) == 0 else { return nil }
+            inode = UInt64(info.st_ino)
+            let values = try? url.resourceValues(forKeys: [.creationDateKey])
+            created = values?.creationDate?.timeIntervalSince1970
+        }
+    }
+
+    private struct Unpacked {
+        let bookmark: Data
+        let lexicalURL: URL?
+        let fingerprint: Fingerprint?
+    }
+
     private struct StoredDocument: Codable {
         let bookmark: Data
         let lexicalURL: URL
+        let fingerprint: Fingerprint?
     }
 
     public private(set) var documents: [URL] = []
@@ -39,7 +64,14 @@ public final class RecentFileDocuments {
         let physical = standardized.resolvingSymlinksInPath().standardizedFileURL
         guard let bookmark = try? physical.bookmarkData(options: .withSecurityScope) else { return }
         var updated = zip(documents, bookmarks).filter { !PhysicalFileIdentity.matches($0.0, standardized) }
-        updated.insert((standardized, stored(bookmark: bookmark, lexicalURL: standardized)), at: 0)
+        updated.insert(
+            (standardized, stored(
+                bookmark: bookmark,
+                lexicalURL: standardized,
+                fingerprint: Fingerprint(of: physical)
+            )),
+            at: 0
+        )
         updated = Array(updated.prefix(10))
         documents = updated.map(\.0)
         bookmarks = updated.map(\.1)
@@ -72,12 +104,36 @@ public final class RecentFileDocuments {
         }
         let scope = FolderAccessScope(url: resolved)
         let standardized = resolved.standardizedFileURL
+        // Bookmarks resolve path-first, so once an unrelated file sits at the
+        // old path they resolve to *it*. Refuse it rather than open the wrong
+        // file; the entry no longer refers to anything we can find.
+        if let expected = record.fingerprint, Fingerprint(of: standardized) != expected {
+            documents.remove(at: index)
+            bookmarks.remove(at: index)
+            save()
+            return nil
+        }
+        // The stored lexical path is only a display alias. Keep it while it
+        // still identifies the bookmarked object; otherwise (the file moved and
+        // an unrelated file may now sit at the old path) adopt the resolved
+        // identity deliberately — `RecentFolderRoots.resolve`'s own rule (#183 F21).
+        let lexical = documents[index].standardizedFileURL
+        let lexicalStillIdentifiesIt = FileManager.default.fileExists(atPath: lexical.path)
+            && PhysicalFileIdentity.matches(lexical, standardized)
+        let reopened = lexicalStillIdentifiesIt ? lexical : standardized
+        let changedAlias = documents[index] != reopened
+        if changedAlias {
+            documents[index] = reopened
+        }
         if stale, let refreshed = try? standardized.bookmarkData(options: .withSecurityScope) {
-            bookmarks[index] = stored(bookmark: refreshed, lexicalURL: documents[index])
+            bookmarks[index] = stored(bookmark: refreshed, lexicalURL: reopened, fingerprint: record.fingerprint)
+            save()
+        } else if changedAlias {
+            bookmarks[index] = stored(bookmark: record.bookmark, lexicalURL: reopened, fingerprint: record.fingerprint)
             save()
         }
         _ = scope
-        return RecentFileDocumentResolution(lexicalURL: documents[index], accessURL: standardized)
+        return RecentFileDocumentResolution(lexicalURL: reopened, accessURL: standardized)
     }
 
     public func clear() {
@@ -119,10 +175,22 @@ public final class RecentFileDocuments {
     /// ordinary browsing.
     public func pruneMissingFiles() {
         var survivors: [(URL, Data)] = []
-        for (url, bookmark) in zip(documents, bookmarks) where FileManager.default.fileExists(atPath: url.path) {
-            survivors.append((url, bookmark))
+        var changed = false
+        for (url, bookmark) in zip(documents, bookmarks) {
+            if FileManager.default.fileExists(atPath: url.path) {
+                survivors.append((url, bookmark))
+            } else if let moved = movedFile(for: bookmark) {
+                // The lexical path vanished but the bookmark still finds the
+                // file (it was moved/renamed): keep it under its new path.
+                let record = unpack(bookmark, fallbackLexicalURL: nil)
+                survivors.append((
+                    moved,
+                    stored(bookmark: record.bookmark, lexicalURL: moved, fingerprint: record.fingerprint)
+                ))
+                changed = true
+            }
         }
-        guard survivors.count != documents.count else { return }
+        guard changed || survivors.count != documents.count else { return }
         documents = survivors.map(\.0)
         bookmarks = survivors.map(\.1)
         save()
@@ -155,7 +223,7 @@ public final class RecentFileDocuments {
             documents.append(lexical)
             let scope = FolderAccessScope(url: resolved)
             if stale, let refreshed = try? resolved.bookmarkData(options: .withSecurityScope) {
-                bookmarks.append(stored(bookmark: refreshed, lexicalURL: lexical))
+                bookmarks.append(stored(bookmark: refreshed, lexicalURL: lexical, fingerprint: record.fingerprint))
                 changed = true
             } else {
                 bookmarks.append(data)
@@ -172,16 +240,33 @@ public final class RecentFileDocuments {
         storeBookmarks(bookmarks)
     }
 
-    private func stored(bookmark: Data, lexicalURL: URL) -> Data {
-        let record = StoredDocument(bookmark: bookmark, lexicalURL: lexicalURL)
+    /// Where a bookmark currently finds its file, if that file exists.
+    private func movedFile(for data: Data) -> URL? {
+        var stale = false
+        let record = unpack(data, fallbackLexicalURL: nil)
+        guard let url = try? URL(
+            resolvingBookmarkData: record.bookmark,
+            options: [.withSecurityScope],
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+        ) else { return nil }
+        let standardized = url.standardizedFileURL
+        guard FileManager.default.fileExists(atPath: standardized.path),
+              record.fingerprint == nil || Fingerprint(of: standardized) == record.fingerprint
+        else { return nil }
+        return standardized
+    }
+
+    private func stored(bookmark: Data, lexicalURL: URL, fingerprint: Fingerprint?) -> Data {
+        let record = StoredDocument(bookmark: bookmark, lexicalURL: lexicalURL, fingerprint: fingerprint)
         return (try? JSONEncoder().encode(record)) ?? bookmark
     }
 
-    private func unpack(_ data: Data, fallbackLexicalURL: URL?) -> (bookmark: Data, lexicalURL: URL?) {
+    private func unpack(_ data: Data, fallbackLexicalURL: URL?) -> Unpacked {
         if let record = try? JSONDecoder().decode(StoredDocument.self, from: data) {
-            return (record.bookmark, record.lexicalURL)
+            return Unpacked(bookmark: record.bookmark, lexicalURL: record.lexicalURL, fingerprint: record.fingerprint)
         }
-        return (data, fallbackLexicalURL)
+        return Unpacked(bookmark: data, lexicalURL: fallbackLexicalURL, fingerprint: nil)
     }
 
     private func storedBookmarks() -> [Data] {
