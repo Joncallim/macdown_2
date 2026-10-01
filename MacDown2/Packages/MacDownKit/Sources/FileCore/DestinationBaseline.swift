@@ -26,14 +26,43 @@ public extension FileStore {
 }
 
 public extension FileDocument {
-    /// The baseline Save As to `url` must publish against. Save As onto the
-    /// document's own file keeps ordinary Save's protection (what the document
-    /// last knew); any other destination is captured fresh.
+    /// The baseline Save As to `url` must publish against, or `nil` for the
+    /// pre-existing unconditional replacement.
+    ///
+    /// - A symbolic-link destination (or one that cannot be classified) keeps
+    ///   the previous behaviour: the link itself is replaced.
+    /// - The document's own file, while it is healthy (backing available, no
+    ///   pending external change, a known revision), keeps ordinary Save's
+    ///   external-writer protection: the baseline is what the document last
+    ///   knew. The own file is recognised by path *or* physical identity, so a
+    ///   case-variant spelling cannot drop the protection.
+    /// - Anything else — including a missing/unavailable or externally changed
+    ///   backing file the user is resolving by choosing the same name — is the
+    ///   user explicitly authorising the destination's current state, captured
+    ///   fresh.
     func saveAsBaseline(for url: URL) throws(FileStoreError) -> DestinationBaseline? {
-        if url.standardizedFileURL == fileURL?.standardizedFileURL {
-            return lastKnownRevision.map { .revision($0) }
+        if (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true {
+            return nil
         }
-        return try fileStore.destinationBaseline(at: url)
+        let current = try fileStore.destinationBaseline(at: url)
+        if case .absent = current {
+            return .absent
+        }
+        guard let known = lastKnownRevision, isHealthyBackedDocument else { return current }
+        let samePath = url.standardizedFileURL == fileURL?.standardizedFileURL
+        if case let .revision(revision) = current, !samePath {
+            let sameObject = revision.fileObjectID != nil && revision.fileObjectID == known.fileObjectID
+            return sameObject ? .revision(known) : current
+        }
+        return samePath ? .revision(known) : current
+    }
+
+    private var isHealthyBackedDocument: Bool {
+        guard pendingExternalRevision == nil, state != .conflict else { return false }
+        if case .unavailable = backingState {
+            return false
+        }
+        return true
     }
 }
 
@@ -51,6 +80,17 @@ extension FileStore {
             if code == EEXIST {
                 throw .fileChangedDuringRead
             }
+            if code == ENOTSUP || code == EINVAL {
+                // The volume has no exclusive rename: re-check, then rely on
+                // `moveItem`, which itself refuses an existing destination.
+                try requireAbsentIfNeeded(true, at: destinationURL)
+                do {
+                    try FileManager.default.moveItem(at: temporaryURL, to: destinationURL)
+                    return
+                } catch {
+                    throw mapWriteError(error)
+                }
+            }
             throw mapWriteError(POSIXError(POSIXErrorCode(rawValue: code) ?? .EIO))
         }
     }
@@ -61,7 +101,7 @@ extension FileStore {
         _ expectedRevision: FileRevision?,
         _ baseline: DestinationBaseline?
     ) -> (FileRevision?, Bool) {
-        precondition(expectedRevision == nil || baseline == nil, "pass one baseline, not both")
+        assert(expectedRevision == nil || baseline == nil, "pass one baseline, not both")
         switch baseline {
         case let .revision(revision): return (revision, false)
         case .absent: return (nil, true)

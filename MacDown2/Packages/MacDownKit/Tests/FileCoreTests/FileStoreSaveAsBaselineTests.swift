@@ -84,4 +84,89 @@ struct FileStoreSaveAsBaselineTests {
             _ = try FileStore().destinationBaseline(at: fixture.directory)
         }
     }
+
+    // MARK: - Document-level baseline selection
+
+    private func saveAs(_ document: FileDocument, to url: URL) throws -> FileDocument {
+        try document.saveAs(url, destinationBaseline: document.saveAsBaseline(for: url))
+    }
+
+    @Test func saveAsOntoTheOwnUnchangedFileSucceeds() throws {
+        let fixture = try FixtureFile(text: "one")
+        let document = try FileDocument(fileURL: fixture.url).load().edited(text: "two")
+
+        _ = try saveAs(document, to: fixture.url)
+
+        #expect(try FileStore().read(from: fixture.url).content == "two")
+    }
+
+    @Test func saveAsOntoTheOwnFileKeepsExternalWriterProtectionWhileHealthy() throws {
+        let fixture = try FixtureFile(text: "one")
+        let document = try FileDocument(fileURL: fixture.url).load().edited(text: "ours")
+        try Data("external edit".utf8).write(to: fixture.url)
+
+        #expect(throws: FileStoreError.self) { _ = try saveAs(document, to: fixture.url) }
+        #expect(try FileStore().read(from: fixture.url).content == "external edit")
+    }
+
+    @Test func saveAsOntoTheOwnFileRecreatesItAfterItWasDeleted() throws {
+        let fixture = try FixtureFile(text: "one")
+        let document = try FileDocument(fileURL: fixture.url).load().edited(text: "ours")
+        try FileManager.default.removeItem(at: fixture.url)
+
+        _ = try saveAs(document, to: fixture.url)
+
+        #expect(try FileStore().read(from: fixture.url).content == "ours")
+    }
+
+    @Test func saveAsOntoAnExternallyChangedOwnFileIsTheUsersExplicitResolution() throws {
+        let fixture = try FixtureFile(text: "one")
+        let dirty = try FileDocument(fileURL: fixture.url).load().edited(text: "ours")
+        try Data("external edit".utf8).write(to: fixture.url)
+        let snapshot = try FileStore().readSnapshot(from: fixture.url)
+        let document = dirty.reconcilingExternalSnapshot(snapshot).document
+        #expect(document.state == .conflict)
+
+        _ = try saveAs(document, to: fixture.url)
+
+        #expect(try FileStore().read(from: fixture.url).content == "ours")
+    }
+
+    /// Foundation's replacement already refuses a symbolic-link destination, so
+    /// Save As onto one fails exactly as before; the baseline is simply not
+    /// imposed on top (`nil` = the pre-existing unconditional path).
+    @Test func aSymbolicLinkDestinationGetsNoBaselineSoItsBehaviourIsUnchanged() throws {
+        let fixture = try FixtureFile(text: "target")
+        let link = fixture.directory.appendingPathComponent("link.md")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: fixture.url)
+        let dangling = fixture.directory.appendingPathComponent("dangling.md")
+        try FileManager.default.createSymbolicLink(
+            at: dangling,
+            withDestinationURL: fixture.directory.appendingPathComponent("missing.md")
+        )
+        let document = FileDocument(text: "").updatingText("new")
+
+        #expect(try document.saveAsBaseline(for: link) == nil)
+        #expect(try document.saveAsBaseline(for: dangling) == nil)
+    }
+
+    @Test func aCaseVariantSpellingOfTheOwnFileKeepsTheProtection() throws {
+        let fixture = try FixtureFile(text: "one")
+        let variant = fixture.directory.appendingPathComponent("DOCUMENT.MD")
+        guard FileManager.default.fileExists(atPath: variant.path) else { return } // case-sensitive volume
+        let document = try FileDocument(fileURL: fixture.url).load().edited(text: "ours")
+        try Data("external edit".utf8).write(to: fixture.url)
+
+        #expect(throws: FileStoreError.self) { _ = try saveAs(document, to: variant) }
+        #expect(try FileStore().read(from: fixture.url).content == "external edit")
+    }
+
+    @Test func anUntitledDocumentMayReplaceAnExistingFileItsUserConfirmed() throws {
+        let fixture = try FixtureFile(text: "old")
+        let document = FileDocument(text: "").updatingText("new")
+
+        _ = try saveAs(document, to: fixture.url)
+
+        #expect(try FileStore().read(from: fixture.url).content == "new")
+    }
 }
