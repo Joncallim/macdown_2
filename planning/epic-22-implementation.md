@@ -911,6 +911,10 @@ Per the owner's explicit technical-dependency-order instruction, slices are orde
 **Goal:** the full adversarial/performance/accessibility pass across every slice's surface together (interactions between multi-cursor + search, multi-cursor + snippets, encoding conversion + external edit, etc.), plus the corrected E05 Release performance evidence (§11).
 **Dependencies:** Slices 1-9.
 
+**Status (Slice 10 is split into sub-slices, one concern per PR):**
+- **10b** — implemented (line-ending fidelity for inserted text, invariant #5): Return in a CRLF (or bare-CR) document no longer lets AppKit insert a bare `\n` when no Markdown assist applies (assists on, assists off, or the last line, which has no terminator of its own) — `EditorView.Coordinator.handleLineEndingAwareNewline` inserts the document's separator, failing open for IME composition, read-only editors and multiple selections, and never pre-empting a list/indent continuation; `lineSeparator(ofLineContaining:)` now falls back to the nearest terminator instead of `\n`. Multi-line replacement text (Find bar Replace/Replace All and Replace in Folder) adopts the target document's dominant line ending via `LineEnding.adaptingLineBreaks(in:toMatch:)`; text with no line break, or a document with no terminator, is left verbatim.
+- **10c+** — pending: remaining carry-forwards (`.skippedCannotRepresent` coverage, Convert Line Endings menu state, palette `notYetWired` commands, background-tab reveal #173, session-record encoding, other tracker-listed minor items), then the cross-feature interaction pass and the corrected E05 Release performance evidence.
+
 ### Slice 11 — Release re-gate
 
 **Goal:** re-run affected E15 evidence rows, produce E16's post-E22 localisation delta (extraction + fr/pl/ja translation + pseudo-localisation, per `epic-16-implementation.md`'s established workflow) **only if** the owner has by then also completed E23 per the current sequencing (E22 → identity re-freeze → E23 → #115 → final E16 freeze) — otherwise this slice records E22's own string/UI delta honestly as a partial update to the interim baseline and defers the *final* freeze declaration to after E23/#115, per §12 above. Confirm zero unresolved P0/P1 introduced by E22 before considering the epic release-complete.
@@ -1110,3 +1114,4 @@ Per `EPIC_STANDARD.md` §4, plus the epic issue's own acceptance criteria (both 
 - 2026-09-29: **Slice 9c implemented (`.tex`/`.latex` source format).** §9.6 decided as plain-text-styled fallback; see the Slice 9 status block.
 - 2026-09-29: **Slice 9d implemented (per-document Syntax Mode override).** See the Slice 9 status block.
 - 2026-09-29: **Slice 9e implemented (native snippets).** See the Slice 9 status block.
+- 2026-10-01: **Slice 10b implemented (line-ending fidelity for Return and replacement text).**

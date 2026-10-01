@@ -335,6 +335,10 @@ public struct EditorView: NSViewRepresentable {
             if !textView.hasMarkedText(), handleSynchronizedMovement(selector, system: system) {
                 return true
             }
+            if selector == #selector(NSResponder.insertNewline(_:)),
+               handleLineEndingAwareNewline(textView, system: system) {
+                return true
+            }
             guard system.editingAssistConfiguration.isEnabled else { return false }
             guard !isApplyingModelText,
                   !system.isPerformingProgrammaticTextUpdate,

@@ -17,6 +17,23 @@ public enum LineEnding: Sendable, Equatable, CaseIterable {
     }
 }
 
+public extension LineEnding {
+    /// `fragment` with every line break rewritten to the dominant terminator of
+    /// `document`, so inserted text never adds a second line-ending convention
+    /// (invariant #5). Returns `fragment` untouched when it has no line break
+    /// (the common case, without scanning `document`) or when `document` has no
+    /// terminator of its own to follow.
+    static func adaptingLineBreaks(in fragment: String, toMatch document: String) -> String {
+        guard fragment.utf8.contains(where: { $0 == 0x0A || $0 == 0x0D }),
+              let target = LineEndingProfile(detecting: document).dominantEnding
+        else { return fragment }
+        return fragment
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "\n", with: target.text)
+    }
+}
+
 /// The terminators found in a piece of text. CRLF is one terminator, never an
 /// LF plus a CR, which is why the scan works on UTF-8 bytes: `String` treats
 /// CRLF as a single `Character`, and Unicode line separators (U+2028/2029,

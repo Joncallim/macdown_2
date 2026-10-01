@@ -123,4 +123,27 @@ struct EditorFindModelReplaceTests {
 
         #expect(applied?.text == "bXYnXYnXY")
     }
+
+    @Test("a multi-line replacement adopts the document's CRLF line ending")
+    func multiLineReplacementFollowsTheDocumentsLineEnding() async {
+        let text = "one\r\ncat\r\ntwo"
+        let model = EditorFindModel(query: "cat")
+        await model.updateMatches(in: text, preferringLocationNear: 0)
+
+        let current = LineTransformTestSupport.applied(model.replaceCurrentTransaction(with: "a\nb"), to: text)
+        let all = LineTransformTestSupport.applied(model.replaceAllTransaction(with: "a\nb"), to: text)
+
+        #expect(current?.text == "one\r\na\r\nb\r\ntwo")
+        #expect(all?.text == "one\r\na\r\nb\r\ntwo")
+    }
+
+    @Test("a single-line replacement and a terminator-free document are left verbatim")
+    func replacementsWithoutLineBreaksOrAFollowableEndingAreUntouched() async {
+        let model = EditorFindModel(query: "cat")
+        await model.updateMatches(in: "a cat", preferringLocationNear: 0)
+
+        let applied = LineTransformTestSupport.applied(model.replaceCurrentTransaction(with: "x\r\ny"), to: "a cat")
+
+        #expect(applied?.text == "a x\r\ny")
+    }
 }

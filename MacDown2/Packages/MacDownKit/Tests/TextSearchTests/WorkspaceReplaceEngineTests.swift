@@ -57,6 +57,19 @@ struct WorkspaceReplaceEngineTests {
     }
 
     @Test
+    func aMultiLineReplacementAdoptsEachFilesOwnLineEnding() async throws {
+        let tree = try WorkspaceSearchEngineTempTree()
+        try tree.write("crlf.md", text: "one\r\nfoo\r\ntwo")
+        try tree.write("lf.md", text: "one\nfoo\ntwo")
+        let results = await searchResults(tree, query: "foo")
+
+        _ = await WorkspaceReplaceEngine().replace(root: tree.root, plans: plans(results, replacement: "a\nb"))
+
+        #expect(try read(tree, "crlf.md") == "one\r\na\r\nb\r\ntwo")
+        #expect(try read(tree, "lf.md") == "one\na\nb\ntwo")
+    }
+
+    @Test
     func replacementCountsMatchThePlan() async throws {
         let tree = try WorkspaceSearchEngineTempTree()
         try tree.write("a.md", text: "x x x")
