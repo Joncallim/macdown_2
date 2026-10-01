@@ -64,9 +64,10 @@ extension DocumentEditorSplitView {
             // real, mounted-window integration test).
             if appSettings?.editor.showsStatusBar != false,
                let system = editorStore.existingSystem(for: identity) {
-                let text = system.text
+                let metrics = system.documentMetrics()
                 EditorStatusBarView(
-                    text: text,
+                    source: system.liveTextSource,
+                    metrics: metrics,
                     selectedRange: statusBarSelection,
                     lineIndex: system.lineIndex,
                     indentationWidth: appSettings?.editor.indentationWidth ?? 4,
@@ -79,7 +80,7 @@ extension DocumentEditorSplitView {
                         onSave: { coordinator?.saveKeyDocument(withEncoding: $0) }
                     ),
                     lineEnding: LineEndingStatusItem(
-                        profile: LineEndingProfile(detecting: text),
+                        profile: metrics.lineEndings,
                         onConvert: { [weak system] in
                             guard let system, system.convertLineEndings(to: $0) else { return }
                             system.textView.window?.makeFirstResponder(system.textView)

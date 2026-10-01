@@ -12,7 +12,10 @@ import SwiftUI
 /// line-ending state, encoding, syntax mode) are deliberately deferred to
 /// Slices 3/8/9 rather than stubbed here.
 struct EditorStatusBarView: View {
-    let text: String
+    /// The live text, uncopied, and its precomputed metrics: a selection-only
+    /// re-render does no whole-document work (#183 F16).
+    let source: NSString
+    let metrics: EditorDocumentMetrics
     let selectedRange: NSRange
     let lineIndex: EditorLineIndex
     let indentationWidth: Int
@@ -28,24 +31,69 @@ struct EditorStatusBarView: View {
     /// The document's syntax mode and its override action; `nil` omits it.
     var syntaxMode: SyntaxModeStatusItem?
 
+    init(
+        source: NSString,
+        metrics: EditorDocumentMetrics,
+        selectedRange: NSRange,
+        lineIndex: EditorLineIndex,
+        indentationWidth: Int,
+        convertsTabsToSpaces: Bool,
+        onGoToLine: @escaping () -> Void,
+        encoding: EncodingStatusItem? = nil,
+        lineEnding: LineEndingStatusItem? = nil,
+        syntaxMode: SyntaxModeStatusItem? = nil
+    ) {
+        self.source = source
+        self.metrics = metrics
+        self.selectedRange = selectedRange
+        self.lineIndex = lineIndex
+        self.indentationWidth = indentationWidth
+        self.convertsTabsToSpaces = convertsTabsToSpaces
+        self.onGoToLine = onGoToLine
+        self.encoding = encoding
+        self.lineEnding = lineEnding
+        self.syntaxMode = syntaxMode
+    }
+
+    /// Convenience for callers (and tests) that only have a `String`.
+    init(
+        text: String,
+        selectedRange: NSRange,
+        lineIndex: EditorLineIndex,
+        indentationWidth: Int,
+        convertsTabsToSpaces: Bool,
+        onGoToLine: @escaping () -> Void
+    ) {
+        self.init(
+            source: text as NSString,
+            metrics: EditorDocumentMetrics(of: text),
+            selectedRange: selectedRange,
+            lineIndex: lineIndex,
+            indentationWidth: indentationWidth,
+            convertsTabsToSpaces: convertsTabsToSpaces,
+            onGoToLine: onGoToLine
+        )
+    }
+
     /// Not `private`: read directly by `EditorStatusBarViewTests`, which
     /// tests these pure computations without needing a full SwiftUI render
     /// pass (epic-22-implementation.md §6.7's promised status-bar test
     /// coverage).
     var lineColumnText: String {
-        let nsText = text as NSString
         let line = lineIndex.line(atUTF16Offset: selectedRange.location)
-        let column = lineIndex.column(atUTF16Offset: selectedRange.location, onLine: line, in: nsText)
+        let column = lineIndex.column(atUTF16Offset: selectedRange.location, onLine: line, in: source)
         return String(localized: "Ln \(line), Col \(column)", bundle: .main)
     }
 
     var countText: String {
-        if selectedRange.length > 0, let range = Range(selectedRange, in: text) {
-            let selectedCharacterCount = text.distance(from: range.lowerBound, to: range.upperBound)
+        if selectedRange.length > 0, NSMaxRange(selectedRange) <= source.length {
+            let selectedCharacterCount = source.substring(with: selectedRange).count
             return String(localized: "\(selectedCharacterCount) selected", bundle: .main)
         }
-        let words = Self.wordCount(in: text)
-        return String(localized: "\(text.count) characters, \(words) words", bundle: .main)
+        return String(
+            localized: "\(metrics.characterCount) characters, \(metrics.wordCount) words",
+            bundle: .main
+        )
     }
 
     var indentationText: String {
@@ -112,12 +160,7 @@ struct EditorStatusBarView: View {
     /// actor-isolated state — only its own parameter and a local variable —
     /// so removing the inherited isolation is correct, not a workaround.
     nonisolated static func wordCount(in text: String) -> Int {
-        guard !text.isEmpty else { return 0 }
-        var count = 0
-        text.enumerateSubstrings(in: text.startIndex..., options: [.byWords, .substringNotRequired]) { _, _, _, _ in
-            count += 1
-        }
-        return count
+        EditorDocumentMetrics.wordCount(in: text)
     }
 }
 
