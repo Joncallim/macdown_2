@@ -117,11 +117,12 @@ extension EditorTextTransforms {
         // is), so there is no synthetic-trailing-empty-line case to handle
         // here, unlike that shared helper's own more general single-
         // selection-range input.
-        let realLines = groupContent.components(separatedBy: "\n")
+        let splitter = EditorLineTransforms.lineSplitSeparator(for: groupContent)
+        let realLines = groupContent.components(separatedBy: splitter)
         let (newLines, lineDeltas) = context.decrease
             ? unindentedLines(realLines, width: context.width)
             : indentedLines(realLines, width: context.width)
-        let newContent = newLines.joined(separator: "\n")
+        let newContent = newLines.joined(separator: splitter)
 
         guard newContent != groupContent else {
             // A genuine no-op for this group (e.g. Decrease Indent on

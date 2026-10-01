@@ -151,4 +151,28 @@ struct EditorSnippetInsertionTests {
 
         #expect(system.textView.string == "a<\u{1F600}>b")
     }
+
+    @Test func clipboardLineBreaksFollowTheDocumentsLineEnding() {
+        let (lineFeedSystem, lfWindow) = mounted("x\ny\n")
+        defer { lfWindow.orderOut(nil) }
+        lineFeedSystem.selectedRange = NSRange(location: 0, length: 0)
+        lineFeedSystem.insertSnippet(SnippetTemplate(parsing: "${clipboard}$0"), clipboard: "p\r\nq")
+        #expect(lineFeedSystem.textView.string == "p\nqx\ny\n")
+
+        let (crlfSystem, crlfWindow) = mounted("x\r\ny\r\n")
+        defer { crlfWindow.orderOut(nil) }
+        crlfSystem.selectedRange = NSRange(location: 0, length: 0)
+        crlfSystem.insertSnippet(SnippetTemplate(parsing: "${clipboard}$0"), clipboard: "p\nq\rr")
+        #expect(crlfSystem.textView.string == "p\r\nq\r\nrx\r\ny\r\n")
+    }
+
+    @Test func aSelectionIsInsertedVerbatim() {
+        let (system, window) = mounted("a\r\nb")
+        defer { window.orderOut(nil) }
+        system.selectedRange = NSRange(location: 0, length: 4)
+
+        system.insertSnippet(SnippetTemplate(parsing: "[${selection}]"), clipboard: nil)
+
+        #expect(system.textView.string == "[a\r\nb]")
+    }
 }

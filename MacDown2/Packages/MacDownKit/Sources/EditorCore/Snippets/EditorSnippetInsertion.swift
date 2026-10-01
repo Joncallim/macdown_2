@@ -21,11 +21,12 @@ enum EditorSnippetInsertion {
         var carets: [NSRange] = []
         var delta = 0
         for range in selection.ranges {
+            let ending = lineEnding(near: range.location, in: text, fallback: defaultLineEnding)
             let expansion = template.expand(
                 selection: text.substring(with: range),
-                clipboard: clipboard,
+                clipboard: clipboard.map { adaptingLineBreaks(in: $0, to: ending) },
                 indent: indent(before: range.location, in: text),
-                lineEnding: lineEnding(near: range.location, in: text, fallback: defaultLineEnding)
+                lineEnding: ending
             )
             replacements.append(TextReplacement(range: range, replacementText: expansion.text))
             carets.append(NSRange(location: range.location + delta + expansion.caretOffset, length: 0))
@@ -52,6 +53,18 @@ enum EditorSnippetInsertion {
     /// The terminator the document already uses at `location`'s line, else the
     /// previous line's, else `fallback` — never invents a second convention in
     /// a document that already has one (invariant #5).
+    /// Clipboard text comes from outside the document, so its line breaks follow
+    /// the insertion point's own line ending; the selection is the document's
+    /// own text and stays verbatim (invariant #5).
+    static func adaptingLineBreaks(in text: String, to ending: String) -> String {
+        // utf8 scan: `String.contains("\n")` is false for a "\r\n" grapheme.
+        guard text.utf8.contains(where: { $0 == 0x0A || $0 == 0x0D }) else { return text }
+        return text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "\n", with: ending)
+    }
+
     static func lineEnding(near location: Int, in text: NSString, fallback: LineEnding) -> String {
         let probe = NSRange(location: location, length: 0)
         if let own = terminator(of: probe, in: text) {
