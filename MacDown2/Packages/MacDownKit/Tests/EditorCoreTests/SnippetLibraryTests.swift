@@ -109,6 +109,7 @@ struct SnippetLibraryTests {
     @Test func everyBuiltInIsUsableAndHasAUniqueId() {
         let ids = BuiltInSnippets.all.map(\.id)
         #expect(Set(ids).count == ids.count)
-        #expect(BuiltInSnippets.all.allSatisfy(\.isUsable))
+        // swiftformat rewrites `allSatisfy { $0.isUsable }` to a key path, which #expect cannot infer as non-throwing.
+        #expect(BuiltInSnippets.all.filter { !$0.isUsable }.isEmpty)
     }
 }
