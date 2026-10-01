@@ -82,4 +82,47 @@ struct FileStoreMetadataPreservationTests {
         #expect(try FileStore().read(from: fixture.url).content == "two")
         #expect(try mode(of: fixture.url) == 0o444)
     }
+
+    @Test func aConditionalSaveStillAdvancesTheModificationDate() throws {
+        let fixture = try FixtureFile(text: "one")
+        let old = timeval(tv_sec: 1_000_000_000, tv_usec: 0)
+        var times = [old, old]
+        #expect(utimes(fixture.url.path, &times) == 0)
+        let document = try FileDocument(fileURL: fixture.url).load().edited(text: "two")
+
+        _ = try document.save()
+
+        let attributes = try FileManager.default.attributesOfItem(atPath: fixture.url.path)
+        let modified = try #require(attributes[.modificationDate] as? Date)
+        #expect(modified.timeIntervalSince1970 > 1_000_000_001)
+    }
+
+    @Test func aConditionalSavePreservesAnACLEntry() throws {
+        let fixture = try FixtureFile(text: "one")
+        let acl = try #require(acl_from_text("!#acl 1\nuser:FFFFEEEE-DDDD-CCCC-BBBB-AAAA00000014:::allow:read"))
+        defer { acl_free(UnsafeMutableRawPointer(acl)) }
+        guard acl_set_file(fixture.url.path, ACL_TYPE_EXTENDED, acl) == 0 else {
+            Issue.record("could not set a test ACL on this volume")
+            return
+        }
+        let document = try FileDocument(fileURL: fixture.url).load().edited(text: "two")
+
+        _ = try document.save()
+
+        #expect(acl_get_file(fixture.url.path, ACL_TYPE_EXTENDED) != nil)
+    }
+
+    @Test func anImmutableDestinationFailsTheSaveAndLeavesNoStagedFileBehind() throws {
+        let fixture = try FixtureFile(text: "one")
+        let document = try FileDocument(fileURL: fixture.url).load().edited(text: "two")
+        #expect(chflags(fixture.url.path, UInt32(UF_IMMUTABLE)) == 0)
+        defer { _ = chflags(fixture.url.path, 0) }
+
+        #expect(throws: FileStoreError.self) { _ = try document.save() }
+
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: fixture.directory.path)
+            .filter { $0.contains(".tmp-") }
+        #expect(leftovers.isEmpty)
+        #expect(try FileStore().read(from: fixture.url).content == "one")
+    }
 }

@@ -60,26 +60,38 @@ extension FileStore {
         assert(ownership == .accepted)
     }
 
-    /// Carries the destination's permission bits, owner/flags, ACL and extended
-    /// attributes (Finder tags, quarantine) onto the staged file before it is
-    /// published. If the combined copy fails (a protected attribute, say), the
-    /// permission bits are still applied explicitly — a save never silently
-    /// widens a 0600 file — and only then is the failure surfaced.
+    /// Carries the destination's permission bits, ACL, extended attributes
+    /// (Finder tags, quarantine) and the cosmetic `UF_HIDDEN`/`UF_NODUMP`
+    /// flags onto the staged file before it is published (#174).
+    ///
+    /// Deliberately not `COPYFILE_STAT`: that would also copy timestamps (a
+    /// save must advance the modification date) and flags such as
+    /// `UF_IMMUTABLE` (which would make the staged file unswappable and
+    /// undeletable). The owner is not carried: the saving user owns the new
+    /// file. Permission bits are mandatory — a save never silently widens a
+    /// 0600 file. ACL/xattr copying is skipped only when the volume does not
+    /// support them (`ENOTSUP`/`ENOATTR`); any other failure is surfaced
+    /// rather than silently dropping metadata.
     func carryMetadata(from destination: URL, to staged: URL) throws(FileStoreError) {
+        var info = stat()
+        guard stat(destination.path, &info) == 0 else { throw currentErrnoWriteError() }
+        guard chmod(staged.path, info.st_mode & 0o7777) == 0 else { throw currentErrnoWriteError() }
+        let cosmeticFlags = info.st_flags & UInt32(UF_HIDDEN | UF_NODUMP)
+        if cosmeticFlags != 0, chflags(staged.path, cosmeticFlags) != 0, errno != ENOTSUP {
+            throw currentErrnoWriteError()
+        }
         let copied = destination.path.withCString { source in
             staged.path.withCString { target in
-                copyfile(source, target, nil, copyfile_flags_t(COPYFILE_STAT | COPYFILE_XATTR | COPYFILE_ACL))
+                copyfile(source, target, nil, copyfile_flags_t(COPYFILE_XATTR | COPYFILE_ACL))
             }
         }
-        if copied == 0 {
-            return
+        if copied != 0, errno != ENOTSUP, errno != ENOATTR {
+            throw currentErrnoWriteError()
         }
-        var info = stat()
-        guard stat(destination.path, &info) == 0,
-              chmod(staged.path, info.st_mode & 0o7777) == 0
-        else {
-            throw mapWriteError(POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO))
-        }
+    }
+
+    private func currentErrnoWriteError() -> FileStoreError {
+        mapWriteError(POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO))
     }
 
     private func rollbackDisplacedFile(
