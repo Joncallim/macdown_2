@@ -140,7 +140,7 @@ final class ExternalFileController {
         let reconciliation = document.reconcilingExternalSnapshot(snapshot)
         guard reconciliation.disposition != .noChange else { return }
         let replacement = reconciliation.document
-        let textChanged = replacement.text != document.text
+        let textChanged = !replacement.text.isExactlyEqual(to: document.text)
         model.tabStore.updateActiveDocument { _ in replacement }
         updateMonitorRevision(from: replacement)
 
@@ -307,7 +307,7 @@ extension ExternalFileController {
         return document.id == context.documentID
             && document.fileURL?.standardizedFileURL == context.fileURL
             && document.mutationGeneration == context.mutationGeneration
-            && document.text == context.text
+            && document.text.isExactlyEqual(to: context.text)
             && document.state == context.state
             && document.pendingExternalRevision == context.pendingRevision
     }
@@ -329,7 +329,7 @@ extension ExternalFileController {
             to: snapshot.revision.url
         )
 
-        if replacement.text != pendingMove.source.text {
+        if !replacement.text.isExactlyEqual(to: pendingMove.source.text) {
             replaceEditorText(with: replacement.text)
         }
         if replacement.state == .conflict {

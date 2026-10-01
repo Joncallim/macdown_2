@@ -63,3 +63,21 @@ struct EditorTextTransformsMixedSelectionTests {
         ) == nil)
     }
 }
+
+/// #183 F02 — Remove Duplicate Lines is exact, not canonical.
+@Suite("EditorTextTransforms exact dedupe (#183 F02)")
+struct EditorTextTransformsExactDedupeTests {
+    @Test func canonicallyEquivalentButScalarDistinctLinesAreBothKept() throws {
+        let text = "\u{212B}\n\u{00C5}\n\u{00C5}" as NSString
+        let selection = EditorSelectionSet(single: NSRange(location: 0, length: text.length))
+
+        let transaction = try #require(EditorTextTransforms.dedupeLinesTransaction(
+            text: text,
+            lineIndex: EditorLineIndex(text: text),
+            selection: selection
+        ))
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+
+        #expect(applied?.text.unicodeScalars.map(\.value) == [0x212B, 0x0A, 0x00C5])
+    }
+}

@@ -64,9 +64,11 @@ enum EditorTextTransforms {
     ) -> EditorEditTransaction? {
         multiLineGroupTransform(text: text, lineIndex: lineIndex, selection: selection,
                                 undoActionName: "Dedupe Lines") { block in
-            var seen = Set<String>()
+            // Keyed by UTF-8 bytes: `String` equality would merge canonically
+            // equivalent but scalar-distinct lines (#183 F02).
+            var seen = Set<[UInt8]>()
             var keptIndices: [Int] = []
-            for (index, content) in block.contents.enumerated() where seen.insert(content).inserted {
+            for (index, content) in block.contents.enumerated() where seen.insert(Array(content.utf8)).inserted {
                 keptIndices.append(index)
             }
             var rebuilt = ""

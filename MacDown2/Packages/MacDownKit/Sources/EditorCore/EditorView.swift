@@ -1,4 +1,5 @@
 import AppKit
+import FileCore
 import SwiftUI
 
 /// A SwiftUI representable that wraps a TextKit 2-backed `NSTextView`.
@@ -168,7 +169,7 @@ public struct EditorView: NSViewRepresentable {
         // current text *and* the change did not originate from the view itself.
         // This prevents the keystroke-echo feedback loop.
         var pushedModelText = false
-        if !context.coordinator.isApplyingModelText, system.text != text {
+        if !context.coordinator.isApplyingModelText, !system.text.isExactlyEqual(to: text) {
             context.coordinator.isApplyingModelText = true
             system.setText(text)
             context.coordinator.isApplyingModelText = false

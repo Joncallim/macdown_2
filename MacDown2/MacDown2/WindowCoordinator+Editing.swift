@@ -1,5 +1,6 @@
 import AppKit
 import EditorCore
+import FileCore
 import JSONSupport
 
 // MARK: - Markdown formatting command bridge
@@ -72,7 +73,7 @@ extension WindowCoordinator {
         else { return false }
         guard let session = controller.jsonAnalysisSessionForActiveTab else { return false }
         guard let result = session.result else { return false }
-        return result.isValid && result.text == document.text
+        return result.isValid && result.text.isExactlyEqual(to: document.text)
     }
 
     /// Formats the key window's active JSON document.

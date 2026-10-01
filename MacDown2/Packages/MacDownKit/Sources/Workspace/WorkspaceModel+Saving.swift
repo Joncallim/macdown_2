@@ -366,7 +366,7 @@ public extension WorkspaceModel {
                   expectedRevision: expectedRevision
               )
         else { return }
-        if current.text == saved.text, isLatestSave(context) {
+        if current.text.isExactlyEqual(to: saved.text), isLatestSave(context) {
             tabStore.updateActiveDocument { _ in saved }
             let cleanup = await saved.recoveryBuffer.removeWithOutcome(
                 for: saved.id,

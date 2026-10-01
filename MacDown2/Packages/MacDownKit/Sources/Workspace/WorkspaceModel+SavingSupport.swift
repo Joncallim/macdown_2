@@ -42,7 +42,7 @@ extension WorkspaceModel {
 
     func sameSaveAsSnapshot(_ lhs: FileDocument, _ rhs: FileDocument) -> Bool {
         lhs.id == rhs.id && lhs.fileURL?.standardizedFileURL == rhs.fileURL?.standardizedFileURL
-            && lhs.recoveryEpoch == rhs.recoveryEpoch && lhs.text == rhs.text && lhs.state == rhs.state
+            && lhs.recoveryEpoch == rhs.recoveryEpoch && lhs.text.isExactlyEqual(to: rhs.text) && lhs.state == rhs.state
             && lhs.mutationGeneration == rhs.mutationGeneration && lhs.pendingExternalRevision == rhs
             .pendingExternalRevision
     }
@@ -267,7 +267,8 @@ struct PendingRecoveryCleanupAction: Sendable, Hashable {
 
     func matches(_ document: FileDocument) -> Bool {
         document.id == documentID && document.recoveryEpoch == epoch
-            && document.mutationGeneration == mutationGeneration && document.text == text && document.state == state
+            && document.mutationGeneration == mutationGeneration && document.text.isExactlyEqual(to: text) && document
+            .state == state
     }
 
     static func == (lhs: Self, rhs: Self) -> Bool {

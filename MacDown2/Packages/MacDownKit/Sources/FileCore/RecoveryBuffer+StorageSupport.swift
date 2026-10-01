@@ -126,6 +126,6 @@ extension RecoveryBuffer {
               latestMutations[lifetime] == RecoveryMutation(version: version, kind: .persist)
         else { return false }
         let url = recoveryURL(for: documentID, epoch: epoch)
-        return try Self.readExactUTF8(at: url) == content
+        return try Self.readExactUTF8(at: url).isExactlyEqual(to: content)
     }
 }

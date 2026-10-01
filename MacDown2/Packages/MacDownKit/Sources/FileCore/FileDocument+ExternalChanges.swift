@@ -23,7 +23,7 @@ public struct ExternalReconciliation: Sendable {
 
 public extension FileDocument {
     func reconcilingExternalSnapshot(_ snapshot: FileSnapshot) -> ExternalReconciliation {
-        if snapshot.text == text {
+        if snapshot.text.isExactlyEqual(to: text) {
             return reconcilingMatchingExternalText(snapshot)
         }
 

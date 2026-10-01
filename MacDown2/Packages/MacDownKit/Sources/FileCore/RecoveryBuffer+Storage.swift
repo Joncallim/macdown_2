@@ -119,7 +119,7 @@ extension RecoveryBuffer {
               ),
               let stored = try? Self.readExactUTF8(at: url)
         else { return false }
-        return stored == content
+        return stored.isExactlyEqual(to: content)
     }
 
     func recoveryURLToLoad(for id: String, epoch: String?) -> URL? {
