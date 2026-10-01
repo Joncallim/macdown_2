@@ -911,6 +911,10 @@ Per the owner's explicit technical-dependency-order instruction, slices are orde
 **Goal:** the full adversarial/performance/accessibility pass across every slice's surface together (interactions between multi-cursor + search, multi-cursor + snippets, encoding conversion + external edit, etc.), plus the corrected E05 Release performance evidence (§11).
 **Dependencies:** Slices 1-9.
 
+**Status (Slice 10 is split into sub-slices, one concern per PR; routing source of truth is the #183 audit):**
+- **10c** — implemented (#183 F17): re-selecting the already-current "Reopen with Encoding" is a complete no-op at both the window entry point and `ExternalFileController.reopenWithEncoding` (new `.unchanged` result: no recovery drain, disk read, prompt, recovery mutation, undo reset or focus change); a genuinely different encoding keeps the existing confirm-before-discard and supersession guards. Adds the carried-forward app-level `reopenWithEncoding` tests (clean redecode, dirty declined, no-op when dirty, window entry point).
+- **10d+** — pending, from #183: F12 (mixed selection groups reject Sort/Dedupe), F23 (session restore multi-selection primary), F10/F15/F11/F01/F02/F20/F22 (save/recovery/session lineage), F03/F14/F08 (destructive search/replace authority), F04/F05/F09 (async lifecycle), F16 (status-bar metrics), F18/F19/F21 (index freshness / navigation origin), plus #173/#174-adjacent items, then the cross-feature interaction pass and corrected E05 Release performance evidence.
+
 ### Slice 11 — Release re-gate
 
 **Goal:** re-run affected E15 evidence rows, produce E16's post-E22 localisation delta (extraction + fr/pl/ja translation + pseudo-localisation, per `epic-16-implementation.md`'s established workflow) **only if** the owner has by then also completed E23 per the current sequencing (E22 → identity re-freeze → E23 → #115 → final E16 freeze) — otherwise this slice records E22's own string/UI delta honestly as a partial update to the interim baseline and defers the *final* freeze declaration to after E23/#115, per §12 above. Confirm zero unresolved P0/P1 introduced by E22 before considering the epic release-complete.

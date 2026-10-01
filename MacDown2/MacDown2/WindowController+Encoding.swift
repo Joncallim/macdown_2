@@ -17,6 +17,9 @@ extension WindowController {
     }
 
     func reopenDocument(withEncoding encoding: String.Encoding) async {
+        // Re-selecting the current encoding is a complete no-op: no recovery
+        // drain, disk read, prompt, undo reset or focus change.
+        guard model.activeDocument?.encoding.encoding != encoding else { return }
         let originalID = model.activeDocument?.id
         await externalFileController.drainRecovery()
         guard model.activeDocument?.id == originalID else { return }
