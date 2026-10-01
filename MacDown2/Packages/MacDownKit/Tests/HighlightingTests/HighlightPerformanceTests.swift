@@ -3,13 +3,38 @@ import Foundation
 import SwiftTreeSitter
 import Testing
 
-/// Ceilings are debug-build DOCUMENTATION ceilings, recalibrated 2026-07-23 for
-/// the `macos-26` CI runner where E06's parse-heavy tests contend for cores
-/// (measured: full 1 MB highlight 2.01 s under contention vs the old 2 s
-/// ceiling). Release-build budgets (50 ms keystroke / 500 ms full / 8 ms
-/// main-thread) are verified locally and recorded on the epic PRs.
+/// Debug builds (the CI `swift test` configuration) keep generous DOCUMENTATION
+/// ceilings, recalibrated 2026-07-23 for the `macos-26` runner where E06's
+/// parse-heavy tests contend for cores. Release builds
+/// (`swift test -c release --filter HighlightPerformanceTests --no-parallel`)
+/// enforce the ceilings below, which sit at ~2x the measured Release numbers
+/// recorded in `planning/epic-22-implementation.md` (Slice 10s) — regression
+/// guards, not the E05 product budgets. Two E05 budgets are *not* met by these
+/// measurements and are reported rather than asserted away: see `ReleaseCeiling`.
 @MainActor
 struct HighlightPerformanceTests {
+    /// Release ceilings. Measured on Apple silicon, 1 MB Markdown, serial run:
+    /// full highlight 0.25 s (E05 budget 500 ms: met); full parse 0.20 s; an
+    /// incremental reparse after a one-character edit 0.19 s — the same cost as
+    /// a full parse (it scales linearly with document size and does not reuse
+    /// the old tree), so E05's 50 ms keystroke budget is NOT met for 1 MB
+    /// Markdown at the parser level (Neon runs it off the main actor). The 8 ms
+    /// main-thread budget applies to viewport-slice work, covered by
+    /// `EditorPerformanceTests`, not to a whole-document parse.
+    private enum ReleaseCeiling {
+        static let fullHighlight: Duration = .milliseconds(500)
+        static let fullParse: Duration = .milliseconds(400)
+        static let incrementalReparse: Duration = .milliseconds(400)
+    }
+
+    private static var isRelease: Bool {
+        #if DEBUG
+            false
+        #else
+            true
+        #endif
+    }
+
     @Test func fullHighlight1MB() throws {
         let text = Fixtures.markdownRepeating(
             line: "# Heading\n\nSome `code` and **bold** text.\n\n",
@@ -33,7 +58,10 @@ struct HighlightPerformanceTests {
         _ = cursor.highlights()
         let duration = ContinuousClock().now - start
 
-        #expect(duration < .seconds(8), "Full 1 MB highlight took \(duration)")
+        #expect(
+            duration < (Self.isRelease ? ReleaseCeiling.fullHighlight : .seconds(8)),
+            "Full 1 MB highlight took \(duration)"
+        )
     }
 
     @Test func incrementalKeystroke1MB() throws {
@@ -80,10 +108,10 @@ struct HighlightPerformanceTests {
         _ = parser.parse(tree: editedTree, string: newText)
         let duration = ContinuousClock().now - start
 
-        // Debug builds are much slower than release; this threshold documents
-        // the current debug-build performance rather than enforcing the 8 ms
-        // main-thread budget.
-        #expect(duration < .seconds(8), "Incremental keystroke took \(duration)")
+        #expect(
+            duration < (Self.isRelease ? ReleaseCeiling.incrementalReparse : .seconds(8)),
+            "Incremental keystroke took \(duration)"
+        )
     }
 
     @Test func mainThreadParseBudgetDocumented() throws {
@@ -101,9 +129,10 @@ struct HighlightPerformanceTests {
         _ = parser.parse(text)
         let duration = ContinuousClock().now - start
 
-        // Budget is 8 ms synchronous slice in release builds; in debug builds
-        // we use a generous ceiling to keep the test useful as documentation.
-        #expect(duration < .seconds(8), "Main-thread parse budget exceeded: \(duration)")
+        #expect(
+            duration < (Self.isRelease ? ReleaseCeiling.fullParse : .seconds(8)),
+            "Full 1 MB parse took \(duration)"
+        )
     }
 
     // MARK: - Helpers
