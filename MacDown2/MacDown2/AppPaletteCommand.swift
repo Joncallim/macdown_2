@@ -99,7 +99,9 @@ extension AppPaletteCommand {
         AppPaletteCommand(
             id: "saveAs",
             title: "Save As…",
-            isAvailable: { _, controller in controller?.model.hasActiveDocument == true },
+            isAvailable: { coordinator, controller in
+                coordinator.isLiveController(controller) && controller?.model.hasActiveDocument == true
+            },
             action: { coordinator, controller in
                 guard let controller else { return }
                 coordinator.saveDocumentAs(in: controller)
@@ -123,6 +125,18 @@ extension AppPaletteCommand {
             // whose window has already closed (post-review finding #5).
             isAvailable: { coordinator, controller in coordinator.isLiveController(controller) },
             action: { _, controller in controller?.model.sidebarVisible.toggle() }
+        ),
+        AppPaletteCommand(
+            id: "insertSnippet",
+            title: "Insert Snippet…",
+            isAvailable: { _, controller in controller?.model.hasActiveDocument == true },
+            action: { coordinator, controller in coordinator.presentSnippetPicker(origin: controller) }
+        ),
+        AppPaletteCommand(
+            id: "editSnippets",
+            title: "Edit Snippets…",
+            isAvailable: { coordinator, controller in coordinator.isLiveController(controller) },
+            action: { coordinator, controller in coordinator.editSnippets(relativeTo: controller?.window) }
         ),
         AppPaletteCommand(id: "showCommandsFolder", title: "Show Commands Folder") { _, _ in
             let directory = TextFilterCommandDiscovery.commandsDirectory
