@@ -11,7 +11,7 @@ import AppKit
 public extension EditorTextSystem {
     @discardableResult
     func toggleComment() -> Bool {
-        guard let text = assistTextSource else { return false }
+        guard canApplyCommandEdit, let text = assistTextSource else { return false }
         let transaction = EditorCommentToggle.toggleCommentTransaction(
             text: text,
             lineIndex: lineIndex,

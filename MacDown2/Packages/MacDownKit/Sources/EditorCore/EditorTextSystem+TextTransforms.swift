@@ -75,7 +75,7 @@ public extension EditorTextSystem {
     private func performTextTransform(
         _ transform: (NSString, EditorLineIndex, EditorSelectionSet) -> EditorEditTransaction?
     ) -> Bool {
-        guard let text = assistTextSource else { return false }
+        guard canApplyCommandEdit, let text = assistTextSource else { return false }
         guard let transaction = transform(text, lineIndex, selectionSet) else { return false }
         apply(transaction)
         return true
