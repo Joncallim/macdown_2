@@ -105,4 +105,26 @@ struct EditorFindModelSearchDomainTests {
         model.clearSearchDomain()
         #expect(model.searchDomain == nil)
     }
+
+    // MARK: - #183 F08: a superseded search is cancelled, not merely ignored
+
+    @Test func aSupersededPathologicalRegexSearchIsCancelledAndTheNewerResultWins() async {
+        let model = EditorFindModel(query: "(x+x+)+y")
+        model.options = SearchOptions(isRegex: true)
+        let pathological = String(repeating: "x", count: 40) + "!"
+        let slow = Task { await model.updateMatches(in: pathological, preferringLocationNear: 0) }
+        try? await Task.sleep(for: .milliseconds(100))
+        let start = ContinuousClock.now
+
+        model.query = "x"
+        model.options = SearchOptions(isRegex: false)
+        let published = await model.updateMatches(in: "xx", preferringLocationNear: 0)
+        let slowPublished = await slow.value
+
+        #expect(ContinuousClock.now - start < .seconds(5))
+        #expect(published)
+        #expect(!slowPublished)
+        #expect(model.matches.count == 2)
+        #expect(model.error == nil)
+    }
 }

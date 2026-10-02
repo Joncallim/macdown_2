@@ -64,6 +64,7 @@ public final class EditorFindModel {
     /// see `updateMatches(in:)`'s own doc comment on why that isn't
     /// possible for `NSRegularExpression` — only discards its answer.
     private var searchGeneration: UInt64 = 0
+    private var searchTask: Task<Result<[SearchMatch], SearchQueryError>, Never>?
     /// The dominant line ending of the text the current matches were computed
     /// against, used to adapt a multi-line replacement.
     private var searchedLineEnding: LineEnding?
@@ -175,7 +176,11 @@ public final class EditorFindModel {
         let query = query
         let options = options
         isSearching = true
-        let result: Result<[SearchMatch], SearchQueryError> = await Task.detached(priority: .userInitiated) {
+        // A superseded search is cancelled outright (its regex checks for
+        // cancellation while backtracking), not merely ignored when it
+        // finishes, so rapid edits cannot pile up unbounded regex work (#183 F08).
+        searchTask?.cancel()
+        let task = Task.detached(priority: .userInitiated) { () -> Result<[SearchMatch], SearchQueryError> in
             do {
                 // Always searches the FULL text, never a pre-sliced
                 // substring -- `options.searchesSelectionOnly` below only
@@ -218,8 +223,16 @@ public final class EditorFindModel {
                 // the compiler can't narrow the catch type above automatically.
                 return .failure(.invalidRegex(error.localizedDescription))
             }
-        }.value
+        }
+        searchTask = task
+        let result = await task.value
         guard generation == searchGeneration else { return false }
+        if case .failure(.cancelled) = result {
+            // Cancelled without being superseded: partial output is never a
+            // complete result, so leave the previous matches untouched.
+            isSearching = false
+            return false
+        }
         switch result {
         case let .success(newMatches):
             matches = newMatches
