@@ -49,4 +49,20 @@ struct D2FenceScannerTests {
         let slice = (text as NSString).substring(with: nsRange)
         #expect(slice == text)
     }
+
+    // MARK: - #183 F07: CRLF / CR fences are found, not silently skipped
+
+    @Test func aCRLFFenceFollowedByMoreTextIsFound() async throws {
+        let text = "```d2\r\na -> b\r\n```\r\nafter"
+        let fences = try await D2FenceScanner.scan(Self.document(text), sourceText: text)
+        #expect(fences.count == 1)
+        #expect(fences.first?.source == "a -> b")
+    }
+
+    @Test func aBareCRFenceIsFound() async throws {
+        let text = "```d2\ra -> b\r```\rafter"
+        let fences = try await D2FenceScanner.scan(Self.document(text), sourceText: text)
+        #expect(fences.count == 1)
+        #expect(fences.first?.source == "a -> b")
+    }
 }

@@ -64,4 +64,20 @@ struct MermaidFenceScannerTests {
         #expect(fences.count == 1)
         #expect(fences[0].source.isEmpty)
     }
+
+    // MARK: - #183 F07: CRLF / CR fences are found, not silently skipped
+
+    @Test func aCRLFFenceFollowedByMoreTextIsFound() async throws {
+        let text = "```mermaid\r\ngraph TD; A-->B;\r\n```\r\nafter"
+        let fences = try await MermaidFenceScanner.scan(Self.document(text), sourceText: text)
+        #expect(fences.count == 1)
+        #expect(fences.first?.source == "graph TD; A-->B;")
+    }
+
+    @Test func aBareCRFenceIsFound() async throws {
+        let text = "```mermaid\rgraph TD; A-->B;\r```\rafter"
+        let fences = try await MermaidFenceScanner.scan(Self.document(text), sourceText: text)
+        #expect(fences.count == 1)
+        #expect(fences.first?.source == "graph TD; A-->B;")
+    }
 }
