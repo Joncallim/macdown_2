@@ -118,4 +118,65 @@ struct SessionViewStateRoundTripTests {
         #expect(record.cursorPosition == 11)
         #expect(record.selectionLength == 5)
     }
+
+    // MARK: - #183 F20: a superseded autosave must not publish its obsolete session
+
+    private func coordinatorWithOneTab(
+        sessions: MemorySessionStore,
+        directory: URL
+    ) throws -> WindowCoordinator {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let fileURL = directory.appendingPathComponent("notes.txt")
+        try "hello".write(to: fileURL, atomically: true, encoding: .utf8)
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let coordinator = makeCoordinator(sessions: sessions, recovery: recovery)
+        let model = coordinator.makeWindowModel()
+        try model.tabStore.newTab(document: FileDocument(fileURL: fileURL, recoveryBuffer: recovery).load())
+        let controller = WindowController(
+            model: model,
+            coordinator: coordinator,
+            themeController: ThemeController(),
+            grammarRegistry: GrammarRegistry(),
+            fileTreePreferences: FileTreePreferences()
+        )
+        coordinator.controllers = [controller]
+        return coordinator
+    }
+
+    @Test func aCancelledAutosaveNeverPublishesItsObsoleteSnapshot() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+
+        let autosave = Task { @MainActor in await coordinator.saveSessionResult(isAutosave: true) }
+        autosave.cancel()
+        _ = await autosave.value
+
+        #expect(sessions.session == nil)
+    }
+
+    @Test func anAutosaveThatIsNotSupersededPublishes() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+
+        #expect(await coordinator.saveSessionResult(isAutosave: true).persisted)
+
+        #expect(sessions.session?.tabs.count == 1)
+    }
+
+    @Test func anExplicitSaveStillPublishesEvenIfItsTaskWasCancelled() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+
+        let explicit = Task { @MainActor in await coordinator.saveSessionResult() }
+        explicit.cancel()
+        _ = await explicit.value
+
+        #expect(sessions.session?.tabs.count == 1)
+    }
 }

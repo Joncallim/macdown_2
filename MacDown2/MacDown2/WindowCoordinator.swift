@@ -256,7 +256,7 @@ final class WindowCoordinator {
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
             guard let self, !Task.isCancelled else { return }
-            await saveSession()
+            _ = await saveSessionResult(isAutosave: true)
         }
     }
 
