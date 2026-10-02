@@ -201,7 +201,10 @@ struct SidebarView: View {
                     // live file tree root happens to be right now.
                     await coordinator?.openFolderSearchResult(
                         relativePath: fileMatch.relativePath,
-                        root: root,
+                        // The folder as opened (a symlink root stays a symlink
+                        // path), so the file has the identity a sidebar open
+                        // would give it; access is still the physical root.
+                        root: folderSearchModel.lexicalRoot ?? root,
                         folderAccessURL: root,
                         range: firstMatch.range
                     )

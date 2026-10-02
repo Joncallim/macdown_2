@@ -70,8 +70,11 @@ final class QuickOpenPanel: NSPanel, NSWindowDelegate {
                 // rather than from a captured value is the correct,
                 // consistent choice regardless.
                 guard let coordinator, let originController,
-                      let root = originController.fileTreeModel.rootAccessURL
+                      let accessURL = originController.fileTreeModel.rootAccessURL
                 else { return }
+                // The folder as opened (lexical), with its folder context, so
+                // the file opens exactly as it would from the sidebar (#183 F19).
+                let root = originController.fileTreeModel.root ?? accessURL
                 let url = root.appendingPathComponent(path.relativePath)
                 Task {
                     // `relativeTo: originController.window`, not
@@ -79,7 +82,12 @@ final class QuickOpenPanel: NSPanel, NSWindowDelegate {
                     // window while it is on screen, exactly the mistake
                     // `CommandPalettePanel`'s own origin-capture idiom
                     // exists to avoid (post-review finding #7 there).
-                    await coordinator.openDocument(at: url, relativeTo: originController.window)
+                    await coordinator.openDocument(
+                        at: url,
+                        folderRoot: root,
+                        folderAccessURL: accessURL,
+                        relativeTo: originController.window
+                    )
                 }
             },
             onDismiss: { [weak self] in self?.close() }
