@@ -85,9 +85,11 @@ struct PaletteOriginTargetingTests {
     }
 
     private static func waitUntil(
-        // Generous: a condition wait returns the moment it holds, and a loaded CI
-        // runner can starve the main actor for far longer than a few seconds.
-        timeout: Duration = .seconds(60),
+        // Generous on purpose: a condition wait returns the moment it holds. Opening
+        // a real document window on a CI runner (it builds a WebKit preview) was
+        // measured blocking the main actor for ~110 s at a time — twice in one
+        // test (CI trace, 2026-10-02; #155) — so even a 60 s wait timed out.
+        timeout: Duration = .seconds(600),
         _ condition: () -> Bool
     ) async {
         let deadline = ContinuousClock.now.advanced(by: timeout)
