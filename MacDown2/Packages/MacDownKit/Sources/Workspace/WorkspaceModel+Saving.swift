@@ -354,7 +354,7 @@ public extension WorkspaceModel {
                 epoch: saved.recoveryEpoch
             )
             if !cleanup.isAbsent {
-                pendingRecoveryCleanupActions.insert(.remove(for: saved))
+                registerPendingRecovery(.remove(for: saved))
             }
             publishCleanupResult(cleanup, document: saved, since: context.errorRevision)
             return
@@ -374,7 +374,7 @@ public extension WorkspaceModel {
                 epoch: saved.recoveryEpoch
             )
             if !cleanup.isAbsent {
-                pendingRecoveryCleanupActions.insert(.remove(for: saved))
+                registerPendingRecovery(.remove(for: saved))
             }
             publishCleanupResult(cleanup, document: saved, since: context.errorRevision)
             return
@@ -382,7 +382,7 @@ public extension WorkspaceModel {
         let merged = current.adoptingSavedBaseline(from: saved)
         tabStore.updateActiveDocument { _ in merged }
         guard await merged.persistRecovery() else {
-            pendingRecoveryCleanupActions.insert(.persist(for: merged))
+            registerPendingRecovery(.persist(for: merged))
             lastError = .recoveryCleanupRequired(merged.fileURL ?? URL(fileURLWithPath: merged.id))
             return
         }

@@ -59,7 +59,7 @@ extension WorkspaceModel {
                 for: replacement.id, version: replacement.mutationGeneration, epoch: replacement.recoveryEpoch
             )
             guard destinationCleanup.isAbsent else {
-                pendingRecoveryCleanupActions.insert(.remove(for: replacement))
+                registerPendingRecovery(.remove(for: replacement))
                 lastError = recoveryCleanupError(destinationCleanup, document: replacement)
                 return .failed
             }
@@ -84,7 +84,7 @@ extension WorkspaceModel {
         let pending = PendingRecoveryCleanupAction.retire(for: source)
         let outcome = await source.recoveryBuffer.retireWithOutcome(for: source.id, epoch: source.recoveryEpoch)
         guard outcome.isAbsent else {
-            pendingRecoveryCleanupActions.insert(pending)
+            registerPendingRecovery(pending)
             lastError = recoveryCleanupError(outcome, document: source)
             return false
         }
@@ -167,10 +167,8 @@ extension WorkspaceModel {
         let successorContinuation = continuation
             .withReplacement(replacement)
             .withPhase(.publishDestination)
-        pendingRecoveryCleanupActions.remove(action)
-        pendingSaveAsRecoveryContinuations.removeValue(forKey: action)
-        pendingRecoveryCleanupActions.insert(successor)
-        pendingSaveAsRecoveryContinuations[successor] = successorContinuation
+        completePendingRecovery(action)
+        registerPendingRecovery(successor, continuation: successorContinuation)
         return true
     }
 
@@ -276,12 +274,25 @@ struct PendingRecoveryCleanupAction: Sendable, Hashable {
             .state == state
     }
 
+    /// Identity is the action's kind and the exact lifetime(s) it targets — for
+    /// a migration both the source and destination lifetimes. It deliberately
+    /// excludes the captured payload (text, mutation, state), which a later
+    /// failure for the same lifetime must be able to replace; see
+    /// `WorkspaceModel.registerPendingRecovery(_:continuation:)` (#183 F01).
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.kind == rhs.kind && lhs.documentID == rhs.documentID && lhs.epoch == rhs.epoch
+            && lhs.sourceDocumentID == rhs.sourceDocumentID && lhs.sourceEpoch == rhs.sourceEpoch
     }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(kind); hasher.combine(documentID); hasher.combine(epoch)
+        hasher.combine(sourceDocumentID); hasher.combine(sourceEpoch)
+    }
+
+    /// Whether `other` (same identity) captured the same payload, i.e. the same
+    /// document version, so completing one completes the other.
+    func hasSamePayload(as other: Self) -> Bool {
+        mutationGeneration == other.mutationGeneration && state == other.state && text.isExactlyEqual(to: other.text)
     }
 
     private init(kind: Kind, document: FileDocument) {
