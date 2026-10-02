@@ -328,7 +328,11 @@ enum FileSaveFailurePresentation {
         // "folder" specifically (adversarial review finding).
         case .fileMissing:
             String(localized: "The file could not be found. It may have been moved, renamed, or deleted.")
-        case .encodingDetectionFailed: String(localized: "The file's text encoding could not be determined.")
+        // `.textNotRepresentable` is intercepted by the model into
+        // `WorkspaceError.textNotRepresentable` (which names the attempted
+        // encoding); it shares this wording only for switch exhaustiveness.
+        case .encodingDetectionFailed, .textNotRepresentable:
+            String(localized: "The text could not be written in the file's text encoding.")
         case let .decodingFailed(diagnostics):
             diagnostics.first?.message ?? String(localized: "The file's contents could not be verified after saving.")
         case .conditionalPublicationRecoveryRequired:

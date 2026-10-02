@@ -108,11 +108,7 @@ public extension WorkspaceModel {
                 )
             }
             guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return .handled }
-            if case FileStoreError.encodingDetectionFailed = error {
-                lastError = .textNotRepresentable(encodingName: (encodingOverride ?? document.encoding).displayName)
-            } else {
-                lastError = workspaceError(for: error)
-            }
+            lastError = workspaceError(for: error)
         }
         return .handled
     }

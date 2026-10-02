@@ -181,6 +181,11 @@ extension WorkspaceModel {
         if case let .conditionalPublicationRecoveryRequired(url) = fileStoreError {
             return .conditionalPublicationRecoveryRequired(url)
         }
+        // Name the encoding the write actually attempted: a queued save can
+        // inherit an accepted encoding change (#183 F10).
+        if case let .textNotRepresentable(attempted) = fileStoreError {
+            return .textNotRepresentable(encodingName: attempted.displayName)
+        }
         return .saveFailed(underlying: fileStoreError)
     }
 
