@@ -18,6 +18,39 @@ public actor ParseEngine: ParseExecuting {
 
         try Task.checkCancellation()
 
+        // swift-markdown, the block converter and Yams all recurse once per
+        // nesting level. On a cooperative-pool thread (≈512 KB of stack) a few
+        // KB of hostile or accidental input — `>` repeated ~700 times, deeply
+        // nested emphasis or lists, a YAML flow sequence ~350 deep — overflows
+        // it and kills the app, and a crash during open or session restore
+        // repeats on every relaunch. The synchronous work therefore runs on a
+        // dedicated thread with a large (lazily committed) stack.
+        let document = await Self.runOnLargeStack { [self] in
+            parseSynchronously(text, options: options, revision: revision)
+        }
+
+        try Task.checkCancellation()
+        return document
+    }
+
+    /// Stack for the parse thread. Only touched pages are committed.
+    static let parseThreadStackSize = 1 << 30
+
+    private static func runOnLargeStack<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            let thread = Thread { continuation.resume(returning: work()) }
+            thread.stackSize = parseThreadStackSize
+            thread.qualityOfService = .userInitiated
+            thread.name = "MarkdownEngine.parse"
+            thread.start()
+        }
+    }
+
+    private nonisolated func parseSynchronously(
+        _ text: String,
+        options: MarkdownParseOptions,
+        revision: Int
+    ) -> MarkdownDocument {
         let sourceMap = SourceMap(text: text)
 
         let extraction = FrontMatterExtractor.extract(from: text)
@@ -31,8 +64,6 @@ public actor ParseEngine: ParseExecuting {
             )
         }
 
-        try Task.checkCancellation()
-
         // Only `blockDirectives` maps to a swift-markdown `ParseOption` in 0.8.0;
         // the remaining GFM features are always enabled together.
         var parseOptions: ParseOptions = []
@@ -40,8 +71,6 @@ public actor ParseEngine: ParseExecuting {
             parseOptions.insert(.parseBlockDirectives)
         }
         let document = Document(parsing: bodyText, options: parseOptions)
-
-        try Task.checkCancellation()
 
         let fallbackRange = 1 ... max(1, sourceMap.lineCount)
         let converter = BlockConverter(bodyLineOffset: bodyLineOffset)
@@ -61,7 +90,38 @@ public actor ParseEngine: ParseExecuting {
 
     // MARK: - YAML front matter
 
-    private func parseYAML(_ raw: String) -> [String: FrontMatterValue]? {
+    /// Yams expands every alias into a full copy, so a few hundred bytes of
+    /// nested anchors ("billion laughs") expand to gigabytes and hang the shared
+    /// parse actor. Total alias references bound the expansion (each level
+    /// multiplies by at most its own fan-out, which is bounded by the total), so
+    /// front matter with more than this many is left unparsed — its raw text and
+    /// range are still reported — rather than expanded.
+    static let maximumYAMLAliasReferences = 16
+
+    static func exceedsYAMLAliasBudget(_ raw: String) -> Bool {
+        guard raw.contains("&") else { return false }
+        var aliases = 0
+        var previous: Character = "\n"
+        var index = raw.startIndex
+        while index < raw.endIndex {
+            let character = raw[index]
+            if character == "*", !(previous.isLetter || previous.isNumber || previous == "\\") {
+                let next = raw.index(after: index)
+                if next < raw.endIndex, raw[next].isLetter || raw[next].isNumber || raw[next] == "_" {
+                    aliases += 1
+                    if aliases > maximumYAMLAliasReferences {
+                        return true
+                    }
+                }
+            }
+            previous = character
+            index = raw.index(after: index)
+        }
+        return false
+    }
+
+    private nonisolated func parseYAML(_ raw: String) -> [String: FrontMatterValue]? {
+        guard !Self.exceedsYAMLAliasBudget(raw) else { return nil }
         guard let root = try? Yams.load(yaml: raw) else {
             return nil
         }
@@ -71,7 +131,7 @@ public actor ParseEngine: ParseExecuting {
         return mapping.compactMapValues { convertYAMLValue($0) }
     }
 
-    private func convertYAMLValue(_ value: Any) -> FrontMatterValue? {
+    private nonisolated func convertYAMLValue(_ value: Any) -> FrontMatterValue? {
         switch value {
         case let string as String:
             .string(string)
@@ -100,7 +160,7 @@ public actor ParseEngine: ParseExecuting {
 
     /// Defensive NSNumber→FrontMatterValue bridge. Internal (not private) so
     /// the unsigned-int range guard is testable via `@testable import`.
-    func convertNSNumber(_ number: NSNumber) -> FrontMatterValue {
+    nonisolated func convertNSNumber(_ number: NSNumber) -> FrontMatterValue {
         if CFGetTypeID(number) == CFBooleanGetTypeID() {
             return .bool(number.boolValue)
         }
@@ -136,14 +196,24 @@ private struct ConversionResult {
 }
 
 private struct BlockConverter {
+    /// Nesting deeper than this is never authored by hand. The converted tree is
+    /// a nested value type that every consumer walks — and whose release —
+    /// recurses once per level, on whatever (small) thread drops the last
+    /// reference, so the depth is bounded here rather than trusted.
+    static let maxDepth = 128
+
     let bodyLineOffset: Int
 
     func convert(_ document: Document, parentRange: ClosedRange<Int>) -> ConversionResult {
         var blocks: [MarkdownBlock] = []
         var headings: [HeadingItem] = []
-        for child in document.children {
-            guard let block = child as? BlockMarkup else { continue }
-            let result = convert(block, parentRange: parentRange)
+        let children = document.children.compactMap { $0 as? BlockMarkup }
+        // The document's own first line is the first line of the BODY, which sits
+        // after any front matter.
+        let bodyRange = min(parentRange.upperBound, bodyLineOffset + 1) ... parentRange.upperBound
+        let ranges = resolvedRanges(of: children, within: bodyRange)
+        for (block, range) in zip(children, ranges) {
+            let result = convert(block, range: range, depth: 0)
             blocks.append(result.block)
             headings.append(contentsOf: result.headings)
         }
@@ -152,9 +222,9 @@ private struct BlockConverter {
 
     func convert(
         _ node: BlockMarkup,
-        parentRange: ClosedRange<Int>
+        range: ClosedRange<Int>,
+        depth: Int
     ) -> (block: MarkdownBlock, headings: [HeadingItem]) {
-        let range = originalLineRange(for: node) ?? parentRange
         var childBlocks: [MarkdownBlock] = []
         var headings: [HeadingItem] = []
 
@@ -166,17 +236,68 @@ private struct BlockConverter {
             ))
         }
 
-        for child in node.children {
-            guard let block = child as? BlockMarkup else { continue }
-            let result = convert(block, parentRange: range)
-            childBlocks.append(result.block)
-            headings.append(contentsOf: result.headings)
+        if depth < Self.maxDepth {
+            let children = node.children.compactMap { $0 as? BlockMarkup }
+            let ranges = resolvedRanges(of: children, within: range)
+            for (child, childRange) in zip(children, ranges) {
+                let result = convert(child, range: childRange, depth: depth + 1)
+                childBlocks.append(result.block)
+                headings.append(contentsOf: result.headings)
+            }
         }
 
         return (
             block: MarkdownBlock(kind: kind(for: node), lineRange: range, children: childBlocks),
             headings: headings
         )
+    }
+
+    /// Line ranges for sibling blocks, repaired where swift-markdown 0.8 reports
+    /// them wrongly: a paragraph directly followed by a table has NO range (and
+    /// the table's range starts on the paragraph's line), and a setext heading
+    /// directly followed by another block extends one line into it. Siblings
+    /// never overlap, so a missing range is the gap before the next sibling, a
+    /// table starts at its header row, and an overlap is clamped to the line
+    /// before the next sibling.
+    private func resolvedRanges(of children: [BlockMarkup], within parent: ClosedRange<Int>) -> [ClosedRange<Int>] {
+        let ends: [Int?] = children.map { originalLineRange(for: $0)?.upperBound }
+        let starts: [Int?] = zip(children, ends).map { child, end in
+            let reported = originalLineRange(for: child)?.lowerBound
+            // A table's reported range starts at the preceding paragraph's first
+            // line. Its real first line is its header row: one line per body row,
+            // one delimiter line, then the header.
+            if let table = child as? Table, let end {
+                return max(reported ?? 1, end - (table.body.childCount + 1))
+            }
+            return reported
+        }
+
+        // The first known start after each sibling, computed once (a per-sibling
+        // forward scan would be quadratic on documents with many blocks).
+        var nextKnownStart = [Int?](repeating: nil, count: children.count)
+        var following: Int?
+        for index in children.indices.reversed() {
+            nextKnownStart[index] = following
+            if let start = starts[index] {
+                following = start
+            }
+        }
+
+        var resolved: [ClosedRange<Int>] = []
+        resolved.reserveCapacity(children.count)
+        var previousEnd = parent.lowerBound - 1
+        for index in children.indices {
+            let start = starts[index] ?? (previousEnd + 1)
+            let nextStart = nextKnownStart[index]
+            var end = ends[index] ?? ((nextStart ?? (parent.upperBound + 1)) - 1)
+            if let nextStart, end >= nextStart {
+                end = nextStart - 1
+            }
+            end = max(start, end)
+            resolved.append(start ... end)
+            previousEnd = end
+        }
+        return resolved
     }
 
     private func kind(for node: BlockMarkup) -> BlockKind {
