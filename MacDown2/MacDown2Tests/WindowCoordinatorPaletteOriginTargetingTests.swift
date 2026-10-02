@@ -110,8 +110,16 @@ struct PaletteOriginTargetingTests {
         fixture.controllerB.model.setFolderRoot(dirB)
         await fixture.controllerB.fileTreeModel.setRoot(dirB)
 
+        let diagStart = ContinuousClock.now
+        print("PALETTE-DIAG setup-complete root=\(String(describing: fixture.controllerA.fileTreeModel.root?.path)) availability=\(fixture.controllerA.fileTreeModel.availability)")
         let controllersBefore = fixture.coordinator.controllers.count
         fixture.coordinator.createInFolder(isDirectory: false, controller: fixture.controllerA)
+        Task { @MainActor in
+            for tick in 1 ... 12 {
+                try? await Task.sleep(for: .seconds(5))
+                print("PALETTE-DIAG t+\(tick * 5)s controllers=\(fixture.coordinator.controllers.count) selected=\(String(describing: fixture.controllerA.fileTreeModel.selectedURL?.lastPathComponent)) err=\(String(describing: fixture.controllerA.fileTreeModel.lastOperationError)) pendingOpen=\(String(describing: fixture.controllerA.fileTreeModel.pendingOpenURL?.lastPathComponent)) elapsed=\(ContinuousClock.now - diagStart)")
+            }
+        }
         // The whole post-creation sequence, not just the new window: the file is
         // selected under A's root and the opened document has loaded.
         await Self.waitUntil {
