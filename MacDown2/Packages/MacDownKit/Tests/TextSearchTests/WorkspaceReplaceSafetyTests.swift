@@ -113,6 +113,34 @@ struct WorkspaceReplaceSafetyTests {
         #expect(try read(tree, "open.md") == "foo dirty")
     }
 
+    /// #183 F14: the run can be cancelled (root change) while the awaited
+    /// protection query is suspended; it must not go on to write.
+    @Test
+    func cancellationDuringTheProtectionQueryPreventsTheWrite() async throws {
+        let tree = try WorkspaceSearchEngineTempTree()
+        try tree.write("a.md", text: "foo a")
+        let results = await searchResults(tree, query: "foo")
+        let planned = plans(results, replacement: "bar")
+        let box = TaskBox()
+        let root = tree.root
+
+        let task = Task { @Sendable in
+            await WorkspaceReplaceEngine().replace(
+                root: root,
+                plans: planned,
+                isProtected: { _ in
+                    box.cancel() // the run is retired while this query is awaiting
+                    return false
+                }
+            )
+        }
+        box.set(task)
+        let outcomes = await task.value
+
+        #expect(outcomes.map(\.outcome) == [.notAttempted])
+        #expect(try read(tree, "a.md") == "foo a")
+    }
+
     @Test
     func aDeletedFileIsReportedAndDoesNotStopTheRest() async throws {
         let tree = try WorkspaceSearchEngineTempTree()
@@ -177,5 +205,26 @@ struct WorkspaceReplaceSafetyTests {
             }
         }
         #expect(try read(outside, "x.md") == "foo")
+    }
+}
+
+/// Lets a `@Sendable` closure running inside a task cancel that task.
+private final class TaskBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var task: Task<[ReplacementFileResult], Never>?
+    private var cancelRequested = false
+
+    func set(_ task: Task<[ReplacementFileResult], Never>) {
+        lock.lock(); defer { lock.unlock() }
+        self.task = task
+        if cancelRequested {
+            task.cancel()
+        }
+    }
+
+    func cancel() {
+        lock.lock(); defer { lock.unlock() }
+        cancelRequested = true
+        task?.cancel()
     }
 }
