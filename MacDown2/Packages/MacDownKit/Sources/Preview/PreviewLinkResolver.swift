@@ -29,8 +29,10 @@ public struct PreviewLinkResolver: Sendable, Equatable {
     /// `[x](file:///Applications/Foo.app)` or an `ssh:`/`vnc:`/`x-…:` handler run
     /// something on a click.
     public enum LinkAction: Sendable, Equatable {
-        /// Hand to the default handler: web pages, mail, and the user's own text documents.
+        /// Hand to the default handler: web pages and mail.
         case open
+        /// Open one of the user's own text documents in MostlyText.
+        case openInApp(URL)
         /// Show a local file in Finder without opening or executing it.
         case reveal
         /// Do nothing.
@@ -39,13 +41,25 @@ public struct PreviewLinkResolver: Sendable, Equatable {
 
     static let openableDocumentExtensions: Set<String> = ["md", "markdown", "mdown", "mkd", "txt", "text"]
 
-    public static func action(for url: URL) -> LinkAction {
+    /// `currentDocument` is the document being previewed: a same-document
+    /// `#anchor` link resolves to that file plus a fragment, and must not reopen it.
+    public static func action(for url: URL, currentDocument: URL? = nil) -> LinkAction {
         switch url.scheme?.lowercased() {
         case "http", "https", "mailto":
             return .open
         case "file":
-            let pathExtension = url.pathExtension.lowercased()
-            return openableDocumentExtensions.contains(pathExtension) ? .open : .reveal
+            guard openableDocumentExtensions.contains(url.pathExtension.lowercased()) else { return .reveal }
+            var target = url
+            if var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+                components.fragment = nil
+                components.query = nil
+                target = components.url ?? url
+            }
+            if let currentDocument,
+               target.standardizedFileURL.path == currentDocument.standardizedFileURL.path {
+                return .ignore
+            }
+            return .openInApp(target)
         default:
             return .ignore
         }

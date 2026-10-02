@@ -14,6 +14,7 @@ struct BlockView: View {
     let block: PreviewBlock
     let theme: PreviewTheme
     let linkResolver: PreviewLinkResolver
+    @Environment(\.previewOpenDocument) private var openDocument
     let linkDefinitions: [String]
     let mermaidFenceView: ((String) -> AnyView)?
     let d2FenceView: ((String) -> AnyView)?
@@ -85,8 +86,16 @@ struct BlockView: View {
                     \.openURL,
                     OpenURLAction { url in
                         let resolved = linkResolver.resolve(url)
-                        switch PreviewLinkResolver.action(for: resolved) {
+                        switch PreviewLinkResolver.action(for: resolved, currentDocument: linkResolver.baseURL) {
                         case .open: NSWorkspace.shared.open(resolved)
+                        case let .openInApp(document):
+                            // Through MostlyText when the host provides it; otherwise the
+                            // default handler for a text document.
+                            if let openDocument {
+                                openDocument(document)
+                            } else {
+                                NSWorkspace.shared.open(document)
+                            }
                         case .reveal: NSWorkspace.shared.activateFileViewerSelecting([resolved])
                         case .ignore: break
                         }
