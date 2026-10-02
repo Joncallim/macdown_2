@@ -336,6 +336,10 @@ public actor WorkspaceSearchEngine {
             switch error {
             case let .invalidRegex(message):
                 return .invalid(message)
+            case .cancelled:
+                // Validation ran inside an already-cancelled search; the caller
+                // checks cancellation itself right after.
+                return .valid
             }
         }
     }

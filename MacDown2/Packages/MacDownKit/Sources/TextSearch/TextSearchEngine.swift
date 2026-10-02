@@ -148,12 +148,25 @@ public enum TextSearchEngine {
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
         var results: [SearchMatch] = []
-        regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, stop in
+        var wasCancelled = false
+        // `.reportProgress` makes ICU call back periodically even while a
+        // pathological pattern is backtracking without producing a match; that
+        // is the only chance to honour cancellation, so it is handled *before*
+        // `guard let match` (a progress call carries no match).
+        regex.enumerateMatches(in: text, options: [.reportProgress], range: fullRange) { match, _, stop in
+            if Task.isCancelled {
+                wasCancelled = true
+                stop.pointee = true
+                return
+            }
             guard let match else { return }
             results.append(SearchMatch(range: match.range))
             if let matchLimit, results.count >= matchLimit {
                 stop.pointee = true
             }
+        }
+        if wasCancelled || Task.isCancelled {
+            throw SearchQueryError.cancelled
         }
         return results
     }
