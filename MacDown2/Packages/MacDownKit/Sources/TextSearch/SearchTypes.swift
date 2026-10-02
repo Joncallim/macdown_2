@@ -46,6 +46,10 @@ public enum SearchQueryError: Error, Equatable, Sendable {
     /// diagnostic) — a caller must surface this as a visible diagnostic,
     /// never silently fall back to a zero-result state.
     case invalidRegex(String)
+    /// The search was cancelled (superseded, or its owner went away) before it
+    /// finished. Whatever it had found is partial and must never be presented
+    /// as a complete result (#183 F08).
+    case cancelled
 }
 
 /// One match in whatever buffer was searched. `range` is UTF-16, in the

@@ -64,6 +64,7 @@ public final class EditorFindModel {
     /// see `updateMatches(in:)`'s own doc comment on why that isn't
     /// possible for `NSRegularExpression` — only discards its answer.
     private var searchGeneration: UInt64 = 0
+    private var searchTask: Task<Result<[SearchMatch], SearchQueryError>, Never>?
     /// The dominant line ending of the text the current matches were computed
     /// against, used to adapt a multi-line replacement.
     private var searchedLineEnding: LineEnding?
@@ -181,52 +182,22 @@ public final class EditorFindModel {
         let query = query
         let options = options
         isSearching = true
-        let result: Result<[SearchMatch], SearchQueryError> = await Task.detached(priority: .userInitiated) {
-            do {
-                // Always searches the FULL text, never a pre-sliced
-                // substring -- `options.searchesSelectionOnly` below only
-                // FILTERS the already-computed, full-document matches down
-                // to ones fully inside the selection, rather than handing
-                // `TextSearchEngine.matches` a substring and offsetting its
-                // results. An earlier version of this method did slice
-                // first; a hostile review of this exact slice found that
-                // boundary-unsafe for `isWholeWord`: the whole-word check
-                // only ever looks at characters INSIDE whatever string it
-                // was given, so a match sitting at the sliced substring's
-                // own edge was wrongly reported as word-bounded even when,
-                // in the true full document, it was actually a truncated
-                // suffix/prefix of a larger word straddling the selection
-                // boundary -- empirically reproduced ("precat and cat",
-                // selection starting right after "pre", whole-word "cat"
-                // wrongly matched the truncated "cat" at the selection's own
-                // left edge). Searching the full text first and filtering
-                // its own already-correct results is both simpler and
-                // immune to this class of bug by construction.
-                guard !scopeLost else { return .success([]) }
-                let found = try TextSearchEngine.matches(in: text, query: query, options: options)
-                guard let domain else {
-                    return .success(found)
-                }
-                let fullLength = (text as NSString).length
-                let location = max(0, min(domain.location, fullLength))
-                let length = max(0, min(domain.length, fullLength - location))
-                let clampedSelection = NSRange(location: location, length: length)
-                let scoped = found.filter { match in
-                    match.range.location >= clampedSelection.location
-                        && NSMaxRange(match.range) <= NSMaxRange(clampedSelection)
-                }
-                return .success(scoped)
-            } catch let error as SearchQueryError {
-                return .failure(error)
-            } catch {
-                // `TextSearchEngine.matches` is declared `throws(SearchQueryError)`,
-                // so this branch is unreachable in practice -- it exists only
-                // because this closure literal isn't itself typed-throws, so
-                // the compiler can't narrow the catch type above automatically.
-                return .failure(.invalidRegex(error.localizedDescription))
-            }
-        }.value
+        // A superseded search is cancelled outright (its regex checks for
+        // cancellation while backtracking), not merely ignored when it
+        // finishes, so rapid edits cannot pile up unbounded regex work (#183 F08).
+        searchTask?.cancel()
+        let task = Task.detached(priority: .userInitiated) {
+            Self.search(text: text, query: query, options: options, domain: domain, scopeLost: scopeLost)
+        }
+        searchTask = task
+        let result = await task.value
         guard generation == searchGeneration else { return false }
+        if case .failure(.cancelled) = result {
+            // Cancelled without being superseded: partial output is never a
+            // complete result, so leave the previous matches untouched.
+            isSearching = false
+            return false
+        }
         switch result {
         case let .success(newMatches):
             matches = newMatches
@@ -238,6 +209,39 @@ public final class EditorFindModel {
         currentIndex = Self.nearestIndex(in: matches, to: anchor)
         isSearching = false
         return true
+    }
+
+    /// The off-main search body. Always searches the FULL text, never a
+    /// pre-sliced substring: `domain` only FILTERS the already-computed,
+    /// full-document matches to ones fully inside it. Slicing first is
+    /// boundary-unsafe for `isWholeWord` (the whole-word check only looks at
+    /// characters inside whatever string it is given, so a match at the
+    /// slice's own edge was wrongly reported as word-bounded — "precat and
+    /// cat" with a selection starting after "pre"); filtering the correct
+    /// full-text results is immune to that by construction.
+    private nonisolated static func search(
+        text: String,
+        query: String,
+        options: SearchOptions,
+        domain: NSRange?,
+        scopeLost: Bool
+    ) -> Result<[SearchMatch], SearchQueryError> {
+        do {
+            guard !scopeLost else { return .success([]) }
+            let found = try TextSearchEngine.matches(in: text, query: query, options: options)
+            guard let domain else { return .success(found) }
+            let fullLength = (text as NSString).length
+            let location = max(0, min(domain.location, fullLength))
+            let length = max(0, min(domain.length, fullLength - location))
+            let end = location + length
+            return .success(found.filter { $0.range.location >= location && NSMaxRange($0.range) <= end })
+        } catch let error as SearchQueryError {
+            return .failure(error)
+        } catch {
+            // `matches` is `throws(SearchQueryError)`, so this is unreachable; it
+            // exists only because this function is not itself typed-throws.
+            return .failure(.invalidRegex(error.localizedDescription))
+        }
     }
 
     /// Forgets the retained domain (Find closed), so a later session samples afresh.

@@ -246,6 +246,9 @@ struct FindBarView: View {
     private func errorMessage(for error: SearchQueryError) -> String {
         switch error {
         case let .invalidRegex(message): message
+        // `EditorFindModel` never stores a cancelled search as its error; this
+        // only keeps the switch exhaustive.
+        case .cancelled: String(localized: "Search cancelled")
         }
     }
 
