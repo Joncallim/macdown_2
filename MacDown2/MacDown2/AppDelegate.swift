@@ -109,7 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // one or more windows that do not have a `WindowController` delegate.
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(100))
-            for window in NSApp.windows where !(window.delegate is WindowController) {
+            for window in NSApp.windows where Self.isSwiftUIPlaceholder(window) {
                 window.close()
             }
         }
@@ -123,6 +123,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             proceedWithNormalLaunch()
         }
+    }
+
+    /// Windows the app itself manages — document windows and the first-run
+    /// welcome window — are never placeholders. Closing the welcome window here
+    /// would run its `windowWillClose`, marking first run complete before the
+    /// user ever saw it.
+    static func isSwiftUIPlaceholder(_ window: NSWindow) -> Bool {
+        !(window.delegate is WindowController) && !(window.delegate is FirstRunWindowController)
     }
 
     /// The app's ordinary launch behavior: open files/folders passed on the

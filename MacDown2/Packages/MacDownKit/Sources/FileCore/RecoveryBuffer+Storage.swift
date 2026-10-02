@@ -64,7 +64,7 @@ extension RecoveryBuffer {
                 return false
             }
             guard maySupersede else { return false }
-            if isStaleGeneration(generation, for: documentKey) {
+            if isStaleGeneration(generation, for: documentKey, epoch: epoch) {
                 return false
             }
             retainLegacyRetirement(of: current, documentID: id, in: &candidate)
@@ -73,7 +73,7 @@ extension RecoveryBuffer {
             // remains true after a restart and after diagnostic marker files
             // have been compacted; the durable ledger is the authority.
             return false
-        } else if isStaleGeneration(generation, for: documentKey) {
+        } else if isStaleGeneration(generation, for: documentKey, epoch: epoch) {
             return false
         }
         candidate.currentByDocument[documentKey] = epoch
@@ -90,10 +90,20 @@ extension RecoveryBuffer {
         return true
     }
 
-    private func isStaleGeneration(_ generation: UInt64?, for documentKey: String) -> Bool {
+    private func isStaleGeneration(_ generation: UInt64?, for documentKey: String, epoch: String) -> Bool {
         guard let generation else { return false }
+        return generation <= generationFloor(forEpoch: epoch, documentKey: documentKey)
+    }
+
+    /// The generation at or below which a NON-current lifetime of this document
+    /// is retired. The global high-water mark guards lifetimes the ledger has
+    /// forgotten (compacted); a lifetime this process still holds live is not
+    /// one of those, so only its own document's history applies to it.
+    func generationFloor(forEpoch epoch: String, documentKey: String) -> UInt64 {
         let documentHighWater = fenceLedger.highestGenerationByDocument[documentKey, default: 0]
-        return generation <= max(documentHighWater, fenceLedger.globalHighestGeneration)
+        return liveEpochs.contains(epoch)
+            ? documentHighWater
+            : max(documentHighWater, fenceLedger.globalHighestGeneration)
     }
 
     func canMigrate(to id: String, epoch: String?) -> Bool {
@@ -241,10 +251,7 @@ extension RecoveryBuffer {
         if let generation = RecoveryLifetimeEpoch.generation(for: lifetime.epoch) {
             let documentKey = documentDigest(lifetime.documentID)
             let current = fenceLedger.currentByDocument[documentKey]
-            let highest = max(
-                fenceLedger.highestGenerationByDocument[documentKey, default: 0],
-                fenceLedger.globalHighestGeneration
-            )
+            let highest = generationFloor(forEpoch: lifetime.epoch, documentKey: documentKey)
             return current != lifetime.epoch && generation <= highest
         }
         return fenceLedger.retired.contains(lifetime.fenceKey)
