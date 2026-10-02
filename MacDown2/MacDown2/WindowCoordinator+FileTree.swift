@@ -76,6 +76,25 @@ extension WindowCoordinator {
         }
     }
 
+    /// What ⌘N does. The standard New shortcut must never be dead: with a folder
+    /// open it creates a file in that folder, and otherwise (a fresh launch has
+    /// no folder) it opens a blank document, like ⌘T.
+    enum NewFileTarget: Equatable {
+        case fileInKeyFolder
+        case blankDocument
+
+        static func resolve(hasKeyFolder: Bool) -> Self {
+            hasKeyFolder ? .fileInKeyFolder : .blankDocument
+        }
+    }
+
+    func newFileCommand() {
+        switch NewFileTarget.resolve(hasKeyFolder: keyFolderRoot != nil) {
+        case .fileInKeyFolder: createInKeyFolder(isDirectory: false)
+        case .blankDocument: newDocument()
+        }
+    }
+
     func createInKeyFolder(isDirectory: Bool) {
         guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
         createInFolder(isDirectory: isDirectory, controller: controller)

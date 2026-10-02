@@ -22,10 +22,9 @@ struct WorkspaceCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New File") {
-                coordinator?.createInKeyFolder(isDirectory: false)
+                coordinator?.newFileCommand()
             }
             .keyboardShortcut("n", modifiers: .command)
-            .disabled(coordinator?.keyFolderRoot == nil)
 
             Button("New Folder") {
                 coordinator?.createInKeyFolder(isDirectory: true)
