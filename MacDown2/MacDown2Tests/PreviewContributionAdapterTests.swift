@@ -98,10 +98,11 @@ struct PreviewContributionAdapterTests {
 
         let blocks = try #require(composition.blocks)
         #expect(blocks.count == 3)
-        // Both fragments retain the CRLF's `\r` — only the bare `\n` a
-        // block placement's own line terminates on is ever consumed.
+        // The authored prefix keeps its own CRLF; the marker line's whole CRLF
+        // terminator is consumed with the placement, and the following line's
+        // CRLF is not part of its (SourceMap) line range.
         #expect(blocks[0].source == "before\r\n")
-        #expect(blocks[2].source == "after\r")
+        #expect(blocks[2].source == "after")
     }
 
     @Test func composeRespectsUTF16OffsetsAroundNonBMPText() async throws {

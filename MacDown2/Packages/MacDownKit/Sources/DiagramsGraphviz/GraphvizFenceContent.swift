@@ -1,4 +1,5 @@
 import Foundation
+import MarkdownEngine
 
 /// Shared by `GraphvizFenceScanner` (Export) and Preview's own block
 /// handling (`TextualMarkdownPreview`'s `BlockView`), mirroring
@@ -9,7 +10,7 @@ public enum GraphvizFenceContent {
     /// which must be the block's full source including both delimiter
     /// lines.
     public static func stripDelimiters(from fenceText: String) -> String {
-        var lines = fenceText.components(separatedBy: "\n")
+        var lines = fenceText.markdownLines()
         guard lines.count >= 2 else { return "" }
         lines.removeFirst()
         lines.removeLast()
