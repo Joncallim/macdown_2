@@ -207,9 +207,13 @@ private struct BlockConverter {
     func convert(_ document: Document, parentRange: ClosedRange<Int>) -> ConversionResult {
         var blocks: [MarkdownBlock] = []
         var headings: [HeadingItem] = []
-        for child in document.children {
-            guard let block = child as? BlockMarkup else { continue }
-            let result = convert(block, parentRange: parentRange, depth: 0)
+        let children = document.children.compactMap { $0 as? BlockMarkup }
+        // The document's own first line is the first line of the BODY, which sits
+        // after any front matter.
+        let bodyRange = min(parentRange.upperBound, bodyLineOffset + 1) ... parentRange.upperBound
+        let ranges = resolvedRanges(of: children, within: bodyRange)
+        for (block, range) in zip(children, ranges) {
+            let result = convert(block, range: range, depth: 0)
             blocks.append(result.block)
             headings.append(contentsOf: result.headings)
         }
@@ -218,10 +222,9 @@ private struct BlockConverter {
 
     func convert(
         _ node: BlockMarkup,
-        parentRange: ClosedRange<Int>,
+        range: ClosedRange<Int>,
         depth: Int
     ) -> (block: MarkdownBlock, headings: [HeadingItem]) {
-        let range = originalLineRange(for: node) ?? parentRange
         var childBlocks: [MarkdownBlock] = []
         var headings: [HeadingItem] = []
 
@@ -233,17 +236,68 @@ private struct BlockConverter {
             ))
         }
 
-        for child in node.children where depth < Self.maxDepth {
-            guard let block = child as? BlockMarkup else { continue }
-            let result = convert(block, parentRange: range, depth: depth + 1)
-            childBlocks.append(result.block)
-            headings.append(contentsOf: result.headings)
+        if depth < Self.maxDepth {
+            let children = node.children.compactMap { $0 as? BlockMarkup }
+            let ranges = resolvedRanges(of: children, within: range)
+            for (child, childRange) in zip(children, ranges) {
+                let result = convert(child, range: childRange, depth: depth + 1)
+                childBlocks.append(result.block)
+                headings.append(contentsOf: result.headings)
+            }
         }
 
         return (
             block: MarkdownBlock(kind: kind(for: node), lineRange: range, children: childBlocks),
             headings: headings
         )
+    }
+
+    /// Line ranges for sibling blocks, repaired where swift-markdown 0.8 reports
+    /// them wrongly: a paragraph directly followed by a table has NO range (and
+    /// the table's range starts on the paragraph's line), and a setext heading
+    /// directly followed by another block extends one line into it. Siblings
+    /// never overlap, so a missing range is the gap before the next sibling, a
+    /// table starts at its header row, and an overlap is clamped to the line
+    /// before the next sibling.
+    private func resolvedRanges(of children: [BlockMarkup], within parent: ClosedRange<Int>) -> [ClosedRange<Int>] {
+        let ends: [Int?] = children.map { originalLineRange(for: $0)?.upperBound }
+        let starts: [Int?] = zip(children, ends).map { child, end in
+            let reported = originalLineRange(for: child)?.lowerBound
+            // A table's reported range starts at the preceding paragraph's first
+            // line. Its real first line is its header row: one line per body row,
+            // one delimiter line, then the header.
+            if let table = child as? Table, let end {
+                return max(reported ?? 1, end - (table.body.childCount + 1))
+            }
+            return reported
+        }
+
+        // The first known start after each sibling, computed once (a per-sibling
+        // forward scan would be quadratic on documents with many blocks).
+        var nextKnownStart = [Int?](repeating: nil, count: children.count)
+        var following: Int?
+        for index in children.indices.reversed() {
+            nextKnownStart[index] = following
+            if let start = starts[index] {
+                following = start
+            }
+        }
+
+        var resolved: [ClosedRange<Int>] = []
+        resolved.reserveCapacity(children.count)
+        var previousEnd = parent.lowerBound - 1
+        for index in children.indices {
+            let start = starts[index] ?? (previousEnd + 1)
+            let nextStart = nextKnownStart[index]
+            var end = ends[index] ?? ((nextStart ?? (parent.upperBound + 1)) - 1)
+            if let nextStart, end >= nextStart {
+                end = nextStart - 1
+            }
+            end = max(start, end)
+            resolved.append(start ... end)
+            previousEnd = end
+        }
+        return resolved
     }
 
     private func kind(for node: BlockMarkup) -> BlockKind {
