@@ -45,8 +45,14 @@ extension WindowCoordinator {
         await saveSessionResult().persisted
     }
 
+    /// `isAutosave` marks the debounced background save: it yields to a newer
+    /// one (`scheduleSaveSession` cancels the older task), so after the awaited
+    /// recovery work it must not publish its by-then obsolete snapshot over the
+    /// newer session (#183 F20). Explicit callers (termination, Save As, rename)
+    /// always publish.
     func saveSessionResult(
-        allowingSaveAsPublicationFor publishingModel: WorkspaceModel? = nil
+        allowingSaveAsPublicationFor publishingModel: WorkspaceModel? = nil,
+        isAutosave: Bool = false
     ) async -> SessionSaveResult {
         if let pendingController = controllers.first(where: {
             $0.model.hasPendingRecoveryCleanup && $0.model !== publishingModel
@@ -56,6 +62,9 @@ extension WindowCoordinator {
         let (snapshot, activeID) = sessionSnapshot()
         if let failedController = await persistDirtyRecovery(in: snapshot) {
             return .recoveryFailed(failedController)
+        }
+        if isAutosave, Task.isCancelled {
+            return .saved
         }
         let session = WorkspaceSession(tabs: snapshot.map(\.tab.record), activeTabID: activeID)
         guard sessionStore.saveSessionVerified(session) else {
