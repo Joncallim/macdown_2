@@ -53,7 +53,12 @@ struct DirectoryWalker: Sendable {
     ) {
         guard !Task.isCancelled else { return }
         guard let identity = PhysicalFileIdentity(url: directory).fileObjectID else { return }
-        guard visited.insert(identity).inserted else { return } // symlink loop guard
+        // Symlink loop guard over the ANCESTOR chain only. A walk-global "seen"
+        // set would let whichever of `link -> v2` and `v2` is enumerated first
+        // hide the other, so `v2/page.md` could vanish from the index depending
+        // on directory enumeration order.
+        guard visited.insert(identity).inserted else { return }
+        defer { visited.remove(identity) }
         guard let children = try? FileManager.default.contentsOfDirectory(
             at: directory.resolvingSymlinksInPath(),
             includingPropertiesForKeys: Array(Self.resourceKeys),
@@ -93,7 +98,10 @@ struct DirectoryWalker: Sendable {
             // keep the user-facing path, matching `FileTree`'s own
             // lexical-parent convention (`DirectoryReading.swift`).
             let lexicalChild = directory.appendingPathComponent(name, isDirectory: isDirectory)
-            if isDirectory, !isPackage {
+            if isDirectory, isPackage {
+                continue // `.app`, `.textbundle`, …: opaque directories, not files to open or search
+            }
+            if isDirectory {
                 guard !context.excludedDirectoryNames.contains(name) else { continue }
                 walk(
                     directory: lexicalChild,
