@@ -334,7 +334,7 @@ public final class WorkspaceModel {
                 epoch: closingDocument.recoveryEpoch
             )
             guard cleanup.isAbsent else {
-                pendingRecoveryCleanupActions.insert(.retire(for: closingDocument))
+                registerPendingRecovery(.retire(for: closingDocument))
                 await preserveOpenDocumentAfterFailedCloseRetirement(closingDocument)
                 lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
                 return
@@ -354,7 +354,7 @@ public final class WorkspaceModel {
                     epoch: closingDocument.recoveryEpoch
                 )
                 if !cleanup.isAbsent {
-                    pendingRecoveryCleanupActions.insert(.retire(for: closingDocument))
+                    registerPendingRecovery(.retire(for: closingDocument))
                     lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
                 }
             }
