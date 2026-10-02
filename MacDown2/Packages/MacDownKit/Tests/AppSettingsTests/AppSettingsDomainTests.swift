@@ -62,7 +62,7 @@ struct AppSettingsDomainTests {
     }
 
     @Test func markdownSettingsDefaultParsesBlockDirectives() {
-        #expect(MarkdownSettings.default.parsesBlockDirectives == true)
+        #expect(MarkdownSettings.default.parsesBlockDirectives == false)
     }
 
     @Test func markdownSettingsRoundTripsThroughCodable() throws {

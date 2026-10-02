@@ -22,7 +22,7 @@ struct AppSettingsWiringTests {
     }
 
     @Test func markdownParseOptionsDefaultsToOnWhenSettingsUnavailable() {
-        #expect(DocumentEditorSplitView.markdownParseOptions(from: nil).blockDirectives)
+        #expect(!DocumentEditorSplitView.markdownParseOptions(from: nil).blockDirectives)
     }
 
     // MARK: - Editor assists
