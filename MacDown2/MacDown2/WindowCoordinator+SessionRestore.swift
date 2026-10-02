@@ -7,7 +7,40 @@ import Workspace
 /// The per-tab half of launch-time session restore. Split out of
 /// `WindowCoordinator.swift` to stay under the type-body-length lint budget
 /// — `restoreSession()` itself (the entry point) stays in the main file.
+/// The session file as it was when the app launched, frozen so a restore that
+/// starts after the first window has triggered an autosave still sees it.
+private struct LaunchSessionStore: WorkspaceSessionStoring {
+    let session: WorkspaceSession
+
+    func loadSession() -> WorkspaceSession? {
+        session
+    }
+
+    func saveSession(_: WorkspaceSession) {}
+}
+
 extension WindowCoordinator {
+    /// Launches that do not restore the previous session (a document opened from
+    /// Finder or the command line, "Start with a new document") must still not
+    /// lose what that session held UNSAVED: Quit never prompts — it relies on the
+    /// session plus recovery — and the first window's autosave would otherwise
+    /// overwrite the session file, orphaning the recovery records (#183 review
+    /// pass 1). Only the dirty tabs come back; clean ones are not restored.
+    func restoreUnsavedSessionTabs() async {
+        guard let session = launchSession else { return }
+        launchSession = nil
+        let tempStore = TabStore(sessionStore: LaunchSessionStore(session: session))
+        await tempStore.restoreSessionIfNeeded()
+        let unsaved = Self.unsavedTabs(in: tempStore.tabs)
+        guard !unsaved.isEmpty else { return }
+        _ = restore(tabs: unsaved)
+        updateKeyModel()
+    }
+
+    static func unsavedTabs(in tabs: [WorkspaceTab]) -> [WorkspaceTab] {
+        tabs.filter { $0.document.state == .dirty || $0.document.state == .conflict }
+    }
+
     func restore(tabs: [WorkspaceTab]) -> (WindowController?, NSWindow?) {
         var firstController: WindowController?
         var firstWindow: NSWindow?

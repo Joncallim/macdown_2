@@ -51,6 +51,8 @@ final class WindowCoordinator {
     /// other open window rather than only on the next launch (#34).
     private let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
     private var hasRestoredSession = false
+    /// The session file as it was at launch, kept until `restoreUnsavedSessionTabs()` consumes it.
+    var launchSession: WorkspaceSession?
     private var saveTask: Task<Void, Never>?
     var sessionPublicationOrder = SessionPublicationOrder()
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
@@ -118,6 +120,7 @@ final class WindowCoordinator {
         self.recentFileDocuments = recentFileDocuments
         self.appSettings = appSettings
         self.workspaceStateStore = workspaceStateStore
+        launchSession = sessionStore.loadSession()
     }
 
     // MARK: - Window lifecycle
@@ -260,7 +263,11 @@ final class WindowCoordinator {
             // Give `application(_:openFiles:)` a few run-loop ticks to arrive
             // before we fall back to restoring the previous session.
             try? await Task.sleep(for: .milliseconds(200))
-            guard let self, !Task.isCancelled, !isDocumentOpenPending() else { return }
+            guard let self, !Task.isCancelled else { return }
+            guard !isDocumentOpenPending() else {
+                await restoreUnsavedSessionTabs()
+                return
+            }
             await restoreSession()
         }
     }

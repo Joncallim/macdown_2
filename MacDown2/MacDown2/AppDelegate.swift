@@ -140,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func proceedWithNormalLaunch() {
         if !launchURLs.isEmpty {
             Task { @MainActor in
+                await coordinator.restoreUnsavedSessionTabs()
                 for url in launchURLs {
                     await coordinator.openDocument(at: url)
                 }
@@ -149,11 +150,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else if let launchFolderURL {
             Task { @MainActor in
+                await coordinator.restoreUnsavedSessionTabs()
                 await coordinator.ensureWindowExistsForReopen()
                 coordinator.openFolder(launchFolderURL)
             }
         } else if appSettings.general.launchBehavior == .startWithNewDocument {
             coordinator.newDocument()
+            Task { @MainActor in await coordinator.restoreUnsavedSessionTabs() }
         } else {
             // Scheduled synchronously so the tracked restore task exists before
             // any reopen event can be handled; the grace delay inside gives
@@ -200,6 +203,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !fileURLs.isEmpty else { return }
         hasPendingDocumentOpen = true
         Task { @MainActor in
+            await coordinator.restoreUnsavedSessionTabs()
             for url in fileURLs {
                 await coordinator.openDocument(at: url)
             }
