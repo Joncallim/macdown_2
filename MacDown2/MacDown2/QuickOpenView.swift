@@ -44,10 +44,13 @@ struct QuickOpenView: View {
             Divider()
 
             if model.results.isEmpty {
-                Text(model.isSearching ? "Searching…" : "No Matching Files")
-                    .foregroundStyle(.secondary)
-                    .padding()
-                    .accessibilityIdentifier("quickOpenEmptyState")
+                Text(
+                    model.isSearching ? "Searching…"
+                        : model.isIndexUnavailable ? "Folder Unavailable" : "No Matching Files"
+                )
+                .foregroundStyle(.secondary)
+                .padding()
+                .accessibilityIdentifier("quickOpenEmptyState")
             } else {
                 ScrollViewReader { proxy in
                     List(Array(model.results.enumerated()), id: \.element) { index, path in

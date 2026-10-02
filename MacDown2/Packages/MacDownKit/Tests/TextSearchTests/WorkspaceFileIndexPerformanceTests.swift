@@ -167,7 +167,7 @@ struct WorkspaceFileIndexPerformanceTests {
             return [IndexedPath(relativePath: "a.txt", basename: "a.txt")]
         })
 
-        let rebuildTask = Task { await index.rebuild(root: URL(fileURLWithPath: "/tmp/unused")) }
+        let rebuildTask = Task { await index.rebuild(root: FileManager.default.temporaryDirectory) }
         let blocked = gate.waitUntilBlocked()
         let midflightState = await index.state
 
