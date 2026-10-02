@@ -85,8 +85,8 @@ extension DocumentEditorSplitView {
                     encoding: EncodingStatusItem(
                         metadata: document.encoding,
                         isChangeable: document.hasEncodableBackingFile,
-                        onReopen: { coordinator?.reopenKeyDocument(withEncoding: $0) },
-                        onSave: { coordinator?.saveKeyDocument(withEncoding: $0) }
+                        onReopen: { coordinator?.reopenDocument(in: model, withEncoding: $0) },
+                        onSave: { coordinator?.saveDocument(in: model, withEncoding: $0) }
                     ),
                     lineEnding: LineEndingStatusItem(
                         profile: metrics.lineEndings,
