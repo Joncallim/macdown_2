@@ -30,6 +30,15 @@ extension DocumentEditorSplitView {
                     onReplace: { applyFindReplacement($0, model: findModel) },
                     onSelectAll: { applySelectAllMatches($0) }
                 )
+                // The "In Selection" domain follows every edit while Find is open.
+                .onAppear {
+                    editorStore.existingSystem(for: identity)?.textChangeObserver = { [weak findModel] change in
+                        findModel?.noteTextChange(change)
+                    }
+                }
+                .onDisappear {
+                    editorStore.existingSystem(for: identity)?.textChangeObserver = nil
+                }
             }
 
             EditorView(
@@ -165,7 +174,6 @@ extension DocumentEditorSplitView {
     /// may have changed which text still matches at all.
     func applyFindReplacement(_ transaction: EditorEditTransaction, model: EditorFindModel) {
         guard let system = editorStore.existingSystem(for: identity) else { return }
-        model.remapSearchDomain(through: transaction)
         system.apply(transaction)
         let anchor = transaction.resultingSelection?.primaryRange.location
         Task {
