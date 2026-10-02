@@ -45,6 +45,11 @@ final class FolderSearchModel {
     private(set) var isSearching = false
     private(set) var outcome: FolderSearchOutcome?
     private(set) var root: URL?
+    /// The folder as the user opened it (a symlink path stays a symlink path),
+    /// used to name files that are opened from results so they carry the same
+    /// identity as the same file opened from the sidebar; `root` is the
+    /// physical access root searches read through (#183 F19).
+    private(set) var lexicalRoot: URL?
 
     /// Replace in Folder (Slice 7c) state. Stored here because `@Observable`
     /// requires stored properties in the class body; the behavior lives in
@@ -149,11 +154,12 @@ final class FolderSearchModel {
     /// own "a query made while switching still sees a consistent result,
     /// never a mix of old and new" discipline, applied to the model's own
     /// query/results pair instead of the index's own snapshot.
-    func setRoot(_ root: URL?) {
+    func setRoot(_ root: URL?, lexicalRoot: URL? = nil) {
         if root != self.root {
             retireReplaceRun()
         }
         self.root = root
+        self.lexicalRoot = root == nil ? nil : (lexicalRoot ?? root)
         scheduleSearch(debounced: false)
     }
 

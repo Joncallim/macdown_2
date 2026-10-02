@@ -52,6 +52,9 @@ extension WindowController {
     /// rebuilding it, so a stale snapshot from a previously-open folder can
     /// never leak into a later Quick Open query in this same window.
     func setFileTreeRoot(_ url: URL?, accessURL: URL? = nil) async {
+        // Before the first suspension: results shown against the old root must
+        // never be actionable against the new one (#183 F19).
+        coordinator?.closeQuickOpenIfOrigin(self)
         await fileTreeModel.setRoot(url, accessURL: accessURL)
         // Closes Quick Open (Slice 6b) if it's open against this window —
         // an independent hostile review of that slice found the panel's
@@ -76,6 +79,6 @@ extension WindowController {
         // captured at `FolderSearchModel.init` time, so it must see the
         // freshly-rebuilt snapshot for the new root, not the old (or
         // `.empty`) one.
-        folderSearchModel.setRoot(indexRoot)
+        folderSearchModel.setRoot(indexRoot, lexicalRoot: fileTreeModel.root)
     }
 }
