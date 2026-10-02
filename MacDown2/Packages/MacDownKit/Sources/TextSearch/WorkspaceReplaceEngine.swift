@@ -63,18 +63,31 @@ public actor WorkspaceReplaceEngine {
         results.reserveCapacity(plans.count)
         for plan in plans {
             await seams.beforeEachFile?()
-            let outcome: ReplacementFileOutcome = if Task.isCancelled {
-                .notAttempted
-            } else if await isProtected(plan.relativePath) {
-                .skippedOpenDocumentWithUnsavedChanges
-            } else {
-                apply(plan, root: root)
-            }
+            let outcome = await outcome(for: plan, root: root, isProtected: isProtected)
             let result = ReplacementFileResult(relativePath: plan.relativePath, outcome: outcome)
             results.append(result)
             await onResult(result)
         }
         return results
+    }
+
+    /// Cancellation is checked again AFTER the awaited protection query: the
+    /// run can be retired (root change) while that await is suspended, and the
+    /// check before it would then let a write through for a root the user has
+    /// already left (#183 F14).
+    private func outcome(
+        for plan: ReplacementPlan,
+        root: URL,
+        isProtected: @Sendable (String) async -> Bool
+    ) async -> ReplacementFileOutcome {
+        if Task.isCancelled {
+            return .notAttempted
+        }
+        let protected = await isProtected(plan.relativePath)
+        if Task.isCancelled {
+            return .notAttempted
+        }
+        return protected ? .skippedOpenDocumentWithUnsavedChanges : apply(plan, root: root)
     }
 
     public func preview(root: URL, plan: ReplacementPlan) -> ReplacementFilePreview {
