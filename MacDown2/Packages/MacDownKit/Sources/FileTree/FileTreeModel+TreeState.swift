@@ -72,7 +72,10 @@ extension FileTreeModel {
                 }
             }
         } catch {
-            lastOperationError = .underlying(error.localizedDescription)
+            // Live updates are best effort: a folder that cannot be opened for
+            // watching (typically an unreadable one) must not raise a modal
+            // "Folder Operation Failed" — its listing failure is already shown
+            // inline, and the watcher error text ("doesn't exist") is wrong.
         }
     }
 
