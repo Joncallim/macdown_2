@@ -43,6 +43,7 @@ extension CommandDescriptor {
         CommandDescriptor("New Folder", .excluded(.notYetWired)),
         CommandDescriptor("New Tab", .palette(id: "newTab")),
         CommandDescriptor("Open…", .palette(id: "open")),
+        CommandDescriptor("Open with Encoding…", .palette(id: "openWithEncoding")),
         CommandDescriptor("Open Folder…", .palette(id: "openFolder")),
         CommandDescriptor("Open Recent Folder", .excluded(.menuContainer)),
         CommandDescriptor("Open Recent File", .excluded(.menuContainer)),

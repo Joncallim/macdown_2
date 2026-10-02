@@ -38,10 +38,22 @@ extension WindowCoordinator {
         alert.alertStyle = .warning
         alert.messageText = String(localized: "Couldn't Open \"\(url.lastPathComponent)\"")
         alert.informativeText = FileOpenFailurePresentation.message(for: error)
+        // Bytes that are neither BOM-marked nor valid UTF-8 and that detection
+        // cannot identify unambiguously: offer the explicit choice instead of a
+        // dead end (never a lossy guess).
+        let offersEncoding = error.isUndecodableText
+        alert.addButton(withTitle: String(localized: "OK"))
+        if offersEncoding {
+            alert.addButton(withTitle: String(localized: "Open With Encoding…"))
+        }
+        let handle: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            guard offersEncoding, response == .alertSecondButtonReturn else { return }
+            Task { @MainActor [weak self] in await self?.openDocumentChoosingEncoding(at: url) }
+        }
         if let window = NSApp.keyWindow {
-            alert.beginSheetModal(for: window) { _ in }
+            alert.beginSheetModal(for: window, completionHandler: handle)
         } else {
-            alert.runModal()
+            handle(alert.runModal())
         }
     }
 }

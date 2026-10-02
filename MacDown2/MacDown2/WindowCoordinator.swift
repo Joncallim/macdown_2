@@ -138,7 +138,8 @@ final class WindowCoordinator {
         folderAccessURL: URL? = nil,
         folderSelectionURL: URL? = nil,
         folderRenameURL: URL? = nil,
-        relativeTo overrideKeyWindow: NSWindow? = nil
+        relativeTo overrideKeyWindow: NSWindow? = nil,
+        encoding: FileEncodingMetadata? = nil
     ) async {
         if let existing = controllerForDocument(url: url), let window = existing.window {
             if let folderRoot, existing.fileTreeModel.root == nil {
@@ -156,7 +157,7 @@ final class WindowCoordinator {
         let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
 
         let model = makeWindowModel()
-        let outcome = await model.tabStore.openFileInTab(url)
+        let outcome = await model.tabStore.openFileInTab(url, encoding: encoding)
         model.setFolderRoot(folderRoot)
 
         guard !model.tabStore.tabs.isEmpty else {
