@@ -36,7 +36,43 @@ private struct ControllerTabSnapshot {
     let tab: TabSnapshot
 }
 
+/// Orders session publications by when their snapshot was taken: an older
+/// snapshot whose recovery work finished late must not publish over a newer one
+/// that already did (#183 F20).
+struct SessionPublicationOrder {
+    private var lastSnapshot: UInt64 = 0
+    private var lastPublished: UInt64 = 0
+
+    mutating func beginSnapshot() -> UInt64 {
+        lastSnapshot += 1
+        return lastSnapshot
+    }
+
+    func isSuperseded(_ sequence: UInt64) -> Bool {
+        sequence <= lastPublished
+    }
+
+    mutating func markPublished(_ sequence: UInt64) {
+        lastPublished = max(lastPublished, sequence)
+    }
+}
+
 extension WindowCoordinator {
+    /// ⌃⌘O (D11). Reveals the outline in the key window, then hands off to
+    /// its `OutlineController` — focusing a hidden list is a dead shortcut,
+    /// so both the sidebar and the outline's own disclosure are ensured open
+    /// first. JSON documents route to the JSON outline channel.
+    func focusOutline() {
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        controller.model.sidebarVisible = true
+        controller.model.setSectionExpanded(.outline, true)
+        if controller.model.activeDocument?.format.id == "json" {
+            controller.outlineController.requestJSONFocus()
+        } else {
+            controller.outlineController.requestFocus()
+        }
+    }
+
     /// Saves the current set of open documents as the session. Dirty documents
     /// are snapshotted before any `await` so recovery and session JSON remain
     /// consistent even while the main actor handles later user edits.
@@ -60,12 +96,19 @@ extension WindowCoordinator {
             return .pendingRecoveryCleanup(pendingController)
         }
         let (snapshot, activeID) = sessionSnapshot()
+        let sequence = sessionPublicationOrder.beginSnapshot()
         if let failedController = await persistDirtyRecovery(in: snapshot) {
             return .recoveryFailed(failedController)
         }
+        await afterSessionRecoveryPersisted?()
         if isAutosave, Task.isCancelled {
             return .saved
         }
+        // A snapshot taken after this one has already published its (newer)
+        // session while this one's recovery work was awaiting: publishing now
+        // would roll the canonical session back. The newer session covers the
+        // same documents at a later state, so this save is satisfied (#183 F20).
+        guard !sessionPublicationOrder.isSuperseded(sequence) else { return .saved }
         let session = WorkspaceSession(tabs: snapshot.map(\.tab.record), activeTabID: activeID)
         guard sessionStore.saveSessionVerified(session) else {
             if let controller = controllers.first {
@@ -73,6 +116,7 @@ extension WindowCoordinator {
             }
             return .sessionPublicationFailed
         }
+        sessionPublicationOrder.markPublished(sequence)
         return .saved
     }
 
