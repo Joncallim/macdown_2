@@ -53,6 +53,12 @@ public struct TabRecord: Codable, Sendable, Equatable {
     /// sessions written before EPIC-11 still decode; absent metadata uses the
     /// documented default (UTF-8, no BOM). Raw bytes are never persisted.
     public var encoding: FileEncodingMetadata?
+    /// SHA-256 of the file content this tab was last known to match on disk.
+    /// A restored DIRTY tab whose file no longer hashes to this was changed
+    /// outside the app while it was quit, and must come back as a conflict
+    /// rather than silently adopting the new file as its baseline. Optional so
+    /// older sessions still decode.
+    public var baseSHA256: String?
     /// Optional so sessions written before the folder browser still decode.
     public var folderRootBookmark: Data?
     /// Lexical spelling paired with the physical security-scoped bookmark.
@@ -71,6 +77,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         previewMode: PreviewMode? = nil,
         syntaxOverride: SyntaxModeOverride? = nil,
         encoding: FileEncodingMetadata? = nil,
+        baseSHA256: String? = nil,
         folderRootBookmark: Data? = nil,
         folderRootAlias: URL? = nil
     ) {
@@ -86,6 +93,7 @@ public struct TabRecord: Codable, Sendable, Equatable {
         self.previewMode = previewMode
         self.syntaxOverride = syntaxOverride
         self.encoding = encoding
+        self.baseSHA256 = baseSHA256
         self.folderRootBookmark = folderRootBookmark
         self.folderRootAlias = folderRootAlias
     }

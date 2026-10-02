@@ -24,6 +24,7 @@ extension TabStore {
                 previewMode: tab.previewMode,
                 syntaxOverride: tab.syntaxOverride,
                 encoding: tab.document.encoding,
+                baseSHA256: tab.document.lastKnownRevision?.sha256,
                 folderRootBookmark: tab.folderRootBookmark,
                 folderRootAlias: tab.folderRootAlias
             )
@@ -83,8 +84,14 @@ extension TabStore {
                 try document.load()
             }.value
             let recovered = try? await recoveryBuffer.load(for: loaded.id, epoch: recoveryEpoch)
-            if let recovered, recovered != loaded.text {
+            if let recovered, !recovered.isExactlyEqual(to: loaded.text) {
                 loaded = loaded.updatingText(recovered)
+                // The file changed while the app was quit: the recovered text was
+                // written against different content, so saving it would silently
+                // overwrite that change.
+                if let base = record.baseSHA256, let disk = loaded.lastKnownRevision, base != disk.sha256 {
+                    loaded = loaded.markingExternalConflict(with: disk)
+                }
             } else if recovered != nil {
                 // A stale copy identical to disk is not recovery state. Remove
                 // it during restore so a later crash cannot revive clean text.
