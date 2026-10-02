@@ -55,4 +55,20 @@ struct GraphvizFenceScannerTests {
         let slice = (text as NSString).substring(with: nsRange)
         #expect(slice == text)
     }
+
+    // MARK: - #183 F07: CRLF / CR fences are found, not silently skipped
+
+    @Test func aCRLFFenceFollowedByMoreTextIsFound() async throws {
+        let text = "```dot\r\ndigraph { a -> b }\r\n```\r\nafter"
+        let fences = try await GraphvizFenceScanner.scan(Self.document(text), sourceText: text)
+        #expect(fences.count == 1)
+        #expect(fences.first?.source == "digraph { a -> b }")
+    }
+
+    @Test func aBareCRFenceIsFound() async throws {
+        let text = "```dot\rdigraph { a -> b }\r```\rafter"
+        let fences = try await GraphvizFenceScanner.scan(Self.document(text), sourceText: text)
+        #expect(fences.count == 1)
+        #expect(fences.first?.source == "digraph { a -> b }")
+    }
 }

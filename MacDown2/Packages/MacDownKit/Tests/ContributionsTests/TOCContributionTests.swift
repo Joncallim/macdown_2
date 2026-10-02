@@ -113,7 +113,8 @@ struct TOCContributionTests {
         let ranges = TOCContribution.findMarkers(in: text, document: document)
         let range = try #require(ranges.first)
         let nsRange = NSRange(location: range.lowerBound, length: range.count)
-        #expect((text as NSString).substring(with: nsRange) == "[TOC]\r")
+        // The range stops before the whole CRLF terminator.
+        #expect((text as NSString).substring(with: nsRange) == "[TOC]")
     }
 
     // MARK: - markdownList

@@ -1,4 +1,5 @@
 import Foundation
+import MarkdownEngine
 
 /// Shared by `MermaidFenceScanner` (Export) and Preview's own block handling
 /// (`TextualMarkdownPreview`'s `BlockView`, epic-20-implementation.md §7.2) —
@@ -16,7 +17,7 @@ public enum MermaidFenceContent {
     /// because it never re-parses the delimiter text, only excludes it by
     /// line position.
     public static func stripDelimiters(from fenceText: String) -> String {
-        var lines = fenceText.components(separatedBy: "\n")
+        var lines = fenceText.markdownLines()
         guard lines.count >= 2 else { return "" }
         lines.removeFirst()
         lines.removeLast()
