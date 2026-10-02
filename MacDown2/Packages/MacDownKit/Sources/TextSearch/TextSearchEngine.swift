@@ -128,7 +128,10 @@ public enum TextSearchEngine {
         options: SearchOptions,
         matchLimit: Int?
     ) throws(SearchQueryError) -> [SearchMatch] {
-        var regexOptions: NSRegularExpression.Options = []
+        // `^`/`$` match at every line boundary, as in every code editor; without
+        // this they only matched at the start/end of the whole document, so
+        // `^# ` found one heading in a document of three.
+        var regexOptions: NSRegularExpression.Options = [.anchorsMatchLines]
         if !options.isCaseSensitive {
             regexOptions.insert(.caseInsensitive)
         }
