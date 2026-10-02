@@ -36,6 +36,9 @@ public enum FolderSearchOutcome: Sendable, Equatable {
     /// The query failed to compile as a regex — a property of the QUERY,
     /// not any one file, detected once up front before any file is touched.
     case invalidRegex(String)
+    /// The workspace index failed (its folder vanished or became unreadable),
+    /// so "no results" would be a lie: nothing was searched (#183 F18).
+    case indexUnavailable
 }
 
 /// Folder-wide search orchestration over paths a `WorkspaceFileIndex`
@@ -164,6 +167,9 @@ public actor WorkspaceSearchEngine {
             break
         }
 
+        if case .failed = await index.state {
+            return .indexUnavailable
+        }
         let paths = await index.allPaths(includeHidden: filter.includeHidden)
         let context = SearchContext(root: root, query: query, options: options, filter: filter)
         var filesSearched = 0

@@ -203,6 +203,11 @@ struct FolderSearchView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("folderSearchStatus")
+        case (false, false, .indexUnavailable):
+            Text("Folder Unavailable")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("folderSearchStatus")
         case (false, false, _) where model.results.isEmpty:
             Text("No Results")
                 .font(.caption)
