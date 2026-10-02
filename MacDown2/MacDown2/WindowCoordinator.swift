@@ -52,6 +52,8 @@ final class WindowCoordinator {
     private let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
     private var hasRestoredSession = false
     private var saveTask: Task<Void, Never>?
+    var sessionPublicationOrder = SessionPublicationOrder()
+    var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
     private var restoreTask: Task<Void, Never>?
     // `pendingNewDocumentTasks` and `addController` are internal rather than
     // private for the same reason as the properties above:
@@ -230,21 +232,6 @@ final class WindowCoordinator {
             return true
         }
         return index < count
-    }
-
-    /// ⌃⌘O (D11). Reveals the outline in the key window, then hands off to
-    /// its `OutlineController` — focusing a hidden list is a dead shortcut,
-    /// so both the sidebar and the outline's own disclosure are ensured open
-    /// first. JSON documents route to the JSON outline channel.
-    func focusOutline() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
-        controller.model.sidebarVisible = true
-        controller.model.setSectionExpanded(.outline, true)
-        if controller.model.activeDocument?.format.id == "json" {
-            controller.outlineController.requestJSONFocus()
-        } else {
-            controller.outlineController.requestFocus()
-        }
     }
 
     // MARK: - Session
