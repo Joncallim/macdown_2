@@ -140,7 +140,7 @@ private struct FragmentAssembler {
                 range: placement.sourceRange, contributionID: placement.contributionID
             ))
             cursor = placement.sourceRange.upperBound
-            consumeTrailingLF()
+            consumeTrailingLineTerminator()
             bufferStart = cursor
         }
     }
@@ -157,13 +157,18 @@ private struct FragmentAssembler {
         cursor = end
     }
 
-    /// `SourceMap` line ranges already exclude a line's own trailing `\n`
-    /// (and include a CRLF's `\r`), so exactly one LF code unit — never the
+    /// `SourceMap` line ranges end before the line's whole terminator (`\n`,
+    /// `\r\n` or a lone `\r`), so exactly that one terminator — never the
     /// authored content after it — sits between a block placement's upper
     /// bound and whatever follows.
-    private mutating func consumeTrailingLF() {
-        guard cursor < blockInterval.upperBound, nsSource.character(at: cursor) == 0x000A else { return }
+    private mutating func consumeTrailingLineTerminator() {
+        guard cursor < blockInterval.upperBound else { return }
+        let unit = nsSource.character(at: cursor)
+        guard unit == 0x000A || unit == 0x000D else { return }
         cursor += 1
+        if unit == 0x000D, cursor < blockInterval.upperBound, nsSource.character(at: cursor) == 0x000A {
+            cursor += 1
+        }
     }
 
     private mutating func flush(upTo end: Int) {
