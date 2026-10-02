@@ -22,6 +22,20 @@ public struct ExternalReconciliation: Sendable {
 }
 
 public extension FileDocument {
+    /// The document in conflict with `revision` (the file as it is now): used when
+    /// a restored unsaved edit predates an external change to its file.
+    func markingExternalConflict(with revision: FileRevision) -> FileDocument {
+        var copy = self
+        copy.state = .conflict
+        copy.applyExternalState(
+            pendingExternalRevision: revision,
+            setPendingExternalRevision: true,
+            backingState: .available
+        )
+        copy.advanceMutation()
+        return copy
+    }
+
     func reconcilingExternalSnapshot(_ snapshot: FileSnapshot) -> ExternalReconciliation {
         if snapshot.text.isExactlyEqual(to: text) {
             return reconcilingMatchingExternalText(snapshot)

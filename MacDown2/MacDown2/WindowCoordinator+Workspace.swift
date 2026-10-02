@@ -148,6 +148,7 @@ extension WindowCoordinator {
                         previewLayout: tab.previewLayout,
                         previewMode: tab.previewMode,
                         syntaxOverride: tab.syntaxOverride,
+                        baseSHA256: tab.document.lastKnownRevision?.sha256,
                         folderRootBookmark: bookmark,
                         folderRootAlias: lexicalRoot ?? tab.folderRootAlias
                     ),
