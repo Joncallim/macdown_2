@@ -50,6 +50,52 @@ The authoritative closure set is issue **#115**. Specific inherited-debt owners 
 
 Historical table rows below are retained as evidence of what was known at the time. They are **not** current release dispositions where #115 or one of the issues above supersedes them.
 
+## E22 (#112) re-gate — 2026-10-02 (Slice 11)
+
+Baseline: `master` at `64fe71b` (PR #226). Last completed CI on `master` before it (`cbce54d`, run 37002283689, all green): Debug build, **Release build**, package build + tests — **2076 tests / 221 suites pass** — non-UI app-target tests — **291 tests / 46 suites pass** — `swiftformat --lint`, `swiftlint lint --strict`, compliance and project-inventory checks. XCUITests are **not** executed in CI (see "Known environment limits"); `build-for-testing` is not counted as UI evidence.
+
+This section dispositions every E22 acceptance criterion. "Automated" means package/unit/integration tests in CI; "Release-app/manual" evidence is **unverified** unless stated, and stays so until #115 runs the exact release candidate. Nothing here is claimed as native-proven that was not natively run.
+
+| E22 criterion | Implementation (slice → PRs) | Automated evidence | Release-app / manual | Status |
+|---|---|---|---|---|
+| Gutter/status bar across plain text and source formats without whole-document layout | Slice 2 (#124, #126, #127), #162; 10f metrics cache | `EditorLineIndex`/gutter/status suites; selection-only changes make zero document-metric scans (10f) | unverified | implemented |
+| "Show invisible characters" no longer inert, TextKit 2 | Slice 2c (#127) | `EditorInvisiblesLayout` suites | unverified | implemented |
+| Go to Line/Column correct for LF/CRLF/CR/Unicode | Slice 2b (#126); 10ae shared `SourceMap` CR/CRLF fix | `EditorLineIndex.utf16Offset` and Go-to-Line suites; SourceMap CR/CRLF/lone-CR tests | unverified | implemented |
+| Multi-cursor typing/paste/delete/indent/occurrence/transforms, coherent undo | Slice 3 (#128–#138); 10e primary selection persistence; 10v IME fail-open | `EditorSelectionSet`/transaction/occurrence suites; 10af exhaustive mixed-ending Move Line permutation test | unverified | implemented |
+| Markdown assists correct with multiple selections, never leak into non-Markdown | Slice 4a/4b (#140, #141) | profile registry + `FencedRegionClassifier` suites | unverified | implemented |
+| Current-document find/replace (literal+regex, case, word, history, counts, select-all) | Slice 5 (#146, #149, #152); 10g/10w search domain; 10y regex cancellation (`.reportProgress`) | `EditorFindModel*` suites, `RegexCancellationTests` (pathological pattern is stopped, not just suppressed) | native deadline for pathological regex unproved (F08) | implemented; F08 native proof carried |
+| Cmd-P Quick Open, no per-keystroke traversal | Slice 6 (#156, #157); 10t freshness, 10ab origin, 10ak/10al query/availability | index/Quick Open model suites; index freshness; stale-origin tests | unverified | implemented |
+| Open Recent includes files as well as folders | Slice 6c (#161); 10n identity fix | `RecentFileDocuments` suites incl. path-reuse identity | unverified | implemented |
+| Folder search: streaming, cancellable, filters, binary/symlink safety, explicit truncation | Slice 7a/7b (#167, #172); 10ao unavailable-index outcome | `WorkspaceSearchEngine*` suites | unverified | implemented |
+| Replace in Folder previews and cannot silently overwrite a changed file | Slice 7c (#175); 10a metadata, 10h/10an cancellation, 10aj symlink-subtree authority | `WorkspaceReplace*` suites incl. external-writer, symlink and cancellation cases | anchored-fd (openat) authority not implemented — check-then-act window remains (shared with #118/#121) | implemented; residual recorded |
+| Core text transforms format-neutral, one undo step, line-ending preserving | Slice 4c (#142–#144); 10b/10u/10af | transform suites; line-ending fidelity tests | unverified | implemented |
+| `LanguageEditingProfile` comment/indent/pairing for source formats, no LSP | Slice 4a/4c; 9c `.tex` | profile + comment-toggle suites | unverified | implemented |
+| Syntax override separates highlighting/edit mechanics from format/preview semantics | Slice 9d | override/persistence suites | unverified | implemented |
+| Explicit reopen/save encoding, lossless checks; strict auto-detection | Slice 8a/8b; 10c, 10l, 10ai, 10am | `FileEncoding*`, `DocumentWriter` lineage, representation-failure naming | native encoding-menu proof stays with #88 | implemented |
+| LF/CRLF/CR/Mixed visible, explicit undoable conversion, no implicit normalisation | Slice 8c; 10b, 10u, 10ae, 10af | `LineEnding*`, `TextRoundTripFidelityTests`, SourceMap/fence CR tests | unverified | implemented |
+| Named scoped snippets (selection/clipboard/final caret, multi-cursor) | Slice 9e | snippet template/insertion/store suites | unverified | implemented |
+| Existing preview/outline/math/diagrams/export/external-file/recovery remain green | all slices; 10a/10i/10m/10ag/10ah recovery & session hardening | full package + app-target suites green in CI (above) | #118/#119/#121 evidence debt stays with those issues | implemented |
+| Large-file and 100k-path budgets measured | 10s Release measurement; 10x Release-enforced budgets | Release-built local measurement (1 MB Markdown: full highlight ≈0.25 s, full parse ≈0.20 s); 100k-path query budget Release-enforced | **#203: incremental reparse is O(n) (≈0.19 s for 1 MB), so the 50 ms keystroke budget is NOT met for ≥1 MB Markdown** | measured; **#203 open (P2)** |
+| New UI localised; post-E22 E16 delta/pseudo-localisation green | — | `xcodebuild -exportLocalizations` on this baseline adds 17 keys that have no fr/pl/ja translation (search/replace/Go to Line status strings, e.g. "Folder Unavailable", "Searching…", "No Results"); many E22 literals (Quick Open, find bar, snippet and encoding/line-ending commands) are not in the catalog at all | none | **not done — E23 is not complete, so per Slice 11 this is recorded as a partial update; the final string freeze/translation is deferred to after E23/#115** |
+| No E22-owned release-relevant P0/P1 remains | #183 audit F01–F23/R01/L01 dispositions in `epic-22-implementation.md` | see below | — | no known P0/P1; see residuals |
+
+### #183 audit disposition at this baseline
+
+Fixed with regression tests: F01–F05, F07 (shared source map), F09–F12, F14 (root-change, cancellation-during-protection and symlink-subtree mutation halves), F15–F23, R01, #174 metadata, plus the interaction-audit defects (Duplicate Line, IME fail-open, Move Line mixed-ending fusion, In-Selection retention). Delegated by design: F06/F13 and final export evidence → #118; R02 → #121; L01 → #17.
+
+Residual, recorded rather than silent:
+
+- **F14 anchored authority:** mutators refuse a symlink-resolved escape but are check-then-act; descriptor-anchored (`openat`) authority is shared low-level work with #118/#121.
+- **F08 native deadline:** pathological-regex cancellation is proven by the engine-level test only; no native deadline proof.
+- **F18/F19:** an active folder search is not auto-re-run when a rebuilt index lands (the next query picks it up), and results carry no explicit workspace-root-generation token (a root switch instead closes Quick Open and retires a running replace).
+- **#173:** native activation/reveal lifecycle remains an open reproduction task.
+- **#203 (P2):** O(n) incremental reparse vs the 50 ms budget at 1 MB.
+- **Test infrastructure:** #155 (WebKit-dependent hangs), #159/#163/#215 (timing/fd-sensitive tests) are timing/environment-sensitive tests (#215 was reproduced on unchanged `master`); none is known to mask a product defect.
+
+### Known environment limits (for the final report)
+
+XCUITests do not run to completion in the available automation mode (timeout), so no UI-test evidence is claimed; a local iCloud-synced checkout produced spurious file-provider load (the active worktree is outside iCloud); a stale `DerivedData` can produce spurious link errors after package struct-layout changes (clean build resolves it); runner-network failures during package resolution are rerun, not treated as product failures.
+
 ## Initial roadmap scaffold
 
 This initial table is deliberately conservative. It captures implementation status known from the roadmap while leaving release proof unverified until evidence is reconciled at the gate.
