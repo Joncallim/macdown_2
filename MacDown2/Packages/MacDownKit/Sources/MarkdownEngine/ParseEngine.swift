@@ -18,6 +18,39 @@ public actor ParseEngine: ParseExecuting {
 
         try Task.checkCancellation()
 
+        // swift-markdown, the block converter and Yams all recurse once per
+        // nesting level. On a cooperative-pool thread (≈512 KB of stack) a few
+        // KB of hostile or accidental input — `>` repeated ~700 times, deeply
+        // nested emphasis or lists, a YAML flow sequence ~350 deep — overflows
+        // it and kills the app, and a crash during open or session restore
+        // repeats on every relaunch. The synchronous work therefore runs on a
+        // dedicated thread with a large (lazily committed) stack.
+        let document = await Self.runOnLargeStack { [self] in
+            parseSynchronously(text, options: options, revision: revision)
+        }
+
+        try Task.checkCancellation()
+        return document
+    }
+
+    /// Stack for the parse thread. Only touched pages are committed.
+    static let parseThreadStackSize = 1 << 30
+
+    private static func runOnLargeStack<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            let thread = Thread { continuation.resume(returning: work()) }
+            thread.stackSize = parseThreadStackSize
+            thread.qualityOfService = .userInitiated
+            thread.name = "MarkdownEngine.parse"
+            thread.start()
+        }
+    }
+
+    private nonisolated func parseSynchronously(
+        _ text: String,
+        options: MarkdownParseOptions,
+        revision: Int
+    ) -> MarkdownDocument {
         let sourceMap = SourceMap(text: text)
 
         let extraction = FrontMatterExtractor.extract(from: text)
@@ -31,8 +64,6 @@ public actor ParseEngine: ParseExecuting {
             )
         }
 
-        try Task.checkCancellation()
-
         // Only `blockDirectives` maps to a swift-markdown `ParseOption` in 0.8.0;
         // the remaining GFM features are always enabled together.
         var parseOptions: ParseOptions = []
@@ -40,8 +71,6 @@ public actor ParseEngine: ParseExecuting {
             parseOptions.insert(.parseBlockDirectives)
         }
         let document = Document(parsing: bodyText, options: parseOptions)
-
-        try Task.checkCancellation()
 
         let fallbackRange = 1 ... max(1, sourceMap.lineCount)
         let converter = BlockConverter(bodyLineOffset: bodyLineOffset)
@@ -61,7 +90,7 @@ public actor ParseEngine: ParseExecuting {
 
     // MARK: - YAML front matter
 
-    private func parseYAML(_ raw: String) -> [String: FrontMatterValue]? {
+    private nonisolated func parseYAML(_ raw: String) -> [String: FrontMatterValue]? {
         guard let root = try? Yams.load(yaml: raw) else {
             return nil
         }
@@ -71,7 +100,7 @@ public actor ParseEngine: ParseExecuting {
         return mapping.compactMapValues { convertYAMLValue($0) }
     }
 
-    private func convertYAMLValue(_ value: Any) -> FrontMatterValue? {
+    private nonisolated func convertYAMLValue(_ value: Any) -> FrontMatterValue? {
         switch value {
         case let string as String:
             .string(string)
@@ -100,7 +129,7 @@ public actor ParseEngine: ParseExecuting {
 
     /// Defensive NSNumber→FrontMatterValue bridge. Internal (not private) so
     /// the unsigned-int range guard is testable via `@testable import`.
-    func convertNSNumber(_ number: NSNumber) -> FrontMatterValue {
+    nonisolated func convertNSNumber(_ number: NSNumber) -> FrontMatterValue {
         if CFGetTypeID(number) == CFBooleanGetTypeID() {
             return .bool(number.boolValue)
         }
@@ -136,6 +165,12 @@ private struct ConversionResult {
 }
 
 private struct BlockConverter {
+    /// Nesting deeper than this is never authored by hand. The converted tree is
+    /// a nested value type that every consumer walks — and whose release —
+    /// recurses once per level, on whatever (small) thread drops the last
+    /// reference, so the depth is bounded here rather than trusted.
+    static let maxDepth = 128
+
     let bodyLineOffset: Int
 
     func convert(_ document: Document, parentRange: ClosedRange<Int>) -> ConversionResult {
@@ -143,7 +178,7 @@ private struct BlockConverter {
         var headings: [HeadingItem] = []
         for child in document.children {
             guard let block = child as? BlockMarkup else { continue }
-            let result = convert(block, parentRange: parentRange)
+            let result = convert(block, parentRange: parentRange, depth: 0)
             blocks.append(result.block)
             headings.append(contentsOf: result.headings)
         }
@@ -152,7 +187,8 @@ private struct BlockConverter {
 
     func convert(
         _ node: BlockMarkup,
-        parentRange: ClosedRange<Int>
+        parentRange: ClosedRange<Int>,
+        depth: Int
     ) -> (block: MarkdownBlock, headings: [HeadingItem]) {
         let range = originalLineRange(for: node) ?? parentRange
         var childBlocks: [MarkdownBlock] = []
@@ -166,9 +202,9 @@ private struct BlockConverter {
             ))
         }
 
-        for child in node.children {
+        for child in node.children where depth < Self.maxDepth {
             guard let block = child as? BlockMarkup else { continue }
-            let result = convert(block, parentRange: range)
+            let result = convert(block, parentRange: range, depth: depth + 1)
             childBlocks.append(result.block)
             headings.append(contentsOf: result.headings)
         }
