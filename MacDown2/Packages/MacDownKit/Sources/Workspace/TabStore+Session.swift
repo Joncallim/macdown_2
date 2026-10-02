@@ -32,6 +32,9 @@ extension TabStore {
     }
 
     func restoreTab(from record: TabRecord) async -> WorkspaceTab? {
+        if let epoch = record.documentRecoveryEpoch {
+            await recoveryBuffer.adoptRecoveryEpoch(epoch)
+        }
         if let fileURL = record.fileURL {
             return await restoreFileTab(from: record, fileURL: fileURL)
         } else if let untitledID = record.untitledDocumentID {
