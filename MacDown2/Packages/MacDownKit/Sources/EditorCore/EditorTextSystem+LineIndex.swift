@@ -29,6 +29,7 @@ extension EditorTextSystem {
             replacementUTF16Length: replacementUTF16Length,
             newText: assistTextSource ?? (text as NSString)
         )
+        textChangeObserver?(.edit(range: editedRange, replacementLength: replacementUTF16Length))
     }
 
     /// Full rebuild for edit paths that bypass the incremental hook above
@@ -40,6 +41,7 @@ extension EditorTextSystem {
     /// `noteIncrementalEdit` above.
     func rebuildLineIndex() {
         lineIndex.rebuild(text: assistTextSource ?? (text as NSString))
+        textChangeObserver?(.untracked)
     }
 
     /// Undo/redo replays a previously-approved edit directly against the

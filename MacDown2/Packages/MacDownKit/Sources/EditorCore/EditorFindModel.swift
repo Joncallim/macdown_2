@@ -74,6 +74,9 @@ public final class EditorFindModel {
     /// re-sampled from the current selection, which Find itself changes to the
     /// current match or a caret. `nil` means the whole document.
     public private(set) var searchDomain: NSRange?
+    /// `true` when the domain could no longer be tracked (undo/redo, whole-text
+    /// replacement) — "In Selection" then matches nothing until re-established.
+    public private(set) var searchDomainLost = false
 
     public init(query: String = "", options: SearchOptions = SearchOptions()) {
         self.query = query
@@ -167,10 +170,13 @@ public final class EditorFindModel {
         let generation = searchGeneration
         if !options.searchesSelectionOnly {
             searchDomain = nil
+            searchDomainLost = false
         } else if let selection, selection.length > 0 {
             searchDomain = selection
+            searchDomainLost = false
         }
         let domain = options.searchesSelectionOnly ? searchDomain : nil
+        let scopeLost = options.searchesSelectionOnly && searchDomainLost
         searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
         let query = query
         let options = options
@@ -196,6 +202,7 @@ public final class EditorFindModel {
                 // left edge). Searching the full text first and filtering
                 // its own already-correct results is both simpler and
                 // immune to this class of bug by construction.
+                guard !scopeLost else { return .success([]) }
                 let found = try TextSearchEngine.matches(in: text, query: query, options: options)
                 guard let domain else {
                     return .success(found)
@@ -236,27 +243,33 @@ public final class EditorFindModel {
     /// Forgets the retained domain (Find closed), so a later session samples afresh.
     public func clearSearchDomain() {
         searchDomain = nil
+        searchDomainLost = false
     }
 
-    /// Shifts the retained search domain through `transaction`'s replacements,
-    /// so a Replace inside it neither narrows nor widens what "In Selection"
-    /// means. Call before the transaction is applied (it only reads the
-    /// pre-edit ranges); the replacements are disjoint, per
-    /// `EditorEditTransaction`'s own validation.
-    public func remapSearchDomain(through transaction: EditorEditTransaction) {
-        guard let domain = searchDomain else { return }
-        var start = domain.location
-        var end = NSMaxRange(domain)
-        for replacement in transaction.replacements {
-            let delta = (replacement.replacementText as NSString).length - replacement.range.length
-            if NSMaxRange(replacement.range) <= domain.location {
-                start += delta
-                end += delta
-            } else if NSMaxRange(replacement.range) <= NSMaxRange(domain) {
-                end += delta
+    /// Keeps the retained search domain in step with a text change, whatever
+    /// its origin (typing, Replace, a transform, a snippet, Convert Line
+    /// Endings), so "In Selection" keeps meaning the range the user chose. A
+    /// change with no edit geometry (undo/redo, whole-document replacement)
+    /// makes the domain untrustworthy: it is dropped and the scope is reported
+    /// lost — the search finds nothing until the user re-establishes it —
+    /// rather than silently widening to the whole document.
+    public func noteTextChange(_ change: EditorTextChange) {
+        guard options.searchesSelectionOnly, let domain = searchDomain else { return }
+        switch change {
+        case .untracked:
+            searchDomain = nil
+            searchDomainLost = true
+        case let .edit(range, replacementLength):
+            let delta = replacementLength - range.length
+            let editEnd = NSMaxRange(range)
+            if editEnd <= domain.location {
+                searchDomain = NSRange(location: max(0, domain.location + delta), length: domain.length)
+            } else if range.location < NSMaxRange(domain) {
+                let start = min(domain.location, range.location)
+                let end = max(NSMaxRange(domain), editEnd) + delta
+                searchDomain = NSRange(location: start, length: max(0, end - start))
             }
         }
-        searchDomain = NSRange(location: max(0, start), length: max(0, end - start))
     }
 
     /// Moves to the next match, wrapping to the first if `options.wraps` and
