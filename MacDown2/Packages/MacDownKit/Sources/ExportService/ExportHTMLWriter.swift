@@ -90,7 +90,7 @@ public enum ExportHTMLWriter {
 
     private static func linkedStyleElement(_ prepared: PreparedExportDocument) -> String {
         let resource = linkedStylesheetResource(for: prepared.stylesheet)
-        let href = "\(prepared.assetsDirectoryName)/\(resource.identity.fileName)"
+        let href = "\(cmarkEscapedDestination(prepared.assetsDirectoryName))/\(resource.identity.fileName)"
         return "<link rel=\"stylesheet\" href=\"\(href)\">"
     }
 
@@ -105,7 +105,45 @@ public enum ExportHTMLWriter {
     /// gets more expensive with every image an export carries.
     static func embedResources(in body: String, manifest: ExportManifest, assetsDirectoryName: String) -> String {
         guard !manifest.resources.isEmpty else { return body }
+        // The renderer percent-encodes and HTML-escapes a rewritten `src` the way
+        // it does any destination, so for an output name with a space, non-ASCII,
+        // `&` or `'` the reference in the body is not the raw directory name —
+        // matching only the raw form silently left every local image un-embedded.
+        var result = body
+        for directory in referenceForms(of: assetsDirectoryName) {
+            result = embedResourcesForPrefix(in: result, manifest: manifest, prefix: "\(directory)/")
+        }
+        return result
+    }
 
+    /// The raw directory name plus the form cmark writes into an `href`/`src`.
+    static func referenceForms(of directoryName: String) -> [String] {
+        var forms = [directoryName]
+        let escaped = cmarkEscapedDestination(directoryName)
+        if !forms.contains(escaped) {
+            forms.append(escaped)
+        }
+        return forms
+    }
+
+    /// cmark's `houdini_escape_href`: unreserved/safe ASCII stays, `&` and `'`
+    /// become entities, every other UTF-8 byte is `%XX`.
+    static func cmarkEscapedDestination(_ text: String) -> String {
+        let safe = Set(Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.+!*(),%#@?=;:/$~".utf8))
+        var output = ""
+        for byte in text.utf8 {
+            switch byte {
+            case UInt8(ascii: "&"): output += "&amp;"
+            case UInt8(ascii: "'"): output += "&#x27;"
+            case let byte where safe.contains(byte): output += String(UnicodeScalar(byte))
+            default: output += String(format: "%%%02X", byte)
+            }
+        }
+        return output
+    }
+
+    private static func embedResourcesForPrefix(in body: String, manifest: ExportManifest, prefix: String) -> String {
+        guard !manifest.resources.isEmpty else { return body }
         var dataURIs: [String: String] = [:]
         dataURIs.reserveCapacity(manifest.resources.count)
         var embeddedBytes = 0
@@ -115,7 +153,6 @@ public enum ExportHTMLWriter {
             dataURIs[resource.identity.fileName] = uri
         }
 
-        let prefix = "\(assetsDirectoryName)/"
         var result = ""
         result.reserveCapacity(body.utf8.count + embeddedBytes)
 
