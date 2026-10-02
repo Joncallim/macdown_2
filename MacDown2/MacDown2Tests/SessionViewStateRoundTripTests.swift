@@ -179,4 +179,54 @@ struct SessionViewStateRoundTripTests {
 
         #expect(sessions.session?.tabs.count == 1)
     }
+
+    /// Suspends the FIRST caller until `release()`; later callers pass straight through.
+    @MainActor
+    private final class FirstCallGate {
+        private(set) var entered = false
+        private var continuation: CheckedContinuation<Void, Never>?
+        private var callCount = 0
+
+        func pass() async {
+            callCount += 1
+            guard callCount == 1 else { return }
+            entered = true
+            await withCheckedContinuation { continuation = $0 }
+        }
+
+        func release() {
+            continuation?.resume()
+            continuation = nil
+        }
+    }
+
+    @Test func anOlderSnapshotFinishingLateNeverRollsBackANewerPublishedSession() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+        let controller = try #require(coordinator.controllers.first)
+        let tabID = try #require(controller.model.tabStore.activeTabID)
+        let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        let gate = FirstCallGate()
+        coordinator.afterSessionRecoveryPersisted = { await gate.pass() }
+
+        // Snapshot A (caret 0) is taken, then suspends before publishing.
+        system.selectionSet = EditorSelectionSet(single: NSRange(location: 0, length: 0))
+        let older = Task { @MainActor in await coordinator.saveSessionResult() }
+        for _ in 0 ..< 1000 where !gate.entered {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(gate.entered)
+
+        // State moves on; snapshot B (caret 3) completes and publishes first.
+        system.selectionSet = EditorSelectionSet(single: NSRange(location: 3, length: 0))
+        #expect(await coordinator.saveSessionResult().persisted)
+        #expect(sessions.session?.tabs.first?.cursorPosition == 3)
+
+        // A resumes last. It must not overwrite the newer session.
+        gate.release()
+        #expect(await older.value.persisted)
+        #expect(sessions.session?.tabs.first?.cursorPosition == 3)
+    }
 }
