@@ -23,8 +23,12 @@ final class QuickOpenModel {
     private(set) var results: [IndexedPath] = []
     private(set) var selectedIndex = 0
     private(set) var isSearching = false
+    /// True when the workspace index failed (its folder vanished or became
+    /// unreadable) rather than the query merely matching nothing (#183 F18).
+    private(set) var isIndexUnavailable = false
 
     private let performQuery: @Sendable (String) async -> [IndexedPath]
+    private let indexIsUnavailable: @Sendable () async -> Bool
     private var queryGeneration = 0
 
     /// `recentRelativePaths` implements issue #112's "Recent-file history
@@ -36,6 +40,12 @@ final class QuickOpenModel {
     /// accept live, ongoing state.
     init(index: WorkspaceFileIndex, recentRelativePaths: Set<String> = []) {
         performQuery = { query in await index.query(query, limit: 100, recentRelativePaths: recentRelativePaths) }
+        indexIsUnavailable = {
+            if case .failed = await index.state {
+                return true
+            }
+            return false
+        }
     }
 
     /// Test-only seam: substitutes a caller-controlled query function for
@@ -55,8 +65,12 @@ final class QuickOpenModel {
     /// force the actual inversion the guard exists to handle — a newer
     /// query's result committed before an older, now-stale query's
     /// late-arriving one — via controlled continuations.
-    init(performQuery: @escaping @Sendable (String) async -> [IndexedPath]) {
+    init(
+        performQuery: @escaping @Sendable (String) async -> [IndexedPath],
+        indexIsUnavailable: @escaping @Sendable () async -> Bool = { false }
+    ) {
         self.performQuery = performQuery
+        self.indexIsUnavailable = indexIsUnavailable
     }
 
     /// Runs the current query once against the index. Intended to be called
@@ -77,8 +91,10 @@ final class QuickOpenModel {
         isSearching = true
         Task {
             let matches = await performQuery(currentQuery)
+            let unavailable = await indexIsUnavailable()
             guard generation == queryGeneration else { return } // superseded by a newer query
             results = matches
+            isIndexUnavailable = unavailable
             selectedIndex = results.isEmpty ? 0 : min(selectedIndex, results.count - 1)
             isSearching = false
         }

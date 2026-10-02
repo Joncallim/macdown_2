@@ -28,6 +28,35 @@ struct WorkspaceFileIndexTests {
         }
     }
 
+    /// #183 F18: a root that vanished must read as unavailable, not as an empty
+    /// workspace, and must not leave the previous snapshot's rows queryable.
+    @Test func aVanishedRootFailsTheIndexAndDropsTheStaleSnapshot() async throws {
+        let tree = try TempTree { _ in }
+        try tree.write("keep.txt")
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        #expect(await index.state == .ready(count: 1))
+
+        try FileManager.default.removeItem(at: tree.root)
+        await index.rebuild(root: tree.root)
+
+        guard case .failed = await index.state else {
+            await Issue.record("expected .failed, got \(index.state)")
+            return
+        }
+        #expect(await index.query("keep").isEmpty)
+        #expect(await index.allPaths().isEmpty)
+    }
+
+    @Test func aGenuinelyEmptyRootIsReadyNotFailed() async throws {
+        let tree = try TempTree { _ in }
+        let index = WorkspaceFileIndex()
+
+        await index.rebuild(root: tree.root)
+
+        #expect(await index.state == .ready(count: 0))
+    }
+
     @Test func indexesRegularFilesRecursively() async throws {
         let tree = try TempTree { root in
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

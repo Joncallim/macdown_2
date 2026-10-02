@@ -106,8 +106,25 @@ public actor WorkspaceFileIndex {
         currentWalkTask = task
         let result = await task.value
         guard currentGeneration == generation else { return } // superseded by a newer rebuild
+        // A vanished or unreadable root walks to an empty list, which would
+        // read as a genuinely empty workspace and leave the previous
+        // snapshot's rows usable. Report the failure and drop the stale
+        // snapshot instead (#183 F18).
+        if let failure = Self.unavailabilityReason(of: root) {
+            setPaths([])
+            state = .failed(failure)
+            return
+        }
         setPaths(result)
         state = .ready(count: result.count)
+    }
+
+    private static func unavailabilityReason(of root: URL) -> String? {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            return "The folder is no longer available."
+        }
+        return FileManager.default.isReadableFile(atPath: root.path) ? nil : "The folder cannot be read."
     }
 
     /// Discards the current snapshot and returns to `.empty` -- for when the

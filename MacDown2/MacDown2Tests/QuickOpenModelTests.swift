@@ -147,6 +147,23 @@ struct QuickOpenModelTests {
         #expect(model.selectedResult == newRows.first)
     }
 
+    @Test func anUnavailableIndexIsReportedDistinctlyFromNoMatches() async {
+        let unavailable = UnavailableFlag()
+        let model = QuickOpenModel(
+            performQuery: { _ in [] },
+            indexIsUnavailable: { await unavailable.value }
+        )
+
+        model.refresh()
+        await waitUntil { !model.isSearching }
+        #expect(!model.isIndexUnavailable, "an empty result from a healthy index is just 'no matches'")
+
+        await unavailable.set(true)
+        model.query = "x"
+        await waitUntil { model.isIndexUnavailable }
+        #expect(model.results.isEmpty)
+    }
+
     @Test func moveSelectionWrapsAroundInBothDirections() async throws {
         let tree = try TempTree(["a.txt", "b.txt"])
         let index = WorkspaceFileIndex()
@@ -248,4 +265,11 @@ private func waitUntil(
         try? await Task.sleep(for: .milliseconds(1))
     }
     Issue.record("Timed out waiting for QuickOpenModel to settle")
+}
+
+private actor UnavailableFlag {
+    private(set) var value = false
+    func set(_ newValue: Bool) {
+        value = newValue
+    }
 }
