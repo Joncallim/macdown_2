@@ -85,7 +85,11 @@ struct BlockView: View {
                     \.openURL,
                     OpenURLAction { url in
                         let resolved = linkResolver.resolve(url)
-                        NSWorkspace.shared.open(resolved)
+                        switch PreviewLinkResolver.action(for: resolved) {
+                        case .open: NSWorkspace.shared.open(resolved)
+                        case .reveal: NSWorkspace.shared.activateFileViewerSelecting([resolved])
+                        case .ignore: break
+                        }
                         return .handled
                     }
                 )
