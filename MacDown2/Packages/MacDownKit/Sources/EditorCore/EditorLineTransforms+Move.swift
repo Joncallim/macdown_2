@@ -66,12 +66,59 @@ extension EditorLineTransforms {
             delta += (replacement.replacementText as NSString).length - replacement.range.length
         }
 
+        // Swapping lines in a document that mixes `\r` and `\n` terminators can
+        // leave a moved `\r` directly in front of an unrelated `\n` (an empty line
+        // between them), which the next parse reads as ONE `\r\n`: a line would
+        // vanish and the terminators would be silently rewritten. Such a move has
+        // no faithful representation, so it declines instead (invariant 5).
+        guard !createsCRLFPair(replacements, in: text) else { return nil }
+
         return makeTransaction(
             replacements: replacements,
             resultsByOriginalIndex: resultsByOriginalIndex,
             selection: selection,
             undoActionName: moveUp ? "Move Line Up" : "Move Line Down"
         )
+    }
+
+    /// Whether applying `replacements` (ascending, non-overlapping) would place a
+    /// `\r` immediately before a `\n` where the original text had no such pair at
+    /// that seam. Only seams at replacement edges can change, so only those are
+    /// examined, with a neighbouring replacement's text standing in for the
+    /// original character when two replacements touch.
+    private static func createsCRLFPair(_ replacements: [TextReplacement], in text: NSString) -> Bool {
+        let carriageReturn = unichar(0x000D)
+        let lineFeed = unichar(0x000A)
+        for (index, replacement) in replacements.enumerated() {
+            let newText = replacement.replacementText as NSString
+            guard newText.length > 0 else { continue }
+            let start = replacement.range.location
+            let end = NSMaxRange(replacement.range)
+
+            let before: unichar? = if index > 0, NSMaxRange(replacements[index - 1].range) == start {
+                (replacements[index - 1].replacementText as NSString).length > 0
+                    ? (replacements[index - 1].replacementText as NSString)
+                    .character(at: (replacements[index - 1].replacementText as NSString).length - 1)
+                    : nil
+            } else if start > 0 {
+                text.character(at: start - 1)
+            } else {
+                nil
+            }
+            if before == carriageReturn, newText.character(at: 0) == lineFeed {
+                return true
+            }
+
+            // The seam after the last replacement (or before an untouched
+            // character) is checked here; a touching successor checks its own start.
+            let nextTouches = index + 1 < replacements.count && replacements[index + 1].range.location == end
+            if !nextTouches, end < text.length,
+               newText.character(at: newText.length - 1) == carriageReturn,
+               text.character(at: end) == lineFeed {
+                return true
+            }
+        }
+        return false
     }
 
     /// Rearranges the block `[startLine...endLine]` and the single adjacent
