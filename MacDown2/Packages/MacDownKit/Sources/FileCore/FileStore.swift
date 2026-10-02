@@ -6,6 +6,11 @@ public enum FileStoreError: Error {
     case readFailed(underlying: Error)
     case writeFailed(underlying: Error)
     case encodingDetectionFailed
+    /// The text cannot be written losslessly in the encoding (and BOM) that was
+    /// actually attempted. Carrying the attempted encoding lets callers name it
+    /// accurately even when the caller never chose it (a queued save that
+    /// inherited an accepted encoding change, #183 F10).
+    case textNotRepresentable(attempted: FileEncodingMetadata)
     case invalidURL
     case fileChangedDuringRead
     case notRegularFile
@@ -177,7 +182,7 @@ public struct FileStore: Sendable {
         let (expectedRevision, requireAbsent) = Self.resolveBaseline(expectedRevision, destinationBaseline)
 
         guard let data = encodedData(content, encoding: encoding, bom: bom) else {
-            throw .encodingDetectionFailed
+            throw .textNotRepresentable(attempted: FileEncodingMetadata(encoding: encoding, bom: bom))
         }
 
         do {

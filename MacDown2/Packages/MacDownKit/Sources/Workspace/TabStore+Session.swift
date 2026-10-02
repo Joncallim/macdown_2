@@ -107,7 +107,8 @@ extension TabStore {
         case .fileMissing: .missingOrMoved
         case .permissionDenied: .permissionDenied
         case .notRegularFile: .notRegularFile
-        case .readFailed, .writeFailed, .invalidURL, .encodingDetectionFailed, .fileChangedDuringRead,
+        case .readFailed, .writeFailed, .invalidURL, .encodingDetectionFailed, .textNotRepresentable,
+             .fileChangedDuringRead,
              .decodingFailed, .conditionalPublicationRecoveryRequired:
             .readFailed(String(describing: error))
         }

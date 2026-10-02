@@ -123,7 +123,7 @@ public actor WorkspaceReplaceEngine {
                 // `FileStore.write` also reports this from its post-publication
                 // read-back, after our bytes are already on disk.
                 return Self.contentEquals(url, updated) ? .replaced(count: count) : .skippedChangedSinceSearch
-            case .encodingDetectionFailed: return .skippedCannotRepresent
+            case .encodingDetectionFailed, .textNotRepresentable: return .skippedCannotRepresent
             case .fileMissing, .permissionDenied, .notRegularFile: return .skippedUnreadable
             case let .conditionalPublicationRecoveryRequired(recovery):
                 return .failed("An external change could not be restored; its bytes were kept at \(recovery.path)")

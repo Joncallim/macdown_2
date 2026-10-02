@@ -109,7 +109,7 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
             .unavailable(expectedURL, .notRegularFile)
         case let .readFailed(underlying):
             .unavailable(expectedURL, classifyReadFailure(underlying))
-        case .invalidURL, .encodingDetectionFailed, .fileChangedDuringRead, .writeFailed,
+        case .invalidURL, .encodingDetectionFailed, .textNotRepresentable, .fileChangedDuringRead, .writeFailed,
              .decodingFailed, .conditionalPublicationRecoveryRequired:
             .unavailable(expectedURL, .readFailed(String(describing: error)))
         }

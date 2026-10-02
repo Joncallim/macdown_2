@@ -105,6 +105,35 @@ struct WorkspaceModelSaveQueueTests {
         await writer.acknowledge(queuedOrdinary)
     }
 
+    /// #183 F10 ↔ F15: a representation failure names the encoding actually
+    /// attempted (the inherited one), not the stale queued document's metadata.
+    @Test func aRepresentationFailureNamesTheInheritedEncodingActuallyAttempted() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("encoding-failure-label.txt")
+        try "café".write(to: url, atomically: true, encoding: .utf8)
+        let writer = DocumentWriter()
+        let latin1 = FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        let original = try FileDocument(fileURL: url).load().edited(text: "café 1")
+        let encodingSave = try await writer.save(original, encodingOverride: latin1)
+
+        // The stale snapshot still says UTF-8, but the queued save inherits Latin-1,
+        // which cannot hold the emoji.
+        let staleSnapshot = original.edited(text: "café 😀")
+        #expect(staleSnapshot.encoding == .utf8Default)
+        do {
+            _ = try await writer.save(staleSnapshot)
+            Issue.record("expected the save to fail")
+        } catch {
+            guard case let .textNotRepresentable(attempted) = error else {
+                Issue.record("expected .textNotRepresentable, got \(error)")
+                return
+            }
+            #expect(attempted == latin1)
+        }
+        await writer.acknowledge(encodingSave)
+    }
+
     @Test func anExplicitEncodingOnALaterSaveStillWins() async throws {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
