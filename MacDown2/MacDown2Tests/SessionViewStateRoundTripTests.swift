@@ -229,4 +229,29 @@ struct SessionViewStateRoundTripTests {
         #expect(await older.value.persisted)
         #expect(sessions.session?.tabs.first?.cursorPosition == 3)
     }
+
+    /// Review pass 1: the canonical session record must carry the document's
+    /// encoding/BOM, or a Latin-1/UTF-16 file fails strict UTF-8 on restore.
+    @Test func theCanonicalSessionRecordCarriesTheDocumentsEncoding() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+        let controller = try #require(coordinator.controllers.first)
+        let latin1 = FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        controller.model.tabStore.updateActiveDocument {
+            FileDocument(
+                fileURL: $0.fileURL,
+                text: $0.text,
+                encoding: latin1,
+                recoveryBuffer: $0.recoveryBuffer,
+                documentID: $0.id,
+                recoveryEpoch: $0.recoveryEpoch
+            )
+        }
+
+        #expect(await coordinator.saveSessionResult().persisted)
+
+        #expect(sessions.session?.tabs.first?.encoding == latin1)
+    }
 }

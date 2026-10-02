@@ -959,6 +959,10 @@ Per the owner's explicit technical-dependency-order instruction, slices are orde
 
 **Goal:** re-run affected E15 evidence rows, produce E16's post-E22 localisation delta (extraction + fr/pl/ja translation + pseudo-localisation, per `epic-16-implementation.md`'s established workflow) **only if** the owner has by then also completed E23 per the current sequencing (E22 → identity re-freeze → E23 → #115 → final E16 freeze) — otherwise this slice records E22's own string/UI delta honestly as a partial update to the interim baseline and defers the *final* freeze declaration to after E23/#115, per §12 above. Confirm zero unresolved P0/P1 introduced by E22 before considering the epic release-complete.
 
+### Post-gate orthogonal review (pass 1, 2026-10-02)
+
+- **R1c** — implemented (P1, session fidelity): the canonical session writer (`WindowCoordinator.sessionSnapshot`) built each `TabRecord` without the document's encoding/BOM (only the test-only `TabStore.currentSession` set it). A file reopened as Latin-1/Shift-JIS or BOM-less UTF-16 therefore failed strict UTF-8 on relaunch (a clean tab vanished, a dirty one came back "unavailable"), and an untitled document created with a non-UTF-8 default restored as UTF-8 so the first save silently changed the encoding (invariant #5). The record now carries `encoding`. Test: a Latin-1 document's session record round-trips its encoding.
+
 ## 18. Definition of Done and residual risk
 
 Per `EPIC_STANDARD.md` §4, plus the epic issue's own acceptance criteria (both the original ~19-item list and the "Additional acceptance criteria" from the 2026-09-21 inherited-debt amendment) — not restated verbatim here to avoid drift between two copies; this document's binding completion gate is: **every checkbox in the epic issue is either checked with linked evidence, or explicitly, individually dispositioned (FIXED/PROVED/REJECTED-FOR-1.0) in `RELEASE_EVIDENCE.md`, before E22 is considered release-complete for the #115 gate.**
