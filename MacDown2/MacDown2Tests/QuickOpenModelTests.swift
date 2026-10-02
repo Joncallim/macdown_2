@@ -125,6 +125,28 @@ struct QuickOpenModelTests {
         #expect(model.results == freshResult, "a late-arriving stale query result must not overwrite the newer one")
     }
 
+    @Test func rowsFromThePreviousQueryAreNotActionableWhileANewQueryIsPending() async {
+        let gate = QueryGate()
+        let oldRows = [IndexedPath(relativePath: "old.txt", basename: "old.txt")]
+        let newRows = [IndexedPath(relativePath: "new.txt", basename: "new.txt")]
+        let model = QuickOpenModel(performQuery: { query in await gate.hold(query) })
+
+        model.query = "old"
+        await gate.waitUntilPending("old")
+        await gate.release("old", with: oldRows)
+        await waitUntil { model.results == oldRows }
+        #expect(model.selectedResult == oldRows.first)
+
+        model.query = "new" // the old rows are still displayed, but belong to the previous query
+        await gate.waitUntilPending("new")
+        #expect(model.results == oldRows)
+        #expect(model.selectedResult == nil, "Return/click must not open a row from the superseded query")
+
+        await gate.release("new", with: newRows)
+        await waitUntil { model.results == newRows }
+        #expect(model.selectedResult == newRows.first)
+    }
+
     @Test func moveSelectionWrapsAroundInBothDirections() async throws {
         let tree = try TempTree(["a.txt", "b.txt"])
         let index = WorkspaceFileIndex()

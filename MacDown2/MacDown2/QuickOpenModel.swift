@@ -90,7 +90,11 @@ final class QuickOpenModel {
         selectedIndex = ((selectedIndex + delta) % count + count) % count
     }
 
+    /// The row Return/click would open. `nil` while a newer query is still
+    /// pending: until its response lands, `results` belong to the PREVIOUS
+    /// query, and acting on one would open a file the user's current text no
+    /// longer asks for (#183 F19).
     var selectedResult: IndexedPath? {
-        results[safe: selectedIndex]
+        isSearching ? nil : results[safe: selectedIndex]
     }
 }
