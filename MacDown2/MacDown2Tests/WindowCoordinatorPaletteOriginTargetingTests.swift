@@ -120,6 +120,10 @@ struct PaletteOriginTargetingTests {
             fixture.coordinator.controllers.count > controllersBefore
                 && fixture.controllerA.fileTreeModel.selectedURL != nil
                 && fixture.coordinator.controllers.last?.model.activeDocument?.fileURL != nil
+                // The sequence ends when `createInFolder` clears the pending-open marker
+                // after `openDocument` returns; opens are now serialised per file, so that
+                // continuation runs a few main-actor hops after the window appears.
+                && fixture.controllerA.fileTreeModel.pendingOpenURL == nil
         }
         defer { fixture.coordinator.controllers.last?.close() }
 
