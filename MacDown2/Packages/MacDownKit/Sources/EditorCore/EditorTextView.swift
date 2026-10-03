@@ -28,10 +28,12 @@ public final class EditorTextView: NSTextView {
     /// and it acts on the WINDOW's undo manager — an empty one now that every tab owns its own — so
     /// the text view answers them itself, ahead of the window in the responder chain.
     @objc public func undo(_: Any?) {
+        cancelComposition()
         undoManager?.undo()
     }
 
     @objc public func redo(_: Any?) {
+        cancelComposition()
         undoManager?.redo()
     }
 

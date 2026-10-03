@@ -225,12 +225,19 @@ public struct EditorView: NSViewRepresentable {
         /// line index must stay correct after every one of them, not just
         /// the transaction's final state.
         public func textDidChange(_: Notification) {
+            // Marked-text edits post no didChange; whatever they changed must not survive into the cache.
+            if let system, !system.isApplyingMultiRangeTransaction {
+                system.storedSelectionSet = nil
+            }
             if let system, let pending = pendingLineIndexEdit {
                 system.noteIncrementalEdit(
                     editedRange: pending.range,
                     replacementUTF16Length: pending.replacementUTF16Length
                 )
                 pendingLineIndexEdit = nil
+            } else {
+                // No edit was reported for this change (a composition's marked text): repair a stale index.
+                system?.rebuildLineIndexIfStale()
             }
             // The gutter has no way to know about a text edit on its own
             // (unlike scrolling, which NSRulerView already tracks via its

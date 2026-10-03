@@ -40,6 +40,24 @@ extension EditorTextSystem {
         textChangeObserver?(.edit(range: editedRange, replacementLength: replacementUTF16Length))
     }
 
+    /// Repairs the line index when marked-text (IME / dead-key) edits, which post no `didChange`, left it out of step
+    /// with the text — a cancelled composition over a selection changes the length with no edit ever reported.
+    func rebuildLineIndexIfStale() {
+        let live = assistTextSource ?? (text as NSString)
+        if lineIndex.utf16Length != live.length {
+            rebuildLineIndex()
+        }
+    }
+
+    /// A composition ended (committed or cancelled). Rebuilds the index and, when the text no longer matches what
+    /// was last published, tells the delegate so the binding catches up before the next SwiftUI update pass
+    /// (which would otherwise push the stale binding back with `setText`, reverting the text and wiping undo).
+    func compositionDidEnd() {
+        rebuildLineIndex()
+        storedSelectionSet = nil
+        textView.didChangeText()
+    }
+
     /// Full rebuild for edit paths that bypass the incremental hook above
     /// entirely — currently just undo/redo (see `registerUndoRedoObservers()`
     /// below). Undo/redo are comparatively rare next to every-keystroke
