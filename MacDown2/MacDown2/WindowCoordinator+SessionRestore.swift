@@ -29,7 +29,7 @@ extension WindowCoordinator {
     func restoreUnsavedSessionTabs() async {
         guard let session = launchSession else { return }
         launchSession = nil
-        let tempStore = TabStore(sessionStore: LaunchSessionStore(session: session))
+        let tempStore = TabStore(sessionStore: LaunchSessionStore(session: session), recoveryBuffer: recoveryBuffer)
         await tempStore.restoreSessionIfNeeded()
         let unsaved = Self.unsavedTabs(in: tempStore.tabs)
         guard !unsaved.isEmpty else { return }

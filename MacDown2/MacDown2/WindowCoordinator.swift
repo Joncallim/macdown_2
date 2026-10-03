@@ -295,7 +295,7 @@ final class WindowCoordinator {
     /// restore pipeline — split out to keep this file under the type-body-
     /// length lint budget.
     func restoreSession() async {
-        let tempStore = TabStore(sessionStore: sessionStore)
+        let tempStore = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
         await tempStore.restoreSessionIfNeeded()
 
         guard !tempStore.tabs.isEmpty else {
