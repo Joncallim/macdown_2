@@ -38,6 +38,14 @@ extension WorkspaceModel {
         }.value
     }
 
+    /// After the off-main destination read the user may have typed. That is not a reason to abandon an explicit
+    /// command: `applySaveAs` merges later edits into the rebound document. Only a different document (closed,
+    /// replaced, another lifetime) cancels.
+    func activeDocumentSharesLifetime(with expected: FileDocument) -> Bool {
+        guard let active = tabStore.activeDocument else { return false }
+        return isSameDocumentLifetime(active, expected)
+    }
+
     func isLatestSave(_ context: SaveContext) -> Bool {
         latestSaveGenerationByDocumentID[context.documentID] == context.generation
     }

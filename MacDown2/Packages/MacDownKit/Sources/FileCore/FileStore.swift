@@ -243,7 +243,7 @@ public struct FileStore: Sendable {
     ) throws(FileStoreError) -> FileRevision {
         if let expectedRevision {
             let actual = try readRevision(from: url)
-            guard actual == expectedRevision else { throw .fileChangedDuringRead }
+            guard actual.isSameObjectAndContent(as: expectedRevision) else { throw .fileChangedDuringRead }
         }
         try requireAbsentIfNeeded(requireAbsent, at: url)
 
@@ -269,7 +269,8 @@ public struct FileStore: Sendable {
             // restored instead of being overwritten.
             if let expectedRevision {
                 let actual = try readRevision(from: url)
-                guard actual == expectedRevision else { throw FileStoreError.fileChangedDuringRead }
+                guard actual.isSameObjectAndContent(as: expectedRevision)
+                else { throw FileStoreError.fileChangedDuringRead }
             }
             // Test seam deliberately positioned in the former verification to
             // replacement window. The conditional swap below must preserve a
