@@ -142,6 +142,10 @@ enum FencedRegionClassifier {
 
         let infoString = text.substring(with: NSRange(location: index, length: lineContentEnd - index))
             .trimmingCharacters(in: .whitespaces)
+        // A backtick fence's info string cannot contain a backtick: "```x```" is inline code, not a fence.
+        if marker == 0x60, infoString.contains("`") {
+            return nil
+        }
         let firstToken = infoString.split(separator: " ").first.map { String($0).lowercased() }
         return FenceDelimiter(
             character: marker,
