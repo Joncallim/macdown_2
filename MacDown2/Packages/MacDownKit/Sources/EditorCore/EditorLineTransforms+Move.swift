@@ -71,7 +71,9 @@ extension EditorLineTransforms {
         // between them), which the next parse reads as ONE `\r\n`: a line would
         // vanish and the terminators would be silently rewritten. Such a move has
         // no faithful representation, so it declines instead (invariant 5).
-        guard !createsCRLFPair(replacements, in: text) else { return nil }
+        guard !createsCRLFPair(replacements, in: text), !fusesInsideReplacement(replacements, in: text) else {
+            return nil
+        }
 
         return makeTransaction(
             replacements: replacements,
@@ -79,6 +81,17 @@ extension EditorLineTransforms {
             selection: selection,
             undoActionName: moveUp ? "Move Line Up" : "Move Line Down"
         )
+    }
+
+    /// A swap keeps every terminator but can put a `\r` next to a `\n` INSIDE the replacement text
+    /// (`blockJoined + adjacentTerminator + adjacentContent`), which `createsCRLFPair` — it only looks at
+    /// seams at replacement edges — cannot see. A swap must never create more CRLF pairs than it replaced.
+    static func fusesInsideReplacement(_ replacements: [TextReplacement], in text: NSString) -> Bool {
+        func pairs(_ string: String) -> Int {
+            let units = Array(string.utf16)
+            return units.count < 2 ? 0 : (1 ..< units.count).count { units[$0 - 1] == 0x0D && units[$0] == 0x0A }
+        }
+        return replacements.contains { pairs($0.replacementText) > pairs(text.substring(with: $0.range)) }
     }
 
     /// Whether applying `replacements` (ascending, non-overlapping) would place a

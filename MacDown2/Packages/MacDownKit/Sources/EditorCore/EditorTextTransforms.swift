@@ -112,6 +112,8 @@ enum EditorTextTransforms {
             replacements.append(TextReplacement(range: trimRange, replacementText: ""))
         }
         guard !replacements.isEmpty else { return nil }
+        // Deleting the spaces between a lone `\r` and the `\n` after it would fuse them into one CRLF.
+        guard !EditorLineTransforms.createsCRLFPair(replacements, in: text) else { return nil }
 
         let resultingRanges = selection.ranges.map { remapPosition($0, throughDeletionsIn: replacements) }
         return EditorEditTransaction(

@@ -65,6 +65,8 @@ extension EditorTextTransforms {
         }
 
         guard !accumulator.replacements.isEmpty else { return nil }
+        // Decrease Indent removing the blanks between a lone `\r` and the next `\n` would fuse them.
+        guard !EditorLineTransforms.createsCRLFPair(accumulator.replacements, in: text) else { return nil }
         return EditorLineTransforms.makeTransaction(
             replacements: accumulator.replacements,
             resultsByOriginalIndex: accumulator.resultsByOriginalIndex,
