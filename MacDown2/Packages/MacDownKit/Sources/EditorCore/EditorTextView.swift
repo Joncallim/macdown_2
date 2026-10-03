@@ -87,10 +87,13 @@ public final class EditorTextView: NSTextView {
     }
 
     override public func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        // Find highlights are translucent and drawn AFTER the view's own drawing: drawn
+        // before `super.draw(_:)` — as they once were — the background fill painted over
+        // them, so no match was ever visible.
         if !findHighlightRanges.isEmpty, let textLayoutManager {
             drawFindHighlights(in: dirtyRect, layoutManager: textLayoutManager)
         }
-        super.draw(dirtyRect)
         if showsInvisibles, let textLayoutManager {
             drawInvisibles(in: dirtyRect, layoutManager: textLayoutManager)
         }
