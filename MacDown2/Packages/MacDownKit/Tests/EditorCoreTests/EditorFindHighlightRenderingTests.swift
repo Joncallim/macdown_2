@@ -85,10 +85,16 @@ struct EditorFindHighlightRenderingTests {
         let mounted = try mount(text: "aaa\nbbb\nfoo bar\nxxx")
         defer { mounted.window.orderOut(nil) }
         mounted.system.setFindHighlights(ranges: [NSRange(location: 8, length: 3)], currentIndex: 0)
-        let found = try bands(render(mounted.textView))
+        let bitmap = try render(mounted.textView)
+        let found = bands(bitmap)
         #expect(found.count == 1)
-        // Line 3 sits below lines 1 and 2: its band starts well below the top of the view.
-        #expect((found.first?.lowerBound ?? 0) > 70, "match on line 3 must be drawn on line 3: \(found)")
+        // Line 3 sits below lines 1 and 2, so its band starts well down the 200-point view
+        // (~23%; line 1 would start at ~4%). Relative, so the display scale factor (1x on a
+        // CI runner, 2x on a Retina Mac) does not matter.
+        #expect(
+            (found.first?.lowerBound ?? 0) > bitmap.pixelsHigh / 8,
+            "match on line 3 must be drawn on line 3: \(found)"
+        )
     }
 
     @Test func aMatchAtOffsetZeroIsDrawnOnTheFirstLineOnly() throws {
