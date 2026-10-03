@@ -67,28 +67,21 @@ enum ExportComposer {
         let parsed = try await parse(request: request, engine: engine)
         try Task.checkCancellation()
 
-        let derived = DerivedContentComposer.compose(
-            bodyText: parsed.bodyText,
-            bodyStartOffset: parsed.bodyStartOffset,
-            sourceUTF16Length: sourceUTF16Length,
-            contributions: request.contributions,
-            sourceGeneration: request.sourceGeneration,
-            budget: budget,
-            containerRanges: parsed.containerRanges
+        let output = try renderDerived(
+            request: request, parsed: parsed, policy: policy,
+            assetsDirName: assetsDirName, budget: budget
         )
-
-        let resolver = ExportResourceResolver(
-            documentDirectory: request.documentDirectory,
-            unresolvedIsFatal: policy.unresolvedResourcesAreFatal,
-            budget: budget,
-            assetsDirectoryName: assetsDirName
+        let (derived, rendered, resolver, leakWarnings) = (
+            output.derived,
+            output.rendered,
+            output.resolver,
+            output.leakWarnings
         )
-        let rendered = try renderBody(derived: derived, policy: policy, resolver: resolver)
         try Task.checkCancellation()
         try checkPreparedBudget(bytes: rendered.html.utf8.count, budget: budget)
 
         let diagnostics = try resolve(
-            derived: parsed.metadata.diagnostics + derived.diagnostics,
+            derived: parsed.metadata.diagnostics + derived.diagnostics + leakWarnings,
             resources: resolver.diagnostics,
             rendered: rendered,
             policy: policy
@@ -181,7 +174,7 @@ enum ExportComposer {
     /// The parsed source: resolved document metadata, the body text (front
     /// matter stripped), and the body's exact UTF-16 offset within the original
     /// text.
-    private struct ParsedSource {
+    struct ParsedSource {
         let metadata: ExportMetadata
         let bodyText: String
         let bodyStartOffset: Int
@@ -246,7 +239,7 @@ enum ExportComposer {
         return level == 1
     }
 
-    private static func renderBody(
+    static func renderBody(
         derived: DerivedContentComposer.Result,
         policy: Policy,
         resolver: ExportResourceResolver
