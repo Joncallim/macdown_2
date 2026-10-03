@@ -66,6 +66,13 @@ public enum HTMLPreviewResponseHeaders {
     public static func hardeningHeaders(for policy: HTMLPreviewPolicy) -> [String: String] {
         [contentSecurityPolicy: policy.contentSecurityPolicy]
     }
+
+    /// `hardeningHeaders` plus the `Content-Type` every response needs (see `HTMLPreviewContentType`).
+    public static func headers(for policy: HTMLPreviewPolicy, contentType: String) -> [String: String] {
+        var headers = hardeningHeaders(for: policy)
+        headers["Content-Type"] = contentType
+        return headers
+    }
 }
 
 // MARK: - Request
