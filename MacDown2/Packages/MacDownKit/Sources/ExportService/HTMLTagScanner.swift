@@ -160,4 +160,29 @@ enum HTMLTagScanner {
         }
         return nil
     }
+
+    /// The index after the end of the comment opening at `start`: the first `-->` or `--!>` after the opener, or
+    /// the abrupt `<!-->` / `<!--->` forms; `nil` (drop the rest) when it never ends.
+    static func commentEnd(from start: Int, in scalars: [Unicode.Scalar]) -> Int? {
+        let bodyStart = start + 4
+        if hasPrefix(">", at: bodyStart, in: scalars) {
+            return bodyStart + 1
+        }
+        if hasPrefix("->", at: bodyStart, in: scalars) {
+            return bodyStart + 2
+        }
+        var index = bodyStart
+        while index + 2 < scalars.count {
+            if scalars[index] == "-", scalars[index + 1] == "-" {
+                if scalars[index + 2] == ">" {
+                    return index + 3
+                }
+                if scalars[index + 2] == "!", index + 3 < scalars.count, scalars[index + 3] == ">" {
+                    return index + 4
+                }
+            }
+            index += 1
+        }
+        return nil
+    }
 }

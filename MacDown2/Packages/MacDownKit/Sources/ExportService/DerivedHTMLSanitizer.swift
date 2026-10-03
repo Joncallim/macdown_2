@@ -18,9 +18,17 @@ enum DerivedHTMLSanitizer {
         return compiled
     }
 
-    private static let blockedElements: Set<String> = ["script", "iframe", "object", "embed"]
+    /// Elements that execute, embed, navigate or submit. `meta`/`base`/`form`/`link` matter because a diagram's
+    /// text can reach markup (Graphviz does not escape `"` in `fontname`), so an author could otherwise inject a
+    /// page redirect, a rebased URL, a phishing form or remote CSS.
+    private static let blockedElements: Set<String> = [
+        "script", "iframe", "object", "embed", "meta", "base", "form", "link",
+        "frame", "frameset", "applet", "plaintext",
+    ]
     private static let urlAttributes: Set<String> = ["href", "xlink:href", "src", "action", "formaction"]
-    private static let animationElements: Set<String> = ["set", "animate", "animatetransform", "animatemotion"]
+    /// SMIL elements that can set an attribute (`<set attributeName="href" to="javascript:…">`, whose name an
+    /// entity can disguise: `&#104;ref`) are dropped outright; transform/motion animation cannot set one.
+    private static let animationElements: Set<String> = ["set", "animate"]
 
     /// A single linear pass over the markup: text between tags is copied untouched, and every tag is
     /// re-emitted from its parsed name and attributes, so nothing outside a tag is ever rewritten and the
@@ -49,11 +57,14 @@ enum DerivedHTMLSanitizer {
         in scalars: [Unicode.Scalar],
         into output: inout String.UnicodeScalarView
     ) -> Int? {
+        // Comments, CDATA, doctypes and processing instructions are never copied through. A browser may end them
+        // somewhere other than where this scan does (`--!>` ends a comment; CDATA outside svg/math is a bogus
+        // comment ending at the first `>`), and whatever it then reads as markup would pass unsanitised.
         if HTMLTagScanner.hasPrefix("<!--", at: start, in: scalars) {
-            return HTMLTagScanner.copyThrough("-->", from: start, in: scalars, into: &output)
+            return HTMLTagScanner.commentEnd(from: start, in: scalars)
         }
         if HTMLTagScanner.hasPrefix("<![CDATA[", at: start, in: scalars) {
-            return HTMLTagScanner.copyThrough("]]>", from: start, in: scalars, into: &output)
+            return emitCDATAContentAsText(at: start, in: scalars, into: &output)
         }
         guard let tag = HTMLTagScanner.parseTag(at: start, in: scalars) else {
             let nextIndex = start + 1
@@ -62,8 +73,8 @@ enum DerivedHTMLSanitizer {
                 return nextIndex
             }
             let following = scalars[nextIndex]
-            if following == "!" || following == "?" { // doctype, XML declaration
-                return HTMLTagScanner.copyThrough(">", from: start, in: scalars, into: &output)
+            if following == "!" || following == "?" { // doctype, XML declaration, bogus comment: dropped
+                return HTMLTagScanner.skipPast(">", from: start, in: scalars, caseSensitive: true)
             }
             if following == "/" { // `</` + non-letter is a bogus comment: dropped
                 return HTMLTagScanner.skipPast(">", from: start, in: scalars, caseSensitive: true)
@@ -83,13 +94,32 @@ enum DerivedHTMLSanitizer {
             }
             return next
         }
-        if animationElements.contains(tag.name),
-           tag.attributes
-           .contains(where: { $0.name == "attributename" && $0.value?.lowercased().contains("href") == true }) {
+        if animationElements.contains(tag.name) {
             return next
         }
         output.append(contentsOf: render(tag).unicodeScalars)
         return next
+    }
+
+    /// A CDATA section's content as inert text (`&` and `<` escaped, no markers), whatever namespace the browser
+    /// thinks it is in. Inside `<svg>` `&lt;`/`&amp;` decode back, so a `<style>` rule keeps its meaning.
+    private static func emitCDATAContentAsText(
+        at start: Int,
+        in scalars: [Unicode.Scalar],
+        into output: inout String.UnicodeScalarView
+    ) -> Int? {
+        let contentStart = start + "<![CDATA[".unicodeScalars.count
+        guard let end = HTMLTagScanner.skipPast("]]>", from: contentStart, in: scalars, caseSensitive: true) else {
+            return nil
+        }
+        for scalar in scalars[contentStart ..< end - 3] {
+            switch scalar {
+            case "&": output.append(contentsOf: "&amp;".unicodeScalars)
+            case "<": output.append(contentsOf: "&lt;".unicodeScalars)
+            default: output.append(scalar)
+            }
+        }
+        return end
     }
 
     private static func render(_ tag: HTMLTagScanner.Tag) -> String {
@@ -109,7 +139,13 @@ enum DerivedHTMLSanitizer {
                 ) {
                     value = "#"
                 }
-                result += " \(attribute.name)=\"\(value.replacingOccurrences(of: "\"", with: "&quot;"))\""
+                // `<` and `>` are escaped too: a raw `</textarea>` or `</style>` inside an attribute value would
+                // end a raw-text element in the browser and let the rest of the value be read as markup.
+                let escaped = value
+                    .replacingOccurrences(of: "\"", with: "&quot;")
+                    .replacingOccurrences(of: "<", with: "&lt;")
+                    .replacingOccurrences(of: ">", with: "&gt;")
+                result += " \(attribute.name)=\"\(escaped)\""
             }
         }
         if tag.isSelfClosing, !tag.isClosing {
