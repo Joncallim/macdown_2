@@ -104,7 +104,7 @@ extension MarkdownEditingAssistEngine {
         }
         let newContent = newPieces.joined(separator: "\n")
 
-        let resultingSelection = remappedSelection(
+        let resultingSelection = absoluteRemappedSelection(
             original: selection,
             rangeLocation: range.location,
             lineLengths: realLines.map(\.utf16.count),
@@ -163,6 +163,26 @@ extension MarkdownEditingAssistEngine {
     }
 
     // MARK: - Selection remap
+
+    /// `remappedSelection`, positioned in the document: the relative result plus `rangeLocation`. The engine's
+    /// `EditingAssistEdit.resultingSelection` is absolute, and using the relative value directly put the selection
+    /// at the wrong place for any edit not on the first line (Tab on a selection selected `aaa\n   ` instead).
+    static func absoluteRemappedSelection(
+        original: NSRange,
+        rangeLocation: Int,
+        lineLengths: [Int],
+        deltas: [Int],
+        newLength: Int
+    ) -> NSRange {
+        let relative = remappedSelection(
+            original: original,
+            rangeLocation: rangeLocation,
+            lineLengths: lineLengths,
+            deltas: deltas,
+            newLength: newLength
+        )
+        return NSRange(location: rangeLocation + relative.location, length: relative.length)
+    }
 
     /// Maps a selection across a per-line transform using exact UTF-16 deltas.
     static func remappedSelection(
