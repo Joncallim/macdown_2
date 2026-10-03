@@ -108,7 +108,7 @@ extension MarkdownEditingAssistEngine {
         let range = selectedLineRange(text: text, selection: selection)
         let content = text.substring(with: range)
         let pieces = content.components(separatedBy: "\n")
-        let hasSyntheticTrailing = content.hasSuffix("\n")
+        let hasSyntheticTrailing = Self.endsWithLineFeed(content)
         let realCount = pieces.count - (hasSyntheticTrailing ? 1 : 0)
         let realLines = Array(pieces.prefix(realCount))
 
