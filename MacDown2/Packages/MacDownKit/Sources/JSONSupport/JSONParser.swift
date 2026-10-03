@@ -38,7 +38,7 @@ public enum JSONParser {
 
         guard !scanner.isAtEnd else {
             return .invalid(JSONDiagnostic(
-                message: String(localized: "Empty input: expected a JSON value."),
+                message: String(localized: "Empty input: expected a JSON value.", bundle: .module),
                 line: 1,
                 column: 1,
                 range: nil
@@ -51,7 +51,7 @@ public enum JSONParser {
             scanner.skipWhitespace()
             if !scanner.isAtEnd {
                 return .invalid(scanner.diagnostic(
-                    String(localized: "Unexpected content after the JSON value."), at: scanner.position
+                    String(localized: "Unexpected content after the JSON value.", bundle: .module), at: scanner.position
                 ))
             }
             return .valid(node)

@@ -38,25 +38,25 @@ public enum TextFilterError: Error, LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case let .launchFailed(underlying):
-            String(localized: "Couldn't run the command: \(underlying)")
+            String(localized: "Couldn't run the command: \(underlying)", bundle: .module)
         case let .nonZeroExit(code, stderr):
             if stderr.isEmpty {
-                String(localized: "The command exited with status \(code).")
+                String(localized: "The command exited with status \(code).", bundle: .module)
             } else {
-                String(localized: "The command exited with status \(code): \(stderr)")
+                String(localized: "The command exited with status \(code): \(stderr)", bundle: .module)
             }
         case .timedOut:
-            String(localized: "The command took too long and was stopped.")
+            String(localized: "The command took too long and was stopped.", bundle: .module)
         case .cancelled:
-            String(localized: "The command was cancelled.")
+            String(localized: "The command was cancelled.", bundle: .module)
         case .outputTooLarge:
-            String(localized: "The command produced more output than MacDown 2 will accept.")
+            String(localized: "The command produced more output than MacDown 2 will accept.", bundle: .module)
         case .outputNotDecodable:
-            String(localized: "The command's output wasn't valid text.")
+            String(localized: "The command's output wasn't valid text.", bundle: .module)
         case .outputIncomplete:
-            String(localized: "The command's output could not be fully read.")
+            String(localized: "The command's output could not be fully read.", bundle: .module)
         case .terminationUnconfirmed:
-            String(localized: "The command could not be confirmed stopped.")
+            String(localized: "The command could not be confirmed stopped.", bundle: .module)
         }
     }
 }

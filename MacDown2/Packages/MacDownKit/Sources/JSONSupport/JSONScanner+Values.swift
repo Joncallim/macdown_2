@@ -5,7 +5,7 @@ extension JSONScanner {
 
     mutating func parseValue() -> ParseResult {
         guard let unit = peek() else {
-            return .diagnostic(diagnostic(String(localized: "Expected a JSON value."), at: position))
+            return .diagnostic(diagnostic(localized("Expected a JSON value."), at: position))
         }
         switch unit {
         case 0x7B: // {
@@ -19,17 +19,14 @@ extension JSONScanner {
         case 0x2D, 0x30 ... 0x39: // - or digit
             return parseNumber()
         default:
-            return .diagnostic(diagnostic(
-                String(localized: "Unexpected character while reading a JSON value."),
-                at: position
-            ))
+            return .diagnostic(diagnostic(localized("Unexpected character while reading a JSON value."), at: position))
         }
     }
 
     mutating func parseObject() -> ParseResult {
         guard nestingDepth < JSONParser.maxNestingDepth else {
             return .diagnostic(diagnostic(
-                String(localized: "Document exceeds the maximum nesting depth of \(JSONParser.maxNestingDepth)."),
+                localized("Document exceeds the maximum nesting depth of \(JSONParser.maxNestingDepth)."),
                 at: position
             ))
         }
@@ -69,10 +66,7 @@ extension JSONScanner {
 
             skipWhitespace()
             guard let unit = peek() else {
-                return .diagnostic(diagnostic(
-                    String(localized: "Unterminated object: expected ',' or '}'."),
-                    at: position
-                ))
+                return .diagnostic(diagnostic(localized("Unterminated object: expected ',' or '}'."), at: position))
             }
             if unit == 0x2C { // ,
                 position += 1
@@ -86,7 +80,7 @@ extension JSONScanner {
                     lineRange: lineRange(from: start, to: position)
                 ))
             }
-            return .diagnostic(diagnostic(String(localized: "Expected ',' or '}' in object."), at: position))
+            return .diagnostic(diagnostic(localized("Expected ',' or '}' in object."), at: position))
         }
     }
 
@@ -96,7 +90,7 @@ extension JSONScanner {
         firstDefinitionLine: inout [[UInt16]: Int]
     ) -> ObjectMemberResult {
         guard peek() == 0x22 else {
-            return .diagnostic(diagnostic(String(localized: "Expected a quoted object key."), at: position))
+            return .diagnostic(diagnostic(localized("Expected a quoted object key."), at: position))
         }
         let keyResult = parseStringRaw()
         let key: String
@@ -112,7 +106,7 @@ extension JSONScanner {
         let keyUnits = Array(key.utf16)
         if let firstLine = firstDefinitionLine[keyUnits] {
             return .diagnostic(diagnostic(
-                String(localized: "Duplicate object key '\(key)' (first defined at line \(firstLine))."),
+                localized("Duplicate object key '\(key)' (first defined at line \(firstLine))."),
                 at: keyRange.lowerBound
             ))
         }
@@ -120,7 +114,7 @@ extension JSONScanner {
 
         skipWhitespace()
         guard peek() == 0x3A else { // :
-            return .diagnostic(diagnostic(String(localized: "Expected ':' after object key."), at: position))
+            return .diagnostic(diagnostic(localized("Expected ':' after object key."), at: position))
         }
         position += 1
         skipWhitespace()
@@ -136,7 +130,7 @@ extension JSONScanner {
     mutating func parseArray() -> ParseResult {
         guard nestingDepth < JSONParser.maxNestingDepth else {
             return .diagnostic(diagnostic(
-                String(localized: "Document exceeds the maximum nesting depth of \(JSONParser.maxNestingDepth)."),
+                localized("Document exceeds the maximum nesting depth of \(JSONParser.maxNestingDepth)."),
                 at: position
             ))
         }
@@ -167,10 +161,7 @@ extension JSONScanner {
 
             skipWhitespace()
             guard let unit = peek() else {
-                return .diagnostic(diagnostic(
-                    String(localized: "Unterminated array: expected ',' or ']'."),
-                    at: position
-                ))
+                return .diagnostic(diagnostic(localized("Unterminated array: expected ',' or ']'."), at: position))
             }
             if unit == 0x2C { // ,
                 position += 1
@@ -184,7 +175,7 @@ extension JSONScanner {
                     lineRange: lineRange(from: start, to: position)
                 ))
             }
-            return .diagnostic(diagnostic(String(localized: "Expected ',' or ']' in array."), at: position))
+            return .diagnostic(diagnostic(localized("Expected ',' or ']' in array."), at: position))
         }
     }
 
@@ -208,7 +199,7 @@ extension JSONScanner {
             ))
         }
         return .diagnostic(diagnostic(
-            String(localized: "Invalid literal: expected 'true', 'false', or 'null'."),
+            localized("Invalid literal: expected 'true', 'false', or 'null'."),
             at: start
         ))
     }
@@ -221,15 +212,12 @@ extension JSONScanner {
             position += 1
         }
         guard parseIntegerPart() else {
-            return .diagnostic(diagnostic(String(localized: "Invalid number: expected a digit."), at: position))
+            return .diagnostic(diagnostic(localized("Invalid number: expected a digit."), at: position))
         }
         if peek() == 0x2E { // .
             position += 1
             guard parseDigits() else {
-                return .diagnostic(diagnostic(
-                    String(localized: "Invalid number: expected a digit after '.'."),
-                    at: position
-                ))
+                return .diagnostic(diagnostic(localized("Invalid number: expected a digit after '.'."), at: position))
             }
         }
         if let unit = peek(), unit == 0x65 || unit == 0x45 { // e, E
@@ -238,10 +226,7 @@ extension JSONScanner {
                 position += 1
             }
             guard parseDigits() else {
-                return .diagnostic(diagnostic(
-                    String(localized: "Invalid number: expected a digit in exponent."),
-                    at: position
-                ))
+                return .diagnostic(diagnostic(localized("Invalid number: expected a digit in exponent."), at: position))
             }
         }
         let raw = String(decoding: units[start ..< position], as: UTF16.self)
