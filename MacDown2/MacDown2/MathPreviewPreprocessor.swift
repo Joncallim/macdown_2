@@ -155,7 +155,10 @@ enum MathPreviewPreprocessor {
         let spanText = nsSource.substring(
             with: NSRange(location: span.range.lowerBound, length: span.range.upperBound - span.range.lowerBound)
         )
-        guard spanText.contains("\n") else { return nil }
-        return spanText.replacingOccurrences(of: "\n", with: " ")
+        // `"\r\n"` is one Character, so `contains("\n")` is false for a CRLF document:
+        // split on all three line endings instead.
+        let lines = spanText.markdownLines()
+        guard lines.count > 1 else { return nil }
+        return lines.joined(separator: " ")
     }
 }

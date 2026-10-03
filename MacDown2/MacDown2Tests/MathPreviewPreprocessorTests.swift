@@ -221,3 +221,15 @@ struct MathPreviewPreprocessorTests {
         #expect(result.source.contains(MathPreviewPreprocessor.invalidMathMarker))
     }
 }
+
+/// Review pass 1: `"\r\n"` is a single Character, so `contains("\n")` was false and a
+/// multi-line display equation in a CRLF document was never collapsed.
+@Suite("MathPreviewPreprocessor line endings")
+struct MathPreviewPreprocessorLineEndingTests {
+    @Test(arguments: ["\r\n", "\r"])
+    func collapsesAMultiLineDisplayEquationInNonLFDocuments(lineEnding: String) {
+        let source = "$$\(lineEnding)\\frac{1}{2}\(lineEnding)$$"
+        let result = MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true })
+        #expect(result == "$$ \\frac{1}{2} $$")
+    }
+}
