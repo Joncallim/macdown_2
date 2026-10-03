@@ -21,12 +21,25 @@ struct DirectoryWalker: Sendable {
     private struct WalkContext {
         let root: URL
         let excludedDirectoryNames: Set<String>
+        let maximumPaths: Int
     }
 
-    func walk(root: URL, excludedDirectoryNames: Set<String>) -> [IndexedPath] {
+    /// A link such as `docs -> /` is followed on purpose (a linked directory is part of the project), so the
+    /// walk needs an upper bound instead: past this many entries it stops rather than indexing a whole disk.
+    static let defaultMaximumPaths = 250_000
+
+    func walk(
+        root: URL,
+        excludedDirectoryNames: Set<String>,
+        maximumPaths: Int = DirectoryWalker.defaultMaximumPaths
+    ) -> [IndexedPath] {
         var results: [IndexedPath] = []
         var visitedDirectoryIdentities: Set<PhysicalFileIdentity.FileObjectID> = []
-        let context = WalkContext(root: root.standardizedFileURL, excludedDirectoryNames: excludedDirectoryNames)
+        let context = WalkContext(
+            root: root.standardizedFileURL,
+            excludedDirectoryNames: excludedDirectoryNames,
+            maximumPaths: maximumPaths
+        )
         walk(
             directory: context.root,
             context: context,
@@ -66,7 +79,7 @@ struct DirectoryWalker: Sendable {
         ) else { return }
 
         for child in children {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, results.count < context.maximumPaths else { return }
             guard let values = try? child.resourceValues(forKeys: Self.resourceKeys) else { continue }
             // Hidden entries are tagged, not dropped: an entry is hidden if
             // its own basename starts with `.` OR any ancestor directory
