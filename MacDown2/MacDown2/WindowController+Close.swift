@@ -21,17 +21,7 @@ extension WindowController {
                           resumeCloseOnSuccess: true
                       )).isAbsent
                 else { return }
-                // The retire awaited recovery I/O; text typed meanwhile, or a state change,
-                // must not close the window unprompted. Go through the normal close flow.
-                guard model.activeDocument?.id == document.id,
-                      model.activeDocument?.state == .clean,
-                      model.activeDocument?.mutationGeneration == document.mutationGeneration
-                else {
-                    window?.performClose(nil)
-                    return
-                }
-                coordinator.removeController(self)
-                close()
+                closeAfterRetire(of: document)
             }
             return false
         }
@@ -99,18 +89,15 @@ extension WindowController {
                                 for: saved,
                                 resumeCloseOnSuccess: true
                             )).isAbsent else { return }
+                            closeAfterRetire(of: saved)
                         }
-                        coordinator.removeController(self)
-                        close()
                     }
                 case .alertThirdButtonReturn:
                     guard await (externalFileController.retireRecovery(
                         for: current,
                         resumeCloseOnSuccess: true
                     )).isAbsent else { return }
-                    guard model.activeDocument?.id == current.id else { return }
-                    coordinator.removeController(self)
-                    close()
+                    closeAfterRetire(of: current)
                 default:
                     sender.makeKeyAndOrderFront(nil)
                 }
@@ -159,11 +146,26 @@ extension WindowController {
                         for: saved,
                         resumeCloseOnSuccess: true
                     )).isAbsent else { return }
+                    closeAfterRetire(of: saved)
                 }
-                coordinator.removeController(self)
-                close()
             }
         }
+    }
+
+    /// Every close path retires the document's recovery lifetime, which awaits I/O. Close only if the document is
+    /// still exactly what was retired; text typed or a state change in that gap must not be discarded unprompted,
+    /// so the normal close flow runs again and asks about whatever changed.
+    func closeAfterRetire(of document: FileDocument) {
+        guard let coordinator else { return }
+        guard let active = model.activeDocument,
+              active.id == document.id,
+              active.mutationGeneration == document.mutationGeneration
+        else {
+            window?.performClose(nil)
+            return
+        }
+        coordinator.removeController(self)
+        close()
     }
 
     private func matchesPresentedContext(_ document: FileDocument, _ context: CloseSheetContext) -> Bool {
