@@ -25,7 +25,7 @@ extension DocumentEditorSplitView {
                     resolvedText: { editorStore.existingSystem(for: identity)?.text ?? text },
                     resolvedSelection: { editorStore.existingSystem(for: identity)?.selectedRange },
                     initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
-                    onMatchesChanged: { applyFindHighlights(findModel) },
+                    onMatchesChanged: { reveal in applyFindHighlights(findModel, reveal: reveal) },
                     onClose: { closeFindBar(findModel) },
                     onReplace: { applyFindReplacement($0, model: findModel) },
                     onSelectAll: { applySelectAllMatches($0) }
@@ -145,10 +145,10 @@ extension DocumentEditorSplitView {
     /// called by `FindBarView` after every query/option/text change and
     /// every Find Next/Previous, so the visible highlight and the live
     /// selection never lag behind the model by more than one SwiftUI update.
-    func applyFindHighlights(_ model: EditorFindModel) {
+    func applyFindHighlights(_ model: EditorFindModel, reveal: Bool = true) {
         guard let system = editorStore.existingSystem(for: identity) else { return }
         system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
-        if let current = model.currentMatch {
+        if reveal, let current = model.currentMatch {
             system.revealSelection(utf16Range: current.range, flash: false, animated: true)
         }
     }
