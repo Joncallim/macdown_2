@@ -74,6 +74,10 @@ public final class EditorTextSystem {
     /// setter is internal so `EditorEditTransaction.swift`'s `apply(_:)`
     /// can raise/lower it around the loop.
     public internal(set) var isApplyingMultiRangeTransaction = false
+    /// Set when a multi-range transaction skipped its per-range line-index patches; the transaction's final
+    /// change notification then rebuilds the index once instead of patching it N times (each patch copies the
+    /// whole line array, which made Replace All quadratic).
+    var lineIndexNeedsRebuild = false
     /// The assist configuration currently applied to this text system.
     /// Storage lives here (extensions cannot hold stored properties);
     /// the E10 methods live in `EditorTextSystem+EditingAssists.swift`.

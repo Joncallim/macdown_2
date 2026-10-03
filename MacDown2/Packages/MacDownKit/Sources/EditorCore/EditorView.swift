@@ -229,22 +229,16 @@ public struct EditorView: NSViewRepresentable {
             if let system, !system.isApplyingMultiRangeTransaction {
                 system.storedSelectionSet = nil
             }
-            if let system, let pending = pendingLineIndexEdit {
-                system.noteIncrementalEdit(
-                    editedRange: pending.range,
-                    replacementUTF16Length: pending.replacementUTF16Length
-                )
-                pendingLineIndexEdit = nil
-            } else {
-                // No edit was reported for this change (a composition's marked text): repair a stale index.
-                system?.rebuildLineIndexIfStale()
-            }
+            system?.syncLineIndex(afterEdit: pendingLineIndexEdit)
+            pendingLineIndexEdit = nil
             // The gutter has no way to know about a text edit on its own
             // (unlike scrolling, which NSRulerView already tracks via its
             // scroll view) — every edit needs an explicit redraw, and
             // `updateThickness()` also covers a line-count digit-width
             // change (e.g. line 9 -> 10, or 99 -> 100).
-            gutterView?.updateThickness()
+            if system?.isApplyingMultiRangeTransaction != true {
+                gutterView?.updateThickness()
+            }
 
             guard !isApplyingModelText,
                   let system,
