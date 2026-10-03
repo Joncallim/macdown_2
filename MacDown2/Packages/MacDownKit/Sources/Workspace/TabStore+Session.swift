@@ -24,7 +24,7 @@ extension TabStore {
                 previewMode: tab.previewMode,
                 syntaxOverride: tab.syntaxOverride,
                 encoding: tab.document.encoding,
-                baseSHA256: tab.document.lastKnownRevision?.sha256,
+                baseSHA256: tab.document.baselineSHA256,
                 folderRootBookmark: tab.folderRootBookmark,
                 folderRootAlias: tab.folderRootAlias
             )
@@ -105,6 +105,7 @@ extension TabStore {
             ) else { return nil }
             let unavailable = document
                 .updatingText(recovered)
+                .restoringBaseline(sha256: record.baseSHA256)
                 .markingBackingUnavailable(backingIssue(for: error))
             return tab(from: record, document: unavailable)
         } catch {
