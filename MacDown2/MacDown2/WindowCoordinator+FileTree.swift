@@ -165,7 +165,7 @@ extension WindowCoordinator {
     ///   `NSApp.keyWindow` at call time (the real menu/recent-folder path,
     ///   invoked from that window already).
     func openFolder(_ url: URL, accessURL: URL? = nil, in controller: WindowController? = nil) {
-        guard let controller = controller ?? controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        guard let controller = controller ?? folderTargetController() else { return }
         controller.model.setFolderRoot(url)
         recentFolderRoots.record(url)
         Task { await controller.setFileTreeRoot(url, accessURL: accessURL) }
