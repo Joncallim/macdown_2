@@ -39,6 +39,35 @@ struct WorkspaceSessionStoreRobustnessTests {
         #expect(session.activeTabID == good)
     }
 
+    /// The lenient decode drops the bad tab silently; the next autosave then removed it (and its recovery pointer)
+    /// from `session.json` with no copy anywhere.
+    @Test func aSessionThatLostATabWhileDecodingIsPreservedBeforeTheAutosave() throws {
+        let fixture = makeStore()
+        defer { cleanup(fixture.directory) }
+        let json = """
+        {"version":1,"tabs":[
+          {"id":"\(UUID().uuidString)","isPinned":"someFutureEnum","untitledDocumentID":"u1"},
+          {"id":"\(UUID().uuidString)","isPinned":false}
+        ]}
+        """
+        try Data(json.utf8).write(to: fixture.url)
+
+        #expect(fixture.store.loadSession()?.tabs.count == 1)
+        fixture.store.saveSession(WorkspaceSession.empty)
+
+        #expect(try Data(contentsOf: fixture.url.appendingPathExtension("unreadable")) == Data(json.utf8))
+    }
+
+    @Test func aFullyDecodedSessionLeavesNoBackup() {
+        let fixture = makeStore()
+        defer { cleanup(fixture.directory) }
+        fixture.store.saveSession(WorkspaceSession(tabs: [TabRecord(id: UUID())], activeTabID: nil))
+
+        #expect(fixture.store.loadSession()?.tabs.count == 1)
+
+        #expect(!FileManager.default.fileExists(atPath: fixture.url.appendingPathExtension("unreadable").path))
+    }
+
     @Test func anUnreadableSessionFileIsPreservedBeforeAnAutosaveCanReplaceIt() throws {
         let fixture = makeStore()
         let (store, url, directory) = (fixture.store, fixture.url, fixture.directory)
