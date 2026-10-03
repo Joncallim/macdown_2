@@ -119,6 +119,13 @@ final class ExportResourceResolver {
             return handleUnresolved(url: url, reason: "resource is not a readable file at \(fileURL.lastPathComponent)")
         }
 
+        // This path serves image references only. Anything else in the document's folder
+        // (`![x](.env)`, `![x](notes.txt)`) must not be copied into, or embedded in, an export
+        // that is then shared.
+        guard ExportMIMEType.mimeType(forFileExtension: fileURL.pathExtension).hasPrefix("image/") else {
+            return handleUnresolved(url: url, reason: "\(fileURL.lastPathComponent) is not an image file")
+        }
+
         // Size is read from the file's metadata first, so an oversized file is
         // rejected without ever entering memory.
         if let declared = try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize,
