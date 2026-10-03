@@ -156,6 +156,7 @@ extension MarkdownEditingAssistEngine {
         text: NSString
     ) -> EditingAssistOutcome {
         let nextIsBoundary = next.map(isBoundary) ?? true
+        let repeatsPrevious = previous.map { Character($0) == character } ?? false
         switch character {
         case "*":
             // At the first non-whitespace position of a line, do not auto-pair
@@ -163,22 +164,37 @@ extension MarkdownEditingAssistEngine {
             // Likewise never pair after an existing `*`: the second star of a
             // line-start `**`/`***` opener must insert natively.
             guard !isAtFirstNonWhitespace(caret, in: text) else { return .passthrough }
-            if previous.map({ Character($0) == "*" }) == true {
+            if repeatsPrevious {
                 return .passthrough
             }
             guard nextIsBoundary else { return .passthrough }
             return pairInsertion(character: "*", closer: "*", caret: caret)
         case "_":
-            // Pair only at a boundary; never auto-pair intra-word underscore.
-            let previousBoundary = previous.map(isBoundary) ?? true
-            guard previousBoundary || nextIsBoundary else { return .passthrough }
-            return pairInsertion(character: "_", closer: "_", caret: caret)
+            return underscoreOutcome(
+                caret: caret, repeatsPrevious: repeatsPrevious, previous: previous, nextIsBoundary: nextIsBoundary
+            )
         case "`":
-            guard nextIsBoundary else { return .passthrough }
+            // Never pair after an existing backtick: typing ``` (a fence) would otherwise end as four
+            // (the third keystroke pairs again), and ```swift as ```swift`.
+            guard !repeatsPrevious, nextIsBoundary else { return .passthrough }
             return pairInsertion(character: "`", closer: "`", caret: caret)
         default:
             return .passthrough
         }
+    }
+
+    /// Pair only at a boundary; never auto-pair intra-word underscore, and never after an existing `_`
+    /// (`___` must not grow a fourth).
+    private static func underscoreOutcome(
+        caret: Int,
+        repeatsPrevious: Bool,
+        previous: Unicode.Scalar?,
+        nextIsBoundary: Bool
+    ) -> EditingAssistOutcome {
+        guard !repeatsPrevious else { return .passthrough }
+        let previousBoundary = previous.map(isBoundary) ?? true
+        guard previousBoundary || nextIsBoundary else { return .passthrough }
+        return pairInsertion(character: "_", closer: "_", caret: caret)
     }
 
     private static func pairInsertion(character: Character, closer: Character, caret: Int) -> EditingAssistOutcome {
