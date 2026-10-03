@@ -74,4 +74,60 @@ struct DerivedContentContainerTests {
         #expect(prepared.bodyHTML.contains("<p>intro</p>"))
         #expect(prepared.bodyHTML.contains("<p>outro</p>"))
     }
+
+    @Test func displayMathInATableCellAHeadingAndEmphasisStaysInPlace() async throws {
+        let table = try await prepare(
+            "| a | b |\n|---|---|\n| $$x$$ | 2 |\n", replacing: "$$x$$", with: "<img alt=\"m\">"
+        )
+        #expect(table.bodyHTML.contains("<td><img alt=\"m\"></td>"))
+        #expect(table.bodyHTML.contains("<td>2</td>"))
+
+        let heading = try await prepare("# Title $$E$$ end\n", replacing: "$$E$$", with: "<img alt=\"m\">")
+        #expect(heading.bodyHTML.contains("<h1>Title <img alt=\"m\"> end</h1>"))
+
+        let emphasis = try await prepare("*see $$x$$ here*\n", replacing: "$$x$$", with: "<img alt=\"m\">")
+        #expect(emphasis.bodyHTML.contains("<em>see <img alt=\"m\"> here</em>"))
+    }
+
+    @Test func aFenceOnTheListMarkerLineStaysInItsListAsSourceWithAWarning() async throws {
+        for (markdown, fence) in [
+            ("- ```mermaid\n  graph TD\n  ```\n- next\n", "- ```mermaid\n  graph TD\n  ```"),
+            ("1. ```mermaid\n   graph TD\n   ```\n2. next\n", "1. ```mermaid\n   graph TD\n   ```"),
+        ] {
+            let prepared = try await prepare(markdown, replacing: fence, with: "<svg>diagram</svg>")
+
+            #expect(!prepared.bodyHTML.contains("<svg>diagram</svg>"))
+            #expect(prepared.bodyHTML.contains("next"))
+            #expect(prepared.bodyHTML.components(separatedBy: "<li>").count == 3, "list was split: \(markdown)")
+            #expect(prepared.diagnostics.contains { $0.message.contains("list item or block quote") })
+        }
+    }
+
+    /// `cmark_node_replace` refuses a custom inline inside a GFM table cell; the old code then freed the node it
+    /// had failed to unlink, so inline math in a table cell exported as an empty cell.
+    @Test func inlineMathInATableCellIsNotLost() async throws {
+        let markdown = "| a | b |\n|---|---|\n| $x$ and $y$ | 2 |\n"
+        let contributions = ["$x$", "$y$"].enumerated().map { index, needle -> ExportDerivedContribution in
+            let found = (markdown as NSString).range(of: needle)
+            return ExportDerivedContribution(
+                sourceRange: found.location ..< (found.location + found.length),
+                placement: .inline,
+                html: "<img alt=\"m\(index)\">",
+                sourceGeneration: 1
+            )
+        }
+        let prepared = try await ExportService.prepare(
+            ExportRequest(
+                text: markdown,
+                sourceGeneration: 1,
+                theme: ExportTestSupport.lightTheme(),
+                contributions: contributions
+            ),
+            target: .html(url: URL(fileURLWithPath: "/tmp/cells.html"), mode: .standalone(style: .embedded))
+        )
+
+        #expect(prepared.bodyHTML.contains("<td><img alt=\"m0\"> and <img alt=\"m1\"></td>"))
+        #expect(prepared.bodyHTML.contains("<td>2</td>"))
+        #expect(!prepared.bodyHTML.contains("E12INLINE"))
+    }
 }

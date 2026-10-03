@@ -41,12 +41,51 @@ enum DerivedContentComposer {
         let containerRanges: [Range<Int>]
         let bodyText: NSString
 
-        /// Whether the contributed range opens with a code-fence line (after any quote/indent prefix).
+        /// Whether the contributed range opens with a code-fence line (after any quote/list/indent prefix).
         func startsFence(_ bodyRange: Range<Int>) -> Bool {
             guard bodyRange.lowerBound < bodyText.length else { return false }
             let line = bodyText.lineRange(for: NSRange(location: bodyRange.lowerBound, length: 0))
-            let first = bodyText.substring(with: line).drop { $0 == " " || $0 == "\t" || $0 == ">" }
+            let first = Self.strippingContainerPrefix(bodyText.substring(with: line)[...])
             return first.hasPrefix("```") || first.hasPrefix("~~~")
+        }
+
+        /// Whether the range is the whole logical line: only whitespace and quote/list markers before it,
+        /// only whitespace after it. A block placement is only faithful then; mid-line (a table cell, a
+        /// heading, emphasis, a link, a paragraph) a blank-line-delimited sentinel would split the construct.
+        func occupiesWholeLines(_ bodyRange: Range<Int>) -> Bool {
+            guard bodyRange.lowerBound <= bodyText.length, bodyRange.upperBound <= bodyText.length else { return false }
+            let startLine = bodyText.lineRange(for: NSRange(location: bodyRange.lowerBound, length: 0))
+            let before = bodyText.substring(
+                with: NSRange(location: startLine.location, length: bodyRange.lowerBound - startLine.location)
+            )
+            guard Self.strippingContainerPrefix(before[...]).allSatisfy(\.isWhitespace) else { return false }
+            let endLine = bodyText.lineRange(for: NSRange(location: bodyRange.upperBound, length: 0))
+            let afterLength = max(0, NSMaxRange(endLine) - bodyRange.upperBound)
+            let after = bodyText.substring(with: NSRange(location: bodyRange.upperBound, length: afterLength))
+            return after.allSatisfy(\.isWhitespace)
+        }
+
+        /// Drops any leading run of indentation, `>` quote markers and list markers (`-`, `+`, `*`, `1.`, `1)`).
+        static func strippingContainerPrefix(_ line: Substring) -> Substring {
+            var rest = line
+            while true {
+                let trimmed = rest.drop { $0 == " " || $0 == "\t" || $0 == ">" }
+                var next = trimmed
+                if let marker = trimmed.first, "-+*".contains(marker), trimmed.dropFirst().first?.isWhitespace == true {
+                    next = trimmed.dropFirst()
+                } else {
+                    let digits = trimmed.prefix { $0.isASCII && $0.isNumber }
+                    let afterDigits = trimmed.dropFirst(digits.count)
+                    if !digits.isEmpty, let punctuation = afterDigits.first, punctuation == "." || punctuation == ")",
+                       afterDigits.dropFirst().first?.isWhitespace == true {
+                        next = afterDigits.dropFirst()
+                    }
+                }
+                if next.count == rest.count {
+                    return trimmed
+                }
+                rest = next
+            }
         }
     }
 
@@ -175,19 +214,23 @@ private struct DerivedContentPlan {
         }
 
         var isBlock = contribution.placement == .block
-        if isBlock, context.containerRanges.contains(where: { $0.contains(range.lowerBound) }) {
-            // A blank-line-delimited sentinel splices the contribution out of its list item or
-            // block quote (and splits the list/quote around it). Display math keeps its place
-            // as an inline fragment; a diagram fence, whose lines carry the container's own
-            // prefixes, cannot be lifted out cleanly and stays as authored source.
-            guard !context.startsFence(bodyRange) else {
-                diagnostics.append(ExportDiagnostic(
-                    severity: .warning,
-                    message: "a diagram inside a list item or block quote is exported as its source text"
-                ))
-                return
+        if isBlock {
+            // A blank-line-delimited sentinel ends whatever construct it sits in. Mid-line (table cell, heading,
+            // emphasis, link, paragraph text) the contribution stays an inline fragment. On its own lines inside a
+            // list item or block quote it also stays inline (display math) — except a diagram fence, whose lines
+            // carry the container's own prefixes and cannot be lifted out cleanly: it stays as authored source.
+            if !context.occupiesWholeLines(bodyRange) {
+                isBlock = false
+            } else if context.containerRanges.contains(where: { $0.contains(range.lowerBound) }) {
+                guard !context.startsFence(bodyRange) else {
+                    diagnostics.append(ExportDiagnostic(
+                        severity: .warning,
+                        message: "a diagram inside a list item or block quote is exported as its source text"
+                    ))
+                    return
+                }
+                isBlock = false
             }
-            isBlock = false
         }
         let sentinel = DerivedContentComposer.makeSentinel(
             isBlock: isBlock,
