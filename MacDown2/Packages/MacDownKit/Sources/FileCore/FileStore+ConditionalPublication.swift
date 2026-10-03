@@ -134,7 +134,7 @@ extension FileStore {
 
     private func preserveDisplacedFile(at temporaryURL: URL, for destinationURL: URL) -> URL {
         let recoveryURL = destinationURL.deletingLastPathComponent().appendingPathComponent(
-            ".\(destinationURL.lastPathComponent).external-recovery-\(UUID().uuidString)"
+            Self.companionName(for: destinationURL, infix: "external-recovery")
         )
         do {
             try FileManager.default.moveItem(at: temporaryURL, to: recoveryURL)
