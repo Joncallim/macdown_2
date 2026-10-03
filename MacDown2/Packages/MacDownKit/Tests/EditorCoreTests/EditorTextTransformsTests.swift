@@ -24,6 +24,35 @@ struct EditorTextTransformsTests {
         #expect(applied?.text == "apple\nbanana\ncherry")
     }
 
+    @Test("sorting declines when reordering would fuse a lone CR and LF into one CRLF")
+    func sortDeclinesWhenItWouldCreateACRLFPair() {
+        // Sorted, the two empty lines come first and their terminators become "\r" then "\n".
+        let text = "b\ra\n\n\nc" as NSString
+        let selection = EditorSelectionSet(single: NSRange(location: 0, length: text.length))
+
+        let transaction = EditorTextTransforms.sortLinesTransaction(
+            text: text,
+            lineIndex: EditorLineIndex(text: text),
+            selection: selection
+        )
+
+        #expect(transaction == nil)
+    }
+
+    @Test("sorting a mixed-terminator block still works when no CRLF pair would form")
+    func sortMixedTerminatorsWithoutAPairStillWorks() {
+        let text = "b\ra\nc" as NSString
+        let selection = EditorSelectionSet(single: NSRange(location: 0, length: text.length))
+
+        let transaction = EditorTextTransforms.sortLinesTransaction(
+            text: text,
+            lineIndex: EditorLineIndex(text: text),
+            selection: selection
+        )
+
+        #expect(LineTransformTestSupport.applied(transaction, to: text as String)?.text == "a\rb\nc")
+    }
+
     @Test("sorting preserves the block's own CRLF terminators, positionally")
     func sortPreservesCRLF() {
         let text = "banana\r\napple\r\ncherry" as NSString
