@@ -16,6 +16,7 @@ enum DerivedContentComposer {
         let splicedBody: String
         let customNodes: [CMarkGFM.CustomNodeSpec]
         let diagnostics: [ExportDiagnostic]
+        let sentinelSuffix: String
     }
 
     /// One accepted replacement: a body-relative UTF-16 range and the sentinel
@@ -99,7 +100,7 @@ enum DerivedContentComposer {
         containerRanges: [Range<Int>] = []
     ) -> Result {
         guard !contributions.isEmpty else {
-            return Result(splicedBody: bodyText, customNodes: [], diagnostics: [])
+            return Result(splicedBody: bodyText, customNodes: [], diagnostics: [], sentinelSuffix: "")
         }
 
         let context = ValidationContext(
@@ -124,8 +125,28 @@ enum DerivedContentComposer {
         return Result(
             splicedBody: splice(plan.splices, into: bodyText),
             customNodes: plan.customNodes,
-            diagnostics: plan.diagnostics
+            diagnostics: plan.diagnostics,
+            sentinelSuffix: context.sentinelSuffix
         )
+    }
+
+    /// The sorted-contribution indices whose sentinel text is still in the RENDERED HTML. A sentinel is replaced
+    /// only where cmark parses it as ordinary text; inside a link destination or title, a reference definition,
+    /// an HTML attribute or similar it stays as the sentinel string, which must never reach an export.
+    static func leakedSentinelIndices(in html: String, suffix: String) -> Set<Int> {
+        guard html.contains("E12") else { return [] }
+        let escaped = NSRegularExpression.escapedPattern(for: suffix)
+        guard let expression = try? NSRegularExpression(
+            pattern: "E12(?:BLOCK|INLINE)" + escaped + "(\\d+)Z"
+        ) else { return [] }
+        let nsHTML = html as NSString
+        var indices: Set<Int> = []
+        for match in expression.matches(in: html, range: NSRange(location: 0, length: nsHTML.length)) {
+            if let index = Int(nsHTML.substring(with: match.range(at: 1))) {
+                indices.insert(index)
+            }
+        }
+        return indices
     }
 
     private static let blockSentinelBase = "E12BLOCK"

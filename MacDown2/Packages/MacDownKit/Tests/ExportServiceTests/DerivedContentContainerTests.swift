@@ -130,4 +130,40 @@ struct DerivedContentContainerTests {
         #expect(prepared.bodyHTML.contains("<td>2</td>"))
         #expect(!prepared.bodyHTML.contains("E12INLINE"))
     }
+
+    /// Inline contributions the literal-context scanner cannot know about (a reference-definition title, a link
+    /// destination with nested parentheses) used to reach the export as sentinel text such as `E12INLINE0Z`.
+    @Test func aSentinelThatCannotBeSubstitutedIsNeverExportedAndTheSourceStaysInstead() async throws {
+        let markdown = "[a]: /url \"Price $5 - $10\"\n\nsee [a] and [b](/u/(1)$x$ \"t\")\n"
+        let contributions = ["$5 - $", "$x$"].enumerated().map { index, needle -> ExportDerivedContribution in
+            let found = (markdown as NSString).range(of: needle)
+            return ExportDerivedContribution(
+                sourceRange: found.location ..< (found.location + found.length),
+                placement: .inline,
+                html: "<img alt=\"m\(index)\">",
+                sourceGeneration: 1
+            )
+        }
+
+        let prepared = try await ExportService.prepare(
+            ExportRequest(
+                text: markdown,
+                sourceGeneration: 1,
+                theme: ExportTestSupport.lightTheme(),
+                contributions: contributions
+            ),
+            target: .html(url: URL(fileURLWithPath: "/tmp/leak.html"), mode: .standalone(style: .embedded))
+        )
+
+        #expect(!prepared.bodyHTML.contains("E12INLINE"))
+        #expect(!prepared.bodyHTML.contains("E12BLOCK"))
+        #expect(prepared.bodyHTML.contains("Price $5 - $10"))
+        #expect(prepared.diagnostics.contains { $0.message.contains("exported as their source text") })
+    }
+
+    @Test func aFullyPlacedExportReportsNoLeakWarning() async throws {
+        let prepared = try await prepare("see $$x$$ here\n", replacing: "$$x$$", with: "<img alt=\"m\">")
+
+        #expect(!prepared.diagnostics.contains { $0.message.contains("exported as their source text") })
+    }
 }
