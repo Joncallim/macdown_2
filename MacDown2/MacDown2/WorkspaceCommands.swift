@@ -42,6 +42,10 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("o", modifiers: .command)
 
+            Button("Open with Encoding…") {
+                coordinator?.openFileWithEncoding()
+            }
+
             Button("Open Folder…") {
                 coordinator?.chooseFolder()
             }

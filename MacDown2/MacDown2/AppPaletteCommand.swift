@@ -80,6 +80,14 @@ extension AppPaletteCommand {
             }
         ),
         AppPaletteCommand(
+            id: "openWithEncoding",
+            title: "Open with Encoding…",
+            isAvailable: { _, controller in controller != nil },
+            action: { coordinator, controller in
+                coordinator.openFileWithEncoding(relativeTo: controller)
+            }
+        ),
+        AppPaletteCommand(
             id: "openFolder",
             title: "Open Folder…",
             isAvailable: { _, controller in controller != nil },

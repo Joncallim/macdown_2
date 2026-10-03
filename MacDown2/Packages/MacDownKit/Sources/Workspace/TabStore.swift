@@ -208,7 +208,10 @@ public final class TabStore {
     /// loaded — never fabricated, so a permission error is not misreported
     /// as "file not found."
     @discardableResult
-    public func openFileInTab(_ url: URL) async -> Result<WorkspaceTab, FileStoreError> {
+    public func openFileInTab(
+        _ url: URL,
+        encoding: FileEncodingMetadata? = nil
+    ) async -> Result<WorkspaceTab, FileStoreError> {
         let standardized = url.standardizedFileURL
         openRequestGeneration &+= 1
         let requestGeneration = openRequestGeneration
@@ -223,7 +226,11 @@ public final class TabStore {
 
         let document: FileDocument
         do {
-            document = try await FileDocument.create(fileURL: url, recoveryBuffer: recoveryBuffer)
+            document = try await FileDocument.create(
+                fileURL: url,
+                encoding: encoding ?? .utf8Default,
+                recoveryBuffer: recoveryBuffer
+            )
         } catch {
             return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
         }
@@ -240,6 +247,13 @@ public final class TabStore {
                 persist()
                 return .success(existing)
             }
+            // BOM-less UTF-16 is "valid UTF-8" — full of NUL bytes. Text with a
+            // NUL whose bytes unmistakably are UTF-16 is reopened as such rather
+            // than shown (and saved back) as garbage.
+            if encoding == nil, loaded.text.unicodeScalars.contains("\u{0}"),
+               let detected = FileStore().conservativelyDetectedEncoding(at: url) {
+                return await openFileInTab(url, encoding: detected)
+            }
             let tab = WorkspaceTab(document: loaded)
             tabs.append(tab)
             if requestGeneration == openRequestGeneration {
@@ -248,7 +262,15 @@ public final class TabStore {
             persist()
             return .success(tab)
         } catch {
-            return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
+            let failure = (error as? FileStoreError) ?? .readFailed(underlying: error)
+            // Neither BOM-marked nor valid UTF-8. Retry once if the bytes
+            // themselves identify the encoding (BOM-less UTF-16); anything
+            // ambiguous stays a failure that offers an explicit choice.
+            if encoding == nil, failure.isUndecodableText,
+               let detected = FileStore().conservativelyDetectedEncoding(at: url) {
+                return await openFileInTab(url, encoding: detected)
+            }
+            return .failure(failure)
         }
     }
 
