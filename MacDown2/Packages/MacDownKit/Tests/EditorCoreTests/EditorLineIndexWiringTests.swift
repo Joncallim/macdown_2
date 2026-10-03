@@ -188,4 +188,47 @@ struct EditorLineIndexWiringTests {
         #expect(system.text == "hello world")
         #expect(system.lineIndex != EditorLineIndex(text: system.text as NSString))
     }
+
+    @Test func multiRangeTransactionLeavesLineIndexMatchingARebuild() {
+        let system = support.makeSystem(text: "a\nb\nc\nd\n")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+
+        // Net length change is zero, so a stale index would pass the length-consistency check.
+        system.apply(EditorEditTransaction(replacements: [
+            TextReplacement(range: NSRange(location: 0, length: 1), replacementText: "x\ny"),
+            TextReplacement(range: NSRange(location: 2, length: 1), replacementText: "q"),
+            TextReplacement(range: NSRange(location: 4, length: 1), replacementText: ""),
+            TextReplacement(range: NSRange(location: 6, length: 1), replacementText: "z"),
+        ]))
+
+        assertMatchesFreshRebuild(system)
+    }
+
+    @Test func largeMultiRangeTransactionRebuildsTheLineIndexOnceInsteadOfPatchingPerRange() {
+        let text = (0 ..< 2000).map { "line \($0) cat" }.joined(separator: "\n")
+        let system = support.makeSystem(text: text)
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        let source = text as NSString
+        var replacements: [TextReplacement] = []
+        var search = NSRange(location: 0, length: source.length)
+        while true {
+            let found = source.range(of: "cat", range: search)
+            guard found.location != NSNotFound else { break }
+            replacements.append(TextReplacement(range: found, replacementText: "dog"))
+            search = NSRange(location: NSMaxRange(found), length: source.length - NSMaxRange(found))
+        }
+        var changes: [EditorTextChange] = []
+        system.textChangeObserver = { changes.append($0) }
+
+        system.apply(EditorEditTransaction(replacements: replacements))
+
+        // Per-range patches each copy the whole line array (quadratic across a Replace All).
+        #expect(changes == [.untracked])
+        #expect(system.text.hasSuffix("line 1999 dog"))
+        assertMatchesFreshRebuild(system)
+    }
 }

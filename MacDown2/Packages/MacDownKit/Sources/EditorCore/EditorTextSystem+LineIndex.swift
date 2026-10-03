@@ -40,6 +40,22 @@ extension EditorTextSystem {
         textChangeObserver?(.edit(range: editedRange, replacementLength: replacementUTF16Length))
     }
 
+    /// Brings the line index in step after one change notification. Inside a multi-range transaction the
+    /// per-range patches are skipped (each copies the whole line array) and the final notification rebuilds once.
+    func syncLineIndex(afterEdit pending: (range: NSRange, replacementUTF16Length: Int)?) {
+        if isApplyingMultiRangeTransaction {
+            lineIndexNeedsRebuild = true
+        } else if lineIndexNeedsRebuild {
+            lineIndexNeedsRebuild = false
+            rebuildLineIndex()
+        } else if let pending {
+            noteIncrementalEdit(editedRange: pending.range, replacementUTF16Length: pending.replacementUTF16Length)
+        } else {
+            // No edit was reported for this change (a composition's marked text): repair a stale index.
+            rebuildLineIndexIfStale()
+        }
+    }
+
     /// Repairs the line index when marked-text (IME / dead-key) edits, which post no `didChange`, left it out of step
     /// with the text — a cancelled composition over a selection changes the length with no edit ever reported.
     func rebuildLineIndexIfStale() {
