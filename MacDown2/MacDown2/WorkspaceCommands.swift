@@ -106,7 +106,7 @@ struct WorkspaceCommands: Commands {
                 coordinator?.closeKeyWindow()
             }
             .keyboardShortcut("w", modifiers: .command)
-            .disabled(coordinator?.keyModel?.canClose != true)
+            .disabled(coordinator?.canCloseKeyWindow != true)
 
             Divider()
 
