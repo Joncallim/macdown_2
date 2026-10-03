@@ -70,7 +70,10 @@ public actor MermaidDiagramCache: MermaidDiagramRendering {
     }
 
     private func store(key: Key, value: RenderedMermaidDiagram) {
-        entries[key] = value
+        // Replacing a key (two concurrent renders of one diagram) must not double-count its bytes.
+        if let replaced = entries.updateValue(value, forKey: key) {
+            totalBytes -= replaced.svg.utf8.count
+        }
         totalBytes += value.svg.utf8.count
         touch(key)
         evictIfNeeded()
