@@ -53,6 +53,7 @@ public final class EditorTextSystem {
     /// Told about every text change (see `EditorTextChange`); nil when nobody is watching.
     public var textChangeObserver: ((EditorTextChange) -> Void)?
     let metricsCache = EditorDocumentMetricsCache()
+    let contentHeightMeter = ContentHeightMeter()
     /// Prevents a disk-driven replacement from flowing back through the
     /// editor binding as a user edit. Setter is `internal` (not `private`)
     /// so `EditorTextSystem+Content.swift`'s `replaceTextFromExternal` can
@@ -306,12 +307,12 @@ public final class EditorTextSystem {
         lastFrameSyncSignature = signature
 
         let availableWidth = max(textView.frame.width - textView.textContainerInset.width * 2, 1)
-        let measured = string.boundingRect(
-            with: NSSize(width: availableWidth, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
+        let contentHeight = contentHeightMeter.height(
+            of: string,
+            width: availableWidth,
             attributes: textView.typingAttributes
         )
-        measuredContentHeight = measured.height + textView.textContainerInset.height * 2
+        measuredContentHeight = contentHeight + textView.textContainerInset.height * 2
         applyMeasuredFrameHeight(scrollView: scrollView)
     }
 
