@@ -44,8 +44,14 @@ public struct MathContribution: Contributing {
         sourceGeneration: UInt
     ) async throws -> [ContributionResult] {
         let exclusions = Self.excludedRanges(in: document) + InlineCodeSpanScanner.ranges(in: sourceText)
+        // Masked rather than filtered afterwards: a `$` inside a URL would otherwise
+        // pair with the next real `$` and swallow it.
+        let scannable = MathLiteralContextScanner.masked(
+            sourceText,
+            ranges: MathLiteralContextScanner.ranges(in: sourceText) + Self.frontMatterRange(in: document)
+        )
         var results: [ContributionResult] = []
-        for span in MathSpanScanner.scan(sourceText) where !exclusions.contains(where: { $0.overlaps(span.range) }) {
+        for span in MathSpanScanner.scan(scannable) where !exclusions.contains(where: { $0.overlaps(span.range) }) {
             try Task.checkCancellation()
             do {
                 let image = try await renderer(span, context)
@@ -109,6 +115,14 @@ public struct MathContribution: Contributing {
     /// escaped-dollar defects. `TOCContribution` is a separate
     /// implementation with its own ownership boundary; this fix is scoped
     /// to `Math`, matching this epic's own module ownership (§5).
+    /// Front matter is data, not prose: math there is not typeset, and an unpaired `$$`
+    /// in it must not pair with the first body equation.
+    static func frontMatterRange(in document: MarkdownDocument) -> [Range<Int>] {
+        guard let lines = document.frontMatter?.lineRange else { return [] }
+        let range = document.sourceMap.utf16Range(ofLines: lines)
+        return [range.location ..< (range.location + range.length)]
+    }
+
     static func excludedRanges(in document: MarkdownDocument) -> [Range<Int>] {
         document.blocks.flatMap { excludedRanges(in: $0, sourceMap: document.sourceMap) }
     }
