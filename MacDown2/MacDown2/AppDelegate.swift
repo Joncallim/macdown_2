@@ -198,7 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // handler. Only regular files count as document opens; anything else
         // must not suppress the session restore.
         let fileURLs = filenames
-            .map { URL(fileURLWithPath: $0) }
+            .map { URL(fileURLWithPath: $0).resolvingFinalSymlink() }
             .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true }
         guard !fileURLs.isEmpty else { return }
         hasPendingDocumentOpen = true

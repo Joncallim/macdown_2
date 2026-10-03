@@ -207,20 +207,30 @@ public final class TabStore {
     /// Returns the resulting tab, or the real reason the file could not be
     /// loaded — never fabricated, so a permission error is not misreported
     /// as "file not found."
+    /// The tab already showing `standardized`, made active when this open request
+    /// is still the newest one.
+    private func activateOpenTab(for standardized: URL, requestGeneration: UInt) -> WorkspaceTab? {
+        guard let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) else {
+            return nil
+        }
+        if requestGeneration == openRequestGeneration {
+            activeTabID = existing.id
+        }
+        persist()
+        return existing
+    }
+
     @discardableResult
     public func openFileInTab(
         _ url: URL,
         encoding: FileEncodingMetadata? = nil
     ) async -> Result<WorkspaceTab, FileStoreError> {
+        let url = url.resolvingFinalSymlink()
         let standardized = url.standardizedFileURL
         openRequestGeneration &+= 1
         let requestGeneration = openRequestGeneration
 
-        if let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) {
-            if requestGeneration == openRequestGeneration {
-                activeTabID = existing.id
-            }
-            persist()
+        if let existing = activateOpenTab(for: standardized, requestGeneration: requestGeneration) {
             return .success(existing)
         }
 
@@ -240,11 +250,7 @@ public final class TabStore {
             }.value
             // The await above lets another intent open/activate this file.
             // Reuse that tab rather than publishing a duplicate completion.
-            if let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) {
-                if requestGeneration == openRequestGeneration {
-                    activeTabID = existing.id
-                }
-                persist()
+            if let existing = activateOpenTab(for: standardized, requestGeneration: requestGeneration) {
                 return .success(existing)
             }
             // BOM-less UTF-16 is "valid UTF-8" — full of NUL bytes. Text with a
