@@ -9,7 +9,7 @@ import Foundation
 /// (`href="…?a=E12INLINE0Z"`) instead of the author's characters.
 public enum MathLiteralContextScanner {
     private static let patterns: [NSRegularExpression] = [
-        #"\]\([^)\n]*\)"#,
+        #"\]\([^)\n]{0,2048}\)"#,
         #"(?m)^ {0,3}\[(?!\^)[^\]\n]+\]:[ \t]*(?:<[^>\n]*>|\S+)"#,
         #"<(?:https?|ftp|mailto):[^>\s]*>"#,
         #"\b(?:https?://|www\.)[^\s<]+"#,
