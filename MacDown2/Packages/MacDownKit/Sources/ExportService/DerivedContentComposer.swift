@@ -166,7 +166,9 @@ private struct DerivedContentPlan {
             index: index,
             suffix: context.sentinelSuffix
         )
-        customNodes.append(CMarkGFM.CustomNodeSpec(sentinel: sentinel, isBlock: isBlock, html: contribution.html))
+        customNodes.append(CMarkGFM.CustomNodeSpec(sentinel: sentinel,
+                                                   isBlock: isBlock,
+                                                   html: DerivedHTMLSanitizer.sanitized(contribution.html)))
         splices.append(DerivedContentComposer.Splice(range: bodyRange, sentinel: sentinel, isBlock: isBlock))
         previousBodyUpperBound = bodyRange.upperBound
         placedCount += 1
