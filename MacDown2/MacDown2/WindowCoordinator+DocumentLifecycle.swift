@@ -16,8 +16,27 @@ import AppKit
 extension WindowCoordinator {
     /// Closes the tab/window that is currently key.
     func closeKeyWindow() {
-        guard let controller = controllers.first(where: { $0.window?.isKeyWindow ?? false }) else { return }
+        guard let controller = controllers.first(where: { $0.window?.isKeyWindow ?? false }) else {
+            // Settings, About, the welcome window: ⌘W closes them like any other Mac window.
+            if Self.isCloseableNonDocumentWindow(NSApp.keyWindow) {
+                NSApp.keyWindow?.performClose(nil)
+            }
+            return
+        }
         closeTab(in: controller)
+    }
+
+    /// Whether ⌘W applies: a document window with a closable tab, or any other closable key window.
+    var canCloseKeyWindow: Bool {
+        _ = commandStateRevision
+        if let keyModel {
+            return keyModel.canClose
+        }
+        return Self.isCloseableNonDocumentWindow(NSApp.keyWindow)
+    }
+
+    static func isCloseableNonDocumentWindow(_ window: NSWindow?) -> Bool {
+        window?.styleMask.contains(.closable) == true
     }
 
     func closeTab(in controller: WindowController) {
