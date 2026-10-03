@@ -29,13 +29,13 @@ public final class EditorTextSystem {
         stack.layoutManager
     }
 
-    /// Per-tab undo manager. Independent from other tabs.
-    public var undoManager: UndoManager {
-        textView.undoManager ?? fallbackUndoManager
-    }
+    /// Per-tab undo manager, independent of every other tab. `EditorTextView` hands
+    /// this to AppKit (`NSTextView.undoManager` would otherwise be the WINDOW's), so
+    /// Cmd-Z in one tab can never undo — or desynchronise the line index of —
+    /// another tab that shares the window (tabbed documents).
+    public let undoManager = UndoManager()
 
     private let stack: TextKitStack
-    private let fallbackUndoManager = UndoManager()
     private var lastAppliedConfiguration: EditorConfiguration?
     private var lastAppliedOverscroll: OverscrollState?
     /// Not `private`: `EditorTextSystem+Content.swift`'s `setText`/
