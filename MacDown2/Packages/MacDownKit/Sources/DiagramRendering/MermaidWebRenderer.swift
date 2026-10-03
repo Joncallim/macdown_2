@@ -1,4 +1,5 @@
 import Diagrams
+import DiagramWebKitPool
 import Foundation
 
 /// The real, WebKit-backed implementation of `MermaidDiagramRendering`
@@ -54,11 +55,29 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
     /// than silently dropped.
     public func render(_ fence: MermaidFence, context _: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
         let index = await checkout()
-        defer { checkin(index) }
-        let page = try await page(at: index)
-        let diagram = try await withTimeout(timeout) {
-            try await page.render(fence.source)
+        let page: MermaidHarnessPage
+        do {
+            page = try await self.page(at: index)
+        } catch {
+            checkin(index)
+            throw error
         }
+        let diagram: RenderedMermaidDiagram
+        do {
+            diagram = try await DiagramTimeoutRace.run(
+                timeout: timeout,
+                timeoutError: MermaidRenderError.timedOut
+            ) { try await page.render(fence.source) }
+        } catch {
+            // The script may still be running: replace the page instead of reusing it.
+            if error is CancellationError || (error as? MermaidRenderError) == .timedOut {
+                slots[index] = nil
+                await page.teardown()
+            }
+            checkin(index)
+            throw error
+        }
+        checkin(index)
         let byteCount = diagram.svg.utf8.count
         guard byteCount <= maxOutputBytes else {
             throw MermaidRenderError.outputTooLarge(byteCount: byteCount)
@@ -104,28 +123,5 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
             return
         }
         busy[index] = false
-    }
-
-    /// Races `operation` against a timeout, matching the accepted, bounded
-    /// cancellation limitation described in §8: this stops the *caller* from
-    /// waiting past `timeout`, it does not abort JavaScript already
-    /// dispatched to the page — the same accepted shape as
-    /// `MathImageRenderer`'s uninterruptible render call.
-    private func withTimeout<T: Sendable>(
-        _ duration: Duration,
-        operation: @escaping @Sendable () async throws -> T
-    ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask { try await operation() }
-            group.addTask {
-                try await Task.sleep(for: duration)
-                throw MermaidRenderError.timedOut
-            }
-            guard let result = try await group.next() else {
-                throw MermaidRenderError.timedOut
-            }
-            group.cancelAll()
-            return result
-        }
     }
 }
