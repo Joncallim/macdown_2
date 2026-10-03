@@ -22,7 +22,7 @@ enum OnLargeStack {
         thread.name = "ExportService.render"
         thread.start()
         finished.wait()
-        guard let result = box.result else { throw CMarkError.renderFailed }
+        guard let result = box.result else { throw CMarkGFM.CMarkError.renderFailed }
         return try result.get()
     }
 }
