@@ -22,8 +22,6 @@ extension EditorTextView {
         guard let startFragment = layoutManager.textLayoutFragment(for: containerOrigin) else { return }
         let containerDirtyMinY = dirtyRect.minY - inset.height
         let containerDirtyMaxY = dirtyRect.maxY - inset.height
-        let currentMatchColor = NSColor.systemOrange.withAlphaComponent(0.55)
-        let otherMatchColor = NSColor.systemYellow.withAlphaComponent(0.35)
 
         // `findHighlightRanges` comes straight from `TextSearchEngine.matches`,
         // which always returns matches in ascending document order (both its
@@ -53,8 +51,16 @@ extension EditorTextView {
             guard fragmentFrame.minY < containerDirtyMaxY else { return false }
             guard fragmentFrame.maxY > containerDirtyMinY else { return true }
 
+            // `NSTextLineFragment.characterRange` is relative to the fragment's own
+            // paragraph, not the document: every offset below is converted so a match
+            // on line 3 is drawn on line 3 (and one at offset 0 only on line 1).
+            let fragmentStart = layoutManager.offset(
+                from: layoutManager.documentRange.location,
+                to: fragment.rangeInElement.location
+            )
             for lineFragment in fragment.textLineFragments {
-                let lineRange = lineFragment.characterRange
+                let localRange = lineFragment.characterRange
+                let lineRange = NSRange(location: fragmentStart + localRange.location, length: localRange.length)
                 while matchCursor < findHighlightRanges.count,
                       findHighlightRanges[matchCursor].location + findHighlightRanges[matchCursor].length
                       <= lineRange.location {
@@ -67,20 +73,40 @@ extension EditorTextView {
                     guard let intersection = lineRange.intersection(matchRange), intersection.length > 0 else {
                         continue
                     }
-                    let startPoint = lineFragment.locationForCharacter(at: intersection.location)
-                    let endPoint = lineFragment.locationForCharacter(at: intersection.location + intersection.length)
-                    let rect = NSRect(
-                        x: fragmentFrame.minX + startPoint.x + inset.width,
-                        y: fragmentFrame.minY + lineFragment.typographicBounds.minY + inset.height,
-                        width: max(endPoint.x - startPoint.x, 1),
-                        height: lineFragment.typographicBounds.height
+                    drawMatchHighlight(
+                        intersection: intersection,
+                        lineFragment: lineFragment,
+                        fragmentFrame: fragmentFrame,
+                        fragmentStart: fragmentStart,
+                        isCurrent: index == currentFindMatchIndex
                     )
-                    let color = index == currentFindMatchIndex ? currentMatchColor : otherMatchColor
-                    color.setFill()
-                    NSBezierPath(rect: rect).fill()
                 }
             }
             return true
         }
+    }
+
+    private func drawMatchHighlight(
+        intersection: NSRange,
+        lineFragment: NSTextLineFragment,
+        fragmentFrame: CGRect,
+        fragmentStart: Int,
+        isCurrent: Bool
+    ) {
+        let inset = textContainerInset
+        let localStart = intersection.location - fragmentStart
+        let startPoint = lineFragment.locationForCharacter(at: localStart)
+        let endPoint = lineFragment.locationForCharacter(at: localStart + intersection.length)
+        let rect = NSRect(
+            x: fragmentFrame.minX + startPoint.x + inset.width,
+            y: fragmentFrame.minY + lineFragment.typographicBounds.minY + inset.height,
+            width: max(endPoint.x - startPoint.x, 1),
+            height: lineFragment.typographicBounds.height
+        )
+        let color = isCurrent
+            ? NSColor.systemOrange.withAlphaComponent(0.55)
+            : NSColor.systemYellow.withAlphaComponent(0.35)
+        color.setFill()
+        NSBezierPath(rect: rect).fill()
     }
 }
