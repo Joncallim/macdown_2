@@ -18,6 +18,8 @@ public enum WorkspaceError: Error {
     /// The text contains characters the target encoding cannot hold. Nothing
     /// was written and the document's encoding is unchanged.
     case textNotRepresentable(encodingName: String)
+    /// Save As chose a file that is open in another window. Nothing was written.
+    case destinationOpenInAnotherWindow(name: String)
 }
 
 extension WorkspaceError: LocalizedError {
@@ -54,6 +56,11 @@ extension WorkspaceError: LocalizedError {
                 This text cannot be saved as \(encodingName) without losing characters. \
                 Nothing was changed; choose another encoding.
                 """
+            )
+        case let .destinationOpenInAnotherWindow(name):
+            String(
+                localized: "\(name) is open in another window. Close it there, or choose a different name.",
+                bundle: .module
             )
         case let .backingFileUnavailable(issue):
             switch issue {

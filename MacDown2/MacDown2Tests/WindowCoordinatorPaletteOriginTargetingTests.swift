@@ -222,6 +222,34 @@ struct PaletteOriginTargetingTests {
         #expect(FileManager.default.fileExists(atPath: destination.path))
     }
 
+    @Test func saveAsOntoAFileOpenInAnotherWindowIsRefusedAndWritesNothing() async throws {
+        let fixture = try Self.makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.rootDirectory) }
+        let sourceA = fixture.rootDirectory.appendingPathComponent("a-source.md")
+        let sourceB = fixture.rootDirectory.appendingPathComponent("b-source.md")
+        try "a".write(to: sourceA, atomically: true, encoding: .utf8)
+        try "b".write(to: sourceB, atomically: true, encoding: .utf8)
+        let documentA = try FileDocument(fileURL: sourceA, recoveryBuffer: fixture.recoveryBuffer)
+            .load().updatingText("draft-a")
+        fixture.controllerA.model.tabStore.newTab(document: documentA)
+        let documentB = try FileDocument(fileURL: sourceB, recoveryBuffer: fixture.recoveryBuffer).load()
+        fixture.controllerB.model.tabStore.newTab(document: documentB)
+        let expectedA = try #require(fixture.controllerA.model.activeDocument)
+
+        await fixture.controllerA.model.saveAs(to: sourceB, expecting: expectedA)
+
+        #expect(try String(contentsOf: sourceB, encoding: .utf8) == "b")
+        #expect(fixture.controllerA.model.activeDocument?.fileURL?.standardizedFileURL == sourceA.standardizedFileURL)
+        let lastError = fixture.controllerA.model.lastError
+        guard case .destinationOpenInAnotherWindow = lastError else {
+            Issue
+                .record(
+                    "expected destinationOpenInAnotherWindow, got \(String(describing: lastError))"
+                )
+            return
+        }
+    }
+
     // MARK: - New Tab, Save, Close Tab, Toggle Sidebar: already explicit, regression-guarded here too
 
     @Test func newTabFromAnExplicitOriginTabsUnderThatOriginNotAnotherOpenWindow() throws {
