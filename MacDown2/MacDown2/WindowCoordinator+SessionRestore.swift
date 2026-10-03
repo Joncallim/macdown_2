@@ -28,7 +28,7 @@ extension WindowCoordinator {
     /// pass 1). Only the dirty tabs come back; clean ones are not restored.
     func restoreUnsavedSessionTabs() async {
         guard let session = consumeLaunchSession() else { return }
-        let tempStore = TabStore(sessionStore: LaunchSessionStore(session: session))
+        let tempStore = TabStore(sessionStore: LaunchSessionStore(session: session), recoveryBuffer: recoveryBuffer)
         await tempStore.restoreSessionIfNeeded()
         let unsaved = Self.unsavedTabs(in: tempStore.tabs)
         guard !unsaved.isEmpty else { return }

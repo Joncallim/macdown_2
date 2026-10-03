@@ -295,7 +295,7 @@ final class WindowCoordinator {
     /// length lint budget.
     func restoreSession() async {
         _ = consumeLaunchSession()
-        let tempStore = TabStore(sessionStore: sessionStore)
+        let tempStore = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
         await tempStore.restoreSessionIfNeeded()
 
         guard !tempStore.tabs.isEmpty else {
