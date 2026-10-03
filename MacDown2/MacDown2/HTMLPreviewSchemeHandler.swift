@@ -1,6 +1,5 @@
 import FileCore
 import Preview
-import UniformTypeIdentifiers
 import WebKit
 
 // MARK: - Scheme handler
@@ -68,7 +67,13 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
         task: WKURLSchemeTask
     ) {
         let hardened = PreviewSecurity.hardenedHTMLDocument(from: request.source)
-        serve(Data(hardened.utf8), policy: request.policy, url: url, task: task)
+        serve(
+            Data(hardened.utf8),
+            policy: request.policy,
+            contentType: HTMLPreviewContentType.mainDocument,
+            url: url,
+            task: task
+        )
     }
 
     private func serveSubresource(
@@ -92,31 +97,35 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
         // fonts, media — is served raw. Either way the response carries the
         // CSP header, so payloads the meta injection cannot harden (non-UTF-8
         // HTML, SVG, XML) are still governed by the authoritative header.
-        let isHTML = UTType(filenameExtension: approved.pathExtension)?.preferredMIMEType == "text/html"
-        let responseData: Data = if isHTML {
+        let mimeType = HTMLPreviewContentType.forFileExtension(approved.pathExtension)
+        var contentType = mimeType
+        let responseData: Data
+        if HTMLPreviewContentType.isHTML(approved.pathExtension) {
             // The failable initializer is deliberate: a payload that is not
             // valid UTF-8 cannot be meta-hardened, so it is served raw and
             // the browser applies its own encoding detection — the CSP
             // header still applies.
             if let decoded = String(bytes: data, encoding: .utf8) {
-                Data(PreviewSecurity.hardenedHTMLDocument(from: decoded).utf8)
+                responseData = Data(PreviewSecurity.hardenedHTMLDocument(from: decoded).utf8)
+                contentType = HTMLPreviewContentType.mainDocument
             } else {
-                data
+                responseData = data
             }
         } else {
-            data
+            responseData = data
         }
-        serve(responseData, policy: request.policy, url: url, task: task)
+        serve(responseData, policy: request.policy, contentType: contentType, url: url, task: task)
     }
 
     /// Finishes `task` with `data` and the hardening response headers.
     private func serve(
         _ data: Data,
         policy: HTMLPreviewPolicy,
+        contentType: String,
         url: URL,
         task: WKURLSchemeTask
     ) {
-        let headers = HTMLPreviewResponseHeaders.hardeningHeaders(for: policy)
+        let headers = HTMLPreviewResponseHeaders.headers(for: policy, contentType: contentType)
         guard let response = HTTPURLResponse(
             url: url,
             statusCode: 200,
