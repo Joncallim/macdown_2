@@ -312,6 +312,9 @@ struct DocumentEditorSplitView: View {
                 d2FenceView: d2FenceView,
                 graphvizFenceView: graphvizFenceView
             )
+            .environment(\.previewOpenDocument) { [weak coordinator] url in
+                Task { @MainActor in await coordinator?.openDocument(at: url) }
+            }
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 4) {
                     PreviewContributionDiagnosticsBadge(
