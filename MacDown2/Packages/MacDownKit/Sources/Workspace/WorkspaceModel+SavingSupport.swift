@@ -30,6 +30,14 @@ extension WorkspaceModel {
         return nil
     }
 
+    /// Reads and hashes the destination off the main actor: choosing a very large existing file
+    /// would otherwise freeze the UI while it is loaded into memory.
+    func saveAsBaseline(of document: FileDocument, at url: URL) async throws -> DestinationBaseline? {
+        try await Task.detached(priority: .userInitiated) {
+            try document.saveAsBaseline(for: url)
+        }.value
+    }
+
     func isLatestSave(_ context: SaveContext) -> Bool {
         latestSaveGenerationByDocumentID[context.documentID] == context.generation
     }

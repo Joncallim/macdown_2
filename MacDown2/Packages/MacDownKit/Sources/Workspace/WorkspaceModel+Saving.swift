@@ -215,11 +215,12 @@ public extension WorkspaceModel {
         // Captured at authorization: publication is conditional on it (#183 F22).
         let baseline: DestinationBaseline?
         do {
-            baseline = try expected.saveAsBaseline(for: url)
+            baseline = try await saveAsBaseline(of: expected, at: url)
         } catch {
             lastError = workspaceError(for: error)
             return
         }
+        guard isCurrent(expected) else { return }
         await publishSaveAs(expected, to: url, destinationBaseline: baseline)
     }
 
