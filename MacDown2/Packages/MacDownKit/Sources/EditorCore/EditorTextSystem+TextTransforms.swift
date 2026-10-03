@@ -67,7 +67,8 @@ public extension EditorTextSystem {
                 lineIndex: lineIndex,
                 selection: selection,
                 width: width,
-                decrease: decrease
+                decrease: decrease,
+                usesTabs: !editingAssistConfiguration.convertsTabsToSpaces
             )
         }
     }
