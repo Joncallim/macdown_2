@@ -156,7 +156,11 @@ public struct EditorView: NSViewRepresentable {
         // current text *and* the change did not originate from the view itself.
         // This prevents the keystroke-echo feedback loop.
         var pushedModelText = false
-        if !context.coordinator.isApplyingModelText, !system.text.isExactlyEqual(to: text) {
+        // While an IME / dead-key composition is in progress the binding still holds the pre-composition
+        // text (marked-text updates post no `didChange`); pushing it would clear the marked range
+        // mid-composition. The binding catches up when the composition commits.
+        if !context.coordinator.isApplyingModelText, !system.textView.hasMarkedText(),
+           !system.text.isExactlyEqual(to: text) {
             context.coordinator.isApplyingModelText = true
             system.setText(text)
             context.coordinator.isApplyingModelText = false
