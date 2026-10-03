@@ -45,11 +45,11 @@ final class WindowCoordinator {
     let recentFolderRoots: RecentFolderRoots
     let recentFileDocuments: RecentFileDocuments
     let appSettings: AppSettingsModel
-    private let workspaceStateStore: any WorkspaceStateStoring
+    let workspaceStateStore: any WorkspaceStateStoring
     /// Shared by every `WorkspaceModel` this coordinator creates, so a
     /// sidebar-layout edit in one window is immediately reflected in every
     /// other open window rather than only on the next launch (#34).
-    private let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
+    let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
     private var hasRestoredSession = false
     let documentOpens = KeyedSerialRunner<URL>()
     var launchSession: WorkspaceSession? // as at launch; handed out once by `consumeLaunchSession()`
@@ -354,26 +354,6 @@ final class WindowCoordinator {
         controller.showWindow(nil)
         scheduleSaveSession()
         updateKeyModel()
-    }
-
-    func makeWindowModel(panel: (any FilePanelProviding)? = nil) -> WorkspaceModel {
-        let tabStore = TabStore(sessionStore: NoOpSessionStore(), recoveryBuffer: recoveryBuffer)
-        let model = WorkspaceModel(
-            tabStore: tabStore,
-            stateStore: workspaceStateStore,
-            layoutBroadcaster: sidebarLayoutBroadcaster,
-            panel: panel ?? panelProvider
-        )
-        model.setSaveAsSessionPublisher { [weak self, weak model] in
-            guard let self, let model else { return false }
-            let result = await saveSessionResult(allowingSaveAsPublicationFor: model)
-            return result.persisted
-        }
-        tabStore.setRenameSessionPublisher { [weak self, weak model] in
-            guard let self, let model else { return false }
-            return await saveSessionResult(allowingSaveAsPublicationFor: model).persisted
-        }
-        return model
     }
 
     func updateKeyModel() {

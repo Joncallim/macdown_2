@@ -131,6 +131,9 @@ public final class WorkspaceModel {
     /// publication of a new untitled tab.
     public var onManagedDocumentLifetimePrepared: (@MainActor @Sendable () async -> Void)?
 
+    /// Called after a save or Save As published `url` on disk.
+    public var onDocumentWritten: (@MainActor (URL) -> Void)?
+
     /// The document currently shown in the content area.
     public var activeDocument: FileDocument? {
         tabStore.activeDocument
