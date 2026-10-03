@@ -8,7 +8,7 @@ import Foundation
 public struct MarkdownSettings: Codable, Sendable, Equatable {
     public var parsesBlockDirectives: Bool
 
-    public init(parsesBlockDirectives: Bool = true) {
+    public init(parsesBlockDirectives: Bool = false) {
         self.parsesBlockDirectives = parsesBlockDirectives
     }
 

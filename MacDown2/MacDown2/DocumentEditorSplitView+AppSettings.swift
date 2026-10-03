@@ -39,7 +39,7 @@ extension DocumentEditorSplitView {
     }
 
     static func markdownParseOptions(from markdownSettings: MarkdownSettings?) -> MarkdownParseOptions {
-        MarkdownParseOptions(blockDirectives: markdownSettings?.parsesBlockDirectives ?? true)
+        MarkdownParseOptions(blockDirectives: markdownSettings?.parsesBlockDirectives ?? false)
     }
 
     /// `isMarkdown` gates exactly the Markdown-*specific* behaviors

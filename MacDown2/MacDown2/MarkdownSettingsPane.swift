@@ -19,7 +19,7 @@ private struct MarkdownSettingsForm: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Parse block directives (`:::`)", isOn: $appSettings.markdown.parsesBlockDirectives)
+                Toggle("Parse block directives (`@Name { … }`)", isOn: $appSettings.markdown.parsesBlockDirectives)
             } footer: {
                 Text(
                     """
