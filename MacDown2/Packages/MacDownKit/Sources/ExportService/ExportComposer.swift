@@ -73,7 +73,8 @@ enum ExportComposer {
             sourceUTF16Length: sourceUTF16Length,
             contributions: request.contributions,
             sourceGeneration: request.sourceGeneration,
-            budget: budget
+            budget: budget,
+            containerRanges: parsed.containerRanges
         )
 
         let resolver = ExportResourceResolver(
@@ -184,6 +185,7 @@ enum ExportComposer {
         let metadata: ExportMetadata
         let bodyText: String
         let bodyStartOffset: Int
+        let containerRanges: [Range<Int>]
     }
 
     private static func parse(
@@ -213,8 +215,26 @@ enum ExportComposer {
                 authoredFirstBlockIsHeading: startsWithHeading(document.blocks.first)
             ),
             bodyText: bodyText,
-            bodyStartOffset: bodyStartOffset
+            bodyStartOffset: bodyStartOffset,
+            containerRanges: containerRanges(in: document)
         )
+    }
+
+    /// Source-coordinate UTF-16 ranges of every block quote and list item, at any depth.
+    private static func containerRanges(in document: MarkdownDocument) -> [Range<Int>] {
+        var ranges: [Range<Int>] = []
+        func visit(_ block: MarkdownBlock) {
+            switch block.kind {
+            case .blockQuote, .listItem:
+                let range = document.sourceMap.utf16Range(ofLines: block.lineRange)
+                ranges.append(range.location ..< (range.location + range.length))
+            default:
+                break
+            }
+            block.children.forEach(visit)
+        }
+        document.blocks.forEach(visit)
+        return ranges
     }
 
     /// Whether the document's own first top-level block is a level-1 heading —

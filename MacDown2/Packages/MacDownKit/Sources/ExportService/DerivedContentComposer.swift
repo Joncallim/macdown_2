@@ -37,6 +37,17 @@ enum DerivedContentComposer {
         let sourceGeneration: UInt
         let sentinelSuffix: String
         let budget: ExportResourceBudget
+        /// Source-coordinate UTF-16 ranges of every block quote and list item.
+        let containerRanges: [Range<Int>]
+        let bodyText: NSString
+
+        /// Whether the contributed range opens with a code-fence line (after any quote/indent prefix).
+        func startsFence(_ bodyRange: Range<Int>) -> Bool {
+            guard bodyRange.lowerBound < bodyText.length else { return false }
+            let line = bodyText.lineRange(for: NSRange(location: bodyRange.lowerBound, length: 0))
+            let first = bodyText.substring(with: line).drop { $0 == " " || $0 == "\t" || $0 == ">" }
+            return first.hasPrefix("```") || first.hasPrefix("~~~")
+        }
     }
 
     static func compose(
@@ -45,7 +56,8 @@ enum DerivedContentComposer {
         sourceUTF16Length: Int,
         contributions: [ExportDerivedContribution],
         sourceGeneration: UInt,
-        budget: ExportResourceBudget = .standard
+        budget: ExportResourceBudget = .standard,
+        containerRanges: [Range<Int>] = []
     ) -> Result {
         guard !contributions.isEmpty else {
             return Result(splicedBody: bodyText, customNodes: [], diagnostics: [])
@@ -59,7 +71,9 @@ enum DerivedContentComposer {
             // One scan of the body picks a sentinel family that cannot collide
             // with authored text, rather than re-scanning per contribution.
             sentinelSuffix: sentinelSuffix(notCollidingWith: bodyText),
-            budget: budget
+            budget: budget,
+            containerRanges: containerRanges,
+            bodyText: bodyText as NSString
         )
 
         let sorted = contributions.sorted { $0.sourceRange.lowerBound < $1.sourceRange.lowerBound }
@@ -160,7 +174,21 @@ private struct DerivedContentPlan {
             return
         }
 
-        let isBlock = contribution.placement == .block
+        var isBlock = contribution.placement == .block
+        if isBlock, context.containerRanges.contains(where: { $0.contains(range.lowerBound) }) {
+            // A blank-line-delimited sentinel splices the contribution out of its list item or
+            // block quote (and splits the list/quote around it). Display math keeps its place
+            // as an inline fragment; a diagram fence, whose lines carry the container's own
+            // prefixes, cannot be lifted out cleanly and stays as authored source.
+            guard !context.startsFence(bodyRange) else {
+                diagnostics.append(ExportDiagnostic(
+                    severity: .warning,
+                    message: "a diagram inside a list item or block quote is exported as its source text"
+                ))
+                return
+            }
+            isBlock = false
+        }
         let sentinel = DerivedContentComposer.makeSentinel(
             isBlock: isBlock,
             index: index,
