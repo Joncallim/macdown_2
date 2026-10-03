@@ -189,7 +189,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await coordinator.ensureWindowExistsForReopen()
             }
         }
-        return true
+        // False: the coordinator handles the reopen itself. Returning true let SwiftUI's
+        // WindowGroup also create its (empty) placeholder window — the launch-time cleanup
+        // that closes those runs only once — so a Dock click left a stray blank window
+        // beside the document window.
+        return false
     }
 
     func application(_: NSApplication, openFiles filenames: [String]) {
