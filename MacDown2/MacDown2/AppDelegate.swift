@@ -207,7 +207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !fileURLs.isEmpty else { return }
         hasPendingDocumentOpen = true
         Task { @MainActor in
-            await coordinator.restoreUnsavedSessionTabs()
+            await coordinator.settleLaunchRestoration()
             for url in fileURLs {
                 await coordinator.openDocument(at: url)
             }

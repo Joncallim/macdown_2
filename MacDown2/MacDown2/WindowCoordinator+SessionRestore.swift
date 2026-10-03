@@ -27,13 +27,34 @@ extension WindowCoordinator {
     /// overwrite the session file, orphaning the recovery records (#183 review
     /// pass 1). Only the dirty tabs come back; clean ones are not restored.
     func restoreUnsavedSessionTabs() async {
+        // One restore, shared: a second caller used to find the session already consumed, return at once, and go
+        // on to open its file while the first restore was still creating windows — a duplicate of the same document.
+        if let running = unsavedRestoreTask {
+            await running.value
+            return
+        }
         guard let session = consumeLaunchSession() else { return }
-        let tempStore = TabStore(sessionStore: LaunchSessionStore(session: session), recoveryBuffer: recoveryBuffer)
-        await tempStore.restoreSessionIfNeeded()
-        let unsaved = Self.unsavedTabs(in: tempStore.tabs)
-        guard !unsaved.isEmpty else { return }
-        _ = restore(tabs: unsaved)
-        updateKeyModel()
+        let task = Task { @MainActor [self] in
+            let tempStore = TabStore(
+                sessionStore: LaunchSessionStore(session: session),
+                recoveryBuffer: recoveryBuffer
+            )
+            await tempStore.restoreSessionIfNeeded()
+            let unsaved = Self.unsavedTabs(in: tempStore.tabs)
+            guard !unsaved.isEmpty else { return }
+            _ = restore(tabs: unsaved)
+            updateKeyModel()
+        }
+        unsavedRestoreTask = task
+        await task.value
+    }
+
+    /// What a Finder/Dock open must wait for before it opens its files: any launch restore still in flight (the
+    /// grace-period task, a normal full restore, or the unsaved-tabs restore), so the restored windows exist and
+    /// the open finds them instead of creating a second window for the same file.
+    func settleLaunchRestoration() async {
+        await restoreTask?.value
+        await restoreUnsavedSessionTabs()
     }
 
     /// The launch-time session, once. A normal restore consumes it too: the tabs it restores are
