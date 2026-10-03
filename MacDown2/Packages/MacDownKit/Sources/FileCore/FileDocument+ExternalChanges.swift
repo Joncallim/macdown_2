@@ -58,7 +58,8 @@ public extension FileDocument {
             return reconcilingMatchingExternalText(snapshot)
         }
 
-        if snapshot.revision.sha256 == lastKnownRevision?.sha256 {
+        // `baselineSHA256` also covers a document restored while its file was missing, which has no revision yet.
+        if let baseline = baselineSHA256, snapshot.revision.sha256 == baseline {
             var copy = self
             copy.applyExternalState(
                 lastKnownRevision: snapshot.revision,
