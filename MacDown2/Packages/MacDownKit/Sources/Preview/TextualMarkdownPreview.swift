@@ -24,6 +24,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
     /// When `nil` (the default) they are extracted lazily from `text`. See
     /// ``PreviewLinkDefinitions`` for why every block needs these.
     public let linkDefinitions: [String]?
+    private let definitionIndex: PreviewLinkDefinitionIndex
 
     /// Renders a ```mermaid``` fence's inner diagram source (delimiters
     /// already stripped) as a native view, in place of Textual's ordinary
@@ -64,6 +65,10 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         self.controller = controller
         self.blocks = blocks
         self.linkDefinitions = linkDefinitions
+        // Built once per view value, not once per block: each block picks out the definitions it uses from it.
+        definitionIndex = PreviewLinkDefinitionIndex(
+            linkDefinitions ?? text.map(PreviewLinkDefinitions.extract(from:)) ?? []
+        )
         self.mermaidFenceView = mermaidFenceView
         self.d2FenceView = d2FenceView
         self.graphvizFenceView = graphvizFenceView
@@ -81,15 +86,6 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
     private var computedBlocks: [PreviewBlock] {
         guard let document, let text else { return [] }
         return PreviewBlock.blocks(from: document, text: text)
-    }
-
-    private var displayLinkDefinitions: [String] {
-        linkDefinitions ?? computedLinkDefinitions
-    }
-
-    private var computedLinkDefinitions: [String] {
-        guard let text else { return [] }
-        return PreviewLinkDefinitions.extract(from: text)
     }
 
     /// The stack must be eager (`VStack`), not `LazyVStack`, for two
@@ -138,7 +134,7 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                     block: block,
                                     theme: theme,
                                     linkResolver: linkResolver,
-                                    linkDefinitions: displayLinkDefinitions,
+                                    definitionIndex: definitionIndex,
                                     mermaidFenceView: mermaidFenceView,
                                     d2FenceView: d2FenceView,
                                     graphvizFenceView: graphvizFenceView

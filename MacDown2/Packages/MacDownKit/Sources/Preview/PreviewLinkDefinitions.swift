@@ -25,33 +25,10 @@ import Foundation
 ///   mirrors the same trade-off already accepted for reference-definition
 ///   detection versus a full CommonMark parse.
 public enum PreviewLinkDefinitions {
-    /// `source` with `definitions` prepended, separated from it by a BLANK line. A
-    /// single newline let a block that begins `(…)`, `"…"` or `'…'` be read as the
-    /// optional TITLE of the last definition line, so that block vanished from Preview.
-    ///
-    /// Only definitions whose label the block actually mentions are prepended: handing
-    /// Textual every definition made a 12-byte paragraph a 77 KB parse (past its
-    /// documented ~100 KB freeze point) and cost O(blocks × definitions) per refresh.
+    /// `source` with the definitions it references prepended; see ``PreviewLinkDefinitionIndex``. Callers that
+    /// prefix many blocks build the index once instead.
     public static func prefixed(_ source: String, with definitions: [String]) -> String {
-        guard !definitions.isEmpty else { return source }
-        let haystack = normalizedLabel(source)
-        let referenced = definitions.filter { line in
-            guard let label = label(of: line) else { return true }
-            return haystack.contains("[" + label + "]")
-        }
-        guard !referenced.isEmpty else { return source }
-        return referenced.joined(separator: "\n") + "\n\n" + source
-    }
-
-    private static func normalizedLabel(_ text: String) -> String {
-        text.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
-    }
-
-    private static func label(of definition: String) -> String? {
-        guard let open = definition.firstIndex(of: "["),
-              let close = definition[open...].firstIndex(of: "]")
-        else { return nil }
-        return normalizedLabel(String(definition[definition.index(after: open) ..< close]))
+        PreviewLinkDefinitionIndex(definitions).prefixed(source)
     }
 
     /// Reference definition lines found anywhere in `text`, in document
@@ -84,7 +61,11 @@ public enum PreviewLinkDefinitions {
 
         while index <= length {
             if index == length || buffer[index] == Self.newline {
-                let lineEnd = index
+                // A CRLF document's lines end in `\r`, which is a terminator, not free text after the destination.
+                var lineEnd = index
+                if lineEnd > lineStart, buffer[lineEnd - 1] == 0x0D {
+                    lineEnd -= 1
+                }
                 if isDefinitionLine(buffer, from: lineStart, to: lineEnd) {
                     definitions.append(nsText.substring(with: NSRange(
                         location: lineStart,

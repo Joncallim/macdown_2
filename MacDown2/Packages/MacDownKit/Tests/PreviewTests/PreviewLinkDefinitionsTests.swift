@@ -151,4 +151,12 @@ struct PreviewLinkDefinitionsTests {
     @Test func anUnterminatedTitleIsNotADefinition() {
         #expect(PreviewLinkDefinitions.extract(from: "[a]: /x \"Title").isEmpty)
     }
+
+    /// `extract` split on `\n` only, so in a CRLF document every definition line ended in `\r`, which the new
+    /// destination/title validation read as free text: no definition was ever found.
+    @Test func definitionsInACRLFDocumentAreFound() {
+        let text = "[a]: /url\r\n\r\n[b]: /other \"Title\"\r\ntext [a]\r\n"
+
+        #expect(PreviewLinkDefinitions.extract(from: text) == ["[a]: /url", "[b]: /other \"Title\""])
+    }
 }
