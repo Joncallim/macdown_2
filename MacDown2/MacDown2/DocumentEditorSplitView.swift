@@ -260,7 +260,7 @@ struct DocumentEditorSplitView: View {
     /// TOC (architecture takeover, pass 1/10).
     private var contributionTaskID: PreviewContributionTaskID {
         PreviewContributionTaskID(
-            documentIdentity: ObjectIdentifier(parseSession), parsedRevision: parseSession.document?.revision
+            documentIdentity: parseSession.identity, parsedRevision: parseSession.document?.revision
         )
     }
 
@@ -279,7 +279,7 @@ struct DocumentEditorSplitView: View {
             document: parseSession.document,
             isMarkdown: isMarkdown,
             formatName: document.format.name,
-            documentIdentity: ObjectIdentifier(parseSession)
+            documentIdentity: parseSession.identity
         )
     }
 

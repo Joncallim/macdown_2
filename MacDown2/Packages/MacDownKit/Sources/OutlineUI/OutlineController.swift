@@ -1,3 +1,4 @@
+import Foundation
 import JSONSupport
 import MarkdownEngine
 import Observation
@@ -74,7 +75,7 @@ public final class OutlineController {
     private var lastHeadings: [HeadingItem]
     private var lastSourceMap: SourceMap?
     private var lastAppliedRevision: Int?
-    private var lastDocumentIdentity: ObjectIdentifier?
+    private var lastDocumentIdentity: UUID?
 
     /// The last editor caret/viewport offset (D5), re-translated through
     /// whichever `SourceMap` is current every time `update(...)` runs.
@@ -130,7 +131,7 @@ public final class OutlineController {
         document: MarkdownDocument?,
         isMarkdown: Bool,
         formatName: String,
-        documentIdentity: ObjectIdentifier? = nil
+        documentIdentity: UUID? = nil
     ) {
         let newAvailability = Self.resolveAvailability(
             document: document,

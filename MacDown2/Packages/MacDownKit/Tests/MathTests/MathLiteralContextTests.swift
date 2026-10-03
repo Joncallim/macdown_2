@@ -75,6 +75,25 @@ struct MathLiteralContextTests {
         #expect(ContinuousClock.now - start < .seconds(10))
     }
 
+    @Test func unclosedLinkOpenersScanInLinearTime() {
+        let hostile = String(repeating: "](x", count: 400_000)
+        let start = ContinuousClock.now
+
+        let ranges = MathLiteralContextScanner.ranges(in: hostile)
+
+        #expect(ranges.isEmpty)
+        #expect(ContinuousClock.now - start < .seconds(5))
+    }
+
+    @Test func linkDestinationsAreStillFoundAndBounded() {
+        let text = "a [b](https://e.com/$x$) c ](" + String(repeating: "z", count: 3000) + ") d"
+        let ranges = MathLiteralContextScanner.ranges(in: text)
+
+        let first = (text as NSString).range(of: "](https://e.com/$x$)")
+        #expect(ranges.contains(first.location ..< first.location + first.length))
+        #expect(!ranges.contains { $0.count > 2100 })
+    }
+
     @Test func mathInFrontMatterIsNotTypesetAndDoesNotPairWithBodyMath() async throws {
         let spans = try await typesetLaTeX(in: "---\nprice: $5 and $10\nnote: $$\n---\n\n$$E=mc^2$$\n")
 

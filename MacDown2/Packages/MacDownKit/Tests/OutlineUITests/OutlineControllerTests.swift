@@ -8,6 +8,11 @@ import Testing
 struct OutlineControllerTests {
     // MARK: - Availability gating (D7/§2.4)
 
+    @Test func parseSessionIdentitiesAreUnique() {
+        let identities = (0 ..< 50).map { _ in MarkdownParseSession().identity }
+        #expect(Set(identities).count == 50)
+    }
+
     /// Every tab's parse session restarts its revisions, so two tabs both sit at revision 1 (or 2) and the
     /// controller, which only compared revisions, kept showing the previous tab's headings.
     @Test func switchingToAnotherDocumentAtTheSameRevisionRebuildsTheOutline() async {
@@ -19,15 +24,15 @@ struct OutlineControllerTests {
         let controller = OutlineController()
 
         controller.update(
-            document: documentA, isMarkdown: true, formatName: "Markdown", documentIdentity: ObjectIdentifier(tabA)
+            document: documentA, isMarkdown: true, formatName: "Markdown", documentIdentity: tabA.identity
         )
         #expect(controller.items.map(\.title) == ["Alpha"])
         controller.update(
-            document: documentB, isMarkdown: true, formatName: "Markdown", documentIdentity: ObjectIdentifier(tabB)
+            document: documentB, isMarkdown: true, formatName: "Markdown", documentIdentity: tabB.identity
         )
         #expect(controller.items.map(\.title) == ["Bravo"])
         controller.update(
-            document: documentA, isMarkdown: true, formatName: "Markdown", documentIdentity: ObjectIdentifier(tabA)
+            document: documentA, isMarkdown: true, formatName: "Markdown", documentIdentity: tabA.identity
         )
         #expect(controller.items.map(\.title) == ["Alpha"])
     }

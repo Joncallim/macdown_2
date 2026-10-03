@@ -135,10 +135,7 @@ enum CMarkGFM {
         }
         defer { free(rendered) }
 
-        var html = String(cString: rendered)
-        for spec in walkResult.deferredInline {
-            html = html.replacingOccurrences(of: spec.sentinel, with: spec.html)
-        }
+        let html = substitutingDeferredSentinels(walkResult.deferredInline, in: String(cString: rendered))
         return Rendered(html: html, containsRawHTML: walkResult.sawRawHTML)
     }
 
