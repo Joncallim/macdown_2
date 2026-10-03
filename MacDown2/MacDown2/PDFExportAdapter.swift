@@ -165,6 +165,18 @@ private final class PDFNavigationDelegate: NSObject, WKNavigationDelegate {
         }
     }
 
+    /// The print page may only ever be the document loaded from a string (`about:blank`). The CSP governs
+    /// subresource loads, not navigation, so a `<meta http-equiv=refresh content="0; url=http://…">` in
+    /// authored raw HTML (kept for PDF export) would otherwise be followed: the export would call out to the
+    /// network and could print the remote page.
+    func webView(
+        _: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
+    ) {
+        decisionHandler(PDFNavigationPolicy.allows(navigationAction.request.url) ? .allow : .cancel)
+    }
+
     func webView(_: WKWebView, didFinish _: WKNavigation!) {
         resume(nil)
     }
@@ -191,5 +203,14 @@ private final class PDFNavigationDelegate: NSObject, WKNavigationDelegate {
         } else {
             continuation.resume()
         }
+    }
+}
+
+/// Which navigations the PDF print web view may perform.
+enum PDFNavigationPolicy {
+    /// Only the string-loaded document itself (`loadHTMLString(_, baseURL: nil)` navigates to `about:blank`).
+    static func allows(_ url: URL?) -> Bool {
+        guard let url else { return true }
+        return url.absoluteString == "about:blank"
     }
 }
