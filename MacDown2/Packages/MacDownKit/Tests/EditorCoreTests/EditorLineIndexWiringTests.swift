@@ -50,6 +50,46 @@ struct EditorLineIndexWiringTests {
         assertMatchesFreshRebuild(system)
     }
 
+    /// An IME / dead-key composition posts no `didChange` for its marked-text edits, so the index never saw
+    /// them and the commit's edit was applied to a stale index (wrong line starts; Delete Line then removed
+    /// the wrong text, and a later edit could scan out of bounds).
+    @Test func aDeadKeyCompositionKeepsTheLineIndexCorrect() {
+        let text = (1 ... 10).map { "line \($0)" }.joined(separator: "\n")
+        let system = support.makeSystem(text: text)
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        system.textView.setSelectedRange(NSRange(location: 6, length: 0))
+
+        system.textView.setMarkedText(
+            "´", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(
+                location: NSNotFound,
+                length: 0
+            )
+        )
+        system.textView.insertText("é", replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        assertMatchesFreshRebuild(system)
+    }
+
+    @Test func aMultiCharacterCompositionKeepsTheLineIndexCorrect() {
+        let system = support.makeSystem(text: "a\nb\nc")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        system.textView.setSelectedRange(NSRange(location: 1, length: 0))
+
+        system.textView.setMarkedText(
+            "ni", selectedRange: NSRange(location: 2, length: 0), replacementRange: NSRange(
+                location: NSNotFound,
+                length: 0
+            )
+        )
+        system.textView.insertText("你好", replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        assertMatchesFreshRebuild(system)
+    }
+
     @Test func multipleSequentialEditsKeepLineIndexCorrect() {
         let system = support.makeSystem(text: "a\nb\nc")
         let window = support.mountInWindow(system)

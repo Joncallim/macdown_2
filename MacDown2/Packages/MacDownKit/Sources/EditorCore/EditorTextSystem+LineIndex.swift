@@ -24,6 +24,14 @@ extension EditorTextSystem {
     /// back to `text as NSString` there is the same "fail open" trade the
     /// existing `liveSourceLength` makes.
     func noteIncrementalEdit(editedRange: NSRange, replacementUTF16Length: Int) {
+        let live = assistTextSource ?? (text as NSString)
+        // Marked-text (IME / dead-key) edits post no `didChange`, so the index never saw them; the
+        // commit's edit would then be applied to a stale index and scan out of bounds. When the index's
+        // length does not account for this edit exactly, rebuild instead of patching.
+        guard lineIndex.utf16Length + replacementUTF16Length - editedRange.length == live.length else {
+            rebuildLineIndex()
+            return
+        }
         lineIndex.applying(
             editedRange: editedRange,
             replacementUTF16Length: replacementUTF16Length,
