@@ -24,9 +24,9 @@ extension WorkspaceError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .openFailed:
-            String(localized: "The document could not be opened.")
+            String(localized: "The document could not be opened.", bundle: .module)
         case .saveFailed:
-            String(localized: "The document could not be saved.")
+            String(localized: "The document could not be saved.", bundle: .module)
         case let .conditionalPublicationRecoveryRequired(url):
             String(
                 localized: """
@@ -42,9 +42,12 @@ extension WorkspaceError: LocalizedError {
                 """
             )
         case .noActiveDocument:
-            String(localized: "There is no active document.")
+            String(localized: "There is no active document.", bundle: .module)
         case .unresolvedExternalConflict:
-            String(localized: "Resolve the external file change before saving, or use Save As to keep this copy.")
+            String(
+                localized: "Resolve the external file change before saving, or use Save As to keep this copy.",
+                bundle: .module
+            )
         case let .textNotRepresentable(encodingName):
             String(
                 localized: """
@@ -55,15 +58,30 @@ extension WorkspaceError: LocalizedError {
         case let .backingFileUnavailable(issue):
             switch issue {
             case .missingOrMoved, .parentUnavailable:
-                String(localized: "The backing file is no longer available. Use Save As to keep this copy.")
+                String(
+                    localized: "The backing file is no longer available. Use Save As to keep this copy.",
+                    bundle: .module
+                )
             case .permissionDenied:
-                String(localized: "MacDown cannot access the backing file. Use Save As to keep this copy.")
+                String(
+                    localized: "MacDown cannot access the backing file. Use Save As to keep this copy.",
+                    bundle: .module
+                )
             case .notRegularFile:
-                String(localized: "The backing path is no longer a regular file. Use Save As to keep this copy.")
+                String(
+                    localized: "The backing path is no longer a regular file. Use Save As to keep this copy.",
+                    bundle: .module
+                )
             case .ambiguousMove, .moveCollidesWithOpenDocument:
-                String(localized: "MacDown could not safely follow the moved file. Use Save As to keep this copy.")
+                String(
+                    localized: "MacDown could not safely follow the moved file. Use Save As to keep this copy.",
+                    bundle: .module
+                )
             case .readFailed:
-                String(localized: "The backing file cannot be read safely. Use Save As to keep this copy.")
+                String(
+                    localized: "The backing file cannot be read safely. Use Save As to keep this copy.",
+                    bundle: .module
+                )
             }
         }
     }

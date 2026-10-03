@@ -84,7 +84,10 @@ extension FileTreeModel {
         if event == .vanished {
             if url == root {
                 rootIsTerminal = true
-                availability = .rootUnreadable(reason: String(localized: "The folder is no longer available."))
+                availability = .rootUnreadable(reason: String(
+                    localized: "The folder is no longer available.",
+                    bundle: .module
+                ))
                 rows = []
                 tearDown()
             } else {

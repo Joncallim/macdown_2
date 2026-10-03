@@ -49,7 +49,10 @@ public struct ContributionRegistry: Sendable {
             } catch {
                 let diagnostic = ContributionDiagnostic(
                     severity: .error,
-                    message: String(localized: "\(contribution.id) failed: \(error.localizedDescription)")
+                    message: String(
+                        localized: "\(contribution.id) failed: \(error.localizedDescription)",
+                        bundle: .module
+                    )
                 )
                 results.append(ContributionResult(
                     contributionID: contribution.id,

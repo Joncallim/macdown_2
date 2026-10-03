@@ -15,15 +15,15 @@ public enum FileTreeOperationError: Error, Sendable, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .nameEmpty: String(localized: "A name is required.")
-        case .nameContainsPathSeparator: String(localized: "Names cannot contain / or :.")
-        case let .nameExists(name): String(localized: "\"\(name)\" already exists.")
-        case .sourceMissing: String(localized: "The item no longer exists.")
-        case .destinationNotDirectory: String(localized: "The destination is not a folder.")
-        case .outsideCurrentRoot: String(localized: "The destination is outside the open folder.")
-        case .staleOperation: String(localized: "The folder changed before the operation could start.")
-        case .moveIntoOwnSubtree: String(localized: "A folder cannot be moved into itself.")
-        case let .posix(code): String(localized: "Folder operation failed (POSIX error \(code)).")
+        case .nameEmpty: String(localized: "A name is required.", bundle: .module)
+        case .nameContainsPathSeparator: String(localized: "Names cannot contain / or :.", bundle: .module)
+        case let .nameExists(name): String(localized: "\"\(name)\" already exists.", bundle: .module)
+        case .sourceMissing: String(localized: "The item no longer exists.", bundle: .module)
+        case .destinationNotDirectory: String(localized: "The destination is not a folder.", bundle: .module)
+        case .outsideCurrentRoot: String(localized: "The destination is outside the open folder.", bundle: .module)
+        case .staleOperation: String(localized: "The folder changed before the operation could start.", bundle: .module)
+        case .moveIntoOwnSubtree: String(localized: "A folder cannot be moved into itself.", bundle: .module)
+        case let .posix(code): String(localized: "Folder operation failed (POSIX error \(code)).", bundle: .module)
         case let .underlying(message): message
         }
     }

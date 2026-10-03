@@ -45,7 +45,10 @@ public struct D2Contribution: Contributing {
                     diagnostics: [
                         ContributionDiagnostic(
                             severity: .error,
-                            message: String(localized: "diagram could not be rendered: \(Self.describe(error))")
+                            message: String(
+                                localized: "diagram could not be rendered: \(Self.describe(error))",
+                                bundle: .module
+                            )
                         ),
                     ]
                 ))
@@ -60,10 +63,10 @@ public struct D2Contribution: Contributing {
         }
         switch renderError {
         case let .invalidSyntax(message): return message
-        case .timedOut: return String(localized: "rendering timed out")
+        case .timedOut: return String(localized: "rendering timed out", bundle: .module)
         case let .outputTooLarge(byteCount):
-            return String(localized: "rendered output too large (\(byteCount) bytes)")
-        case .rendererUnavailable: return String(localized: "renderer unavailable")
+            return String(localized: "rendered output too large (\(byteCount) bytes)", bundle: .module)
+        case .rendererUnavailable: return String(localized: "renderer unavailable", bundle: .module)
         }
     }
 }
