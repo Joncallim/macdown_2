@@ -44,7 +44,7 @@ enum EditorTextTransforms {
                     rebuilt += block.internalTerminators[index]
                 }
             }
-            return rebuilt
+            return (rebuilt, block.contents.count)
         }
     }
 
@@ -79,7 +79,7 @@ enum EditorTextTransforms {
                     rebuilt += block.internalTerminators[nextIndex - 1]
                 }
             }
-            return rebuilt
+            return (rebuilt, keptIndices.count)
         }
     }
 
@@ -180,7 +180,7 @@ enum EditorTextTransforms {
         lineIndex: EditorLineIndex,
         selection: EditorSelectionSet,
         undoActionName: String,
-        transform: (LineBlockContent) -> String
+        transform: (LineBlockContent) -> (text: String, lineCount: Int)
     ) -> EditorEditTransaction? {
         let groups = EditorLineTransforms.mergedLineBlockGroups(for: selection, lineIndex: lineIndex)
         guard groups.contains(where: { $0.endLine > $0.startLine }) else { return nil }
@@ -220,7 +220,12 @@ enum EditorTextTransforms {
                 memberIndices: group.memberIndices
             )
 
-            let rebuilt = transform(block)
+            let (rebuilt, expectedLineCount) = transform(block)
+            // Reordering or removing lines of a document that mixes `\r` and `\n`
+            // terminators can leave a `\r` directly before an unrelated `\n`, which the
+            // next parse reads as ONE `\r\n` (a line vanishes, terminators are rewritten).
+            // No faithful result exists, so the command declines (invariant 5).
+            guard EditorLineIndex(text: rebuilt as NSString).lineCount == expectedLineCount else { return nil }
             replacements.append(TextReplacement(range: range, replacementText: rebuilt))
 
             let resultLocation = range.location + delta
@@ -230,6 +235,8 @@ enum EditorTextTransforms {
 
             delta += (rebuilt as NSString).length - range.length
         }
+
+        guard !EditorLineTransforms.createsCRLFPair(replacements, in: text) else { return nil }
 
         return EditorLineTransforms.makeTransaction(
             replacements: replacements,
