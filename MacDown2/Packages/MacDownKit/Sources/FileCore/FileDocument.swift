@@ -30,6 +30,14 @@ public struct FileDocument: Sendable {
     public var state: FileDocumentState
 
     public private(set) var lastKnownRevision: FileRevision?
+
+    /// The content hash this document's unsaved text was written against, when the file
+    /// was missing at session restore and so no revision could be read. It keeps the
+    /// baseline alive across another relaunch: if the file reappears with different
+    /// content, restore then reports a conflict instead of treating the new disk content
+    /// as the baseline (and letting the first save overwrite it).
+    public internal(set) var restoredBaseSHA256: String?
+
     public private(set) var pendingExternalRevision: FileRevision?
     public private(set) var backingState: FileBackingState
 

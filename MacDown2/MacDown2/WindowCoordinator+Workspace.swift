@@ -150,7 +150,7 @@ extension WindowCoordinator {
                             previewMode: tab.previewMode,
                             syntaxOverride: tab.syntaxOverride,
                             encoding: tab.document.encoding,
-                            baseSHA256: tab.document.lastKnownRevision?.sha256,
+                            baseSHA256: tab.document.baselineSHA256,
                             folderRootBookmark: bookmark,
                             folderRootAlias: lexicalRoot ?? tab.folderRootAlias
                         ),

@@ -65,4 +65,35 @@ struct RestoredDirtyTabExternalChangeTests {
 
         #expect(document.state == .dirty)
     }
+
+    @Test func theBaselineSurvivesARestoreWhileTheFileIsMissingSoALaterReappearanceIsAConflict() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let url = directory.appendingPathComponent("notes.md")
+        try "disk v1".write(to: url, atomically: true, encoding: .utf8)
+        let dirty = try await FileDocument.create(fileURL: url, recoveryBuffer: recovery).load()
+            .updatingText("my unsaved edit")
+        #expect(await dirty.persistRecovery())
+        let originalBase = try #require(dirty.lastKnownRevision?.sha256)
+        let record = TabRecord(
+            id: UUID(), fileURL: url, documentRecoveryEpoch: dirty.recoveryEpoch, baseSHA256: originalBase
+        )
+
+        // Quit, the file vanishes, relaunch: the tab comes back backing-unavailable.
+        try FileManager.default.removeItem(at: url)
+        let firstStore = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        let unavailable = try #require(await firstStore.restoreTab(from: record))
+        firstStore.newTab(id: unavailable.id, document: unavailable.document)
+        let rewritten = try #require(firstStore.currentSession().tabs.first)
+        #expect(rewritten.baseSHA256 == originalBase)
+
+        // Quit again; the file comes back with different content; relaunch.
+        try "disk v2 (restored from backup)".write(to: url, atomically: true, encoding: .utf8)
+        let secondStore = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        let restored = try #require(await secondStore.restoreTab(from: rewritten))
+
+        #expect(restored.document.state == .conflict)
+        #expect(restored.document.text == "my unsaved edit")
+    }
 }
