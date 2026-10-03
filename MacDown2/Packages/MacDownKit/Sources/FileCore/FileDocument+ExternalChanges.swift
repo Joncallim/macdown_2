@@ -24,9 +24,26 @@ public struct ExternalReconciliation: Sendable {
 public extension FileDocument {
     /// The document in conflict with `revision` (the file as it is now): used when
     /// a restored unsaved edit predates an external change to its file.
-    func markingExternalConflict(with revision: FileRevision) -> FileDocument {
+    ///
+    /// `baseSHA256` is the content hash the unsaved text was written against. It becomes the document's
+    /// known baseline (a hash-only revision), so the monitor's first probe — which sees the changed disk
+    /// bytes — keeps the conflict, and the session keeps recording the real base, instead of adopting the
+    /// changed disk as the baseline and letting a Save overwrite it.
+    func markingExternalConflict(with revision: FileRevision, baseSHA256: String? = nil) -> FileDocument {
         var copy = self
         copy.state = .conflict
+        if let baseSHA256 {
+            copy.applyExternalState(
+                lastKnownRevision: FileRevision(
+                    url: revision.url,
+                    modificationDate: nil,
+                    fileSize: 0,
+                    fileObjectID: nil,
+                    sha256: baseSHA256
+                ),
+                setLastKnownRevision: true
+            )
+        }
         copy.applyExternalState(
             pendingExternalRevision: revision,
             setPendingExternalRevision: true,

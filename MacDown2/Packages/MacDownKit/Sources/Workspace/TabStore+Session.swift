@@ -90,7 +90,7 @@ extension TabStore {
                 // written against different content, so saving it would silently
                 // overwrite that change.
                 if let base = record.baseSHA256, let disk = loaded.lastKnownRevision, base != disk.sha256 {
-                    loaded = loaded.markingExternalConflict(with: disk)
+                    loaded = loaded.markingExternalConflict(with: disk, baseSHA256: base)
                 }
             } else if recovered != nil {
                 // A stale copy identical to disk is not recovery state. Remove
