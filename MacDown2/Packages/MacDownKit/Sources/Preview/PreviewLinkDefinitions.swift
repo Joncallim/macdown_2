@@ -28,9 +28,30 @@ public enum PreviewLinkDefinitions {
     /// `source` with `definitions` prepended, separated from it by a BLANK line. A
     /// single newline let a block that begins `(…)`, `"…"` or `'…'` be read as the
     /// optional TITLE of the last definition line, so that block vanished from Preview.
+    ///
+    /// Only definitions whose label the block actually mentions are prepended: handing
+    /// Textual every definition made a 12-byte paragraph a 77 KB parse (past its
+    /// documented ~100 KB freeze point) and cost O(blocks × definitions) per refresh.
     public static func prefixed(_ source: String, with definitions: [String]) -> String {
         guard !definitions.isEmpty else { return source }
-        return definitions.joined(separator: "\n") + "\n\n" + source
+        let haystack = normalizedLabel(source)
+        let referenced = definitions.filter { line in
+            guard let label = label(of: line) else { return true }
+            return haystack.contains("[" + label + "]")
+        }
+        guard !referenced.isEmpty else { return source }
+        return referenced.joined(separator: "\n") + "\n\n" + source
+    }
+
+    private static func normalizedLabel(_ text: String) -> String {
+        text.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    private static func label(of definition: String) -> String? {
+        guard let open = definition.firstIndex(of: "["),
+              let close = definition[open...].firstIndex(of: "]")
+        else { return nil }
+        return normalizedLabel(String(definition[definition.index(after: open) ..< close]))
     }
 
     /// Reference definition lines found anywhere in `text`, in document
@@ -39,8 +60,9 @@ public enum PreviewLinkDefinitions {
     /// Recognizes a line matching: up to three leading spaces (CommonMark's
     /// allowance for a definition to be indented like other block content),
     /// `[label]:`, at least one space or tab, then a destination starting
-    /// with a non-whitespace character. Everything after that is accepted
-    /// unconstrained (the title, if any).
+    /// with a non-whitespace character, optionally followed by a title in
+    /// quotes or parentheses. Footnote labels (`[^1]:`) and free text after the
+    /// destination are not definitions.
     ///
     /// Scans a `unichar` buffer directly rather than matching a `Regex` per
     /// line — ~30x faster on a 1 MB document (19.6 ms → 0.64 ms), verified
@@ -83,6 +105,13 @@ public enum PreviewLinkDefinitions {
     private static let openBracket = unichar(0x5B) // [
     private static let closeBracket = unichar(0x5D) // ]
     private static let colon = unichar(0x3A) // :
+    private static let caret = unichar(0x5E) // ^
+    private static let lessThan = unichar(0x3C) // <
+    private static let greaterThan = unichar(0x3E) // >
+    private static let doubleQuote = unichar(0x22) // "
+    private static let singleQuote = unichar(0x27) // '
+    private static let openParen = unichar(0x28) // (
+    private static let closeParen = unichar(0x29) // )
 
     private static func isDefinitionLine(_ buffer: [unichar], from lineStart: Int, to lineEnd: Int) -> Bool {
         var cursor = lineStart
@@ -103,6 +132,8 @@ public enum PreviewLinkDefinitions {
             cursor += 1
         }
         guard cursor > labelStart, cursor < lineEnd, buffer[cursor] == closeBracket else { return false }
+        // `[^1]: text` is a footnote definition, not a link reference definition.
+        guard buffer[labelStart] != caret else { return false }
         cursor += 1
 
         guard cursor < lineEnd, buffer[cursor] == colon else { return false }
@@ -118,7 +149,44 @@ public enum PreviewLinkDefinitions {
         // rest of the line is unconstrained.
         guard cursor < lineEnd, isNonWhitespace(buffer[cursor]) else { return false }
 
-        return true
+        return hasValidDestinationAndTitle(buffer, from: cursor, to: lineEnd)
+    }
+
+    /// A destination (`<…>` or a run of non-spaces) that is followed by nothing or
+    /// by a quoted/parenthesised title closing at the end of the line. Free text
+    /// after the destination (`[Note]: this is a remark`) is not a definition.
+    private static func hasValidDestinationAndTitle(_ buffer: [unichar], from start: Int, to lineEnd: Int) -> Bool {
+        guard let destinationEnd = endOfDestination(buffer, from: start, to: lineEnd) else { return false }
+        var end = lineEnd
+        while end > destinationEnd, buffer[end - 1] == space || buffer[end - 1] == tab {
+            end -= 1
+        }
+        guard destinationEnd < end else { return true }
+        var cursor = destinationEnd
+        while cursor < end, buffer[cursor] == space || buffer[cursor] == tab {
+            cursor += 1
+        }
+        guard cursor > destinationEnd, end - cursor >= 2 else { return false }
+        switch buffer[cursor] {
+        case doubleQuote: return buffer[end - 1] == doubleQuote
+        case singleQuote: return buffer[end - 1] == singleQuote
+        case openParen: return buffer[end - 1] == closeParen
+        default: return false
+        }
+    }
+
+    private static func endOfDestination(_ buffer: [unichar], from start: Int, to lineEnd: Int) -> Int? {
+        var cursor = start
+        if buffer[cursor] == lessThan {
+            while cursor < lineEnd, buffer[cursor] != greaterThan {
+                cursor += 1
+            }
+            return cursor < lineEnd ? cursor + 1 : nil
+        }
+        while cursor < lineEnd, isNonWhitespace(buffer[cursor]) {
+            cursor += 1
+        }
+        return cursor
     }
 
     private static func isNonWhitespace(_ character: unichar) -> Bool {
