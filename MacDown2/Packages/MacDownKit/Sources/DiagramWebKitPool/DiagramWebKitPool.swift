@@ -79,7 +79,11 @@ public actor DiagramWebKitPool {
 
     private func page(at index: Int) async throws -> DiagramHarnessPage {
         if let existing = slots[index] {
-            return existing
+            if await !existing.isTerminated {
+                return existing
+            }
+            await existing.teardown()
+            slots[index] = nil
         }
         let page = try await DiagramHarnessPage.make(harnessResourceName: harnessResourceName, bundle: bundle)
         slots[index] = page

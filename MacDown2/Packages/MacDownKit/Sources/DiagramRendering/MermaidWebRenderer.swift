@@ -96,7 +96,11 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
 
     private func page(at index: Int) async throws -> MermaidHarnessPage {
         if let existing = slots[index] {
-            return existing
+            if await !existing.isTerminated {
+                return existing
+            }
+            await existing.teardown()
+            slots[index] = nil
         }
         let page = try await MermaidHarnessPage.make()
         slots[index] = page

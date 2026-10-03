@@ -208,6 +208,13 @@ struct HTMLPreviewView: NSViewRepresentable {
             completeLoad()
         }
 
+        /// The WebContent process died (memory pressure, a crash on a huge page): the pane would stay blank
+        /// until the next save. The scheme handler still holds the request, so reload it.
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            guard handler.request != nil else { return }
+            webView.reload()
+        }
+
         func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {
             handleLoadFailure(error)
         }

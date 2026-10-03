@@ -31,6 +31,9 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let allowedDirectory: URL
     private var loadContinuation: CheckedContinuation<Void, Error>?
 
+    /// The WebContent process died; the renderer replaces a terminated page instead of reusing it.
+    private(set) var isTerminated = false
+
     /// `NSObject` does not permit an `async`/`throws` designated
     /// initializer (it would override `NSObject.init()`'s plain,
     /// synchronous signature), so construction is split: this factory
@@ -112,6 +115,12 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_: WKWebView, didFinish _: WKNavigation!) {
         loadContinuation?.resume()
+        loadContinuation = nil
+    }
+
+    func webViewWebContentProcessDidTerminate(_: WKWebView) {
+        isTerminated = true
+        loadContinuation?.resume(throwing: MermaidRenderError.timedOut)
         loadContinuation = nil
     }
 
