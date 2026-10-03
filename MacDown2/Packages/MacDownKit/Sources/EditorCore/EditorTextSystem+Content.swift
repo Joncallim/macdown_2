@@ -7,6 +7,9 @@ public extension EditorTextSystem {
     /// and conflict resolution; it resets selection and scroll.
     func setText(_ text: String) {
         textView.string = text
+        // The undo history addresses ranges of the text just replaced; undoing into the new
+        // text raised NSRangeException (a crash) once the string was shorter.
+        undoManager.removeAllActions()
         editRevision &+= 1
         lineIndex.rebuild(text: text as NSString)
         textChangeObserver?(.untracked)

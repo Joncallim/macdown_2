@@ -22,5 +22,22 @@ extension EditorView.Coordinator {
         // cached) undo manager.
         guard let system, notification.object as AnyObject === system.undoManager else { return }
         gutterView?.updateThickness()
+        publishTextAfterUndoRedo(of: system)
+    }
+
+    /// TextKit 2 applies an undo/redo without posting `NSText.didChangeNotification`, so
+    /// `textDidChange` never ran: the binding (and with it the document model, Save, Preview,
+    /// the outline and the recovery buffer) kept the pre-undo text — and the next `updateNSView`
+    /// pushed that stale text back into the view, silently redoing the undo.
+    @MainActor private func publishTextAfterUndoRedo(of system: EditorTextSystem) {
+        guard !isApplyingModelText,
+              !system.isPerformingProgrammaticTextUpdate,
+              !system.isApplyingMultiRangeTransaction
+        else { return }
+        isApplyingModelText = true
+        textBinding?.wrappedValue = system.text
+        isApplyingModelText = false
+        system.noteTextEdit()
+        system.scheduleFrameHeightSync()
     }
 }
