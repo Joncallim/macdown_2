@@ -26,6 +26,10 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
     private let allowedDirectory: URL
     private var loadContinuation: CheckedContinuation<Void, Error>?
 
+    /// WebKit's content process behind this page died (memory pressure, a crash in a huge diagram). Every
+    /// later evaluation would fail, so the pool replaces a terminated page instead of reusing it.
+    public private(set) var isTerminated = false
+
     /// `NSObject` does not permit an `async`/`throws` designated
     /// initializer, so construction is split exactly like
     /// `MermaidHarnessPage`'s own: this factory resolves the bundled
@@ -84,6 +88,12 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
 
     public func webView(_: WKWebView, didFinish _: WKNavigation!) {
         loadContinuation?.resume()
+        loadContinuation = nil
+    }
+
+    public func webViewWebContentProcessDidTerminate(_: WKWebView) {
+        isTerminated = true
+        loadContinuation?.resume(throwing: DiagramPoolError.pageUnavailable)
         loadContinuation = nil
     }
 
