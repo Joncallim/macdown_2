@@ -29,8 +29,16 @@ extension WindowCoordinator {
     /// for the same keystroke, so both bindings can stay declared on it.
     var keyFolderSelection: URL? {
         _ = commandStateRevision
-        guard canPerformOccurrenceSelection == false else { return nil }
+        guard canPerformOccurrenceSelection == false,
+              !Self.isTextEditing(NSApp.keyWindow?.firstResponder)
+        else { return nil }
         return controllers.first(where: { $0.window == NSApp.keyWindow })?.fileTreeModel.selectedURL
+    }
+
+    /// Any text control being edited — the Find or folder-search field, the rename field, a palette
+    /// field — owns Return, ⌘D and ⌘⌫ while it has focus; the Folder commands must not claim them.
+    static func isTextEditing(_ responder: NSResponder?) -> Bool {
+        responder is NSText
     }
 
     func renameKeyFolderSelection() {
