@@ -345,7 +345,8 @@ final class WindowCoordinator {
     ) {
         controllers.append(controller)
 
-        if addingAsTab, let key = keyWindow ?? NSApp.keyWindow, key != controller.window, let tab = controller.window {
+        if addingAsTab, let key = Self.tabHost(keyWindow ?? NSApp.keyWindow), key != controller.window,
+           let tab = controller.window {
             key.addTabbedWindow(tab, ordered: .above)
         }
 
