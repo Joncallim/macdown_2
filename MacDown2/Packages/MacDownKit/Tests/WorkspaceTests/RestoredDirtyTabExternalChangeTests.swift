@@ -40,6 +40,35 @@ struct RestoredDirtyTabExternalChangeTests {
         #expect(document.pendingExternalRevision != nil)
     }
 
+    /// The monitor binds right after restore and its first probe reads the (changed) disk bytes. That used to
+    /// match the document's baseline (the restore had adopted the changed disk as the baseline), so the conflict
+    /// was cleared to plain dirty within milliseconds and Save then overwrote the external change.
+    @Test func theMonitorsFirstProbeKeepsARestoredConflictAndTheSessionKeepsTheRealBase() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let url = directory.appendingPathComponent("notes.md")
+        try "disk v1".write(to: url, atomically: true, encoding: .utf8)
+        let dirty = try await FileDocument.create(fileURL: url, recoveryBuffer: recovery).load()
+            .updatingText("my unsaved edit")
+        #expect(await dirty.persistRecovery())
+        let originalBase = try #require(dirty.lastKnownRevision?.sha256)
+        let record = TabRecord(
+            id: UUID(), fileURL: url, documentRecoveryEpoch: dirty.recoveryEpoch, baseSHA256: originalBase
+        )
+        try "disk v2 (pulled)".write(to: url, atomically: true, encoding: .utf8)
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        let restored = try #require(await store.restoreTab(from: record))
+        #expect(restored.document.state == .conflict)
+
+        let probe = try restored.document.reconcilingExternalSnapshot(FileStore().readSnapshot(from: url))
+
+        #expect(probe.document.state == .conflict)
+        #expect(probe.disposition == .conflictUpdated)
+        #expect(probe.document.text == "my unsaved edit")
+        #expect(restored.document.baselineSHA256 == originalBase)
+    }
+
     @Test func anUnchangedFileStillRestoresAsPlainDirty() async throws {
         let document = try await restore(modifyFileAfterQuit: nil)
 
