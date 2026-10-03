@@ -61,4 +61,25 @@ struct LaunchRestoreSettlingTests {
 
         #expect(counts == [1, 1, 1])
     }
+
+    /// Quit inside the launch grace period built its session from the (still empty) window list and overwrote the
+    /// file, so the restore that then ran read an emptied session and the dirty tab, with its recovery, was lost.
+    @Test func quittingDuringTheLaunchRestoreKeepsTheDirtyTab() async throws {
+        let (coordinator, root) = try await makeCoordinatorWithADirtySession()
+        defer {
+            coordinator.controllers.forEach { $0.close() }
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        coordinator.scheduleSessionRestore { false }
+        let result = await coordinator.saveSessionForTermination()
+
+        guard case .saved = result else {
+            Issue.record("expected .saved, got \(result)")
+            return
+        }
+        #expect(coordinator.controllers.count == 1)
+        let persisted = WorkspaceSessionStore(fileURL: root.appendingPathComponent("session.json")).loadSession()
+        #expect(persisted?.tabs.count == 1)
+    }
 }

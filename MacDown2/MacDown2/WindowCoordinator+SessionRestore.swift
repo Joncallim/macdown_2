@@ -9,7 +9,7 @@ import Workspace
 /// — `restoreSession()` itself (the entry point) stays in the main file.
 /// The session file as it was when the app launched, frozen so a restore that
 /// starts after the first window has triggered an autosave still sees it.
-private struct LaunchSessionStore: WorkspaceSessionStoring {
+struct LaunchSessionStore: WorkspaceSessionStoring {
     let session: WorkspaceSession
 
     func loadSession() -> WorkspaceSession? {
@@ -47,6 +47,44 @@ extension WindowCoordinator {
         }
         unsavedRestoreTask = task
         await task.value
+    }
+
+    /// Restores the saved session, creating one window per document and
+    /// grouping them as tabs in a single native tab group. Falls back to an
+    /// untitled window when there is nothing to restore.
+    ///
+    /// Reads the session frozen at launch, not the live file: a Quit during the grace period publishes a session
+    /// built from the (still empty) window list, and re-reading the file here would restore that emptied session.
+    func restoreSession() async {
+        let frozen = consumeLaunchSession()
+        let tempStore = TabStore(
+            sessionStore: frozen.map { LaunchSessionStore(session: $0) } ?? sessionStore,
+            recoveryBuffer: recoveryBuffer
+        )
+        await tempStore.restoreSessionIfNeeded()
+
+        guard !tempStore.tabs.isEmpty else {
+            newDocument()
+            return
+        }
+
+        let (firstController, _) = restore(tabs: tempStore.tabs)
+        activate(controller: firstController, activeID: tempStore.activeTabID)
+        updateKeyModel()
+    }
+
+    /// Waits for whatever launch restore is already running (never starts one). Quit must not publish a session
+    /// while windows are still being created from the previous one — it is built from `controllers`, so it would be
+    /// empty and would overwrite the file, orphaning every dirty tab's recovery.
+    func awaitLaunchRestore() async {
+        await restoreTask?.value
+        await unsavedRestoreTask?.value
+    }
+
+    /// The Quit-time session save: after any in-flight restore has produced its windows.
+    func saveSessionForTermination() async -> SessionSaveResult {
+        await awaitLaunchRestore()
+        return await saveSessionResult()
     }
 
     /// What a Finder/Dock open must wait for before it opens its files: any launch restore still in flight (the

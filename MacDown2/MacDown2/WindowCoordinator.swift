@@ -287,28 +287,6 @@ final class WindowCoordinator {
         newDocument()
     }
 
-    /// Restores the saved session, creating one window per document and
-    /// grouping them as tabs in a single native tab group. Falls back to an
-    /// untitled window when there is nothing to restore.
-    ///
-    /// See `WindowCoordinator+SessionRestore.swift` for the rest of the
-    /// restore pipeline — split out to keep this file under the type-body-
-    /// length lint budget.
-    func restoreSession() async {
-        _ = consumeLaunchSession()
-        let tempStore = TabStore(sessionStore: sessionStore, recoveryBuffer: recoveryBuffer)
-        await tempStore.restoreSessionIfNeeded()
-
-        guard !tempStore.tabs.isEmpty else {
-            newDocument()
-            return
-        }
-
-        let (firstController, _) = restore(tabs: tempStore.tabs)
-        activate(controller: firstController, activeID: tempStore.activeTabID)
-        updateKeyModel()
-    }
-
     // MARK: - Internal helpers
 
     func removeController(_ controller: WindowController) {
