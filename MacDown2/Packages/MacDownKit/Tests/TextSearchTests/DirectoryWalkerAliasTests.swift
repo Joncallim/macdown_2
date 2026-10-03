@@ -61,4 +61,27 @@ struct DirectoryWalkerAliasTests {
 
         #expect(paths == ["note.md"])
     }
+
+    /// `docs -> /` is followed on purpose, so a bound stops the walk instead of indexing a whole disk.
+    @Test func theWalkStopsAtTheConfiguredPathLimit() throws {
+        let root = try makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        for index in 0 ..< 100 {
+            try Data().write(to: root.appendingPathComponent("file\(index).md"))
+        }
+
+        let paths = DirectoryWalker().walk(root: root, excludedDirectoryNames: [], maximumPaths: 10)
+
+        #expect(paths.count == 10)
+    }
+
+    @Test func belowTheLimitEverythingIsIndexed() throws {
+        let root = try makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        for index in 0 ..< 20 {
+            try Data().write(to: root.appendingPathComponent("file\(index).md"))
+        }
+
+        #expect(DirectoryWalker().walk(root: root, excludedDirectoryNames: []).count == 20)
+    }
 }
