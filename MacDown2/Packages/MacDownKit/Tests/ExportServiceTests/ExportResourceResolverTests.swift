@@ -111,6 +111,23 @@ struct ExportResourceResolverTests {
         #expect(subject.diagnostics.contains { $0.message.contains("2-resource limit") })
     }
 
+    @Test func aNonImageFileInTheDocumentFolderIsNeverPackagedAsAnImage() throws {
+        let directory = try ExportTestSupport.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try ExportTestSupport.writeFixture(named: ".env", in: directory, bytes: Data("SECRET=hunter2".utf8))
+        try ExportTestSupport.writeFixture(named: "notes.txt", in: directory, bytes: Data("private".utf8))
+        try ExportTestSupport.writeFixture(named: "noextension", in: directory, bytes: Data("private".utf8))
+        let subject = resolver(root: directory, fatal: false)
+
+        for reference in [".env", "notes.txt", "noextension"] {
+            #expect(subject.disposition(for: reference, isImage: true) == .keep)
+        }
+
+        #expect(subject.frozenManifest().resources.isEmpty)
+        #expect(subject.diagnostics.count == 3)
+        #expect(subject.diagnostics.allSatisfy { $0.message.contains("not an image file") })
+    }
+
     @Test func unresolvedIsAWarningOrAnErrorByTarget() throws {
         let directory = try ExportTestSupport.makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
