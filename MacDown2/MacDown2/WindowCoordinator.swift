@@ -51,6 +51,7 @@ final class WindowCoordinator {
     /// other open window rather than only on the next launch (#34).
     private let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
     private var hasRestoredSession = false
+    let documentOpens = KeyedSerialRunner<URL>()
     /// The session file as it was at launch, kept until `restoreUnsavedSessionTabs()` consumes it.
     var launchSession: WorkspaceSession?
     private var saveTask: Task<Void, Never>?
@@ -135,7 +136,7 @@ final class WindowCoordinator {
     ///   here so the newly created document opens relative to it rather
     ///   than whatever window is key once this `await` resolves
     ///   (post-review finding #4).
-    func openDocument(
+    func performOpenDocument(
         at url: URL,
         folderRoot: URL? = nil,
         folderAccessURL: URL? = nil,
