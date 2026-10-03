@@ -35,7 +35,7 @@ extension DocumentEditorSplitView {
             traits: [],
             weight: 5,
             size: descriptor.size
-        ) ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        ) ?? NSFont.monospacedSystemFont(ofSize: CGFloat(descriptor.size), weight: .regular)
     }
 
     static func markdownParseOptions(from markdownSettings: MarkdownSettings?) -> MarkdownParseOptions {
