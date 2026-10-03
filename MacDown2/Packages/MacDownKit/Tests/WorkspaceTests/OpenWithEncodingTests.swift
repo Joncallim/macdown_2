@@ -81,3 +81,25 @@ struct OpenWithEncodingTests {
         #expect(try Data(contentsOf: url) == bytes)
     }
 }
+
+/// Review pass 1: a symlinked file could not be opened (`.notRegularFile`).
+@MainActor
+struct OpenSymlinkedFileTests {
+    @Test func aSymlinkedFileOpensAndSavesIntoItsTargetLeavingTheLinkInPlace() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        let target = directory.appendingPathComponent("real.md")
+        try "original".write(to: target, atomically: true, encoding: .utf8)
+        let link = directory.appendingPathComponent("README.md")
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "real.md")
+
+        let tab = try #require(try? await store.openFileInTab(link).get())
+        #expect(tab.document.text == "original")
+        _ = try tab.document.edited(text: "edited").save()
+
+        #expect(try String(contentsOf: target, encoding: .utf8) == "edited")
+        #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path) == "real.md")
+    }
+}

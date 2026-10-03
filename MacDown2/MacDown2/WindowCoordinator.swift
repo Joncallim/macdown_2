@@ -144,6 +144,9 @@ final class WindowCoordinator {
         relativeTo overrideKeyWindow: NSWindow? = nil,
         encoding: FileEncodingMetadata? = nil
     ) async {
+        // A link to a file opens (and saves to) that file; resolved first so the
+        // same file is not opened twice, once through the link and once directly.
+        let url = url.resolvingFinalSymlink()
         if let existing = controllerForDocument(url: url), let window = existing.window {
             if let folderRoot, existing.fileTreeModel.root == nil {
                 existing.model.setFolderRoot(folderRoot)
