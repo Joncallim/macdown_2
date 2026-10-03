@@ -27,14 +27,22 @@ extension WindowCoordinator {
     /// overwrite the session file, orphaning the recovery records (#183 review
     /// pass 1). Only the dirty tabs come back; clean ones are not restored.
     func restoreUnsavedSessionTabs() async {
-        guard let session = launchSession else { return }
-        launchSession = nil
+        guard let session = consumeLaunchSession() else { return }
         let tempStore = TabStore(sessionStore: LaunchSessionStore(session: session), recoveryBuffer: recoveryBuffer)
         await tempStore.restoreSessionIfNeeded()
         let unsaved = Self.unsavedTabs(in: tempStore.tabs)
         guard !unsaved.isEmpty else { return }
         _ = restore(tabs: unsaved)
         updateKeyModel()
+    }
+
+    /// The launch-time session, once. A normal restore consumes it too: the tabs it restores are
+    /// then live, and a later `restoreUnsavedSessionTabs()` (the first Finder open after launch)
+    /// would otherwise bring every still-unsaved one back a SECOND time — two editors sharing one
+    /// document and recovery key.
+    func consumeLaunchSession() -> WorkspaceSession? {
+        defer { launchSession = nil }
+        return launchSession
     }
 
     static func unsavedTabs(in tabs: [WorkspaceTab]) -> [WorkspaceTab] {
