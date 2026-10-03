@@ -90,6 +90,7 @@ public extension WorkspaceModel {
         defer { endSavingIndicator(for: document.id) }
         do {
             let result = try await documentWriter.save(document, encodingOverride: encodingOverride)
+            result.document.fileURL.map { onDocumentWritten?($0) }
             await applySuccessfulSave(
                 result.document,
                 originatingFrom: document,
@@ -253,6 +254,7 @@ public extension WorkspaceModel {
         }
         do {
             let saved = try await documentWriter.saveAs(document, to: url, destinationBaseline: destinationBaseline)
+            onDocumentWritten?(url)
             await applySaveAs(saved, from: document, context: context)
         } catch {
             guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return }

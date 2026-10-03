@@ -86,6 +86,20 @@ public final class RecentFileDocuments {
         pruneMissingFiles()
     }
 
+    /// Saving replaces the file's inode and creation date, which would make the
+    /// stored fingerprint reject the entry on the next open. Called after this
+    /// app itself wrote `url`, so the entry follows the file it just published.
+    public func noteWrite(of url: URL) {
+        let standardized = url.standardizedFileURL
+        let physical = standardized.resolvingSymlinksInPath().standardizedFileURL
+        guard let index = documents.firstIndex(where: { PhysicalFileIdentity.matches($0, standardized) }),
+              let fingerprint = Fingerprint(of: physical),
+              let bookmark = try? physical.bookmarkData(options: .withSecurityScope)
+        else { return }
+        bookmarks[index] = stored(bookmark: bookmark, lexicalURL: documents[index], fingerprint: fingerprint)
+        save()
+    }
+
     public func resolve(_ url: URL) -> RecentFileDocumentResolution? {
         guard let index = documents.firstIndex(where: { PhysicalFileIdentity.matches($0, url) })
         else { return nil }

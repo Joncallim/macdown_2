@@ -24,6 +24,30 @@ public final class EditorTextView: NSTextView {
         owningSystem?.undoManager ?? super.undoManager
     }
 
+    /// Edit ▸ Undo / Redo. `NSWindow` is the only stock responder that implements `undo:`/`redo:`,
+    /// and it acts on the WINDOW's undo manager — an empty one now that every tab owns its own — so
+    /// the text view answers them itself, ahead of the window in the responder chain.
+    @objc public func undo(_: Any?) {
+        undoManager?.undo()
+    }
+
+    @objc public func redo(_: Any?) {
+        undoManager?.redo()
+    }
+
+    override public func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
+        switch item.action {
+        case #selector(undo(_:)):
+            (item as? NSMenuItem)?.title = undoManager?.undoMenuItemTitle ?? String(localized: "Undo", bundle: .module)
+            return undoManager?.canUndo ?? false
+        case #selector(redo(_:)):
+            (item as? NSMenuItem)?.title = undoManager?.redoMenuItemTitle ?? String(localized: "Redo", bundle: .module)
+            return undoManager?.canRedo ?? false
+        default:
+            return super.validateUserInterfaceItem(item)
+        }
+    }
+
     /// Non-nil for exactly the duration of a gesture that STARTED as a
     /// plain Option-click (§6.10, Slice 3b-iv): the view-space point
     /// `mouseDown(with:)` captured. `mouseDragged(with:)` uses it as the

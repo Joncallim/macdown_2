@@ -242,4 +242,27 @@ struct RecentFileDocumentsTests {
 
         #expect(store.documents.map(\.lastPathComponent) == ["after.md"])
     }
+
+    @Test func anAtomicSaveReplacingTheFileKeepsItsRecentEntry() throws {
+        let file = try TempFile(name: "saved.md")
+        let store = try RecentFileDocuments(preferences: makePreferences())
+        store.record(file.url)
+        let replacement = file.url.deletingLastPathComponent().appendingPathComponent("replacement.tmp")
+        try Data("saved".utf8).write(to: replacement)
+        _ = try FileManager.default.replaceItemAt(file.url, withItemAt: replacement)
+
+        store.noteWrite(of: file.url)
+
+        #expect(store.resolve(file.url) != nil)
+        #expect(store.documents.count == 1)
+    }
+
+    @Test func aWriteNeverResurrectsAnEntryForAFileThatWasNotRecorded() throws {
+        let file = try TempFile(name: "unrecorded.md")
+        let store = try RecentFileDocuments(preferences: makePreferences())
+
+        store.noteWrite(of: file.url)
+
+        #expect(store.documents.isEmpty)
+    }
 }

@@ -134,6 +134,9 @@ public final class WorkspaceModel {
     /// Asks the host whether another window already has `url` open; Save As refuses such a name.
     public var isOpenInAnotherWindow: (@MainActor (URL) -> Bool)?
 
+    /// Called after a save or Save As published `url` on disk.
+    public var onDocumentWritten: (@MainActor (URL) -> Void)?
+
     /// The document currently shown in the content area.
     public var activeDocument: FileDocument? {
         tabStore.activeDocument
