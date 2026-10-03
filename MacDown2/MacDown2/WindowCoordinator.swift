@@ -56,7 +56,8 @@ final class WindowCoordinator {
     private var saveTask: Task<Void, Never>?
     var sessionPublicationOrder = SessionPublicationOrder()
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
-    private var restoreTask: Task<Void, Never>?
+    var restoreTask: Task<Void, Never>?
+    var unsavedRestoreTask: Task<Void, Never>?
     // `pendingNewDocumentTasks` and `addController` are internal rather than
     // private for the same reason as the properties above:
     // `WindowCoordinator+NewDocument.swift` is a same-module extension in a
