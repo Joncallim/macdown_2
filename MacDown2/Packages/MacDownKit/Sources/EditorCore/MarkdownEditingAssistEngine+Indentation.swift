@@ -23,10 +23,14 @@ extension MarkdownEditingAssistEngine {
             return collapsedUnindent(text: text, caret: selection.location, width: width)
         }
 
-        guard configuration.convertsTabsToSpaces else { return .passthrough }
         if selection.length > 0 {
-            return indentSelectedLines(text: text, selection: selection, width: width)
+            // With a selection Tab indents its lines — with a tab character when
+            // "Insert spaces for Tab" is off — instead of replacing the selection
+            // with one tab (native `insertTab:`).
+            let unit = configuration.convertsTabsToSpaces ? String(repeating: " ", count: width) : "\t"
+            return indentSelectedLines(text: text, selection: selection, unit: unit)
         }
+        guard configuration.convertsTabsToSpaces else { return .passthrough }
 
         // Collapsed Tab: spaces to the next indentation stop.
         let caret = selection.location
@@ -42,12 +46,12 @@ extension MarkdownEditingAssistEngine {
         ))
     }
 
-    private static func indentSelectedLines(text: NSString, selection: NSRange, width: Int) -> EditingAssistOutcome {
+    private static func indentSelectedLines(text: NSString, selection: NSRange, unit: String) -> EditingAssistOutcome {
         transformSelectedLines(text: text, selection: selection, undoActionName: "Indent") { lines in
             var deltas: [Int] = []
             let processed = lines.map { line in
-                deltas.append(width)
-                return String(repeating: " ", count: width) + line
+                deltas.append(unit.utf16.count)
+                return unit + line
             }
             return (processed, deltas)
         }
@@ -70,6 +74,13 @@ extension MarkdownEditingAssistEngine {
         }
     }
 
+    /// `String.hasSuffix("\n")` is false for a trailing `"\r\n"` — one Character — so
+    /// a CRLF selection of whole lines was taken to have no trailing terminator and its
+    /// synthetic empty last piece was indented as if it were a line. Compare the bytes.
+    static func endsWithLineFeed(_ content: String) -> Bool {
+        content.utf8.last == 0x0A
+    }
+
     /// Splits the selected logical line range into real lines, applies a
     /// per-line transform producing per-line UTF-16 deltas, and replaces the
     /// whole range once with a remapped selection.
@@ -82,7 +93,7 @@ extension MarkdownEditingAssistEngine {
         let range = selectedLineRange(text: text, selection: selection)
         let content = text.substring(with: range)
         let pieces = content.components(separatedBy: "\n")
-        let hasSyntheticTrailing = content.hasSuffix("\n")
+        let hasSyntheticTrailing = Self.endsWithLineFeed(content)
         let realCount = pieces.count - (hasSyntheticTrailing ? 1 : 0)
         let realLines = Array(pieces.prefix(realCount))
 
