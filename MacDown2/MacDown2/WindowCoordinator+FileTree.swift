@@ -263,10 +263,19 @@ extension WindowCoordinator {
                     controller.model.tabStore.activate(tabID)
                     await controller.saveDocumentAs()
                 } else if response == .alertSecondButtonReturn {
-                    self.removeController(controller)
-                    controller.close()
+                    await self.discardDeletedDocument(in: controller)
                 }
             }
         }
+    }
+
+    /// "Close Without Saving" for a deleted document: the discarded text must also leave the
+    /// recovery store, or a later session replay can resurrect it as a dirty tab.
+    func discardDeletedDocument(in controller: WindowController) async {
+        if let document = controller.model.activeDocument {
+            guard await controller.externalFileController.retireRecovery(for: document).isAbsent else { return }
+        }
+        removeController(controller)
+        controller.close()
     }
 }
