@@ -44,6 +44,7 @@ extension WindowCoordinator {
     func restore(tabs: [WorkspaceTab]) -> (WindowController?, NSWindow?) {
         var firstController: WindowController?
         var firstWindow: NSWindow?
+        var previousWindow: NSWindow?
 
         for tab in tabs {
             let controller = makeRestoredController(tab: tab)
@@ -54,13 +55,47 @@ extension WindowCoordinator {
                 firstController = controller
                 firstWindow = controller.window
                 controller.showWindow(nil)
-            } else if let firstWindow, let newWindow = controller.window {
-                firstWindow.addTabbedWindow(newWindow, ordered: .above)
+            } else if let previousWindow, let newWindow = controller.window {
+                // After the PREVIOUS tab, not the first: AppKit inserts a tab right after
+                // the receiver, so chaining everything off the first window reversed the
+                // restored order (A B C D came back A D C B).
+                Self.attach(newWindow, after: previousWindow)
                 controller.showWindow(nil)
             }
+            previousWindow = controller.window
         }
 
         return (firstController, firstWindow)
+    }
+
+    static func attach(_ window: NSWindow, after previous: NSWindow) {
+        previous.addTabbedWindow(window, ordered: .above)
+    }
+
+    /// `items` (windows' owners, in creation order) arranged in the order their tabs
+    /// appear in the tab strip. Creation order is not strip order — a new tab is appended
+    /// even when inserted next to the key tab, and tabs can be dragged — so saving it
+    /// directly restored tabs in a different order than the user arranged them. Separate
+    /// tab groups stay in first-seen order; items without a window keep their place.
+    static func inTabOrder<Item>(_ items: [Item], window: (Item) -> NSWindow?) -> [Item] {
+        var result: [Item] = []
+        var seenGroups: [NSWindowTabGroup] = []
+        for item in items {
+            guard let group = window(item)?.tabGroup else {
+                result.append(item)
+                continue
+            }
+            if seenGroups.contains(where: { $0 === group }) {
+                continue
+            }
+            seenGroups.append(group)
+            for tabWindow in group.windows {
+                if let member = items.first(where: { window($0) === tabWindow }) {
+                    result.append(member)
+                }
+            }
+        }
+        return result
     }
 
     func makeRestoredController(tab: WorkspaceTab) -> WindowController {
