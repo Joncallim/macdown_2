@@ -48,7 +48,13 @@ struct InlineSentinelIndex {
     /// The spec whose sentinel starts `text`, preferring the longest match so
     /// overlapping sentinel names stay unambiguous.
     func match(startingAt text: Substring) -> CMarkGFM.CustomNodeSpec? {
-        specsByLengthDescending.first { text.hasPrefix($0.sentinel) }
+        // Sentinels end in `Z` and contain no other `Z` (`DerivedContentComposer.makeSentinel`), so the candidate is
+        // everything through the first `Z`: one dictionary lookup instead of a prefix test against every spec
+        // (4000 inline contributions took 3.5 s). Any other sentinel shape falls back to the scan.
+        if let end = text.firstIndex(of: "Z"), let spec = specsBySentinel[String(text[...end])] {
+            return spec
+        }
+        return specsByLengthDescending.first { text.hasPrefix($0.sentinel) }
     }
 
     /// The fallback for sentinels with no shared prefix: search each one and
