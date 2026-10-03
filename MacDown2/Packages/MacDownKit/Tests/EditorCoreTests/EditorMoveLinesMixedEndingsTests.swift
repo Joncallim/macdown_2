@@ -8,7 +8,7 @@ import Testing
 @Suite("EditorLineTransforms — Move Line with mixed line endings")
 struct EditorMoveLinesMixedEndingsTests {
     /// Lines (content + terminator) of `text`, split the CommonMark way.
-    private static func units(of text: String) -> [String] {
+    static func units(of text: String) -> [String] {
         var result: [String] = []
         var current = ""
         let scalars = Array(text.unicodeScalars)
@@ -33,7 +33,7 @@ struct EditorMoveLinesMixedEndingsTests {
 
     /// Every document of 2...4 lines built from empty/non-empty lines joined by
     /// any of the three terminators.
-    private static func mixedEndingDocuments() -> [String] {
+    static func mixedEndingDocuments() -> [String] {
         let atoms = ["a", "", "b"]
         let terminators = ["\n", "\r", "\r\n"]
         var documents: [String] = []
