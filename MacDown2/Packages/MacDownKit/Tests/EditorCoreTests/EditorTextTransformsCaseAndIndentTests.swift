@@ -125,6 +125,26 @@ struct EditorTextTransformsCaseAndIndentTests {
         #expect(applied?.text == "    foo\n    bar")
     }
 
+    @Test("increase indent inserts a tab per line when Insert spaces for Tab is off, keeping the caret placed")
+    func increaseIndentWithTabs() {
+        let text = "foo\nbar" as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(single: NSRange(location: 1, length: 0))
+
+        let transaction = EditorTextTransforms.indentTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection,
+            width: 4,
+            decrease: false,
+            usesTabs: true
+        )
+        let applied = LineTransformTestSupport.applied(transaction, to: text as String)
+
+        #expect(applied?.text == "\tfoo\nbar")
+        #expect(applied?.selection == NSRange(location: 2, length: 0))
+    }
+
     @Test("decrease indent removes up to width leading spaces from every touched line")
     func decreaseIndentBasic() {
         let text = "    foo\n    bar" as NSString

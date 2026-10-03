@@ -45,7 +45,8 @@ extension EditorTextTransforms {
         lineIndex: EditorLineIndex,
         selection: EditorSelectionSet,
         width: Int,
-        decrease: Bool
+        decrease: Bool,
+        usesTabs: Bool = false
     ) -> EditorEditTransaction? {
         let groups = EditorLineTransforms.mergedLineBlockGroups(for: selection, lineIndex: lineIndex)
         guard !groups.isEmpty else { return nil }
@@ -55,7 +56,8 @@ extension EditorTextTransforms {
             lineIndex: lineIndex,
             selection: selection,
             width: width,
-            decrease: decrease
+            decrease: decrease,
+            unit: usesTabs ? "\t" : String(repeating: " ", count: width)
         )
         let accumulator = IndentAccumulator()
         for group in groups {
@@ -80,6 +82,8 @@ extension EditorTextTransforms {
         let selection: EditorSelectionSet
         let width: Int
         let decrease: Bool
+        /// What one Increase Indent step inserts: spaces, or a tab when "Insert spaces for Tab" is off.
+        let unit: String
     }
 
     /// A reference type (not a struct + `inout`) purely to keep
@@ -121,7 +125,7 @@ extension EditorTextTransforms {
         let realLines = groupContent.components(separatedBy: splitter)
         let (newLines, lineDeltas) = context.decrease
             ? unindentedLines(realLines, width: context.width)
-            : indentedLines(realLines, width: context.width)
+            : indentedLines(realLines, unit: context.unit)
         let newContent = newLines.joined(separator: splitter)
 
         guard newContent != groupContent else {
@@ -171,13 +175,8 @@ extension EditorTextTransforms {
     /// Identical to `MarkdownEditingAssistEngine.indentSelectedLines`'s own
     /// per-line closure -- duplicated (see this file's own header comment
     /// for why) rather than shared.
-    private static func indentedLines(_ lines: [String], width: Int) -> (lines: [String], deltas: [Int]) {
-        var deltas: [Int] = []
-        let processed = lines.map { line -> String in
-            deltas.append(width)
-            return String(repeating: " ", count: width) + line
-        }
-        return (processed, deltas)
+    private static func indentedLines(_ lines: [String], unit: String) -> (lines: [String], deltas: [Int]) {
+        (lines.map { unit + $0 }, lines.map { _ in unit.utf16.count })
     }
 
     /// Identical to `MarkdownEditingAssistEngine.unindentSelectedLines`'s
