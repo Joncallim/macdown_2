@@ -188,7 +188,9 @@ struct SessionDebounceTests {
     }
 
     @Test func rapidChangeDuringParseKeepsParsingStateTrue() async throws {
-        let spy = ParseSpy(delay: .milliseconds(100))
+        // The parse takes far longer than the sleeps, so scheduler jitter on a loaded
+        // runner cannot let the second parse finish before the assertion.
+        let spy = ParseSpy(delay: .milliseconds(1500))
         let session = MarkdownParseSession(engine: spy, debounce: .milliseconds(10))
 
         session.textDidChange("first")
