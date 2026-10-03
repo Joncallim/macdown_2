@@ -138,9 +138,18 @@ struct ExportResourceResolverTests {
         // A neutralised link must not just silently lose its target.
         let subject = resolver(root: nil, fatal: true)
         #expect(subject.disposition(for: "javascript:alert(1)", isImage: false) == .blank)
-        #expect(subject.disposition(for: "data:image/png;base64,AAAA", isImage: true) == .blank)
+        #expect(subject.disposition(for: "data:text/html;base64,PHNjcmlwdD4=", isImage: true) == .blank)
         #expect(subject.diagnostics.count == 2)
         #expect(subject.diagnostics.allSatisfy { $0.severity == .warning })
+    }
+
+    @Test func inlineRasterImagesAreKeptAndOtherDataImagesStayBlanked() {
+        let subject = resolver(root: nil, fatal: true)
+        #expect(subject.disposition(for: "data:image/png;base64,iVBORw0KGgo=", isImage: true) == .keep)
+        #expect(subject.disposition(for: "data:image/jpeg;base64,/9j/4AAQ", isImage: true) == .keep)
+        #expect(subject.disposition(for: "data:image/svg+xml;base64,PHN2Zz4=", isImage: true) == .blank)
+        #expect(subject.disposition(for: "data:image/png;base64,AA\"onerror=x", isImage: true) == .blank)
+        #expect(subject.disposition(for: "data:image/png;base64,AAAA", isImage: false) == .blank)
     }
 
     @Test func rejectsAReferenceThatIsActuallyADirectory() throws {

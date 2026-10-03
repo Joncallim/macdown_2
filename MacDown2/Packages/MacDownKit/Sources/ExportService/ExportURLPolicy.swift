@@ -16,6 +16,26 @@ public enum ExportURLPolicy {
     /// Schemes cmark's safe mode would scrub but `UNSAFE` mode does not.
     private static let rejectedSchemes: Set<String> = ["javascript", "vbscript", "data", "file"]
 
+    /// An authored image whose bytes are inline raster data (`data:image/png;base64,…`).
+    /// Raster formats cannot run script, and an image pasted inline is common; SVG and
+    /// every other `data:` type stay rejected.
+    private static let rasterHeaders: Set<String> = [
+        "data:image/png;base64", "data:image/jpeg;base64", "data:image/jpg;base64",
+        "data:image/gif;base64", "data:image/webp;base64",
+    ]
+
+    public static func isEmbeddedRasterImage(_ url: String) -> Bool {
+        guard url.utf8.count > 22, url.lowercased().hasPrefix("data:image/") else { return false }
+        let trimmed = url.trimmingCharacters(in: .whitespaces)
+        guard let comma = trimmed.firstIndex(of: ",") else { return false }
+        let header = trimmed[..<comma].lowercased()
+        guard Self.rasterHeaders.contains(String(header)) else { return false }
+        return trimmed[trimmed.index(after: comma)...].utf8.allSatisfy { byte in
+            (byte >= 0x41 && byte <= 0x5A) || (byte >= 0x61 && byte <= 0x7A)
+                || (byte >= 0x30 && byte <= 0x39) || byte == 0x2B || byte == 0x2F || byte == 0x3D
+        }
+    }
+
     /// Returns `true` when `url` is safe to emit as an authored Markdown link
     /// or image target.
     public static func isSafe(_ url: String) -> Bool {
