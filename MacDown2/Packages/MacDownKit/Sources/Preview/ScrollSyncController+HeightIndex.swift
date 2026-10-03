@@ -46,8 +46,10 @@ extension ScrollSyncController {
         guard lower < map.entries.count else { return candidate.blockIndex }
 
         let after = map.entries[lower]
-        let beforeDistance = abs(candidate.lineRange.lowerBound - line)
-        let afterDistance = abs(after.lineRange.lowerBound - line)
+        // Same rule as `ScrollSyncMap.blockIndex(forLine:)`: the previous block's END against the
+        // next block's start, so both lookups agree for a line inside a gap.
+        let beforeDistance = line - candidate.lineRange.upperBound
+        let afterDistance = after.lineRange.lowerBound - line
         // `min`'s stable tie behavior in ScrollSyncMap favors the earlier
         // entry, which is the candidate before the gap.
         return beforeDistance <= afterDistance ? candidate.blockIndex : after.blockIndex
