@@ -184,6 +184,13 @@ struct FencedRegionClassifierTests {
         #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: afterOffset) == .prose)
     }
 
+    @Test("a blank line after the opening --- makes it a thematic break, not front matter")
+    func blankLineAfterOpenerIsNotFrontMatter() {
+        let text = "---\n\n# Intro\n\n---\nafter" as NSString
+        let offset = text.range(of: "# Intro").location
+        #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: offset) == .prose)
+    }
+
     @Test("a document NOT starting with --- has no front matter, even if --- appears later")
     func noFrontMatterWithoutAnOpeningDelimiterOnLineOne() {
         let text = "# Heading\n---\nnot front matter" as NSString

@@ -236,4 +236,19 @@ struct FrontMatterTests {
         #expect(document.body.hasPrefix("# Body"))
         #expect(!document.blocks.contains(where: { $0.kind == .thematicBreak }))
     }
+
+    @Test func aBlankLineAfterTheOpenerMakesItAThematicBreakNotFrontMatter() async throws {
+        let text = "---\n\n# Intro\n\nSome text here.\n\n---\n\nMore\n"
+        let document = try await ParseEngine().parse(text, revision: 1)
+
+        #expect(document.frontMatter == nil)
+        #expect(document.headings.map(\.title) == ["Intro"])
+        #expect(document.blocks.contains(where: { $0.kind == .thematicBreak }))
+    }
+
+    @Test func anEmptyFrontMatterBlockIsStillFrontMatter() async throws {
+        let document = try await ParseEngine().parse("---\n---\n# Body\n", revision: 1)
+
+        #expect(document.frontMatter?.lineRange == 1 ... 2)
+    }
 }

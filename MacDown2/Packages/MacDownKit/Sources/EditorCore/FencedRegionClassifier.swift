@@ -160,6 +160,14 @@ enum FencedRegionClassifier {
         }
 
         var lineStart = firstLineContentEnd + separatorLength(at: firstLineContentEnd, in: text)
+        // Same rule as `MarkdownEngine`: a blank second line makes the opener a thematic break.
+        if lineStart < text.length {
+            let secondEnd = MarkdownEditingAssistEngine.lineContentEnd(of: lineStart, in: text)
+            let second = text.substring(with: NSRange(location: lineStart, length: secondEnd - lineStart))
+            if second.trimmingCharacters(in: .whitespaces).isEmpty {
+                return nil
+            }
+        }
         var linesScanned = 0
         while lineStart < text.length, linesScanned < maximumFrontMatterLinesScanned {
             let contentEnd = MarkdownEditingAssistEngine.lineContentEnd(of: lineStart, in: text)
