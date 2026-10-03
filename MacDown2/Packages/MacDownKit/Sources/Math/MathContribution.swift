@@ -51,8 +51,10 @@ public struct MathContribution: Contributing {
             ranges: MathLiteralContextScanner.ranges(in: sourceText) + Self.frontMatterRange(in: document)
         )
         var results: [ContributionResult] = []
-        for span in MathSpanScanner.scan(scannable) where !exclusions.contains(where: { $0.overlaps(span.range) }) {
+        let sourceUnits = Array(sourceText.utf16)
+        for masked in MathSpanScanner.scan(scannable) where !exclusions.contains(where: { $0.overlaps(masked.range) }) {
             try Task.checkCancellation()
+            let span = Self.restoringLaTeX(of: masked, from: sourceUnits)
             do {
                 let image = try await renderer(span, context)
                 results.append(ContributionResult(
@@ -115,6 +117,20 @@ public struct MathContribution: Contributing {
     /// escaped-dollar defects. `TOCContribution` is a separate
     /// implementation with its own ownership boundary; this fix is scoped
     /// to `Math`, matching this epic's own module ownership (§5).
+    /// The scan ran on text with literal contexts masked (one U+E000 per unit); the LaTeX handed to the
+    /// renderer, the `alt` text and diagnostics must be the author's characters.
+    static func restoringLaTeX(of span: MathSpan, from units: [UInt16]) -> MathSpan {
+        let delimiter = span.style == .display ? 2 : 1
+        let start = span.range.lowerBound + delimiter
+        let end = span.range.upperBound - delimiter
+        guard start <= end, end <= units.count else { return span }
+        return MathSpan(
+            range: span.range,
+            style: span.style,
+            latex: String(decoding: units[start ..< end], as: UTF16.self)
+        )
+    }
+
     /// Front matter is data, not prose: math there is not typeset, and an unpaired `$$`
     /// in it must not pair with the first body equation.
     static func frontMatterRange(in document: MarkdownDocument) -> [Range<Int>] {
