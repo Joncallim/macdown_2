@@ -102,9 +102,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         let hostingController = NSHostingController(rootView: shell)
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
-        window.setFrameAutosaveName("MacDown2DocumentWindow")
+        Self.restoreFrame(of: window)
         window.title = model.activeDocument?.fileURL?.lastPathComponent ?? "Untitled"
-        window.setContentSize(NSSize(width: 1200, height: 800))
         window.minSize = NSSize(width: 400, height: 300)
         window.tabbingMode = .preferred
 
