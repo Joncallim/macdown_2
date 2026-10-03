@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let hasCompletedFirstRunKey = "com.joncallim.macdown2.hasCompletedFirstRun"
 
     override init() {
-        let args = ProcessInfo.processInfo.arguments
+        let args = Self.launchArguments
         let isUITesting = args.contains("-UITesting")
 
         // EPIC-22/#150: MacDown2Tests (non-UI app-target tests) is
@@ -215,6 +215,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Launch argument parsing
+
+    /// The arguments the test hooks (`-UITesting`, `-sessionDir`, `-openFiles`, `-openFolder`) are read from.
+    /// Debug builds only: a release build ignores them, so they cannot redirect the session and recovery
+    /// directories, disable the single-instance guard or force-open paths.
+    static var launchArguments: [String] {
+        #if DEBUG
+            ProcessInfo.processInfo.arguments
+        #else
+            []
+        #endif
+    }
 
     private static func sessionDirectory(from args: [String]) -> URL {
         if let index = args.firstIndex(of: "-sessionDir"), index + 1 < args.count {
