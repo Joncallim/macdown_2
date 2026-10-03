@@ -26,8 +26,7 @@ struct BlockView: View {
     /// ``PreviewLinkDefinitions``. Oversize blocks skip this — they already
     /// bypass Textual entirely.
     private var renderedSource: String {
-        guard !linkDefinitions.isEmpty else { return block.source }
-        return (linkDefinitions + [block.source]).joined(separator: "\n")
+        PreviewLinkDefinitions.prefixed(block.source, with: linkDefinitions)
     }
 
     /// `block.source` for a `.codeBlock` includes both fence delimiter
