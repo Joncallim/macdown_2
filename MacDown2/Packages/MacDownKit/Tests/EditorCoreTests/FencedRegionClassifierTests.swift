@@ -300,4 +300,11 @@ struct FencedRegionClassifierTests {
         // practice at this cap, budgeted higher for a slow CI runner.
         #expect(elapsed < .milliseconds(25))
     }
+
+    @Test("a backtick line with a backtick in its info string is inline code, not a fence")
+    func backtickInfoStringIsNotAFence() {
+        let text = "```x``` inline\nstill prose" as NSString
+        let offset = text.range(of: "still").location
+        #expect(FencedRegionClassifier.classify(text: text, atUTF16Offset: offset) == .prose)
+    }
 }

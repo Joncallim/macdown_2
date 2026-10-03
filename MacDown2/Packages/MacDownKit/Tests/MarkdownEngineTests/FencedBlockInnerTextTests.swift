@@ -26,4 +26,10 @@ struct FencedBlockInnerTextTests {
     @Test func aLoneOpeningLineHasNoContent() {
         #expect("```mermaid".fencedBlockInnerText() == "")
     }
+
+    @Test func aShorterOrDifferentFenceLineInsideTheBlockIsContentNotACloser() {
+        #expect("````dot\na\n```".fencedBlockInnerText() == "a\n```")
+        #expect("```dot\na\n~~~".fencedBlockInnerText() == "a\n~~~")
+        #expect("~~~dot\na\n~~~~".fencedBlockInnerText() == "a")
+    }
 }
