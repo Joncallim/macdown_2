@@ -15,7 +15,7 @@ struct BlockView: View {
     let theme: PreviewTheme
     let linkResolver: PreviewLinkResolver
     @Environment(\.previewOpenDocument) private var openDocument
-    let linkDefinitions: [String]
+    let definitionIndex: PreviewLinkDefinitionIndex
     let mermaidFenceView: ((String) -> AnyView)?
     let d2FenceView: ((String) -> AnyView)?
     let graphvizFenceView: ((String) -> AnyView)?
@@ -26,7 +26,7 @@ struct BlockView: View {
     /// ``PreviewLinkDefinitions``. Oversize blocks skip this — they already
     /// bypass Textual entirely.
     private var renderedSource: String {
-        PreviewLinkDefinitions.prefixed(block.source, with: linkDefinitions)
+        definitionIndex.prefixed(block.source)
     }
 
     /// `block.source` for a `.codeBlock` includes both fence delimiter

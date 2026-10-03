@@ -42,4 +42,25 @@ struct PreviewLinkDefinitionPrefixTests {
 
         #expect(PreviewLinkDefinitions.prefixed("A short paragraph.", with: definitions).utf8.count < 100)
     }
+
+    @Test func labelMatchingFollowsCommonMarkNormalisation() {
+        let definitions = ["[foo]: /a", "[Straße]: /b"]
+
+        #expect(PreviewLinkDefinitions.prefixed("see [ foo ]", with: definitions) == "[foo]: /a\n\nsee [ foo ]")
+        #expect(PreviewLinkDefinitions.prefixed("see [STRASSE]", with: definitions) == "[Straße]: /b\n\nsee [STRASSE]")
+        #expect(PreviewLinkDefinitions.prefixed("see [fo\no]", with: ["[fo o]: /c"]) == "[fo o]: /c\n\nsee [fo\no]")
+    }
+
+    @Test func prefixingEveryBlockUsesAPrecomputedIndexAndStaysFast() {
+        let definitions = (0 ..< 3000).map { "[label\($0)]: https://example.com/\($0)" }
+        let index = PreviewLinkDefinitionIndex(definitions)
+        let start = ContinuousClock.now
+
+        for block in 0 ..< 3000 {
+            _ = index.prefixed("Paragraph \(block) referencing [label\(block)] only.")
+        }
+
+        #expect(ContinuousClock.now - start < .seconds(3))
+        #expect(index.prefixed("[label7] and [label9]").hasPrefix("[label7]: https://example.com/7\n[label9]: "))
+    }
 }
