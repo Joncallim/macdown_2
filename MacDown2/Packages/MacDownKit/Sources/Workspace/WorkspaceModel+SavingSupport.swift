@@ -20,11 +20,14 @@ extension WorkspaceModel {
         return true
     }
 
-    /// Save As must not take over a file another window has open; reports why when it would.
-    func destinationIsFree(_ url: URL) -> Bool {
-        guard isOpenInAnotherWindow?(url) == true else { return true }
-        lastError = .destinationOpenInAnotherWindow(name: url.lastPathComponent)
-        return false
+    /// The URL Save As should write for the chosen `url`, or `nil` (with `lastError` set) when it
+    /// must not. A symbolic-link name saves to the file it points at, as opening one does —
+    /// `FileStore`'s publication cannot replace a link. A file another window has open is refused.
+    func freeDestination(_ url: URL) -> URL? {
+        let resolved = url.resolvingFinalSymlink()
+        guard isOpenInAnotherWindow?(resolved) == true else { return resolved }
+        lastError = .destinationOpenInAnotherWindow(name: resolved.lastPathComponent)
+        return nil
     }
 
     func isLatestSave(_ context: SaveContext) -> Bool {

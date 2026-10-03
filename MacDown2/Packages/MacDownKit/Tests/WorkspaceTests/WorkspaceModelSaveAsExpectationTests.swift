@@ -149,6 +149,53 @@ struct WorkspaceModelSaveAsExpectationTests {
         #expect(model.activeDocument?.fileURL?.standardizedFileURL == destination.standardizedFileURL)
         #expect(try FileStore().read(from: destination).content == "content")
     }
+
+    /// Save As onto a symbolic-link name failed with a misleading "file doesn't exist" (link to a file)
+    /// or "item already exists" (dangling link). It now writes through to the link's target.
+    @Test func saveAsOntoASymbolicLinkWritesThroughToItsTarget() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let target = directory.appendingPathComponent("target.md")
+        let link = directory.appendingPathComponent("link.md")
+        _ = try FileStore().write("draft", to: source)
+        _ = try FileStore().write("old target", to: target)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load().updatingText("new content"))
+        let panel = InterposingPanelProvider(destination: link, duringPanel: {})
+        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore(), panel: panel)
+        let expected = try #require(model.activeDocument)
+
+        await model.saveAs(to: link, expecting: expected)
+
+        #expect(model.lastError == nil)
+        #expect(try FileStore().read(from: target).content == "new content")
+        #expect((try? link.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true)
+        #expect(model.activeDocument?.fileURL?.standardizedFileURL == target.standardizedFileURL)
+    }
+
+    @Test func saveAsOntoADanglingSymbolicLinkCreatesItsTarget() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let target = directory.appendingPathComponent("not-yet.md")
+        let link = directory.appendingPathComponent("dangling.md")
+        _ = try FileStore().write("draft", to: source)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load().updatingText("created"))
+        let panel = InterposingPanelProvider(destination: link, duringPanel: {})
+        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore(), panel: panel)
+        let expected = try #require(model.activeDocument)
+
+        await model.saveAs(to: link, expecting: expected)
+
+        #expect(model.lastError == nil)
+        #expect(try FileStore().read(from: target).content == "created")
+    }
 }
 
 /// A panel provider that runs `duringPanel` while the "panel" is up — i.e.
