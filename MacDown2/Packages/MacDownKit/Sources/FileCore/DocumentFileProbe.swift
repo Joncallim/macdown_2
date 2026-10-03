@@ -62,24 +62,14 @@ struct DocumentFileProbe: DocumentFileProbing, Sendable {
         reader: SnapshotReader
     ) -> DocumentFileObservation {
         do {
-            let snapshot = try reader.snapshot(expectedURL)
-            guard let priorFileObjectID, let currentID = snapshot.revision.fileObjectID,
-                  priorFileObjectID != currentID
-            else {
-                return .available(snapshot)
-            }
-
-            switch findMovedSnapshot(
-                in: expectedURL.deletingLastPathComponent(),
-                matching: priorFileObjectID,
-                excluding: expectedURL,
-                reader: reader
-            ) {
-            case let .one(snapshot): return .moved(snapshot)
-            case .ambiguous: return .unavailable(expectedURL, .ambiguousMove)
-            case let .unavailable(issue): return .unavailable(expectedURL, issue)
-            case .none: return .available(snapshot)
-            }
+            // The expected path holds a readable file: that IS the document, even
+            // if the object behind it changed (an editor's atomic save, a
+            // backup-by-rename — `perl -pi.bak`, Emacs — or a deleted-and-recreated
+            // file). A sibling that carries the OLD object (`foo.md.bak`) is a
+            // backup, not where the document went: rebinding to it would retitle
+            // the window and make the next Save write into the backup. A move is
+            // only inferred when the expected path is gone.
+            return try .available(reader.snapshot(expectedURL))
         } catch {
             return observation(
                 after: error,
