@@ -176,6 +176,38 @@ struct WorkspaceModelSaveAsExpectationTests {
         #expect(model.activeDocument?.fileURL?.standardizedFileURL == target.standardizedFileURL)
     }
 
+    /// Typing while the destination is being read (off the main actor) used to make the explicit Save As silently
+    /// do nothing: the post-await `isCurrent(expected)` guard failed on the edited document with no error.
+    @Test func typingWhileTheDestinationIsReadDoesNotCancelSaveAs() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let destination = directory.appendingPathComponent("destination.md")
+        _ = try FileStore().write("draft", to: source)
+        // A large existing destination keeps the off-main baseline read busy long enough to type during it.
+        let handle = try { () throws -> FileHandle in
+            FileManager.default.createFile(atPath: destination.path, contents: nil)
+            return try FileHandle(forWritingTo: destination)
+        }()
+        try handle.truncate(atOffset: 256 * 1024 * 1024)
+        try handle.close()
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load().updatingText("saved text"))
+        let panel = InterposingPanelProvider(destination: destination, duringPanel: {})
+        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore(), panel: panel)
+        let expected = try #require(model.activeDocument)
+
+        let save = Task { @MainActor in await model.saveAs(to: destination, expecting: expected) }
+        await Task.yield()
+        tabStore.updateActiveDocument { $0.updatingText($0.text + " plus typing") }
+        await save.value
+
+        #expect(try String(contentsOf: destination, encoding: .utf8) == "saved text")
+        #expect(model.activeDocument?.fileURL?.standardizedFileURL == destination.standardizedFileURL)
+        #expect(model.activeDocument?.text == "saved text plus typing")
+    }
+
     @Test func saveAsOntoADanglingSymbolicLinkCreatesItsTarget() async throws {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }

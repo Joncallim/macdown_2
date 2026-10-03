@@ -161,6 +161,19 @@ struct FileStoreSaveAsBaselineTests {
         #expect(try FileStore().read(from: fixture.url).content == "external edit")
     }
 
+    /// The synthesized `FileRevision ==` includes `url`, so Save As onto a case-only spelling of the document's own
+    /// unchanged file (a plain rename of `Notes.md` to `notes.md`) never matched its own baseline and failed.
+    @Test func aCaseOnlySaveAsOfTheUnchangedOwnFileSucceeds() throws {
+        let fixture = try FixtureFile(text: "one")
+        let variant = fixture.directory.appendingPathComponent("DOCUMENT.MD")
+        guard FileManager.default.fileExists(atPath: variant.path) else { return } // case-sensitive volume
+        let document = try FileDocument(fileURL: fixture.url).load().edited(text: "ours")
+
+        _ = try saveAs(document, to: variant)
+
+        #expect(try FileStore().read(from: fixture.url).content == "ours")
+    }
+
     @Test func anUntitledDocumentMayReplaceAnExistingFileItsUserConfirmed() throws {
         let fixture = try FixtureFile(text: "old")
         let document = FileDocument(text: "").updatingText("new")

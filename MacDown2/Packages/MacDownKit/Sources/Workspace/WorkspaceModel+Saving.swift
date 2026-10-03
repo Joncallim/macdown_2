@@ -220,7 +220,7 @@ public extension WorkspaceModel {
             lastError = workspaceError(for: error)
             return
         }
-        guard isCurrent(expected) else { return }
+        guard activeDocumentSharesLifetime(with: expected) else { return }
         await publishSaveAs(expected, to: url, destinationBaseline: baseline)
     }
 
