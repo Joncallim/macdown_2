@@ -4,6 +4,7 @@ import Foundation
 public enum FileTreeOperationError: Error, Sendable, Equatable, LocalizedError {
     case nameEmpty
     case nameContainsPathSeparator
+    case nameReserved(String)
     case nameExists(String)
     case sourceMissing
     case destinationNotDirectory
@@ -17,6 +18,7 @@ public enum FileTreeOperationError: Error, Sendable, Equatable, LocalizedError {
         switch self {
         case .nameEmpty: String(localized: "A name is required.", bundle: .module)
         case .nameContainsPathSeparator: String(localized: "Names cannot contain / or :.", bundle: .module)
+        case let .nameReserved(name): String(localized: "\"\(name)\" is not a valid name.", bundle: .module)
         case let .nameExists(name): String(localized: "\"\(name)\" already exists.", bundle: .module)
         case .sourceMissing: String(localized: "The item no longer exists.", bundle: .module)
         case .destinationNotDirectory: String(localized: "The destination is not a folder.", bundle: .module)
@@ -64,10 +66,20 @@ public enum FileTreeNaming {
         name.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
     }
 
+    /// Two-part extensions where the compressed suffix belongs with `.tar`: `archive.tar.gz` duplicates as
+    /// `archive copy.tar.gz` (as Finder does), not `archive.tar copy.gz`.
+    private static let compressedTarSuffixes: Set<String> = ["gz", "bz2", "xz", "zst", "lz", "lzma", "z"]
+
     public static func duplicateName(of name: String, existing: Set<String>) -> String {
         let url = URL(fileURLWithPath: name)
-        let stem = url.deletingPathExtension().lastPathComponent
-        let ext = url.pathExtension
+        var stem = url.deletingPathExtension().lastPathComponent
+        var ext = url.pathExtension
+        if compressedTarSuffixes.contains(ext.lowercased()),
+           URL(fileURLWithPath: stem).pathExtension.lowercased() == "tar" {
+            let inner = URL(fileURLWithPath: stem)
+            stem = inner.deletingPathExtension().lastPathComponent
+            ext = "\(inner.pathExtension).\(ext)"
+        }
         let suffix = ext.isEmpty ? "" : ".\(ext)"
         let folded = Set(existing.map(foldedName))
         var index = 1
@@ -85,8 +97,10 @@ public enum FileTreeNaming {
         existing: Set<String>,
         currentName: String?
     ) -> FileTreeOperationError? {
-        guard !name.isEmpty else { return .nameEmpty }
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .nameEmpty }
         guard !name.contains("/"), !name.contains(":") else { return .nameContainsPathSeparator }
+        // `.` and `..` name the directory itself and its parent: they fail at the filesystem with an odd error.
+        guard name != ".", name != ".." else { return .nameReserved(name) }
         let names = existing.filter { candidate in candidate != currentName }
         return names.contains { $0.caseInsensitiveCompare(name) == .orderedSame } ? .nameExists(name) : nil
     }
