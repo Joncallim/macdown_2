@@ -18,6 +18,28 @@ public struct WorkspaceSession: Codable, Sendable, Equatable {
         self.activeTabID = activeTabID
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case version, tabs, activeTabID
+    }
+
+    /// A tab record that cannot be decoded (a field this build does not know, e.g. after a downgrade) costs
+    /// that one tab, not the whole session: failing the entire decode meant no restore and an autosave that
+    /// overwrote the file, orphaning every other tab's dirty recovery.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decode(Int.self, forKey: .version)
+        tabs = try container.decode([LossyTabRecord].self, forKey: .tabs).compactMap(\.record)
+        activeTabID = try container.decodeIfPresent(UUID.self, forKey: .activeTabID)
+    }
+
+    private struct LossyTabRecord: Decodable {
+        let record: TabRecord?
+
+        init(from decoder: Decoder) throws {
+            record = try? TabRecord(from: decoder)
+        }
+    }
+
     /// An empty session using the current schema version.
     public static var empty: WorkspaceSession {
         WorkspaceSession()
@@ -143,9 +165,21 @@ public struct WorkspaceSessionStore: WorkspaceSessionStoring {
     public func loadSession() -> WorkspaceSession? {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        guard let session = try? JSONDecoder().decode(WorkspaceSession.self, from: data) else { return nil }
-        guard session.version == WorkspaceSession.currentVersion else { return nil }
+        guard let session = try? JSONDecoder().decode(WorkspaceSession.self, from: data),
+              session.version == WorkspaceSession.currentVersion
+        else {
+            preserveUnreadableSession()
+            return nil
+        }
         return session
+    }
+
+    /// The next autosave replaces `session.json`; keep a copy of one that could not be read (a newer build's
+    /// format, corruption) so it is not the only evidence lost when that happens.
+    private func preserveUnreadableSession() {
+        let backup = fileURL.appendingPathExtension("unreadable")
+        try? FileManager.default.removeItem(at: backup)
+        try? FileManager.default.copyItem(at: fileURL, to: backup)
     }
 
     public func saveSession(_ session: WorkspaceSession) {
