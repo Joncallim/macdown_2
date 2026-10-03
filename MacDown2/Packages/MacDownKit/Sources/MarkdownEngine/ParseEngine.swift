@@ -98,6 +98,12 @@ public actor ParseEngine: ParseExecuting {
     /// range are still reported — rather than expanded.
     static let maximumYAMLAliasReferences = 16
 
+    /// libyaml accepts any non-space, non-flow-indicator character in an anchor
+    /// name (`&-a`, `*.x`, `*é`), so the budget must not assume a letter.
+    private static func canStartAnchorName(_ character: Character) -> Bool {
+        !(character.isWhitespace || ",[]{}*".contains(character))
+    }
+
     static func exceedsYAMLAliasBudget(_ raw: String) -> Bool {
         guard raw.contains("&") else { return false }
         var aliases = 0
@@ -107,7 +113,7 @@ public actor ParseEngine: ParseExecuting {
             let character = raw[index]
             if character == "*", !(previous.isLetter || previous.isNumber || previous == "\\") {
                 let next = raw.index(after: index)
-                if next < raw.endIndex, raw[next].isLetter || raw[next].isNumber || raw[next] == "_" {
+                if next < raw.endIndex, Self.canStartAnchorName(raw[next]) {
                     aliases += 1
                     if aliases > maximumYAMLAliasReferences {
                         return true

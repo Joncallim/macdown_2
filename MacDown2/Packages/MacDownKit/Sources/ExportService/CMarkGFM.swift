@@ -79,6 +79,20 @@ enum CMarkGFM {
         customNodes: [CustomNodeSpec] = [],
         urlTransformer: ((String, Bool) -> URLDisposition)? = nil
     ) throws -> Rendered {
+        // `walk` recurses once per nesting level, so a few thousand `>` would
+        // overflow a cooperative thread's stack and kill the app. Like the parse
+        // engine, run on a dedicated thread with a large, lazily committed stack.
+        try OnLargeStack.run {
+            try renderOnCurrentThread(text, options: options, customNodes: customNodes, urlTransformer: urlTransformer)
+        }
+    }
+
+    private static func renderOnCurrentThread(
+        _ text: String,
+        options: Int32,
+        customNodes: [CustomNodeSpec],
+        urlTransformer: ((String, Bool) -> URLDisposition)?
+    ) throws -> Rendered {
         // Reading the `static let` runs its initialiser exactly once under the
         // Swift runtime's own lock. `precondition` is not used here because it
         // is stripped in `-Ounchecked` builds, which would drop registration.

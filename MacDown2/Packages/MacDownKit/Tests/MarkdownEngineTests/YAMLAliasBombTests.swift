@@ -29,4 +29,27 @@ struct YAMLAliasBombTests {
 
         #expect(document.frontMatter?.values?["name"] == .string("Hello"))
     }
+
+    @Test func anchorNamesThatDoNotStartWithALetterCountTowardTheBudget() {
+        let refs = (0 ..< 20).map { _ in "*-a0" }.joined(separator: ",")
+        #expect(ParseEngine.exceedsYAMLAliasBudget("a0: &-a0 [x]\nb: [\(refs)]"))
+        let dotted = (0 ..< 20).map { _ in "*.a" }.joined(separator: ",")
+        #expect(ParseEngine.exceedsYAMLAliasBudget("a: &.a [x]\nb: [\(dotted)]"))
+    }
+
+    @Test func aDashAnchoredBombIsNotExpanded() async throws {
+        var lines = ["a0: &-a0 [\"lol\",\"lol\",\"lol\",\"lol\",\"lol\",\"lol\",\"lol\",\"lol\",\"lol\"]"]
+        for level in 1 ..< 9 {
+            let refs = Array(repeating: "*-a\(level - 1)", count: 9).joined(separator: ",")
+            lines.append("a\(level): &-a\(level) [\(refs)]")
+        }
+        let start = ContinuousClock.now
+        let document = try await ParseEngine().parse(
+            "---\n" + lines.joined(separator: "\n") + "\n---\n# T\n",
+            revision: 1
+        )
+
+        #expect(document.frontMatter?.values == nil)
+        #expect(ContinuousClock.now - start < .seconds(20))
+    }
 }
