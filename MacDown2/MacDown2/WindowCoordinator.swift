@@ -52,8 +52,7 @@ final class WindowCoordinator {
     private let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
     private var hasRestoredSession = false
     let documentOpens = KeyedSerialRunner<URL>()
-    /// The session file as it was at launch, kept until `restoreUnsavedSessionTabs()` consumes it.
-    var launchSession: WorkspaceSession?
+    var launchSession: WorkspaceSession? // as at launch; handed out once by `consumeLaunchSession()`
     private var saveTask: Task<Void, Never>?
     var sessionPublicationOrder = SessionPublicationOrder()
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
@@ -295,6 +294,7 @@ final class WindowCoordinator {
     /// restore pipeline — split out to keep this file under the type-body-
     /// length lint budget.
     func restoreSession() async {
+        _ = consumeLaunchSession()
         let tempStore = TabStore(sessionStore: sessionStore)
         await tempStore.restoreSessionIfNeeded()
 
