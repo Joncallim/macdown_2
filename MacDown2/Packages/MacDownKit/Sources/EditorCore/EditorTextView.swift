@@ -19,6 +19,11 @@ public final class EditorTextView: NSTextView {
     /// `TextKitStack`), never the reverse.
     weak var owningSystem: EditorTextSystem?
 
+    /// The owning tab's own undo manager rather than the window's shared one.
+    override public var undoManager: UndoManager? {
+        owningSystem?.undoManager ?? super.undoManager
+    }
+
     /// Non-nil for exactly the duration of a gesture that STARTED as a
     /// plain Option-click (§6.10, Slice 3b-iv): the view-space point
     /// `mouseDown(with:)` captured. `mouseDragged(with:)` uses it as the

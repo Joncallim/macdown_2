@@ -60,9 +60,9 @@ struct EditorViewRealMountTests {
         let store = EditorTextSystemStore()
         let identity = UUID().uuidString
 
-        // Captured BEFORE mounting: `EditorTextSystem.undoManager` resolves
-        // to a temporary `fallbackUndoManager` here, since no window exists
-        // yet for `textView.undoManager` to defer to.
+        // Captured BEFORE mounting. The undo manager is the tab's own and keeps
+        // its identity through mounting (it used to switch to the WINDOW's
+        // manager, which every tab of a window shares).
         let systemBeforeMount = store.system(for: identity, initialText: "a", configuration: .default)
         let preMountUndoManagerIdentity = ObjectIdentifier(systemBeforeMount.undoManager)
 
@@ -72,14 +72,12 @@ struct EditorViewRealMountTests {
         let scrollView = try #require(Self.findScrollView(in: mounted.hostingView), "makeNSView did not run")
         let gutter = try #require(scrollView.verticalRulerView as? EditorGutterView)
 
-        // The exact bug mechanism: mounting the SAME cached system in a
-        // REAL window switches `undoManager`'s identity away from the
-        // fallback captured above.
         let system = store.system(for: identity, initialText: "a", configuration: .default)
         #expect(
-            preMountUndoManagerIdentity != ObjectIdentifier(system.undoManager),
-            "expected undoManager identity to change once the text view is mounted in a real window"
+            preMountUndoManagerIdentity == ObjectIdentifier(system.undoManager),
+            "the tab's undo manager must keep its identity once mounted in a real window"
         )
+        #expect(system.textView.undoManager === system.undoManager)
 
         assertUndoRedoDrivesGutter(system: system, gutter: gutter)
         try assertDismantleLeavesNoObserver(mounted: mounted, scrollView: scrollView, system: system)
