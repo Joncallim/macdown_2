@@ -18,25 +18,104 @@ enum DerivedHTMLSanitizer {
         return compiled
     }
 
-    private static let elementBlocks = regex(#"<(script|iframe|object|embed)\b[^>]*>.*?</\1\s*>"#)
-    private static let strayElements = regex(#"</?(script|iframe|object|embed)\b[^>]*>"#)
-    private static let handlers = regex(#"(?<=[\s"'/])on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)"#)
-    private static let urlAttributes = regex(
-        #"(?<=[\s"'/])((?:xlink:)?href|src|action|formaction)(\s*=\s*)(?:"([^"]*)"|'([^']*)'|([^\s>]+))"#
-    )
+    private static let blockedElements: Set<String> = ["script", "iframe", "object", "embed"]
+    private static let urlAttributes: Set<String> = ["href", "xlink:href", "src", "action", "formaction"]
+    private static let animationElements: Set<String> = ["set", "animate", "animatetransform", "animatemotion"]
 
+    /// A single linear pass over the markup: text between tags is copied untouched, and every tag is
+    /// re-emitted from its parsed name and attributes, so nothing outside a tag is ever rewritten and the
+    /// output cannot re-form a blocked tag (`<scr<iframe>ipt>`) — it is its own fixed point. An unterminated
+    /// tag or quoted value fails closed: the remainder is dropped.
     static func sanitized(_ html: String) -> String {
         guard html.contains("<") else { return html }
-        var result = replacing(elementBlocks, in: html) { _ in "" }
-        result = replacing(strayElements, in: result) { _ in "" }
-        result = replacing(handlers, in: result) { _ in "" }
-        return replacing(urlAttributes, in: result) { match in
-            let value = [3, 4, 5].lazy.compactMap { match.group($0) }.first ?? ""
-            let name = match.group(1) ?? ""
-            return isSafe(decodingEntities(in: value), attribute: name)
-                ? match.whole
-                : "\(name)\(match.group(2) ?? "=")\"#\""
+        let scalars = Array(html.unicodeScalars)
+        var output = String.UnicodeScalarView()
+        var index = 0
+        while index < scalars.count {
+            guard scalars[index] == "<" else {
+                output.append(scalars[index])
+                index += 1
+                continue
+            }
+            guard let next = consumeMarkup(at: index, in: scalars, into: &output) else { break }
+            index = next
         }
+        return String(output)
+    }
+
+    /// Handles the markup construct starting at `start`; returns the index after it, or `nil` to drop the rest.
+    private static func consumeMarkup(
+        at start: Int,
+        in scalars: [Unicode.Scalar],
+        into output: inout String.UnicodeScalarView
+    ) -> Int? {
+        if HTMLTagScanner.hasPrefix("<!--", at: start, in: scalars) {
+            return HTMLTagScanner.copyThrough("-->", from: start, in: scalars, into: &output)
+        }
+        if HTMLTagScanner.hasPrefix("<![CDATA[", at: start, in: scalars) {
+            return HTMLTagScanner.copyThrough("]]>", from: start, in: scalars, into: &output)
+        }
+        guard let tag = HTMLTagScanner.parseTag(at: start, in: scalars) else {
+            let nextIndex = start + 1
+            guard nextIndex < scalars.count else {
+                output.append(contentsOf: "&lt;".unicodeScalars)
+                return nextIndex
+            }
+            let following = scalars[nextIndex]
+            if following == "!" || following == "?" { // doctype, XML declaration
+                return HTMLTagScanner.copyThrough(">", from: start, in: scalars, into: &output)
+            }
+            if following == "/" { // `</` + non-letter is a bogus comment: dropped
+                return HTMLTagScanner.skipPast(">", from: start, in: scalars, caseSensitive: true)
+            }
+            if HTMLTagScanner.isNameStart(following) {
+                return nil
+            } // unterminated tag: fail closed
+            // Plain text such as `a < b`. Escaped, so that dropping a neighbouring tag can never leave this
+            // `<` adjacent to following characters that would re-form a tag.
+            output.append(contentsOf: "&lt;".unicodeScalars)
+            return nextIndex
+        }
+        var next = tag.end
+        if blockedElements.contains(tag.name) {
+            if tag.name == "script", !tag.isClosing {
+                next = HTMLTagScanner.skipPast("</script", from: tag.end, in: scalars) ?? scalars.count
+            }
+            return next
+        }
+        if animationElements.contains(tag.name),
+           tag.attributes
+           .contains(where: { $0.name == "attributename" && $0.value?.lowercased().contains("href") == true }) {
+            return next
+        }
+        output.append(contentsOf: render(tag).unicodeScalars)
+        return next
+    }
+
+    private static func render(_ tag: HTMLTagScanner.Tag) -> String {
+        var result = tag.isClosing ? "</\(tag.name)" : "<\(tag.name)"
+        if !tag.isClosing {
+            for attribute in tag.attributes {
+                if attribute.name.hasPrefix("on") {
+                    continue
+                }
+                guard var value = attribute.value else {
+                    result += " \(attribute.name)"
+                    continue
+                }
+                if urlAttributes.contains(attribute.name), !isSafe(
+                    decodingEntities(in: value),
+                    attribute: attribute.name
+                ) {
+                    value = "#"
+                }
+                result += " \(attribute.name)=\"\(value.replacingOccurrences(of: "\"", with: "&quot;"))\""
+            }
+        }
+        if tag.isSelfClosing, !tag.isClosing {
+            result += " /"
+        }
+        return result + ">"
     }
 
     private static let embeddedImage = regex(#"^\s*data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=\s]*$"#)
