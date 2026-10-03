@@ -97,6 +97,7 @@ public enum MathSpanScanner {
     /// in epic-19-implementation.md §11 assumes.
     /// Verbatim copy of Textual's `PatternTokenizer.Pattern.mathBlock`.
     private nonisolated(unsafe) static let displayPattern = /(?s)\$\$(.+?)\$\$/
-    /// Verbatim copy of Textual's `PatternTokenizer.Pattern.mathInline`.
-    private nonisolated(unsafe) static let inlinePattern = /\$(?!\$)((?:\\\$|[^$\n])+)\$/
+    /// Textual's `PatternTokenizer.Pattern.mathInline`, plus `\r` in the excluded set so an
+    /// inline span stops at a CRLF/CR line break exactly as it does at `\n`.
+    private nonisolated(unsafe) static let inlinePattern = /\$(?!\$)((?:\\\$|[^$\n\r])+)\$/
 }
