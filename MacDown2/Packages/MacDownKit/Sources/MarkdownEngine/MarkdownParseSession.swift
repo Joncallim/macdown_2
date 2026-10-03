@@ -6,6 +6,11 @@ import os.log
 @MainActor
 @Observable
 public final class MarkdownParseSession {
+    /// Stable for this session's lifetime and never reused. `ObjectIdentifier(session)` is NOT: a freed session's
+    /// address is handed to the next one, so two tabs could share an "identity" and a tab switch looked like
+    /// the same document.
+    public let identity = UUID()
+
     /// Latest completed parse. nil until the first parse completes.
     public private(set) var document: MarkdownDocument?
 

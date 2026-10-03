@@ -63,7 +63,16 @@ enum DerivedContentComposer {
             let endLine = bodyText.lineRange(for: NSRange(location: bodyRange.upperBound, length: 0))
             let afterLength = max(0, NSMaxRange(endLine) - bodyRange.upperBound)
             let after = bodyText.substring(with: NSRange(location: bodyRange.upperBound, length: afterLength))
-            return after.allSatisfy(\.isWhitespace)
+            guard after.allSatisfy(\.isWhitespace) else { return false }
+            // A contribution that is the whole content line of a setext heading must stay inline:
+            // a blank-line-delimited block would turn the heading into a paragraph plus a rule.
+            let nextStart = NSMaxRange(endLine)
+            guard nextStart < bodyText.length else { return true }
+            let nextLine = bodyText.lineRange(for: NSRange(location: nextStart, length: 0))
+            let next = Self.strippingContainerPrefix(bodyText.substring(with: nextLine)[...])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let isUnderline = !next.isEmpty && (next.allSatisfy { $0 == "=" } || next.allSatisfy { $0 == "-" })
+            return !isUnderline
         }
 
         /// Drops any leading run of indentation, `>` quote markers and list markers (`-`, `+`, `*`, `1.`, `1)`).
@@ -82,7 +91,7 @@ enum DerivedContentComposer {
                         next = afterDigits.dropFirst()
                     }
                 }
-                if next.count == rest.count {
+                if next.startIndex == rest.startIndex {
                     return trimmed
                 }
                 rest = next

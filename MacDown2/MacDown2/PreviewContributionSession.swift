@@ -10,7 +10,7 @@ import Preview
 /// save, URL, encoding) changed in between (architecture takeover, pass
 /// 1/10).
 struct PreviewContributionTaskID: Hashable {
-    let documentIdentity: ObjectIdentifier
+    let documentIdentity: UUID
     let parsedRevision: Int?
 }
 

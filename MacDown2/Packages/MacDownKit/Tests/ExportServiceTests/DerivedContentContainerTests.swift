@@ -166,4 +166,51 @@ struct DerivedContentContainerTests {
 
         #expect(!prepared.diagnostics.contains { $0.message.contains("exported as their source text") })
     }
+
+    @Test func aContributionOnASetextHeadingLineStaysInline() async throws {
+        let prepared = try await prepare(
+            "$$x$$\n=====\n\nafter\n",
+            replacing: "$$x$$",
+            with: "<img alt=\"m\">"
+        )
+
+        #expect(prepared.bodyHTML.contains("<h1><img alt=\"m\"></h1>"))
+    }
+
+    @Test func manyTableCellContributionsPrepareQuickly() async throws {
+        let rows = (0 ..< 1000).map { "| $$a\($0)$$ | b |" }.joined(separator: "\n")
+        let markdown = "| h | i |\n|---|---|\n\(rows)\n"
+        let source = markdown as NSString
+        var contributions: [ExportDerivedContribution] = []
+        var search = NSRange(location: 0, length: source.length)
+        while true {
+            let found = source.range(of: "$$", range: search)
+            guard found.location != NSNotFound else { break }
+            let close = source.range(
+                of: "$$", range: NSRange(location: found.location + 2, length: source.length - found.location - 2)
+            )
+            contributions.append(ExportDerivedContribution(
+                sourceRange: found.location ..< close.location + 2,
+                placement: .block,
+                html: "<img alt=\"m\">",
+                sourceGeneration: 1
+            ))
+            let next = close.location + 2
+            search = NSRange(location: next, length: source.length - next)
+        }
+        let start = ContinuousClock.now
+
+        let prepared = try await ExportService.prepare(
+            ExportRequest(
+                text: markdown,
+                sourceGeneration: 1,
+                theme: ExportTestSupport.lightTheme(),
+                contributions: contributions
+            ),
+            target: .html(url: URL(fileURLWithPath: "/tmp/cells.html"), mode: .standalone(style: .embedded))
+        )
+
+        #expect(ContinuousClock.now - start < .seconds(20))
+        #expect(!prepared.bodyHTML.contains("E12"))
+    }
 }
