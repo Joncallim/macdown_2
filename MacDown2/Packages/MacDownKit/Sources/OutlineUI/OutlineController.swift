@@ -74,6 +74,7 @@ public final class OutlineController {
     private var lastHeadings: [HeadingItem]
     private var lastSourceMap: SourceMap?
     private var lastAppliedRevision: Int?
+    private var lastDocumentIdentity: ObjectIdentifier?
 
     /// The last editor caret/viewport offset (D5), re-translated through
     /// whichever `SourceMap` is current every time `update(...)` runs.
@@ -90,6 +91,7 @@ public final class OutlineController {
         lastHeadings = []
         lastSourceMap = nil
         lastAppliedRevision = nil
+        lastDocumentIdentity = nil
         referenceOffset = nil
         jsonItems = []
         jsonAvailability = .notParsed
@@ -120,22 +122,37 @@ public final class OutlineController {
     ///    intersected with `OutlineTree.allIDs` as a backstop.
     /// 2. `currentItemID` is recomputed by translating the stored reference
     ///    offset through `document.sourceMap` — the map that just arrived.
-    public func update(document: MarkdownDocument?, isMarkdown: Bool, formatName: String) {
+    ///   - documentIdentity: identifies the document's parse session (one per tab). Each session restarts
+    ///     its revisions, so two tabs can both be at revision 2; without this the outline kept showing the
+    ///     previous tab's headings after a tab switch. A different identity also drops the previous
+    ///     document's collapse/selection state instead of remapping it onto unrelated headings.
+    public func update(
+        document: MarkdownDocument?,
+        isMarkdown: Bool,
+        formatName: String,
+        documentIdentity: ObjectIdentifier? = nil
+    ) {
         let newAvailability = Self.resolveAvailability(
             document: document,
             isMarkdown: isMarkdown,
             formatName: formatName
         )
-        guard document?.revision != lastAppliedRevision || newAvailability != availability else {
+        let sameDocument = documentIdentity == lastDocumentIdentity
+        guard document?.revision != lastAppliedRevision || newAvailability != availability || !sameDocument else {
             return
         }
+        lastDocumentIdentity = documentIdentity
 
         let newHeadings = isMarkdown ? (document?.headings ?? []) : []
         let newItems = OutlineTree.build(from: newHeadings)
         let validIDs = OutlineTree.allIDs(newItems)
 
-        let remappedCollapsed = OutlineIdentityMap.remap(collapsedItemIDs, from: lastHeadings, to: newHeadings)
-        let remappedSelected = OutlineIdentityMap.remap(selectedItemID, from: lastHeadings, to: newHeadings)
+        let remappedCollapsed = sameDocument
+            ? OutlineIdentityMap.remap(collapsedItemIDs, from: lastHeadings, to: newHeadings)
+            : []
+        let remappedSelected = sameDocument
+            ? OutlineIdentityMap.remap(selectedItemID, from: lastHeadings, to: newHeadings)
+            : nil
 
         items = newItems
         availability = newAvailability
