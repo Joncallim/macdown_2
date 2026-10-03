@@ -171,6 +171,12 @@ public struct WorkspaceSessionStore: WorkspaceSessionStoring {
             preserveUnreadableSession()
             return nil
         }
+        // A tab that decoded leniently away is gone from the next autosave, with its recovery pointer: keep the
+        // file it came from.
+        if let raw = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+           let rawTabs = raw["tabs"] as? [Any], rawTabs.count > session.tabs.count {
+            preserveUnreadableSession()
+        }
         return session
     }
 
