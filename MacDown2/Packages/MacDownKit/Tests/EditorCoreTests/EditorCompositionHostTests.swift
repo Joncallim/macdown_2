@@ -77,4 +77,45 @@ struct EditorCompositionHostTests {
         #expect(model.text == system.text)
         #expect(system.lineIndex == EditorLineIndex(text: system.text as NSString))
     }
+
+    /// Cancelling a composition started over a selection published nothing, so the next SwiftUI pass pushed the
+    /// stale binding back with `setText`: the text reverted and the whole undo history was wiped.
+    @Test func cancellingACompositionOverASelectionKeepsTheTextAndUndoHistory() {
+        var configuration = EditorConfiguration.default
+        configuration.editingAssists = .markdownDefault
+        let store = EditorTextSystemStore()
+        let identity = UUID().uuidString
+        let model = CompositionModel()
+        model.text = "alpha beta"
+        let hosting = NSHostingView(rootView: CompositionHost(
+            model: model, store: store, identity: identity, configuration: configuration
+        ))
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hosting
+        window.makeKeyAndOrderFront(nil)
+        hosting.layoutSubtreeIfNeeded()
+        defer { window.orderOut(nil) }
+        let system = store.system(for: identity, initialText: model.text, configuration: configuration)
+        window.makeFirstResponder(system.textView)
+        let unset = NSRange(location: NSNotFound, length: 0)
+        system.textView.insertText("!", replacementRange: NSRange(location: 10, length: 0))
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        #expect(system.undoManager.canUndo)
+
+        system.textView.setSelectedRange(NSRange(location: 0, length: 5))
+        system.textView.setMarkedText("ni", selectedRange: NSRange(location: 2, length: 0), replacementRange: unset)
+        system.textView.setMarkedText("", selectedRange: NSRange(location: 0, length: 0), replacementRange: unset)
+        system.textView.unmarkText()
+        system.textView.setSelectedRange(NSRange(location: 2, length: 0)) // a SwiftUI update pass follows
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
+
+        #expect(model.text == system.text)
+        #expect(system.text == " beta!")
+        #expect(system.undoManager.canUndo)
+    }
 }
