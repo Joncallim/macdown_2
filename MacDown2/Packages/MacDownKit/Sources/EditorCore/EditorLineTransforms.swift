@@ -79,6 +79,10 @@ enum EditorLineTransforms {
             delta += (replacementText as NSString).length
         }
 
+        // A change that would leave a `\r` directly before an unrelated `\n` (mixed
+        // endings) would be read back as one `\r\n`, dropping or inventing a line.
+        guard !createsCRLFPair(replacements, in: text) else { return nil }
+
         return makeTransaction(
             replacements: replacements,
             resultsByOriginalIndex: resultsByOriginalIndex,
@@ -122,6 +126,10 @@ enum EditorLineTransforms {
 
             delta -= range.length
         }
+
+        // A change that would leave a `\r` directly before an unrelated `\n` (mixed
+        // endings) would be read back as one `\r\n`, dropping or inventing a line.
+        guard !createsCRLFPair(replacements, in: text) else { return nil }
 
         return makeTransaction(
             replacements: replacements,
@@ -213,6 +221,10 @@ enum EditorLineTransforms {
 
             delta += (joined as NSString).length - joinRange.length
         }
+
+        // A change that would leave a `\r` directly before an unrelated `\n` (mixed
+        // endings) would be read back as one `\r\n`, dropping or inventing a line.
+        guard !createsCRLFPair(replacements, in: text) else { return nil }
 
         return makeTransaction(
             replacements: replacements,

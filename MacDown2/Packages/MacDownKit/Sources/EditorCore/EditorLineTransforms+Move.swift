@@ -84,37 +84,54 @@ extension EditorLineTransforms {
     /// Whether applying `replacements` (ascending, non-overlapping) would place a
     /// `\r` immediately before a `\n` where the original text had no such pair at
     /// that seam. Only seams at replacement edges can change, so only those are
-    /// examined, with a neighbouring replacement's text standing in for the
-    /// original character when two replacements touch.
-    private static func createsCRLFPair(_ replacements: [TextReplacement], in text: NSString) -> Bool {
+    /// examined, with a neighbouring replacement's text standing in for the original
+    /// character when two replacements touch. A deletion (empty replacement) joins
+    /// the characters on either side of it directly.
+    static func createsCRLFPair(_ replacements: [TextReplacement], in text: NSString) -> Bool {
         let carriageReturn = unichar(0x000D)
         let lineFeed = unichar(0x000A)
+        func lastUnit(_ string: String) -> unichar? {
+            let nsString = string as NSString
+            return nsString.length > 0 ? nsString.character(at: nsString.length - 1) : nil
+        }
+        func firstUnit(_ string: String) -> unichar? {
+            let nsString = string as NSString
+            return nsString.length > 0 ? nsString.character(at: 0) : nil
+        }
         for (index, replacement) in replacements.enumerated() {
-            let newText = replacement.replacementText as NSString
-            guard newText.length > 0 else { continue }
             let start = replacement.range.location
             let end = NSMaxRange(replacement.range)
 
             let before: unichar? = if index > 0, NSMaxRange(replacements[index - 1].range) == start {
-                (replacements[index - 1].replacementText as NSString).length > 0
-                    ? (replacements[index - 1].replacementText as NSString)
-                    .character(at: (replacements[index - 1].replacementText as NSString).length - 1)
-                    : nil
+                lastUnit(replacements[index - 1].replacementText)
             } else if start > 0 {
                 text.character(at: start - 1)
             } else {
                 nil
             }
-            if before == carriageReturn, newText.character(at: 0) == lineFeed {
-                return true
+            let nextTouches = index + 1 < replacements.count && replacements[index + 1].range.location == end
+            let after: unichar? = if nextTouches {
+                firstUnit(replacements[index + 1].replacementText)
+            } else if end < text.length {
+                text.character(at: end)
+            } else {
+                nil
             }
 
-            // The seam after the last replacement (or before an untouched
-            // character) is checked here; a touching successor checks its own start.
-            let nextTouches = index + 1 < replacements.count && replacements[index + 1].range.location == end
-            if !nextTouches, end < text.length,
-               newText.character(at: newText.length - 1) == carriageReturn,
-               text.character(at: end) == lineFeed {
+            let first = firstUnit(replacement.replacementText)
+            let last = lastUnit(replacement.replacementText)
+            if first == nil {
+                // Deleted span: its neighbours become adjacent (a touching successor
+                // checks its own leading seam against what precedes it here).
+                if before == carriageReturn, after == lineFeed, !nextTouches {
+                    return true
+                }
+                continue
+            }
+            if before == carriageReturn, first == lineFeed {
+                return true
+            }
+            if !nextTouches, last == carriageReturn, after == lineFeed {
                 return true
             }
         }
