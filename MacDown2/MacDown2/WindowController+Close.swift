@@ -21,6 +21,15 @@ extension WindowController {
                           resumeCloseOnSuccess: true
                       )).isAbsent
                 else { return }
+                // The retire awaited recovery I/O; text typed meanwhile, or a state change,
+                // must not close the window unprompted. Go through the normal close flow.
+                guard model.activeDocument?.id == document.id,
+                      model.activeDocument?.state == .clean,
+                      model.activeDocument?.mutationGeneration == document.mutationGeneration
+                else {
+                    window?.performClose(nil)
+                    return
+                }
                 coordinator.removeController(self)
                 close()
             }
