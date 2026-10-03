@@ -20,6 +20,13 @@ extension WorkspaceModel {
         return true
     }
 
+    /// Save As must not take over a file another window has open; reports why when it would.
+    func destinationIsFree(_ url: URL) -> Bool {
+        guard isOpenInAnotherWindow?(url) == true else { return true }
+        lastError = .destinationOpenInAnotherWindow(name: url.lastPathComponent)
+        return false
+    }
+
     func isLatestSave(_ context: SaveContext) -> Bool {
         latestSaveGenerationByDocumentID[context.documentID] == context.generation
     }

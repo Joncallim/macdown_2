@@ -211,10 +211,7 @@ public extension WorkspaceModel {
     /// active document with itself and is always true.
     func saveAs(to url: URL, expecting expected: FileDocument) async {
         guard isCurrent(expected) else { return }
-        if isOpenInAnotherWindow?(url) == true {
-            lastError = .destinationOpenInAnotherWindow(name: url.lastPathComponent)
-            return
-        }
+        guard destinationIsFree(url) else { return }
         // Captured at authorization: publication is conditional on it (#183 F22).
         let baseline: DestinationBaseline?
         do {
