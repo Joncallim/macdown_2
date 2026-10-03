@@ -16,7 +16,7 @@ extension WindowCoordinator {
         encoding: FileEncodingMetadata? = nil
     ) async {
         let resolved = url.resolvingFinalSymlink()
-        await documentOpens.run(key: resolved.standardizedFileURL) { [self] in
+        await documentOpens.run(key: Self.openSerializationKey(for: resolved)) { [self] in
             await performOpenDocument(
                 at: resolved,
                 folderRoot: folderRoot,
@@ -27,5 +27,16 @@ extension WindowCoordinator {
                 encoding: encoding
             )
         }
+    }
+
+    /// Identifies the FILE, not its spelling: a case variant, a different Unicode normalisation, or a
+    /// symlinked parent directory names the same file, and two such opens must still queue
+    /// behind one another. A file that does not exist yet falls back to its standardized path.
+    static func openSerializationKey(for url: URL) -> String {
+        let identity = PhysicalFileIdentity(url: url)
+        if let id = identity.fileObjectID {
+            return "file:\(id.volume):\(id.file)"
+        }
+        return "path:\(url.standardizedFileURL.path)"
     }
 }

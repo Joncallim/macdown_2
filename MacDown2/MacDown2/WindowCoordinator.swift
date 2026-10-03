@@ -51,7 +51,7 @@ final class WindowCoordinator {
     /// other open window rather than only on the next launch (#34).
     let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
     private var hasRestoredSession = false
-    let documentOpens = KeyedSerialRunner<URL>()
+    let documentOpens = KeyedSerialRunner<String>()
     var launchSession: WorkspaceSession? // as at launch; handed out once by `consumeLaunchSession()`
     private var saveTask: Task<Void, Never>?
     var sessionPublicationOrder = SessionPublicationOrder()
