@@ -25,6 +25,14 @@ import Foundation
 ///   mirrors the same trade-off already accepted for reference-definition
 ///   detection versus a full CommonMark parse.
 public enum PreviewLinkDefinitions {
+    /// `source` with `definitions` prepended, separated from it by a BLANK line. A
+    /// single newline let a block that begins `(…)`, `"…"` or `'…'` be read as the
+    /// optional TITLE of the last definition line, so that block vanished from Preview.
+    public static func prefixed(_ source: String, with definitions: [String]) -> String {
+        guard !definitions.isEmpty else { return source }
+        return definitions.joined(separator: "\n") + "\n\n" + source
+    }
+
     /// Reference definition lines found anywhere in `text`, in document
     /// order, with original formatting preserved.
     ///
