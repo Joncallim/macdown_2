@@ -148,21 +148,21 @@ final class WindowCoordinator {
         // A link to a file opens (and saves to) that file; resolved first so the
         // same file is not opened twice, once through the link and once directly.
         let url = url.resolvingFinalSymlink()
-        if let existing = controllerForDocument(url: url), let window = existing.window {
-            if let folderRoot, existing.fileTreeModel.root == nil {
-                existing.model.setFolderRoot(folderRoot)
-                await existing.setFileTreeRoot(folderRoot, accessURL: folderAccessURL)
-            }
-            existing.fileTreeModel.selectedURL = folderSelectionURL
-            existing.fileTreeModel.renamingURL = folderRenameURL
-            window.tabGroup?.selectedWindow = window
-            window.makeKeyAndOrderFront(nil)
-            recentFileDocuments.record(url)
+        if let existing = controllerForDocument(url: url), existing.window != nil {
+            await focus(
+                existing,
+                for: url,
+                folder: FolderOpenContext(
+                    root: folderRoot,
+                    accessURL: folderAccessURL,
+                    selectionURL: folderSelectionURL,
+                    renameURL: folderRenameURL
+                ),
+                encoding: encoding
+            )
             return
         }
-
         let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
-
         let model = makeWindowModel()
         let outcome = await model.tabStore.openFileInTab(url, encoding: encoding)
         model.setFolderRoot(folderRoot)

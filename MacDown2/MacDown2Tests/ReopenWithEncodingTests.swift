@@ -14,6 +14,7 @@ import Workspace
 struct ReopenWithEncodingTests {
     private struct Fixture {
         let controller: WindowController
+        let coordinator: WindowCoordinator
         let model: WorkspaceModel
         let directory: URL
     }
@@ -46,7 +47,7 @@ struct ReopenWithEncodingTests {
             fileTreePreferences: preferences
         )
         coordinator.controllers = [controller]
-        return Fixture(controller: controller, model: model, directory: directory)
+        return Fixture(controller: controller, coordinator: coordinator, model: model, directory: directory)
     }
 
     @Test func reopeningWithTheCurrentEncodingIsANoOpEvenWhenDirty() async throws {
@@ -99,5 +100,19 @@ struct ReopenWithEncodingTests {
 
         #expect(result == .declined)
         #expect(fixture.model.activeDocument?.text == "my edits")
+    }
+
+    @Test func openingAnAlreadyOpenFileWithAnEncodingRereadsItThroughTheReopenPath() async throws {
+        let fixture = try makeFixture(bytes: Data("é".utf8))
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let url = fixture.directory.appendingPathComponent("doc.txt")
+
+        await fixture.coordinator.performOpenDocument(
+            at: url,
+            encoding: FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        )
+
+        #expect(fixture.model.activeDocument?.text == "Ã©")
+        #expect(fixture.model.activeDocument?.encoding.encoding == .isoLatin1)
     }
 }
