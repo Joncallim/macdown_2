@@ -50,7 +50,11 @@ struct FindBarView: View {
     /// and reveal the new current match. Never called with stale state —
     /// this view always updates `model` first, synchronously, before
     /// calling this.
-    let onMatchesChanged: () -> Void
+    /// `reveal` is false when the matches were recomputed only because the DOCUMENT
+    /// changed (the user is typing in the editor): highlights refresh but the
+    /// selection must not move onto the current match, or the next keystroke would
+    /// replace the matched text.
+    let onMatchesChanged: (_ reveal: Bool) -> Void
     let onClose: () -> Void
     /// EPIC-22 §6.14, Slice 5b: called with the transaction Replace/Replace
     /// All built (`EditorFindModel.replaceCurrentTransaction(with:)`/
@@ -170,7 +174,7 @@ struct FindBarView: View {
                 sampleSelection: new.searchesSelectionOnly && !old.searchesSelectionOnly
             )
         }
-        .onChange(of: text) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
+        .onChange(of: text) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location, reveal: false) }
     }
 
     /// Always shown alongside the query row (not a collapsible "expand for
@@ -270,7 +274,7 @@ struct FindBarView: View {
     /// and the toolbar chevron buttons so both paths behave identically.
     private func navigate(_ navigation: () -> SearchMatch?) {
         _ = navigation()
-        onMatchesChanged()
+        onMatchesChanged(true)
     }
 
     /// `updateMatches(in:)` runs off-main and can be superseded by a later
@@ -281,7 +285,7 @@ struct FindBarView: View {
     /// discarded call and re-announcing it would be a redundant, no-op
     /// re-application of whatever the current, still-authoritative state
     /// already is.
-    private func recomputeMatches(anchor: Int?, sampleSelection: Bool = false) {
+    private func recomputeMatches(anchor: Int?, sampleSelection: Bool = false, reveal: Bool = true) {
         let text = resolvedText()
         // Sampled only when "In Selection" is being (re)established; every
         // other refresh uses the model's retained domain (#183 F03).
@@ -290,7 +294,7 @@ struct FindBarView: View {
             guard await model.updateMatches(in: text, selection: selection, preferringLocationNear: anchor) else {
                 return
             }
-            onMatchesChanged()
+            onMatchesChanged(reveal)
         }
     }
 
