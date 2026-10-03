@@ -30,14 +30,44 @@ public enum OutlineIdentityMap {
         var result: Set<Int> = []
 
         for oldID in ids.sorted() where old.indices.contains(oldID) {
-            let key = Key(old[oldID])
-            guard let candidates = candidatesByKey[key] else { continue }
-            let available = candidates.filter { !claimed.contains($0) }
-            guard let nearest = available.min(by: { abs($0 - oldID) < abs($1 - oldID) }) else { continue }
+            guard let candidates = candidatesByKey[Key(old[oldID])],
+                  let nearest = nearestUnclaimed(to: oldID, in: candidates, claimed: claimed)
+            else { continue }
             claimed.insert(nearest)
             result.insert(nearest)
         }
         return result
+    }
+
+    /// The ascending `candidates` entry closest to `target` that is not yet claimed; on equal distance the lower
+    /// ordinal wins. Binary search, then outward — not a filter over every candidate for every id (2000 collapsed
+    /// items in a document of 100k identical headings took ~40 s).
+    private static func nearestUnclaimed(to target: Int, in candidates: [Int], claimed: Set<Int>) -> Int? {
+        var low = 0
+        var high = candidates.count
+        while low < high {
+            let middle = (low + high) / 2
+            if candidates[middle] < target {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        var left = low - 1
+        var right = low
+        while left >= 0, claimed.contains(candidates[left]) {
+            left -= 1
+        }
+        while right < candidates.count, claimed.contains(candidates[right]) {
+            right += 1
+        }
+        switch (left >= 0, right < candidates.count) {
+        case (false, false): return nil
+        case (true, false): return candidates[left]
+        case (false, true): return candidates[right]
+        case (true, true):
+            return target - candidates[left] <= candidates[right] - target ? candidates[left] : candidates[right]
+        }
     }
 
     private struct Key: Hashable {

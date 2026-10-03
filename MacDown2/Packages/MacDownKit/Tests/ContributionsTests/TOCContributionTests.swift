@@ -207,4 +207,16 @@ struct TOCContributionTests {
 
         #expect(results.isEmpty)
     }
+
+    /// Each marker scanned every top-level block (20k markers took ~36 s).
+    @Test func manyMarkersAreFoundInLinearTime() async throws {
+        let text = String(repeating: "[TOC]\n\n", count: 20000)
+        let document = try await Self.document(text)
+        let start = ContinuousClock.now
+
+        let ranges = TOCContribution.findMarkers(in: text, document: document)
+
+        #expect(ranges.count == 20000)
+        #expect(ContinuousClock.now - start < .seconds(10))
+    }
 }
