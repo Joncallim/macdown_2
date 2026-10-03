@@ -121,46 +121,47 @@ extension WindowCoordinator {
     }
 
     private func sessionSnapshot() -> ([ControllerTabSnapshot], UUID?) {
-        let snapshot = controllers.compactMap { controller -> ControllerTabSnapshot? in
-            guard let tab = controller.model.tabStore.tabs.first else { return nil }
-            let system = controller.editorStore.existingSystem(for: tab.id.uuidString)
-            // The editor's true primary selection, not AppKit's topmost range:
-            // with several selections they differ (#183 F23).
-            let selectedRange = system?.selectionSet.primaryRange
-            let lexicalRoot = controller.model.folderURL
-            let physicalRoot = lexicalRoot?.resolvingSymlinksInPath().standardizedFileURL
-            let scope = physicalRoot.map(FolderAccessScope.init)
-            let bookmark = physicalRoot.flatMap { try? $0.bookmarkData(options: .withSecurityScope) }
-                ?? tab.folderRootBookmark
-            _ = scope
-            return ControllerTabSnapshot(
-                controller: controller,
-                tab: TabSnapshot(
-                    record: TabRecord(
-                        id: tab.id,
-                        fileURL: tab.document.fileURL,
-                        untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
-                        documentRecoveryEpoch: tab.document.recoveryEpoch,
-                        isPinned: tab.isPinned,
-                        cursorPosition: selectedRange?.location,
-                        selectionLength: selectedRange?.length,
-                        scrollOffset: system.map { Double($0.scrollOffset) },
-                        previewLayout: tab.previewLayout,
-                        previewMode: tab.previewMode,
-                        syntaxOverride: tab.syntaxOverride,
-                        encoding: tab.document.encoding,
-                        baseSHA256: tab.document.lastKnownRevision?.sha256,
-                        folderRootBookmark: bookmark,
-                        folderRootAlias: lexicalRoot ?? tab.folderRootAlias
-                    ),
-                    documentID: tab.document.id,
-                    documentText: tab.document.text,
-                    documentState: tab.document.state,
-                    documentGeneration: tab.document.mutationGeneration,
-                    documentRecoveryEpoch: tab.document.recoveryEpoch
+        let snapshot = Self.inTabOrder(controllers, window: \.window)
+            .compactMap { controller -> ControllerTabSnapshot? in
+                guard let tab = controller.model.tabStore.tabs.first else { return nil }
+                let system = controller.editorStore.existingSystem(for: tab.id.uuidString)
+                // The editor's true primary selection, not AppKit's topmost range:
+                // with several selections they differ (#183 F23).
+                let selectedRange = system?.selectionSet.primaryRange
+                let lexicalRoot = controller.model.folderURL
+                let physicalRoot = lexicalRoot?.resolvingSymlinksInPath().standardizedFileURL
+                let scope = physicalRoot.map(FolderAccessScope.init)
+                let bookmark = physicalRoot.flatMap { try? $0.bookmarkData(options: .withSecurityScope) }
+                    ?? tab.folderRootBookmark
+                _ = scope
+                return ControllerTabSnapshot(
+                    controller: controller,
+                    tab: TabSnapshot(
+                        record: TabRecord(
+                            id: tab.id,
+                            fileURL: tab.document.fileURL,
+                            untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
+                            documentRecoveryEpoch: tab.document.recoveryEpoch,
+                            isPinned: tab.isPinned,
+                            cursorPosition: selectedRange?.location,
+                            selectionLength: selectedRange?.length,
+                            scrollOffset: system.map { Double($0.scrollOffset) },
+                            previewLayout: tab.previewLayout,
+                            previewMode: tab.previewMode,
+                            syntaxOverride: tab.syntaxOverride,
+                            encoding: tab.document.encoding,
+                            baseSHA256: tab.document.lastKnownRevision?.sha256,
+                            folderRootBookmark: bookmark,
+                            folderRootAlias: lexicalRoot ?? tab.folderRootAlias
+                        ),
+                        documentID: tab.document.id,
+                        documentText: tab.document.text,
+                        documentState: tab.document.state,
+                        documentGeneration: tab.document.mutationGeneration,
+                        documentRecoveryEpoch: tab.document.recoveryEpoch
+                    )
                 )
-            )
-        }
+            }
         let activeID = controllers.first { $0.window?.isKeyWindow ?? false }?.model.tabStore.activeTabID
         return (snapshot, activeID)
     }
