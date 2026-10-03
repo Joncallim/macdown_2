@@ -72,14 +72,25 @@ struct FileStoreMetadataPreservationTests {
         #expect(try mode(of: fixture.url) & 0o600 == 0o600)
     }
 
-    @Test func aReadOnlyDestinationKeepsItsModeThroughAConditionalSave() throws {
+    /// A read-only (0444) destination is refused rather than silently replaced (review
+    /// pass 1 reversed the earlier "overwrite and keep the mode" characterisation): the
+    /// owner can write the directory, so the rename-based replace would otherwise succeed.
+    @Test func aReadOnlyDestinationIsRefusedAndLeftUntouched() throws {
         let fixture = try FixtureFile(text: "one")
         let document = try FileDocument(fileURL: fixture.url).load().edited(text: "two")
         #expect(chmod(fixture.url.path, 0o444) == 0)
 
-        _ = try document.save()
+        do {
+            _ = try document.save()
+            Issue.record("expected the read-only destination to be refused")
+        } catch {
+            guard case .permissionDenied = error else {
+                Issue.record("expected .permissionDenied, got \(error)")
+                return
+            }
+        }
 
-        #expect(try FileStore().read(from: fixture.url).content == "two")
+        #expect(try FileStore().read(from: fixture.url).content == "one")
         #expect(try mode(of: fixture.url) == 0o444)
     }
 

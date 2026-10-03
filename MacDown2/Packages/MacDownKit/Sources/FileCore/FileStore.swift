@@ -247,9 +247,10 @@ public struct FileStore: Sendable {
         }
         try requireAbsentIfNeeded(requireAbsent, at: url)
 
+        try requireWritableIfExisting(url)
         let directory = url.deletingLastPathComponent()
         let temporaryURL = directory
-            .appendingPathComponent(".\(url.lastPathComponent).tmp-\(UUID().uuidString)")
+            .appendingPathComponent(Self.companionName(for: url, infix: "tmp"))
 
         do {
             try data.write(to: temporaryURL, options: .atomic)
