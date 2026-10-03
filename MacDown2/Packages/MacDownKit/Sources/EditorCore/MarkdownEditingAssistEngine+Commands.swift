@@ -149,7 +149,7 @@ extension MarkdownEditingAssistEngine {
         }
         let newContent = newPieces.joined(separator: "\n")
 
-        let selectionRange = resultingSelection ?? remappedSelection(
+        let selectionRange = resultingSelection ?? absoluteRemappedSelection(
             original: selection,
             rangeLocation: range.location,
             lineLengths: realLines.map(\.utf16.count),
