@@ -278,7 +278,8 @@ struct DocumentEditorSplitView: View {
         outlineController.update(
             document: parseSession.document,
             isMarkdown: isMarkdown,
-            formatName: document.format.name
+            formatName: document.format.name,
+            documentIdentity: ObjectIdentifier(parseSession)
         )
     }
 
