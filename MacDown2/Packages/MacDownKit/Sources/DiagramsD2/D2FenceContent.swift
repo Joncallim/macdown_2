@@ -6,14 +6,10 @@ import MarkdownEngine
 /// `MermaidFenceContent`'s exact rationale: both need to recover a
 /// fence's inner diagram source from its full, delimiter-included text.
 public enum D2FenceContent {
-    /// Strips exactly the first and last physical line — the opening
+    /// Strips the opening delimiter line and, when present, the closing one — the opening
     /// ```d2 and closing ``` delimiters — from `fenceText`, which must be
     /// the block's full source including both delimiter lines.
     public static func stripDelimiters(from fenceText: String) -> String {
-        var lines = fenceText.markdownLines()
-        guard lines.count >= 2 else { return "" }
-        lines.removeFirst()
-        lines.removeLast()
-        return lines.joined(separator: "\n")
+        fenceText.fencedBlockInnerText()
     }
 }
