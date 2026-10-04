@@ -12,6 +12,9 @@ final class ContentHeightMeter {
     private var cacheKey = ""
     private var heights: [Int: CGFloat] = [:]
     private static let maximumCachedParagraphs = 50000
+    /// UTF-16 units above which the whole document is estimated rather than measured.
+    static let estimationThreshold = 1_000_000
+    static let maximumMeasuredParagraphLength = 20000
 
     func height(of string: NSString, width: CGFloat, attributes: [NSAttributedString.Key: Any]) -> CGFloat {
         let key = Self.cacheKey(width: width, attributes: attributes)
@@ -28,8 +31,17 @@ final class ContentHeightMeter {
             ).height
         }
 
+        let estimator = LineHeightEstimator(width: width, attributes: attributes)
+        let estimatesEverything = string.length > Self.estimationThreshold
         var total: CGFloat = 0
         Self.forEachParagraph(in: string) { range in
+            // Measuring is O(document) after every edit pause and quadratic inside one long CJK/emoji paragraph, so
+            // a huge document, or a huge paragraph, is sized from its length instead (a 10 MB file stalled the main
+            // thread for ~0.7 s per pause; one 400k-character CJK paragraph for ~24 s).
+            if estimatesEverything || range.length > Self.maximumMeasuredParagraphLength {
+                total += estimator.height(ofParagraphLength: range.length)
+                return
+            }
             let paragraph = string.substring(with: range)
             let hash = paragraph.hashValue
             if let cached = heights[hash] {
@@ -70,5 +82,24 @@ final class ContentHeightMeter {
         let font = (attributes[.font] as? NSFont).map { "\($0.fontName)-\($0.pointSize)" } ?? "nofont"
         let style = (attributes[.paragraphStyle] as? NSParagraphStyle).map { "\($0)" } ?? "nostyle"
         return "\(width)|\(font)|\(style)"
+    }
+}
+
+/// A wrap-aware height estimate for text too large to measure: lines per paragraph from its length and the average
+/// advance of the font, times the font's line height.
+struct LineHeightEstimator {
+    private let lineHeight: CGFloat
+    private let charactersPerLine: CGFloat
+
+    init(width: CGFloat, attributes: [NSAttributedString.Key: Any]) {
+        let font = (attributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        lineHeight = ceil(font.ascender - font.descender + font.leading)
+        let advance = ("n" as NSString).size(withAttributes: [.font: font]).width
+        charactersPerLine = max(1, (width / max(advance, 1)).rounded(.down))
+    }
+
+    func height(ofParagraphLength length: Int) -> CGFloat {
+        let lines = max(1, (CGFloat(length) / charactersPerLine).rounded(.up))
+        return lines * lineHeight
     }
 }

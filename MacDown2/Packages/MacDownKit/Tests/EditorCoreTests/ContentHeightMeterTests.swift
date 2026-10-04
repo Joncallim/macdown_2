@@ -63,4 +63,41 @@ struct ContentHeightMeterTests {
         let wide = meter.height(of: text as NSString, width: 600, attributes: attributes)
         #expect(narrow > wide)
     }
+
+    /// Review pass 6: the meter re-enumerated, copied and hashed every paragraph of the document after each edit
+    /// pause (~0.7 s per pause for a 10 MB file in release), and one huge CJK paragraph was still quadratic.
+    @Test func aHugeDocumentIsEstimatedNotMeasuredParagraphByParagraph() {
+        let text = (0 ..< 130_000).map { "line number \($0) with some distinct text" }.joined(separator: "\n")
+        #expect(text.utf16.count > ContentHeightMeter.estimationThreshold)
+        let meter = ContentHeightMeter()
+        let start = ContinuousClock.now
+
+        let height = meter.height(of: text as NSString, width: 700, attributes: attributes)
+
+        #expect(height > 130_000 * 10)
+        #expect(ContinuousClock.now - start < .seconds(2))
+    }
+
+    @Test func oneHugeParagraphIsEstimatedInsteadOfMeasured() {
+        let text = String(repeating: "日本語のテキスト🙂", count: 30000)
+        #expect(text.utf16.count > ContentHeightMeter.maximumMeasuredParagraphLength)
+        let meter = ContentHeightMeter()
+        let start = ContinuousClock.now
+
+        let height = meter.height(of: text as NSString, width: 700, attributes: attributes)
+
+        #expect(height > 0)
+        #expect(ContinuousClock.now - start < .seconds(2))
+    }
+
+    @Test func theEstimateIsWithinAFactorOfTwoOfTheMeasurementForLatinText() {
+        let text = String(repeating: "word and more words ", count: 400)
+        let width: CGFloat = 500
+        let measured = ContentHeightMeter().height(of: text as NSString, width: width, attributes: attributes)
+        let estimator = LineHeightEstimator(width: width, attributes: attributes)
+
+        let estimated = estimator.height(ofParagraphLength: text.utf16.count)
+
+        #expect(estimated > measured / 2 && estimated < measured * 2)
+    }
 }
