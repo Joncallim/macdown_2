@@ -159,6 +159,10 @@ targets:
           - tex
           - latex
         UTExportedTypeDeclarations:
+        - UTTypeIdentifier: com.joncallim.macdown2.file-tree-item
+          UTTypeDescription: MostlyText File Tree Item
+          UTTypeConformsTo:
+          - public.data
         - UTTypeIdentifier: com.joncallim.macdown2.toml
           UTTypeDescription: TOML Document
           UTTypeConformsTo:
