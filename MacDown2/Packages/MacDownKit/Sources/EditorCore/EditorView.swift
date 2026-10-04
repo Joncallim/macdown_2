@@ -75,12 +75,12 @@ public struct EditorView: NSViewRepresentable {
         let height: CGFloat
         if text.utf8.count < 100_000 {
             let font = system.textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
-            let contentHeight = (text as NSString).boundingRect(
-                with: NSSize(width: width, height: .greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: [.font: font],
-                context: nil
-            ).height
+            // Per-paragraph measurement: one `boundingRect` over a whole CJK/emoji document is quadratic.
+            let contentHeight = system.contentHeightMeter.height(
+                of: text as NSString,
+                width: width,
+                attributes: [.font: font]
+            )
             height = max(contentHeight, scrollView.bounds.height)
         } else {
             height = max(50000, scrollView.bounds.height)

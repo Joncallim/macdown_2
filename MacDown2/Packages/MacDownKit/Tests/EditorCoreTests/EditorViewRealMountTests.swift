@@ -56,6 +56,19 @@ struct EditorViewRealMountTests {
         return Mounted(hostingView: hostingView, window: window, store: store, identity: identity)
     }
 
+    /// `makeNSView` pre-sized the text view with one `boundingRect` over the whole document, which is quadratic for
+    /// CJK/emoji text: an 80 KB document froze the main thread for seconds when its tab opened.
+    @Test func openingALargeCJKDocumentDoesNotFreezeTheMainThread() {
+        let paragraph = String(repeating: "日本語のテキスト🙂", count: 40)
+        let text = (0 ..< 80).map { _ in paragraph }.joined(separator: "\n")
+        let start = ContinuousClock.now
+
+        let mounted = mount(initialText: text)
+        defer { mounted.window.orderOut(nil) }
+
+        #expect(ContinuousClock.now - start < .seconds(1))
+    }
+
     @Test func fullLifecycleThroughRealSwiftUIMountingEditUndoRedoAndDismantle() throws {
         let store = EditorTextSystemStore()
         let identity = UUID().uuidString
