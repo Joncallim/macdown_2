@@ -206,7 +206,7 @@ struct EditorLineIndexWiringTests {
         assertMatchesFreshRebuild(system)
     }
 
-    @Test func largeMultiRangeTransactionRebuildsTheLineIndexOnceInsteadOfPatchingPerRange() {
+    @Test func largeMultiRangeTransactionReportsEveryRangeButRebuildsTheLineIndexOnce() {
         let text = (0 ..< 2000).map { "line \($0) cat" }.joined(separator: "\n")
         let system = support.makeSystem(text: text)
         let window = support.mountInWindow(system)
@@ -226,8 +226,11 @@ struct EditorLineIndexWiringTests {
 
         system.apply(EditorEditTransaction(replacements: replacements))
 
-        // Per-range patches each copy the whole line array (quadratic across a Replace All).
-        #expect(changes == [.untracked])
+        // Per-range patches each copy the whole line array (quadratic across a Replace All), but observers still get
+        // one `.edit` per range, highest offset first, so the Find model's search domain survives.
+        #expect(changes.count == replacements.count)
+        #expect(!changes.contains(.untracked))
+        #expect(changes.first == .edit(range: replacements.last?.range ?? NSRange(), replacementLength: 3))
         #expect(system.text.hasSuffix("line 1999 dog"))
         assertMatchesFreshRebuild(system)
     }
