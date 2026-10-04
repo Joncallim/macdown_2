@@ -306,8 +306,16 @@ public actor WorkspaceSearchEngine {
         return Self.readSnapshot(root: root, path: path)
     }
 
+    /// The index lists every regular file, so a search over a folder holding a video or a disk image would read
+    /// and hash all of it (1.4 s for a 1.5 GB file, on every debounced keystroke). Larger files are skipped and
+    /// counted as unreadable, like any other file that cannot be searched as text.
+    static let maximumSearchableFileSize = 32 * 1024 * 1024
+
     private static func readSnapshot(root: URL, path: IndexedPath) -> FileSnapshot? {
         let url = root.appendingPathComponent(path.relativePath)
+        if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > maximumSearchableFileSize {
+            return nil
+        }
         return try? FileStore().readSnapshot(from: url)
     }
 
