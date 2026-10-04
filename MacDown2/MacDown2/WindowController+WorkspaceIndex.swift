@@ -11,6 +11,9 @@ extension WindowController {
         folderSearchModel.hasUnsavedOpenDocument = { [weak coordinator] url in
             coordinator?.hasUnsavedOpenDocument(at: url) ?? false
         }
+        folderSearchModel.fileWasRewritten = { [weak coordinator] url in
+            coordinator?.recentFileDocuments.noteWrite(of: url)
+        }
         fileTreeModel.onDidMutate = { [weak self] in
             Task { await self?.refreshWorkspaceIndex() }
         }

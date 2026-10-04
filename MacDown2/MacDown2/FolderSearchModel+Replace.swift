@@ -128,6 +128,12 @@ extension FolderSearchModel {
                     replaceCompleted += 1
                 }
             )
+            // Notified even when the run was superseded: the files are already rewritten on disk.
+            for result in results {
+                if case .replaced = result.outcome {
+                    fileWasRewritten(root.appendingPathComponent(result.relativePath))
+                }
+            }
             guard replaceGeneration == thisGeneration else { return }
             replaceSummary = Self.summarize(results)
             isReplacing = false

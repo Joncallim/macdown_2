@@ -84,6 +84,22 @@ struct FolderReplaceModelTests {
         #expect(model.replaceSummary?.replacedFiles == 1)
     }
 
+    /// Review pass 6: a rewritten file gets a new inode and creation date, so its Open Recent entry was rejected by
+    /// the fingerprint check and silently dropped on the next click.
+    @Test func everyRewrittenFileIsReportedSoRecentsCanFollowIt() async throws {
+        let tree = try TempTree(["a.txt": "foo a", "b.txt": "foo b", "c.txt": "none"])
+        let model = await searchedModel(tree, query: "foo")
+        var rewritten: [String] = []
+        model.fileWasRewritten = { rewritten.append($0.lastPathComponent) }
+        model.replacement = "bar"
+
+        model.requestReplace()
+        model.confirmReplace()
+        await waitUntil { model.replaceSummary != nil && model.outcome != nil }
+
+        #expect(rewritten.sorted() == ["a.txt", "b.txt"])
+    }
+
     @Test func aFileOpenWithUnsavedChangesIsSkippedAndReported() async throws {
         let tree = try TempTree(["dirty.txt": "foo dirty", "clean.txt": "foo clean"])
         let model = await searchedModel(tree, query: "foo")
