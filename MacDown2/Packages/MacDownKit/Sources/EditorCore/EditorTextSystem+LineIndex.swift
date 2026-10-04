@@ -42,18 +42,26 @@ extension EditorTextSystem {
 
     /// Brings the line index in step after one change notification. Inside a multi-range transaction the
     /// per-range patches are skipped (each copies the whole line array) and the final notification rebuilds once.
+    /// Observers (the Find model's retained search domain) still hear every range's `.edit`, highest first.
     func syncLineIndex(afterEdit pending: (range: NSRange, replacementUTF16Length: Int)?) {
         if isApplyingMultiRangeTransaction {
             lineIndexNeedsRebuild = true
+            notifyEdit(pending)
         } else if lineIndexNeedsRebuild {
             lineIndexNeedsRebuild = false
-            rebuildLineIndex()
+            lineIndex.rebuild(text: assistTextSource ?? (text as NSString))
+            notifyEdit(pending)
         } else if let pending {
             noteIncrementalEdit(editedRange: pending.range, replacementUTF16Length: pending.replacementUTF16Length)
         } else {
             // No edit was reported for this change (a composition's marked text): repair a stale index.
             rebuildLineIndexIfStale()
         }
+    }
+
+    private func notifyEdit(_ pending: (range: NSRange, replacementUTF16Length: Int)?) {
+        guard let pending else { return }
+        textChangeObserver?(.edit(range: pending.range, replacementLength: pending.replacementUTF16Length))
     }
 
     /// Repairs the line index when marked-text (IME / dead-key) edits, which post no `didChange`, left it out of step
