@@ -205,4 +205,21 @@ struct EditorCommentToggleRemapTests {
 
         #expect(applied?.text == "// foo\n\n// bar")
     }
+
+    @Test("uncommenting a line that would leave a CR directly before an unrelated LF is declined")
+    func uncommentingDoesNotFuseAMixedEndingPair() {
+        let text = "\r//\n# " as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(single: NSRange(location: 2, length: 0)) // on the `//` line
+
+        let transaction = EditorCommentToggle.toggleCommentTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection,
+            isMarkdownFormat: false,
+            profile: swiftProfile
+        )
+
+        #expect(transaction == nil)
+    }
 }
