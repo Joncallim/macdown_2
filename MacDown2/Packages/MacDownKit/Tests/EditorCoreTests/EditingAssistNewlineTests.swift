@@ -186,15 +186,23 @@ struct EditingAssistNewlineTests {
         #expect(result?.selection == NSRange(location: 7, length: 0))
     }
 
-    @Test("existing matching next prefix is not duplicated")
-    func existingNextPrefixNotDuplicated() {
+    @Test("Return at the end of a non-last item inserts a new item even when the next line has the same marker")
+    func returnBeforeAnExistingSameMarkerItemStillContinuesTheList() {
         let text = "- item\n- next"
         let outcome = pressReturn(in: text, at: 6)
         let result = support.applied(outcome, to: text)
-        // The prefix is already present on the next line: only the separator
-        // is inserted, exactly as native Return would split.
-        #expect(result?.text == "- item\n\n- next")
-        #expect(result?.selection == NSRange(location: 7, length: 0))
+        // Review pass 6: this used to insert only the separator ("- item\n\n- next"), so no bullet appeared and the
+        // blank line turned the list loose.
+        #expect(result?.text == "- item\n- \n- next")
+        #expect(result?.selection == NSRange(location: 9, length: 0))
+    }
+
+    @Test("Return at the end of a non-last ordered item or quote line continues it too")
+    func returnBeforeAnExistingOrderedOrQuoteLineStillContinues() {
+        let ordered = "1. a\n2. b"
+        #expect(support.applied(pressReturn(in: ordered, at: 4), to: ordered)?.text == "1. a\n2. \n2. b")
+        let quote = "> q\n> r"
+        #expect(support.applied(pressReturn(in: quote, at: 3), to: quote)?.text == "> q\n> \n> r")
     }
 
     @Test("different next marker still inserts the continuation")
