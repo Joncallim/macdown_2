@@ -125,4 +125,33 @@ struct RestoredDirtyTabExternalChangeTests {
         #expect(restored.document.state == .conflict)
         #expect(restored.document.text == "my unsaved edit")
     }
+
+    /// A volume that was unmounted at relaunch and comes back with the same bytes is not an external change.
+    @Test func aMissingFileReappearingUnchangedIsNotAConflict() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let url = directory.appendingPathComponent("notes.md")
+        try "disk v1".write(to: url, atomically: true, encoding: .utf8)
+        let dirty = try await FileDocument.create(fileURL: url, recoveryBuffer: recovery).load()
+            .updatingText("my unsaved edit")
+        #expect(await dirty.persistRecovery())
+        let record = TabRecord(
+            id: UUID(),
+            fileURL: url,
+            documentRecoveryEpoch: dirty.recoveryEpoch,
+            baseSHA256: dirty.lastKnownRevision?.sha256
+        )
+        let original = try Data(contentsOf: url)
+        try FileManager.default.removeItem(at: url)
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        let unavailable = try #require(await store.restoreTab(from: record))
+
+        try original.write(to: url)
+        let probe = try unavailable.document.reconcilingExternalSnapshot(FileStore().readSnapshot(from: url))
+
+        #expect(probe.document.state == .dirty)
+        #expect(probe.document.text == "my unsaved edit")
+        #expect(probe.document.pendingExternalRevision == nil)
+    }
 }
