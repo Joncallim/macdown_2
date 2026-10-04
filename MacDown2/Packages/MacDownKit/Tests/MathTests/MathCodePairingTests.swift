@@ -55,3 +55,40 @@ private actor Recorder {
         values.append(latex)
     }
 }
+
+/// Review pass 6: continuation lines of display math inside a block quote carry the quote's `>` markers, which
+/// reached the renderer as part of the equation.
+struct MathQuoteMarkerTests {
+    @Test func markersAreStrippedFromContinuationLinesOnly() {
+        #expect(MathContainerPrefix.strippingQuoteMarkers(from: "\n> x^2\n> ") == "\nx^2\n")
+        #expect(MathContainerPrefix.strippingQuoteMarkers(from: " a\n>> b\n > c") == " a\nb\nc")
+        #expect(MathContainerPrefix.strippingQuoteMarkers(from: "a > b") == "a > b")
+        #expect(MathContainerPrefix.strippingQuoteMarkers(from: "x\r\n> y") == "x\ny")
+    }
+
+    @Test func aSpanIsInAQuoteOnlyWhenItsOwnLineHasAMarker() {
+        let text = "> $$\n> x\n> $$\n\nplain $$y$$"
+        let units = Array(text.utf16)
+        let first = (text as NSString).range(of: "$$").location
+        let second = (text as NSString).range(of: "$$y$$").location
+
+        #expect(MathContainerPrefix.isInsideQuote(spanStart: first, character: { units[$0] }))
+        #expect(!MathContainerPrefix.isInsideQuote(spanStart: second, character: { units[$0] }))
+    }
+
+    @Test func exportRendersQuotedDisplayMathWithoutTheMarkers() async throws {
+        let text = "> $$\n> x^2\n> $$\n"
+        let document = try await ParseEngine().parse(text, revision: 1)
+        let recorder = Recorder()
+        let contribution = MathContribution(
+            context: ExportMathRenderContext(foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0, pixelScale: 2)
+        ) { span, _ in
+            await recorder.record(span.latex)
+            return RenderedMathImage(pngData: Data(), logicalWidth: 1, logicalHeight: 1)
+        }
+
+        _ = try await contribution.run(document: document, sourceText: text, sourceGeneration: 1)
+
+        #expect(await recorder.values == ["\nx^2\n"])
+    }
+}
