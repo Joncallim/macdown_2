@@ -22,29 +22,43 @@ struct DirectoryWalker: Sendable {
         let root: URL
         let excludedDirectoryNames: Set<String>
         let maximumPaths: Int
+        let maximumDirectories: Int
+    }
+
+    /// Mutable walk bookkeeping: the ancestor chain (symlink-loop guard) and how many directories were entered.
+    private struct WalkState {
+        var visited: Set<PhysicalFileIdentity.FileObjectID> = []
+        var directoriesEntered = 0
     }
 
     /// A link such as `docs -> /` is followed on purpose (a linked directory is part of the project), so the
     /// walk needs an upper bound instead: past this many entries it stops rather than indexing a whole disk.
     static let defaultMaximumPaths = 250_000
 
+    /// The loop guard only covers the ancestor chain, so a directory reached through N links is walked N times and
+    /// a tree of links to empty directories grows multiplicatively without ever adding a path. Directory entries
+    /// are budgeted too.
+    static let defaultMaximumDirectories = 100_000
+
     func walk(
         root: URL,
         excludedDirectoryNames: Set<String>,
-        maximumPaths: Int = DirectoryWalker.defaultMaximumPaths
+        maximumPaths: Int = DirectoryWalker.defaultMaximumPaths,
+        maximumDirectories: Int = DirectoryWalker.defaultMaximumDirectories
     ) -> [IndexedPath] {
         var results: [IndexedPath] = []
-        var visitedDirectoryIdentities: Set<PhysicalFileIdentity.FileObjectID> = []
+        var state = WalkState()
         let context = WalkContext(
             root: root.standardizedFileURL,
             excludedDirectoryNames: excludedDirectoryNames,
-            maximumPaths: maximumPaths
+            maximumPaths: maximumPaths,
+            maximumDirectories: maximumDirectories
         )
         walk(
             directory: context.root,
             context: context,
             ancestorHidden: false,
-            visited: &visitedDirectoryIdentities,
+            state: &state,
             into: &results
         )
         return results
@@ -61,17 +75,18 @@ struct DirectoryWalker: Sendable {
         directory: URL,
         context: WalkContext,
         ancestorHidden: Bool,
-        visited: inout Set<PhysicalFileIdentity.FileObjectID>,
+        state: inout WalkState,
         into results: inout [IndexedPath]
     ) {
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled, state.directoriesEntered < context.maximumDirectories else { return }
         guard let identity = PhysicalFileIdentity(url: directory).fileObjectID else { return }
         // Symlink loop guard over the ANCESTOR chain only. A walk-global "seen"
         // set would let whichever of `link -> v2` and `v2` is enumerated first
         // hide the other, so `v2/page.md` could vanish from the index depending
         // on directory enumeration order.
-        guard visited.insert(identity).inserted else { return }
-        defer { visited.remove(identity) }
+        guard state.visited.insert(identity).inserted else { return }
+        defer { state.visited.remove(identity) }
+        state.directoriesEntered += 1
         guard let children = try? FileManager.default.contentsOfDirectory(
             at: directory.resolvingSymlinksInPath(),
             includingPropertiesForKeys: Array(Self.resourceKeys),
@@ -79,7 +94,8 @@ struct DirectoryWalker: Sendable {
         ) else { return }
 
         for child in children {
-            guard !Task.isCancelled, results.count < context.maximumPaths else { return }
+            guard !Task.isCancelled, results.count < context.maximumPaths,
+                  state.directoriesEntered < context.maximumDirectories else { return }
             guard let values = try? child.resourceValues(forKeys: Self.resourceKeys) else { continue }
             // Hidden entries are tagged, not dropped: an entry is hidden if
             // its own basename starts with `.` OR any ancestor directory
@@ -120,7 +136,7 @@ struct DirectoryWalker: Sendable {
                     directory: lexicalChild,
                     context: context,
                     ancestorHidden: isHidden,
-                    visited: &visited,
+                    state: &state,
                     into: &results
                 )
             } else {
