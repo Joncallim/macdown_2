@@ -66,6 +66,8 @@ enum DerivedContentComposer {
             guard after.allSatisfy(\.isWhitespace) else { return false }
             // A contribution that is the whole content line of a setext heading must stay inline:
             // a blank-line-delimited block would turn the heading into a paragraph plus a rule.
+            // A closed fence can never be setext content, so a `---` after it is just a thematic break.
+            guard !startsFence(bodyRange) else { return true }
             let nextStart = NSMaxRange(endLine)
             guard nextStart < bodyText.length else { return true }
             let nextLine = bodyText.lineRange(for: NSRange(location: nextStart, length: 0))
