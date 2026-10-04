@@ -162,7 +162,8 @@ extension WindowCoordinator {
                     )
                 )
             }
-        let activeID = controllers.first { $0.window?.isKeyWindow ?? false }?.model.tabStore.activeTabID
+        let activeID = Self.activeSessionItem(controllers, window: \.window, mainWindow: NSApp.mainWindow)?
+            .model.tabStore.activeTabID
         return (snapshot, activeID)
     }
 

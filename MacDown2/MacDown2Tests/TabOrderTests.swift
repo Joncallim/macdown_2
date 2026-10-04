@@ -50,4 +50,28 @@ struct TabOrderTests {
     @Test func windowsWithoutATabGroupKeepTheirPlace() {
         #expect(WindowCoordinator.inTabOrder([1, 2, 3], window: { _ in nil }) == [1, 2, 3])
     }
+
+    /// With the app inactive no window is key; the session used to record no active tab and relaunch on the first.
+    @Test func theVisibleTabIsActiveWhenNoWindowIsKey() {
+        let windows = makeWindows(["A", "B", "C"])
+        for (previous, next) in zip(windows, windows.dropFirst()) {
+            WindowCoordinator.attach(next, after: previous)
+        }
+        windows[0].tabGroup?.selectedWindow = windows[2]
+
+        let active = WindowCoordinator.activeSessionItem(windows, window: { $0 }, mainWindow: nil)
+
+        #expect(active?.title == "C")
+        windows.forEach { $0.close() }
+    }
+
+    @Test func theMainWindowWinsOverTheTabGroupSelectionWhenNothingIsKey() {
+        let windows = makeWindows(["A", "B"])
+        WindowCoordinator.attach(windows[1], after: windows[0])
+
+        let active = WindowCoordinator.activeSessionItem(windows, window: { $0 }, mainWindow: windows[1])
+
+        #expect(active?.title == "B")
+        windows.forEach { $0.close() }
+    }
 }
