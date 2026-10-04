@@ -52,4 +52,29 @@ struct YAMLAliasBombTests {
         #expect(document.frontMatter?.values == nil)
         #expect(ContinuousClock.now - start < .seconds(20))
     }
+
+    /// Review pass 6: 16 aliases (the count budget) can still double eight times, so a ~20 KB front matter expanded
+    /// 256x (324 MB, seconds) on every parse. The expanded size is budgeted too.
+    @Test func aDoublingChainWithinTheAliasCountIsStillRejected() async throws {
+        let base = Array(repeating: "1", count: 10000).joined(separator: ",")
+        var lines = ["a0: &a0 [\(base)]"]
+        for level in 1 ... 8 {
+            lines.append("a\(level): &a\(level) [*a\(level - 1),*a\(level - 1)]")
+        }
+        let text = "---\n" + lines.joined(separator: "\n") + "\n---\n# Title\n"
+        let start = ContinuousClock.now
+
+        let document = try await ParseEngine().parse(text, revision: 1)
+
+        #expect(document.frontMatter?.values == nil)
+        #expect(document.headings.count == 1)
+        #expect(ContinuousClock.now - start < .seconds(5))
+    }
+
+    @Test func modestAnchorReuseStillParses() async throws {
+        let text = "---\ndefaults: &d {a: 1, b: 2}\nx:\n  <<: *d\ny:\n  <<: *d\ntitle: T\n---\n# H\n"
+        let document = try await ParseEngine().parse(text, revision: 1)
+
+        #expect(document.frontMatter?.values?["title"] == .string("T"))
+    }
 }
