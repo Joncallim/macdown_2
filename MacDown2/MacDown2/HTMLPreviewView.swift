@@ -143,6 +143,8 @@ struct HTMLPreviewView: NSViewRepresentable {
                 policy: .v1
             )
             pendingLoadGeneration = generation
+            // A genuinely new document (not the process-termination reload): its crashes are a new story.
+            reloadBudget.documentChanged()
 
             // The main document loads *through the scheme handler* (not via
             // `loadHTMLString`) so the authoritative CSP response header
@@ -206,7 +208,6 @@ struct HTMLPreviewView: NSViewRepresentable {
         }
 
         func webView(_: WKWebView, didFinish _: WKNavigation!) {
-            reloadBudget.loadSucceeded()
             completeLoad()
         }
 

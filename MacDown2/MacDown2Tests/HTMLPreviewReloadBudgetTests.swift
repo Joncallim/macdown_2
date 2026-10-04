@@ -3,7 +3,7 @@ import Testing
 
 /// A page that kills the WebContent process every time must not be reloaded in a tight crash loop.
 struct HTMLPreviewReloadBudgetTests {
-    @Test func aSecondTerminationWithoutASuccessfulLoadIsNotReloaded() {
+    @Test func aSecondTerminationForTheSameDocumentIsNotReloaded() {
         var budget = HTMLPreviewReloadBudget()
 
         let first = budget.consumeReload()
@@ -15,13 +15,13 @@ struct HTMLPreviewReloadBudgetTests {
         #expect(!third)
     }
 
-    @Test func aSuccessfulLoadRestoresTheBudget() {
+    @Test func aNewDocumentRestoresTheBudget() {
         var budget = HTMLPreviewReloadBudget()
         _ = budget.consumeReload()
 
-        budget.loadSucceeded()
-        let afterSuccess = budget.consumeReload()
+        budget.documentChanged()
+        let afterNewDocument = budget.consumeReload()
 
-        #expect(afterSuccess)
+        #expect(afterNewDocument)
     }
 }
