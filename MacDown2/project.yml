@@ -117,6 +117,13 @@ targets:
           CFBundleTypeExtensions:
           - yaml
           - yml
+        - CFBundleTypeName: TOML Document
+          CFBundleTypeRole: Editor
+          LSHandlerRank: Alternate
+          LSItemContentTypes:
+          - com.joncallim.macdown2.toml
+          CFBundleTypeExtensions:
+          - toml
         - CFBundleTypeName: Plain Text Document
           CFBundleTypeRole: Editor
           LSHandlerRank: Editor
