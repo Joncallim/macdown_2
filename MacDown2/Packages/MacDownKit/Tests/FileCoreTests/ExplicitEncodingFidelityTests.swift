@@ -28,6 +28,24 @@ struct ExplicitEncodingFidelityTests {
         }
     }
 
+    /// Review pass 6: a leading U+FFFE written as BOM-less UTF-16 is the other byte order's BOM, so the save succeeded
+    /// and the file could then not be reopened.
+    @Test func leadingNoncharacterFFFEIsRefusedInBOMlessUTF16AndRoundTripsWithABOM() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let text = "\u{FFFE}A"
+
+        for encoding in [String.Encoding.utf16LittleEndian, .utf16BigEndian] {
+            let url = directory.appendingPathComponent("fffe-\(encoding.rawValue).txt")
+            #expect(!store.canRepresent(text, encoding: encoding, bom: .none))
+            #expect(throws: FileStoreError.self) { try store.write(text, to: url, encoding: encoding, bom: .none) }
+            #expect(!FileManager.default.fileExists(atPath: url.path))
+        }
+        let url = directory.appendingPathComponent("fffe-bom.txt")
+        try store.write(text, to: url, encoding: .utf16LittleEndian, bom: .utf16LittleEndian)
+        #expect(try store.readSnapshot(from: url).text == text)
+    }
+
     @Test func leadingByteOrderMarkScalarSurvivesWhenABOMIsWritten() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
