@@ -178,8 +178,10 @@ import Testing
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: directory) }
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    // An unreadable ledger (here a directory in its place, so the read itself fails) must still fail closed and
+    // leave the actor retryable. A merely CORRUPT ledger is quarantined instead (RecoveryBufferCorruptLedgerTests).
     let fenceURL = directory.appendingPathComponent("recovery-fences.json")
-    try Data("not json".utf8).write(to: fenceURL)
+    try FileManager.default.createDirectory(at: fenceURL, withIntermediateDirectories: true)
     let recovery = RecoveryBuffer(recoveryDirectory: directory)
 
     await #expect(throws: Error.self) {
