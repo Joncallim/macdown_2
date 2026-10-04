@@ -54,6 +54,10 @@ enum EditorCommentToggle {
             delta += (outcome.newContent as NSString).length - outcome.range.length
         }
 
+        // Removing a comment marker can leave a `\r` directly before an unrelated `\n` (mixed endings), which would
+        // be read back as one `\r\n`, dropping a line.
+        guard !EditorLineTransforms.createsCRLFPair(replacements, in: text) else { return nil }
+
         return EditorLineTransforms.makeTransaction(
             replacements: replacements,
             resultsByOriginalIndex: resultsByOriginalIndex,

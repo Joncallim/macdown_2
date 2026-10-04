@@ -80,4 +80,20 @@ struct EditorLineTransformsMixedEndingsTests {
         #expect(EditorLineTransforms
             .deleteLinesTransaction(text: text, lineIndex: lineIndex, selection: selection) == nil)
     }
+
+    @Test func joiningWithABlankLineAddsNoSeparator() throws {
+        func join(_ document: String, caretAt location: Int, length: Int = 0) throws -> String {
+            let text = document as NSString
+            let lineIndex = EditorLineIndex(text: text)
+            let selection = EditorSelectionSet(single: NSRange(location: location, length: length))
+            let transaction = EditorLineTransforms.joinLinesTransaction(
+                text: text, lineIndex: lineIndex, selection: selection
+            )
+            return try #require(LineTransformTestSupport.applied(transaction, to: document)).text
+        }
+
+        #expect(try join("a\n\nc", caretAt: 0) == "a\nc")
+        #expect(try join("a\n\nc", caretAt: 0, length: 5) == "a c")
+        #expect(try join("\nb", caretAt: 0) == "b")
+    }
 }

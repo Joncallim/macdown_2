@@ -202,8 +202,14 @@ enum EditorLineTransforms {
                 ofLine: $0,
                 in: text
             )) }
-            let joined = lines.reduce("") { partial, line in
-                partial.isEmpty ? line : partial + " " + line.drop { $0 == " " || $0 == "\t" }
+            // The first line is kept as written; each later line loses its leading indentation and is joined with
+            // one space. A blank later line adds nothing (no trailing space), and a blank first line does not make
+            // the next one "first" and swallow its separator.
+            var joined = lines[0]
+            for line in lines.dropFirst() {
+                let trimmed = line.drop { $0 == " " || $0 == "\t" }
+                guard !trimmed.isEmpty else { continue }
+                joined += joined.isEmpty ? String(trimmed) : " " + trimmed
             }
             replacements.append(TextReplacement(range: joinRange, replacementText: joined))
 
