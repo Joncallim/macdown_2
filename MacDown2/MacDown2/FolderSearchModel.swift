@@ -72,6 +72,10 @@ final class FolderSearchModel {
     /// overwritten on disk. Assigned by `WindowController`, which knows the
     /// coordinator that can see every window's tabs.
     var hasUnsavedOpenDocument: @MainActor (URL) -> Bool = { _ in false }
+    /// Called once for every file Replace in Folder rewrote. A rewrite publishes a new inode and creation date, which
+    /// the Open Recent fingerprint rejects, so the entry for that file must follow it
+    /// (`RecentFileDocuments.noteWrite`).
+    var fileWasRewritten: @MainActor (URL) -> Void = { _ in }
     let performReplace: FolderReplaceRunner
     let performPreview: FolderReplacePreviewBuilder
     var replaceTask: Task<Void, Never>?
