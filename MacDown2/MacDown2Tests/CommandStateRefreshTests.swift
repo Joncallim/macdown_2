@@ -19,6 +19,9 @@ struct CommandStateRefreshTests {
         #expect(DocumentWindow.shouldRefreshCommandState(for: appKitEvent))
         let find = try #require(keyEvent(characters: "f", modifiers: .command))
         #expect(DocumentWindow.shouldRefreshCommandState(for: find))
+        // Find in Document is ⌃F in this app; opening it from the keyboard moves focus into the field too.
+        let findInDocument = try #require(keyEvent(characters: "f", modifiers: .control))
+        #expect(DocumentWindow.shouldRefreshCommandState(for: findInDocument))
     }
 
     private func keyEvent(characters: String, modifiers: NSEvent.ModifierFlags) -> NSEvent? {

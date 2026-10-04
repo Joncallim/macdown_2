@@ -17,14 +17,15 @@ final class DocumentWindow: NSWindow {
 
     /// Ordinary typing leaves the responder chain unchanged and should not
     /// invalidate SwiftUI command menus. Focus-changing mouse/AppKit events,
-    /// plus ⌘F opening Find, do require a refresh.
+    /// plus ⌘F/⌃F opening Find, do require a refresh.
     static func shouldRefreshCommandState(for event: NSEvent) -> Bool {
         switch event.type {
         case .leftMouseDown, .rightMouseDown, .otherMouseDown, .appKitDefined:
             return true
         case .keyDown:
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            return flags.contains(.command) && event.charactersIgnoringModifiers == "f"
+            // ⌘F is stock Find; ⌃F is this app's own Find in Document. Both move focus into a text field.
+            return (flags.contains(.command) || flags.contains(.control)) && event.charactersIgnoringModifiers == "f"
         default:
             return false
         }
