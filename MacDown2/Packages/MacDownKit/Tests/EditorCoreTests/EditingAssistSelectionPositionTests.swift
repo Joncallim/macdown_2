@@ -46,4 +46,46 @@ struct EditingAssistSelectionPositionTests {
         #expect(result?.text == "aaa\nbbb\n## ccc")
         #expect(result?.selection == NSRange(location: 12, length: 0))
     }
+
+    /// Review pass 6: an endpoint inside the removed leading whitespace was shifted by the whole (negative) delta and
+    /// landed on the previous line's terminator, between a CR and its LF; typing there ate the CR.
+    @Test("Shift-Tab with an endpoint inside removed whitespace never lands between a CR and its LF")
+    func backtabEndpointInsideRemovedWhitespaceStaysOnItsLine() {
+        let text = "abc d\r\n  \r\nzz\r\n"
+        let outcome = support.outcome(for: .insertBacktab, in: text, selection: NSRange(location: 2, length: 6))
+
+        let result = support.applied(outcome, to: text)
+
+        #expect(result?.text == "abc d\r\n\r\nzz\r\n")
+        let units = Array((result?.text ?? "").utf16)
+        let selection = result?.selection ?? NSRange(location: 0, length: 0)
+        for boundary in [selection.location, NSMaxRange(selection)] where boundary > 0 && boundary < units.count {
+            #expect(!(units[boundary - 1] == 0x0D && units[boundary] == 0x0A), "boundary \(boundary) splits a CRLF")
+        }
+    }
+
+    @Test("Shift-Tab over CRLF lines never leaves either selection end between a CR and its LF")
+    func backtabOverCRLFLinesKeepsBothEndsOffTheTerminator() {
+        let text = "  a\r\n    b\r\n  \r\nc\r\n"
+        let units = Array(text.utf16)
+        for start in 0 ..< units.count {
+            for length in 0 ... (units.count - start) {
+                let selection = NSRange(location: start, length: length)
+                guard !(start > 0 && start < units.count && units[start - 1] == 0x0D && units[start] == 0x0A),
+                      !(start + length > 0 && start + length < units.count
+                          && units[start + length - 1] == 0x0D && units[start + length] == 0x0A)
+                else { continue }
+                let outcome = support.outcome(for: .insertBacktab, in: text, selection: selection)
+                guard let result = support.applied(outcome, to: text) else { continue }
+                let after = Array(result.text.utf16)
+                for boundary in [result.selection.location, NSMaxRange(result.selection)]
+                    where boundary > 0 && boundary < after.count {
+                    #expect(
+                        !(after[boundary - 1] == 0x0D && after[boundary] == 0x0A),
+                        "selection \(selection) -> boundary \(boundary) in \(result.text.debugDescription)"
+                    )
+                }
+            }
+        }
+    }
 }
