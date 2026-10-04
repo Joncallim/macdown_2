@@ -218,7 +218,12 @@ extension MarkdownEditingAssistEngine {
                 return position + shift
             }
             if position <= lineEnd {
-                return position + shift + deltas[index]
+                // A position inside the removed leading whitespace (negative delta) collapses to the line's start;
+                // shifting it by the whole delta would land it on the previous line's terminator, between a CR and
+                // its LF in a CRLF document.
+                let removable = -min(deltas[index], 0)
+                let keptOffset = max(position - lineStart - removable, 0)
+                return deltas[index] < 0 ? lineStart + shift + keptOffset : position + shift + deltas[index]
             }
             shift += deltas[index]
             lineStart = lineEnd + 1
