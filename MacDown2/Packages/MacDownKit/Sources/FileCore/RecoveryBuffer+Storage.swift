@@ -328,10 +328,19 @@ extension RecoveryBuffer {
     func loadFenceLedgerIfNeeded() throws {
         guard !hasLoadedFenceLedger else { return }
         var candidate = RecoveryFenceLedger()
-        let hasPersistedLedger = FileManager.default.fileExists(atPath: recoveryFenceURL.path)
+        var hasPersistedLedger = FileManager.default.fileExists(atPath: recoveryFenceURL.path)
         if hasPersistedLedger {
-            candidate = try JSONDecoder().decode(RecoveryFenceLedger.self, from: Data(contentsOf: recoveryFenceURL))
-            migrateLegacyFenceLedger(&candidate)
+            let data = try Data(contentsOf: recoveryFenceURL)
+            do {
+                candidate = try JSONDecoder().decode(RecoveryFenceLedger.self, from: data)
+                migrateLegacyFenceLedger(&candidate)
+            } catch is DecodingError {
+                // A zero-length or garbled ledger (a crash or power loss mid-write) used to make every open and
+                // every new document fail until it was deleted by hand. Keep it for inspection and start empty.
+                try quarantineCorruptFenceLedger()
+                candidate = RecoveryFenceLedger()
+                hasPersistedLedger = false
+            }
         }
         // Repair the global floor before either publishing it in memory or
         // writing it back. Publishing first made a failed repair look durable
@@ -350,6 +359,12 @@ extension RecoveryBuffer {
         // actor retryable rather than permanently operating on partial state.
         hasLoadedFenceLedger = true
         compactPhysicalMarkersGlobally()
+    }
+
+    private func quarantineCorruptFenceLedger() throws {
+        let quarantine = recoveryFenceURL.appendingPathExtension("corrupt")
+        try? FileManager.default.removeItem(at: quarantine)
+        try FileManager.default.moveItem(at: recoveryFenceURL, to: quarantine)
     }
 
     func publishFenceLedger(_ candidate: RecoveryFenceLedger) throws {
