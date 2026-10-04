@@ -259,7 +259,10 @@ struct FileTreeInternalDrag: Codable, Transferable {
     @MainActor
     static func trustedURL(from item: Self, for model: FileTreeModel) -> URL? {
         FileTreeDragRegistry.shared.removeExpiredEntries()
-        guard let entry = FileTreeDragRegistry.shared.entries.removeValue(forKey: item.token),
+        // Not consumed: the row keeps one cached token for as long as it is displayed, so consuming it made the
+        // first failed drop (a name collision, say) disable every later drag of that row. A replayed token still
+        // has to match the model, root and source and name a node that currently exists.
+        guard let entry = FileTreeDragRegistry.shared.entries[item.token],
               entry.modelID == ObjectIdentifier(model), entry.root == model.root,
               entry.source == item.url.standardizedFileURL,
               model.containsCurrentNode(entry.source) else { return nil }
@@ -283,8 +286,18 @@ private final class FileTreeDragRegistry {
     static let shared = FileTreeDragRegistry()
     var entries: [UUID: Entry] = [:]
 
+    /// A row issues its token when it appears and revokes it when it disappears, so the lifetime here is only a
+    /// backstop for rows that never disappear cleanly. It must be long: at 30 s, a row idle for half a minute could
+    /// no longer start an internal move ("Untrusted folder move").
+    static let lifetime: TimeInterval = 8 * 60 * 60
+    static let maximumEntries = 2000
+
     func removeExpiredEntries(now: Date = .now) {
-        entries = entries.filter { now.timeIntervalSince($0.value.issuedAt) < 30 }
+        entries = entries.filter { now.timeIntervalSince($0.value.issuedAt) < Self.lifetime }
+        if entries.count > Self.maximumEntries {
+            let newest = entries.sorted { $0.value.issuedAt > $1.value.issuedAt }.prefix(Self.maximumEntries)
+            entries = Dictionary(uniqueKeysWithValues: newest.map { ($0.key, $0.value) })
+        }
     }
 }
 
