@@ -96,6 +96,12 @@ extension WindowCoordinator {
             return .pendingRecoveryCleanup(pendingController)
         }
         let (snapshot, activeID) = sessionSnapshot()
+        // Before the launch restore has consumed the saved session there are no windows to snapshot (a first-run
+        // welcome window, say): publishing now would replace the saved tabs with an empty session and orphan their
+        // recovery files. The saved session is still the truth, so leave it.
+        if snapshot.isEmpty, let launch = launchSession, !launch.tabs.isEmpty {
+            return .saved
+        }
         let sequence = sessionPublicationOrder.beginSnapshot()
         if let failedController = await persistDirtyRecovery(in: snapshot) {
             return .recoveryFailed(failedController)
