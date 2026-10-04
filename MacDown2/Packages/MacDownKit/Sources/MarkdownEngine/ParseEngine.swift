@@ -90,66 +90,12 @@ public actor ParseEngine: ParseExecuting {
 
     // MARK: - YAML front matter
 
-    /// Yams expands every alias into a full copy, so a few hundred bytes of
-    /// nested anchors ("billion laughs") expand to gigabytes and hang the shared
-    /// parse actor. Total alias references bound the expansion (each level
-    /// multiplies by at most its own fan-out, which is bounded by the total), so
-    /// front matter with more than this many is left unparsed — its raw text and
-    /// range are still reported — rather than expanded.
-    static let maximumYAMLAliasReferences = 16
-
-    /// libyaml accepts any non-space, non-flow-indicator character in an anchor
-    /// name (`&-a`, `*.x`, `*é`), so the budget must not assume a letter.
-    private static func canStartAnchorName(_ character: Character) -> Bool {
-        !(character.isWhitespace || ",[]{}*".contains(character))
-    }
-
-    static func exceedsYAMLAliasBudget(_ raw: String) -> Bool {
-        guard raw.contains("&") else { return false }
-        var aliases = 0
-        var previous: Character = "\n"
-        var index = raw.startIndex
-        while index < raw.endIndex {
-            let character = raw[index]
-            if character == "*", !(previous.isLetter || previous.isNumber || previous == "\\") {
-                let next = raw.index(after: index)
-                if next < raw.endIndex, Self.canStartAnchorName(raw[next]) {
-                    aliases += 1
-                    if aliases > maximumYAMLAliasReferences {
-                        return true
-                    }
-                }
-            }
-            previous = character
-            index = raw.index(after: index)
-        }
-        return false
-    }
-
-    /// Iterative so a deeply nested document cannot exhaust the stack here either.
-    static func hasOnlyScalarKeys(_ root: Node) -> Bool {
-        var pending = [root]
-        while let node = pending.popLast() {
-            switch node {
-            case let .mapping(mapping):
-                for (key, value) in mapping {
-                    guard case .scalar = key else { return false }
-                    pending.append(value)
-                }
-            case let .sequence(sequence):
-                pending.append(contentsOf: sequence)
-            case .scalar, .alias:
-                break
-            }
-        }
-        return true
-    }
-
     private nonisolated func parseYAML(_ raw: String) -> [String: FrontMatterValue]? {
         guard !Self.exceedsYAMLAliasBudget(raw) else { return nil }
         // Yams force-unwraps a mapping key's scalar construction, so a sequence/mapping/alias key
         // (`[ref]: x`, `? [a, b]`, `{a: b}: c`) traps the process. Only load documents whose keys are all scalars.
         guard let tree = try? Yams.compose(yaml: raw), Self.hasOnlyScalarKeys(tree),
+              !Self.exceedsYAMLExpansionBudget(tree),
               let root = try? Yams.load(yaml: raw)
         else {
             return nil
