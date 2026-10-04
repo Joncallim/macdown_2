@@ -83,13 +83,24 @@ public struct EditorEditTransaction: Sendable {
         // therefore no zero/one-element special case to get wrong (unlike
         // an earlier version of this function, which crashed on `1 ..< 0`
         // for an empty set).
-        let sorted = replacements.sorted { $0.range.location < $1.range.location }
+        let sorted = replacements.sorted(by: Self.isAscending)
         for (previous, current) in zip(sorted, sorted.dropFirst()) {
             guard areDisjoint(previous, current) else {
                 return false
             }
         }
         return true
+    }
+
+    /// Ascending by location, a zero-length insert BEFORE a non-empty replacement at the same offset. Sorting by
+    /// location alone left such a tie in input order: one order applied the replacement first and the insert landed
+    /// inside the new text (`"01234BA56789…"`, characters 5–7 surviving the "replace"); the other order tripped the
+    /// "overlapping" assertion.
+    static func isAscending(_ lhs: TextReplacement, _ rhs: TextReplacement) -> Bool {
+        if lhs.range.location != rhs.range.location {
+            return lhs.range.location < rhs.range.location
+        }
+        return lhs.range.length < rhs.range.length
     }
 
     /// Non-negative location/length, no `location + length` overflow, and
@@ -134,7 +145,7 @@ public struct EditorEditTransaction: Sendable {
     /// positioned where a human would expect after that edit" rather than
     /// hand-computing the offset arithmetic at each call site.
     static func resultingCaretRanges(for replacements: [TextReplacement]) -> [NSRange] {
-        let sorted = replacements.sorted { $0.range.location < $1.range.location }
+        let sorted = replacements.sorted(by: Self.isAscending)
         var delta = 0
         return sorted.map { replacement in
             let shiftedLocation = replacement.range.location + delta
@@ -193,7 +204,7 @@ public extension EditorTextSystem {
             }
             return
         }
-        let ordered = transaction.replacements.sorted { $0.range.location > $1.range.location }
+        let ordered = transaction.replacements.sorted { EditorEditTransaction.isAscending($1, $0) }
 
         textView.breakUndoCoalescing()
         isPerformingEditingAssist = true
