@@ -126,9 +126,32 @@ public actor ParseEngine: ParseExecuting {
         return false
     }
 
+    /// Iterative so a deeply nested document cannot exhaust the stack here either.
+    static func hasOnlyScalarKeys(_ root: Node) -> Bool {
+        var pending = [root]
+        while let node = pending.popLast() {
+            switch node {
+            case let .mapping(mapping):
+                for (key, value) in mapping {
+                    guard case .scalar = key else { return false }
+                    pending.append(value)
+                }
+            case let .sequence(sequence):
+                pending.append(contentsOf: sequence)
+            case .scalar, .alias:
+                break
+            }
+        }
+        return true
+    }
+
     private nonisolated func parseYAML(_ raw: String) -> [String: FrontMatterValue]? {
         guard !Self.exceedsYAMLAliasBudget(raw) else { return nil }
-        guard let root = try? Yams.load(yaml: raw) else {
+        // Yams force-unwraps a mapping key's scalar construction, so a sequence/mapping/alias key
+        // (`[ref]: x`, `? [a, b]`, `{a: b}: c`) traps the process. Only load documents whose keys are all scalars.
+        guard let tree = try? Yams.compose(yaml: raw), Self.hasOnlyScalarKeys(tree),
+              let root = try? Yams.load(yaml: raw)
+        else {
             return nil
         }
         guard let mapping = root as? [String: Any] else {
