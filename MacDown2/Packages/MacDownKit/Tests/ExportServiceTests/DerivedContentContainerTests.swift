@@ -213,4 +213,17 @@ struct DerivedContentContainerTests {
         #expect(ContinuousClock.now - start < .seconds(20))
         #expect(!prepared.bodyHTML.contains("E12"))
     }
+
+    @Test func aDiagramFenceFollowedByAThematicBreakIsNotWrappedInAHeading() async throws {
+        let markdown = "```mermaid\ngraph TD\n```\n---\n\nafter\n"
+        let prepared = try await prepare(
+            markdown,
+            replacing: "```mermaid\ngraph TD\n```",
+            with: "<svg></svg>"
+        )
+
+        #expect(prepared.bodyHTML.contains("<svg></svg>"))
+        #expect(!prepared.bodyHTML.contains("<h2"))
+        #expect(prepared.bodyHTML.contains("<hr"))
+    }
 }
