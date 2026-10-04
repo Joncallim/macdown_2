@@ -37,4 +37,24 @@ struct InlineSentinelIndexPerformanceTests {
         let second = index.firstMatch(in: text, from: first?.range.upperBound ?? text.startIndex)
         #expect(second?.spec.html == "one")
     }
+
+    /// Review pass 6: a sentinel's final `Z` followed by a grapheme-extending scalar (ZWNJ after Latin text in
+    /// Persian, VS16, a combining mark) is one `Character`, so Character-level search and prefix tests missed it.
+    @Test(arguments: ["\u{200C}", "\u{200D}", "\u{FE0F}", "\u{0301}"])
+    func aSentinelFollowedByAnExtendingScalarIsFoundWithoutConsumingTheScalar(_ extender: String) {
+        let spec = CMarkGFM.CustomNodeSpec(sentinel: "E12INLINE3Z", isBlock: false, html: "<i/>")
+        let index = InlineSentinelIndex([
+            spec,
+            CMarkGFM.CustomNodeSpec(sentinel: "E12INLINE4Z", isBlock: false, html: ""),
+        ])
+        let text = "a E12INLINE3Z\(extender)ها"
+
+        let found = index.firstMatch(in: text, from: text.startIndex)
+
+        #expect(found?.spec.html == "<i/>")
+        let consumed = found.map { String(text.unicodeScalars[$0.range]) }
+        #expect(consumed == "E12INLINE3Z")
+        let rest = found.map { String(text.unicodeScalars[$0.range.upperBound...]) }
+        #expect(rest == "\(extender)ها")
+    }
 }

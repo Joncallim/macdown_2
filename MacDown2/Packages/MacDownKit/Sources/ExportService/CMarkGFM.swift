@@ -287,7 +287,7 @@ enum CMarkGFM {
         var pending = value.startIndex
         while let found = inlineSpecs.firstMatch(in: value, from: pending) {
             if pending < found.range.lowerBound {
-                pieces.append(.text(String(value[pending ..< found.range.lowerBound])))
+                pieces.append(.text(String(value.unicodeScalars[pending ..< found.range.lowerBound])))
             }
             pieces.append(.custom(found.spec))
             pending = found.range.upperBound
@@ -296,7 +296,7 @@ enum CMarkGFM {
         // No sentinel matched: leave the node exactly as parsed.
         guard !pieces.isEmpty else { return }
         if pending < value.endIndex {
-            pieces.append(.text(String(value[pending...])))
+            pieces.append(.text(String(value.unicodeScalars[pending...])))
         }
 
         guard let firstSpec = pieces.first else { return }
