@@ -96,4 +96,23 @@ struct EditorLineTransformsMixedEndingsTests {
         #expect(try join("a\n\nc", caretAt: 0, length: 5) == "a c")
         #expect(try join("\nb", caretAt: 0) == "b")
     }
+
+    /// Review pass 6: a caret on the last line (nothing to join) made `makeTransaction` miss its index and the whole
+    /// multi-caret Join Lines silently did nothing.
+    @Test func aCaretOnTheLastLineDoesNotCancelTheOtherCarets() throws {
+        let document = "a\n  b\nc"
+        let text = document as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(ranges: [
+            NSRange(location: 0, length: 0), // joins lines 1 and 2
+            NSRange(location: 7, length: 0), // last line: nothing to join
+        ], primaryIndex: 0)
+
+        let transaction = EditorLineTransforms.joinLinesTransaction(
+            text: text, lineIndex: lineIndex, selection: selection
+        )
+
+        let applied = try #require(LineTransformTestSupport.applied(transaction, to: document))
+        #expect(applied.text == "a b\nc")
+    }
 }
