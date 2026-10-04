@@ -165,6 +165,26 @@ extension WindowCoordinator {
         return result
     }
 
+    /// The item whose tab was active when the session is written. While the app is inactive (a `git pull` reloading
+    /// a file, a Dock Quit, a logout) no window is key, which used to record no active tab and restore the first one.
+    /// Falls back to the main window, then to the visible tab of a tab group.
+    static func activeSessionItem<Item>(
+        _ items: [Item],
+        window: (Item) -> NSWindow?,
+        mainWindow: NSWindow?
+    ) -> Item? {
+        if let key = items.first(where: { window($0)?.isKeyWindow == true }) {
+            return key
+        }
+        if let mainWindow, let main = items.first(where: { window($0) === mainWindow }) {
+            return main
+        }
+        return items.first { item in
+            guard let itemWindow = window(item), let group = itemWindow.tabGroup else { return false }
+            return group.selectedWindow === itemWindow
+        }
+    }
+
     func makeRestoredController(tab: WorkspaceTab) -> WindowController {
         let model = makeWindowModel()
         model.tabStore.newTab(id: tab.id, document: tab.document)
