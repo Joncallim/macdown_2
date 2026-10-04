@@ -46,9 +46,12 @@ public struct MathContribution: Contributing {
         let exclusions = Self.excludedRanges(in: document) + InlineCodeSpanScanner.ranges(in: sourceText)
         // Masked rather than filtered afterwards: a `$` inside a URL would otherwise
         // pair with the next real `$` and swallow it.
+        // Code spans and blocks are masked for the same reason: a `$` in `` `$PATH` `` or a fenced `echo $$` would
+        // otherwise flip the pairing of every later delimiter, losing real equations and typesetting prose.
         let scannable = MathLiteralContextScanner.masked(
             sourceText,
             ranges: MathLiteralContextScanner.ranges(in: sourceText) + Self.frontMatterRange(in: document)
+                + exclusions
         )
         var results: [ContributionResult] = []
         let sourceUnits = Array(sourceText.utf16)

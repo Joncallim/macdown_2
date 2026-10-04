@@ -118,7 +118,8 @@ enum MathPreviewPreprocessor {
         isValid: (MathSpan) -> Bool = MathImageRenderer.isRenderable
     ) -> String {
         let codeSpanRanges = InlineCodeSpanScanner.ranges(in: source) + FencedCodeBlockScanner.ranges(in: source)
-        let spans = MathSpanScanner.scan(source)
+        // Masked first so a `$` inside a code span cannot flip the pairing of the delimiters around it.
+        let spans = MathSpanScanner.scan(MathLiteralContextScanner.masked(source, ranges: codeSpanRanges))
             .filter { span in !codeSpanRanges.contains(where: { $0.overlaps(span.range) }) }
             .prefix(maxScannedSpansPerBlock)
         let nsSource = source as NSString
