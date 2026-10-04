@@ -9,6 +9,8 @@ extension WindowController {
         // AppKit discard the window while that action is still the only safe
         // route to retire or remove its prior recovery state.
         guard !model.hasPendingRecoveryCleanup else { return false }
+        // A second ⌘W (or the red button) while a sheet is up would stack another close sheet behind it.
+        guard sender.attachedSheet == nil else { return false }
         guard let document = model.activeDocument else {
             coordinator.removeController(self)
             return true
