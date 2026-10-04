@@ -199,17 +199,10 @@ public extension EditorTextSystem {
         isPerformingEditingAssist = true
         defer { isPerformingEditingAssist = false }
 
-        // Each `insertText` call independently posts AppKit's text-change
-        // notification; without suppression `textDidChange` would publish
-        // the (still mid-transaction) binding value once per range instead
-        // of once for the whole command. Suppress every call but the last.
-        isApplyingMultiRangeTransaction = ordered.count > 1
-        defer { isApplyingMultiRangeTransaction = false }
-        for (index, replacement) in ordered.enumerated() {
-            if index == ordered.count - 1 {
-                isApplyingMultiRangeTransaction = false
-            }
-            textView.insertText(replacement.replacementText, replacementRange: replacement.range)
+        if ordered.count > Self.spliceThreshold {
+            applySpliced(ordered)
+        } else {
+            applyPerRange(ordered)
         }
 
         if let resultingSelection = transaction.resultingSelection {
@@ -225,6 +218,22 @@ public extension EditorTextSystem {
             undoManager.setActionName(undoActionName)
         }
         textView.breakUndoCoalescing()
+    }
+}
+
+private extension EditorTextSystem {
+    /// Each `insertText` call independently posts AppKit's text-change notification; without suppression
+    /// `textDidChange` would publish the (still mid-transaction) binding value once per range instead of once for
+    /// the whole command. Suppress every call but the last.
+    func applyPerRange(_ ordered: [TextReplacement]) {
+        isApplyingMultiRangeTransaction = ordered.count > 1
+        defer { isApplyingMultiRangeTransaction = false }
+        for (index, replacement) in ordered.enumerated() {
+            if index == ordered.count - 1 {
+                isApplyingMultiRangeTransaction = false
+            }
+            textView.insertText(replacement.replacementText, replacementRange: replacement.range)
+        }
     }
 }
 

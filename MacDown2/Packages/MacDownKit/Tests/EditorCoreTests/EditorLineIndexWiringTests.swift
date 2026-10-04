@@ -234,4 +234,55 @@ struct EditorLineIndexWiringTests {
         #expect(system.text.hasSuffix("line 1999 dog"))
         assertMatchesFreshRebuild(system)
     }
+
+    /// A spliced transaction (above `spliceThreshold`) must produce exactly the text the per-range path would, undo as
+    /// one step, and keep untouched text between the matches byte-for-byte.
+    @Test func aSplicedTransactionMatchesThePerRangeResultAndUndoesAsOneStep() {
+        let original = (0 ..< 500).map { "row \($0) cat\r\nplain \($0)" }.joined(separator: "\n")
+        let system = support.makeSystem(text: original)
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        let source = original as NSString
+        var replacements: [TextReplacement] = []
+        var search = NSRange(location: 0, length: source.length)
+        while true {
+            let found = source.range(of: "cat", range: search)
+            guard found.location != NSNotFound else { break }
+            replacements.append(TextReplacement(range: found, replacementText: "wolf\nfox"))
+            search = NSRange(location: NSMaxRange(found), length: source.length - NSMaxRange(found))
+        }
+        #expect(replacements.count > EditorTextSystem.spliceThreshold)
+
+        system.apply(EditorEditTransaction(replacements: replacements, undoActionName: "Replace All"))
+
+        #expect(system.text == original.replacingOccurrences(of: "cat", with: "wolf\nfox"))
+        assertMatchesFreshRebuild(system)
+        system.undoManager.undo()
+        #expect(system.text == original)
+    }
+
+    @Test func aLargeTransactionIsNotQuadratic() {
+        let text = (0 ..< 20000).map { "line \($0) cat" }.joined(separator: "\n")
+        let system = support.makeSystem(text: text)
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        let source = text as NSString
+        var replacements: [TextReplacement] = []
+        var search = NSRange(location: 0, length: source.length)
+        while true {
+            let found = source.range(of: "cat", range: search)
+            guard found.location != NSNotFound else { break }
+            replacements.append(TextReplacement(range: found, replacementText: "dog"))
+            search = NSRange(location: NSMaxRange(found), length: source.length - NSMaxRange(found))
+        }
+        let start = ContinuousClock.now
+
+        system.apply(EditorEditTransaction(replacements: replacements))
+
+        // 20k per-range inserts took ~4.7 s; the spliced edit is a single native replacement.
+        #expect(ContinuousClock.now - start < .seconds(2))
+        #expect(system.text.hasSuffix("line 19999 dog"))
+    }
 }
