@@ -50,7 +50,11 @@ extension EditorTextSystem {
         } else if lineIndexNeedsRebuild {
             lineIndexNeedsRebuild = false
             lineIndex.rebuild(text: assistTextSource ?? (text as NSString))
-            notifyEdit(pending)
+            if let edits = transactionEditsToReport {
+                reportTransactionEdits(edits)
+            } else {
+                notifyEdit(pending)
+            }
         } else if let pending {
             noteIncrementalEdit(editedRange: pending.range, replacementUTF16Length: pending.replacementUTF16Length)
         } else {

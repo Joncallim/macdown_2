@@ -78,6 +78,8 @@ public final class EditorTextSystem {
     /// change notification then rebuilds the index once instead of patching it N times (each patch copies the
     /// whole line array, which made Replace All quadratic).
     var lineIndexNeedsRebuild = false
+    /// The original replacements of a spliced transaction, reported to observers instead of the one wide edit.
+    var transactionEditsToReport: [TextReplacement]?
     /// The assist configuration currently applied to this text system.
     /// Storage lives here (extensions cannot hold stored properties);
     /// the E10 methods live in `EditorTextSystem+EditingAssists.swift`.
