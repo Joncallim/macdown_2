@@ -96,7 +96,10 @@ public enum MathSpanScanner {
     /// on every `scan(_:)` call, which the sub-millisecond-per-block budget
     /// in epic-19-implementation.md §11 assumes.
     /// Verbatim copy of Textual's `PatternTokenizer.Pattern.mathBlock`.
-    private nonisolated(unsafe) static let displayPattern = /(?s)\$\$(.+?)\$\$/
+    /// A display span never crosses a blank line: Preview slices per block, so `$$ … <blank> … $$` can never pair
+    /// there, and Export must agree instead of swallowing the paragraphs between two stray `$$`.
+    private nonisolated(unsafe) static let displayPattern =
+        /(?s)\$\$((?:(?!(?:\r\n|\n|\r)[ \t]*(?:\r\n|\n|\r)).)+?)\$\$/
     /// Textual's `PatternTokenizer.Pattern.mathInline`, plus `\r` in the excluded set so an
     /// inline span stops at a CRLF/CR line break exactly as it does at `\n`.
     private nonisolated(unsafe) static let inlinePattern = /\$(?!\$)((?:\\\$|[^$\n\r])+)\$/

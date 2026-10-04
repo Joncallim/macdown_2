@@ -12,6 +12,21 @@ struct MathPreviewPreprocessorTests {
         #expect(MathPreviewPreprocessor.preprocess(source: source) == source)
     }
 
+    /// A `$` inside a code span must not flip the pairing of the real delimiters around it, which would
+    /// flag prose as "invalid math".
+    @Test func aDollarInACodeSpanDoesNotPairWithALaterEquation() {
+        let source = "Set `$PATH` then compute $x$ and $y$."
+        var validated: [String] = []
+
+        let result = MathPreviewPreprocessor.preprocess(source: source, isValid: { span in
+            validated.append(span.latex)
+            return true
+        })
+
+        #expect(validated == ["x", "y"])
+        #expect(result == source)
+    }
+
     @Test func leavesAValidInlineEquationByteForByteUntouched() {
         let source = "The energy is $E = mc^2$."
         #expect(MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true }) == source)
