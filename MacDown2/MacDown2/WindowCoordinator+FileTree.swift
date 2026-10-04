@@ -41,14 +41,21 @@ extension WindowCoordinator {
         responder is NSText
     }
 
+    /// The key window's controller for a Folder command, unless a text control is being edited: the menu's enabled
+    /// state can be stale (it refreshes on mouse/focus events), and Return/⌘D/⌘⌫ belong to the field.
+    private func keyFolderCommandController() -> WindowController? {
+        guard !Self.isTextEditing(NSApp.keyWindow?.firstResponder) else { return nil }
+        return controllers.first(where: { $0.window == NSApp.keyWindow })
+    }
+
     func renameKeyFolderSelection() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
+        guard let controller = keyFolderCommandController(),
               let selected = controller.fileTreeModel.selectedURL else { return }
         controller.fileTreeModel.renamingURL = selected
     }
 
     func duplicateKeyFolderSelection() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
+        guard let controller = keyFolderCommandController(),
               let selected = controller.fileTreeModel.selectedURL else { return }
         let context = controller.fileTreeModel.beginOperation()
         Task { @MainActor in
@@ -61,7 +68,7 @@ extension WindowCoordinator {
     }
 
     func trashKeyFolderSelection() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
+        guard let controller = keyFolderCommandController(),
               let selected = controller.fileTreeModel.selectedURL,
               let window = controller.window else { return }
         let alert = NSAlert()
