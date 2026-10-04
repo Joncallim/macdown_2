@@ -53,6 +53,7 @@ struct HTMLPreviewView: NSViewRepresentable {
 
         private let handler = PreviewSchemeHandler()
         private var gate = HTMLPreviewReloadGate()
+        private var reloadBudget = HTMLPreviewReloadBudget()
         private var reloadTask: Task<Void, Never>?
         private var securityScope: PreviewSecurityScope?
         private var pendingLoadGeneration: UInt?
@@ -205,13 +206,14 @@ struct HTMLPreviewView: NSViewRepresentable {
         }
 
         func webView(_: WKWebView, didFinish _: WKNavigation!) {
+            reloadBudget.loadSucceeded()
             completeLoad()
         }
 
         /// The WebContent process died (memory pressure, a crash on a huge page): the pane would stay blank
         /// until the next save. The scheme handler still holds the request, so reload it.
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-            guard handler.request != nil else { return }
+            guard handler.request != nil, reloadBudget.consumeReload() else { return }
             webView.reload()
         }
 
