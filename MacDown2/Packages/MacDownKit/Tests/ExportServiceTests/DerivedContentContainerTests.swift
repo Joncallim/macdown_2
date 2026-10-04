@@ -226,4 +226,30 @@ struct DerivedContentContainerTests {
         #expect(!prepared.bodyHTML.contains("<h2"))
         #expect(prepared.bodyHTML.contains("<hr"))
     }
+
+    /// Review pass 6: an inline contribution directly before a ZWNJ (Persian text after Latin) was exported as source.
+    @Test func anInlineContributionBeforeAZeroWidthNonJoinerIsPlacedNotLeaked() async throws {
+        let markdown = "a $x$\u{200C}ها b\n"
+        let found = (markdown as NSString).range(of: "$x$", options: .literal)
+        let prepared = try await ExportService.prepare(
+            ExportRequest(
+                text: markdown,
+                sourceGeneration: 1,
+                theme: ExportTestSupport.lightTheme(),
+                contributions: [
+                    ExportDerivedContribution(
+                        sourceRange: found.location ..< found.location + found.length,
+                        placement: .inline,
+                        html: "<i>m</i>",
+                        sourceGeneration: 1
+                    ),
+                ]
+            ),
+            target: .html(url: URL(fileURLWithPath: "/tmp/zwnj.html"), mode: .standalone(style: .embedded))
+        )
+
+        #expect(prepared.bodyHTML.contains("<i>m</i>\u{200C}ها"))
+        #expect(!prepared.bodyHTML.contains("E12"))
+        #expect(!prepared.diagnostics.contains { $0.message.contains("exported as their source text") })
+    }
 }
