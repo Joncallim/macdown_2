@@ -171,6 +171,35 @@ public enum TextSearchEngine {
         if wasCancelled || Task.isCancelled {
             throw SearchQueryError.cancelled
         }
-        return results
+        return keepingCRLFPairsWhole(results, in: nsText)
+    }
+
+    /// ICU treats the CR and LF of a CRLF pair as two characters, so `\n` matches only the LF and `.*` can match
+    /// between them; a replacement then leaves a lone CR (or inserts text inside the pair). A match that starts at the
+    /// LF of a pair grows to include the CR (so "replace newline" replaces the whole terminator), and an empty match
+    /// between the two is dropped. A match ending between them is left alone: `\r` is a legitimate way to strip CRs.
+    /// A match the growth would overlap with its predecessor is dropped.
+    private static func keepingCRLFPairsWhole(_ matches: [SearchMatch], in text: NSString) -> [SearchMatch] {
+        func splitsPair(at index: Int) -> Bool {
+            index > 0 && index < text.length && text.character(at: index - 1) == 0x0D && text
+                .character(at: index) == 0x0A
+        }
+        var result: [SearchMatch] = []
+        result.reserveCapacity(matches.count)
+        for match in matches {
+            var start = match.range.location
+            let end = NSMaxRange(match.range)
+            if start == end, splitsPair(at: start) {
+                continue
+            }
+            if splitsPair(at: start) {
+                start -= 1
+            }
+            if let last = result.last, start < NSMaxRange(last.range) {
+                continue
+            }
+            result.append(SearchMatch(range: NSRange(location: start, length: end - start)))
+        }
+        return result
     }
 }
