@@ -156,7 +156,11 @@ public actor WorkspaceReplaceEngine {
     }
 
     private func verifiedSnapshot(for plan: ReplacementPlan, root: URL) -> VerifiedRead {
-        let components = plan.relativePath.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        // Split on the `/` BYTE, not the `Character`: a `/` followed by a combining mark is one `Character`, so the
+        // path was
+        // never split and a symlinked directory above such a file was never checked (writes went through the link).
+        let components = plan.relativePath.unicodeScalars.split(separator: "/", omittingEmptySubsequences: false)
+            .map { String(String.UnicodeScalarView($0)) }
         guard !components.isEmpty,
               !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." })
         else { return .failure(.failed("Invalid path")) }

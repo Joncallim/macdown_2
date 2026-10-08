@@ -35,7 +35,7 @@ enum DerivedHTMLSanitizer {
     /// output cannot re-form a blocked tag (`<scr<iframe>ipt>`) — it is its own fixed point. An unterminated
     /// tag or quoted value fails closed: the remainder is dropped.
     static func sanitized(_ html: String) -> String {
-        guard html.contains("<") else { return html }
+        guard html.unicodeScalars.contains("<") else { return html }
         let scalars = Array(html.unicodeScalars)
         var output = String.UnicodeScalarView()
         var index = 0
