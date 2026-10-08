@@ -203,7 +203,8 @@ enum EditorCommentToggle {
             return leadingWhitespace(of: body).count == body.count
         }
         let allCommented = lines.allSatisfy { line in
-            isBlank(line) || line.dropFirst(leadingWhitespace(of: line).count).hasPrefix(prefix)
+            isBlank(line)
+                || line.dropFirst(leadingWhitespace(of: line).count).unicodeScalars.starts(with: prefix.unicodeScalars)
         }
 
         var deltas: [Int] = []
@@ -218,16 +219,19 @@ enum EditorCommentToggle {
                 return line
             }
             if allCommented {
-                var afterPrefix = rest.dropFirst(prefix.count)
+                // Scalar view: the space inserted by the comment command merges with a following U+0301/ZWJ/VS16 into
+                // one `Character`, which a Character-level `first == " "` never matched, leaving a stray space on
+                // every comment/uncomment cycle.
+                var afterPrefix = rest.unicodeScalars.dropFirst(prefix.unicodeScalars.count)
                 var removedLength = (prefix as NSString).length
                 if afterPrefix.first == " " {
                     afterPrefix = afterPrefix.dropFirst()
                     removedLength += 1
                 }
                 deltas.append(-removedLength)
-                return String(leading) + afterPrefix
+                return String(leading) + String(afterPrefix)
             }
-            guard !rest.hasPrefix(prefix) else {
+            guard !rest.unicodeScalars.starts(with: prefix.unicodeScalars) else {
                 deltas.append(0)
                 return line
             }

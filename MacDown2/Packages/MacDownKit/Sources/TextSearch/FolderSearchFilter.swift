@@ -61,7 +61,7 @@ public struct FolderSearchFilter: Sendable, Equatable {
     }
 
     private static func matchesGlob(_ pattern: String, path: IndexedPath) -> Bool {
-        let target = pattern.contains("/") ? path.relativePath : path.basename
+        let target = pattern.unicodeScalars.contains("/") ? path.relativePath : path.basename
         return GlobPattern.matches(pattern: pattern, text: target)
     }
 }
