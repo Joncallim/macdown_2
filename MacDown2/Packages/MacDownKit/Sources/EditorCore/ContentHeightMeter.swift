@@ -98,7 +98,9 @@ struct LineHeightEstimator {
     private let lineHeight: CGFloat
     private let availableWidth: CGFloat
     private let asciiAdvance: CGFloat
-    private let wideAdvance: CGFloat
+    private let wideAsciiAdvance: CGFloat
+    private let cjkAdvance: CGFloat
+    private let symbolAdvance: CGFloat
     private let tabWidth: CGFloat
 
     init(width: CGFloat, attributes: [NSAttributedString.Key: Any]) {
@@ -112,11 +114,21 @@ struct LineHeightEstimator {
         ).height)
         availableWidth = max(width, 1)
         asciiAdvance = max(("n" as NSString).size(withAttributes: [.font: font]).width, 1)
-        wideAdvance = max(font.pointSize, asciiAdvance)
+        // The widest ASCII glyphs (W, m, w, @…) are far wider than "n" in a proportional font; text full of them would
+        // otherwise be under-priced. Monospaced fonts make the two equal.
+        wideAsciiAdvance = max(("W" as NSString).size(withAttributes: [.font: font]).width, asciiAdvance)
+        cjkAdvance = max(font.pointSize, asciiAdvance)
+        // Symbols and emoji that fit one UTF-16 unit (⌚ ✅ ❌) are wider than an em; surrogate halves (the rest of
+        // emoji) are priced at half of that each, so a pair is the same.
+        symbolAdvance = max(font.pointSize * 1.5, cjkAdvance)
         let style = attributes[.paragraphStyle] as? NSParagraphStyle
         let interval = style?.defaultTabInterval ?? 0
         // Real tab stops depend on the font and stop positions; eight columns is a safe upper bound.
         tabWidth = max(interval > 0 ? interval : 28, asciiAdvance * 8)
+    }
+
+    private static func isWideASCII(_ unit: unichar) -> Bool {
+        (0x41 ... 0x5A).contains(unit) || unit == 0x6D || unit == 0x77 || unit == 0x40 || unit == 0x25 || unit == 0x26
     }
 
     func height(of string: NSString, range: NSRange) -> CGFloat {
@@ -157,9 +169,13 @@ struct LineHeightEstimator {
                     lineWidth = 0
                 }
             case ..<0x80:
-                wordWidth += asciiAdvance
+                wordWidth += Self.isWideASCII(unit) ? wideAsciiAdvance : asciiAdvance
+            case 0xD800 ... 0xDFFF:
+                wordWidth += symbolAdvance / 2
+            case 0x2E80 ... 0x9FFF, 0xAC00 ... 0xD7AF, 0xF900 ... 0xFAFF, 0xFF00 ... 0xFFEF:
+                wordWidth += cjkAdvance
             default:
-                wordWidth += wideAdvance
+                wordWidth += symbolAdvance
             }
             index += 1
         }
