@@ -27,6 +27,19 @@ struct MathPreviewPreprocessorTests {
         #expect(result == source)
     }
 
+    /// Display math inside a block quote must not carry the quote's `>` markers into validation or the rewritten text.
+    @Test func quotedDisplayMathLosesItsContinuationMarkers() {
+        var validated: [String] = []
+
+        let result = MathPreviewPreprocessor.preprocess(source: "> $$\n> x^2\n> $$", isValid: { span in
+            validated.append(span.latex)
+            return true
+        })
+
+        #expect(validated == ["\nx^2\n"])
+        #expect(result == "> $$ x^2 $$")
+    }
+
     @Test func leavesAValidInlineEquationByteForByteUntouched() {
         let source = "The energy is $E = mc^2$."
         #expect(MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true }) == source)

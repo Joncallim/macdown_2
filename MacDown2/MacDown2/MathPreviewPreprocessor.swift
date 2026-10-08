@@ -151,7 +151,20 @@ enum MathPreviewPreprocessor {
         in nsSource: NSString,
         isValid: (MathSpan) -> Bool
     ) -> String? {
-        guard isValid(span) else { return invalidMathMarker }
+        // Inside a block quote the continuation lines carry the quote's `>` markers, which are not part of the
+        // equation (they typeset as "> x² >" and made valid math look invalid).
+        let isInQuote = MathContainerPrefix.isInsideQuote(
+            spanStart: span.range.lowerBound,
+            character: { nsSource.character(at: $0) }
+        )
+        let cleaned = isInQuote
+            ? MathSpan(
+                range: span.range,
+                style: span.style,
+                latex: MathContainerPrefix.strippingQuoteMarkers(from: span.latex)
+            )
+            : span
+        guard isValid(cleaned) else { return invalidMathMarker }
 
         let spanText = nsSource.substring(
             with: NSRange(location: span.range.lowerBound, length: span.range.upperBound - span.range.lowerBound)
@@ -160,6 +173,9 @@ enum MathPreviewPreprocessor {
         // split on all three line endings instead.
         let lines = spanText.markdownLines()
         guard lines.count > 1 else { return nil }
-        return lines.joined(separator: " ")
+        guard isInQuote else { return lines.joined(separator: " ") }
+        // Keep the delimiters, drop the markers: `$$` + cleaned LaTeX + `$$`.
+        let delimiter = span.style == .display ? "$$" : "$"
+        return delimiter + cleaned.latex.replacingOccurrences(of: "\n", with: " ") + delimiter
     }
 }

@@ -127,11 +127,11 @@ public struct MathContribution: Contributing {
         let start = span.range.lowerBound + delimiter
         let end = span.range.upperBound - delimiter
         guard start <= end, end <= units.count else { return span }
-        return MathSpan(
-            range: span.range,
-            style: span.style,
-            latex: String(decoding: units[start ..< end], as: UTF16.self)
-        )
+        var latex = String(decoding: units[start ..< end], as: UTF16.self)
+        if MathContainerPrefix.isInsideQuote(spanStart: span.range.lowerBound, character: { units[$0] }) {
+            latex = MathContainerPrefix.strippingQuoteMarkers(from: latex)
+        }
+        return MathSpan(range: span.range, style: span.style, latex: latex)
     }
 
     /// Front matter is data, not prose: math there is not typeset, and an unpaired `$$`
