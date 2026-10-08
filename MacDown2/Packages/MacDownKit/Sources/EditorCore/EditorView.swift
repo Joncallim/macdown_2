@@ -337,6 +337,10 @@ public struct EditorView: NSViewRepresentable {
                   !system.isPerformingProgrammaticTextUpdate,
                   !system.isPerformingEditingAssist
             else { return false }
+            if system.selectionSet.isMultiple, !textView.hasMarkedText(), textView.isEditable,
+               let handled = handleMultiSelectionTab(selector, system: system) {
+                return handled
+            }
             // Marked text (IME composition) passes through untouched.
             guard !textView.hasMarkedText() else { return false }
 
