@@ -98,6 +98,11 @@ struct ContentHeightMeterTests {
         String(repeating: "日本語のテキストと混在する行です。", count: 300),
         String(repeating: "emoji 🙂🎉 and 日本 mixed ", count: 250),
         String(repeating: "a", count: 5000),
+        // Review pass 8: forced breaks the meter does not split on, tabs, and long words.
+        (0 ..< 400).map { "line \($0)" }.joined(separator: "\u{2028}"),
+        (0 ..< 400).map { "line \($0)" }.joined(separator: "\u{85}"),
+        String(repeating: "a\t", count: 1500),
+        String(repeating: String(repeating: "w", count: 36) + " ", count: 300),
     ])
     func theEstimateIsNeverShorterThanTheMeasurementAndNotWildlyLonger(text: String) {
         let style = NSMutableParagraphStyle()

@@ -90,15 +90,16 @@ final class ContentHeightMeter {
 /// long only adds blank space below the last line.
 ///
 /// The line height is measured from the real attributes, so a paragraph style's `lineHeightMultiple`/spacing counts.
-/// Width is summed per UTF-16 unit: ASCII at the font's average advance, everything else (CJK, emoji, surrogate
-/// halves) at most of an em, which is what wide scripts need.
+/// Layout is simulated with a greedy word wrap over per-unit advances: ASCII at the font's average advance, everything
+/// else (CJK, emoji, surrogate halves) at a full em, a tab at the paragraph's tab interval, and U+2028 / U+0085 /
+/// VT / FF as forced line breaks (the meter splits paragraphs only on LF, CR and U+2029). A word longer than a line
+/// wraps by characters, as CJK text does.
 struct LineHeightEstimator {
     private let lineHeight: CGFloat
     private let availableWidth: CGFloat
     private let asciiAdvance: CGFloat
     private let wideAdvance: CGFloat
-    /// Word wrapping leaves ragged lines, so real layouts use somewhat more lines than width / width.
-    private static let wrappingSlack: CGFloat = 1.08
+    private let tabWidth: CGFloat
 
     init(width: CGFloat, attributes: [NSAttributedString.Key: Any]) {
         let font = (attributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
@@ -111,24 +112,58 @@ struct LineHeightEstimator {
         ).height)
         availableWidth = max(width, 1)
         asciiAdvance = max(("n" as NSString).size(withAttributes: [.font: font]).width, 1)
-        wideAdvance = max(font.pointSize * 0.95, asciiAdvance)
+        wideAdvance = max(font.pointSize, asciiAdvance)
+        let style = attributes[.paragraphStyle] as? NSParagraphStyle
+        let interval = style?.defaultTabInterval ?? 0
+        // Real tab stops depend on the font and stop positions; eight columns is a safe upper bound.
+        tabWidth = max(interval > 0 ? interval : 28, asciiAdvance * 8)
     }
 
     func height(of string: NSString, range: NSRange) -> CGFloat {
-        var ascii = 0
-        var other = 0
+        var lines = 1
+        var lineWidth: CGFloat = 0
+        var wordWidth: CGFloat = 0
+
+        func flushWord() {
+            guard wordWidth > 0 else { return }
+            if lineWidth + wordWidth > availableWidth {
+                if lineWidth > 0 {
+                    lines += 1
+                    lineWidth = 0
+                }
+                let extra = (wordWidth / availableWidth).rounded(.down)
+                lines += Int(extra)
+                lineWidth = wordWidth - extra * availableWidth
+            } else {
+                lineWidth += wordWidth
+            }
+            wordWidth = 0
+        }
+
         var index = range.location
         let end = NSMaxRange(range)
         while index < end {
-            if string.character(at: index) < 0x80 {
-                ascii += 1
-            } else {
-                other += 1
+            let unit = string.character(at: index)
+            switch unit {
+            case 0x2028, 0x85, 0x0B, 0x0C:
+                flushWord()
+                lines += 1
+                lineWidth = 0
+            case 0x20, 0x09:
+                flushWord()
+                lineWidth += unit == 0x20 ? asciiAdvance : tabWidth
+                if lineWidth > availableWidth {
+                    lines += 1
+                    lineWidth = 0
+                }
+            case ..<0x80:
+                wordWidth += asciiAdvance
+            default:
+                wordWidth += wideAdvance
             }
             index += 1
         }
-        let totalWidth = CGFloat(ascii) * asciiAdvance + CGFloat(other) * wideAdvance
-        let lines = max(1, (totalWidth * Self.wrappingSlack / availableWidth).rounded(.up))
-        return lines * lineHeight
+        flushWord()
+        return CGFloat(lines) * lineHeight
     }
 }
