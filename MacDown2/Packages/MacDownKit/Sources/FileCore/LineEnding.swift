@@ -33,9 +33,9 @@ public extension LineEnding {
     static func adaptingLineBreaks(in fragment: String, to target: LineEnding?) -> String {
         guard fragment.containsLineBreak, let target else { return fragment }
         return fragment
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-            .replacingOccurrences(of: "\n", with: target.text)
+            .replacingOccurrences(of: "\r\n", with: "\n", options: .literal)
+            .replacingOccurrences(of: "\r", with: "\n", options: .literal)
+            .replacingOccurrences(of: "\n", with: target.text, options: .literal)
     }
 }
 

@@ -60,9 +60,9 @@ enum EditorSnippetInsertion {
         // utf8 scan: `String.contains("\n")` is false for a "\r\n" grapheme.
         guard text.utf8.contains(where: { $0 == 0x0A || $0 == 0x0D }) else { return text }
         return text
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-            .replacingOccurrences(of: "\n", with: ending)
+            .replacingOccurrences(of: "\r\n", with: "\n", options: .literal)
+            .replacingOccurrences(of: "\r", with: "\n", options: .literal)
+            .replacingOccurrences(of: "\n", with: ending, options: .literal)
     }
 
     static func lineEnding(near location: Int, in text: NSString, fallback: LineEnding) -> String {
