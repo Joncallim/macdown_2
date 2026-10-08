@@ -1,6 +1,6 @@
 import AppKit
 
-extension EditorTextSystem {
+public extension EditorTextSystem {
     /// Menu/palette editing commands (line and text transforms, Toggle Comment)
     /// must not rewrite text while an IME composition is active — applying an
     /// edit would commit/cancel the marked text — nor re-enter an assist or a
