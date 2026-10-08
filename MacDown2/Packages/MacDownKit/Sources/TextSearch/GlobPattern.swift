@@ -19,18 +19,20 @@ import Foundation
 enum GlobPattern {
     static func matches(pattern: String, text: String) -> Bool {
         let tokens = tokenize(pattern.lowercased())
-        return matches(tokens: tokens[...], text: Array(text.lowercased())[...])
+        return matches(tokens: tokens[...], text: Array(text.lowercased().unicodeScalars)[...])
     }
 
     private enum Token: Equatable {
-        case literal(Character)
+        case literal(Unicode.Scalar)
         case star
         case doubleStar
     }
 
     private static func tokenize(_ pattern: String) -> [Token] {
         var tokens: [Token] = []
-        let characters = Array(pattern)
+        // Unicode scalars, not `Character`s: a `/` followed by a combining mark is one `Character`, which made
+        // `drafts/*.md` cross directories and `private/**` miss `private/\u{301}x.md`.
+        let characters = Array(pattern.unicodeScalars)
         var index = 0
         while index < characters.count {
             if characters[index] == "*" {
@@ -65,7 +67,7 @@ enum GlobPattern {
     /// complexity and (for `FolderSearchFilter`, a stored, `Equatable`
     /// value type) the awkwardness of caching a compiled representation
     /// across value copies.
-    private static func matches(tokens: ArraySlice<Token>, text: ArraySlice<Character>) -> Bool {
+    private static func matches(tokens: ArraySlice<Token>, text: ArraySlice<Unicode.Scalar>) -> Bool {
         guard let first = tokens.first else { return text.isEmpty }
         switch first {
         case let .literal(character):
@@ -78,9 +80,9 @@ enum GlobPattern {
     }
 
     private static func matchesLiteral(
-        _ character: Character,
+        _ character: Unicode.Scalar,
         tokens: ArraySlice<Token>,
-        text: ArraySlice<Character>
+        text: ArraySlice<Unicode.Scalar>
     ) -> Bool {
         guard let firstText = text.first, firstText == character else { return false }
         return matches(tokens: tokens.dropFirst(), text: text.dropFirst())
@@ -92,7 +94,7 @@ enum GlobPattern {
     /// `**` does not.
     private static func matchesWildcard(
         tokens: ArraySlice<Token>,
-        text: ArraySlice<Character>,
+        text: ArraySlice<Unicode.Scalar>,
         crossesSlash: Bool
     ) -> Bool {
         var index = text.startIndex

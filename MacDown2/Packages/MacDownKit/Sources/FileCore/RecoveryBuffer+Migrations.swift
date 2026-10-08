@@ -10,7 +10,8 @@ public extension RecoveryBuffer {
                   let byteCount = Int(key[..<colon])
             else { return nil }
             let start = key.index(after: colon)
-            guard let separator = key[start...].firstIndex(of: "|"),
+            // The epoch never contains `|`, a document path can: split at the LAST one (as the fence-key parsers do).
+            guard let separator = key[start...].lastIndex(of: "|"),
                   key[start ..< separator].utf8.count == byteCount
             else { return nil }
             return RecoveryMigration(
