@@ -29,4 +29,17 @@ struct FileTreeNamingEdgeCaseTests {
         #expect(FileTreeNaming.validate("   ", existing: [], currentName: nil) == .nameEmpty)
         #expect(FileTreeNaming.validate("\t\n", existing: [], currentName: nil) == .nameEmpty)
     }
+
+    /// Review pass 7: moving or copying an existing file validated its ON-DISK name as if it were typed, so a legal
+    /// name such as `Meeting 10:30.md` failed with "Names cannot contain / or :".
+    @Test func anExistingFileNameWithAColonIsAcceptedWhenMovedOrCopied() {
+        #expect(FileTreeNaming
+            .validate("Meeting 10:30.md", existing: [], currentName: nil) == .nameContainsPathSeparator)
+        #expect(FileTreeNaming.validate(
+            "Meeting 10:30.md", existing: [], currentName: nil, isExistingFileName: true
+        ) == nil)
+        #expect(FileTreeNaming.validate(
+            "a.md", existing: ["A.md"], currentName: nil, isExistingFileName: true
+        ) == .nameExists("a.md"))
+    }
 }

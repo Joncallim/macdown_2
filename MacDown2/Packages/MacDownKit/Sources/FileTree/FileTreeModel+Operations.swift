@@ -95,7 +95,8 @@ public extension FileTreeModel {
         if let error = FileTreeNaming.validate(
             source.lastPathComponent,
             existing: Set(entries.map(\.name)),
-            currentName: nil
+            currentName: nil,
+            isExistingFileName: true
         ) {
             throw error
         }
@@ -141,7 +142,8 @@ public extension FileTreeModel {
         if let error = FileTreeNaming.validate(
             source.lastPathComponent,
             existing: Set(entries.map(\.name)),
-            currentName: nil
+            currentName: nil,
+            isExistingFileName: true
         ) {
             throw error
         }
