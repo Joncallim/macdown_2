@@ -31,6 +31,11 @@ extension EditorView.Coordinator {
         else { return false }
         let selection = system.selectedRange
         let separator = MarkdownEditingAssistEngine.lineSeparator(ofLineContaining: selection.location, in: source)
+        // Real multi-selections fan out in LF documents too: AppKit's `insertNewline:` carries an explicit replacement
+        // range for the primary selection only, so without this the other selections were left in place and dropped.
+        if separator == "\n", system.selectionSet.isMultiple, system.applyMultiCursorInsert(separator) {
+            return true
+        }
         guard separator != "\n" else { return false }
         if selector == #selector(NSResponder.insertNewline(_:)), system.editingAssistConfiguration.isEnabled {
             let outcome = MarkdownEditingAssistEngine.outcome(
@@ -55,5 +60,16 @@ extension EditorView.Coordinator {
             resultingSelection: NSRange(location: selection.location + separator.utf16.count, length: 0),
             undoActionName: "Typing"
         )))
+    }
+
+    /// Tab / Shift-Tab with several selections indent / outdent the lines of EVERY selection (one transaction), not
+    /// only the primary's. `nil` for any other selector.
+    @MainActor
+    func handleMultiSelectionTab(_ selector: Selector, system: EditorTextSystem) -> Bool? {
+        switch selector {
+        case #selector(NSResponder.insertTab(_:)): system.increaseIndent()
+        case #selector(NSResponder.insertBacktab(_:)): system.decreaseIndent()
+        default: nil
+        }
     }
 }
