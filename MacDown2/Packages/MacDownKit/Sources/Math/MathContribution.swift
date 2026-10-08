@@ -178,15 +178,18 @@ public struct MathContribution: Contributing {
     }
 
     private static func htmlAttributeEscaped(_ text: String) -> String {
+        // Per unicode scalar, not per `Character`: a `"` followed by a combining mark or ZWNJ is one `Character`
+        // that matched none of the cases, so the quote went out unescaped and let authored LaTeX add attributes
+        // (`style`, a remote `srcset`) to the exported `<img>`.
         var result = ""
-        result.reserveCapacity(text.count)
-        for character in text {
-            switch character {
+        result.unicodeScalars.reserveCapacity(text.unicodeScalars.count)
+        for scalar in text.unicodeScalars {
+            switch scalar {
             case "&": result += "&amp;"
             case "\"": result += "&quot;"
             case "<": result += "&lt;"
             case ">": result += "&gt;"
-            default: result.append(character)
+            default: result.unicodeScalars.append(scalar)
             }
         }
         return result
