@@ -54,7 +54,8 @@ extension WorkspaceError: LocalizedError {
             String(
                 localized: """
                 This text cannot be saved as \(encodingName) without losing characters. \
-                Nothing was changed; choose another encoding.
+                Nothing was changed; choose another encoding, or delete an invisible byte-order-mark character \
+                (U+FEFF or U+FFFE) at the very start of the text.
                 """
             )
         case let .destinationOpenInAnotherWindow(name):
