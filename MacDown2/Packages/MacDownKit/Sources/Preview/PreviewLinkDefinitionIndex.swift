@@ -48,27 +48,30 @@ public struct PreviewLinkDefinitionIndex: Sendable {
     }
 
     private static func label(ofDefinition definition: String) -> String? {
-        guard let open = definition.firstIndex(of: "["),
-              let close = definition[open...].firstIndex(of: "]")
+        let scalars = definition.unicodeScalars
+        guard let open = scalars.firstIndex(of: "["),
+              let close = scalars[open...].firstIndex(of: "]")
         else { return nil }
-        return normalized(String(definition[definition.index(after: open) ..< close]))
+        return normalized(String(scalars[scalars.index(after: open) ..< close]))
     }
 
-    /// Every `[…]` token in `text` (a label may span lines), normalised. One linear scan.
+    /// Every `[…]` token in `text` (a label may span lines), normalised. One linear scan over unicode scalars: a `]`
+    /// glued to a ZWNJ, combining mark or VS16 (`see [a][1]‌ها`, common in Persian) is part of a different `Character`
+    /// and was never seen, so Preview left the reference unresolved while Export linked it.
     private static func bracketedLabels(in text: String) -> [String] {
         var labels: [String] = []
-        var current: String?
-        for character in text {
-            switch character {
+        var current: String.UnicodeScalarView?
+        for scalar in text.unicodeScalars {
+            switch scalar {
             case "[":
-                current = ""
+                current = String.UnicodeScalarView()
             case "]":
                 if let label = current {
-                    labels.append(normalized(label))
+                    labels.append(normalized(String(label)))
                 }
                 current = nil
             default:
-                current?.append(character)
+                current?.append(scalar)
             }
         }
         return labels

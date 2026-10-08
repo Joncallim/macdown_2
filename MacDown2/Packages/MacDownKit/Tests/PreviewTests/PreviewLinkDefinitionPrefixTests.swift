@@ -37,6 +37,17 @@ struct PreviewLinkDefinitionPrefixTests {
         #expect(PreviewLinkDefinitions.prefixed("no references", with: definitions) == "no references")
     }
 
+    /// Review pass 7: a `]` glued to a ZWNJ/combining mark/VS16 belongs to a different `Character`, so the reference
+    /// was never seen and Preview showed a literal `[a][1]` while Export linked it.
+    @Test(arguments: ["\u{200C}", "\u{0301}", "\u{FE0F}", "\u{200D}"])
+    func aBracketGluedToAnExtendingScalarStillSelectsItsDefinition(extender: String) {
+        let definitions = ["[1]: http://x"]
+
+        let rendered = PreviewLinkDefinitions.prefixed("see [a][1]\(extender)ها", with: definitions)
+
+        #expect(rendered == "[1]: http://x\n\nsee [a][1]\(extender)ها")
+    }
+
     @Test func manyDefinitionsDoNotInflateAnUnrelatedBlock() {
         let definitions = (0 ..< 1500).map { "[label\($0)]: https://example.com/\($0)" }
 
