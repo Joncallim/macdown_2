@@ -124,9 +124,13 @@ public enum PreviewSecurity {
             index += 2
             return nil
         }
-        if matchesTagName(name, at: index, in: characters) {
-            return tagRangeStarting(at: index, in: html, characters: characters)
+        if matchesTagName(name, at: index, in: characters),
+           let range = tagRangeStarting(at: index, in: html, characters: characters) {
+            return range
         }
+        // Either an ordinary tag, or the searched-for tag with no closing `>` anywhere (`<html lang="en"` at EOF,
+        // an unterminated quote): scan on as a tag so the loop always advances. Returning nil here without moving
+        // spun forever on the main actor, on every open and every relaunch of the saved tab.
         state = .tag(quoted: nil)
         index += 1
         return nil
