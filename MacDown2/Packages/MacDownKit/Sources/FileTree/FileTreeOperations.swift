@@ -95,10 +95,15 @@ public enum FileTreeNaming {
     public static func validate(
         _ name: String,
         existing: Set<String>,
-        currentName: String?
+        currentName: String?,
+        isExistingFileName: Bool = false
     ) -> FileTreeOperationError? {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .nameEmpty }
-        guard !name.contains("/"), !name.contains(":") else { return .nameContainsPathSeparator }
+        // A name TYPED for a new/renamed item may not contain a separator, but an existing file being moved or
+        // copied already has its legal on-disk name (`Meeting 10:30.md` is valid on APFS), which must not be refused.
+        guard isExistingFileName || (!name.contains("/") && !name.contains(":")) else {
+            return .nameContainsPathSeparator
+        }
         // `.` and `..` name the directory itself and its parent: they fail at the filesystem with an odd error.
         guard name != ".", name != ".." else { return .nameReserved(name) }
         let names = existing.filter { candidate in candidate != currentName }
