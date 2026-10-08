@@ -43,3 +43,12 @@ struct FileTreeNamingEdgeCaseTests {
         ) == .nameExists("a.md"))
     }
 }
+
+/// Review pass 8: `name.contains("/")` is false for `"x/\u{301}y.md"` (the slash merges with the mark), so a typed name
+/// containing a separator slipped past the check and a rename could move the file into another folder.
+struct FileTreeNamingScalarTests {
+    @Test func aSeparatorGluedToACombiningMarkIsStillRejected() {
+        #expect(FileTreeNaming.validate("x/\u{301}y.md", existing: [], currentName: nil) == .nameContainsPathSeparator)
+        #expect(FileTreeNaming.validate("a:\u{200C}b", existing: [], currentName: nil) == .nameContainsPathSeparator)
+    }
+}

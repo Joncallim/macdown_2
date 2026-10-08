@@ -101,7 +101,7 @@ public enum FileTreeNaming {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .nameEmpty }
         // A name TYPED for a new/renamed item may not contain a separator, but an existing file being moved or
         // copied already has its legal on-disk name (`Meeting 10:30.md` is valid on APFS), which must not be refused.
-        guard isExistingFileName || (!name.contains("/") && !name.contains(":")) else {
+        guard isExistingFileName || (!name.utf8.contains(0x2F) && !name.utf8.contains(0x3A)) else {
             return .nameContainsPathSeparator
         }
         // `.` and `..` name the directory itself and its parent: they fail at the filesystem with an odd error.

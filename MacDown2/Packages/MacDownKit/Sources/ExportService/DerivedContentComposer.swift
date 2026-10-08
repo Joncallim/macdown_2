@@ -145,7 +145,7 @@ enum DerivedContentComposer {
     /// only where cmark parses it as ordinary text; inside a link destination or title, a reference definition,
     /// an HTML attribute or similar it stays as the sentinel string, which must never reach an export.
     static func leakedSentinelIndices(in html: String, suffix: String) -> Set<Int> {
-        guard html.contains("E12") else { return [] }
+        guard html.range(of: "E12", options: .literal) != nil else { return [] }
         let escaped = NSRegularExpression.escapedPattern(for: suffix)
         guard let expression = try? NSRegularExpression(
             pattern: "E12(?:BLOCK|INLINE)" + escaped + "(\\d+)Z"
@@ -168,7 +168,9 @@ enum DerivedContentComposer {
     /// one containment check per family clears every sentinel that follows.
     private static func sentinelSuffix(notCollidingWith bodyText: String) -> String {
         var suffix = ""
-        while bodyText.contains(blockSentinelBase + suffix) || bodyText.contains(inlineSentinelBase + suffix) {
+        // `.literal`: a Character-level `contains` misses authored sentinel-shaped text preceded by a Prepend scalar.
+        while bodyText.range(of: blockSentinelBase + suffix, options: .literal) != nil
+            || bodyText.range(of: inlineSentinelBase + suffix, options: .literal) != nil {
             suffix += "_"
         }
         return suffix

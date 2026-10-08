@@ -252,4 +252,30 @@ struct DerivedContentContainerTests {
         #expect(!prepared.bodyHTML.contains("E12"))
         #expect(!prepared.diagnostics.contains { $0.message.contains("exported as their source text") })
     }
+
+    /// Review pass 8: authored text shaped like a sentinel, preceded by a Prepend scalar, was not seen by the
+    /// Character-level collision check, so the generated sentinel collided with it and replaced the authored text.
+    @Test func authoredSentinelLookingTextAfterAPrependScalarIsLeftAlone() async throws {
+        let markdown = "\u{0600}E12INLINE0Z and $x$\n"
+        let found = (markdown as NSString).range(of: "$x$", options: .literal)
+        let prepared = try await ExportService.prepare(
+            ExportRequest(
+                text: markdown,
+                sourceGeneration: 1,
+                theme: ExportTestSupport.lightTheme(),
+                contributions: [
+                    ExportDerivedContribution(
+                        sourceRange: found.location ..< found.location + found.length,
+                        placement: .inline,
+                        html: "<i>m</i>",
+                        sourceGeneration: 1
+                    ),
+                ]
+            ),
+            target: .html(url: URL(fileURLWithPath: "/tmp/prepend.html"), mode: .standalone(style: .embedded))
+        )
+
+        #expect(prepared.bodyHTML.range(of: "E12INLINE0Z and <i>m</i>", options: .literal) != nil)
+        #expect(prepared.bodyHTML.components(separatedBy: "<i>m</i>").count == 2)
+    }
 }
