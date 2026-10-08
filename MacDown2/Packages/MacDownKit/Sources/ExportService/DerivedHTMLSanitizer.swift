@@ -141,10 +141,12 @@ enum DerivedHTMLSanitizer {
                 }
                 // `<` and `>` are escaped too: a raw `</textarea>` or `</style>` inside an attribute value would
                 // end a raw-text element in the browser and let the rest of the value be read as markup.
+                // `.literal` matters: a non-literal Foundation match skips a quote followed by a grapheme-extending
+                // scalar (U+0301, ZWNJ, …), which then stayed unescaped and closed the attribute.
                 let escaped = value
-                    .replacingOccurrences(of: "\"", with: "&quot;")
-                    .replacingOccurrences(of: "<", with: "&lt;")
-                    .replacingOccurrences(of: ">", with: "&gt;")
+                    .replacingOccurrences(of: "\"", with: "&quot;", options: .literal)
+                    .replacingOccurrences(of: "<", with: "&lt;", options: .literal)
+                    .replacingOccurrences(of: ">", with: "&gt;", options: .literal)
                 result += " \(attribute.name)=\"\(escaped)\""
             }
         }
@@ -213,7 +215,7 @@ enum DerivedHTMLSanitizer {
             return code.flatMap(Unicode.Scalar.init).map { String(Character($0)) } ?? match.whole
         }
         for (entity, replacement) in namedEntities {
-            decoded = decoded.replacingOccurrences(of: entity, with: replacement)
+            decoded = decoded.replacingOccurrences(of: entity, with: replacement, options: .literal)
         }
         return decoded
     }

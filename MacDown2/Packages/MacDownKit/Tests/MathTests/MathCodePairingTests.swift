@@ -92,3 +92,16 @@ struct MathQuoteMarkerTests {
         #expect(await recorder.values == ["\nx^2\n"])
     }
 }
+
+/// Review pass 7: LaTeX in the `alt` attribute was escaped per `Character`, so a `"` followed by a combining mark
+/// or ZWNJ was not escaped and the author could add attributes (`style`, a remote `srcset`) to the exported `<img>`.
+struct MathAltEscapingTests {
+    @Test(arguments: ["\u{0301}", "\u{200C}", "\u{200D}", "\u{FE0F}"])
+    func aQuoteFollowedByAnExtendingScalarCannotCloseTheAltAttribute(_ extender: String) {
+        let image = RenderedMathImage(pngData: Data(), logicalWidth: 1, logicalHeight: 1)
+
+        let html = MathContribution.imgTag(image: image, alt: "a\"\(extender) style=\"position:fixed\" q")
+
+        #expect(html.contains("alt=\"a&quot;\(extender) style=&quot;position:fixed&quot; q\""))
+    }
+}
