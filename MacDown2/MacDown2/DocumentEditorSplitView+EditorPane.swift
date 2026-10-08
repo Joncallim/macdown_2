@@ -174,6 +174,15 @@ extension DocumentEditorSplitView {
     /// may have changed which text still matches at all.
     func applyFindReplacement(_ transaction: EditorEditTransaction, model: EditorFindModel) {
         guard let system = editorStore.existingSystem(for: identity) else { return }
+        // The matches were computed against the text as of the last SwiftUI change pass; an active IME composition
+        // (or one committed in this very click) changes the text without posting one, so applying now would write at
+        // stale offsets (`にほんabarfoo`). Refuse, and search the live text so the next click works.
+        guard system.canApplyCommandEdit,
+              model.matchesAreCurrent(forLiveLength: system.textView.textStorage?.length ?? 0)
+        else {
+            Task { await model.updateMatches(in: system.text, preferringLocationNear: nil) }
+            return
+        }
         system.apply(transaction)
         let anchor = transaction.resultingSelection?.primaryRange.location
         Task {

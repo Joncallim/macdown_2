@@ -68,6 +68,10 @@ public final class EditorFindModel {
     /// The dominant line ending of the text the current matches were computed
     /// against, used to adapt a multi-line replacement.
     private var searchedLineEnding: LineEnding?
+    /// UTF-16 length of the text the current matches were computed against. Matches are recomputed only when SwiftUI
+    /// reports a text change, which marked-text (IME / dead-key) edits never post, so before applying a transaction
+    /// built from them the caller compares this with the live length (`matchesAreCurrent(forLiveLength:)`).
+    private var searchedUTF16Length: Int?
     /// The range "In Selection" searches, retained across refreshes and
     /// remapped through Replace edits (#183 F03). It is sampled from the live
     /// selection only when a caller passes `selection` to `updateMatches`
@@ -179,6 +183,7 @@ public final class EditorFindModel {
         let domain = options.searchesSelectionOnly ? searchDomain : nil
         let scopeLost = options.searchesSelectionOnly && searchDomainLost
         searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
+        searchedUTF16Length = text.utf16.count
         let query = query
         let options = options
         isSearching = true
@@ -209,6 +214,12 @@ public final class EditorFindModel {
         currentIndex = Self.nearestIndex(in: matches, to: anchor)
         isSearching = false
         return true
+    }
+
+    /// Whether the current matches can still be applied to a live document of `length` UTF-16 units. False while
+    /// they were computed against a different length (an IME composition changed the text since).
+    public func matchesAreCurrent(forLiveLength length: Int) -> Bool {
+        !isSearching && searchedUTF16Length == length
     }
 
     /// The off-main search body. Always searches the FULL text, never a
