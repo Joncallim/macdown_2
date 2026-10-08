@@ -192,7 +192,9 @@ public enum TextSearchEngine {
             if start == end, splitsPair(at: start) {
                 continue
             }
-            if splitsPair(at: start) {
+            // Grow back over the CR unless the previous match already covers it (`[\r\n]`, `\s`, `\r|\n`): then the LF
+            // is its own match and must be kept, or Replace All would drop the LF half of the line ending.
+            if splitsPair(at: start), !(result.last.map { NSMaxRange($0.range) >= start } ?? false) {
                 start -= 1
             }
             if let last = result.last, start < NSMaxRange(last.range) {

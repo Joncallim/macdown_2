@@ -30,4 +30,16 @@ struct RegexCRLFPairTests {
     @Test func aCRPatternStillMatchesOnlyTheCR() throws {
         #expect(try ranges("\\r", in: "a\r\nb") == [NSRange(location: 1, length: 1)])
     }
+
+    /// Review pass 8 (regression from the first version): when the previous match already covered the CR, the LF match
+    /// was discarded, so `[\r\n]` / `\s` Replace All with "" produced `a\nb\nc` instead of `abc`.
+    @Test(arguments: ["[\\r\\n]", "\\s", "\\r|\\n", "[^a-z]"])
+    func aPatternThatMatchesTheCRAndTheLFSeparatelyKeepsBothHalves(_ pattern: String) throws {
+        let found = try ranges(pattern, in: "a\r\nb\r\nc")
+
+        #expect(found == [
+            NSRange(location: 1, length: 1), NSRange(location: 2, length: 1),
+            NSRange(location: 4, length: 1), NSRange(location: 5, length: 1),
+        ])
+    }
 }
