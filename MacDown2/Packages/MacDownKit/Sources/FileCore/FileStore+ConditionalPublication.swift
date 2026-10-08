@@ -14,16 +14,19 @@ extension FileStore {
     ) throws(FileStoreError) {
         var ownership: ConditionalPublicationOwnership = .oursAtTemporary
         let publishedRevision = try readRevision(from: temporaryURL)
-        let swapError = hooks?.simulateSwapUnsupported == true ? ENOTSUP : attemptRenameSwap(
-            temporaryURL,
-            destinationURL
-        )
+        let swapError = hooks?.simulateSwapUnsupported == true || !volumeMayExchange(at: destinationURL)
+            ? ENOTSUP
+            : hooks?.swapOverride?(temporaryURL, destinationURL) ?? attemptRenameSwap(temporaryURL, destinationURL)
         if swapError == ENOTSUP {
             // exFAT/FAT32 volumes and many network shares cannot exchange two files.
             try publishWithoutExchange(temporaryURL, destinationURL, expectedRevision: expectedRevision)
             return
         }
         guard swapError == 0 else { throw mapWriteError(POSIXError(POSIXErrorCode(rawValue: swapError) ?? .EIO)) }
+        // Backstop for a driver that accepts RENAME_SWAP, returns 0 and performs a plain rename (observed on FAT32):
+        // nothing was displaced to the temporary path, so there is no external version to inspect or roll back to.
+        // Reporting "preserved a competing version at <temp>" then names a file that does not exist.
+        guard FileManager.default.fileExists(atPath: temporaryURL.path) else { return }
         ownership = .displacedExternalAtTemporary
 
         let displaced: FileRevision
@@ -166,6 +169,16 @@ extension FileStore {
         return actual.fileSize == published.fileSize && actual.sha256 == published.sha256
     }
 
+    /// Whether the volume holding `destination` advertises exchange support. FAT32 on current macOS reports
+    /// `volumeSupportsSwapRenaming == false` yet still accepts the flag and does a plain rename that DELETES the
+    /// previous file, so every save looked like a failed swap and a competing write was silently destroyed. Unknown
+    /// (`nil`, e.g. some network shares) still tries the exchange, which reports `ENOTSUP` itself.
+    private func volumeMayExchange(at destination: URL) -> Bool {
+        let values = try? destination.deletingLastPathComponent()
+            .resourceValues(forKeys: [.volumeSupportsSwapRenamingKey])
+        return values?.volumeSupportsSwapRenaming != false
+    }
+
     /// 0 on success, otherwise the errno of the failed exchange.
     private func attemptRenameSwap(_ lhs: URL, _ rhs: URL) -> Int32 {
         let result = lhs.path.withCString { lhsPath in
@@ -210,15 +223,19 @@ struct ConditionalPublicationTestHooks: Sendable {
     let beforeRollbackSwap: (@Sendable (URL, URL) throws -> Void)?
     /// Behave as on a volume whose exchange returns `ENOTSUP`.
     let simulateSwapUnsupported: Bool
+    /// Replaces the exchange itself (returns 0 or an errno) — e.g. FAT32's "accept the flag, plain-rename, return 0".
+    let swapOverride: (@Sendable (URL, URL) -> Int32)?
 
     init(
         beforeDisplacedRead: (@Sendable (URL) throws -> Void)? = nil,
         beforeRollbackSwap: (@Sendable (URL, URL) throws -> Void)? = nil,
-        simulateSwapUnsupported: Bool = false
+        simulateSwapUnsupported: Bool = false,
+        swapOverride: (@Sendable (URL, URL) -> Int32)? = nil
     ) {
         self.beforeDisplacedRead = beforeDisplacedRead
         self.beforeRollbackSwap = beforeRollbackSwap
         self.simulateSwapUnsupported = simulateSwapUnsupported
+        self.swapOverride = swapOverride
     }
 }
 
