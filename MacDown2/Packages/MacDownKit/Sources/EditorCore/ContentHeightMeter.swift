@@ -11,7 +11,7 @@ import AppKit
 final class ContentHeightMeter {
     private var cacheKey = ""
     private var heights: [Int: CGFloat] = [:]
-    private static let maximumCachedParagraphs = 50000
+    private static let maximumCachedParagraphs = 250_000
     /// UTF-16 units above which the whole document is estimated rather than measured.
     static let estimationThreshold = 1_000_000
     static let maximumMeasuredParagraphLength = 20000
@@ -39,7 +39,7 @@ final class ContentHeightMeter {
             // a huge document, or a huge paragraph, is sized from its length instead (a 10 MB file stalled the main
             // thread for ~0.7 s per pause; one 400k-character CJK paragraph for ~24 s).
             if estimatesEverything || range.length > Self.maximumMeasuredParagraphLength {
-                total += estimator.height(ofParagraphLength: range.length)
+                total += estimator.height(of: string, range: range)
                 return
             }
             let paragraph = string.substring(with: range)
@@ -85,21 +85,50 @@ final class ContentHeightMeter {
     }
 }
 
-/// A wrap-aware height estimate for text too large to measure: lines per paragraph from its length and the average
-/// advance of the font, times the font's line height.
+/// A wrap-aware height estimate for text too large to measure. It deliberately OVER-estimates: an estimate that is
+/// too short leaves the end of the document unreachable (the frame is shorter than the layout), while one that is too
+/// long only adds blank space below the last line.
+///
+/// The line height is measured from the real attributes, so a paragraph style's `lineHeightMultiple`/spacing counts.
+/// Width is summed per UTF-16 unit: ASCII at the font's average advance, everything else (CJK, emoji, surrogate
+/// halves) at most of an em, which is what wide scripts need.
 struct LineHeightEstimator {
     private let lineHeight: CGFloat
-    private let charactersPerLine: CGFloat
+    private let availableWidth: CGFloat
+    private let asciiAdvance: CGFloat
+    private let wideAdvance: CGFloat
+    /// Word wrapping leaves ragged lines, so real layouts use somewhat more lines than width / width.
+    private static let wrappingSlack: CGFloat = 1.08
 
     init(width: CGFloat, attributes: [NSAttributedString.Key: Any]) {
         let font = (attributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        lineHeight = ceil(font.ascender - font.descender + font.leading)
-        let advance = ("n" as NSString).size(withAttributes: [.font: font]).width
-        charactersPerLine = max(1, (width / max(advance, 1)).rounded(.down))
+        var measuring = attributes
+        measuring[.font] = font
+        lineHeight = ceil(("Ag" as NSString).boundingRect(
+            with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: measuring
+        ).height)
+        availableWidth = max(width, 1)
+        asciiAdvance = max(("n" as NSString).size(withAttributes: [.font: font]).width, 1)
+        wideAdvance = max(font.pointSize * 0.95, asciiAdvance)
     }
 
-    func height(ofParagraphLength length: Int) -> CGFloat {
-        let lines = max(1, (CGFloat(length) / charactersPerLine).rounded(.up))
+    func height(of string: NSString, range: NSRange) -> CGFloat {
+        var ascii = 0
+        var other = 0
+        var index = range.location
+        let end = NSMaxRange(range)
+        while index < end {
+            if string.character(at: index) < 0x80 {
+                ascii += 1
+            } else {
+                other += 1
+            }
+            index += 1
+        }
+        let totalWidth = CGFloat(ascii) * asciiAdvance + CGFloat(other) * wideAdvance
+        let lines = max(1, (totalWidth * Self.wrappingSlack / availableWidth).rounded(.up))
         return lines * lineHeight
     }
 }

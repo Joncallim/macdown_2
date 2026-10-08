@@ -90,14 +90,34 @@ struct ContentHeightMeterTests {
         #expect(ContinuousClock.now - start < .seconds(2))
     }
 
-    @Test func theEstimateIsWithinAFactorOfTwoOfTheMeasurementForLatinText() {
-        let text = String(repeating: "word and more words ", count: 400)
+    /// Review pass 7: the first estimate ignored the paragraph style's line-height multiple and priced every unit at
+    /// the width of "n", so CJK/emoji text was under-estimated and the last 19-48% of such a document could not be
+    /// scrolled to. The estimate must never be shorter than the real layout.
+    @Test(arguments: [
+        String(repeating: "word and more words ", count: 400),
+        String(repeating: "日本語のテキストと混在する行です。", count: 300),
+        String(repeating: "emoji 🙂🎉 and 日本 mixed ", count: 250),
+        String(repeating: "a", count: 5000),
+    ])
+    func theEstimateIsNeverShorterThanTheMeasurementAndNotWildlyLonger(text: String) {
+        let style = NSMutableParagraphStyle()
+        style.lineHeightMultiple = 1.2
+        let styled: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
+            .paragraphStyle: style,
+        ]
         let width: CGFloat = 500
-        let measured = ContentHeightMeter().height(of: text as NSString, width: width, attributes: attributes)
-        let estimator = LineHeightEstimator(width: width, attributes: attributes)
+        let nsText = text as NSString
+        let measured = nsText.boundingRect(
+            with: NSSize(width: width, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: styled
+        ).height
 
-        let estimated = estimator.height(ofParagraphLength: text.utf16.count)
+        let estimated = LineHeightEstimator(width: width, attributes: styled)
+            .height(of: nsText, range: NSRange(location: 0, length: nsText.length))
 
-        #expect(estimated > measured / 2 && estimated < measured * 2)
+        #expect(estimated >= measured, "estimate \(estimated) is shorter than the layout \(measured)")
+        #expect(estimated < measured * 2.5, "estimate \(estimated) is far longer than the layout \(measured)")
     }
 }
