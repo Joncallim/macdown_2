@@ -213,7 +213,7 @@ private struct BlockConverter {
 
         if depth < Self.maxDepth {
             let children = node.children.compactMap { $0 as? BlockMarkup }
-            let ranges = resolvedRanges(of: children, within: range)
+            let ranges = resolvedRanges(of: children, within: range, clampsToParent: true)
             for (child, childRange) in zip(children, ranges) {
                 let result = convert(child, range: childRange, depth: depth + 1)
                 childBlocks.append(result.block)
@@ -234,7 +234,11 @@ private struct BlockConverter {
     /// never overlap, so a missing range is the gap before the next sibling, a
     /// table starts at its header row, and an overlap is clamped to the line
     /// before the next sibling.
-    private func resolvedRanges(of children: [BlockMarkup], within parent: ClosedRange<Int>) -> [ClosedRange<Int>] {
+    private func resolvedRanges(
+        of children: [BlockMarkup],
+        within parent: ClosedRange<Int>,
+        clampsToParent: Bool = false
+    ) -> [ClosedRange<Int>] {
         let ends: [Int?] = children.map { originalLineRange(for: $0)?.upperBound }
         let starts: [Int?] = zip(children, ends).map { child, end in
             let reported = originalLineRange(for: child)?.lowerBound
@@ -267,6 +271,11 @@ private struct BlockConverter {
             var end = ends[index] ?? ((nextStart ?? (parent.upperBound + 1)) - 1)
             if let nextStart, end >= nextStart {
                 end = nextStart - 1
+            }
+            // A child of a container never extends past it. swift-markdown reports an unterminated fence inside a
+            // list item or quote as running on through the following item/paragraph.
+            if clampsToParent {
+                end = min(end, parent.upperBound)
             }
             end = max(start, end)
             resolved.append(start ... end)
