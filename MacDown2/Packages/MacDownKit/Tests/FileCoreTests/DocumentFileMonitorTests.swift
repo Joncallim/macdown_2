@@ -316,3 +316,44 @@ func waitUntil(
 // in this suite) to stay under swiftlint's file-length budget -- see that
 // file for their doc comment explaining why they're lock-based classes
 // rather than actors.
+
+/// Tenth review (persistence cross-check #3): the controller advanced its own generation on every `synchronize` but
+/// the monitor's only when a bind executed, and the controller required the two to be equal; a superseded (skipped)
+/// bind split them permanently. The caller's token is now echoed instead of the monitor's own count.
+struct DocumentFileMonitorBindingTokenTests {
+    @Test func theCallersBindingTokenIsEchoedInEveryContext() async throws {
+        let fileURL = URL(fileURLWithPath: "/tmp/epic18/token.md")
+        let watcher = MonitorWatcher()
+        let prober = ScriptedProber([
+            .available(snapshot("one", at: fileURL)),
+            .available(snapshot("two", at: fileURL)),
+        ])
+        let contexts = ContextRecorder()
+        let monitor = makeMonitor(watcher: watcher, prober: prober)
+
+        // The monitor's own generation is 1 after the first bind and 2 after the second; the tokens are not.
+        try await monitor.bind(to: fileURL, priorFileObjectID: nil, onObservation: { _ in },
+                               onContext: { contexts.append($0) }, bindingToken: 41)
+        await waitUntil { contexts.count == 1 }
+        try await monitor.bind(to: fileURL, priorFileObjectID: nil, onObservation: { _ in },
+                               onContext: { contexts.append($0) }, bindingToken: 7)
+        await waitUntil { contexts.count == 2 }
+
+        #expect(contexts.values.map(\.bindingGeneration) == [41, 7])
+    }
+
+    @Test func withoutATokenTheMonitorsOwnGenerationIsUsedAsBefore() async throws {
+        let fileURL = URL(fileURLWithPath: "/tmp/epic18/no-token.md")
+        let contexts = ContextRecorder()
+        let monitor = makeMonitor(
+            watcher: MonitorWatcher(),
+            prober: ScriptedProber([.available(snapshot("one", at: fileURL))])
+        )
+
+        try await monitor.bind(to: fileURL, priorFileObjectID: nil, onObservation: { _ in },
+                               onContext: { contexts.append($0) })
+        await waitUntil { contexts.count == 1 }
+
+        #expect(contexts.values.map(\.bindingGeneration) == [1])
+    }
+}
