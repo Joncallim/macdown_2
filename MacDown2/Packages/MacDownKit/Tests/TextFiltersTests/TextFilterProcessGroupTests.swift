@@ -16,6 +16,29 @@ struct TextFilterProcessGroupTests {
         try TextFilterFixtures.makeExecutableScript("#!/bin/sh\nexit 0\n", named: "exit0.sh", in: directory)
     }
 
+    /// A pipe whose read end names a descriptor number at or above
+    /// `RLIMIT_NOFILE`, which the process can never allocate. Closing a real
+    /// pipe's descriptor instead hands its number back to the table, where a
+    /// concurrently running test can be given it (making this test pass or
+    /// fail by timing) and the `Pipe`'s own later close then hits that
+    /// other test's descriptor.
+    private final class UnopenableReadEndPipe: Pipe {
+        private let unopenable = FileHandle(
+            fileDescriptor: UnopenableReadEndPipe.neverAllocatedDescriptor(),
+            closeOnDealloc: false
+        )
+
+        override var fileHandleForReading: FileHandle {
+            unopenable
+        }
+
+        private static func neverAllocatedDescriptor() -> Int32 {
+            var limit = rlimit()
+            getrlimit(RLIMIT_NOFILE, &limit)
+            return Int32(clamping: min(limit.rlim_cur, UInt64(Int32.max - 1)))
+        }
+    }
+
     // MARK: - Checked setup/spawn failures
 
     @Test func aNonexistentWorkingDirectoryFailsTheSpawnRatherThanSilentlyLaunching() {
@@ -40,9 +63,11 @@ struct TextFilterProcessGroupTests {
     /// inherited stdin.
     @Test func aClosedSourceDescriptorFailsTheSpawnRatherThanSilentlyLaunching() {
         let group = TextFilterProcessGroup()
-        let stdinPipe = Pipe()
-        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: stdinPipe, stdout: Pipe(), stderr: Pipe())
-        close(stdinPipe.fileHandleForReading.fileDescriptor)
+        let pipes = TextFilterProcessGroup.StandardStreamPipes(
+            stdin: UnopenableReadEndPipe(),
+            stdout: Pipe(),
+            stderr: Pipe()
+        )
 
         #expect(throws: TextFilterProcessGroup.SpawnError.self) {
             try group.spawn(
