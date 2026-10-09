@@ -163,7 +163,11 @@ public enum TextSearchEngine {
                 return
             }
             guard let match else { return }
-            results.append(SearchMatch(range: match.range))
+            // Admitted (CRLF-normalised) BEFORE it is charged against the cap: raw matches that normalisation later
+            // drops must not use up the limit, or `(?=\n)|X` over `\r\n\r\nX` with limit 2 never reached X and the
+            // folder search's remaining+1 completeness probe reported a false "complete".
+            guard let admitted = admittingCRLFPairsWhole(match.range, after: results.last, in: nsText) else { return }
+            results.append(admitted)
             if let matchLimit, results.count >= matchLimit {
                 stop.pointee = true
             }
@@ -171,37 +175,36 @@ public enum TextSearchEngine {
         if wasCancelled || Task.isCancelled {
             throw SearchQueryError.cancelled
         }
-        return keepingCRLFPairsWhole(results, in: nsText)
+        return results
     }
 
     /// ICU treats the CR and LF of a CRLF pair as two characters, so `\n` matches only the LF and `.*` can match
     /// between them; a replacement then leaves a lone CR (or inserts text inside the pair). A match that starts at the
     /// LF of a pair grows to include the CR (so "replace newline" replaces the whole terminator), and an empty match
     /// between the two is dropped. A match ending between them is left alone: `\r` is a legitimate way to strip CRs.
-    /// A match the growth would overlap with its predecessor is dropped.
-    private static func keepingCRLFPairsWhole(_ matches: [SearchMatch], in text: NSString) -> [SearchMatch] {
+    /// A match the growth would overlap with its predecessor is dropped. `nil` means "not a match".
+    private static func admittingCRLFPairsWhole(
+        _ range: NSRange,
+        after last: SearchMatch?,
+        in text: NSString
+    ) -> SearchMatch? {
         func splitsPair(at index: Int) -> Bool {
             index > 0 && index < text.length && text.character(at: index - 1) == 0x0D && text
                 .character(at: index) == 0x0A
         }
-        var result: [SearchMatch] = []
-        result.reserveCapacity(matches.count)
-        for match in matches {
-            var start = match.range.location
-            let end = NSMaxRange(match.range)
-            if start == end, splitsPair(at: start) {
-                continue
-            }
-            // Grow back over the CR unless the previous match already covers it (`[\r\n]`, `\s`, `\r|\n`): then the LF
-            // is its own match and must be kept, or Replace All would drop the LF half of the line ending.
-            if splitsPair(at: start), !(result.last.map { NSMaxRange($0.range) >= start } ?? false) {
-                start -= 1
-            }
-            if let last = result.last, start < NSMaxRange(last.range) {
-                continue
-            }
-            result.append(SearchMatch(range: NSRange(location: start, length: end - start)))
+        var start = range.location
+        let end = NSMaxRange(range)
+        if start == end, splitsPair(at: start) {
+            return nil
         }
-        return result
+        // Grow back over the CR unless the previous match already covers it (`[\r\n]`, `\s`, `\r|\n`): then the LF
+        // is its own match and must be kept, or Replace All would drop the LF half of the line ending.
+        if splitsPair(at: start), !(last.map { NSMaxRange($0.range) >= start } ?? false) {
+            start -= 1
+        }
+        if let last, start < NSMaxRange(last.range) {
+            return nil
+        }
+        return SearchMatch(range: NSRange(location: start, length: end - start))
     }
 }

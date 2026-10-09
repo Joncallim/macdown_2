@@ -43,3 +43,17 @@ struct RegexCRLFPairTests {
         ])
     }
 }
+
+/// Tenth review R10-07: the result cap counted raw ICU matches that CRLF normalisation later dropped.
+struct RegexCapAfterNormalisationTests {
+    @Test func droppedEmptyMatchesInsideACRLFDoNotUseUpTheLimit() throws {
+        let text = "\r\n\r\nX"
+        let options = SearchOptions(isRegex: true)
+
+        let bounded = try TextSearchEngine.matches(in: text, query: "(?=\\n)|X", options: options, matchLimit: 2)
+        let unbounded = try TextSearchEngine.matches(in: text, query: "(?=\\n)|X", options: options)
+
+        #expect(unbounded.map(\.range) == [NSRange(location: 4, length: 1)])
+        #expect(bounded.map(\.range) == unbounded.map(\.range))
+    }
+}
