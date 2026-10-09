@@ -65,3 +65,26 @@ struct EditorMultiSelectionReturnTabTests {
         #expect(!handled)
     }
 }
+
+/// Tenth review R10-06: the selection callback reported AppKit's topmost range, not the selection set's primary.
+@MainActor
+struct EditorSelectionCallbackPrimaryTests {
+    private let support = EditingAssistIntegrationSupport.self
+
+    @Test func theCallbackReportsThePrimaryRangeNotTheTopmostOne() {
+        let system = support.makeMarkdownSystem(text: "one two three")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        let coordinator = support.makeCoordinator(system: system)
+        var reported: [NSRange] = []
+        coordinator.onSelectionChange = { reported.append($0) }
+
+        system.selectionSet = EditorSelectionSet(
+            ranges: [NSRange(location: 0, length: 3), NSRange(location: 8, length: 5)],
+            primaryIndex: 1
+        )
+        coordinator.textViewDidChangeSelection(Notification(name: NSTextView.didChangeSelectionNotification))
+
+        #expect(reported.last == NSRange(location: 8, length: 5))
+    }
+}

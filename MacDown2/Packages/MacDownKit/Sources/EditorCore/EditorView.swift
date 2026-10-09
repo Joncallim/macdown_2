@@ -367,7 +367,9 @@ public struct EditorView: NSViewRepresentable {
                 system.invalidateStoredSelectionSetIfStale()
             }
             system.scheduleFrameHeightSync()
-            onSelectionChange?(system.selectedRange)
+            // The semantic primary range, not AppKit's topmost one: with Cmd-D / Select All Matches the two differ, and
+            // the status bar and both outlines follow this callback.
+            onSelectionChange?(system.selectionSet.primaryRange)
         }
 
         /// Maps the AppKit text command selectors E10 understands. Everything
