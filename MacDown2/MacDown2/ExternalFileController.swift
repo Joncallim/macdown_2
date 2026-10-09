@@ -45,6 +45,8 @@ final class ExternalFileController {
     @ObservationIgnored var onInitialMoveRecoveryPrepared: (@MainActor () async -> Void)?
     @ObservationIgnored var lifecycleGeneration: UInt = 0
     @ObservationIgnored var disposed = false
+    /// Test seam: runs right after the recovery cleanup of a Use-Disk-Version reload returns, before it revalidates.
+    @ObservationIgnored var afterUseExternalRecoveryCleanup: (@MainActor () async -> Void)?
 
     init(
         model: WorkspaceModel,
@@ -228,48 +230,7 @@ final class ExternalFileController {
         coordinator?.scheduleSaveSession()
     }
 
-    func applyConflictResolution(
-        _ resolution: ConflictResolution,
-        snapshot: FileSnapshot,
-        document: FileDocument,
-        model: WorkspaceModel
-    ) async {
-        switch resolution {
-        case .keepMine:
-            let replacement = document.keepingLocalChanges(acknowledging: snapshot.revision)
-            model.tabStore.updateActiveDocument { _ in replacement }
-            latestExternalSnapshot = nil
-            persistRecovery(for: replacement)
-            notice = .none
-            synchronize(with: replacement)
-        case .useExternal:
-            let replacement = document.reloadedFromExternal(snapshot)
-            let cleanup = await replacement.recoveryBuffer.removeWithOutcome(
-                for: replacement.id,
-                version: replacement.mutationGeneration,
-                epoch: replacement.recoveryEpoch
-            )
-            guard cleanup.isAbsent else {
-                await surfaceRecoveryCleanup(
-                    cleanup,
-                    buffer: replacement.recoveryBuffer,
-                    id: replacement.id,
-                    epoch: replacement.recoveryEpoch
-                )
-                return
-            }
-            model.tabStore.updateActiveDocument { _ in replacement }
-            replaceEditorText(with: replacement.text)
-            latestExternalSnapshot = nil
-            notice = .none
-            synchronize(with: replacement)
-        case .cancel:
-            break
-        }
-        coordinator?.scheduleSaveSession()
-    }
-
-    private func replaceEditorText(with text: String) {
+    func replaceEditorText(with text: String) {
         guard let system = editorStore.existingSystem(for: identity) else { return }
         system.replaceTextFromExternal(text, preserving: system.viewportSnapshot(), clearUndo: true)
     }

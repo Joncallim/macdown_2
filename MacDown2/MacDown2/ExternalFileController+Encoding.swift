@@ -63,10 +63,12 @@ extension ExternalFileController {
               !model.isSavingActiveDocument
         else { return .superseded }
 
-        await applyConflictResolution(.useExternal, snapshot: snapshot, document: current, model: model)
-        // A failed recovery cleanup leaves the document untouched (and raises
-        // its own notice), so confirm the reload really landed.
-        guard model.activeDocument?.lastKnownRevision == snapshot.revision else { return .unavailable }
-        return .reopened
+        // The outcome, not the document's revision, says whether the reload landed: after a failed recovery cleanup
+        // the untouched document can already carry the snapshot's disk revision.
+        switch await applyConflictResolution(.useExternal, snapshot: snapshot, document: current, model: model) {
+        case .applied: return .reopened
+        case .superseded: return .superseded
+        case .cleanupBlocked, .notApplicable: return .unavailable
+        }
     }
 }
