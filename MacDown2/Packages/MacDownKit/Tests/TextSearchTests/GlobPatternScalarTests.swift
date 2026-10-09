@@ -22,3 +22,28 @@ struct GlobPatternScalarTests {
         #expect(!GlobPattern.matches(pattern: "*.swift", text: "a.md"))
     }
 }
+
+/// Tenth review R10-09: `**/` was tokenised as an unrestricted `**` with the slash dropped, so it matched part of a
+/// basename.
+struct GlobPatternDirectoryWildcardTests {
+    @Test func doubleStarSlashMatchesWholeDirectoriesOnly() {
+        for path in ["foo.md", "dir/foo.md", "a/b/foo.md"] {
+            #expect(GlobPattern.matches(pattern: "**/foo.md", text: path), "\(path)")
+        }
+        for path in ["xfoo.md", "dir/xfoo.md", "a/b/xfoo.md"] {
+            #expect(!GlobPattern.matches(pattern: "**/foo.md", text: path), "\(path)")
+        }
+    }
+
+    @Test func aMiddleDoubleStarSlashKeepsTheBasenameBoundary() {
+        #expect(GlobPattern.matches(pattern: "src/**/config.json", text: "src/config.json"))
+        #expect(GlobPattern.matches(pattern: "src/**/config.json", text: "src/a/b/config.json"))
+        #expect(!GlobPattern.matches(pattern: "src/**/config.json", text: "src/notconfig.json"))
+    }
+
+    @Test func aStandaloneDoubleStarStillMatchesAnything() {
+        #expect(GlobPattern.matches(pattern: "private/**", text: "private/a/b/c.md"))
+        #expect(GlobPattern.matches(pattern: "**", text: "any/thing"))
+        #expect(GlobPattern.matches(pattern: "**/*.md", text: "README.md"))
+    }
+}

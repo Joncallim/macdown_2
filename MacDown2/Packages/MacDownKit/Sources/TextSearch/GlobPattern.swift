@@ -26,6 +26,8 @@ enum GlobPattern {
         case literal(Unicode.Scalar)
         case star
         case doubleStar
+        /// `**/`: zero or more WHOLE directories (each ending in `/`), never part of a file name.
+        case directories
     }
 
     private static func tokenize(_ pattern: String) -> [Token] {
@@ -37,15 +39,20 @@ enum GlobPattern {
         while index < characters.count {
             if characters[index] == "*" {
                 if index + 1 < characters.count, characters[index + 1] == "*" {
-                    tokens.append(.doubleStar)
                     index += 2
                     // "**/" means "zero or more whole directories" -- the
                     // separator immediately after `**` is part of the
                     // wildcard itself, not a literal `/` the matched text
                     // must also contain (so "**/*.md" matches "README.md"
-                    // at the root, not only a nested one).
+                    // at the root, not only a nested one). It is its own
+                    // token: as an unrestricted `**` it let `**/foo.md`
+                    // match `xfoo.md` and `src/**/config.json` match
+                    // `src/notconfig.json`.
                     if index < characters.count, characters[index] == "/" {
+                        tokens.append(.directories)
                         index += 1
+                    } else {
+                        tokens.append(.doubleStar)
                     }
                 } else {
                     tokens.append(.star)
@@ -76,6 +83,8 @@ enum GlobPattern {
             return matchesWildcard(tokens: tokens, text: text, crossesSlash: false)
         case .doubleStar:
             return matchesWildcard(tokens: tokens, text: text, crossesSlash: true)
+        case .directories:
+            return matchesDirectories(tokens: tokens, text: text)
         }
     }
 
@@ -86,6 +95,18 @@ enum GlobPattern {
     ) -> Bool {
         guard let firstText = text.first, firstText == character else { return false }
         return matches(tokens: tokens.dropFirst(), text: text.dropFirst())
+    }
+
+    /// Zero directories, or the text up to and including the next `/`, repeatedly.
+    private static func matchesDirectories(tokens: ArraySlice<Token>, text: ArraySlice<Unicode.Scalar>) -> Bool {
+        var remaining = text
+        while true {
+            if matches(tokens: tokens.dropFirst(), text: remaining) {
+                return true
+            }
+            guard let slash = remaining.firstIndex(of: "/") else { return false }
+            remaining = remaining[(slash + 1)...]
+        }
     }
 
     /// `crossesSlash` is the only difference between `*` and `**`: both try
