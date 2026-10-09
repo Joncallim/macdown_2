@@ -135,10 +135,12 @@ extension WorkspaceModel {
             return true
         }
         do {
+            // Exact scalar comparison: canonical `==` calls U+212B and U+00C5 equal, so after replacing one with the
+            // other a failed recovery write looked durable because the OLD recorded text compared equal.
             return try await document.recoveryBuffer.load(
                 for: document.id,
                 epoch: document.recoveryEpoch
-            ) == document.text
+            )?.isExactlyEqual(to: document.text) ?? false
         } catch {
             return false
         }
