@@ -82,3 +82,7 @@ D. Validate actual results, live blockers and exact identity; close #115 only on
 Allowed changes are release-contract/evidence/validation documents and scripts; production fixes remain their owner PRs. Stop on lost data, wrong artifact, missing proof, contradictory authority, unauthorized budget relaxation or public publication before P.
 
 Second review resolves the issue-closure/freeze loop, distinguishes structural plan validation from actual release evidence, preserves benchmark meaning and names genuine review-service failure behavior. No full source audit, independent review or native execution is claimed to have happened merely because this architecture was reviewed. Final outcome is GO for one proved artifact or NO-GO with exact remaining obligations, never 'ready except for manual testing'.
+
+## Rebaseline 2026-10-09 — two candidates
+
+#115's matrix is executed in two passes. V1 runs the finite software/native matrix on private candidate 1. After final E16, the final signed candidate (candidate 2) re-runs every artifact- or locale-sensitive observation (`final-artifact-reruns`), together with #148's exact-artifact compliance. #115 closes only when V1, final E16, those reruns and #148 are all evidenced; repository cutover and public promotion follow, separately.

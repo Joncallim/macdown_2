@@ -29,7 +29,7 @@ mostlytext.app/opensource/
     d2/index.html                   D2 corresponding source and our patch (LC-03)
 ```
 
-Large packages are attached to the GitHub Release for the same tag. The
+Large packages are published with the source-only publication described under "Order of work" (not as assets of an unpublished draft release). The
 `graphviz/` and `d2/` pages link to them and list their SHA-256 digests.
 
 ## What each source page contains
@@ -71,11 +71,27 @@ the DMG exists.
 
 ## Order of work
 
-1. **Now (cloud):** assemble the Graphviz and D2 source packages and patch,
-   and record their digests in the inventory (LC-02, LC-03). This doesn't
-   depend on hosting.
-2. **At E17:** create the release folder from the release candidate's
-   generated files, attach the packages to the draft GitHub Release, and
-   deploy the pages.
-3. **Before public promotion:** run the verification above and attach the
-   evidence to #148 and #18.
+The earlier plan attached the packages to a **draft** GitHub Release and verified anonymous retrieval from there. A draft
+release and its assets are unpublished and access-controlled, so anonymous retrieval from a draft always fails and
+`source_offer` could never become `verified` before promotion, while `release/macos/sign-notarize-dmg.sh
+--release-candidate` checks that before notarisation: a deadlock. The corresponding source is therefore published
+**separately from, and before**, any binary:
+
+1. **Now (cloud):** assemble the Graphviz and D2 source packages and patch, and record their digests in the inventory
+   (LC-02, LC-03). This doesn't depend on hosting.
+2. **Source-only publication (needs the owner's explicit approval, `source-archive-authorization`):** publish the
+   immutable, versioned corresponding-source objects (`THIRD_PARTY_NOTICES.md`, `sbom.cdx.json`, `SHA256SUMS`, the two
+   source pages, the packages and patch) to the durable public location chosen in E17 — the website's
+   `opensource/<version>/` folder and/or a source-only archive or release that contains **no application binary**. This is
+   a public act; nothing is published until it is approved. Do not publish a binary, flip a draft release to public, or
+   weaken the compliance check to make anonymous retrieval pass.
+3. **Freeze** the final URLs and digests, then generate the final notices/SBOM from them, so the shipped app's
+   `THIRD_PARTY_NOTICES.md` names locations that already exist.
+4. **At E17:** build the final signed candidate; run the verification below against the already-public source location
+   and the exact artifact.
+5. **Before public promotion:** attach the evidence to #148 and #18. Public promotion of the application remains a
+   separate owner authorisation.
+
+Test obligations: anonymous fetch of a draft-release asset fails (documented counterexample, so nobody rebuilds the
+deadlock); a cookie-less fetch of every published object matches `SHA256SUMS`; the notices embed those exact locations;
+and no application binary is reachable from the source location.

@@ -146,3 +146,13 @@ Each probe has positive controls, discriminating failures and a decision output 
 | #115 | Finite evidence manifest and validation preparation. | S, final E16, all exact-artifact V obligations and separate P authorization. |
 
 No issue is closed by this review. No public release or production merge is requested automatically. Claude should finish E22, adopt this architecture through the normal PR process, rebind exact interfaces once, and execute dependency-ready units with the named probes first. There is no blanket bug-free claim and no permission to mark blocked runtime evidence passed.
+
+## Rebaseline 2026-10-09 (whole-backlog architecture review)
+
+Input: the owner-requested whole-backlog review (#147 comment 6071522503) at master `202ec7d8`. Changes made together: (1) prose, graph and checker now encode one two-candidate state machine (A2); (2) the source-archive deadlock is resolved by a separately authorised, source-only publication before the final candidate, and #148 gets its missing hand-off and graph units (A1); (3) the #117/#79 contract gains per-occurrence SVG ID namespaces (A3); (4) the #116 contract gains reference-link identity preservation (A4) and separate original/renderer coordinate maps (A5); (5) the checker adds migration-critical ancestry checks for settings compatibility, release-order guards and eleven new negative mutations (49 self-tests).
+
+Rejected or refined review suggestions:
+- *Remove the settings-compat edges from theme-catalog and legacy-import and attach it to software-S directly.* Refined, not applied: those edges encode that compatible decoding must precede every WRITER of migrated/imported settings (#53), which is exactly the property the graph should show. software-S now ALSO requires settings-compat directly, and the checker asserts it is upstream of theme-catalog, legacy-import and bootstrap-migration, with a negative mutation.
+- *#215 dup-then-close.* Tracked as test-fixture work, not architecture; see the backlog matrix.
+- Native probes (RESOURCE-OPEN, MATH-ADAPTER, ANCHOR-PARSER, PDF-PRINT, DIAGRAM-CONTEXT, QL-REPLY) remain NOT_RUN: nothing here is execution evidence.
+

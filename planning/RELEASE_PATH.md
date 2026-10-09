@@ -45,12 +45,15 @@ This is the hard order set by #158, `planning/RELEASE_HARDENING.md` and E17
 (#18):
 
 ```text
-E22 (#112, in progress) ─▶ identity cutover (#158) ─▶ E23 (#113)
-    ─▶ #115 debt gate (with #116–#121, #88, #79, #53)
-    ─▶ final E16 string freeze (#17) ─▶ E17 distribution (#18) ─▶ public 1.0
+E22 (#112) ─▶ identity inputs (#158) ─▶ E23 (#113) ─▶ S (software + UI stabilised, incl. #116–#121, #88, #79, #53)
+    ─▶ private candidate 1 + software/native #115 verification (V1)
+    ─▶ final E16 string freeze (#17)
+    ─▶ final signed candidate 2 (needs the corresponding source already published, #148)
+        + #148 exact-artifact compliance + artifact/locale-sensitive #115 reruns
+    ─▶ #115 closes ─▶ full-history repository cutover (#158) ─▶ separately authorised public promotion (#18)
 
-Runs alongside, and must pass before #115 closes and before E17 promotes:
-    #148 licensing/provenance (LC-01–LC-10)
+Source-only corresponding-source publication (#148, owner-authorised) happens BEFORE candidate 2 and never
+publishes an application binary. Details: planning/RELEASE_SEQUENCE.md and compliance/ARCHIVE_PLAN.md.
 Can be prepared early, used at E17:
     Developer ID certificate + notarisation profile (Mac tranche), Sparkle EdDSA key,
     website/archive hosting
@@ -91,7 +94,7 @@ after the status line above). Each was done on its own:
 | Workstream | Owning issue | Can start now? | Where | Next concrete step |
 |---|---|---|---|---|
 | Brand identity | D-001–D-031 (`design/`) | **Done for 1.0** | — | None. Rename the Figma file title from "(Slant 12°)" in the Figma UI (D-029) |
-| Branding cutover (repository, README, public copy) | #158 | Record only. #158 runs after E22 | Cloud | Inputs are decided (§4). Execute once E22 closes: rename the repository to `Joncallim/mostlytext`, rebrand the README and public copy, and classify the remaining `MacDown 2` references as #158 §4 requires |
+| Branding cutover (repository, README, public copy) | #158 | Record only. #158 runs after E22 | Cloud | Inputs are decided (§4). Consume the identity inputs now; the repository cutover itself is the late full-history mirror to `Joncallim/mostlytext` after #115 closes (critical path above) — the engineering backlog stays in `macdown_2` until then, so do not transfer issues or rename early. Rebrand the README and public copy at the cutover, and classify the remaining `MacDown 2` references as #158 §4 requires |
 | App-icon integration | E23 (#113); inputs from #158 | No. E23 follows #158 | Cloud edits; **Mac** to verify | Move `design/evidence/2026-09-26/icon-art/MostlyText-lean10.icon` into the app **next to** `Assets.xcassets`, not inside it, and remove `AppIcon.appiconset` and the placeholder script. See that folder's README (D-028). Verify in a Release build in the Dock and Finder, light and dark |
 | Bundle identity and versioning | Strategy: #158. Migration: #18 | Decided | Cloud | Decided (§4): `app.mostlytext.MostlyText`, CLI `mostlytext`, version `1.0.0` with independent build numbers. Today the app is `com.joncallim.MacDown2`, `0.1.0 (1)`, CLI `macdown2`. E17 owns the switch and the migration of development-namespace state; E23 derives its Quick Look and theme identifiers from the new prefix |
 | Licensing and notices | #148 (LC-01–LC-10) | **Yes.** LC-02–LC-07 are identity-neutral | Cloud | 1.0 ships under MIT; #148 LC-10 was reframed on 2026-09-28 to match. Third-party notices (LC-01 to LC-09) stay a hard gate. LC-05 (make SwiftTreeSitter immutable) needs a lock file, not a manifest pin: a `revision:` pin fails resolution because Neon's own manifest requires SwiftTreeSitter `branch: "main"`, and SwiftPM refuses two different revision-based requirements (CI, 2026-09-28). That fix landed in #165: a committed `Package.resolved` that CI enforces (§1; evidence in #148). The gate itself is in `compliance/` (2026-09-28): a checked inventory of all 33 shipped components, generated notices and SBOM, and a CI check with negative tests. LC-04 and LC-06 provenance are recorded there. `compliance.py check --release` lists what remains. Next: Mermaid's bundled npm dependencies (LC-01), the Graphviz and D2 source packages (LC-02/03, plan in `compliance/ARCHIVE_PLAN.md`). The inventory is reconciled with the #165 lock file: all 22 pinned revisions are verified, and `lockfile_enforced` is on, so a lock change that the inventory doesn't match fails CI. LC-08's licences screen (`compliance/LICENCES_UI.md`) starts after E22 and must land before the final E16 freeze |

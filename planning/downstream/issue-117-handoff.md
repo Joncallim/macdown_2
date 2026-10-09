@@ -83,3 +83,9 @@ Allowed areas: MarkdownEngine/Contributions values and tests; Preview internal-l
 ## Review disposition
 
 Second review resolved the palette dependency cycle, stale pre-panel document capture, direct NSTextView selection writes, indiscriminate DOM analysis, silent export-cap reduction and Quick Look's contradiction with fatal TOC errors. The original collision decision remains, but now has destination-correct failure semantics. All issue areas still require executed evidence; E22's registry subset alone cannot close #117.
+
+## Rebaseline 2026-10-09 — contributed SVG identifiers
+
+The heading allocator reserves authored IDs, but contributed IDs were only detected afterwards, and cached diagram artwork has no per-occurrence namespace. Graphviz emits `graph0`/`node1`-style IDs and leaves embedding uniqueness to the caller; an `[TOC]`, a heading `graph0` and a simple DOT diagram can therefore lose the requested TOC anchor or yield an ambiguous one, and a repeated cached SVG or page-local Mermaid counters duplicate IDs. Pipeline today: Graphviz SVG is emitted inline, the sanitizer preserves IDs, custom HTML is emitted as-is.
+
+Contract: the assembly step owns a deterministic per-OCCURRENCE SVG namespace (rewriting `id`, `href`/`xlink:href` fragments, `url(#…)`, CSS selectors and accessibility `aria-*` references together) that is disjoint from authored, heading and template IDs and is allocated BEFORE heading IDs are finalised. Cached canonical artwork stays immutable. Tests: heading `graph0` + DOT, explicit DOT IDs, repeated cached occurrences, mixed engines, separate Mermaid workers/restarts. Duplicate composition IDs and the TOC conflict are source-confirmed; native visual symptoms are not claimed reproduced.

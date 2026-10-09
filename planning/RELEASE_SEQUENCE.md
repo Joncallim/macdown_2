@@ -1,36 +1,30 @@
 # macOS 1.0 execution and authorization sequence
 
-Status: proposed cross-epic contract amendment in the recovery/readiness PR #147, 26 September 2026. It becomes repository authority when that documentation PR is adopted; no release is authorized by its existence. It clarifies RELEASE_HARDENING.md sections 7–8 without weakening issue acceptance, artifact identity, security, fidelity or language requirements.
+Status: proposed cross-epic contract amendment in the recovery/readiness PR #147, 26 September 2026; rebaselined 9 October 2026 to the two-candidate sequence and the source-archive resolution. It becomes repository authority when that documentation PR is adopted; no release is authorized by its existence. It clarifies RELEASE_HARDENING.md sections 7–8 without weakening issue acceptance, artifact identity, security, fidelity or language requirements.
 
 ## Why the old shorthand must be expanded
 
-The historical shorthand `E22 -> identity -> E23 -> #115 -> final E16 -> E17` mixed implementation milestones with final issue closure. #115's full matrix already requires final E16 plus exact signed-candidate UI/VoiceOver/export/Quick Look evidence, while E17 prohibits public production approval before #115 closes. Treating all arrows as whole-issue closure creates a cycle.
+The historical shorthand `E22 -> identity -> E23 -> #115 -> final E16 -> E17` mixed implementation milestones with final issue closure. #115's full matrix requires final E16 plus exact signed-candidate UI/VoiceOver/export/Quick Look evidence, while E17 prohibits public production approval before #115 closes. Treating all arrows as whole-issue closure creates a cycle. An earlier revision of this document resolved it with a single private candidate and put final E16 before #115 closure; the owner's amendments (September 30 and the 9 October rebaseline) instead use **two candidates**, and this document now says so. Prose, `readiness.json` and `validate_readiness.py` encode the same state machine and are changed together.
 
-Use three milestones. Implementation dependencies are between tested units, not arbitrary closed issue numbers. Required final evidence still determines when each issue can close.
+## The sequence (two candidates)
 
-## S — Software and UI stabilized
+1. **S — software and UI stabilised.** Complete E22 under its own plan, final technical identity intake and E23 capability work, E17's application-side bootstrap/settings/legacy migration/CLI/updater, and every required carried-forward product correction, each with its own catalogs and tests. Compatible settings decoding (#53) precedes every writer of migrated or imported settings. S requires an exact source/identity/UI baseline and no known required unimplemented behaviour hidden as a manual task. #115 stays OPEN.
+2. **V1 — private candidate 1 and software/native verification (#115).** Build a private, unapproved signed/notarised candidate from S. Run the finite software and native #115 matrix on that binary: UI harness suites, VoiceOver/native modal behaviour, file/recovery, HTML/PDF, math/diagram, theme, Finder/Quick Look, clean installation, stateful migration and a signed update rehearsal. Failures return to S, produce a new candidate and rerun the affected proof.
+3. **Final E16.** Only after V1: the final actual resource/string audit, plural/layout work, native-language review and the freeze of the exact source/translation/UI baseline.
+4. **Final signed candidate (candidate 2).** Built from the frozen baseline. Its notices and source offer point at durable, already-published corresponding-source locations (see below), so those exist BEFORE this candidate is generated and notarised. Then run #148's exact-artifact compliance verification and every artifact- or locale-sensitive #115 observation again on this binary (`final-artifact-reruns`); the compliance gate is not relaxed to make a checker pass.
+5. **#115 closes** once V1, final E16, the artifact-sensitive reruns and #148 are all evidenced.
+6. **Full-history repository cutover (#158)** to the new repository, mirroring the verified history. The engineering backlog stays in `macdown_2` until then.
+7. **P — separately authorised public promotion.** Forbidden while #115 is open or the cutover has not happened. A documentation task, a green workflow, an architecture review or a private signature is not that authorisation.
 
-Complete E22 under its existing implementation plan, final technical identity intake and E23 capability work. Implement all required carried-forward product corrections. Complete E17's application-side bootstrap, settings/namespace/legacy migration, CLI, updater integration and user-visible messages BEFORE this milestone. All such changes include their own catalogs/tests; E16 is not a dumping ground for new English-only screens.
+## Source-archive deadlock and its resolution (#148)
 
-S requires an exact source/identity/UI baseline, applicable engineering verification and no known required unimplemented behavior hidden as a manual task. Final Mac-only evidence and native-language review may still be outstanding and remain explicitly recorded. #115 stays OPEN. Architecture-level readiness, package CI or an issue's implementation subset do not by themselves establish S.
+The previous archive plan attached Graphviz/D2 source packages to the **draft** GitHub Release and verified anonymous retrieval before public promotion. A draft release and its assets are unpublished and access-controlled, so "anonymous, no-login retrieval" cannot succeed while they sit in a draft; `source_offer` could therefore never become `verified`, the E17 script's pre-notarisation check could never pass, and the final candidate/#148 could never finish. Following that plan and the order above together is a deadlock.
 
-The software-stabilization references in older issue bodies are read as S, not final #115 closure. Do not rewrite historical result records or claim old evidence passed. Do not modify active E22 work merely to change this scheduling vocabulary.
+Resolution: the corresponding-source objects are a **separately authorised, source-only publication**, independent of any binary or appcast promotion. They are immutable, versioned, hash-listed packages (upstream source archives, our patch, licence texts, `SHA256SUMS`, matching notices/SBOM text) published to a durable public location (the website's opensource folder and/or a source-only release or archive that contains no application binary). Their URLs and digests are frozen first and then written into the final notices before candidate 2 is built. Publishing them is a public act and requires the owner's explicit approval (`source-archive-authorization`); no application binary is made public to satisfy the checker, and the compliance gate is unchanged. See `compliance/ARCHIVE_PLAN.md` and `issue-148-handoff.md`. Tests: anonymous retrieval of a draft asset FAILS (documented counterexample); a no-cookie fetch of the published objects matches `SHA256SUMS`; notices embed those exact locations; no binary is reachable from the source location.
 
-## V — Final localization and private exact-artifact verification
+## Promotion mechanics
 
-After S, E16 performs the final actual resource/string audit, translation/native-review/plural/layout work and freezes the exact source/translation/UI baseline. E17 prepares private unapproved signed/notarized artifacts and controlled N -> N+1 update rehearsals. Signing/notarization here is for evidence preparation, not public publication or production approval.
-
-Execute all required final UI, VoiceOver, native-modal, file/recovery, HTML/PDF, math/diagram, theme, Finder/Quick Look, clean installation, stateful migration and signed-update checks on the actual candidate binary. Verify executable paths and identities, not a different Debug build with the same name. Missing credentials, permissions, suitable Mac or native review are BLOCKED/NOT_RUN, never assumed passes. #115 remains open until every required obligation is FIXED/PROVED with valid evidence, or rejected only where the original optional-feature contract allowed it.
-
-A failed check may require code/UI/string changes. Return affected work to S/E16 as necessary, create a newly identified candidate and rerun affected proof plus the final critical regression. There is no formal dependency from S to future V completion: this is an explicit feedback loop after a failed test, not a circular prerequisite that prevents work beginning.
-
-Before #115 closes, retain the exact final E16 record and all artifact evidence. Individual implementation issues close only after their complete own acceptance is evidenced, including any V-only obligations. A tested prerequisite unit can be consumed while its umbrella issue awaits final evidence.
-
-## P — Separately authorized public promotion
-
-Public production RC/release authorization is forbidden while #115 is open or required final E16/artifact evidence is missing. Once the full gate passes and #115 closes, obtain the actual owner/release-process authorization. This documentation task, a green workflow, an architecture review or a private signature is not that authorization.
-
-Promote the SAME bytes that passed V. Do not rebuild, re-sign, rewrite Info.plist, alter entitlements, replace resources or swap the artifact after approval. Upload immutable versioned assets/notes first, verify downloaded bytes/signatures, and publish the stable appcast last. Retain the previous known-good release. Any changed identity/content invalidates affected proof and requires reverification before promotion.
+Promote the SAME bytes that passed the final reruns. Do not rebuild, re-sign, rewrite Info.plist, alter entitlements, replace resources or swap the artifact after approval. Upload immutable versioned assets/notes first, verify downloaded bytes/signatures, and publish the stable appcast last. Retain the previous known-good release. Any changed identity/content invalidates affected proof and requires reverification before promotion.
 
 ## Preserved release requirements
 

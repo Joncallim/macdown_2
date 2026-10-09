@@ -69,3 +69,7 @@ E. Freeze record and release preflight validation consumed by V/#115.
 Allowed changes: owned catalogs/resource declarations, localization-specific call-site/layout corrections, verified .tx config and QA scripts/evidence. No E22 feature redesign, document translation, wrong-bundle duplication or new runtime translation service. Run serial format/lint/build/tests as applicable plus actual interactive language QA. Stop on unknown resource ownership, lost translations, malformed placeholders, unapproved source changes or missing required native review.
 
 Second review removes the issue-closure/string-freeze cycle and fixed catalog-count assumptions while retaining the original native QA, safe translation-exchange and runtime requirements. No catalog compilation, translation service exchange, human review or GUI execution is claimed by this architecture pass.
+
+## Rebaseline 2026-10-09
+
+Final E16 runs after V1 (private candidate 1's software/native #115 verification), not after S and not after #115 closes; it freezes the exact translated baseline from which the final signed candidate is built. See `RELEASE_SEQUENCE.md`.

@@ -7,7 +7,8 @@ import json
 import re
 from pathlib import Path
 
-EXPECTED = {17, 18, 53, 79, 88, 113, 115, 116, 117, 118, 119, 120, 121}
+EXPECTED = {17, 18, 53, 79, 88, 113, 115, 116, 117, 118, 119, 120, 121, 148}
+OWNERS = EXPECTED | {112, 158}
 PROBES = {"RESOURCE-OPEN", "ANCHOR-PARSER", "MATH-ADAPTER", "PDF-PRINT", "DIAGRAM-CONTEXT", "QL-REPLY"}
 
 
@@ -62,7 +63,7 @@ def validate(data: object, available: set[str] | None = None) -> list[str]:
     for row in units:
         if row.get("kind") not in kinds:
             errors.append(f"unknown unit kind: {row.get('id')}")
-        if row.get("issue") not in EXPECTED | {112}:
+        if row.get("issue") not in OWNERS:
             errors.append(f"unknown issue owner: {row.get('id')}")
         for dep in row.get("requires", []):
             if dep not in nodes:
@@ -99,13 +100,21 @@ def validate(data: object, available: set[str] | None = None) -> list[str]:
     required_edges = {
         "post-e22-rebaseline": {"plan-adoption", "e22-complete"},
         "software-S": {"ui-harness", "html-preview", "external-files", "pdf-integration",
-                       "appearance-ui", "finder-assets", "cli", "updater-ui"},
-        "owner-public-authorization": {"debt-gate-close"},
-        "final-localization": {"software-S", "translation-access", "native-reviewers", "interactive-mac"},
-        "private-candidates": {"final-localization", "signing-access"},
-        "exact-artifact-V": {"private-candidates", "interactive-mac", "ui-harness"},
-        "debt-gate-close": {"exact-artifact-V", "final-localization"},
-        "public-promotion-P": {"debt-gate-close", "owner-public-authorization"},
+                       "appearance-ui", "finder-assets", "cli", "updater-ui", "settings-compat"},
+        # Two-candidate sequence: private native candidate (V1) -> final E16 -> final signed candidate with the
+        # corresponding source already published (#148) -> artifact-sensitive reruns -> debt gate -> cutover -> promotion.
+        "private-candidate-1": {"software-S", "signing-access"},
+        "native-verification-V1": {"private-candidate-1", "interactive-mac", "ui-harness"},
+        "final-localization": {"native-verification-V1", "translation-access", "native-reviewers", "interactive-mac"},
+        "source-archive-published": {"source-archive-authorization", "technical-identity"},
+        "final-candidate": {"final-localization", "signing-access", "source-archive-published"},
+        "artifact-compliance-148": {"final-candidate", "source-archive-published"},
+        "final-artifact-reruns": {"final-candidate", "interactive-mac", "ui-harness"},
+        "debt-gate-close": {"native-verification-V1", "final-localization", "final-artifact-reruns",
+                            "artifact-compliance-148"},
+        "repository-cutover": {"debt-gate-close"},
+        "owner-public-authorization": {"repository-cutover"},
+        "public-promotion-P": {"repository-cutover", "owner-public-authorization"},
     }
     for node, deps in required_edges.items():
         if not deps <= set(nodes.get(node, {}).get("requires", [])):
@@ -141,14 +150,20 @@ def validate(data: object, available: set[str] | None = None) -> list[str]:
         if row["kind"] in {"implementation", "probe"} and row["id"] != "post-e22-rebaseline":
             if "post-e22-rebaseline" not in ancestors(row["id"]):
                 errors.append(f"post-E22 baseline missing: {row['id']}")
+    # The corresponding-source archive (#148) is published independently of the software gate: it must exist before the
+    # final candidate is notarised (notices point at its frozen URLs) but does not gate software stabilisation.
     implementation_ids = {row["id"] for row in units if row["kind"] in {"implementation", "probe"}}
+    implementation_ids -= {"source-archive-published"}
     if not implementation_ids <= ancestors("software-S"):
         errors.append("software-S omits implementation or probe work")
     expected_kinds = {
         "e22-complete": (112, "upstream"), "plan-adoption": (115, "input"),
         "post-e22-rebaseline": (115, "implementation"), "software-S": (115, "gate"),
-        "final-localization": (17, "verification"), "private-candidates": (18, "verification"),
-        "exact-artifact-V": (115, "verification"), "debt-gate-close": (115, "gate"),
+        "final-localization": (17, "verification"), "private-candidate-1": (18, "verification"),
+        "native-verification-V1": (115, "verification"), "final-candidate": (18, "verification"),
+        "final-artifact-reruns": (115, "verification"), "artifact-compliance-148": (148, "verification"),
+        "source-archive-authorization": (148, "input"), "source-archive-published": (148, "implementation"),
+        "debt-gate-close": (115, "gate"), "repository-cutover": (158, "gate"),
         "owner-public-authorization": (18, "input"), "public-promotion-P": (18, "gate"),
     }
     for node, (owner, kind) in expected_kinds.items():
@@ -163,7 +178,21 @@ def validate(data: object, available: set[str] | None = None) -> list[str]:
         errors.append("invalid protected-work list")
     elif not required_protected <= set(protected):
         errors.append("protected work missing")
+    # Compatible settings decoding must precede every unit that WRITES migrated/imported settings (#53).
+    for writer in ("theme-catalog", "legacy-import", "bootstrap-migration"):
+        if "settings-compat" not in ancestors(writer):
+            errors.append(f"migration-critical: settings-compat missing upstream of {writer}")
+    # Nothing after the debt gate may be reachable before it, and promotion needs the whole chain.
+    for late in ("repository-cutover", "public-promotion-P", "owner-public-authorization"):
+        for early in ("final-candidate", "artifact-compliance-148", "final-artifact-reruns", "native-verification-V1",
+                      "final-localization", "source-archive-published"):
+            if early not in ancestors(late):
+                errors.append(f"release guard: {early} not upstream of {late}")
     rules = data.get("rules", {})
+    if rules.get("source_archive_publication") != "source_only_separately_authorized_never_binaries":
+        errors.append("source-archive guard changed")
+    if rules.get("compliance_gate_weakened") is not False:
+        errors.append("compliance gate cannot be weakened")
     if rules.get("probe_failure") != "stop_dependent_unit_and_review_narrow_architecture_correction":
         errors.append("probe-failure guard changed")
     if rules.get("whole_issue_closure") != "requires_all_own_acceptance_evidence_not_only_implementation":
@@ -211,7 +240,17 @@ def self_test(data: dict, available: set[str]) -> int:
     case("empty software gate", lambda x: unit(x, "software-S").update(requires=[]), "release guard")
     case("lost review input", lambda x: unit(x, "final-localization")["requires"].remove("native-reviewers"), "release guard")
     case("lost translation input", lambda x: unit(x, "final-localization")["requires"].remove("translation-access"), "release guard")
-    case("lost signing input", lambda x: unit(x, "private-candidates")["requires"].remove("signing-access"), "release guard")
+    case("lost signing input", lambda x: unit(x, "private-candidate-1")["requires"].remove("signing-access"), "release guard")
+    case("final candidate without source archive", lambda x: unit(x, "final-candidate")["requires"].remove("source-archive-published"), "release guard")
+    case("localization before native verification", lambda x: unit(x, "final-localization").update(requires=["software-S", "translation-access", "native-reviewers", "interactive-mac"]), "release guard")
+    case("debt gate without compliance", lambda x: unit(x, "debt-gate-close")["requires"].remove("artifact-compliance-148"), "release guard")
+    case("debt gate without artifact reruns", lambda x: unit(x, "debt-gate-close")["requires"].remove("final-artifact-reruns"), "release guard")
+    case("cutover before debt gate", lambda x: unit(x, "repository-cutover").update(requires=[]), "release guard")
+    case("promotion before cutover", lambda x: unit(x, "public-promotion-P").update(requires=["owner-public-authorization"]), "release guard")
+    case("archive needs no authorization", lambda x: unit(x, "source-archive-published")["requires"].remove("source-archive-authorization"), "release guard")
+    case("settings compat lost for import", lambda x: unit(x, "legacy-import").update(requires=["theme-catalog", "technical-identity"]) or unit(x, "theme-catalog").update(requires=["palette", "technical-identity"]), "migration-critical")
+    case("compliance waiver", lambda x: x["rules"].update(compliance_gate_weakened=True), "compliance gate")
+    case("archive publishes binaries", lambda x: x["rules"].update(source_archive_publication="with_binaries"), "source-archive guard")
     case("premature consent", lambda x: unit(x, "owner-public-authorization").update(requires=[]), "release guard")
     case("lost baseline", lambda x: unit(x, "palette").update(requires=[]), "post-E22 baseline")
     case("removed E22 prerequisite", lambda x: unit(x, "post-e22-rebaseline").update(requires=["plan-adoption"]), "release guard")

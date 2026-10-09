@@ -91,3 +91,7 @@ E. Final E16 + V evidence, #115 closure and separately authorized P promotion.
 Run serial format/strict lint, migration/CLI/updater targeted and full regressions, Release app/CLI/extension builds, then real installation/update/public-UI evidence. Allowed changes stay in bootstrap/storage constructors, CLI/protocol, updater, build/release scripts and their catalogs/tests. No E22 feature redesign, source normalization, custom privileged installer or broadened release scope.
 
 Second review adds older-settings compatibility, durable snippet/script classification, atomic open+wait registration, terminal receipt ordering, stale socket ownership and honest same-UID authentication limits. Platform/account/identity prerequisites remain recorded; no signing, migration, CLI execution or publication has been performed by this architecture pass.
+
+## Rebaseline 2026-10-09
+
+E17 builds two private candidates (candidate 1 for V1; the final candidate after final E16 and after the corresponding source is published). The repository cutover (#158, full-history mirror) follows #115's closure, then public promotion is separately authorised. Source-only archive publication is independent of any binary release; see `issue-148-handoff.md`.

@@ -54,3 +54,7 @@ Run format, strict lint, affected renderer/diagram tests, full package tests and
 Review resolved the temptation to fix baked colors with CSS, to degrade Mermaid's renderer, to share mutable per-page theme configuration, to confuse theme IDs with actual palette identity, or to claim user-authored low-contrast styling meets default-theme contrast. The neutral policy is a deliberate bounded 1.0 decision. It does not authorize an unplanned full diagram theme editor.
 
 This document is design evidence only. #79 closes when all three engines and print output satisfy the policy under E23, their limits are calibrated, and #115 records the actual artifact/test evidence.
+
+## Rebaseline 2026-10-09
+
+Diagram cache identity must include the destination palette and raster scale (unchanged) AND be disjoint from the occurrence namespace: cached SVG is canonical and immutable; each composed occurrence receives its own deterministic ID namespace at assembly (see #117). Neutral/print contrast is validated per engine. No native proof is claimed by this document.

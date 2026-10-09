@@ -31,6 +31,7 @@ The renewed review covers all **13 downstream issues**. Nine hand-offs were revi
 | #18 / E17 | [Bootstrap migration, CLI, updater and distribution](issue-18-handoff.md) |
 | #17 / E16 | [Final localization, native QA and string freeze](issue-17-handoff.md) |
 | #115 | [Finite debt closure and exact-artifact proof](issue-115-handoff.md) |
+| #148 | [Licensing, provenance, source-only archive publication and exact-artifact compliance](issue-148-handoff.md) |
 
 ## Implement shared contracts once
 
@@ -46,7 +47,7 @@ Read the retained-contract clarifications in READINESS_REVIEW.md before implemen
 
 ## Execution order and remaining probes
 
-[readiness.json](readiness.json) is the explicit acyclic unit dependency plan. Its 48 nodes include external inputs, E22, probes, implementation and final gates; they are not new issues or a requirement for 48 PRs. Whole-issue closure is not used where only a tested prerequisite is required. Do not bypass a failed prerequisite or hold all independent work while one external gate is unavailable.
+[readiness.json](readiness.json) is the explicit acyclic unit dependency plan. Its 54 nodes (rebaselined 9 October 2026) include external inputs, E22, probes, implementation and final gates; they are not new issues or a requirement for 48 PRs. Whole-issue closure is not used where only a tested prerequisite is required. Do not bypass a failed prerequisite or hold all independent work while one external gate is unavailable.
 
 After E22/rebaseline, begin the independent foundations: UI harness, settings compatibility, source-aware math/anchor values, export snapshot, save-progress work and E23 palette. Run the named narrow probes before their dependent integrations: **RESOURCE-OPEN, MATH-ADAPTER, ANCHOR-PARSER, PDF-PRINT, DIAGRAM-CONTEXT and QL-REPLY**. All six are NOT_RUN in this architecture task. Their owning documents specify positive controls, failure cases and the decision output. A failed probe needs a focused architecture correction, not invented API calls or weakened tests.
 
@@ -56,13 +57,14 @@ The public name MostlyText and owned mostlytext.app/mostlytext.dev domains are s
 
 ## Canonical release sequence
 
-This PR stages the explicit correction in RELEASE_HARDENING.md sections 7–8 and RELEASE_SEQUENCE.md, rather than leaving it as a future task:
+Rebaselined 9 October 2026 to the owner-approved **two-candidate** order (RELEASE_SEQUENCE.md, readiness.json and the checker agree):
 
-**S:** software/UI stabilized, including release-app code and strings. #115 remains open.
-**V:** final E16 plus private unapproved signed/notarized exact-artifact verification and stateful update rehearsals. No public promotion.
-**P:** only after the entire #115/final-language gate passes, separately authorize public promotion of the same verified bytes.
+**S:** software/UI stabilised, including release-app code, strings and compatible settings decoding. #115 stays open.
+**V1:** private candidate 1 and the software/native #115 verification on that binary.
+**Final E16**, then the **final signed candidate** built with the corresponding source already published (source-only, separately authorised; #148), then #148's exact-artifact compliance and the artifact/locale-sensitive #115 reruns on that binary.
+**#115 closes**, then the **full-history repository cutover (#158)**, then **P:** separately authorised public promotion of the same verified bytes.
 
-The change becomes active repository authority when this documentation PR is adopted. It changes ordering terminology, not acceptance criteria. Do not close #115 early to start E16, or rebuild/re-sign an artifact after its proof and reuse the old approval.
+The change becomes active repository authority when this documentation PR is adopted. It changes ordering terminology, not acceptance criteria. Do not close #115 early, publish a binary to satisfy the source-offer check, or rebuild/re-sign an artifact after its proof and reuse the old approval.
 
 ## What was actually verified
 
@@ -74,7 +76,7 @@ Run the planning-only checker from the repository:
 python3 planning/downstream/validate_readiness.py planning/downstream/readiness.json --self-test
 ```
 
-The current local run passes **39 positive/negative checks**, in normal and optimized Python. It checks issue/file coverage, unique units, known dependencies/acyclicity, probe ownership AND prerequisite reachability, all implementation/probe work upstream of software-S, protected E22 work, required language/signing/authorization inputs and honest evidence labels. Tests mutate by unit identity and verify the intended defect is detected; valid row ordering is immaterial. The unchanged manifest remains 13 hand-offs, 48 nodes and six unrun probes.
+The current local run passes **49 positive/negative checks**, in normal and optimized Python. It checks issue/file coverage, unique units, known dependencies/acyclicity, probe ownership AND prerequisite reachability, all implementation/probe work upstream of software-S, protected E22 work, required language/signing/authorization inputs and honest evidence labels. Tests mutate by unit identity and verify the intended defect is detected; valid row ordering is immaterial. The unchanged manifest remains 13 hand-offs, 48 nodes and six unrun probes.
 
 The earlier 13-check run is superseded: it missed three reproduced prerequisite omissions, which have now been corrected. File-presence validation in the local container used actual GitHub-returned filenames, not a full clone; the checker identifies this as supplied_list. No Swift test, GUI, filesystem-race proof, signing, migration or release occurred. A structural PASS does not authorize implementation or publication or authenticate later runtime results.
 
