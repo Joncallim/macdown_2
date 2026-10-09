@@ -92,7 +92,10 @@ public final class MarkdownParseSession {
         pendingTask?.cancel()
 
         immediateParseCount += 1
-        defer { immediateParseCount -= 1 }
+        defer {
+            immediateParseCount -= 1
+            refreshParsingState()
+        }
 
         // clearIfCurrent runs before this defer; no suspension point may be
         // inserted between them or the deferred count decrement would race.
@@ -107,10 +110,8 @@ public final class MarkdownParseSession {
     public func cancelPending() {
         pendingTask?.cancel()
         pendingTask = nil
-        if immediateParseCount == 0 {
-            isParsing = false
-        }
         pendingGeneration += 1
+        refreshParsingState()
     }
 
     /// Reparse the last text with new options (E13 will call this; tests now).
@@ -122,7 +123,7 @@ public final class MarkdownParseSession {
     @discardableResult
     private func parse(text: String, revision: Int) async -> MarkdownDocument? {
         isParsing = true
-        defer { isParsing = pendingTask != nil }
+        defer { refreshParsingState() }
 
         do {
             let result = try await engine.parse(text, options: options, revision: revision)
@@ -147,6 +148,14 @@ public final class MarkdownParseSession {
     private func clearIfCurrent(generation: Int) {
         guard pendingGeneration == generation else { return }
         pendingTask = nil
-        isParsing = false
+        refreshParsingState()
+    }
+
+    /// The session is busy exactly while a debounced parse is scheduled or
+    /// any immediate parse has not yet returned. Deriving it from that
+    /// outstanding work (rather than from whichever parse completed last)
+    /// keeps an older completion from reporting idle under a newer parse.
+    private func refreshParsingState() {
+        isParsing = pendingTask != nil || immediateParseCount > 0
     }
 }

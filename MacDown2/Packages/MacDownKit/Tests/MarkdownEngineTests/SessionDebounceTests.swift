@@ -41,22 +41,20 @@ struct SessionDebounceTests {
         #expect(session.document?.body == "immediate")
     }
 
-    @Test func parseNowBumpsGenerationSoStaleDebounceCannotClearState() async throws {
-        let spy = ParseSpy(delay: .milliseconds(200))
-        let session = MarkdownParseSession(engine: spy, debounce: .milliseconds(50))
+    @Test func parseNowBumpsGenerationSoStaleDebounceCannotClearState() async {
+        let engine = GatedParseEngine()
+        let session = MarkdownParseSession(engine: engine, debounce: .milliseconds(50))
 
         session.textDidChange("debounced")
-        // Give the debounce task time to start sleeping before parseNow cancels it.
-        try await Task.sleep(for: .milliseconds(10))
-
+        // Cancels the pending debounce task; its stale cleanup must not clear
+        // parseNow's state however late it runs.
         let parseTask = Task { await session.parseNow("immediate") }
-
-        // Wait long enough for the cancelled debounce task to wake and attempt
-        // its stale cleanup, but not long enough for parseNow's parse to finish.
-        try await Task.sleep(for: .milliseconds(100))
-
+        await engine.waitUntilStarted(1)
+        // Let the cancelled debounce task run its stale cleanup before the gate opens.
+        await Task.yield()
         #expect(session.isParsing == true, "Stale debounce cleanup must not clear parseNow's parsing state")
 
+        await engine.release(call: 1)
         _ = await parseTask.value
 
         #expect(session.completedParseCount == 1)
@@ -187,18 +185,23 @@ struct SessionDebounceTests {
         #expect(document.headings[0].title == "Hello")
     }
 
-    @Test func rapidChangeDuringParseKeepsParsingStateTrue() async throws {
-        // The parse takes far longer than the sleeps, so scheduler jitter on a loaded
-        // runner cannot let the second parse finish before the assertion.
-        let spy = ParseSpy(delay: .milliseconds(1500))
-        let session = MarkdownParseSession(engine: spy, debounce: .milliseconds(10))
+    @Test func rapidChangeDuringParseKeepsParsingStateTrue() async {
+        let engine = GatedParseEngine()
+        let session = MarkdownParseSession(engine: engine, debounce: .milliseconds(10))
 
         session.textDidChange("first")
-        try await Task.sleep(for: .milliseconds(50))
+        await engine.waitUntilStarted(1)
         session.textDidChange("second")
-        try await Task.sleep(for: .milliseconds(100))
 
+        // The first parse is held open and a newer one is scheduled.
         #expect(session.isParsing == true, "A newer parse is still pending/running")
+
+        await engine.release(call: 1)
+        await engine.waitUntilStarted(2)
+        #expect(session.isParsing == true, "The second parse is running")
+        await engine.release(call: 2)
+        await Fixtures.wait { await MainActor.run { !session.isParsing } }
+        #expect(session.document?.body == "second")
     }
 
     @Test func parsingStateClearsAfterDebouncedParseCompletes() async {
