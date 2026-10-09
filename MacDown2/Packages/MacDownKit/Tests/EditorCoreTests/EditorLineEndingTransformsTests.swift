@@ -75,10 +75,14 @@ struct EditorLineEndingTransformsTests {
         #expect(run("a\r\nb") { $0.increaseIndent() } == "    a\r\n    b")
     }
 
-    @Test func aMixedCRAndCRLFDocumentSplitsOnLinefeed() {
-        #expect(EditorLineTransforms.lineSplitSeparator(for: "a\rb\r\nc") == "\n")
-        #expect(EditorLineTransforms.lineSplitSeparator(for: "a\r\nb") == "\n")
-        #expect(EditorLineTransforms.lineSplitSeparator(for: "a\rb") == "\r")
-        #expect(EditorLineTransforms.lineSplitSeparator(for: "ab") == "\n")
+    /// Replaces the old single-separator choice (`lineSplitSeparator`, which split `a\rb\r\nc` on LF only and so
+    /// skipped the bare-CR line): a block is split at every LF and lone CR; a CRLF's CR stays with its line.
+    @Test func logicalLinesSplitAtEveryLFAndLoneCRPreservingEachSeparator() {
+        let mixed = EditorLineTransforms.logicalLines(of: "a\rb\r\nc\nd")
+        #expect(mixed.lines == ["a", "b\r", "c", "d"])
+        #expect(mixed.separators == ["\r", "\n", "\n"])
+        #expect(EditorLineTransforms.joinLogicalLines(mixed.lines, separators: mixed.separators) == "a\rb\r\nc\nd")
+        #expect(EditorLineTransforms.logicalLines(of: "ab").lines == ["ab"])
+        #expect(EditorLineTransforms.logicalLines(of: "a\n").lines == ["a", ""])
     }
 }
