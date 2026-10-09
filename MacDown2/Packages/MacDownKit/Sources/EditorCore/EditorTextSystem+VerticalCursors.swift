@@ -53,6 +53,9 @@ public extension EditorTextSystem {
     }
 
     private func addVerticalCursor(above: Bool) -> Bool {
+        // While marked text is live the line index is stale (it is rebuilt when the composition ends), so the
+        // geometry below could ask for a line terminator outside the new text.
+        guard canApplyCommandEdit else { return false }
         let text = textView.string as NSString
         let selection = selectionSet
         // `selection.ranges` is always sorted ascending and never empty

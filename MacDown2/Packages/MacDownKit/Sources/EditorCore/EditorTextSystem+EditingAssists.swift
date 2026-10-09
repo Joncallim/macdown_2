@@ -93,6 +93,8 @@ extension EditorTextSystem {
             return false
         }
         guard editingAssistConfiguration.isEnabled else { return false }
+        // Bold / Italic / Heading would rewrite marked (IME) text instead of failing open, like every other command.
+        guard canApplyCommandEdit else { return false }
         guard let source = assistTextSource else { return false }
         let outcome = MarkdownEditingAssistEngine.outcome(
             for: .markdownCommand(command),
