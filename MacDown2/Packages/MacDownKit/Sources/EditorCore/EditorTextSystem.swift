@@ -187,6 +187,11 @@ public final class EditorTextSystem {
         let configurationChanged = configuration != lastAppliedConfiguration
         if configurationChanged {
             lastAppliedConfiguration = configuration
+            // Font, insets, line height and wrap mode all change the layout height without touching the text, width
+            // or edit revision the frame-sync signature is made of: invalidate it so the next sync re-measures
+            // instead of reinstalling the old measured height (too short after a larger font, too long after a
+            // smaller).
+            lastFrameSyncSignature = nil
             editingAssistConfiguration = configuration.editingAssists
             languageEditingProfile = configuration.languageProfile
 
