@@ -353,15 +353,6 @@ enum EditorLineTransforms {
         return lineIndex.lineCount > 1 ? terminatorText(afterLine: 1, lineIndex: lineIndex, text: text) : "\n"
     }
 
-    /// The single character to split a line group's content on: `"\n"` (also
-    /// right for CRLF, whose `"\r"` stays attached to its line), or `"\r"` for
-    /// a bare-CR document that contains no `"\n"` at all.
-    static func lineSplitSeparator(for content: String) -> String {
-        // utf8 scan: `String.contains("\n")` is false for a "\r\n" grapheme.
-        let hasLinefeed = content.utf8.contains(0x0A)
-        return hasLinefeed || !content.utf8.contains(0x0D) ? "\n" : "\r"
-    }
-
     /// Builds the final `EditorEditTransaction`, remapping `resultsByOriginalIndex`
     /// back into `EditorSelectionSet.ranges`' own original ordering — every
     /// original index is guaranteed present (every selection belongs to

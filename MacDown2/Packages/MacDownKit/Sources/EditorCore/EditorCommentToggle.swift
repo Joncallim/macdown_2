@@ -127,10 +127,9 @@ enum EditorCommentToggle {
         let groupContent = text.substring(with: groupRange)
 
         if let lineComment = profile.lineComment {
-            let splitter = EditorLineTransforms.lineSplitSeparator(for: groupContent)
-            let lines = groupContent.components(separatedBy: splitter)
+            let (lines, separators) = EditorLineTransforms.logicalLines(of: groupContent)
             let result = lineCommentToggle(lines: lines, prefix: lineComment)
-            let newContent = result.lines.joined(separator: splitter)
+            let newContent = EditorLineTransforms.joinLogicalLines(result.lines, separators: separators)
             let lineLengths = lines.map { ($0 as NSString).length }
             let newLength = (newContent as NSString).length
             return ToggleOutcome(range: groupRange, newContent: newContent) { original in
