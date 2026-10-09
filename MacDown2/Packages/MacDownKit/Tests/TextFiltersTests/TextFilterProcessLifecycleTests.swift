@@ -129,7 +129,9 @@ struct TextFilterProcessLifecycleTests {
             """,
             in: directory
         )
-        let runner = TextFilterRunner(limits: .init(timeout: .milliseconds(300), maxOutputBytes: 4 << 20))
+        // Both stages report their pid on start; the timeout leaves room for
+        // that handshake under load instead of racing it.
+        let runner = TextFilterRunner(limits: .init(timeout: .milliseconds(2000), maxOutputBytes: 4 << 20))
 
         await #expect(throws: TextFilterError.timedOut) {
             _ = try await runner.run(command, input: "")
@@ -162,7 +164,16 @@ struct TextFilterProcessLifecycleTests {
         let task = Task {
             try await TextFilterRunner().run(command, input: "")
         }
-        let recordedPID = try await Self.waitForReportedPIDs(at: pidFile, expectedCount: 1)[0]
+        let recordedPID: pid_t
+        do {
+            recordedPID = try await Self.waitForReportedPID(at: pidFile)
+        } catch {
+            // A readiness failure must not leave the runner (and its process
+            // group) alive while the fixture directory is torn down.
+            task.cancel()
+            _ = await task.result
+            throw error
+        }
         task.cancel()
 
         do {
@@ -184,19 +195,21 @@ struct TextFilterProcessLifecycleTests {
         let command = try Self.command(
             """
             #!/bin/sh
-            sh -c 'trap "" TERM; exec sleep 30' &
-            echo $! > "\(pidFile.path)"
+            sh -c 'trap "" TERM; echo $$ > "\(pidFile.path)"; exec sleep 30' &
             sleep 30
             """,
             in: directory
         )
-        let runner = TextFilterRunner(limits: .init(timeout: .milliseconds(300), maxOutputBytes: 4 << 20))
+        // The descendant reports its pid only after TERM is ignored, so the
+        // pid file doubles as the readiness signal; the timeout leaves room
+        // for that handshake under load instead of racing it.
+        let runner = TextFilterRunner(limits: .init(timeout: .milliseconds(2000), maxOutputBytes: 4 << 20))
 
         await #expect(throws: TextFilterError.timedOut) {
             _ = try await runner.run(command, input: "")
         }
 
-        let recordedPID = try await Self.waitForReportedPIDs(at: pidFile, expectedCount: 1)[0]
+        let recordedPID = try await Self.waitForReportedPID(at: pidFile)
         #expect(kill(recordedPID, 0) != 0, "a TERM-ignoring descendant must still be force-killed")
     }
 
@@ -239,8 +252,23 @@ struct TextFilterProcessLifecycleTests {
             }
             try await Task.sleep(for: .milliseconds(20))
         }
-        Issue.record("fixture never reported \(expectedCount) pid(s) at \(url.path)")
-        return []
+        throw FixtureReadinessError(expectedCount: expectedCount, path: url.path)
+    }
+
+    private static func waitForReportedPID(at url: URL) async throws -> pid_t {
+        let pids = try await waitForReportedPIDs(at: url, expectedCount: 1)
+        guard let first = pids.first else {
+            throw FixtureReadinessError(expectedCount: 1, path: url.path)
+        }
+        return first
+    }
+
+    private struct FixtureReadinessError: Error, CustomStringConvertible {
+        let expectedCount: Int
+        let path: String
+        var description: String {
+            "fixture never reported \(expectedCount) pid(s) at \(path)"
+        }
     }
 
     // MARK: - Stderr cap (post-review finding #16)
