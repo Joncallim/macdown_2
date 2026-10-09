@@ -174,7 +174,11 @@ struct FindBarView: View {
                 sampleSelection: new.searchesSelectionOnly && !old.searchesSelectionOnly
             )
         }
-        .onChange(of: text) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location, reveal: false) }
+        // Exact content identity, not `String` equality: a canonically-equal but byte-distinct change (U+00C5 → U+212B)
+        // is a real edit that must refresh the matches.
+        .onChange(of: ExactTextFingerprint(text)) { _, _ in
+            recomputeMatches(anchor: model.currentMatch?.range.location, reveal: false)
+        }
     }
 
     /// Always shown alongside the query row (not a collapsible "expand for
@@ -291,7 +295,9 @@ struct FindBarView: View {
         // other refresh uses the model's retained domain (#183 F03).
         let selection = sampleSelection ? resolvedSelection() : nil
         Task {
-            guard await model.updateMatches(in: text, selection: selection, preferringLocationNear: anchor) else {
+            guard await model.updateMatches(in: text, selection: selection, preferringLocationNear: anchor),
+                  model.isActive
+            else {
                 return
             }
             onMatchesChanged(reveal)

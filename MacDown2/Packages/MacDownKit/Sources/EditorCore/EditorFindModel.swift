@@ -68,10 +68,10 @@ public final class EditorFindModel {
     /// The dominant line ending of the text the current matches were computed
     /// against, used to adapt a multi-line replacement.
     private var searchedLineEnding: LineEnding?
-    /// UTF-16 length of the text the current matches were computed against. Matches are recomputed only when SwiftUI
-    /// reports a text change, which marked-text (IME / dead-key) edits never post, so before applying a transaction
-    /// built from them the caller compares this with the live length (`matchesAreCurrent(forLiveLength:)`).
-    private var searchedUTF16Length: Int?
+    /// Exact identity of the text the current matches were computed against. SwiftUI reports text changes
+    /// canonically (Å U+00C5 vs U+212B) and never for marked-text edits, so before applying a transaction built from
+    /// them the caller compares this with the live text (`matchesAreCurrent(forLiveText:)`).
+    private var searchedFingerprint: ExactTextFingerprint?
     /// The range "In Selection" searches, retained across refreshes and
     /// remapped through Replace edits (#183 F03). It is sampled from the live
     /// selection only when a caller passes `selection` to `updateMatches`
@@ -183,7 +183,7 @@ public final class EditorFindModel {
         let domain = options.searchesSelectionOnly ? searchDomain : nil
         let scopeLost = options.searchesSelectionOnly && searchDomainLost
         searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
-        searchedUTF16Length = text.utf16.count
+        searchedFingerprint = ExactTextFingerprint(text)
         let query = query
         let options = options
         isSearching = true
@@ -216,10 +216,20 @@ public final class EditorFindModel {
         return true
     }
 
-    /// Whether the current matches can still be applied to a live document of `length` UTF-16 units. False while
-    /// they were computed against a different length (an IME composition changed the text since).
-    public func matchesAreCurrent(forLiveLength length: Int) -> Bool {
-        !isSearching && searchedUTF16Length == length
+    /// Whether the current matches can still be applied to `text`, the live document: they were computed against
+    /// exactly this content and no search is in flight.
+    public func matchesAreCurrent(forLiveText text: String) -> Bool {
+        !isSearching && searchedFingerprint == ExactTextFingerprint(text)
+    }
+
+    /// Retires any search in flight (closing Find, evicting the document): the matcher is cancelled, the search
+    /// generation moves on so a late result is discarded, and nothing is published afterwards. Without this a
+    /// dismissed bar's delayed result re-highlighted and reselected, and a pathological regex kept running.
+    public func cancelPendingSearch() {
+        searchGeneration &+= 1
+        searchTask?.cancel()
+        searchTask = nil
+        isSearching = false
     }
 
     /// The off-main search body. Always searches the FULL text, never a

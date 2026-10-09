@@ -146,7 +146,8 @@ extension DocumentEditorSplitView {
     /// every Find Next/Previous, so the visible highlight and the live
     /// selection never lag behind the model by more than one SwiftUI update.
     func applyFindHighlights(_ model: EditorFindModel, reveal: Bool = true) {
-        guard let system = editorStore.existingSystem(for: identity) else { return }
+        // A result that lands after the bar was dismissed must not re-highlight or reselect.
+        guard model.isActive, let system = editorStore.existingSystem(for: identity) else { return }
         system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
         if reveal, let current = model.currentMatch {
             system.revealSelection(utf16Range: current.range, flash: false, animated: true)
@@ -159,6 +160,7 @@ extension DocumentEditorSplitView {
     /// the user left off.
     func closeFindBar(_ model: EditorFindModel) {
         model.isActive = false
+        model.cancelPendingSearch()
         model.clearSearchDomain()
         editorStore.existingSystem(for: identity)?.setFindHighlights(ranges: [], currentIndex: nil)
     }
@@ -177,9 +179,7 @@ extension DocumentEditorSplitView {
         // The matches were computed against the text as of the last SwiftUI change pass; an active IME composition
         // (or one committed in this very click) changes the text without posting one, so applying now would write at
         // stale offsets (`にほんabarfoo`). Refuse, and search the live text so the next click works.
-        guard system.canApplyCommandEdit,
-              model.matchesAreCurrent(forLiveLength: system.textView.textStorage?.length ?? 0)
-        else {
+        guard system.canApplyCommandEdit, model.matchesAreCurrent(forLiveText: system.text) else {
             Task { await model.updateMatches(in: system.text, preferringLocationNear: nil) }
             return
         }
