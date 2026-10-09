@@ -66,3 +66,29 @@ struct WorkspaceRecoveryActionIdentityTests {
         #expect(model.pendingRecoveryCleanupActions.count == 2)
     }
 }
+
+/// #183 F01 (tenth review): `preserveEditedCleanupDocument` checked currentness BEFORE awaiting the replacement's
+/// persistence and published the rotated payload blindly afterwards, overwriting an edit typed during the await.
+@MainActor
+struct WorkspaceRecoveryRetryRaceTests {
+    @Test func anEditDuringTheRotatedPersistenceIsNotOverwrittenByTheOlderPayload() async {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let older = FileDocument(recoveryBuffer: recovery).updatingText("older")
+        let newer = older.updatingText("newer")
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        store.newTab(document: newer)
+        let model = WorkspaceModel(tabStore: store, stateStore: FakeStateStore())
+        model.afterRecoveryRetryPersistence = {
+            model.tabStore.updateActiveDocument { $0.updatingText("typed during the await") }
+        }
+        let pending = PendingRecoveryCleanupAction.persist(for: older)
+
+        let preserved = await model.preserveEditedCleanupDocument(for: pending)
+
+        #expect(!preserved)
+        #expect(model.activeDocument?.text == "typed during the await")
+        #expect(model.lastError != nil)
+    }
+}

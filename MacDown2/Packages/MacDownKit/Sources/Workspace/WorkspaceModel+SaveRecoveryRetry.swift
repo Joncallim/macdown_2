@@ -119,6 +119,9 @@ extension WorkspaceModel {
                 : current.rebindingSavedDestination(from: continuation.replacement))
             : current
         guard await recoverySnapshotIsDurable(for: replacement) else { return nil }
+        await afterRecoveryRetryPersistence?()
+        // Durability was awaited: if the live document changed meanwhile, publishing `replacement` would overwrite it.
+        guard isCurrent(current) else { return nil }
         tabStore.updateActiveDocument { _ in replacement }
         return replacement
     }
