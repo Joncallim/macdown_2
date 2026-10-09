@@ -167,13 +167,25 @@ enum DerivedContentComposer {
     /// authored body. Because `E12BLOCK` is a prefix of every block sentinel,
     /// one containment check per family clears every sentinel that follows.
     private static func sentinelSuffix(notCollidingWith bodyText: String) -> String {
-        var suffix = ""
-        // `.literal`: a Character-level `contains` misses authored sentinel-shaped text preceded by a Prepend scalar.
-        while bodyText.range(of: blockSentinelBase + suffix, options: .literal) != nil
-            || bodyText.range(of: inlineSentinelBase + suffix, options: .literal) != nil {
-            suffix += "_"
+        // One literal scan per family, remembering the longest run of `_` that follows an occurrence: the shortest
+        // colliding-free suffix is one underscore longer than that run (or empty when there is no occurrence). Adding
+        // an underscore per pass and rescanning the whole body was quadratic in a hostile `E12BLOCK____…` run.
+        var longestRun = -1
+        for base in [blockSentinelBase, inlineSentinelBase] {
+            var searchStart = bodyText.startIndex
+            while searchStart < bodyText.endIndex,
+                  let hit = bodyText.range(of: base, options: .literal, range: searchStart ..< bodyText.endIndex) {
+                var run = 0
+                var cursor = hit.upperBound
+                while cursor < bodyText.endIndex, bodyText.unicodeScalars[cursor] == "_" {
+                    run += 1
+                    cursor = bodyText.unicodeScalars.index(after: cursor)
+                }
+                longestRun = max(longestRun, run)
+                searchStart = cursor
+            }
         }
-        return suffix
+        return longestRun < 0 ? "" : String(repeating: "_", count: longestRun + 1)
     }
 
     /// `<family><suffix><index>Z`. The trailing `Z` terminates the digit run so
