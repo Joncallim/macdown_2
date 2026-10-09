@@ -117,7 +117,8 @@ extension ExternalFileController {
                         Task { @MainActor [weak self] in
                             self?.handle(context)
                         }
-                    }
+                    },
+                    bindingToken: generation
                 )
                 guard isBindingCurrent(generation: generation, url: fileURL) else { return }
                 bindRetryAttempt = 0

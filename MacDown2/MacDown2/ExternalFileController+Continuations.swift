@@ -109,6 +109,12 @@ extension ExternalFileController {
         )
     }
 
+    /// The document a bind retry must (re)install: the LIVE one when it is still the captured document's file.
+    static func bindRetryDocument(live: FileDocument?, captured: FileDocument, url: URL) -> FileDocument? {
+        guard let live, live.id == captured.id, live.fileURL?.standardizedFileURL == url else { return nil }
+        return live
+    }
+
     func scheduleBindRetry(for document: FileDocument, generation: UInt) {
         guard let url = document.fileURL?.standardizedFileURL, bindRetryAttempt < 3 else { return }
         bindRetryAttempt += 1
@@ -121,8 +127,14 @@ extension ExternalFileController {
                 return
             }
             guard let self, isBindingCurrent(generation: generation, url: url) else { return }
+            // Retry with the LIVE document (its current encoding policy and revision), not the one captured when the
+            // watcher first failed: a successful Save with Encoding in the meantime changed the policy, and
+            // reinstalling the old one made the monitor report the saved file undecodable (and the document dirty).
+            guard let live = Self.bindRetryDocument(live: model?.activeDocument, captured: document, url: url) else {
+                return
+            }
             boundURL = nil
-            synchronize(with: document)
+            synchronize(with: live)
         }
     }
 

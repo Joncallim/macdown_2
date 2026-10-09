@@ -14,6 +14,11 @@ public actor DocumentFileMonitor {
     private let prober: any DocumentFileProbing
     private let sleeper: @Sendable (Duration) async -> Void
     var generation: UInt = 0
+    /// The caller's own binding identity, echoed in every emitted context. The monitor's `generation` advances only
+    /// when a bind actually executes, so a caller that supersedes a queued bind (and so never calls it) could never
+    /// keep
+    /// its own count equal to this one; it supplies a token instead and compares that.
+    private var bindingToken: UInt?
     var probeSequence: UInt = 0
     var boundURL: URL?
     private var priorFileObjectID: PhysicalFileIdentity.FileObjectID?
@@ -57,9 +62,11 @@ public actor DocumentFileMonitor {
         decoding: FileDecodingPolicy = .automatic,
         onObservation: @escaping @Sendable (DocumentFileObservation) -> Void,
         onHealthChange: @escaping @Sendable (DocumentFileMonitorHealth) -> Void = { _ in },
-        onContext: @escaping @Sendable (DocumentFileObservationContext) -> Void = { _ in }
+        onContext: @escaping @Sendable (DocumentFileObservationContext) -> Void = { _ in },
+        bindingToken: UInt? = nil
     ) async throws {
         generation &+= 1
+        self.bindingToken = bindingToken
         probeSequence &+= 1
         let currentGeneration = generation
         let initialSequence = probeSequence
@@ -222,7 +229,7 @@ public actor DocumentFileMonitor {
             contextCallback?(
                 DocumentFileObservationContext(
                     observation: observation,
-                    bindingGeneration: generation,
+                    bindingGeneration: bindingToken ?? generation,
                     requestGeneration: sequence,
                     expectedURL: boundURL
                 )
