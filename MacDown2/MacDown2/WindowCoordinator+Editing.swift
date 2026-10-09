@@ -84,6 +84,8 @@ extension WindowCoordinator {
               let document = controller.model.activeDocument,
               let textSystem = controller.activeEditorTextSystem
         else { return false }
+        // Never format over marked (IME) text: it would commit or cancel the composition.
+        guard textSystem.canApplyCommandEdit else { return false }
 
         let snapshotText = textSystem.text
         let baseline = JSONFormattingBaseline(
@@ -106,7 +108,8 @@ extension WindowCoordinator {
                   text: currentSystem.text,
                   documentGeneration: currentDocument.mutationGeneration,
                   editorContentRevision: currentSystem.contentRevision
-              )
+              ),
+              currentSystem.canApplyCommandEdit // a composition may have started while formatting ran
         else { return false }
 
         switch outcome {
