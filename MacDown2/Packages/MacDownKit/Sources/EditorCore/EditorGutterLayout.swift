@@ -1,14 +1,16 @@
 import Foundation
 
-/// One line-number label the gutter should draw, at a given vertical
-/// position in the text view's own coordinate space.
+/// One line-number label the gutter should draw, at a given BASELINE
+/// position (not merely a fragment's top edge) in the text view's own
+/// coordinate space -- see `EditorTextSystem.enumerateVisibleLineFragments`'s
+/// own doc comment for why the distinction matters.
 public struct GutterLineLabel: Sendable, Equatable {
     public let lineNumber: Int
-    public let minY: CGFloat
+    public let baselineY: CGFloat
 
-    public init(lineNumber: Int, minY: CGFloat) {
+    public init(lineNumber: Int, baselineY: CGFloat) {
         self.lineNumber = lineNumber
-        self.minY = minY
+        self.baselineY = baselineY
     }
 }
 
@@ -29,7 +31,7 @@ public enum EditorGutterLayout {
     /// glue) is responsible for that bounding; this function performs no
     /// viewport logic of its own and is safe to call with any input size.
     public static func labels(
-        for fragments: [(utf16Offset: Int, minY: CGFloat)],
+        for fragments: [(utf16Offset: Int, baselineY: CGFloat)],
         lineIndex: EditorLineIndex
     ) -> [GutterLineLabel] {
         fragments.compactMap { fragment in
@@ -37,7 +39,7 @@ public enum EditorGutterLayout {
             guard lineNumber >= 1, lineNumber <= lineIndex.lineCount else { return nil }
             let lineStart = lineIndex.lineStartOffsets[lineNumber - 1]
             guard fragment.utf16Offset == lineStart else { return nil }
-            return GutterLineLabel(lineNumber: lineNumber, minY: fragment.minY)
+            return GutterLineLabel(lineNumber: lineNumber, baselineY: fragment.baselineY)
         }
     }
 }

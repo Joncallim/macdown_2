@@ -14,7 +14,8 @@ struct BlockView: View {
     let block: PreviewBlock
     let theme: PreviewTheme
     let linkResolver: PreviewLinkResolver
-    let linkDefinitions: [String]
+    @Environment(\.previewOpenDocument) private var openDocument
+    let definitionIndex: PreviewLinkDefinitionIndex
     let mermaidFenceView: ((String) -> AnyView)?
     let d2FenceView: ((String) -> AnyView)?
     let graphvizFenceView: ((String) -> AnyView)?
@@ -25,8 +26,7 @@ struct BlockView: View {
     /// ``PreviewLinkDefinitions``. Oversize blocks skip this — they already
     /// bypass Textual entirely.
     private var renderedSource: String {
-        guard !linkDefinitions.isEmpty else { return block.source }
-        return (linkDefinitions + [block.source]).joined(separator: "\n")
+        definitionIndex.prefixed(block.source)
     }
 
     /// `block.source` for a `.codeBlock` includes both fence delimiter
@@ -85,7 +85,19 @@ struct BlockView: View {
                     \.openURL,
                     OpenURLAction { url in
                         let resolved = linkResolver.resolve(url)
-                        NSWorkspace.shared.open(resolved)
+                        switch PreviewLinkResolver.action(for: resolved, currentDocument: linkResolver.baseURL) {
+                        case .open: NSWorkspace.shared.open(resolved)
+                        case let .openInApp(document):
+                            // Through MostlyText when the host provides it; otherwise the
+                            // default handler for a text document.
+                            if let openDocument {
+                                openDocument(document)
+                            } else {
+                                NSWorkspace.shared.open(document)
+                            }
+                        case .reveal: NSWorkspace.shared.activateFileViewerSelecting([resolved])
+                        case .ignore: break
+                        }
                         return .handled
                     }
                 )

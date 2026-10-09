@@ -2,9 +2,10 @@ import Foundation
 
 /// Line ↔ UTF-16 offset conversion for the ORIGINAL source (D4).
 ///
-/// Built in one O(n) pass; `\n` terminates lines; a `\r` before `\n` belongs
-/// to the preceding line's content (offsets count UTF-16 units, so CRLF is
-/// handled by construction, not by special cases).
+/// Built in one O(n) pass. A line ends at `\n`, `\r\n` or a lone `\r`
+/// (CommonMark's three line endings, and what the parser's own line numbers
+/// count); a CRLF pair is ONE terminator, so a line start is never between its
+/// two units. Offsets count UTF-16 units and are those of the original text.
 public struct SourceMap: Sendable, Equatable {
     public let lineCount: Int
 
@@ -12,33 +13,58 @@ public struct SourceMap: Sendable, Equatable {
     /// is line 1 and is always 0. Count == lineCount.
     public let lineStartOffsets: [Int]
 
+    /// UTF-16 length of the terminator that ends each line (0 for the last
+    /// line when the text does not end with one). Count == lineCount.
+    private let terminatorLengths: [Int]
+
     /// Total UTF-16 length of the source.
     public let utf16Length: Int
 
     public init(text: String) {
         var offsets = [0]
+        var terminators: [Int] = []
         var offset = 0
+        var previousWasCarriageReturn = false
 
-        let utf16 = text.utf16
-        for index in utf16.indices {
+        for unit in text.utf16 {
             offset += 1
-            if utf16[index] == 0x000A { // \n
+            if unit == 0x000A { // \n
+                if previousWasCarriageReturn {
+                    // CRLF: the CR already opened a line start; move it past the LF
+                    // and widen that line's terminator to two units.
+                    offsets[offsets.count - 1] = offset
+                    terminators[terminators.count - 1] = 2
+                } else {
+                    terminators.append(1)
+                    offsets.append(offset)
+                }
+                previousWasCarriageReturn = false
+            } else if unit == 0x000D { // \r
+                terminators.append(1)
                 offsets.append(offset)
+                previousWasCarriageReturn = true
+            } else {
+                previousWasCarriageReturn = false
             }
         }
+        terminators.append(0)
 
         // Empty text is a single empty line.
         if text.isEmpty {
             offsets = [0]
+            terminators = [0]
         }
 
         lineStartOffsets = offsets
+        terminatorLengths = terminators
         lineCount = offsets.count
         utf16Length = offset
     }
 
     /// UTF-16 range covering the given original-source lines, clamped to the
-    /// document. The range of the last line extends to `utf16Length`.
+    /// document. The range of the last line extends to `utf16Length`; any other
+    /// range ends before the WHOLE terminator of its last line (never splitting
+    /// a CRLF pair, which would make it unconvertible to a Swift `Range`).
     public func utf16Range(ofLines lines: ClosedRange<Int>) -> NSRange {
         let lower = max(lines.lowerBound, 1)
         let upper = min(lines.upperBound, lineCount)
@@ -50,7 +76,7 @@ public struct SourceMap: Sendable, Equatable {
 
         let startOffset = lineStartOffsets[lower - 1]
         let endOffset: Int = if upper < lineCount {
-            lineStartOffsets[upper] - 1
+            lineStartOffsets[upper] - terminatorLengths[upper - 1]
         } else {
             utf16Length
         }

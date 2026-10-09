@@ -69,7 +69,12 @@ public extension EditorTextSystem {
     var selectionSet: EditorSelectionSet {
         get {
             let liveRanges = textView.selectedRanges.map(\.rangeValue)
-            if let cached = storedSelectionSet, cached.ranges == liveRanges || liveRanges == [cached.primaryRange] {
+            let length = assistTextSource?.length ?? (textView.string as NSString).length
+            // A text edit that leaves the primary range unchanged (forward-delete at the caret, Replace All
+            // further down) also leaves the cache, whose other carets are then past the end of the text.
+            if let cached = storedSelectionSet,
+               cached.ranges.allSatisfy({ NSMaxRange($0) <= length }),
+               cached.ranges == liveRanges || liveRanges == [cached.primaryRange] {
                 return cached
             }
             return EditorSelectionSet(selectedRanges: textView.selectedRanges) ??

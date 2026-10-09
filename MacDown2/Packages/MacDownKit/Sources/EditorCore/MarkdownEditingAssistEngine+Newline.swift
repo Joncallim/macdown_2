@@ -68,13 +68,7 @@ extension MarkdownEditingAssistEngine {
         if contentIsEmpty {
             return terminationOutcome(prefix: prefix, caret: caret, separator: separator, text: text)
         }
-        return continuationOutcome(
-            prefix: prefix,
-            caret: caret,
-            separator: separator,
-            text: text,
-            configuration: configuration
-        )
+        return continuationOutcome(prefix: prefix, caret: caret, separator: separator, configuration: configuration)
     }
 
     /// General Return-key indentation, for every non-Markdown format: keeps
@@ -140,32 +134,18 @@ extension MarkdownEditingAssistEngine {
         ))
     }
 
-    /// Normal continuation. When splitting immediately before an
-    /// already-present exact continuation prefix, only the separator is
-    /// inserted so the prefix is not duplicated (decided from the original
-    /// live text before any mutation).
+    /// Normal continuation: the separator plus the next line's prefix, inserted at the caret. The replacement starts
+    /// with the line separator, so text that already begins with the same separator + prefix is the NEXT line of an
+    /// ordinary list/quote — skipping the prefix there (as an earlier version did, to avoid "duplicating" it) made
+    /// Return at the end of any non-last item insert a bare blank line and no bullet, which also turns the list
+    /// loose in Preview.
     private static func continuationOutcome(
         prefix: MarkdownLinePrefix,
         caret: Int,
         separator: String,
-        text: NSString,
         configuration: EditingAssistConfiguration
     ) -> EditingAssistOutcome {
-        let nextLinePrefix = continuationPrefix(for: prefix, configuration: configuration)
-        let replacementText = separator + nextLinePrefix
-
-        // Bounded local search — never a full-document scan.
-        let searchLength = min(replacementText.utf16.count, text.length - caret)
-        let match = text.range(
-            of: replacementText,
-            options: [],
-            range: NSRange(location: caret, length: max(0, searchLength))
-        )
-        let replacement: String = if match.location == caret, match.length == replacementText.utf16.count {
-            separator
-        } else {
-            replacementText
-        }
+        let replacement = separator + continuationPrefix(for: prefix, configuration: configuration)
         return .edit(EditingAssistEdit(
             replacementRange: NSRange(location: caret, length: 0),
             replacementString: replacement,

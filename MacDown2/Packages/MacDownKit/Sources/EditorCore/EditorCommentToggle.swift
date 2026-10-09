@@ -54,6 +54,10 @@ enum EditorCommentToggle {
             delta += (outcome.newContent as NSString).length - outcome.range.length
         }
 
+        // Removing a comment marker can leave a `\r` directly before an unrelated `\n` (mixed endings), which would
+        // be read back as one `\r\n`, dropping a line.
+        guard !EditorLineTransforms.createsCRLFPair(replacements, in: text) else { return nil }
+
         return EditorLineTransforms.makeTransaction(
             replacements: replacements,
             resultsByOriginalIndex: resultsByOriginalIndex,
@@ -123,9 +127,10 @@ enum EditorCommentToggle {
         let groupContent = text.substring(with: groupRange)
 
         if let lineComment = profile.lineComment {
-            let lines = groupContent.components(separatedBy: "\n")
+            let splitter = EditorLineTransforms.lineSplitSeparator(for: groupContent)
+            let lines = groupContent.components(separatedBy: splitter)
             let result = lineCommentToggle(lines: lines, prefix: lineComment)
-            let newContent = result.lines.joined(separator: "\n")
+            let newContent = result.lines.joined(separator: splitter)
             let lineLengths = lines.map { ($0 as NSString).length }
             let newLength = (newContent as NSString).length
             return ToggleOutcome(range: groupRange, newContent: newContent) { original in
@@ -191,11 +196,15 @@ enum EditorCommentToggle {
         func leadingWhitespace(of line: String) -> Substring {
             line.prefix { $0 == " " || $0 == "\t" }
         }
+        /// A CRLF document's lines keep their trailing "\r" after the "\n" split,
+        /// which must not make an otherwise-blank line look non-blank.
         func isBlank(_ line: String) -> Bool {
-            leadingWhitespace(of: line).count == line.count
+            let body = line.hasSuffix("\r") ? String(line.dropLast()) : line
+            return leadingWhitespace(of: body).count == body.count
         }
         let allCommented = lines.allSatisfy { line in
-            isBlank(line) || line.dropFirst(leadingWhitespace(of: line).count).hasPrefix(prefix)
+            isBlank(line)
+                || line.dropFirst(leadingWhitespace(of: line).count).unicodeScalars.starts(with: prefix.unicodeScalars)
         }
 
         var deltas: [Int] = []
@@ -210,16 +219,19 @@ enum EditorCommentToggle {
                 return line
             }
             if allCommented {
-                var afterPrefix = rest.dropFirst(prefix.count)
+                // Scalar view: the space inserted by the comment command merges with a following U+0301/ZWJ/VS16 into
+                // one `Character`, which a Character-level `first == " "` never matched, leaving a stray space on
+                // every comment/uncomment cycle.
+                var afterPrefix = rest.unicodeScalars.dropFirst(prefix.unicodeScalars.count)
                 var removedLength = (prefix as NSString).length
                 if afterPrefix.first == " " {
                     afterPrefix = afterPrefix.dropFirst()
                     removedLength += 1
                 }
                 deltas.append(-removedLength)
-                return String(leading) + afterPrefix
+                return String(leading) + String(afterPrefix)
             }
-            guard !rest.hasPrefix(prefix) else {
+            guard !rest.unicodeScalars.starts(with: prefix.unicodeScalars) else {
                 deltas.append(0)
                 return line
             }

@@ -41,15 +41,15 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
                 """
             )
         case let .parseFailed(error):
-            return String(localized: "Markdown parse failed: \(error.localizedDescription)")
+            return String(localized: "Markdown parse failed: \(error.localizedDescription)", bundle: .module)
         case let .renderFailed(error):
-            return String(localized: "HTML rendering failed: \(error.localizedDescription)")
+            return String(localized: "HTML rendering failed: \(error.localizedDescription)", bundle: .module)
         case let .writeFailed(error):
-            return String(localized: "Writing export output failed: \(error.localizedDescription)")
+            return String(localized: "Writing export output failed: \(error.localizedDescription)", bundle: .module)
         case let .invalidDestination(path):
-            return String(localized: "Export destination is invalid: \(path)")
+            return String(localized: "Export destination is invalid: \(path)", bundle: .module)
         case let .budgetExceeded(detail):
-            return String(localized: "This document is too large to export: \(detail).")
+            return String(localized: "This document is too large to export: \(detail).", bundle: .module)
         }
     }
 
@@ -65,7 +65,7 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
         let listed = diagnostics.prefix(listedAtMost).map(\.message).joined(separator: "\n")
         guard diagnostics.count > listedAtMost else { return listed }
         let remaining = diagnostics.count - listedAtMost
-        return listed + "\n" + String(localized: "…and \(remaining) more.")
+        return listed + "\n" + String(localized: "…and \(remaining) more.", bundle: .module)
     }
 
     /// The actionable next step, shown under the message in the app's alert.
@@ -76,15 +76,15 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
                 localized: "Fix the image paths, or export as HTML, which keeps unresolved references as authored."
             )
         case .rawHTMLNotEmbeddable:
-            String(localized: "Choose the HTML format, which preserves authored raw HTML.")
+            String(localized: "Choose the HTML format, which preserves authored raw HTML.", bundle: .module)
         case .parseFailed, .renderFailed:
             nil
         case .writeFailed:
-            String(localized: "Check that the destination folder exists and is writable.")
+            String(localized: "Check that the destination folder exists and is writable.", bundle: .module)
         case .invalidDestination:
-            String(localized: "Choose a different destination folder.")
+            String(localized: "Choose a different destination folder.", bundle: .module)
         case .budgetExceeded:
-            String(localized: "Split the document, or reduce the size of the images it references.")
+            String(localized: "Split the document, or reduce the size of the images it references.", bundle: .module)
         }
     }
 }

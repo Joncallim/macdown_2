@@ -1,4 +1,5 @@
 import AppKit
+import FileCore
 
 // MARK: - Sort/Dedupe/Trim/Case/Indent transform commands (EPIC-22 §6.13, Slice 4c-ii)
 
@@ -51,6 +52,13 @@ public extension EditorTextSystem {
         performIndentTransform(decrease: true)
     }
 
+    @discardableResult
+    func convertLineEndings(to target: LineEnding) -> Bool {
+        performTextTransform { text, _, selection in
+            EditorTextTransforms.convertLineEndingsTransaction(text: text, selection: selection, target: target)
+        }
+    }
+
     private func performIndentTransform(decrease: Bool) -> Bool {
         let width = languageEditingProfile.defaultIndentWidth ?? editingAssistConfiguration.indentationWidth
         return performTextTransform { text, lineIndex, selection in
@@ -59,7 +67,8 @@ public extension EditorTextSystem {
                 lineIndex: lineIndex,
                 selection: selection,
                 width: width,
-                decrease: decrease
+                decrease: decrease,
+                usesTabs: !editingAssistConfiguration.convertsTabsToSpaces
             )
         }
     }
@@ -67,7 +76,7 @@ public extension EditorTextSystem {
     private func performTextTransform(
         _ transform: (NSString, EditorLineIndex, EditorSelectionSet) -> EditorEditTransaction?
     ) -> Bool {
-        guard let text = assistTextSource else { return false }
+        guard canApplyCommandEdit, let text = assistTextSource else { return false }
         guard let transaction = transform(text, lineIndex, selectionSet) else { return false }
         apply(transaction)
         return true

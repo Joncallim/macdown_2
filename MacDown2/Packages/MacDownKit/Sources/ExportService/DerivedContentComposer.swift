@@ -16,6 +16,7 @@ enum DerivedContentComposer {
         let splicedBody: String
         let customNodes: [CMarkGFM.CustomNodeSpec]
         let diagnostics: [ExportDiagnostic]
+        let sentinelSuffix: String
     }
 
     /// One accepted replacement: a body-relative UTF-16 range and the sentinel
@@ -37,6 +38,67 @@ enum DerivedContentComposer {
         let sourceGeneration: UInt
         let sentinelSuffix: String
         let budget: ExportResourceBudget
+        /// Source-coordinate UTF-16 ranges of every block quote and list item.
+        let containerRanges: [Range<Int>]
+        let bodyText: NSString
+
+        /// Whether the contributed range opens with a code-fence line (after any quote/list/indent prefix).
+        func startsFence(_ bodyRange: Range<Int>) -> Bool {
+            guard bodyRange.lowerBound < bodyText.length else { return false }
+            let line = bodyText.lineRange(for: NSRange(location: bodyRange.lowerBound, length: 0))
+            let first = Self.strippingContainerPrefix(bodyText.substring(with: line)[...])
+            return first.hasPrefix("```") || first.hasPrefix("~~~")
+        }
+
+        /// Whether the range is the whole logical line: only whitespace and quote/list markers before it,
+        /// only whitespace after it. A block placement is only faithful then; mid-line (a table cell, a
+        /// heading, emphasis, a link, a paragraph) a blank-line-delimited sentinel would split the construct.
+        func occupiesWholeLines(_ bodyRange: Range<Int>) -> Bool {
+            guard bodyRange.lowerBound <= bodyText.length, bodyRange.upperBound <= bodyText.length else { return false }
+            let startLine = bodyText.lineRange(for: NSRange(location: bodyRange.lowerBound, length: 0))
+            let before = bodyText.substring(
+                with: NSRange(location: startLine.location, length: bodyRange.lowerBound - startLine.location)
+            )
+            guard Self.strippingContainerPrefix(before[...]).allSatisfy(\.isWhitespace) else { return false }
+            let endLine = bodyText.lineRange(for: NSRange(location: bodyRange.upperBound, length: 0))
+            let afterLength = max(0, NSMaxRange(endLine) - bodyRange.upperBound)
+            let after = bodyText.substring(with: NSRange(location: bodyRange.upperBound, length: afterLength))
+            guard after.allSatisfy(\.isWhitespace) else { return false }
+            // A contribution that is the whole content line of a setext heading must stay inline:
+            // a blank-line-delimited block would turn the heading into a paragraph plus a rule.
+            // A closed fence can never be setext content, so a `---` after it is just a thematic break.
+            guard !startsFence(bodyRange) else { return true }
+            let nextStart = NSMaxRange(endLine)
+            guard nextStart < bodyText.length else { return true }
+            let nextLine = bodyText.lineRange(for: NSRange(location: nextStart, length: 0))
+            let next = Self.strippingContainerPrefix(bodyText.substring(with: nextLine)[...])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let isUnderline = !next.isEmpty && (next.allSatisfy { $0 == "=" } || next.allSatisfy { $0 == "-" })
+            return !isUnderline
+        }
+
+        /// Drops any leading run of indentation, `>` quote markers and list markers (`-`, `+`, `*`, `1.`, `1)`).
+        static func strippingContainerPrefix(_ line: Substring) -> Substring {
+            var rest = line
+            while true {
+                let trimmed = rest.drop { $0 == " " || $0 == "\t" || $0 == ">" }
+                var next = trimmed
+                if let marker = trimmed.first, "-+*".contains(marker), trimmed.dropFirst().first?.isWhitespace == true {
+                    next = trimmed.dropFirst()
+                } else {
+                    let digits = trimmed.prefix { $0.isASCII && $0.isNumber }
+                    let afterDigits = trimmed.dropFirst(digits.count)
+                    if !digits.isEmpty, let punctuation = afterDigits.first, punctuation == "." || punctuation == ")",
+                       afterDigits.dropFirst().first?.isWhitespace == true {
+                        next = afterDigits.dropFirst()
+                    }
+                }
+                if next.startIndex == rest.startIndex {
+                    return trimmed
+                }
+                rest = next
+            }
+        }
     }
 
     static func compose(
@@ -45,10 +107,11 @@ enum DerivedContentComposer {
         sourceUTF16Length: Int,
         contributions: [ExportDerivedContribution],
         sourceGeneration: UInt,
-        budget: ExportResourceBudget = .standard
+        budget: ExportResourceBudget = .standard,
+        containerRanges: [Range<Int>] = []
     ) -> Result {
         guard !contributions.isEmpty else {
-            return Result(splicedBody: bodyText, customNodes: [], diagnostics: [])
+            return Result(splicedBody: bodyText, customNodes: [], diagnostics: [], sentinelSuffix: "")
         }
 
         let context = ValidationContext(
@@ -59,7 +122,9 @@ enum DerivedContentComposer {
             // One scan of the body picks a sentinel family that cannot collide
             // with authored text, rather than re-scanning per contribution.
             sentinelSuffix: sentinelSuffix(notCollidingWith: bodyText),
-            budget: budget
+            budget: budget,
+            containerRanges: containerRanges,
+            bodyText: bodyText as NSString
         )
 
         let sorted = contributions.sorted { $0.sourceRange.lowerBound < $1.sourceRange.lowerBound }
@@ -71,8 +136,28 @@ enum DerivedContentComposer {
         return Result(
             splicedBody: splice(plan.splices, into: bodyText),
             customNodes: plan.customNodes,
-            diagnostics: plan.diagnostics
+            diagnostics: plan.diagnostics,
+            sentinelSuffix: context.sentinelSuffix
         )
+    }
+
+    /// The sorted-contribution indices whose sentinel text is still in the RENDERED HTML. A sentinel is replaced
+    /// only where cmark parses it as ordinary text; inside a link destination or title, a reference definition,
+    /// an HTML attribute or similar it stays as the sentinel string, which must never reach an export.
+    static func leakedSentinelIndices(in html: String, suffix: String) -> Set<Int> {
+        guard html.range(of: "E12", options: .literal) != nil else { return [] }
+        let escaped = NSRegularExpression.escapedPattern(for: suffix)
+        guard let expression = try? NSRegularExpression(
+            pattern: "E12(?:BLOCK|INLINE)" + escaped + "(\\d+)Z"
+        ) else { return [] }
+        let nsHTML = html as NSString
+        var indices: Set<Int> = []
+        for match in expression.matches(in: html, range: NSRange(location: 0, length: nsHTML.length)) {
+            if let index = Int(nsHTML.substring(with: match.range(at: 1))) {
+                indices.insert(index)
+            }
+        }
+        return indices
     }
 
     private static let blockSentinelBase = "E12BLOCK"
@@ -82,11 +167,25 @@ enum DerivedContentComposer {
     /// authored body. Because `E12BLOCK` is a prefix of every block sentinel,
     /// one containment check per family clears every sentinel that follows.
     private static func sentinelSuffix(notCollidingWith bodyText: String) -> String {
-        var suffix = ""
-        while bodyText.contains(blockSentinelBase + suffix) || bodyText.contains(inlineSentinelBase + suffix) {
-            suffix += "_"
+        // One literal scan per family, remembering the longest run of `_` that follows an occurrence: the shortest
+        // colliding-free suffix is one underscore longer than that run (or empty when there is no occurrence). Adding
+        // an underscore per pass and rescanning the whole body was quadratic in a hostile `E12BLOCK____…` run.
+        var longestRun = -1
+        for base in [blockSentinelBase, inlineSentinelBase] {
+            var searchStart = bodyText.startIndex
+            while searchStart < bodyText.endIndex,
+                  let hit = bodyText.range(of: base, options: .literal, range: searchStart ..< bodyText.endIndex) {
+                var run = 0
+                var cursor = hit.upperBound
+                while cursor < bodyText.endIndex, bodyText.unicodeScalars[cursor] == "_" {
+                    run += 1
+                    cursor = bodyText.unicodeScalars.index(after: cursor)
+                }
+                longestRun = max(longestRun, run)
+                searchStart = cursor
+            }
         }
-        return suffix
+        return longestRun < 0 ? "" : String(repeating: "_", count: longestRun + 1)
     }
 
     /// `<family><suffix><index>Z`. The trailing `Z` terminates the digit run so
@@ -160,13 +259,33 @@ private struct DerivedContentPlan {
             return
         }
 
-        let isBlock = contribution.placement == .block
+        var isBlock = contribution.placement == .block
+        if isBlock {
+            // A blank-line-delimited sentinel ends whatever construct it sits in. Mid-line (table cell, heading,
+            // emphasis, link, paragraph text) the contribution stays an inline fragment. On its own lines inside a
+            // list item or block quote it also stays inline (display math) — except a diagram fence, whose lines
+            // carry the container's own prefixes and cannot be lifted out cleanly: it stays as authored source.
+            if !context.occupiesWholeLines(bodyRange) {
+                isBlock = false
+            } else if context.containerRanges.contains(where: { $0.contains(range.lowerBound) }) {
+                guard !context.startsFence(bodyRange) else {
+                    diagnostics.append(ExportDiagnostic(
+                        severity: .warning,
+                        message: "a diagram inside a list item or block quote is exported as its source text"
+                    ))
+                    return
+                }
+                isBlock = false
+            }
+        }
         let sentinel = DerivedContentComposer.makeSentinel(
             isBlock: isBlock,
             index: index,
             suffix: context.sentinelSuffix
         )
-        customNodes.append(CMarkGFM.CustomNodeSpec(sentinel: sentinel, isBlock: isBlock, html: contribution.html))
+        customNodes.append(CMarkGFM.CustomNodeSpec(sentinel: sentinel,
+                                                   isBlock: isBlock,
+                                                   html: DerivedHTMLSanitizer.sanitized(contribution.html)))
         splices.append(DerivedContentComposer.Splice(range: bodyRange, sentinel: sentinel, isBlock: isBlock))
         previousBodyUpperBound = bodyRange.upperBound
         placedCount += 1

@@ -21,6 +21,15 @@ as a read-only porting source in `legacy-reference/`.
   slice, Definition of Done, and human-readability rules for new epic work.
 - `planning/RELEASE_HARDENING.md` — binding cross-epic macOS 1.0 integration,
   identity, evidence, offline/privacy, fidelity, localisation and release gates.
+- `planning/RELEASE_PATH.md` — coordination map from current `master` to public
+  MostlyText 1.0: order, cloud/Mac split, open owner decisions. Adds no scope.
+- `design/` — MostlyText design packet (`DESIGN_CONTEXT.md`, `DECISIONS.md`)
+  and the canonical brand assets.
+- `compliance/` — third-party licence/provenance gate (#148): `inventory.json`,
+  generated notices and SBOM, and `tools/compliance.py`. Update the inventory in
+  the same change as any new dependency or bundled file.
+- `website/` — draft of the `mostlytext.app` download site. Not deployed before
+  E17; see its claims ledger.
 
 ## Commands (from repo root)
 
@@ -28,8 +37,9 @@ as a read-only porting source in `legacy-reference/`.
 |---|---|
 | Generate Xcode project | `cd MacDown2 && xcodegen generate` |
 | Build app | `xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' build` |
-| Build app for dogfooding | same as above + `-configuration Release` — Debug Swift has no optimizations and materially changes how the app feels to type in; judge responsiveness on a Release build, not Debug |
-| Build + test package | `cd MacDown2/Packages/MacDownKit && swift build && swift test` |
+| Build app for dogfooding | `MacDown2/scripts/pin-xcode-package-versions.sh`, then the command above + `-configuration Release -onlyUsePackageVersionsFromResolvedFile` — Debug Swift has no optimizations and materially changes how the app feels to type in; judge responsiveness on a Release build, not Debug |
+| Pin Xcode to locked dependency versions | `MacDown2/scripts/pin-xcode-package-versions.sh` after `xcodegen generate`, then add `-onlyUsePackageVersionsFromResolvedFile` to `xcodebuild`. CI does this for every Xcode build; the plain "Build app" command above does not, so Xcode resolves on its own |
+| Build + test package | `cd MacDown2/Packages/MacDownKit && swift build && swift test` (CI adds `--force-resolved-versions`) |
 | Lint | `swiftlint lint --strict MacDown2` |
 | Format check | `swiftformat --lint MacDown2` |
 
@@ -39,6 +49,11 @@ as a read-only porting source in `legacy-reference/`.
 - Swift 6 + strict concurrency; warnings are fixed, not ignored.
 - SPM only; third-party deps pinned and wrapped behind internal protocols
   (see `planning/MIGRATION_PLAN.md` §5).
+- `MacDown2/Packages/MacDownKit/Package.resolved` is committed and is the
+  dependency lock. CI enforces it for the package build/tests and every Xcode
+  build; locally it is enforced only with `--force-resolved-versions` or the
+  pin step + flag above. Change it only in a deliberate dependency update
+  (`swift package update` or `resolve`), reviewed like any other code.
 - One branch per epic (`epic/NN-name`) → PR into `master`.
 - Before starting or materially revising an epic, read and follow
   `planning/EPIC_STANDARD.md`.

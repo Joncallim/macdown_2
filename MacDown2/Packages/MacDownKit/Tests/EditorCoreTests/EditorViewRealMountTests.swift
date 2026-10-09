@@ -56,13 +56,26 @@ struct EditorViewRealMountTests {
         return Mounted(hostingView: hostingView, window: window, store: store, identity: identity)
     }
 
+    /// `makeNSView` pre-sized the text view with one `boundingRect` over the whole document, which is quadratic for
+    /// CJK/emoji text: an 80 KB document froze the main thread for seconds when its tab opened.
+    @Test func openingALargeCJKDocumentDoesNotFreezeTheMainThread() {
+        let paragraph = String(repeating: "日本語のテキスト🙂", count: 40)
+        let text = (0 ..< 80).map { _ in paragraph }.joined(separator: "\n")
+        let start = ContinuousClock.now
+
+        let mounted = mount(initialText: text)
+        defer { mounted.window.orderOut(nil) }
+
+        #expect(ContinuousClock.now - start < .seconds(1))
+    }
+
     @Test func fullLifecycleThroughRealSwiftUIMountingEditUndoRedoAndDismantle() throws {
         let store = EditorTextSystemStore()
         let identity = UUID().uuidString
 
-        // Captured BEFORE mounting: `EditorTextSystem.undoManager` resolves
-        // to a temporary `fallbackUndoManager` here, since no window exists
-        // yet for `textView.undoManager` to defer to.
+        // Captured BEFORE mounting. The undo manager is the tab's own and keeps
+        // its identity through mounting (it used to switch to the WINDOW's
+        // manager, which every tab of a window shares).
         let systemBeforeMount = store.system(for: identity, initialText: "a", configuration: .default)
         let preMountUndoManagerIdentity = ObjectIdentifier(systemBeforeMount.undoManager)
 
@@ -72,14 +85,12 @@ struct EditorViewRealMountTests {
         let scrollView = try #require(Self.findScrollView(in: mounted.hostingView), "makeNSView did not run")
         let gutter = try #require(scrollView.verticalRulerView as? EditorGutterView)
 
-        // The exact bug mechanism: mounting the SAME cached system in a
-        // REAL window switches `undoManager`'s identity away from the
-        // fallback captured above.
         let system = store.system(for: identity, initialText: "a", configuration: .default)
         #expect(
-            preMountUndoManagerIdentity != ObjectIdentifier(system.undoManager),
-            "expected undoManager identity to change once the text view is mounted in a real window"
+            preMountUndoManagerIdentity == ObjectIdentifier(system.undoManager),
+            "the tab's undo manager must keep its identity once mounted in a real window"
         )
+        #expect(system.textView.undoManager === system.undoManager)
 
         assertUndoRedoDrivesGutter(system: system, gutter: gutter)
         try assertDismantleLeavesNoObserver(mounted: mounted, scrollView: scrollView, system: system)
@@ -137,7 +148,7 @@ struct EditorViewRealMountTests {
     /// after dismantle, restoring a non-nil target so a still-registered
     /// observer would have something to visibly act on.
     private func assertDismantleLeavesNoObserver(
-        mounted: Mounted,
+        mounted _: Mounted,
         scrollView: NSScrollView,
         system: EditorTextSystem
     ) throws {
@@ -146,14 +157,7 @@ struct EditorViewRealMountTests {
             "expected the real Coordinator to still be the text view's delegate before dismantle"
         )
 
-        let throwawayBinding = Binding<String>(get: { "" }, set: { _ in })
-        let editorView = EditorView(
-            text: throwawayBinding,
-            identity: mounted.identity,
-            configuration: .default,
-            store: mounted.store
-        )
-        editorView.dismantleNSView(scrollView, coordinator: coordinator)
+        Self.dismantleThroughTheProtocol(EditorView.self, scrollView, coordinator)
 
         #expect(coordinator.gutterView == nil, "dismantleNSView did not clear the coordinator's gutterView")
 
@@ -268,5 +272,46 @@ struct EditorViewRealMountTests {
             }
         }
         return nil
+    }
+
+    /// SwiftUI reaches teardown through the `NSViewRepresentable` requirement
+    /// (`static func dismantleNSView`). Dispatching through the generic
+    /// constraint is what proves the implementation is the protocol witness; an
+    /// instance method of the same name is never called this way (#183 F09).
+    private static func dismantleThroughTheProtocol<V: NSViewRepresentable>(
+        _: V.Type,
+        _ view: V.NSViewType,
+        _ coordinator: V.Coordinator
+    ) {
+        V.dismantleNSView(view, coordinator: coordinator)
+    }
+
+    @Test func anOlderMountsTeardownDoesNotDetachANewerMount() {
+        let system = EditingAssistIntegrationSupport.makeSystem(text: "text")
+        let older = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        let olderScroll = NSScrollView(frame: .zero)
+        system.scrollView = olderScroll
+
+        let newer = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        let newerScroll = NSScrollView(frame: .zero)
+        system.scrollView = newerScroll
+        system.textView.delegate = newer
+
+        Self.dismantleThroughTheProtocol(EditorView.self, olderScroll, older)
+
+        #expect(system.textView.delegate === newer)
+        #expect(system.scrollView === newerScroll)
+    }
+
+    @Test func theCurrentMountsTeardownDetachesTheSharedTextViewAndScrollView() {
+        let system = EditingAssistIntegrationSupport.makeSystem(text: "text")
+        let coordinator = EditingAssistIntegrationSupport.makeCoordinator(system: system)
+        let scroll = NSScrollView(frame: .zero)
+        system.scrollView = scroll
+
+        Self.dismantleThroughTheProtocol(EditorView.self, scroll, coordinator)
+
+        #expect(system.textView.delegate == nil)
+        #expect(system.scrollView == nil)
     }
 }

@@ -32,7 +32,8 @@ public struct FrontMatter: Sendable, Equatable {
 /// Delimiter-defined front-matter extraction (D3).
 ///
 /// Front matter exists iff line 1 is `---` (with optional trailing whitespace)
-/// and a later line is `---` or `...` (with optional trailing whitespace).
+/// and a later line is `---` or `...` (with optional trailing whitespace), and
+/// line 2 is not blank.
 /// This type does not import Yams; YAML parsing happens in `ParseEngine.swift`.
 enum FrontMatterExtractor {
     struct Extraction {
@@ -55,6 +56,13 @@ enum FrontMatterExtractor {
             ? String(opener.text.dropFirst())
             : opener.text
         guard isDelimiter(openerText, allowed: ["---"]) else {
+            return nil
+        }
+
+        // A blank line right after the opener means it is a thematic break, not a
+        // metadata block (Pandoc's rule): otherwise a horizontal rule at the top of a
+        // document swallowed everything up to the next `---` into hidden "front matter".
+        if lines.count > 1, lines[1].text.trimmingCharacters(in: .whitespaces).isEmpty {
             return nil
         }
 

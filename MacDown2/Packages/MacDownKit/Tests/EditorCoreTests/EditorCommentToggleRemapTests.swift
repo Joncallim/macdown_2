@@ -205,4 +205,44 @@ struct EditorCommentToggleRemapTests {
 
         #expect(applied?.text == "// foo\n\n// bar")
     }
+
+    @Test("uncommenting a line that would leave a CR directly before an unrelated LF is declined")
+    func uncommentingDoesNotFuseAMixedEndingPair() {
+        let text = "\r//\n# " as NSString
+        let lineIndex = EditorLineIndex(text: text)
+        let selection = EditorSelectionSet(single: NSRange(location: 2, length: 0)) // on the `//` line
+
+        let transaction = EditorCommentToggle.toggleCommentTransaction(
+            text: text,
+            lineIndex: lineIndex,
+            selection: selection,
+            isMarkdownFormat: false,
+            profile: swiftProfile
+        )
+
+        #expect(transaction == nil)
+    }
+
+    /// Review pass 8: the space inserted by Comment merges with a following combining mark/ZWJ/VS16 into one
+    /// `Character`, so uncommenting left it behind and every comment/uncomment cycle added a space.
+    @Test("a comment/uncomment round trip restores a line that starts with a joiner or variation selector")
+    func roundTripOverAnExtendingScalarRestoresTheLine() {
+        for original in ["\u{FE0F}x", "\u{200D}", "\u{0301}abc"] {
+            let commented = toggled(original)
+            #expect(commented == "// " + original, "commenting \(original.debugDescription)")
+            #expect(toggled(commented) == original, "uncommenting \(commented.debugDescription)")
+        }
+    }
+
+    private func toggled(_ text: String) -> String {
+        let nsText = text as NSString
+        let transaction = EditorCommentToggle.toggleCommentTransaction(
+            text: nsText,
+            lineIndex: EditorLineIndex(text: nsText),
+            selection: EditorSelectionSet(single: NSRange(location: 0, length: 0)),
+            isMarkdownFormat: false,
+            profile: swiftProfile
+        )
+        return LineTransformTestSupport.applied(transaction, to: text)?.text ?? "<nil>"
+    }
 }

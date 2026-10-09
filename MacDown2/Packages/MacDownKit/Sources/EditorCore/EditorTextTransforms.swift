@@ -44,7 +44,7 @@ enum EditorTextTransforms {
                     rebuilt += block.internalTerminators[index]
                 }
             }
-            return rebuilt
+            return (rebuilt, block.contents.count)
         }
     }
 
@@ -64,9 +64,11 @@ enum EditorTextTransforms {
     ) -> EditorEditTransaction? {
         multiLineGroupTransform(text: text, lineIndex: lineIndex, selection: selection,
                                 undoActionName: "Dedupe Lines") { block in
-            var seen = Set<String>()
+            // Keyed by UTF-8 bytes: `String` equality would merge canonically
+            // equivalent but scalar-distinct lines (#183 F02).
+            var seen = Set<[UInt8]>()
             var keptIndices: [Int] = []
-            for (index, content) in block.contents.enumerated() where seen.insert(content).inserted {
+            for (index, content) in block.contents.enumerated() where seen.insert(Array(content.utf8)).inserted {
                 keptIndices.append(index)
             }
             var rebuilt = ""
@@ -77,7 +79,7 @@ enum EditorTextTransforms {
                     rebuilt += block.internalTerminators[nextIndex - 1]
                 }
             }
-            return rebuilt
+            return (rebuilt, keptIndices.count)
         }
     }
 
@@ -110,6 +112,8 @@ enum EditorTextTransforms {
             replacements.append(TextReplacement(range: trimRange, replacementText: ""))
         }
         guard !replacements.isEmpty else { return nil }
+        // Deleting the spaces between a lone `\r` and the `\n` after it would fuse them into one CRLF.
+        guard !EditorLineTransforms.createsCRLFPair(replacements, in: text) else { return nil }
 
         let resultingRanges = selection.ranges.map { remapPosition($0, throughDeletionsIn: replacements) }
         return EditorEditTransaction(
@@ -169,25 +173,38 @@ enum EditorTextTransforms {
     }
 
     /// Shared shape for Sort/Dedupe: merge line-blocks (`EditorLineTransforms`'
-    /// own grouping, reused rather than reimplemented), drop any group
-    /// confined to a single line (nothing to sort/dedupe), and apply
-    /// `transform` to each qualifying group's own content model.
+    /// own grouping, reused rather than reimplemented), leave any group
+    /// confined to a single line untouched (nothing to sort/dedupe; #183 F12),
+    /// and apply `transform` to each qualifying group's own content model.
+    /// The command is a no-op only when no group spans more than one line.
     private static func multiLineGroupTransform(
         text: NSString,
         lineIndex: EditorLineIndex,
         selection: EditorSelectionSet,
         undoActionName: String,
-        transform: (LineBlockContent) -> String
+        transform: (LineBlockContent) -> (text: String, lineCount: Int)
     ) -> EditorEditTransaction? {
         let groups = EditorLineTransforms.mergedLineBlockGroups(for: selection, lineIndex: lineIndex)
-            .filter { $0.endLine > $0.startLine }
-        guard !groups.isEmpty else { return nil }
+        guard groups.contains(where: { $0.endLine > $0.startLine }) else { return nil }
 
         var replacements: [TextReplacement] = []
         var resultsByOriginalIndex: [Int: NSRange] = [:]
         var delta = 0
 
         for group in groups {
+            // A group confined to one line has nothing to sort/dedupe: it is
+            // left untouched (only shifted by earlier groups' edits) rather
+            // than rejecting the whole command alongside multi-line groups.
+            guard group.endLine > group.startLine else {
+                for index in group.memberIndices {
+                    let original = selection.ranges[index]
+                    resultsByOriginalIndex[index] = NSRange(
+                        location: original.location + delta,
+                        length: original.length
+                    )
+                }
+                continue
+            }
             let blockStart = lineIndex.lineStartOffsets[group.startLine - 1]
             let lastLineContentRange = lineIndex.utf16Range(ofLine: group.endLine, in: text)
             let range = NSRange(
@@ -205,7 +222,12 @@ enum EditorTextTransforms {
                 memberIndices: group.memberIndices
             )
 
-            let rebuilt = transform(block)
+            let (rebuilt, expectedLineCount) = transform(block)
+            // Reordering or removing lines of a document that mixes `\r` and `\n`
+            // terminators can leave a `\r` directly before an unrelated `\n`, which the
+            // next parse reads as ONE `\r\n` (a line vanishes, terminators are rewritten).
+            // No faithful result exists, so the command declines (invariant 5).
+            guard EditorLineIndex(text: rebuilt as NSString).lineCount == expectedLineCount else { return nil }
             replacements.append(TextReplacement(range: range, replacementText: rebuilt))
 
             let resultLocation = range.location + delta
@@ -215,6 +237,8 @@ enum EditorTextTransforms {
 
             delta += (rebuilt as NSString).length - range.length
         }
+
+        guard !EditorLineTransforms.createsCRLFPair(replacements, in: text) else { return nil }
 
         return EditorLineTransforms.makeTransaction(
             replacements: replacements,

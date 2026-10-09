@@ -16,6 +16,11 @@ public actor RecoveryBuffer {
     var legacyMutations: [String: RecoveryMutation] = [:]
     var activeLifetimes: [String: String] = [:]
     var retiredLifetimes: Set<RecoveryLifetime> = []
+    /// Managed epochs this process minted or adopted from a restored session and
+    /// has not retired. Such a lifetime may be OLDER than another document's
+    /// first persisted lifetime yet is not stale: only lifetimes the process has
+    /// no claim on are judged against the global generation high-water mark.
+    var liveEpochs: Set<String> = []
     var markerOrder: [RecoveryLifetime] = []
     var fenceLedger = RecoveryFenceLedger()
     var hasLoadedFenceLedger = false
@@ -95,7 +100,7 @@ public actor RecoveryBuffer {
     public func load(for documentID: String, epoch: UUID? = nil) throws -> String? {
         try loadFenceLedgerIfNeeded()
         guard let url = recoveryURLToLoad(for: documentID, epoch: epochIdentifier(epoch)) else { return nil }
-        let content = try String(contentsOf: url, encoding: .utf8)
+        let content = try Self.readExactUTF8(at: url)
         try recordConsumedLegacyIfNeeded(documentID: documentID, url: url, content: content)
         return content
     }
@@ -114,7 +119,16 @@ public actor RecoveryBuffer {
     /// regresses.
     public func mintRecoveryEpoch() throws -> UUID {
         try loadFenceLedgerIfNeeded()
-        return RecoveryLifetimeEpoch.make()
+        let epoch = RecoveryLifetimeEpoch.make()
+        liveEpochs.insert(epoch.uuidString.lowercased())
+        return epoch
+    }
+
+    /// Declares a lifetime restored from a saved session as live in this
+    /// process, so it is not mistaken for a retired one merely because another
+    /// document persisted first.
+    public func adoptRecoveryEpoch(_ epoch: UUID) {
+        liveEpochs.insert(epoch.uuidString.lowercased())
     }
 
     /// Compatibility removal API. Lifecycle callers should use
@@ -148,6 +162,7 @@ public actor RecoveryBuffer {
         latestMutations.removeAll()
         legacyMutations.removeAll()
         activeLifetimes.removeAll()
+        liveEpochs.removeAll()
         retiredLifetimes.removeAll()
         markerOrder.removeAll()
         fenceLedger = RecoveryFenceLedger()
@@ -203,6 +218,7 @@ public actor RecoveryBuffer {
             return .failed(.markerWriteFailed(retiredURL(for: lifetime), errorCode(error)))
         }
         latestMutations[lifetime] = nil
+        liveEpochs.remove(lifetime.epoch)
         if activeLifetimes[lifetime.documentID] == lifetime.epoch {
             activeLifetimes[lifetime.documentID] = nil
         }

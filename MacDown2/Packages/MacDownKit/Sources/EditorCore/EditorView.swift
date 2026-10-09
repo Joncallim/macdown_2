@@ -1,4 +1,5 @@
 import AppKit
+import FileCore
 import SwiftUI
 
 /// A SwiftUI representable that wraps a TextKit 2-backed `NSTextView`.
@@ -74,12 +75,12 @@ public struct EditorView: NSViewRepresentable {
         let height: CGFloat
         if text.utf8.count < 100_000 {
             let font = system.textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
-            let contentHeight = (text as NSString).boundingRect(
-                with: NSSize(width: width, height: .greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: [.font: font],
-                context: nil
-            ).height
+            // Per-paragraph measurement: one `boundingRect` over a whole CJK/emoji document is quadratic.
+            let contentHeight = system.contentHeightMeter.height(
+                of: text as NSString,
+                width: width,
+                attributes: [.font: font]
+            )
             height = max(contentHeight, scrollView.bounds.height)
         } else {
             height = max(50000, scrollView.bounds.height)
@@ -144,19 +145,6 @@ public struct EditorView: NSViewRepresentable {
         )
     }
 
-    public func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
-        NotificationCenter.default.removeObserver(
-            coordinator,
-            name: NSView.boundsDidChangeNotification,
-            object: scrollView.contentView
-        )
-        NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidUndoChange, object: nil)
-        NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidRedoChange, object: nil)
-        coordinator.system?.textView.delegate = nil
-        coordinator.system?.scrollView = nil
-        coordinator.gutterView = nil
-    }
-
     public func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let system = context.coordinator.system else { return }
 
@@ -168,7 +156,11 @@ public struct EditorView: NSViewRepresentable {
         // current text *and* the change did not originate from the view itself.
         // This prevents the keystroke-echo feedback loop.
         var pushedModelText = false
-        if !context.coordinator.isApplyingModelText, system.text != text {
+        // While an IME / dead-key composition is in progress the binding still holds the pre-composition
+        // text (marked-text updates post no `didChange`); pushing it would clear the marked range
+        // mid-composition. The binding catches up when the composition commits.
+        if !context.coordinator.isApplyingModelText, !system.textView.hasMarkedText(),
+           !system.text.isExactlyEqual(to: text) {
             context.coordinator.isApplyingModelText = true
             system.setText(text)
             context.coordinator.isApplyingModelText = false
@@ -233,19 +225,20 @@ public struct EditorView: NSViewRepresentable {
         /// line index must stay correct after every one of them, not just
         /// the transaction's final state.
         public func textDidChange(_: Notification) {
-            if let system, let pending = pendingLineIndexEdit {
-                system.noteIncrementalEdit(
-                    editedRange: pending.range,
-                    replacementUTF16Length: pending.replacementUTF16Length
-                )
-                pendingLineIndexEdit = nil
+            // Marked-text edits post no didChange; whatever they changed must not survive into the cache.
+            if let system, !system.isApplyingMultiRangeTransaction {
+                system.storedSelectionSet = nil
             }
+            system?.syncLineIndex(afterEdit: pendingLineIndexEdit)
+            pendingLineIndexEdit = nil
             // The gutter has no way to know about a text edit on its own
             // (unlike scrolling, which NSRulerView already tracks via its
             // scroll view) — every edit needs an explicit redraw, and
             // `updateThickness()` also covers a line-count digit-width
             // change (e.g. line 9 -> 10, or 99 -> 100).
-            gutterView?.updateThickness()
+            if system?.isApplyingMultiRangeTransaction != true {
+                gutterView?.updateThickness()
+            }
 
             guard !isApplyingModelText,
                   let system,
@@ -335,11 +328,19 @@ public struct EditorView: NSViewRepresentable {
             if !textView.hasMarkedText(), handleSynchronizedMovement(selector, system: system) {
                 return true
             }
+            if Self.isNewlineSelector(selector),
+               handleLineEndingAwareNewline(textView, system: system, selector: selector) {
+                return true
+            }
             guard system.editingAssistConfiguration.isEnabled else { return false }
             guard !isApplyingModelText,
                   !system.isPerformingProgrammaticTextUpdate,
                   !system.isPerformingEditingAssist
             else { return false }
+            if system.selectionSet.isMultiple, !textView.hasMarkedText(), textView.isEditable,
+               let handled = handleMultiSelectionTab(selector, system: system) {
+                return handled
+            }
             // Marked text (IME composition) passes through untouched.
             guard !textView.hasMarkedText() else { return false }
 

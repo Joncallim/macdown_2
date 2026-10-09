@@ -19,12 +19,14 @@ import Workspace
 struct WorkspaceShellView: View {
     @State private var model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    let findStore: EditorFindModelStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let jsonAnalysisStore: JSONAnalysisStore
     let themeController: ThemeController
     let outlineController: OutlineController
     let fileTreeModel: FileTreeModel
+    let folderSearchModel: FolderSearchModel
     let externalFileController: ExternalFileController
 
     @Environment(\.appSettings) private var appSettings
@@ -32,22 +34,26 @@ struct WorkspaceShellView: View {
     init(
         model: WorkspaceModel,
         editorStore: EditorTextSystemStore,
+        findStore: EditorFindModelStore,
         highlightStore: SyntaxHighlightStore,
         parseStore: MarkdownParseStore,
         jsonAnalysisStore: JSONAnalysisStore,
         themeController: ThemeController,
         outlineController: OutlineController,
         fileTreeModel: FileTreeModel,
+        folderSearchModel: FolderSearchModel,
         externalFileController: ExternalFileController
     ) {
         _model = State(initialValue: model)
         self.editorStore = editorStore
+        self.findStore = findStore
         self.highlightStore = highlightStore
         self.parseStore = parseStore
         self.jsonAnalysisStore = jsonAnalysisStore
         self.themeController = themeController
         self.outlineController = outlineController
         self.fileTreeModel = fileTreeModel
+        self.folderSearchModel = folderSearchModel
         self.externalFileController = externalFileController
     }
 
@@ -58,11 +64,17 @@ struct WorkspaceShellView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: sidebarVisibilityBinding) {
-            SidebarView(model: model, outlineController: outlineController, fileTreeModel: fileTreeModel)
+            SidebarView(
+                model: model,
+                outlineController: outlineController,
+                fileTreeModel: fileTreeModel,
+                folderSearchModel: folderSearchModel
+            )
         } detail: {
             ContentAreaView(
                 model: model,
                 editorStore: editorStore,
+                findStore: findStore,
                 highlightStore: highlightStore,
                 parseStore: parseStore,
                 jsonAnalysisStore: jsonAnalysisStore,

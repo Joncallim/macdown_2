@@ -79,6 +79,20 @@ enum CMarkGFM {
         customNodes: [CustomNodeSpec] = [],
         urlTransformer: ((String, Bool) -> URLDisposition)? = nil
     ) throws -> Rendered {
+        // `walk` recurses once per nesting level, so a few thousand `>` would
+        // overflow a cooperative thread's stack and kill the app. Like the parse
+        // engine, run on a dedicated thread with a large, lazily committed stack.
+        try OnLargeStack.run {
+            try renderOnCurrentThread(text, options: options, customNodes: customNodes, urlTransformer: urlTransformer)
+        }
+    }
+
+    private static func renderOnCurrentThread(
+        _ text: String,
+        options: Int32,
+        customNodes: [CustomNodeSpec],
+        urlTransformer: ((String, Bool) -> URLDisposition)?
+    ) throws -> Rendered {
         // Reading the `static let` runs its initialiser exactly once under the
         // Swift runtime's own lock. `precondition` is not used here because it
         // is stripped in `-Ounchecked` builds, which would drop registration.
@@ -121,7 +135,8 @@ enum CMarkGFM {
         }
         defer { free(rendered) }
 
-        return Rendered(html: String(cString: rendered), containsRawHTML: walkResult.sawRawHTML)
+        let html = substitutingDeferredSentinels(walkResult.deferredInline, in: String(cString: rendered))
+        return Rendered(html: html, containsRawHTML: walkResult.sawRawHTML)
     }
 
     /// Convenience for callers that only need the HTML fragment.
@@ -140,6 +155,9 @@ enum CMarkGFM {
     /// second pass over the document to learn them.
     private struct WalkResult {
         var sawRawHTML = false
+        /// Inline contributions in a parent that refuses custom inline nodes (a GFM table cell): the sentinel
+        /// text stays in the tree and is replaced in the rendered HTML instead.
+        var deferredInline: [CustomNodeSpec] = []
     }
 
     /// A manual recursive walk (not a cmark iterator) so that leaf nodes — in
@@ -174,7 +192,7 @@ enum CMarkGFM {
 
             if childKind == CMARK_NODE_TEXT {
                 // Text nodes are leaves; there is nothing below them to walk.
-                substituteInlineSentinels(current, inlineSpecs: inlineSpecs)
+                substituteInlineSentinels(current, inlineSpecs: inlineSpecs, result: &result)
             } else if childKind == CMARK_NODE_PARAGRAPH,
                       let spec = blockSpec(for: current, bySentinel: blockSpecs) {
                 replace(current, withCustom: spec)
@@ -243,10 +261,20 @@ enum CMarkGFM {
     /// holds no sentinel.
     private static func substituteInlineSentinels(
         _ node: UnsafeMutablePointer<cmark_node>,
-        inlineSpecs: InlineSentinelIndex
+        inlineSpecs: InlineSentinelIndex,
+        result: inout WalkResult
     ) {
         guard !inlineSpecs.isEmpty, let literal = cmark_node_get_literal(node) else { return }
         let value = String(cString: literal)
+
+        guard acceptsCustomInline(beside: node) else {
+            var cursor = value.startIndex
+            while let found = inlineSpecs.firstMatch(in: value, from: cursor) {
+                result.deferredInline.append(found.spec)
+                cursor = found.range.upperBound
+            }
+            return
+        }
 
         if let spec = inlineSpecs.specsBySentinel[value] {
             replace(node, withCustom: spec)
@@ -259,7 +287,7 @@ enum CMarkGFM {
         var pending = value.startIndex
         while let found = inlineSpecs.firstMatch(in: value, from: pending) {
             if pending < found.range.lowerBound {
-                pieces.append(.text(String(value[pending ..< found.range.lowerBound])))
+                pieces.append(.text(String(value.unicodeScalars[pending ..< found.range.lowerBound])))
             }
             pieces.append(.custom(found.spec))
             pending = found.range.upperBound
@@ -268,7 +296,7 @@ enum CMarkGFM {
         // No sentinel matched: leave the node exactly as parsed.
         guard !pieces.isEmpty else { return }
         if pending < value.endIndex {
-            pieces.append(.text(String(value[pending...])))
+            pieces.append(.text(String(value.unicodeScalars[pending...])))
         }
 
         guard let firstSpec = pieces.first else { return }
@@ -305,11 +333,26 @@ enum CMarkGFM {
         }
     }
 
+    /// Whether `node`'s parent allows a custom inline sibling. A GFM table cell does not: `cmark_node_replace`
+    /// there fails, and freeing the node it failed to unlink would leave a dangling child (and an empty cell).
+    private static func acceptsCustomInline(beside node: UnsafeMutablePointer<cmark_node>) -> Bool {
+        guard let probe = cmark_node_new(CMARK_NODE_CUSTOM_INLINE) else { return false }
+        let accepted = cmark_node_insert_before(node, probe) != 0
+        if accepted {
+            cmark_node_unlink(probe)
+        }
+        cmark_node_free(probe)
+        return accepted
+    }
+
     private static func replace(_ node: UnsafeMutablePointer<cmark_node>, withCustom spec: CustomNodeSpec) {
         let nodeType: cmark_node_type = spec.isBlock ? CMARK_NODE_CUSTOM_BLOCK : CMARK_NODE_CUSTOM_INLINE
         guard let custom = cmark_node_new(nodeType) else { return }
         setCustomHTML(spec.html, on: custom)
-        cmark_node_replace(node, custom)
+        guard cmark_node_replace(node, custom) != 0 else {
+            cmark_node_free(custom)
+            return
+        }
         // `cmark_node_replace` unlinks `node` but does not free it; the node
         // tree is freed wholesale by the root's `cmark_node_free`, which will
         // not reach this unlinked node.
@@ -325,23 +368,5 @@ enum CMarkGFM {
     private enum Piece {
         case text(String)
         case custom(CustomNodeSpec)
-    }
-
-    enum CMarkError: Error, LocalizedError, CustomStringConvertible {
-        case parserCreationFailed
-        case parseProducedNoDocument
-        case renderFailed
-
-        var description: String {
-            switch self {
-            case .parserCreationFailed: "cmark could not create a parser"
-            case .parseProducedNoDocument: "cmark produced no document"
-            case .renderFailed: "cmark could not render HTML"
-            }
-        }
-
-        var errorDescription: String? {
-            description
-        }
     }
 }

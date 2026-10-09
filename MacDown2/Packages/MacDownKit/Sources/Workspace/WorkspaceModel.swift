@@ -6,6 +6,12 @@ import Observation
 public enum SidebarSection: String, Sendable, CaseIterable, Identifiable {
     case folder
     case outline
+    /// Folder-wide search (EPIC-22 §6.16, Slice 7b) — a persistent sidebar
+    /// section rather than a floating panel like Quick Open/Command
+    /// Palette, since a search session is browsed for far longer per
+    /// invocation (the same reasoning §6.14 used for the current-document
+    /// Find bar, applied one level further).
+    case search
 
     public var id: String {
         rawValue
@@ -125,6 +131,12 @@ public final class WorkspaceModel {
     /// publication of a new untitled tab.
     public var onManagedDocumentLifetimePrepared: (@MainActor @Sendable () async -> Void)?
 
+    /// Asks the host whether another window already has `url` open; Save As refuses such a name.
+    public var isOpenInAnotherWindow: (@MainActor (URL) -> Bool)?
+
+    /// Called after a save or Save As published `url` on disk.
+    public var onDocumentWritten: (@MainActor (URL) -> Void)?
+
     /// The document currently shown in the content area.
     public var activeDocument: FileDocument? {
         tabStore.activeDocument
@@ -147,7 +159,12 @@ public final class WorkspaceModel {
     }
 
     /// The most recent error surfaced to the user. Views may present this.
-    public internal(set) var lastError: WorkspaceError?
+    public internal(set) var lastError: WorkspaceError? {
+        didSet { errorRevision &+= 1 }
+    }
+
+    /// Bumped on every `lastError` assignment; see `WorkspaceModel+ErrorOwnership.swift`.
+    @ObservationIgnored var errorRevision: UInt64 = 0
 
     /// True from the moment `newManagedDocument` starts until its tab is
     /// published. The window is shown before this resolves (`WindowCoordinator
@@ -323,7 +340,7 @@ public final class WorkspaceModel {
                 epoch: closingDocument.recoveryEpoch
             )
             guard cleanup.isAbsent else {
-                pendingRecoveryCleanupActions.insert(.retire(for: closingDocument))
+                registerPendingRecovery(.retire(for: closingDocument))
                 await preserveOpenDocumentAfterFailedCloseRetirement(closingDocument)
                 lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
                 return
@@ -343,7 +360,7 @@ public final class WorkspaceModel {
                     epoch: closingDocument.recoveryEpoch
                 )
                 if !cleanup.isAbsent {
-                    pendingRecoveryCleanupActions.insert(.retire(for: closingDocument))
+                    registerPendingRecovery(.retire(for: closingDocument))
                     lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
                 }
             }

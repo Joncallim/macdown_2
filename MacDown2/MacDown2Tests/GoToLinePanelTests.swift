@@ -35,6 +35,7 @@ struct GoToLinePanelTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
             appSettings: AppSettingsModel()
         )
         let model = coordinator.makeWindowModel()
@@ -162,6 +163,7 @@ struct GoToLinePanelTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
             appSettings: AppSettingsModel()
         )
         let panel = GoToLinePanel(coordinator: orphanCoordinator, originController: nil)
@@ -170,5 +172,31 @@ struct GoToLinePanelTests {
         // The real assertion is that this does not crash with no origin
         // controller (and hence no `EditorTextSystem`) to act on at all.
         panel.jump(to: "3")
+    }
+
+    @Test func surroundingSpacesAreIgnored() {
+        #expect(GoToLinePanel.parse(" 4 ").line == 4)
+        let both = GoToLinePanel.parse(" 4 : 2 ")
+        #expect(both.line == 4)
+        #expect(both.column == 2)
+    }
+
+    @Test func aNumberTooLargeForIntSaturatesInsteadOfJumpingToLineOne() throws {
+        let huge = "99999999999999999999"
+        #expect(GoToLinePanel.parse(huge).line == Int.max)
+        #expect(GoToLinePanel.parse("2:\(huge)").column == Int.max)
+
+        let fixture = try makeFixture()
+        let panel = GoToLinePanel(coordinator: fixture.coordinator, originController: fixture.controller)
+        defer { panel.close() }
+        panel.jump(to: huge)
+
+        #expect(fixture.textSystem.selectedRange.location == ("one\ntwo\nthree\nfour\n" as NSString).length)
+    }
+
+    @Test func nonNumericInputStillDefaultsToLineOne() {
+        #expect(GoToLinePanel.parse("abc").line == 1)
+        #expect(GoToLinePanel.parse("12abc").line == 1)
+        #expect(GoToLinePanel.parse("").line == 1)
     }
 }

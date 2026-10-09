@@ -73,7 +73,7 @@ extension RecoveryBuffer {
         guard epoch != nil, let consumed = fenceLedger.consumedLegacy[documentID] else { return }
         let legacy = recoveryDirectory.appendingPathComponent(consumed.fileName)
         guard consumed.isUnambiguous,
-              let content = try? String(contentsOf: legacy, encoding: .utf8),
+              let content = try? Self.readExactUTF8(at: legacy),
               digest(content) == consumed.digest
         else { return }
         let result = removeRecoveryFile(at: legacy, sourceRemoval: true)
@@ -110,5 +110,22 @@ extension RecoveryBuffer {
 
     func epochIdentifier(_ epoch: UUID?) -> String? {
         epoch?.uuidString.lowercased()
+    }
+
+    /// Whether this exact snapshot is already the durable record of an active
+    /// lifetime: its latest mutation is a persist at `version` and the file
+    /// holds `content`. A second writer of the same version is refused by
+    /// `canApply`, and this lets it tell "already secured" from a real
+    /// rejection. Deliberately does not follow migration records, so a
+    /// retired or migrated-away lifetime never counts as secured.
+    func hasRecordedSnapshot(content: String, for documentID: String, version: UInt, epoch: UUID) throws -> Bool {
+        try loadFenceLedgerIfNeeded()
+        guard let epoch = epochIdentifier(epoch) else { return false }
+        let lifetime = RecoveryLifetime(documentID: documentID, epoch: epoch)
+        guard !isRetired(lifetime),
+              latestMutations[lifetime] == RecoveryMutation(version: version, kind: .persist)
+        else { return false }
+        let url = recoveryURL(for: documentID, epoch: epoch)
+        return try Self.readExactUTF8(at: url).isExactlyEqual(to: content)
     }
 }

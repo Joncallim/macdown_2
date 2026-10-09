@@ -1,5 +1,6 @@
 import AppKit
 import EditorCore
+import FileCore
 import JSONSupport
 
 // MARK: - Markdown formatting command bridge
@@ -40,11 +41,12 @@ extension WindowCoordinator {
         return textSystem.performMarkdownCommand(command)
     }
 
-    /// The key window's controller whose active document is Markdown and whose
-    /// editor text system exists.
+    /// The key window's controller whose active tab is in Markdown Syntax Mode
+    /// (the file's own format, or a Syntax Mode override) and whose editor text
+    /// system exists.
     private var keyMarkdownEditingController: WindowController? {
         guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
-              controller.model.activeDocument?.format.id == "markdown",
+              controller.model.tabStore.activeTab?.syntaxFormat.id == "markdown",
               controller.activeEditorTextSystem != nil
         else { return nil }
         return controller
@@ -71,7 +73,7 @@ extension WindowCoordinator {
         else { return false }
         guard let session = controller.jsonAnalysisSessionForActiveTab else { return false }
         guard let result = session.result else { return false }
-        return result.isValid && result.text == document.text
+        return result.isValid && result.text.isExactlyEqual(to: document.text)
     }
 
     /// Formats the key window's active JSON document.

@@ -1,0 +1,45 @@
+name: Compliance
+
+# Third-party licence, provenance and SBOM gate (#148, LC-01/LC-07).
+# Runs on Linux with the Python standard library only; it needs no Xcode,
+# network access or credentials. Kept separate from ci.yml on purpose.
+#
+# Deliberately NO `paths:` filter. The check walks the whole MacDown2/ tree,
+# every Package.swift and project.yml, so any path filter narrower than the
+# repository risks letting a new bundled file or dependency merge without the
+# check running. The job takes about ten seconds; running it on every change
+# is cheaper than maintaining a path list. compliance/tests asserts this.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compliance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tool tests (including negative fixtures)
+        run: python3 -m unittest discover -s compliance/tests -v
+      - name: Inventory check against the source tree
+        run: python3 compliance/tools/compliance.py check
+      - name: Release-gate ledger (informational until the release candidate)
+        # Lists what still blocks public 1.0 (pending lock file, open items,
+        # unverified source locations). It is expected to fail until then,
+        # so it does not fail this job. The strict release check runs in
+        # release/macos/sign-notarize-dmg.sh --release-candidate, against the
+        # exact signed app, where any failure stops the pipeline.
+        run: python3 compliance/tools/compliance.py check --release || true

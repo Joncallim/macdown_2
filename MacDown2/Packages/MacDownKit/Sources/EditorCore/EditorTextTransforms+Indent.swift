@@ -45,7 +45,8 @@ extension EditorTextTransforms {
         lineIndex: EditorLineIndex,
         selection: EditorSelectionSet,
         width: Int,
-        decrease: Bool
+        decrease: Bool,
+        usesTabs: Bool = false
     ) -> EditorEditTransaction? {
         let groups = EditorLineTransforms.mergedLineBlockGroups(for: selection, lineIndex: lineIndex)
         guard !groups.isEmpty else { return nil }
@@ -55,7 +56,8 @@ extension EditorTextTransforms {
             lineIndex: lineIndex,
             selection: selection,
             width: width,
-            decrease: decrease
+            decrease: decrease,
+            unit: usesTabs ? "\t" : String(repeating: " ", count: width)
         )
         let accumulator = IndentAccumulator()
         for group in groups {
@@ -63,6 +65,8 @@ extension EditorTextTransforms {
         }
 
         guard !accumulator.replacements.isEmpty else { return nil }
+        // Decrease Indent removing the blanks between a lone `\r` and the next `\n` would fuse them.
+        guard !EditorLineTransforms.createsCRLFPair(accumulator.replacements, in: text) else { return nil }
         return EditorLineTransforms.makeTransaction(
             replacements: accumulator.replacements,
             resultsByOriginalIndex: accumulator.resultsByOriginalIndex,
@@ -80,6 +84,8 @@ extension EditorTextTransforms {
         let selection: EditorSelectionSet
         let width: Int
         let decrease: Bool
+        /// What one Increase Indent step inserts: spaces, or a tab when "Insert spaces for Tab" is off.
+        let unit: String
     }
 
     /// A reference type (not a struct + `inout`) purely to keep
@@ -117,11 +123,12 @@ extension EditorTextTransforms {
         // is), so there is no synthetic-trailing-empty-line case to handle
         // here, unlike that shared helper's own more general single-
         // selection-range input.
-        let realLines = groupContent.components(separatedBy: "\n")
+        let splitter = EditorLineTransforms.lineSplitSeparator(for: groupContent)
+        let realLines = groupContent.components(separatedBy: splitter)
         let (newLines, lineDeltas) = context.decrease
             ? unindentedLines(realLines, width: context.width)
-            : indentedLines(realLines, width: context.width)
-        let newContent = newLines.joined(separator: "\n")
+            : indentedLines(realLines, unit: context.unit)
+        let newContent = newLines.joined(separator: splitter)
 
         guard newContent != groupContent else {
             // A genuine no-op for this group (e.g. Decrease Indent on
@@ -170,13 +177,8 @@ extension EditorTextTransforms {
     /// Identical to `MarkdownEditingAssistEngine.indentSelectedLines`'s own
     /// per-line closure -- duplicated (see this file's own header comment
     /// for why) rather than shared.
-    private static func indentedLines(_ lines: [String], width: Int) -> (lines: [String], deltas: [Int]) {
-        var deltas: [Int] = []
-        let processed = lines.map { line -> String in
-            deltas.append(width)
-            return String(repeating: " ", count: width) + line
-        }
-        return (processed, deltas)
+    private static func indentedLines(_ lines: [String], unit: String) -> (lines: [String], deltas: [Int]) {
+        (lines.map { unit + $0 }, lines.map { _ in unit.utf16.count })
     }
 
     /// Identical to `MarkdownEditingAssistEngine.unindentSelectedLines`'s

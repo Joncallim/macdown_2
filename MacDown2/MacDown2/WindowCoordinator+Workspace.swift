@@ -36,7 +36,43 @@ private struct ControllerTabSnapshot {
     let tab: TabSnapshot
 }
 
+/// Orders session publications by when their snapshot was taken: an older
+/// snapshot whose recovery work finished late must not publish over a newer one
+/// that already did (#183 F20).
+struct SessionPublicationOrder {
+    private var lastSnapshot: UInt64 = 0
+    private var lastPublished: UInt64 = 0
+
+    mutating func beginSnapshot() -> UInt64 {
+        lastSnapshot += 1
+        return lastSnapshot
+    }
+
+    func isSuperseded(_ sequence: UInt64) -> Bool {
+        sequence <= lastPublished
+    }
+
+    mutating func markPublished(_ sequence: UInt64) {
+        lastPublished = max(lastPublished, sequence)
+    }
+}
+
 extension WindowCoordinator {
+    /// ⌃⌘O (D11). Reveals the outline in the key window, then hands off to
+    /// its `OutlineController` — focusing a hidden list is a dead shortcut,
+    /// so both the sidebar and the outline's own disclosure are ensured open
+    /// first. JSON documents route to the JSON outline channel.
+    func focusOutline() {
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        controller.model.sidebarVisible = true
+        controller.model.setSectionExpanded(.outline, true)
+        if controller.model.activeDocument?.format.id == "json" {
+            controller.outlineController.requestJSONFocus()
+        } else {
+            controller.outlineController.requestFocus()
+        }
+    }
+
     /// Saves the current set of open documents as the session. Dirty documents
     /// are snapshotted before any `await` so recovery and session JSON remain
     /// consistent even while the main actor handles later user edits.
@@ -45,8 +81,14 @@ extension WindowCoordinator {
         await saveSessionResult().persisted
     }
 
+    /// `isAutosave` marks the debounced background save: it yields to a newer
+    /// one (`scheduleSaveSession` cancels the older task), so after the awaited
+    /// recovery work it must not publish its by-then obsolete snapshot over the
+    /// newer session (#183 F20). Explicit callers (termination, Save As, rename)
+    /// always publish.
     func saveSessionResult(
-        allowingSaveAsPublicationFor publishingModel: WorkspaceModel? = nil
+        allowingSaveAsPublicationFor publishingModel: WorkspaceModel? = nil,
+        isAutosave: Bool = false
     ) async -> SessionSaveResult {
         if let pendingController = controllers.first(where: {
             $0.model.hasPendingRecoveryCleanup && $0.model !== publishingModel
@@ -54,9 +96,25 @@ extension WindowCoordinator {
             return .pendingRecoveryCleanup(pendingController)
         }
         let (snapshot, activeID) = sessionSnapshot()
+        // Before the launch restore has consumed the saved session there are no windows to snapshot (a first-run
+        // welcome window, say): publishing now would replace the saved tabs with an empty session and orphan their
+        // recovery files. The saved session is still the truth, so leave it.
+        if snapshot.isEmpty, let launch = launchSession, !launch.tabs.isEmpty {
+            return .saved
+        }
+        let sequence = sessionPublicationOrder.beginSnapshot()
         if let failedController = await persistDirtyRecovery(in: snapshot) {
             return .recoveryFailed(failedController)
         }
+        await afterSessionRecoveryPersisted?()
+        if isAutosave, Task.isCancelled {
+            return .saved
+        }
+        // A snapshot taken after this one has already published its (newer)
+        // session while this one's recovery work was awaiting: publishing now
+        // would roll the canonical session back. The newer session covers the
+        // same documents at a later state, so this save is satisfied (#183 F20).
+        guard !sessionPublicationOrder.isSuperseded(sequence) else { return .saved }
         let session = WorkspaceSession(tabs: snapshot.map(\.tab.record), activeTabID: activeID)
         guard sessionStore.saveSessionVerified(session) else {
             if let controller = controllers.first {
@@ -64,45 +122,54 @@ extension WindowCoordinator {
             }
             return .sessionPublicationFailed
         }
+        sessionPublicationOrder.markPublished(sequence)
         return .saved
     }
 
     private func sessionSnapshot() -> ([ControllerTabSnapshot], UUID?) {
-        let snapshot = controllers.compactMap { controller -> ControllerTabSnapshot? in
-            guard let tab = controller.model.tabStore.tabs.first else { return nil }
-            let system = controller.editorStore.existingSystem(for: tab.id.uuidString)
-            let selectedRange = system?.selectedRange
-            let lexicalRoot = controller.model.folderURL
-            let physicalRoot = lexicalRoot?.resolvingSymlinksInPath().standardizedFileURL
-            let scope = physicalRoot.map(FolderAccessScope.init)
-            let bookmark = physicalRoot.flatMap { try? $0.bookmarkData(options: .withSecurityScope) }
-                ?? tab.folderRootBookmark
-            _ = scope
-            return ControllerTabSnapshot(
-                controller: controller,
-                tab: TabSnapshot(
-                    record: TabRecord(
-                        id: tab.id,
-                        fileURL: tab.document.fileURL,
-                        untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
-                        documentRecoveryEpoch: tab.document.recoveryEpoch,
-                        isPinned: tab.isPinned,
-                        cursorPosition: selectedRange?.location,
-                        selectionLength: selectedRange?.length,
-                        scrollOffset: system.map { Double($0.scrollOffset) },
-                        previewLayout: tab.previewLayout,
-                        folderRootBookmark: bookmark,
-                        folderRootAlias: lexicalRoot ?? tab.folderRootAlias
-                    ),
-                    documentID: tab.document.id,
-                    documentText: tab.document.text,
-                    documentState: tab.document.state,
-                    documentGeneration: tab.document.mutationGeneration,
-                    documentRecoveryEpoch: tab.document.recoveryEpoch
+        let snapshot = Self.inTabOrder(controllers, window: \.window)
+            .compactMap { controller -> ControllerTabSnapshot? in
+                guard let tab = controller.model.tabStore.tabs.first else { return nil }
+                let system = controller.editorStore.existingSystem(for: tab.id.uuidString)
+                // The editor's true primary selection, not AppKit's topmost range:
+                // with several selections they differ (#183 F23).
+                let selectedRange = system?.selectionSet.primaryRange
+                let lexicalRoot = controller.model.folderURL
+                let physicalRoot = lexicalRoot?.resolvingSymlinksInPath().standardizedFileURL
+                let scope = physicalRoot.map(FolderAccessScope.init)
+                let bookmark = physicalRoot.flatMap { try? $0.bookmarkData(options: .withSecurityScope) }
+                    ?? tab.folderRootBookmark
+                _ = scope
+                return ControllerTabSnapshot(
+                    controller: controller,
+                    tab: TabSnapshot(
+                        record: TabRecord(
+                            id: tab.id,
+                            fileURL: tab.document.fileURL,
+                            untitledDocumentID: tab.document.fileURL == nil ? tab.document.id : nil,
+                            documentRecoveryEpoch: tab.document.recoveryEpoch,
+                            isPinned: tab.isPinned,
+                            cursorPosition: selectedRange?.location,
+                            selectionLength: selectedRange?.length,
+                            scrollOffset: system.map { Double($0.scrollOffset) },
+                            previewLayout: tab.previewLayout,
+                            previewMode: tab.previewMode,
+                            syntaxOverride: tab.syntaxOverride,
+                            encoding: tab.document.encoding,
+                            baseSHA256: tab.document.baselineSHA256,
+                            folderRootBookmark: bookmark,
+                            folderRootAlias: lexicalRoot ?? tab.folderRootAlias
+                        ),
+                        documentID: tab.document.id,
+                        documentText: tab.document.text,
+                        documentState: tab.document.state,
+                        documentGeneration: tab.document.mutationGeneration,
+                        documentRecoveryEpoch: tab.document.recoveryEpoch
+                    )
                 )
-            )
-        }
-        let activeID = controllers.first { $0.window?.isKeyWindow ?? false }?.model.tabStore.activeTabID
+            }
+        let activeID = Self.activeSessionItem(controllers, window: \.window, mainWindow: NSApp.mainWindow)?
+            .model.tabStore.activeTabID
         return (snapshot, activeID)
     }
 

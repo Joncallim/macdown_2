@@ -53,6 +53,7 @@ struct HTMLPreviewView: NSViewRepresentable {
 
         private let handler = PreviewSchemeHandler()
         private var gate = HTMLPreviewReloadGate()
+        private var reloadBudget = HTMLPreviewReloadBudget()
         private var reloadTask: Task<Void, Never>?
         private var securityScope: PreviewSecurityScope?
         private var pendingLoadGeneration: UInt?
@@ -142,6 +143,8 @@ struct HTMLPreviewView: NSViewRepresentable {
                 policy: .v1
             )
             pendingLoadGeneration = generation
+            // A genuinely new document (not the process-termination reload): its crashes are a new story.
+            reloadBudget.documentChanged()
 
             // The main document loads *through the scheme handler* (not via
             // `loadHTMLString`) so the authoritative CSP response header
@@ -206,6 +209,13 @@ struct HTMLPreviewView: NSViewRepresentable {
 
         func webView(_: WKWebView, didFinish _: WKNavigation!) {
             completeLoad()
+        }
+
+        /// The WebContent process died (memory pressure, a crash on a huge page): the pane would stay blank
+        /// until the next save. The scheme handler still holds the request, so reload it.
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            guard handler.request != nil, reloadBudget.consumeReload() else { return }
+            webView.reload()
         }
 
         func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {

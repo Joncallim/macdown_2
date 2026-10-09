@@ -95,7 +95,8 @@ public extension FileTreeModel {
         if let error = FileTreeNaming.validate(
             source.lastPathComponent,
             existing: Set(entries.map(\.name)),
-            currentName: nil
+            currentName: nil,
+            isExistingFileName: true
         ) {
             throw error
         }
@@ -141,7 +142,8 @@ public extension FileTreeModel {
         if let error = FileTreeNaming.validate(
             source.lastPathComponent,
             existing: Set(entries.map(\.name)),
-            currentName: nil
+            currentName: nil,
+            isExistingFileName: true
         ) {
             throw error
         }
@@ -240,8 +242,10 @@ public extension FileTreeModel {
                 existing: existing
             )
             url = targetDirectory.appendingPathComponent(name, isDirectory: isDirectory)
+            // Outside the `do`: a validation failure is a typed refusal, not an
+            // underlying filesystem error to be stringified.
+            try validate(context, members: [targetDirectory, url])
             do {
-                try validate(context, members: [targetDirectory, url])
                 if isDirectory {
                     try await mutator.createDirectory(at: url)
                 } else {
@@ -282,7 +286,10 @@ public extension FileTreeModel {
     }
 
     private func operationResult(_ url: URL, context: FileTreeOperationContext) -> FileTreeOperationResult {
-        FileTreeOperationResult(url: url.standardizedFileURL, isCurrent: operationIsCurrent(context))
+        // Every successful create/rename/duplicate/move/trash lands here, having
+        // already changed the disk: tell the workspace index (#183 F18).
+        onDidMutate?()
+        return FileTreeOperationResult(url: url.standardizedFileURL, isCurrent: operationIsCurrent(context))
     }
 
     private func operationError(_ error: Error) -> FileTreeOperationError {
@@ -301,6 +308,19 @@ public extension FileTreeModel {
         let rootComponents = root.standardizedFileURL.pathComponents
         guard members.allSatisfy({ $0.standardizedFileURL.pathComponents.starts(with: rootComponents) }) else {
             throw .outsideCurrentRoot
+        }
+        // Navigation may pass through a symlinked directory, but a mutation may
+        // not: `root/link -> /outside` is lexically inside the root while every
+        // create/rename/copy/move/trash below it lands outside. Each member's
+        // containing directory must RESOLVE to somewhere under the root's
+        // physical location (the item itself may be a link — it is acted on,
+        // not followed). #183 F14.
+        let physicalRoot = root.resolvingSymlinksInPath().standardizedFileURL.pathComponents
+        let lexicalRoot = root.standardizedFileURL
+        for member in members where member.standardizedFileURL != lexicalRoot {
+            let parent = member.standardizedFileURL.deletingLastPathComponent()
+                .resolvingSymlinksInPath().standardizedFileURL.pathComponents
+            guard parent.starts(with: physicalRoot) else { throw .outsideCurrentRoot }
         }
     }
 }

@@ -67,27 +67,21 @@ enum ExportComposer {
         let parsed = try await parse(request: request, engine: engine)
         try Task.checkCancellation()
 
-        let derived = DerivedContentComposer.compose(
-            bodyText: parsed.bodyText,
-            bodyStartOffset: parsed.bodyStartOffset,
-            sourceUTF16Length: sourceUTF16Length,
-            contributions: request.contributions,
-            sourceGeneration: request.sourceGeneration,
-            budget: budget
+        let output = try renderDerived(
+            request: request, parsed: parsed, policy: policy,
+            assetsDirName: assetsDirName, budget: budget
         )
-
-        let resolver = ExportResourceResolver(
-            documentDirectory: request.documentDirectory,
-            unresolvedIsFatal: policy.unresolvedResourcesAreFatal,
-            budget: budget,
-            assetsDirectoryName: assetsDirName
+        let (derived, rendered, resolver, leakWarnings) = (
+            output.derived,
+            output.rendered,
+            output.resolver,
+            output.leakWarnings
         )
-        let rendered = try renderBody(derived: derived, policy: policy, resolver: resolver)
         try Task.checkCancellation()
         try checkPreparedBudget(bytes: rendered.html.utf8.count, budget: budget)
 
         let diagnostics = try resolve(
-            derived: parsed.metadata.diagnostics + derived.diagnostics,
+            derived: parsed.metadata.diagnostics + derived.diagnostics + leakWarnings,
             resources: resolver.diagnostics,
             rendered: rendered,
             policy: policy
@@ -180,10 +174,11 @@ enum ExportComposer {
     /// The parsed source: resolved document metadata, the body text (front
     /// matter stripped), and the body's exact UTF-16 offset within the original
     /// text.
-    private struct ParsedSource {
+    struct ParsedSource {
         let metadata: ExportMetadata
         let bodyText: String
         let bodyStartOffset: Int
+        let containerRanges: [Range<Int>]
     }
 
     private static func parse(
@@ -213,8 +208,26 @@ enum ExportComposer {
                 authoredFirstBlockIsHeading: startsWithHeading(document.blocks.first)
             ),
             bodyText: bodyText,
-            bodyStartOffset: bodyStartOffset
+            bodyStartOffset: bodyStartOffset,
+            containerRanges: containerRanges(in: document)
         )
+    }
+
+    /// Source-coordinate UTF-16 ranges of every block quote and list item, at any depth.
+    private static func containerRanges(in document: MarkdownDocument) -> [Range<Int>] {
+        var ranges: [Range<Int>] = []
+        func visit(_ block: MarkdownBlock) {
+            switch block.kind {
+            case .blockQuote, .listItem:
+                let range = document.sourceMap.utf16Range(ofLines: block.lineRange)
+                ranges.append(range.location ..< (range.location + range.length))
+            default:
+                break
+            }
+            block.children.forEach(visit)
+        }
+        document.blocks.forEach(visit)
+        return ranges
     }
 
     /// Whether the document's own first top-level block is a level-1 heading —
@@ -226,7 +239,7 @@ enum ExportComposer {
         return level == 1
     }
 
-    private static func renderBody(
+    static func renderBody(
         derived: DerivedContentComposer.Result,
         policy: Policy,
         resolver: ExportResourceResolver

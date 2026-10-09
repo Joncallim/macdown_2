@@ -22,12 +22,44 @@ public struct ExternalReconciliation: Sendable {
 }
 
 public extension FileDocument {
+    /// The document in conflict with `revision` (the file as it is now): used when
+    /// a restored unsaved edit predates an external change to its file.
+    ///
+    /// `baseSHA256` is the content hash the unsaved text was written against. It becomes the document's
+    /// known baseline (a hash-only revision), so the monitor's first probe — which sees the changed disk
+    /// bytes — keeps the conflict, and the session keeps recording the real base, instead of adopting the
+    /// changed disk as the baseline and letting a Save overwrite it.
+    func markingExternalConflict(with revision: FileRevision, baseSHA256: String? = nil) -> FileDocument {
+        var copy = self
+        copy.state = .conflict
+        if let baseSHA256 {
+            copy.applyExternalState(
+                lastKnownRevision: FileRevision(
+                    url: revision.url,
+                    modificationDate: nil,
+                    fileSize: 0,
+                    fileObjectID: nil,
+                    sha256: baseSHA256
+                ),
+                setLastKnownRevision: true
+            )
+        }
+        copy.applyExternalState(
+            pendingExternalRevision: revision,
+            setPendingExternalRevision: true,
+            backingState: .available
+        )
+        copy.advanceMutation()
+        return copy
+    }
+
     func reconcilingExternalSnapshot(_ snapshot: FileSnapshot) -> ExternalReconciliation {
-        if snapshot.text == text {
+        if snapshot.text.isExactlyEqual(to: text) {
             return reconcilingMatchingExternalText(snapshot)
         }
 
-        if snapshot.revision.sha256 == lastKnownRevision?.sha256 {
+        // `baselineSHA256` also covers a document restored while its file was missing, which has no revision yet.
+        if let baseline = baselineSHA256, snapshot.revision.sha256 == baseline {
             var copy = self
             copy.applyExternalState(
                 lastKnownRevision: snapshot.revision,
@@ -159,7 +191,9 @@ public extension FileDocument {
             setLastKnownRevision: true,
             pendingExternalRevision: nil,
             setPendingExternalRevision: true,
-            backingState: .available
+            backingState: .available,
+            encoding: saved.encoding,
+            setEncoding: true
         )
         copy.state = .dirty
         copy.advanceMutation()

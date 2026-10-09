@@ -84,7 +84,7 @@ let package = Package(
         .target(name: "Themes", resources: [.process("Themes")]),
         .target(name: "Workspace", dependencies: ["FileCore"], resources: [.process("Resources")]),
         .target(name: "FileTree", dependencies: ["FileCore"], resources: [.process("Resources")]),
-        .target(name: "EditorCore", dependencies: ["FileCore"], resources: [.process("Resources")]),
+        .target(name: "EditorCore", dependencies: ["FileCore", "TextSearch"], resources: [.process("Resources")]),
         .target(
             name: "Highlighting",
             dependencies: [
@@ -158,7 +158,7 @@ let package = Package(
         ),
         .target(
             name: "DiagramRendering",
-            dependencies: ["Diagrams"],
+            dependencies: ["Diagrams", "DiagramWebKitPool"],
             resources: [.process("Resources")]
         ),
         .target(name: "DiagramWebKitPool"),
@@ -201,7 +201,7 @@ let package = Package(
         .testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"]),
         .testTarget(name: "MathRenderingTests", dependencies: ["MathRendering"]),
         .testTarget(name: "DiagramsTests", dependencies: ["Diagrams", "MarkdownEngine"]),
-        .testTarget(name: "DiagramRenderingTests", dependencies: ["DiagramRendering"]),
+        .testTarget(name: "DiagramRenderingTests", dependencies: ["DiagramRendering", "DiagramWebKitPool"]),
         .testTarget(name: "DiagramsD2Tests", dependencies: ["DiagramsD2", "MarkdownEngine"]),
         .testTarget(name: "D2RenderingTests", dependencies: ["D2Rendering"]),
         .testTarget(name: "DiagramsGraphvizTests", dependencies: ["DiagramsGraphviz", "MarkdownEngine"]),

@@ -31,6 +31,8 @@ targets:
     - package: MacDownKit
       product: EditorCore
     - package: MacDownKit
+      product: TextSearch
+    - package: MacDownKit
       product: Highlighting
     - package: MacDownKit
       product: MarkdownEngine
@@ -115,6 +117,13 @@ targets:
           CFBundleTypeExtensions:
           - yaml
           - yml
+        - CFBundleTypeName: TOML Document
+          CFBundleTypeRole: Editor
+          LSHandlerRank: Alternate
+          LSItemContentTypes:
+          - com.joncallim.macdown2.toml
+          CFBundleTypeExtensions:
+          - toml
         - CFBundleTypeName: Plain Text Document
           CFBundleTypeRole: Editor
           LSHandlerRank: Editor
@@ -147,7 +156,13 @@ targets:
           - zsh
           - sql
           - xml
+          - tex
+          - latex
         UTExportedTypeDeclarations:
+        - UTTypeIdentifier: com.joncallim.macdown2.file-tree-item
+          UTTypeDescription: MostlyText File Tree Item
+          UTTypeConformsTo:
+          - public.data
         - UTTypeIdentifier: com.joncallim.macdown2.toml
           UTTypeDescription: TOML Document
           UTTypeConformsTo:

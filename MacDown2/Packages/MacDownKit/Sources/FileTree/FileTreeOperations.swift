@@ -4,6 +4,7 @@ import Foundation
 public enum FileTreeOperationError: Error, Sendable, Equatable, LocalizedError {
     case nameEmpty
     case nameContainsPathSeparator
+    case nameReserved(String)
     case nameExists(String)
     case sourceMissing
     case destinationNotDirectory
@@ -15,15 +16,16 @@ public enum FileTreeOperationError: Error, Sendable, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .nameEmpty: String(localized: "A name is required.")
-        case .nameContainsPathSeparator: String(localized: "Names cannot contain / or :.")
-        case let .nameExists(name): String(localized: "\"\(name)\" already exists.")
-        case .sourceMissing: String(localized: "The item no longer exists.")
-        case .destinationNotDirectory: String(localized: "The destination is not a folder.")
-        case .outsideCurrentRoot: String(localized: "The destination is outside the open folder.")
-        case .staleOperation: String(localized: "The folder changed before the operation could start.")
-        case .moveIntoOwnSubtree: String(localized: "A folder cannot be moved into itself.")
-        case let .posix(code): String(localized: "Folder operation failed (POSIX error \(code)).")
+        case .nameEmpty: String(localized: "A name is required.", bundle: .module)
+        case .nameContainsPathSeparator: String(localized: "Names cannot contain / or :.", bundle: .module)
+        case let .nameReserved(name): String(localized: "\"\(name)\" is not a valid name.", bundle: .module)
+        case let .nameExists(name): String(localized: "\"\(name)\" already exists.", bundle: .module)
+        case .sourceMissing: String(localized: "The item no longer exists.", bundle: .module)
+        case .destinationNotDirectory: String(localized: "The destination is not a folder.", bundle: .module)
+        case .outsideCurrentRoot: String(localized: "The destination is outside the open folder.", bundle: .module)
+        case .staleOperation: String(localized: "The folder changed before the operation could start.", bundle: .module)
+        case .moveIntoOwnSubtree: String(localized: "A folder cannot be moved into itself.", bundle: .module)
+        case let .posix(code): String(localized: "Folder operation failed (POSIX error \(code)).", bundle: .module)
         case let .underlying(message): message
         }
     }
@@ -64,10 +66,20 @@ public enum FileTreeNaming {
         name.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
     }
 
+    /// Two-part extensions where the compressed suffix belongs with `.tar`: `archive.tar.gz` duplicates as
+    /// `archive copy.tar.gz` (as Finder does), not `archive.tar copy.gz`.
+    private static let compressedTarSuffixes: Set<String> = ["gz", "bz2", "xz", "zst", "lz", "lzma", "z"]
+
     public static func duplicateName(of name: String, existing: Set<String>) -> String {
         let url = URL(fileURLWithPath: name)
-        let stem = url.deletingPathExtension().lastPathComponent
-        let ext = url.pathExtension
+        var stem = url.deletingPathExtension().lastPathComponent
+        var ext = url.pathExtension
+        if compressedTarSuffixes.contains(ext.lowercased()),
+           URL(fileURLWithPath: stem).pathExtension.lowercased() == "tar" {
+            let inner = URL(fileURLWithPath: stem)
+            stem = inner.deletingPathExtension().lastPathComponent
+            ext = "\(inner.pathExtension).\(ext)"
+        }
         let suffix = ext.isEmpty ? "" : ".\(ext)"
         let folded = Set(existing.map(foldedName))
         var index = 1
@@ -83,10 +95,17 @@ public enum FileTreeNaming {
     public static func validate(
         _ name: String,
         existing: Set<String>,
-        currentName: String?
+        currentName: String?,
+        isExistingFileName: Bool = false
     ) -> FileTreeOperationError? {
-        guard !name.isEmpty else { return .nameEmpty }
-        guard !name.contains("/"), !name.contains(":") else { return .nameContainsPathSeparator }
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .nameEmpty }
+        // A name TYPED for a new/renamed item may not contain a separator, but an existing file being moved or
+        // copied already has its legal on-disk name (`Meeting 10:30.md` is valid on APFS), which must not be refused.
+        guard isExistingFileName || (!name.utf8.contains(0x2F) && !name.utf8.contains(0x3A)) else {
+            return .nameContainsPathSeparator
+        }
+        // `.` and `..` name the directory itself and its parent: they fail at the filesystem with an odd error.
+        guard name != ".", name != ".." else { return .nameReserved(name) }
         let names = existing.filter { candidate in candidate != currentName }
         return names.contains { $0.caseInsensitiveCompare(name) == .orderedSame } ? .nameExists(name) : nil
     }

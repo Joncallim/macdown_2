@@ -83,13 +83,24 @@ public struct EditorEditTransaction: Sendable {
         // therefore no zero/one-element special case to get wrong (unlike
         // an earlier version of this function, which crashed on `1 ..< 0`
         // for an empty set).
-        let sorted = replacements.sorted { $0.range.location < $1.range.location }
+        let sorted = replacements.sorted(by: Self.isAscending)
         for (previous, current) in zip(sorted, sorted.dropFirst()) {
             guard areDisjoint(previous, current) else {
                 return false
             }
         }
         return true
+    }
+
+    /// Ascending by location, a zero-length insert BEFORE a non-empty replacement at the same offset. Sorting by
+    /// location alone left such a tie in input order: one order applied the replacement first and the insert landed
+    /// inside the new text (`"01234BA56789…"`, characters 5–7 surviving the "replace"); the other order tripped the
+    /// "overlapping" assertion.
+    static func isAscending(_ lhs: TextReplacement, _ rhs: TextReplacement) -> Bool {
+        if lhs.range.location != rhs.range.location {
+            return lhs.range.location < rhs.range.location
+        }
+        return lhs.range.length < rhs.range.length
     }
 
     /// Non-negative location/length, no `location + length` overflow, and
@@ -134,7 +145,7 @@ public struct EditorEditTransaction: Sendable {
     /// positioned where a human would expect after that edit" rather than
     /// hand-computing the offset arithmetic at each call site.
     static func resultingCaretRanges(for replacements: [TextReplacement]) -> [NSRange] {
-        let sorted = replacements.sorted { $0.range.location < $1.range.location }
+        let sorted = replacements.sorted(by: Self.isAscending)
         var delta = 0
         return sorted.map { replacement in
             let shiftedLocation = replacement.range.location + delta
@@ -193,23 +204,16 @@ public extension EditorTextSystem {
             }
             return
         }
-        let ordered = transaction.replacements.sorted { $0.range.location > $1.range.location }
+        let ordered = transaction.replacements.sorted { EditorEditTransaction.isAscending($1, $0) }
 
         textView.breakUndoCoalescing()
         isPerformingEditingAssist = true
         defer { isPerformingEditingAssist = false }
 
-        // Each `insertText` call independently posts AppKit's text-change
-        // notification; without suppression `textDidChange` would publish
-        // the (still mid-transaction) binding value once per range instead
-        // of once for the whole command. Suppress every call but the last.
-        isApplyingMultiRangeTransaction = ordered.count > 1
-        defer { isApplyingMultiRangeTransaction = false }
-        for (index, replacement) in ordered.enumerated() {
-            if index == ordered.count - 1 {
-                isApplyingMultiRangeTransaction = false
-            }
-            textView.insertText(replacement.replacementText, replacementRange: replacement.range)
+        if ordered.count > Self.spliceThreshold {
+            applySpliced(ordered)
+        } else {
+            applyPerRange(ordered)
         }
 
         if let resultingSelection = transaction.resultingSelection {
@@ -219,11 +223,45 @@ public extension EditorTextSystem {
             // design) stays correct — including a non-zero `primaryIndex`
             // — for whatever reads `selectionSet` next, not just AppKit's
             // own range array.
-            selectionSet = resultingSelection
+            selectionSet = Self.clamped(resultingSelection, toLength: textView.textStorage?.length ?? 0)
         }
         if let undoActionName = transaction.undoActionName, undoManager.canUndo {
             undoManager.setActionName(undoActionName)
         }
         textView.breakUndoCoalescing()
+    }
+}
+
+private extension EditorTextSystem {
+    /// Each `insertText` call independently posts AppKit's text-change notification; without suppression
+    /// `textDidChange` would publish the (still mid-transaction) binding value once per range instead of once for
+    /// the whole command. Suppress every call but the last.
+    func applyPerRange(_ ordered: [TextReplacement]) {
+        isApplyingMultiRangeTransaction = ordered.count > 1
+        defer { isApplyingMultiRangeTransaction = false }
+        for (index, replacement) in ordered.enumerated() {
+            if index == ordered.count - 1 {
+                isApplyingMultiRangeTransaction = false
+            }
+            textView.insertText(replacement.replacementText, replacementRange: replacement.range)
+        }
+    }
+}
+
+extension EditorTextSystem {
+    /// A transform computes its resulting selection from pre-edit geometry; a
+    /// selection that included a terminator the edit relocated can end past the
+    /// new text. AppKit clamps a single range, but the cached multi-selection
+    /// would keep the out-of-bounds range (and make later multi-cursor edits
+    /// fail closed), so clamp here.
+    static func clamped(_ selection: EditorSelectionSet, toLength length: Int) -> EditorSelectionSet {
+        guard selection.ranges.contains(where: { NSMaxRange($0) > length || $0.location > length }) else {
+            return selection
+        }
+        let ranges = selection.ranges.map { range -> NSRange in
+            let location = min(max(0, range.location), length)
+            return NSRange(location: location, length: min(range.length, length - location))
+        }
+        return EditorSelectionSet(ranges: ranges, primaryIndex: selection.primaryIndex)
     }
 }

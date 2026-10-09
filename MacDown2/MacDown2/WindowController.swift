@@ -8,6 +8,7 @@ import JSONSupport
 import MarkdownEngine
 import OutlineUI
 import SwiftUI
+import TextSearch
 import Themes
 import Workspace
 
@@ -17,12 +18,25 @@ import Workspace
 final class WindowController: NSWindowController, NSWindowDelegate {
     let model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    /// Current-document Find bar state, one per tab identity (EPIC-22
+    /// §6.14, Slice 5a) — mirrors `editorStore`'s own per-window lifecycle.
+    let findStore: EditorFindModelStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let jsonAnalysisStore: JSONAnalysisStore
     let themeController: ThemeController
     let outlineController: OutlineController
     let fileTreeModel: FileTreeModel
+    /// One index per window, mirroring `fileTreeModel`'s own per-window
+    /// scope (EPIC-22 §6.15, Slice 6a) — kept in sync with
+    /// `fileTreeModel.root` exclusively through `setFolderRoot(_:accessURL:)`
+    /// below, never mutated directly by any other call site.
+    let workspaceFileIndex: WorkspaceFileIndex
+    /// Folder-wide search sidebar state (EPIC-22 §6.16, Slice 7b), one per
+    /// window mirroring `workspaceFileIndex`'s own scope and kept in sync
+    /// with `fileTreeModel.root` through the same
+    /// `setFileTreeRoot(_:accessURL:)` call site (`WindowController+WorkspaceIndex.swift`).
+    let folderSearchModel: FolderSearchModel
     let externalFileController: ExternalFileController
     weak var coordinator: WindowCoordinator?
     private var observationTask: Task<Void, Never>?
@@ -33,6 +47,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private var lastObservedDirty: Bool = false
     private var lastObservedURL: URL?
     private var lastObservedLanguageID: String?
+    /// When the workspace index was last re-walked (`refreshWorkspaceIndex`).
+    var lastWorkspaceIndexRefresh: Date?
 
     init(
         model: WorkspaceModel,
@@ -46,6 +62,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         self.coordinator = coordinator
         self.themeController = themeController
         editorStore = EditorTextSystemStore()
+        findStore = EditorFindModelStore()
         highlightStore = SyntaxHighlightStore(registry: grammarRegistry)
         // 100 ms debounce + ≤50 ms parse/slice/render pipeline = the 150 ms
         // keystroke-to-preview budget (plan D8). The package default stays at
@@ -56,6 +73,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         jsonAnalysisStore = JSONAnalysisStore(debounce: .milliseconds(100))
         outlineController = OutlineController()
         fileTreeModel = Self.makeFileTreeModel(preferences: fileTreePreferences)
+        workspaceFileIndex = WorkspaceFileIndex()
+        folderSearchModel = FolderSearchModel(index: workspaceFileIndex)
         externalFileController = Self.makeExternalFileController(
             model: model,
             editorStore: editorStore,
@@ -69,27 +88,30 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         let shell = WorkspaceShellView(
             model: model,
             editorStore: editorStore,
+            findStore: findStore,
             highlightStore: highlightStore,
             parseStore: parseStore,
             jsonAnalysisStore: jsonAnalysisStore,
             themeController: themeController,
             outlineController: outlineController,
             fileTreeModel: fileTreeModel,
+            folderSearchModel: folderSearchModel,
             externalFileController: externalFileController
         )
         .environment(\.windowCoordinator, coordinator)
         let hostingController = NSHostingController(rootView: shell)
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
-        window.setFrameAutosaveName("MacDown2DocumentWindow")
+        Self.restoreFrame(of: window)
         window.title = model.activeDocument?.fileURL?.lastPathComponent ?? "Untitled"
-        window.setContentSize(NSSize(width: 1200, height: 800))
         window.minSize = NSSize(width: 400, height: 300)
         window.tabbingMode = .preferred
 
         super.init(window: window)
         makeSessionsForActiveTab()
         externalFileController.attach(owner: self)
+        installFolderSearchHooks()
+        installSaveAsGuard()
         window.delegate = self
         fileTreeModel.startObservingPreferences()
         updateTitleAndEditedState()
@@ -161,7 +183,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
-    private func updateTitleAndEditedState() {
+    func updateTitleAndEditedState() {
         let document = model.activeDocument
         let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
         let isDirty = document?.state == .dirty || document?.state == .conflict
@@ -183,7 +205,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // (e.g., after Save As). The `highlighter(for:)` method on
         // `SyntaxHighlightStore` detects the language mismatch and calls
         // `setLanguage` automatically.
-        let currentLanguageID = document?.format.highlightLanguageID
+        let currentLanguageID = model.tabStore.activeTab?.syntaxFormat.highlightLanguageID
         if lastObservedLanguageID != currentLanguageID {
             lastObservedLanguageID = currentLanguageID
             guard let activeTab = model.tabStore.activeTab,
@@ -204,6 +226,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         observationTask?.cancel()
         externalFileController.dispose()
         editorStore.evictAll()
+        findStore.evictAll()
         highlightStore.evictAll()
         parseStore.evictAll()
         jsonAnalysisStore.evictAll()
@@ -221,7 +244,10 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // synchronously when a native tab becomes visible again.
         updateTitleAndEditedState()
         externalFileController.retryMonitoring()
-        Task { await fileTreeModel.rescanExpandedDirectories() }
+        Task {
+            await fileTreeModel.rescanExpandedDirectories()
+            await refreshWorkspaceIndex(minInterval: 5)
+        }
     }
 
     /// Explicit-target Save never calls a model method that is permitted to

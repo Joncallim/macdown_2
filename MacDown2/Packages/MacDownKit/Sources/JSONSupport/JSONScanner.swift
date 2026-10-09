@@ -95,3 +95,11 @@ enum StringResult {
     case decoded(String, range: Range<Int>)
     case failed(JSONDiagnostic)
 }
+
+extension JSONScanner {
+    /// A diagnostic message looked up in this module's own string catalog (`bundle: .module`),
+    /// not the app's — see `PackageStringLocalizationTests`.
+    func localized(_ value: String.LocalizationValue) -> String {
+        String(localized: value, bundle: .module)
+    }
+}

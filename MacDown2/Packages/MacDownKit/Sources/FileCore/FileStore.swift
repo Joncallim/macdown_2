@@ -6,6 +6,11 @@ public enum FileStoreError: Error {
     case readFailed(underlying: Error)
     case writeFailed(underlying: Error)
     case encodingDetectionFailed
+    /// The text cannot be written losslessly in the encoding (and BOM) that was
+    /// actually attempted. Carrying the attempted encoding lets callers name it
+    /// accurately even when the caller never chose it (a queued save that
+    /// inherited an accepted encoding change, #183 F10).
+    case textNotRepresentable(attempted: FileEncodingMetadata)
     case invalidURL
     case fileChangedDuringRead
     case notRegularFile
@@ -33,7 +38,7 @@ public struct FileStore: Sendable {
     private let afterReplacement: (@Sendable (URL) throws -> Void)?
     private let beforePublication: (@Sendable (URL) throws -> Void)?
     private let afterBaselineVerification: (@Sendable (URL) throws -> Void)?
-    private let conditionalPublicationHooks: ConditionalPublicationTestHooks?
+    let conditionalPublicationHooks: ConditionalPublicationTestHooks?
 
     public init() {
         afterReplacement = nil
@@ -95,7 +100,23 @@ public struct FileStore: Sendable {
         return (snapshot.text, snapshot.encoding)
     }
 
-    public func readSnapshot(from url: URL) throws(FileStoreError) -> FileSnapshot {
+    public func readSnapshot(
+        from url: URL,
+        decoding policy: FileDecodingPolicy = .automatic
+    ) throws(FileStoreError) -> FileSnapshot {
+        let (data, revision) = try readStableBytes(from: url)
+        let payload = try decode(data, policy: policy)
+        return FileSnapshot(text: payload.text, encoding: payload.encoding, bom: payload.bom, revision: revision)
+    }
+
+    /// The file's revision (identity, size, modification date, SHA-256)
+    /// without decoding it. Baseline checks and publication verification use
+    /// this so they work for any on-disk encoding, decodable or not.
+    public func readRevision(from url: URL) throws(FileStoreError) -> FileRevision {
+        try readStableBytes(from: url).revision
+    }
+
+    private func readStableBytes(from url: URL) throws(FileStoreError) -> (data: Data, revision: FileRevision) {
         guard url.isFileURL else { throw .invalidURL }
 
         for attempt in 0 ..< 2 {
@@ -121,12 +142,9 @@ public struct FileStore: Sendable {
                 throw .fileChangedDuringRead
             }
 
-            let payload = try decode(data)
-            return FileSnapshot(
-                text: payload.text,
-                encoding: payload.encoding,
-                bom: payload.bom,
-                revision: FileRevision(
+            return (
+                data,
+                FileRevision(
                     url: url.standardizedFileURL,
                     modificationDate: after.modificationDate,
                     fileSize: data.count,
@@ -157,62 +175,57 @@ public struct FileStore: Sendable {
         to url: URL,
         encoding: String.Encoding = FileStore.defaultEncoding,
         bom: FileBOM = .none,
-        expectedRevision: FileRevision? = nil
+        expectedRevision: FileRevision? = nil,
+        destinationBaseline: DestinationBaseline? = nil
     ) throws(FileStoreError) -> FileRevision {
         guard url.isFileURL else { throw .invalidURL }
+        let (expectedRevision, requireAbsent) = Self.resolveBaseline(expectedRevision, destinationBaseline)
 
         guard let data = encodedData(content, encoding: encoding, bom: bom) else {
-            throw .encodingDetectionFailed
+            throw .textNotRepresentable(attempted: FileEncodingMetadata(encoding: encoding, bom: bom))
         }
 
         do {
             return try FilePublicationLocks.shared.withLock(for: url.standardizedFileURL) {
-                try writeLocked(content, to: url, data: data, expectedRevision: expectedRevision)
+                try writeLocked(to: url, data: data, expectedRevision: expectedRevision, requireAbsent: requireAbsent)
             }
         } catch {
             throw mapWriteError(error)
         }
     }
 
-    /// Encodes `content` for disk, emitting the requested BOM byte prefix.
-    /// Returns `nil` when the encoding cannot represent the text losslessly.
-    private func encodedData(_ content: String, encoding: String.Encoding, bom: FileBOM) -> Data? {
-        guard let body = content.data(using: encoding, allowLossyConversion: false) else { return nil }
-        switch bom {
-        case .none:
-            return body
-        case .utf8:
-            var data = Data([0xEF, 0xBB, 0xBF])
-            data.append(body)
-            return data
-        case .utf16LittleEndian:
-            var data = Data([0xFF, 0xFE])
-            data.append(body)
-            return data
-        case .utf16BigEndian:
-            var data = Data([0xFE, 0xFF])
-            data.append(body)
-            return data
-        }
+    /// Whether `content` can be written in `encoding` without loss. Callers
+    /// check this before committing to an encoding change so a failure
+    /// changes neither the file nor the document's metadata.
+    public func canRepresent(_ content: String, encoding: String.Encoding, bom: FileBOM = .none) -> Bool {
+        encodedData(content, encoding: encoding, bom: bom) != nil
     }
 
     private func writeLocked(
-        _ content: String,
         to url: URL,
         data: Data,
-        expectedRevision: FileRevision?
+        expectedRevision: FileRevision?,
+        requireAbsent: Bool = false
     ) throws(FileStoreError) -> FileRevision {
         if let expectedRevision {
-            let actual = try readSnapshot(from: url).revision
-            guard actual == expectedRevision else { throw .fileChangedDuringRead }
+            let actual = try readRevision(from: url)
+            guard actual.isSameObjectAndContent(as: expectedRevision) else { throw .fileChangedDuringRead }
         }
+        try requireAbsentIfNeeded(requireAbsent, at: url)
 
+        try requireWritableIfExisting(url)
         let directory = url.deletingLastPathComponent()
         let temporaryURL = directory
-            .appendingPathComponent(".\(url.lastPathComponent).tmp-\(UUID().uuidString)")
+            .appendingPathComponent(Self.companionName(for: url, infix: "tmp"))
 
         do {
             try data.write(to: temporaryURL, options: .atomic)
+            if expectedRevision != nil {
+                // The conditional path publishes the temporary file itself, so
+                // it must already carry the destination's metadata (#174);
+                // the unconditional path's `replaceItemAt` preserves it.
+                try carryMetadata(from: url, to: temporaryURL)
+            }
             try beforePublication?(url)
             // Re-check immediately before publishing the replacement. A
             // conditional publication then uses `RENAME_SWAP`: the previous
@@ -221,25 +234,15 @@ public struct FileStore: Sendable {
             // non-cooperating writer that wins after this check is therefore
             // restored instead of being overwritten.
             if let expectedRevision {
-                let actual = try readSnapshot(from: url).revision
-                guard actual == expectedRevision else { throw FileStoreError.fileChangedDuringRead }
+                let actual = try readRevision(from: url)
+                guard actual.isSameObjectAndContent(as: expectedRevision)
+                else { throw FileStoreError.fileChangedDuringRead }
             }
             // Test seam deliberately positioned in the former verification to
             // replacement window. The conditional swap below must preserve a
             // direct, non-cooperating write issued here.
             try afterBaselineVerification?(url)
-            if let expectedRevision {
-                try conditionallyPublish(
-                    temporaryURL: temporaryURL,
-                    destinationURL: url,
-                    expectedRevision: expectedRevision,
-                    hooks: conditionalPublicationHooks
-                )
-            } else if FileManager.default.fileExists(atPath: url.path) {
-                _ = try FileManager.default.replaceItemAt(url, withItemAt: temporaryURL)
-            } else {
-                try FileManager.default.moveItem(at: temporaryURL, to: url)
-            }
+            try publishStaged(temporaryURL, to: url, expectedRevision: expectedRevision, requireAbsent: requireAbsent)
             try afterReplacement?(url)
         } catch {
             let mapped = mapWriteError(error)
@@ -255,17 +258,14 @@ public struct FileStore: Sendable {
             throw mapped
         }
 
-        let snapshot = try readSnapshot(from: url)
-        guard snapshot.text == content,
-              snapshot.revision.fileSize == data.count,
-              snapshot.revision.sha256 == sha256(data)
-        else {
+        let published = try readRevision(from: url)
+        guard published.fileSize == data.count, published.sha256 == sha256(data) else {
             // A concurrent writer replaced our destination before we could
             // establish its baseline. Do not return that foreign revision as a
             // successful save: callers must remain dirty and reconcile it.
             throw .fileChangedDuringRead
         }
-        return snapshot.revision
+        return published
     }
 
     private func metadata(at url: URL) throws(FileStoreError) -> FileMetadata {

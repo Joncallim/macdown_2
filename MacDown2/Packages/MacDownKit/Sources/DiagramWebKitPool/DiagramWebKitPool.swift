@@ -36,18 +36,35 @@ public actor DiagramWebKitPool {
         busy = Array(repeating: false, count: self.poolSize)
     }
 
-    /// Checks out a page, runs `body` against it racing the configured
-    /// timeout, and returns the page to the pool (or hands it directly to
-    /// the next waiter) regardless of whether `body` threw. Matches
-    /// `MermaidWebRenderer.render`'s exact checkout/timeout/checkin shape.
+    /// Checks out a page, runs `body` against it racing the configured timeout, and
+    /// returns the page to the pool (or hands it directly to the next waiter). A page whose
+    /// script outlived the timeout, or whose caller was cancelled mid-run, may still be
+    /// executing, so it is torn down and replaced rather than handed to the next render.
     public func withPage<T: Sendable>(
         _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
     ) async throws -> T {
         let index = await checkout()
-        defer { checkin(index) }
-        let page = try await page(at: index)
-        return try await withTimeout(timeout) {
-            try await body(page)
+        let page: DiagramHarnessPage
+        do {
+            page = try await self.page(at: index)
+        } catch {
+            checkin(index)
+            throw error
+        }
+        do {
+            let result = try await DiagramTimeoutRace.run(
+                timeout: timeout,
+                timeoutError: DiagramPoolError.timedOut
+            ) { try await body(page) }
+            checkin(index)
+            return result
+        } catch {
+            if error is CancellationError || (error as? DiagramPoolError) == .timedOut {
+                slots[index] = nil
+                await page.teardown()
+            }
+            checkin(index)
+            throw error
         }
     }
 
@@ -62,7 +79,11 @@ public actor DiagramWebKitPool {
 
     private func page(at index: Int) async throws -> DiagramHarnessPage {
         if let existing = slots[index] {
-            return existing
+            if await !existing.isTerminated {
+                return existing
+            }
+            await existing.teardown()
+            slots[index] = nil
         }
         let page = try await DiagramHarnessPage.make(harnessResourceName: harnessResourceName, bundle: bundle)
         slots[index] = page
@@ -89,27 +110,5 @@ public actor DiagramWebKitPool {
             return
         }
         busy[index] = false
-    }
-
-    /// Races `operation` against a timeout — stops the *caller* from
-    /// waiting past `timeout`, does not abort JavaScript already
-    /// dispatched to the page, matching `MermaidWebRenderer`'s own
-    /// accepted, bounded cancellation limitation.
-    private func withTimeout<T: Sendable>(
-        _ duration: Duration,
-        operation: @escaping @Sendable () async throws -> T
-    ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask { try await operation() }
-            group.addTask {
-                try await Task.sleep(for: duration)
-                throw DiagramPoolError.timedOut
-            }
-            guard let result = try await group.next() else {
-                throw DiagramPoolError.timedOut
-            }
-            group.cancelAll()
-            return result
-        }
     }
 }

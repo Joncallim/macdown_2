@@ -29,6 +29,7 @@ struct ExternalFileControllerRecoveryTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
             appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),
             workspaceStateStore: WorkspaceStateStore(defaults: defaults)
         )
@@ -313,6 +314,9 @@ extension ExternalFileControllerRecoveryTests {
                 store: UserDefaultsFileTreePreferenceStore(defaults: defaults)
             ),
             recentFolderRoots: RecentFolderRoots(preferences: FileTreePreferences(
+                store: UserDefaultsFileTreePreferenceStore(defaults: defaults)
+            )),
+            recentFileDocuments: RecentFileDocuments(preferences: FileTreePreferences(
                 store: UserDefaultsFileTreePreferenceStore(defaults: defaults)
             )),
             appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),

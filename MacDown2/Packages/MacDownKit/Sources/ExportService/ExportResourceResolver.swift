@@ -56,6 +56,10 @@ final class ExportResourceResolver {
     /// Decides how an authored URL should be rendered. `isImage` distinguishes a
     /// rendering resource (embed/pack) from a navigation link (policy only).
     func disposition(for url: String, isImage: Bool) -> URLDisposition {
+        // Inline raster data is already self-contained: nothing to fetch, pack or blank.
+        if isImage, ExportURLPolicy.isEmbeddedRasterImage(url) {
+            return .keep
+        }
         guard ExportURLPolicy.isSafe(url) else {
             // The reference is neutralised, so the reader must be told: an
             // emptied `href`/`src` is otherwise indistinguishable from a typo.
@@ -78,9 +82,8 @@ final class ExportResourceResolver {
             return .keep
         }
 
-        // `data:` never reaches here — `ExportURLPolicy` blanks it above, since a
-        // self-contained document's embedded bytes come from E12's own manifest
-        // and never verbatim from an authored URL.
+        // No `data:` reaches here: inline raster images are kept above and every other
+        // `data:` URL is blanked by `ExportURLPolicy`.
         switch ExportURLPolicy.scheme(of: url) {
         case "http", "https":
             // Remote rendering resources are never fetched (offline guarantee).
@@ -114,6 +117,13 @@ final class ExportResourceResolver {
         guard let isRegularFile = try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile,
               isRegularFile else {
             return handleUnresolved(url: url, reason: "resource is not a readable file at \(fileURL.lastPathComponent)")
+        }
+
+        // This path serves image references only. Anything else in the document's folder
+        // (`![x](.env)`, `![x](notes.txt)`) must not be copied into, or embedded in, an export
+        // that is then shared.
+        guard ExportMIMEType.mimeType(forFileExtension: fileURL.pathExtension).hasPrefix("image/") else {
+            return handleUnresolved(url: url, reason: "\(fileURL.lastPathComponent) is not an image file")
         }
 
         // Size is read from the file's metadata first, so an oversized file is

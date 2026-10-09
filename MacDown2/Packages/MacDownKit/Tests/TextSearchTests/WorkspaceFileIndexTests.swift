@@ -28,6 +28,35 @@ struct WorkspaceFileIndexTests {
         }
     }
 
+    /// #183 F18: a root that vanished must read as unavailable, not as an empty
+    /// workspace, and must not leave the previous snapshot's rows queryable.
+    @Test func aVanishedRootFailsTheIndexAndDropsTheStaleSnapshot() async throws {
+        let tree = try TempTree { _ in }
+        try tree.write("keep.txt")
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        #expect(await index.state == .ready(count: 1))
+
+        try FileManager.default.removeItem(at: tree.root)
+        await index.rebuild(root: tree.root)
+
+        guard case .failed = await index.state else {
+            await Issue.record("expected .failed, got \(index.state)")
+            return
+        }
+        #expect(await index.query("keep").isEmpty)
+        #expect(await index.allPaths().isEmpty)
+    }
+
+    @Test func aGenuinelyEmptyRootIsReadyNotFailed() async throws {
+        let tree = try TempTree { _ in }
+        let index = WorkspaceFileIndex()
+
+        await index.rebuild(root: tree.root)
+
+        #expect(await index.state == .ready(count: 0))
+    }
+
     @Test func indexesRegularFilesRecursively() async throws {
         let tree = try TempTree { root in
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -65,6 +94,49 @@ struct WorkspaceFileIndexTests {
         #expect(results.map(\.relativePath) == ["visible.txt"])
     }
 
+    /// Hidden entries are indexed (tagged, not dropped by the walk itself —
+    /// see `IndexedPath.isHidden`'s own doc comment), so folder search
+    /// (`WorkspaceSearchEngine`, Slice 7, issue #112's own "hidden-file
+    /// toggle") can opt into them via `allPaths(includeHidden: true)`
+    /// without a second directory walk, while Quick Open's `query(_:)`
+    /// keeps excluding them unconditionally (`excludesHiddenFiles` above)
+    /// regardless of this same underlying data.
+    @Test func allPathsIncludeHiddenSurfacesHiddenEntriesQuickOpenNeverDoes() async throws {
+        let tree = try TempTree { _ in }
+        try tree.write("visible.txt")
+        try tree.write(".hidden")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+
+        let defaultPaths = await index.allPaths()
+        #expect(defaultPaths.map(\.relativePath) == ["visible.txt"], "default matches Quick Open's own behavior")
+
+        let withHidden = await Set(index.allPaths(includeHidden: true).map(\.relativePath))
+        #expect(withHidden == ["visible.txt", ".hidden"])
+
+        // Quick Open itself is unaffected either way -- there is no way to
+        // ask `query(_:)` for hidden entries.
+        #expect(await index.query("").map(\.relativePath) == ["visible.txt"])
+    }
+
+    /// A non-dotfile INSIDE a hidden directory (e.g. `.github/workflows/`)
+    /// must itself be treated as hidden too, matching how every comparable
+    /// tool (ripgrep, VS Code, `.gitignore`) treats hidden directories --
+    /// not just files whose own basename starts with `.`.
+    @Test func filesInsideAHiddenDirectoryAreThemselvesTaggedHidden() async throws {
+        let tree = try TempTree { _ in }
+        try tree.write("visible.txt")
+        try tree.write(".github/workflows/ci.yml")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+
+        #expect(await index.query("").map(\.relativePath) == ["visible.txt"])
+        let withHidden = await Set(index.allPaths(includeHidden: true).map(\.relativePath))
+        #expect(withHidden == ["visible.txt", ".github/workflows/ci.yml"])
+    }
+
     @Test func queryRanksFuzzyMatches() async throws {
         let tree = try TempTree { _ in }
         try tree.write("WindowCoordinator.swift")
@@ -74,6 +146,45 @@ struct WorkspaceFileIndexTests {
         await index.rebuild(root: tree.root)
         let results = await index.query("wico")
         #expect(results.first?.relativePath == "WindowCoordinator.swift")
+    }
+
+    @Test func recentRelativePathBreaksATieInFavorOfTheRecentFile() async throws {
+        // Both basenames are non-prefix subsequence matches for "xax" at the
+        // identical position (1), so `FuzzyPathScore` gives them an
+        // identical base score — without a bonus, `query`'s own path-string
+        // tiebreak would rank "1xax.txt" first (alphabetically earlier).
+        // Marking "2xax.txt" recent must be what flips that order, not mere
+        // coincidence.
+        let tree = try TempTree { _ in }
+        try tree.write("1xax.txt")
+        try tree.write("2xax.txt")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        let results = await index.query("xax", recentRelativePaths: ["2xax.txt"])
+
+        #expect(results.map(\.relativePath) == ["2xax.txt", "1xax.txt"])
+    }
+
+    @Test func recentRelativePathBonusNeverOutranksAHigherMatchTier() async throws {
+        // Issue #112's own ordering: "exact basename, ... then recent/
+        // open-file bonus" -- the bonus must only break ties WITHIN a tier,
+        // never promote a lower tier above a higher one. "axc" is an exact
+        // basename match (score 1000); "a/xc.txt" only matches via its path
+        // (basename "xc.txt" is missing the query's own "a", so the
+        // basename-level checks never run at all -- see
+        // `FuzzyPathScore.score`'s own ASCII-bitmask gate), scoring well
+        // under 100. Marking the low-tier match recent (+10) must not be
+        // anywhere near enough to leapfrog the untouched exact match.
+        let tree = try TempTree { _ in }
+        try tree.write("axc")
+        try tree.write("a/xc.txt")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        let results = await index.query("axc", recentRelativePaths: ["a/xc.txt"])
+
+        #expect(results.first?.relativePath == "axc")
     }
 
     @Test func queryLimitCapsResults() async throws {
@@ -179,5 +290,19 @@ struct WorkspaceFileIndexTests {
         await index.rebuild(root: tree.root)
         let finalState = await index.state
         #expect(finalState == .ready(count: 1))
+    }
+
+    @Test func clearDiscardsTheSnapshotAndReturnsToEmpty() async throws {
+        let tree = try TempTree { _ in }
+        try tree.write("a.txt")
+
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        #expect(await index.state == .ready(count: 1))
+
+        await index.clear()
+
+        #expect(await index.state == .empty)
+        #expect(await index.query("").isEmpty)
     }
 }

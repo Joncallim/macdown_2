@@ -10,21 +10,37 @@ public enum TextSearchEngine {
     /// not a malformed one, it simply matches nothing) or when the query
     /// truly does not occur. Throws only for a regex query that fails to
     /// compile.
+    ///
+    /// `matchLimit`, when non-`nil`, stops scanning as soon as that many
+    /// matches have been found, rather than finding every match and only
+    /// discarding the excess afterward — needed so a single pathological
+    /// file (e.g. a common single character repeated millions of times)
+    /// cannot defeat `WorkspaceSearchEngine`'s own bounded-accumulation
+    /// requirement (issue #112) by forcing a full-file, unbounded
+    /// `[SearchMatch]` allocation before its result is truncated. `nil` (the
+    /// default) is fully unbounded — current-document Find's own behavior
+    /// is unchanged by this parameter's existence.
     public static func matches(
         in text: String,
         query: String,
-        options: SearchOptions
+        options: SearchOptions,
+        matchLimit: Int? = nil
     ) throws(SearchQueryError) -> [SearchMatch] {
         guard !query.isEmpty else { return [] }
         if options.isRegex {
-            return try regexMatches(in: text, pattern: query, options: options)
+            return try regexMatches(in: text, pattern: query, options: options, matchLimit: matchLimit)
         }
-        return literalMatches(in: text, query: query, options: options)
+        return literalMatches(in: text, query: query, options: options, matchLimit: matchLimit)
     }
 
     // MARK: - Literal
 
-    private static func literalMatches(in text: String, query: String, options: SearchOptions) -> [SearchMatch] {
+    private static func literalMatches(
+        in text: String,
+        query: String,
+        options: SearchOptions,
+        matchLimit: Int?
+    ) -> [SearchMatch] {
         let nsText = text as NSString
         guard nsText.length > 0 else { return [] }
         var compareOptions: NSString.CompareOptions = options.isCaseSensitive ? [] : [.caseInsensitive]
@@ -38,6 +54,9 @@ public enum TextSearchEngine {
         var results: [SearchMatch] = []
         var searchStart = 0
         while searchStart <= nsText.length {
+            if let matchLimit, results.count >= matchLimit {
+                break
+            }
             let searchRange = NSRange(location: searchStart, length: nsText.length - searchStart)
             let found = nsText.range(of: query, options: compareOptions, range: searchRange)
             guard found.location != NSNotFound else { break }
@@ -106,9 +125,13 @@ public enum TextSearchEngine {
     private static func regexMatches(
         in text: String,
         pattern: String,
-        options: SearchOptions
+        options: SearchOptions,
+        matchLimit: Int?
     ) throws(SearchQueryError) -> [SearchMatch] {
-        var regexOptions: NSRegularExpression.Options = []
+        // `^`/`$` match at every line boundary, as in every code editor; without
+        // this they only matched at the start/end of the whole document, so
+        // `^# ` found one heading in a document of three.
+        var regexOptions: NSRegularExpression.Options = [.anchorsMatchLines]
         if !options.isCaseSensitive {
             regexOptions.insert(.caseInsensitive)
         }
@@ -128,10 +151,57 @@ public enum TextSearchEngine {
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
         var results: [SearchMatch] = []
-        regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
+        var wasCancelled = false
+        // `.reportProgress` makes ICU call back periodically even while a
+        // pathological pattern is backtracking without producing a match; that
+        // is the only chance to honour cancellation, so it is handled *before*
+        // `guard let match` (a progress call carries no match).
+        regex.enumerateMatches(in: text, options: [.reportProgress], range: fullRange) { match, _, stop in
+            if Task.isCancelled {
+                wasCancelled = true
+                stop.pointee = true
+                return
+            }
             guard let match else { return }
             results.append(SearchMatch(range: match.range))
+            if let matchLimit, results.count >= matchLimit {
+                stop.pointee = true
+            }
         }
-        return results
+        if wasCancelled || Task.isCancelled {
+            throw SearchQueryError.cancelled
+        }
+        return keepingCRLFPairsWhole(results, in: nsText)
+    }
+
+    /// ICU treats the CR and LF of a CRLF pair as two characters, so `\n` matches only the LF and `.*` can match
+    /// between them; a replacement then leaves a lone CR (or inserts text inside the pair). A match that starts at the
+    /// LF of a pair grows to include the CR (so "replace newline" replaces the whole terminator), and an empty match
+    /// between the two is dropped. A match ending between them is left alone: `\r` is a legitimate way to strip CRs.
+    /// A match the growth would overlap with its predecessor is dropped.
+    private static func keepingCRLFPairsWhole(_ matches: [SearchMatch], in text: NSString) -> [SearchMatch] {
+        func splitsPair(at index: Int) -> Bool {
+            index > 0 && index < text.length && text.character(at: index - 1) == 0x0D && text
+                .character(at: index) == 0x0A
+        }
+        var result: [SearchMatch] = []
+        result.reserveCapacity(matches.count)
+        for match in matches {
+            var start = match.range.location
+            let end = NSMaxRange(match.range)
+            if start == end, splitsPair(at: start) {
+                continue
+            }
+            // Grow back over the CR unless the previous match already covers it (`[\r\n]`, `\s`, `\r|\n`): then the LF
+            // is its own match and must be kept, or Replace All would drop the LF half of the line ending.
+            if splitsPair(at: start), !(result.last.map { NSMaxRange($0.range) >= start } ?? false) {
+                start -= 1
+            }
+            if let last = result.last, start < NSMaxRange(last.range) {
+                continue
+            }
+            result.append(SearchMatch(range: NSRange(location: start, length: end - start)))
+        }
+        return result
     }
 }

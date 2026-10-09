@@ -14,10 +14,15 @@ public struct SearchOptions: Sendable, Equatable {
     /// Advisory to the caller that only the current selection should be
     /// searched. `TextSearchEngine.matches` has no notion of "the
     /// document" or "the selection" — a caller that wants selection-only
-    /// search passes the selection's own substring as `text` and offsets
-    /// the results itself. This flag exists so UI state (the search bar's
-    /// "In Selection" toggle) round-trips through one `SearchOptions`
-    /// value rather than needing a second, parallel piece of state.
+    /// search runs `matches` against the FULL text (so `isWholeWord`'s
+    /// boundary check still sees the true surrounding context) and then
+    /// filters the result down to matches fully contained in the selection,
+    /// rather than searching a pre-sliced substring (boundary-unsafe for
+    /// `isWholeWord` — see `EditorFindModel.updateMatches`'s own inline
+    /// comment for the empirically-reproduced bug this avoids). This flag
+    /// exists so UI state (the search bar's "In Selection" toggle) round-trips
+    /// through one `SearchOptions` value rather than needing a second,
+    /// parallel piece of state.
     public var searchesSelectionOnly: Bool
 
     public init(
@@ -35,12 +40,16 @@ public struct SearchOptions: Sendable, Equatable {
     }
 }
 
-public enum SearchQueryError: Error, Equatable {
+public enum SearchQueryError: Error, Equatable, Sendable {
     /// A regex query that failed to compile. Carries a localized,
     /// user-presentable message (from `NSRegularExpression`'s own
     /// diagnostic) — a caller must surface this as a visible diagnostic,
     /// never silently fall back to a zero-result state.
     case invalidRegex(String)
+    /// The search was cancelled (superseded, or its owner went away) before it
+    /// finished. Whatever it had found is partial and must never be presented
+    /// as a complete result (#183 F08).
+    case cancelled
 }
 
 /// One match in whatever buffer was searched. `range` is UTF-16, in the

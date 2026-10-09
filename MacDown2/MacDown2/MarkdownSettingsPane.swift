@@ -19,12 +19,12 @@ private struct MarkdownSettingsForm: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Parse block directives (`:::`)", isOn: $appSettings.markdown.parsesBlockDirectives)
+                Toggle("Parse block directives (`@Name { … }`)", isOn: $appSettings.markdown.parsesBlockDirectives)
             } footer: {
                 Text(
                     """
-                    Tables, task lists, strikethrough, autolinks, and footnotes always parse — MacDown 2's current \
-                    Markdown engine does not yet support turning them off individually.
+                    Tables, task lists, and strikethrough always parse and cannot be turned off. Autolinks are \
+                    recognised only in <https://…> form, and footnotes are not supported yet.
                     """
                 )
                 .font(.caption)

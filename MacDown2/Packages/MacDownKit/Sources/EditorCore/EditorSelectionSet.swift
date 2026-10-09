@@ -166,13 +166,20 @@ public struct EditorSelectionSet: Sendable, Equatable {
     /// no interior to contain anything with, so it matches only by exact
     /// location equality.
     private static func indexClosest(to target: NSRange, in normalized: [NSRange]) -> Int {
+        // An exact match first, then a non-empty range containing the target's
+        // start, then a caret at that exact location: a touching caret must not
+        // steal primary-ness from the real selection it abuts.
+        if let exact = normalized.firstIndex(of: target) {
+            return exact
+        }
         if let containing = normalized.firstIndex(where: { candidate in
-            if candidate.length == 0 {
-                return candidate.location == target.location
-            }
-            return candidate.location <= target.location && target.location < candidate.location + candidate.length
+            candidate.length > 0
+                && candidate.location <= target.location && target.location < candidate.location + candidate.length
         }) {
             return containing
+        }
+        if let caret = normalized.firstIndex(where: { $0.length == 0 && $0.location == target.location }) {
+            return caret
         }
         guard !normalized.isEmpty else { return 0 }
         var bestIndex = 0

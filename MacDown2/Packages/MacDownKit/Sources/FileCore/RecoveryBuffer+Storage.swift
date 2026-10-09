@@ -64,7 +64,7 @@ extension RecoveryBuffer {
                 return false
             }
             guard maySupersede else { return false }
-            if isStaleGeneration(generation, for: documentKey) {
+            if isStaleGeneration(generation, for: documentKey, epoch: epoch) {
                 return false
             }
             retainLegacyRetirement(of: current, documentID: id, in: &candidate)
@@ -73,7 +73,7 @@ extension RecoveryBuffer {
             // remains true after a restart and after diagnostic marker files
             // have been compacted; the durable ledger is the authority.
             return false
-        } else if isStaleGeneration(generation, for: documentKey) {
+        } else if isStaleGeneration(generation, for: documentKey, epoch: epoch) {
             return false
         }
         candidate.currentByDocument[documentKey] = epoch
@@ -90,10 +90,20 @@ extension RecoveryBuffer {
         return true
     }
 
-    private func isStaleGeneration(_ generation: UInt64?, for documentKey: String) -> Bool {
+    private func isStaleGeneration(_ generation: UInt64?, for documentKey: String, epoch: String) -> Bool {
         guard let generation else { return false }
+        return generation <= generationFloor(forEpoch: epoch, documentKey: documentKey)
+    }
+
+    /// The generation at or below which a NON-current lifetime of this document
+    /// is retired. The global high-water mark guards lifetimes the ledger has
+    /// forgotten (compacted); a lifetime this process still holds live is not
+    /// one of those, so only its own document's history applies to it.
+    func generationFloor(forEpoch epoch: String, documentKey: String) -> UInt64 {
         let documentHighWater = fenceLedger.highestGenerationByDocument[documentKey, default: 0]
-        return generation <= max(documentHighWater, fenceLedger.globalHighestGeneration)
+        return liveEpochs.contains(epoch)
+            ? documentHighWater
+            : max(documentHighWater, fenceLedger.globalHighestGeneration)
     }
 
     func canMigrate(to id: String, epoch: String?) -> Bool {
@@ -117,9 +127,9 @@ extension RecoveryBuffer {
                   version: version,
                   kind: .persist
               ),
-              let stored = try? String(contentsOf: url, encoding: .utf8)
+              let stored = try? Self.readExactUTF8(at: url)
         else { return false }
-        return stored == content
+        return stored.isExactlyEqual(to: content)
     }
 
     func recoveryURLToLoad(for id: String, epoch: String?) -> URL? {
@@ -241,10 +251,7 @@ extension RecoveryBuffer {
         if let generation = RecoveryLifetimeEpoch.generation(for: lifetime.epoch) {
             let documentKey = documentDigest(lifetime.documentID)
             let current = fenceLedger.currentByDocument[documentKey]
-            let highest = max(
-                fenceLedger.highestGenerationByDocument[documentKey, default: 0],
-                fenceLedger.globalHighestGeneration
-            )
+            let highest = generationFloor(forEpoch: lifetime.epoch, documentKey: documentKey)
             return current != lifetime.epoch && generation <= highest
         }
         return fenceLedger.retired.contains(lifetime.fenceKey)
@@ -321,10 +328,19 @@ extension RecoveryBuffer {
     func loadFenceLedgerIfNeeded() throws {
         guard !hasLoadedFenceLedger else { return }
         var candidate = RecoveryFenceLedger()
-        let hasPersistedLedger = FileManager.default.fileExists(atPath: recoveryFenceURL.path)
+        var hasPersistedLedger = FileManager.default.fileExists(atPath: recoveryFenceURL.path)
         if hasPersistedLedger {
-            candidate = try JSONDecoder().decode(RecoveryFenceLedger.self, from: Data(contentsOf: recoveryFenceURL))
-            migrateLegacyFenceLedger(&candidate)
+            let data = try Data(contentsOf: recoveryFenceURL)
+            do {
+                candidate = try JSONDecoder().decode(RecoveryFenceLedger.self, from: data)
+                migrateLegacyFenceLedger(&candidate)
+            } catch is DecodingError {
+                // A zero-length or garbled ledger (a crash or power loss mid-write) used to make every open and
+                // every new document fail until it was deleted by hand. Keep it for inspection and start empty.
+                try quarantineCorruptFenceLedger()
+                candidate = RecoveryFenceLedger()
+                hasPersistedLedger = false
+            }
         }
         // Repair the global floor before either publishing it in memory or
         // writing it back. Publishing first made a failed repair look durable
@@ -343,6 +359,12 @@ extension RecoveryBuffer {
         // actor retryable rather than permanently operating on partial state.
         hasLoadedFenceLedger = true
         compactPhysicalMarkersGlobally()
+    }
+
+    private func quarantineCorruptFenceLedger() throws {
+        let quarantine = recoveryFenceURL.appendingPathExtension("corrupt")
+        try? FileManager.default.removeItem(at: quarantine)
+        try FileManager.default.moveItem(at: recoveryFenceURL, to: quarantine)
     }
 
     func publishFenceLedger(_ candidate: RecoveryFenceLedger) throws {

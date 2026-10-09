@@ -57,6 +57,58 @@ struct WorkspaceModelSaveAsExpectationTests {
         #expect(try FileStore().read(from: sourceB).content == "beta")
     }
 
+    /// #183 F22: the destination is captured as a baseline when the user
+    /// authorises it, and publication is conditional on it. A file another
+    /// process creates in between is never overwritten.
+    @Test func saveAsDoesNotOverwriteADestinationCreatedAfterAuthorization() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let destination = directory.appendingPathComponent("destination.md")
+        _ = try FileStore().write("on disk", to: source)
+        let racingStore = FileStore(afterBaselineVerification: { url in
+            if url.standardizedFileURL == destination.standardizedFileURL {
+                try Data("external winner".utf8).write(to: url)
+            }
+        })
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source, fileStore: racingStore).load())
+        let model = WorkspaceModel(
+            tabStore: tabStore,
+            stateStore: FakeStateStore(),
+            panel: InterposingPanelProvider(destination: destination) {}
+        )
+
+        await model.saveAs()
+
+        #expect(try FileStore().read(from: destination).content == "external winner")
+        #expect(model.lastError != nil)
+        #expect(model.activeDocument?.fileURL?.standardizedFileURL == source.standardizedFileURL)
+    }
+
+    @Test func saveAsOverwritesAnExistingDestinationThatIsUnchangedSinceAuthorization() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let destination = directory.appendingPathComponent("destination.md")
+        _ = try FileStore().write("on disk", to: source)
+        _ = try FileStore().write("old destination", to: destination)
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load())
+        let model = WorkspaceModel(
+            tabStore: tabStore,
+            stateStore: FakeStateStore(),
+            panel: InterposingPanelProvider(destination: destination) {}
+        )
+
+        await model.saveAs()
+
+        #expect(try FileStore().read(from: destination).content == "on disk")
+        #expect(model.lastError == nil)
+    }
+
     /// The same guard for the more ordinary case: the *same* document is
     /// replaced (an external-change reload) while the panel is up.
     @Test func saveAsAbandonsTheSaveIfItsOwnDocumentWasReplacedWhileThePanelWasUp() async throws {
@@ -96,6 +148,85 @@ struct WorkspaceModelSaveAsExpectationTests {
 
         #expect(model.activeDocument?.fileURL?.standardizedFileURL == destination.standardizedFileURL)
         #expect(try FileStore().read(from: destination).content == "content")
+    }
+
+    /// Save As onto a symbolic-link name failed with a misleading "file doesn't exist" (link to a file)
+    /// or "item already exists" (dangling link). It now writes through to the link's target.
+    @Test func saveAsOntoASymbolicLinkWritesThroughToItsTarget() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let target = directory.appendingPathComponent("target.md")
+        let link = directory.appendingPathComponent("link.md")
+        _ = try FileStore().write("draft", to: source)
+        _ = try FileStore().write("old target", to: target)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load().updatingText("new content"))
+        let panel = InterposingPanelProvider(destination: link, duringPanel: {})
+        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore(), panel: panel)
+        let expected = try #require(model.activeDocument)
+
+        await model.saveAs(to: link, expecting: expected)
+
+        #expect(model.lastError == nil)
+        #expect(try FileStore().read(from: target).content == "new content")
+        #expect((try? link.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true)
+        #expect(model.activeDocument?.fileURL?.standardizedFileURL == target.standardizedFileURL)
+    }
+
+    /// Typing while the destination is being read (off the main actor) used to make the explicit Save As silently
+    /// do nothing: the post-await `isCurrent(expected)` guard failed on the edited document with no error.
+    @Test func typingWhileTheDestinationIsReadDoesNotCancelSaveAs() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let destination = directory.appendingPathComponent("destination.md")
+        _ = try FileStore().write("draft", to: source)
+        // A large existing destination keeps the off-main baseline read busy long enough to type during it.
+        let handle = try { () throws -> FileHandle in
+            FileManager.default.createFile(atPath: destination.path, contents: nil)
+            return try FileHandle(forWritingTo: destination)
+        }()
+        try handle.truncate(atOffset: 256 * 1024 * 1024)
+        try handle.close()
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load().updatingText("saved text"))
+        let panel = InterposingPanelProvider(destination: destination, duringPanel: {})
+        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore(), panel: panel)
+        let expected = try #require(model.activeDocument)
+
+        let save = Task { @MainActor in await model.saveAs(to: destination, expecting: expected) }
+        await Task.yield()
+        tabStore.updateActiveDocument { $0.updatingText($0.text + " plus typing") }
+        await save.value
+
+        #expect(try String(contentsOf: destination, encoding: .utf8) == "saved text")
+        #expect(model.activeDocument?.fileURL?.standardizedFileURL == destination.standardizedFileURL)
+        #expect(model.activeDocument?.text == "saved text plus typing")
+    }
+
+    @Test func saveAsOntoADanglingSymbolicLinkCreatesItsTarget() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let target = directory.appendingPathComponent("not-yet.md")
+        let link = directory.appendingPathComponent("dangling.md")
+        _ = try FileStore().write("draft", to: source)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load().updatingText("created"))
+        let panel = InterposingPanelProvider(destination: link, duringPanel: {})
+        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore(), panel: panel)
+        let expected = try #require(model.activeDocument)
+
+        await model.saveAs(to: link, expecting: expected)
+
+        #expect(model.lastError == nil)
+        #expect(try FileStore().read(from: target).content == "created")
     }
 }
 

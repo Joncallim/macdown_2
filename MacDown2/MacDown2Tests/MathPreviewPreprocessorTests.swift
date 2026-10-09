@@ -12,6 +12,34 @@ struct MathPreviewPreprocessorTests {
         #expect(MathPreviewPreprocessor.preprocess(source: source) == source)
     }
 
+    /// A `$` inside a code span must not flip the pairing of the real delimiters around it, which would
+    /// flag prose as "invalid math".
+    @Test func aDollarInACodeSpanDoesNotPairWithALaterEquation() {
+        let source = "Set `$PATH` then compute $x$ and $y$."
+        var validated: [String] = []
+
+        let result = MathPreviewPreprocessor.preprocess(source: source, isValid: { span in
+            validated.append(span.latex)
+            return true
+        })
+
+        #expect(validated == ["x", "y"])
+        #expect(result == source)
+    }
+
+    /// Display math inside a block quote must not carry the quote's `>` markers into validation or the rewritten text.
+    @Test func quotedDisplayMathLosesItsContinuationMarkers() {
+        var validated: [String] = []
+
+        let result = MathPreviewPreprocessor.preprocess(source: "> $$\n> x^2\n> $$", isValid: { span in
+            validated.append(span.latex)
+            return true
+        })
+
+        #expect(validated == ["\nx^2\n"])
+        #expect(result == "> $$ x^2 $$")
+    }
+
     @Test func leavesAValidInlineEquationByteForByteUntouched() {
         let source = "The energy is $E = mc^2$."
         #expect(MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true }) == source)
@@ -219,5 +247,17 @@ struct MathPreviewPreprocessorTests {
         let result = MathPreviewPreprocessor.preprocessed(block)
         #expect(result.source != block.source)
         #expect(result.source.contains(MathPreviewPreprocessor.invalidMathMarker))
+    }
+}
+
+/// Review pass 1: `"\r\n"` is a single Character, so `contains("\n")` was false and a
+/// multi-line display equation in a CRLF document was never collapsed.
+@Suite("MathPreviewPreprocessor line endings")
+struct MathPreviewPreprocessorLineEndingTests {
+    @Test(arguments: ["\r\n", "\r"])
+    func collapsesAMultiLineDisplayEquationInNonLFDocuments(lineEnding: String) {
+        let source = "$$\(lineEnding)\\frac{1}{2}\(lineEnding)$$"
+        let result = MathPreviewPreprocessor.preprocess(source: source, isValid: { _ in true })
+        #expect(result == "$$ \\frac{1}{2} $$")
     }
 }

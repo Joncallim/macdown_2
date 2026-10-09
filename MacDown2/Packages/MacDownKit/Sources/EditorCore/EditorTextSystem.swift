@@ -29,13 +29,13 @@ public final class EditorTextSystem {
         stack.layoutManager
     }
 
-    /// Per-tab undo manager. Independent from other tabs.
-    public var undoManager: UndoManager {
-        textView.undoManager ?? fallbackUndoManager
-    }
+    /// Per-tab undo manager, independent of every other tab. `EditorTextView` hands
+    /// this to AppKit (`NSTextView.undoManager` would otherwise be the WINDOW's), so
+    /// Cmd-Z in one tab can never undo — or desynchronise the line index of —
+    /// another tab that shares the window (tabbed documents).
+    public let undoManager = UndoManager()
 
     private let stack: TextKitStack
-    private let fallbackUndoManager = UndoManager()
     private var lastAppliedConfiguration: EditorConfiguration?
     private var lastAppliedOverscroll: OverscrollState?
     /// Not `private`: `EditorTextSystem+Content.swift`'s `setText`/
@@ -50,6 +50,10 @@ public final class EditorTextSystem {
     /// replacement, mirroring the incremental-edit path's own bump in
     /// `noteTextEdit()` below.
     var editRevision: UInt64 = 0
+    /// Told about every text change (see `EditorTextChange`); nil when nobody is watching.
+    public var textChangeObserver: ((EditorTextChange) -> Void)?
+    let metricsCache = EditorDocumentMetricsCache()
+    let contentHeightMeter = ContentHeightMeter()
     /// Prevents a disk-driven replacement from flowing back through the
     /// editor binding as a user edit. Setter is `internal` (not `private`)
     /// so `EditorTextSystem+Content.swift`'s `replaceTextFromExternal` can
@@ -70,6 +74,12 @@ public final class EditorTextSystem {
     /// setter is internal so `EditorEditTransaction.swift`'s `apply(_:)`
     /// can raise/lower it around the loop.
     public internal(set) var isApplyingMultiRangeTransaction = false
+    /// Set when a multi-range transaction skipped its per-range line-index patches; the transaction's final
+    /// change notification then rebuilds the index once instead of patching it N times (each patch copies the
+    /// whole line array, which made Replace All quadratic).
+    var lineIndexNeedsRebuild = false
+    /// The original replacements of a spliced transaction, reported to observers instead of the one wide edit.
+    var transactionEditsToReport: [TextReplacement]?
     /// The assist configuration currently applied to this text system.
     /// Storage lives here (extensions cannot hold stored properties);
     /// the E10 methods live in `EditorTextSystem+EditingAssists.swift`.
@@ -303,12 +313,12 @@ public final class EditorTextSystem {
         lastFrameSyncSignature = signature
 
         let availableWidth = max(textView.frame.width - textView.textContainerInset.width * 2, 1)
-        let measured = string.boundingRect(
-            with: NSSize(width: availableWidth, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
+        let contentHeight = contentHeightMeter.height(
+            of: string,
+            width: availableWidth,
             attributes: textView.typingAttributes
         )
-        measuredContentHeight = measured.height + textView.textContainerInset.height * 2
+        measuredContentHeight = contentHeight + textView.textContainerInset.height * 2
         applyMeasuredFrameHeight(scrollView: scrollView)
     }
 

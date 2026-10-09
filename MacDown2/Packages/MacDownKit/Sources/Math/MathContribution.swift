@@ -44,9 +44,20 @@ public struct MathContribution: Contributing {
         sourceGeneration: UInt
     ) async throws -> [ContributionResult] {
         let exclusions = Self.excludedRanges(in: document) + InlineCodeSpanScanner.ranges(in: sourceText)
+        // Masked rather than filtered afterwards: a `$` inside a URL would otherwise
+        // pair with the next real `$` and swallow it.
+        // Code spans and blocks are masked for the same reason: a `$` in `` `$PATH` `` or a fenced `echo $$` would
+        // otherwise flip the pairing of every later delimiter, losing real equations and typesetting prose.
+        let scannable = MathLiteralContextScanner.masked(
+            sourceText,
+            ranges: MathLiteralContextScanner.ranges(in: sourceText) + Self.frontMatterRange(in: document)
+                + exclusions
+        )
         var results: [ContributionResult] = []
-        for span in MathSpanScanner.scan(sourceText) where !exclusions.contains(where: { $0.overlaps(span.range) }) {
+        let sourceUnits = Array(sourceText.utf16)
+        for masked in MathSpanScanner.scan(scannable) where !exclusions.contains(where: { $0.overlaps(masked.range) }) {
             try Task.checkCancellation()
+            let span = Self.restoringLaTeX(of: masked, from: sourceUnits)
             do {
                 let image = try await renderer(span, context)
                 results.append(ContributionResult(
@@ -109,6 +120,28 @@ public struct MathContribution: Contributing {
     /// escaped-dollar defects. `TOCContribution` is a separate
     /// implementation with its own ownership boundary; this fix is scoped
     /// to `Math`, matching this epic's own module ownership (§5).
+    /// The scan ran on text with literal contexts masked (one U+E000 per unit); the LaTeX handed to the
+    /// renderer, the `alt` text and diagnostics must be the author's characters.
+    static func restoringLaTeX(of span: MathSpan, from units: [UInt16]) -> MathSpan {
+        let delimiter = span.style == .display ? 2 : 1
+        let start = span.range.lowerBound + delimiter
+        let end = span.range.upperBound - delimiter
+        guard start <= end, end <= units.count else { return span }
+        var latex = String(decoding: units[start ..< end], as: UTF16.self)
+        if MathContainerPrefix.isInsideQuote(spanStart: span.range.lowerBound, character: { units[$0] }) {
+            latex = MathContainerPrefix.strippingQuoteMarkers(from: latex)
+        }
+        return MathSpan(range: span.range, style: span.style, latex: latex)
+    }
+
+    /// Front matter is data, not prose: math there is not typeset, and an unpaired `$$`
+    /// in it must not pair with the first body equation.
+    static func frontMatterRange(in document: MarkdownDocument) -> [Range<Int>] {
+        guard let lines = document.frontMatter?.lineRange else { return [] }
+        let range = document.sourceMap.utf16Range(ofLines: lines)
+        return [range.location ..< (range.location + range.length)]
+    }
+
     static func excludedRanges(in document: MarkdownDocument) -> [Range<Int>] {
         document.blocks.flatMap { excludedRanges(in: $0, sourceMap: document.sourceMap) }
     }
@@ -145,15 +178,18 @@ public struct MathContribution: Contributing {
     }
 
     private static func htmlAttributeEscaped(_ text: String) -> String {
+        // Per unicode scalar, not per `Character`: a `"` followed by a combining mark or ZWNJ is one `Character`
+        // that matched none of the cases, so the quote went out unescaped and let authored LaTeX add attributes
+        // (`style`, a remote `srcset`) to the exported `<img>`.
         var result = ""
-        result.reserveCapacity(text.count)
-        for character in text {
-            switch character {
+        result.unicodeScalars.reserveCapacity(text.unicodeScalars.count)
+        for scalar in text.unicodeScalars {
+            switch scalar {
             case "&": result += "&amp;"
             case "\"": result += "&quot;"
             case "<": result += "&lt;"
             case ">": result += "&gt;"
-            default: result.append(character)
+            default: result.unicodeScalars.append(scalar)
             }
         }
         return result

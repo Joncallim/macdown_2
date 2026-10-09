@@ -142,6 +142,10 @@ enum FencedRegionClassifier {
 
         let infoString = text.substring(with: NSRange(location: index, length: lineContentEnd - index))
             .trimmingCharacters(in: .whitespaces)
+        // A backtick fence's info string cannot contain a backtick: "```x```" is inline code, not a fence.
+        if marker == 0x60, infoString.contains("`") {
+            return nil
+        }
         let firstToken = infoString.split(separator: " ").first.map { String($0).lowercased() }
         return FenceDelimiter(
             character: marker,
@@ -160,6 +164,14 @@ enum FencedRegionClassifier {
         }
 
         var lineStart = firstLineContentEnd + separatorLength(at: firstLineContentEnd, in: text)
+        // Same rule as `MarkdownEngine`: a blank second line makes the opener a thematic break.
+        if lineStart < text.length {
+            let secondEnd = MarkdownEditingAssistEngine.lineContentEnd(of: lineStart, in: text)
+            let second = text.substring(with: NSRange(location: lineStart, length: secondEnd - lineStart))
+            if second.trimmingCharacters(in: .whitespaces).isEmpty {
+                return nil
+            }
+        }
         var linesScanned = 0
         while lineStart < text.length, linesScanned < maximumFrontMatterLinesScanned {
             let contentEnd = MarkdownEditingAssistEngine.lineContentEnd(of: lineStart, in: text)

@@ -56,9 +56,7 @@ enum EditorLineTransforms {
             // (nothing before the block to infer a style from) falls back
             // to "\n".
             let separator = needsLeadingSeparator
-                ? (group.startLine > 1
-                    ? terminatorText(afterLine: group.startLine - 1, lineIndex: lineIndex, text: text)
-                    : "\n")
+                ? synthesizedSeparator(before: group, lineIndex: lineIndex, text: text)
                 : ""
             let replacementText = separator + blockContent
             let insertionPoint = blockRange.location + blockRange.length
@@ -80,6 +78,10 @@ enum EditorLineTransforms {
 
             delta += (replacementText as NSString).length
         }
+
+        // A change that would leave a `\r` directly before an unrelated `\n` (mixed
+        // endings) would be read back as one `\r\n`, dropping or inventing a line.
+        guard !createsCRLFPair(replacements, in: text) else { return nil }
 
         return makeTransaction(
             replacements: replacements,
@@ -124,6 +126,10 @@ enum EditorLineTransforms {
 
             delta -= range.length
         }
+
+        // A change that would leave a `\r` directly before an unrelated `\n` (mixed
+        // endings) would be read back as one `\r\n`, dropping or inventing a line.
+        guard !createsCRLFPair(replacements, in: text) else { return nil }
 
         return makeTransaction(
             replacements: replacements,
@@ -196,8 +202,14 @@ enum EditorLineTransforms {
                 ofLine: $0,
                 in: text
             )) }
-            let joined = lines.reduce("") { partial, line in
-                partial.isEmpty ? line : partial + " " + line.drop { $0 == " " || $0 == "\t" }
+            // The first line is kept as written; each later line loses its leading indentation and is joined with
+            // one space. A blank later line adds nothing (no trailing space), and a blank first line does not make
+            // the next one "first" and swallow its separator.
+            var joined = lines[0]
+            for line in lines.dropFirst() {
+                let trimmed = line.drop { $0 == " " || $0 == "\t" }
+                guard !trimmed.isEmpty else { continue }
+                joined += joined.isEmpty ? String(trimmed) : " " + trimmed
             }
             replacements.append(TextReplacement(range: joinRange, replacementText: joined))
 
@@ -215,6 +227,12 @@ enum EditorLineTransforms {
 
             delta += (joined as NSString).length - joinRange.length
         }
+
+        carryOverDroppedSelections(groups: groups, selection: selection, delta: delta, into: &resultsByOriginalIndex)
+
+        // A change that would leave a `\r` directly before an unrelated `\n` (mixed
+        // endings) would be read back as one `\r\n`, dropping or inventing a line.
+        guard !createsCRLFPair(replacements, in: text) else { return nil }
 
         return makeTransaction(
             replacements: replacements,
@@ -321,6 +339,27 @@ enum EditorLineTransforms {
         let precedingLineContent = lineIndex.utf16Range(ofLine: startLine - 1, in: text)
         let precedingLineContentEnd = precedingLineContent.location + precedingLineContent.length
         return NSRange(location: precedingLineContentEnd, length: lineIndex.utf16Length - precedingLineContentEnd)
+    }
+
+    /// The separator to put before a duplicated final block: the terminator
+    /// already used before the block, else — for a block that starts at line 1 —
+    /// the document's first terminator (inside the block itself), and `"\n"`
+    /// only for a single-line document with nothing to infer a style from.
+    static func synthesizedSeparator(before group: LineBlockGroup, lineIndex: EditorLineIndex,
+                                     text: NSString) -> String {
+        if group.startLine > 1 {
+            return terminatorText(afterLine: group.startLine - 1, lineIndex: lineIndex, text: text)
+        }
+        return lineIndex.lineCount > 1 ? terminatorText(afterLine: 1, lineIndex: lineIndex, text: text) : "\n"
+    }
+
+    /// The single character to split a line group's content on: `"\n"` (also
+    /// right for CRLF, whose `"\r"` stays attached to its line), or `"\r"` for
+    /// a bare-CR document that contains no `"\n"` at all.
+    static func lineSplitSeparator(for content: String) -> String {
+        // utf8 scan: `String.contains("\n")` is false for a "\r\n" grapheme.
+        let hasLinefeed = content.utf8.contains(0x0A)
+        return hasLinefeed || !content.utf8.contains(0x0D) ? "\n" : "\r"
     }
 
     /// Builds the final `EditorEditTransaction`, remapping `resultsByOriginalIndex`

@@ -80,11 +80,26 @@ final class GoToLinePanel: NSPanel, NSWindowDelegate {
     /// empty line component entirely, shifting "3" into the line position
     /// and silently jumping to line 3 instead of column 3 on the current
     /// line 1 (hostile review finding, PR #126).
-    private static func parse(_ input: String) -> (line: Int, column: Int?) {
+    static func parse(_ input: String) -> (line: Int, column: Int?) {
         let parts = input.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
-        let line = parts.first.flatMap { Int($0) } ?? 1
-        let column = parts.count > 1 ? Int(parts[1]) : nil
+        let line = parts.first.flatMap(number) ?? 1
+        let column = parts.count > 1 ? number(parts[1]) : nil
         return (line, column)
+    }
+
+    /// An integer from user text: surrounding spaces are ignored, and a number too large for
+    /// `Int` saturates (so "99999999999999999999" goes to the last line, as any other
+    /// out-of-range number does) instead of failing and silently jumping to line 1.
+    private static func number(_ text: Substring) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if let value = Int(trimmed) {
+            return value
+        }
+        let digits = trimmed.drop { $0 == "+" || $0 == "-" }
+        guard !digits.isEmpty, trimmed.count - digits.count <= 1, digits.allSatisfy(\.isASCII),
+              digits.allSatisfy(\.isNumber)
+        else { return nil }
+        return trimmed.hasPrefix("-") ? Int.min : Int.max
     }
 
     func windowWillClose(_: Notification) {

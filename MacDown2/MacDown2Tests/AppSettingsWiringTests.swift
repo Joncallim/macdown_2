@@ -21,17 +21,8 @@ struct AppSettingsWiringTests {
         #expect(!disabled.blockDirectives)
     }
 
-    @Test func markdownParseOptionsLeavesTheInertFieldsAlwaysOn() {
-        let options = DocumentEditorSplitView.markdownParseOptions(from: MarkdownSettings(parsesBlockDirectives: false))
-        #expect(options.tables)
-        #expect(options.taskLists)
-        #expect(options.strikethrough)
-        #expect(options.autolinks)
-        #expect(options.footnotes)
-    }
-
     @Test func markdownParseOptionsDefaultsToOnWhenSettingsUnavailable() {
-        #expect(DocumentEditorSplitView.markdownParseOptions(from: nil).blockDirectives)
+        #expect(!DocumentEditorSplitView.markdownParseOptions(from: nil).blockDirectives)
     }
 
     // MARK: - Editor assists

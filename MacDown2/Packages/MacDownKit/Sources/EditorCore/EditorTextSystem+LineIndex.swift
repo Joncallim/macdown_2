@@ -24,11 +24,66 @@ extension EditorTextSystem {
     /// back to `text as NSString` there is the same "fail open" trade the
     /// existing `liveSourceLength` makes.
     func noteIncrementalEdit(editedRange: NSRange, replacementUTF16Length: Int) {
+        let live = assistTextSource ?? (text as NSString)
+        // Marked-text (IME / dead-key) edits post no `didChange`, so the index never saw them; the
+        // commit's edit would then be applied to a stale index and scan out of bounds. When the index's
+        // length does not account for this edit exactly, rebuild instead of patching.
+        guard lineIndex.utf16Length + replacementUTF16Length - editedRange.length == live.length else {
+            rebuildLineIndex()
+            return
+        }
         lineIndex.applying(
             editedRange: editedRange,
             replacementUTF16Length: replacementUTF16Length,
             newText: assistTextSource ?? (text as NSString)
         )
+        textChangeObserver?(.edit(range: editedRange, replacementLength: replacementUTF16Length))
+    }
+
+    /// Brings the line index in step after one change notification. Inside a multi-range transaction the
+    /// per-range patches are skipped (each copies the whole line array) and the final notification rebuilds once.
+    /// Observers (the Find model's retained search domain) still hear every range's `.edit`, highest first.
+    func syncLineIndex(afterEdit pending: (range: NSRange, replacementUTF16Length: Int)?) {
+        if isApplyingMultiRangeTransaction {
+            lineIndexNeedsRebuild = true
+            notifyEdit(pending)
+        } else if lineIndexNeedsRebuild {
+            lineIndexNeedsRebuild = false
+            lineIndex.rebuild(text: assistTextSource ?? (text as NSString))
+            if let edits = transactionEditsToReport {
+                reportTransactionEdits(edits)
+            } else {
+                notifyEdit(pending)
+            }
+        } else if let pending {
+            noteIncrementalEdit(editedRange: pending.range, replacementUTF16Length: pending.replacementUTF16Length)
+        } else {
+            // No edit was reported for this change (a composition's marked text): repair a stale index.
+            rebuildLineIndexIfStale()
+        }
+    }
+
+    private func notifyEdit(_ pending: (range: NSRange, replacementUTF16Length: Int)?) {
+        guard let pending else { return }
+        textChangeObserver?(.edit(range: pending.range, replacementLength: pending.replacementUTF16Length))
+    }
+
+    /// Repairs the line index when marked-text (IME / dead-key) edits, which post no `didChange`, left it out of step
+    /// with the text — a cancelled composition over a selection changes the length with no edit ever reported.
+    func rebuildLineIndexIfStale() {
+        let live = assistTextSource ?? (text as NSString)
+        if lineIndex.utf16Length != live.length {
+            rebuildLineIndex()
+        }
+    }
+
+    /// A composition ended (committed or cancelled). Rebuilds the index and, when the text no longer matches what
+    /// was last published, tells the delegate so the binding catches up before the next SwiftUI update pass
+    /// (which would otherwise push the stale binding back with `setText`, reverting the text and wiping undo).
+    func compositionDidEnd() {
+        rebuildLineIndex()
+        storedSelectionSet = nil
+        textView.didChangeText()
     }
 
     /// Full rebuild for edit paths that bypass the incremental hook above
@@ -40,6 +95,7 @@ extension EditorTextSystem {
     /// `noteIncrementalEdit` above.
     func rebuildLineIndex() {
         lineIndex.rebuild(text: assistTextSource ?? (text as NSString))
+        textChangeObserver?(.untracked)
     }
 
     /// Undo/redo replays a previously-approved edit directly against the

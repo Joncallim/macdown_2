@@ -13,6 +13,7 @@ import Workspace
 struct ContentAreaView: View {
     let model: WorkspaceModel
     let editorStore: EditorTextSystemStore
+    let findStore: EditorFindModelStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let jsonAnalysisStore: JSONAnalysisStore
@@ -78,6 +79,7 @@ struct ContentAreaView: View {
                 identity: identity,
                 text: textBinding,
                 editorStore: editorStore,
+                findStore: findStore,
                 highlightStore: highlightStore,
                 parseStore: parseStore,
                 jsonAnalysisStore: jsonAnalysisStore,
@@ -263,6 +265,23 @@ private struct WorkspaceRecoveryRequiredNotice: View {
             .background(.orange.opacity(0.15))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("recoveryCleanupRequiredNotice")
+        } else if case let .textNotRepresentable(encodingName) = model.lastError {
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                Text(verbatim: WorkspaceError.textNotRepresentable(encodingName: encodingName).errorDescription ?? "")
+                    .font(.callout)
+                Spacer()
+                Button("Dismiss") {
+                    model.dismissLastError()
+                }
+                .accessibilityIdentifier("textNotRepresentableDismissButton")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(.orange.opacity(0.15))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("textNotRepresentableNotice")
         } else if case let .saveFailed(underlying) = model.lastError {
             // #57: previously nothing rendered this case at all. A save
             // that failed (permission denied, disk full, a write raced by
@@ -309,7 +328,11 @@ enum FileSaveFailurePresentation {
         // "folder" specifically (adversarial review finding).
         case .fileMissing:
             String(localized: "The file could not be found. It may have been moved, renamed, or deleted.")
-        case .encodingDetectionFailed: String(localized: "The file's text encoding could not be determined.")
+        // `.textNotRepresentable` is intercepted by the model into
+        // `WorkspaceError.textNotRepresentable` (which names the attempted
+        // encoding); it shares this wording only for switch exhaustiveness.
+        case .encodingDetectionFailed, .textNotRepresentable:
+            String(localized: "The text could not be written in the file's text encoding.")
         case let .decodingFailed(diagnostics):
             diagnostics.first?.message ?? String(localized: "The file's contents could not be verified after saving.")
         case .conditionalPublicationRecoveryRequired:

@@ -151,14 +151,14 @@ struct BlockConversionTests {
     }
 
     @Test func unknownBlockMapsToCustom() async throws {
-        // Block directives are supported by swift-markdown but not mapped
+        // Block directives (opt-in) are supported by swift-markdown but not mapped
         // explicitly in BlockKind, so they exercise the custom escape hatch.
         let text = """
         @MyBlock {
         Content
         }
         """
-        let document = try await engine.parse(text, revision: 1)
+        let document = try await engine.parse(text, options: MarkdownParseOptions(blockDirectives: true), revision: 1)
 
         let custom = document.blocks.first { $0.kind.isCustom }
         #expect(custom != nil)

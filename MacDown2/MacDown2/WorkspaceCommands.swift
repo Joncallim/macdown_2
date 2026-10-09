@@ -22,10 +22,9 @@ struct WorkspaceCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New File") {
-                coordinator?.createInKeyFolder(isDirectory: false)
+                coordinator?.newFileCommand()
             }
             .keyboardShortcut("n", modifiers: .command)
-            .disabled(coordinator?.keyFolderRoot == nil)
 
             Button("New Folder") {
                 coordinator?.createInKeyFolder(isDirectory: true)
@@ -43,6 +42,10 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("o", modifiers: .command)
 
+            Button("Open with Encoding…") {
+                coordinator?.openFileWithEncoding()
+            }
+
             Button("Open Folder…") {
                 coordinator?.chooseFolder()
             }
@@ -55,6 +58,33 @@ struct WorkspaceCommands: Commands {
                 Divider()
                 Button("Clear Menu") { coordinator?.recentFolderRoots.clear() }
             }
+
+            // EPIC-22 issue #112, Slice 6c. Unlike `RecentFolderRoots`
+            // (whose stale-bookmark cleanup happens reactively inside
+            // `resolve(_:)`, called constantly during ordinary folder
+            // browsing), `RecentFileDocuments.pruneMissingFiles()` is called
+            // from `record(_:)` and at launch (`reload()`) rather than from
+            // this menu's own body — a SwiftUI `Commands` menu has no
+            // reliable per-open lifecycle hook to run it from immediately
+            // before display, and every real file open already routes
+            // through `record(_:)` (see `openDocument(at:...)`'s own doc
+            // comment), so a moved/deleted entry is pruned the next time the
+            // user opens anything, not just when they happen to look at
+            // this specific menu.
+            Menu("Open Recent File") {
+                ForEach(coordinator?.recentFileDocuments.documents ?? [], id: \.self) { url in
+                    Button(url.lastPathComponent) { coordinator?.openRecentFile(url) }
+                }
+                Divider()
+                Button("Clear Menu") { coordinator?.recentFileDocuments.clear() }
+            }
+
+            Divider()
+
+            Button("Quick Open…") {
+                coordinator?.toggleQuickOpen()
+            }
+            .keyboardShortcut("p", modifiers: .command)
         }
 
         CommandGroup(replacing: .saveItem) {
@@ -70,11 +100,13 @@ struct WorkspaceCommands: Commands {
             .keyboardShortcut("s", modifiers: [.command, .shift])
             .disabled(coordinator?.keyModel?.hasActiveDocument != true)
 
+            encodingMenus
+
             Button("Close Tab") {
                 coordinator?.closeKeyWindow()
             }
             .keyboardShortcut("w", modifiers: .command)
-            .disabled(coordinator?.keyModel?.canClose != true)
+            .disabled(coordinator?.canCloseKeyWindow != true)
 
             Divider()
 
@@ -221,10 +253,28 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("g", modifiers: [.control])
             .disabled(coordinator?.keyModel?.hasActiveDocument != true)
+
+            // EPIC-22 §6.14, Slice 5a: an inline docked bar, not a floating
+            // panel, so this only toggles per-tab state — see
+            // `WindowCoordinator+Find.swift`. Deliberately ⌃F, not ⌘F:
+            // `.textEditing` (AppKit's own stock Find/Find Next/Find
+            // Previous/spelling/substitutions menu, driven by
+            // `NSTextFinder`'s responder-chain integration) is left
+            // untouched for now, matching "Go to Line/Column…"'s own choice
+            // of ⌃G just above rather than the ⌘G stock Find Next already
+            // owns. Replacing `.textEditing` outright is a separate,
+            // larger decision (it would also affect spelling/substitutions,
+            // unrelated to Find) left for a future slice.
+            Button("Find in Document…") {
+                coordinator?.toggleFind()
+            }
+            .keyboardShortcut("f", modifiers: [.control])
+            .disabled(coordinator?.keyModel?.hasActiveDocument != true)
         }
 
         textFormattingCommands
         lineTransformCommands
+        snippetCommands
 
         #if DEBUG
             CommandMenu("Debug") {

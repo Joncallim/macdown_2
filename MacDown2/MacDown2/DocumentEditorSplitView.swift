@@ -23,6 +23,7 @@ struct DocumentEditorSplitView: View {
     let identity: String
     @Binding var text: String
     let editorStore: EditorTextSystemStore
+    let findStore: EditorFindModelStore
     let highlightStore: SyntaxHighlightStore
     let parseStore: MarkdownParseStore
     let jsonAnalysisStore: JSONAnalysisStore
@@ -101,9 +102,13 @@ struct DocumentEditorSplitView: View {
         // this format-specific configuration arrives, so a document can
         // never receive a transient assist configuration meant for a
         // different format.
-        let isMarkdown = document.format.id == "markdown"
+        // The per-document Syntax Mode override (Slice 9d) governs editing
+        // behaviour only; preview and outline gates keep using the file's
+        // real `document.format`.
+        let syntaxFormatID = tab.syntaxFormat.id
+        let isMarkdown = syntaxFormatID == "markdown"
         config.editingAssists = Self.assistConfiguration(from: appSettings?.editor, isMarkdown: isMarkdown)
-        config.languageProfile = LanguageEditingProfileRegistry.profile(for: document.format.id)
+        config.languageProfile = LanguageEditingProfileRegistry.profile(for: syntaxFormatID)
         return config
     }
 
@@ -131,14 +136,18 @@ struct DocumentEditorSplitView: View {
                     jsonSession.textDidChange(newText)
                 }
             }
+            .onChange(of: tab.syntaxFormat.id) { _, _ in
+                attachHighlighter()
+            }
             .onChange(of: document.format.id) { _, _ in
                 // Save As format transitions re-gate both outline channels so
                 // a stale Markdown outline never survives a move to JSON (and
                 // vice versa), and invalidate a persisted preview mode the new
-                // format cannot display.
-                refreshOutline()
-                refreshJSONOutline()
+                // format cannot display. A format that gains a parser must
+                // also START its analysis: the text did not change, so nothing
+                // else would (#183 F05).
                 resetInvalidPreviewMode()
+                Task { await loadInitialContent() }
             }
             .onChange(of: parseSession.document) { _, _ in
                 refreshPreviewBlocks()
@@ -251,7 +260,7 @@ struct DocumentEditorSplitView: View {
     /// TOC (architecture takeover, pass 1/10).
     private var contributionTaskID: PreviewContributionTaskID {
         PreviewContributionTaskID(
-            documentIdentity: ObjectIdentifier(parseSession), parsedRevision: parseSession.document?.revision
+            documentIdentity: parseSession.identity, parsedRevision: parseSession.document?.revision
         )
     }
 
@@ -269,7 +278,8 @@ struct DocumentEditorSplitView: View {
         outlineController.update(
             document: parseSession.document,
             isMarkdown: isMarkdown,
-            formatName: document.format.name
+            formatName: document.format.name,
+            documentIdentity: parseSession.identity
         )
     }
 
@@ -303,6 +313,9 @@ struct DocumentEditorSplitView: View {
                 d2FenceView: d2FenceView,
                 graphvizFenceView: graphvizFenceView
             )
+            .environment(\.previewOpenDocument) { [weak coordinator] url in
+                Task { @MainActor in await coordinator?.openDocument(at: url) }
+            }
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 4) {
                     PreviewContributionDiagnosticsBadge(

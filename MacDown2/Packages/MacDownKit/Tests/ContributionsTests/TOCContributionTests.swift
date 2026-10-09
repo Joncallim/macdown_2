@@ -113,7 +113,8 @@ struct TOCContributionTests {
         let ranges = TOCContribution.findMarkers(in: text, document: document)
         let range = try #require(ranges.first)
         let nsRange = NSRange(location: range.lowerBound, length: range.count)
-        #expect((text as NSString).substring(with: nsRange) == "[TOC]\r")
+        // The range stops before the whole CRLF terminator.
+        #expect((text as NSString).substring(with: nsRange) == "[TOC]")
     }
 
     // MARK: - markdownList
@@ -205,5 +206,17 @@ struct TOCContributionTests {
         let results = try await TOCContribution().run(document: document, sourceText: text, sourceGeneration: 0)
 
         #expect(results.isEmpty)
+    }
+
+    /// Each marker scanned every top-level block (20k markers took ~36 s).
+    @Test func manyMarkersAreFoundInLinearTime() async throws {
+        let text = String(repeating: "[TOC]\n\n", count: 20000)
+        let document = try await Self.document(text)
+        let start = ContinuousClock.now
+
+        let ranges = TOCContribution.findMarkers(in: text, document: document)
+
+        #expect(ranges.count == 20000)
+        #expect(ContinuousClock.now - start < .seconds(10))
     }
 }

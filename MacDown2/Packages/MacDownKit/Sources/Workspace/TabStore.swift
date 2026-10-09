@@ -10,7 +10,16 @@ import Observation
 /// session schema stays stable across save-as and untitled recovery buffer keys.
 public struct WorkspaceTab: Identifiable, Sendable {
     public let id: UUID
-    public var document: FileDocument
+    public var document: FileDocument {
+        didSet {
+            // A Save As / rename into another format ends the override for
+            // good, so returning to the original format later cannot revive it.
+            if syntaxOverride != nil, oldValue.format.id != document.format.id {
+                syntaxOverride = nil
+            }
+        }
+    }
+
     public var isPinned: Bool
 
     /// Transient editor state captured at session-save time. Applied by the
@@ -34,6 +43,19 @@ public struct WorkspaceTab: Identifiable, Sendable {
     /// it to `nil` when the format's capability changes).
     public var previewMode: PreviewMode?
 
+    /// The user's explicit Syntax Mode for this tab, or `nil` to follow the
+    /// file's format. Persisted with the session. Cleared when `document`'s
+    /// format id changes; `SyntaxModeOverride.baseFormatID` additionally makes
+    /// a stale override inert.
+    public var syntaxOverride: SyntaxModeOverride?
+
+    /// The format whose grammar and editing profile drive the editor.
+    public var syntaxFormat: FileFormat {
+        Self.registry.syntaxFormat(for: document.format, override: syntaxOverride)
+    }
+
+    private static let registry = FileFormatRegistry()
+
     /// Per-window folder root persisted alongside this native-window tab.
     public var folderRootBookmark: Data?
     public var folderRootAlias: URL?
@@ -47,6 +69,7 @@ public struct WorkspaceTab: Identifiable, Sendable {
         scrollOffset: Double? = nil,
         previewLayout: PreviewLayoutMode? = nil,
         previewMode: PreviewMode? = nil,
+        syntaxOverride: SyntaxModeOverride? = nil,
         folderRootBookmark: Data? = nil,
         folderRootAlias: URL? = nil
     ) {
@@ -58,6 +81,7 @@ public struct WorkspaceTab: Identifiable, Sendable {
         self.scrollOffset = scrollOffset
         self.previewLayout = previewLayout
         self.previewMode = previewMode
+        self.syntaxOverride = syntaxOverride
         self.folderRootBookmark = folderRootBookmark
         self.folderRootAlias = folderRootAlias
     }
@@ -183,23 +207,40 @@ public final class TabStore {
     /// Returns the resulting tab, or the real reason the file could not be
     /// loaded — never fabricated, so a permission error is not misreported
     /// as "file not found."
+    /// The tab already showing `standardized`, made active when this open request
+    /// is still the newest one.
+    private func activateOpenTab(for standardized: URL, requestGeneration: UInt) -> WorkspaceTab? {
+        guard let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) else {
+            return nil
+        }
+        if requestGeneration == openRequestGeneration {
+            activeTabID = existing.id
+        }
+        persist()
+        return existing
+    }
+
     @discardableResult
-    public func openFileInTab(_ url: URL) async -> Result<WorkspaceTab, FileStoreError> {
+    public func openFileInTab(
+        _ url: URL,
+        encoding: FileEncodingMetadata? = nil
+    ) async -> Result<WorkspaceTab, FileStoreError> {
+        let url = url.resolvingFinalSymlink()
         let standardized = url.standardizedFileURL
         openRequestGeneration &+= 1
         let requestGeneration = openRequestGeneration
 
-        if let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) {
-            if requestGeneration == openRequestGeneration {
-                activeTabID = existing.id
-            }
-            persist()
+        if let existing = activateOpenTab(for: standardized, requestGeneration: requestGeneration) {
             return .success(existing)
         }
 
         let document: FileDocument
         do {
-            document = try await FileDocument.create(fileURL: url, recoveryBuffer: recoveryBuffer)
+            document = try await FileDocument.create(
+                fileURL: url,
+                encoding: encoding ?? .utf8Default,
+                recoveryBuffer: recoveryBuffer
+            )
         } catch {
             return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
         }
@@ -209,12 +250,15 @@ public final class TabStore {
             }.value
             // The await above lets another intent open/activate this file.
             // Reuse that tab rather than publishing a duplicate completion.
-            if let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) {
-                if requestGeneration == openRequestGeneration {
-                    activeTabID = existing.id
-                }
-                persist()
+            if let existing = activateOpenTab(for: standardized, requestGeneration: requestGeneration) {
                 return .success(existing)
+            }
+            // BOM-less UTF-16 is "valid UTF-8" — full of NUL bytes. Text with a
+            // NUL whose bytes unmistakably are UTF-16 is reopened as such rather
+            // than shown (and saved back) as garbage.
+            if encoding == nil, loaded.text.unicodeScalars.contains("\u{0}"),
+               let detected = FileStore().conservativelyDetectedEncoding(at: url) {
+                return await openFileInTab(url, encoding: detected)
             }
             let tab = WorkspaceTab(document: loaded)
             tabs.append(tab)
@@ -224,7 +268,15 @@ public final class TabStore {
             persist()
             return .success(tab)
         } catch {
-            return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
+            let failure = (error as? FileStoreError) ?? .readFailed(underlying: error)
+            // Neither BOM-marked nor valid UTF-8. Retry once if the bytes
+            // themselves identify the encoding (BOM-less UTF-16); anything
+            // ambiguous stays a failure that offers an explicit choice.
+            if encoding == nil, failure.isUndecodableText,
+               let detected = FileStore().conservativelyDetectedEncoding(at: url) {
+                return await openFileInTab(url, encoding: detected)
+            }
+            return .failure(failure)
         }
     }
 
@@ -309,7 +361,7 @@ public final class TabStore {
                 // when the recovery record still verifies the captured text;
                 // a stale/rejected write never gets this exception.
                 guard let recovered = try? await recoveryBuffer.load(for: documentID, epoch: lifetime),
-                      recovered == content
+                      recovered.isExactlyEqual(to: content)
                 else { return false }
             }
         }

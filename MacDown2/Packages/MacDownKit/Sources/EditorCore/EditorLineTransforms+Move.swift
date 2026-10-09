@@ -66,12 +66,89 @@ extension EditorLineTransforms {
             delta += (replacement.replacementText as NSString).length - replacement.range.length
         }
 
+        // Swapping lines in a document that mixes `\r` and `\n` terminators can
+        // leave a moved `\r` directly in front of an unrelated `\n` (an empty line
+        // between them), which the next parse reads as ONE `\r\n`: a line would
+        // vanish and the terminators would be silently rewritten. Such a move has
+        // no faithful representation, so it declines instead (invariant 5).
+        guard !createsCRLFPair(replacements, in: text), !fusesInsideReplacement(replacements, in: text) else {
+            return nil
+        }
+
         return makeTransaction(
             replacements: replacements,
             resultsByOriginalIndex: resultsByOriginalIndex,
             selection: selection,
             undoActionName: moveUp ? "Move Line Up" : "Move Line Down"
         )
+    }
+
+    /// A swap keeps every terminator but can put a `\r` next to a `\n` INSIDE the replacement text
+    /// (`blockJoined + adjacentTerminator + adjacentContent`), which `createsCRLFPair` — it only looks at
+    /// seams at replacement edges — cannot see. A swap must never create more CRLF pairs than it replaced.
+    static func fusesInsideReplacement(_ replacements: [TextReplacement], in text: NSString) -> Bool {
+        func pairs(_ string: String) -> Int {
+            let units = Array(string.utf16)
+            return units.count < 2 ? 0 : (1 ..< units.count).count { units[$0 - 1] == 0x0D && units[$0] == 0x0A }
+        }
+        return replacements.contains { pairs($0.replacementText) > pairs(text.substring(with: $0.range)) }
+    }
+
+    /// Whether applying `replacements` (ascending, non-overlapping) would place a
+    /// `\r` immediately before a `\n` where the original text had no such pair at
+    /// that seam. Only seams at replacement edges can change, so only those are
+    /// examined, with a neighbouring replacement's text standing in for the original
+    /// character when two replacements touch. A deletion (empty replacement) joins
+    /// the characters on either side of it directly.
+    static func createsCRLFPair(_ replacements: [TextReplacement], in text: NSString) -> Bool {
+        let carriageReturn = unichar(0x000D)
+        let lineFeed = unichar(0x000A)
+        func lastUnit(_ string: String) -> unichar? {
+            let nsString = string as NSString
+            return nsString.length > 0 ? nsString.character(at: nsString.length - 1) : nil
+        }
+        func firstUnit(_ string: String) -> unichar? {
+            let nsString = string as NSString
+            return nsString.length > 0 ? nsString.character(at: 0) : nil
+        }
+        for (index, replacement) in replacements.enumerated() {
+            let start = replacement.range.location
+            let end = NSMaxRange(replacement.range)
+
+            let before: unichar? = if index > 0, NSMaxRange(replacements[index - 1].range) == start {
+                lastUnit(replacements[index - 1].replacementText)
+            } else if start > 0 {
+                text.character(at: start - 1)
+            } else {
+                nil
+            }
+            let nextTouches = index + 1 < replacements.count && replacements[index + 1].range.location == end
+            let after: unichar? = if nextTouches {
+                firstUnit(replacements[index + 1].replacementText)
+            } else if end < text.length {
+                text.character(at: end)
+            } else {
+                nil
+            }
+
+            let first = firstUnit(replacement.replacementText)
+            let last = lastUnit(replacement.replacementText)
+            if first == nil {
+                // Deleted span: its neighbours become adjacent (a touching successor
+                // checks its own leading seam against what precedes it here).
+                if before == carriageReturn, after == lineFeed, !nextTouches {
+                    return true
+                }
+                continue
+            }
+            if before == carriageReturn, first == lineFeed {
+                return true
+            }
+            if !nextTouches, last == carriageReturn, after == lineFeed {
+                return true
+            }
+        }
+        return false
     }
 
     /// Rearranges the block `[startLine...endLine]` and the single adjacent

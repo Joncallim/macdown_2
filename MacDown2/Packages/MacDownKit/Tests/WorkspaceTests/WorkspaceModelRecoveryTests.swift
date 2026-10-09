@@ -53,11 +53,17 @@ struct WorkspaceModelRecoveryTests {
         let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore())
 
         let save = Task { @MainActor in await model.save() }
-        for _ in 0 ..< 200 where !barrier.hasArrived {
-            await Task.yield()
-        }
-        guard barrier.hasArrived else {
-            barrier.cancelAndAllowPublication()
+        // Was a fixed `for _ in 0 ..< 200 { await Task.yield() }` busy-poll —
+        // no wall-clock guarantee at all: 200 yields can resolve near-instantly
+        // on an idle machine or fail to make meaningful scheduling progress
+        // under a contended CI runner, producing a spurious timeout unrelated
+        // to correctness. `waitForSignal` (shared, `AsyncBarrierWaiting.swift`)
+        // awaits the barrier's own real continuation-based signal instead,
+        // with a generous wall-clock timeout as a safety net only.
+        guard await waitForSignal(
+            wait: { await barrier.waitForFirstPublication() },
+            onTimeout: { barrier.cancelAndAllowPublication() }
+        ) else {
             await save.value
             Issue.record("Timed out waiting for conditional publication")
             return

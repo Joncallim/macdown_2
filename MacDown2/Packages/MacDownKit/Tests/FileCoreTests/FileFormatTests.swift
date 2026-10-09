@@ -58,3 +58,12 @@ import UniformTypeIdentifiers
         #expect(!format.name.isEmpty)
     }
 }
+
+@Test func texAndLatexExtensionsResolveToTheSourceOnlyTeXFormat() {
+    let registry = FileFormatRegistry()
+    for name in ["paper.tex", "paper.latex", "PAPER.TEX"] {
+        let format = FileFormat.format(for: URL(fileURLWithPath: "/tmp/\(name)"), in: registry)
+        #expect(format?.id == "tex", "\(name)")
+        #expect(format?.previewCapability == PreviewCapability.none)
+    }
+}

@@ -73,6 +73,7 @@ struct CommandPaletteModelTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: FileTreePreferences(),
             recentFolderRoots: RecentFolderRoots(preferences: FileTreePreferences()),
+            recentFileDocuments: RecentFileDocuments(preferences: FileTreePreferences()),
             appSettings: AppSettingsModel()
         )
 
@@ -100,6 +101,7 @@ struct CommandPaletteModelTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: FileTreePreferences(),
             recentFolderRoots: RecentFolderRoots(preferences: FileTreePreferences()),
+            recentFileDocuments: RecentFileDocuments(preferences: FileTreePreferences()),
             appSettings: AppSettingsModel()
         )
 
@@ -174,6 +176,7 @@ struct CommandPaletteModelTests {
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: FileTreePreferences(),
             recentFolderRoots: RecentFolderRoots(preferences: FileTreePreferences()),
+            recentFileDocuments: RecentFileDocuments(preferences: FileTreePreferences()),
             appSettings: AppSettingsModel()
         )
 

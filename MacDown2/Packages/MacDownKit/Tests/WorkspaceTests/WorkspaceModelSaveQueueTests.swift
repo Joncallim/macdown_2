@@ -84,6 +84,73 @@ struct WorkspaceModelSaveQueueTests {
         #expect(await writer.lineageCount(for: second.document) == 0)
     }
 
+    /// #183 F10: an ordinary save built from a snapshot that predates an accepted
+    /// encoding save must not write the old encoding back.
+    @Test func aQueuedOrdinarySaveDoesNotRevertAnAcceptedEncodingChoice() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("encoding-lineage.txt")
+        try "café".write(to: url, atomically: true, encoding: .utf8)
+        let writer = DocumentWriter()
+        let latin1 = FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        let original = try FileDocument(fileURL: url).load().edited(text: "café 1")
+
+        let encodingSave = try await writer.save(original, encodingOverride: latin1)
+        let staleSnapshot = original.edited(text: "café 2")
+        let queuedOrdinary = try await writer.save(staleSnapshot)
+
+        #expect(queuedOrdinary.document.encoding == latin1)
+        #expect(try Data(contentsOf: url) == Data("café 2".data(using: .isoLatin1) ?? Data()))
+        await writer.acknowledge(encodingSave)
+        await writer.acknowledge(queuedOrdinary)
+    }
+
+    /// #183 F10 ↔ F15: a representation failure names the encoding actually
+    /// attempted (the inherited one), not the stale queued document's metadata.
+    @Test func aRepresentationFailureNamesTheInheritedEncodingActuallyAttempted() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("encoding-failure-label.txt")
+        try "café".write(to: url, atomically: true, encoding: .utf8)
+        let writer = DocumentWriter()
+        let latin1 = FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        let original = try FileDocument(fileURL: url).load().edited(text: "café 1")
+        let encodingSave = try await writer.save(original, encodingOverride: latin1)
+
+        // The stale snapshot still says UTF-8, but the queued save inherits Latin-1,
+        // which cannot hold the emoji.
+        let staleSnapshot = original.edited(text: "café 😀")
+        #expect(staleSnapshot.encoding == .utf8Default)
+        do {
+            _ = try await writer.save(staleSnapshot)
+            Issue.record("expected the save to fail")
+        } catch {
+            guard case let .textNotRepresentable(attempted) = error else {
+                Issue.record("expected .textNotRepresentable, got \(error)")
+                return
+            }
+            #expect(attempted == latin1)
+        }
+        await writer.acknowledge(encodingSave)
+    }
+
+    @Test func anExplicitEncodingOnALaterSaveStillWins() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("encoding-explicit.txt")
+        try "cafe".write(to: url, atomically: true, encoding: .utf8)
+        let writer = DocumentWriter()
+        let latin1 = FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        let original = try FileDocument(fileURL: url).load().edited(text: "cafe 1")
+
+        let first = try await writer.save(original, encodingOverride: latin1)
+        let second = try await writer.save(original.edited(text: "cafe 2"), encodingOverride: .utf8Default)
+
+        #expect(second.document.encoding == .utf8Default)
+        await writer.acknowledge(first)
+        await writer.acknowledge(second)
+    }
+
     @Test func unacknowledgedResultsRetainReachableExpectedLineage() async throws {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }
@@ -109,36 +176,22 @@ struct WorkspaceModelSaveQueueTests {
 
     /// The timeout is a cleanup guard only. Ordering is established by the
     /// writer/file-store continuations, never by elapsed time or yielding.
+    /// `waitForSignal` itself lives in `AsyncBarrierWaiting.swift`, shared
+    /// with every other test in this target that waits on a
+    /// `SavePublicationBarrier`.
     private func waitForFirstPublication(from barrier: SavePublicationBarrier) async -> Bool {
         await waitForSignal(
+            timeout: .seconds(3),
             wait: { await barrier.waitForFirstPublication() },
-            cancel: { barrier.cancelWaiters() }
+            onTimeout: { barrier.cancelWaiters() }
         )
     }
 
     private func waitForSecondWriterEntry(from barrier: SavePublicationBarrier) async -> Bool {
         await waitForSignal(
+            timeout: .seconds(3),
             wait: { await barrier.waitForSecondSaveToEnterWriterLane() },
-            cancel: { barrier.cancelWaiters() }
+            onTimeout: { barrier.cancelWaiters() }
         )
-    }
-
-    private func waitForSignal(
-        wait: @escaping @Sendable () async -> Bool,
-        cancel: @escaping @Sendable () -> Void
-    ) async -> Bool {
-        await withTaskGroup(of: Bool.self) { group in
-            group.addTask { await wait() }
-            group.addTask {
-                try? await Task.sleep(for: .seconds(3))
-                return false
-            }
-            let result = await group.next() ?? false
-            if !result {
-                cancel()
-            }
-            group.cancelAll()
-            return result
-        }
     }
 }

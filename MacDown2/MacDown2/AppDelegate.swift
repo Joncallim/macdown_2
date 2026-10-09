@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var grammarRegistry: GrammarRegistry!
     private(set) var fileTreePreferences: FileTreePreferences!
     private(set) var recentFolderRoots: RecentFolderRoots!
+    private(set) var recentFileDocuments: RecentFileDocuments!
     private(set) var appSettings: AppSettingsModel!
     private let sessionStore: WorkspaceSessionStoring
     private let recoveryBuffer: RecoveryBuffer
@@ -26,8 +27,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let hasCompletedFirstRunKey = "com.joncallim.macdown2.hasCompletedFirstRun"
 
     override init() {
-        let args = ProcessInfo.processInfo.arguments
+        let args = Self.launchArguments
         let isUITesting = args.contains("-UITesting")
+
+        // EPIC-22/#150: MacDown2Tests (non-UI app-target tests) is
+        // intentionally serial-only -- see SingleTestInstanceGuard's own
+        // doc comment for the full root-cause writeup. A no-op for a normal
+        // launch, for `-UITesting` (its own separate isolation below already
+        // applies), and for a genuinely single, correctly-serial test run.
+        if !isUITesting {
+            SingleTestInstanceGuard.enforceSingleInstance()
+        }
 
         let defaults: UserDefaults
         if isUITesting {
@@ -65,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         grammarRegistry = GrammarRegistry()
         fileTreePreferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
         recentFolderRoots = RecentFolderRoots(preferences: fileTreePreferences)
+        recentFileDocuments = RecentFileDocuments(preferences: fileTreePreferences)
         appSettings = AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults))
         super.init()
 
@@ -76,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             grammarRegistry: grammarRegistry,
             fileTreePreferences: fileTreePreferences,
             recentFolderRoots: recentFolderRoots,
+            recentFileDocuments: recentFileDocuments,
             appSettings: appSettings,
             workspaceStateStore: workspaceStateStore
         )
@@ -97,7 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // one or more windows that do not have a `WindowController` delegate.
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(100))
-            for window in NSApp.windows where !(window.delegate is WindowController) {
+            for window in NSApp.windows where Self.isSwiftUIPlaceholder(window) {
                 window.close()
             }
         }
@@ -113,6 +125,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Windows the app itself manages — document windows and the first-run
+    /// welcome window — are never placeholders. Closing the welcome window here
+    /// would run its `windowWillClose`, marking first run complete before the
+    /// user ever saw it.
+    static func isSwiftUIPlaceholder(_ window: NSWindow) -> Bool {
+        !(window.delegate is WindowController) && !(window.delegate is FirstRunWindowController)
+    }
+
     /// The app's ordinary launch behavior: open files/folders passed on the
     /// command line, start a new document, or restore the prior session.
     /// Runs on every launch except a first-ever one, where it instead runs
@@ -120,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func proceedWithNormalLaunch() {
         if !launchURLs.isEmpty {
             Task { @MainActor in
+                await coordinator.restoreUnsavedSessionTabs()
                 for url in launchURLs {
                     await coordinator.openDocument(at: url)
                 }
@@ -129,11 +150,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else if let launchFolderURL {
             Task { @MainActor in
+                await coordinator.restoreUnsavedSessionTabs()
                 await coordinator.ensureWindowExistsForReopen()
                 coordinator.openFolder(launchFolderURL)
             }
         } else if appSettings.general.launchBehavior == .startWithNewDocument {
             coordinator.newDocument()
+            Task { @MainActor in await coordinator.restoreUnsavedSessionTabs() }
         } else {
             // Scheduled synchronously so the tracked restore task exists before
             // any reopen event can be handled; the grace delay inside gives
@@ -154,7 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_: NSApplication) -> NSApplication.TerminateReply {
         Task { @MainActor in
-            let result = await coordinator.saveSessionResult()
+            let result = await coordinator.saveSessionForTermination()
             NSApp.reply(toApplicationShouldTerminate: coordinator.handleTerminationSessionResult(result))
         }
         return .terminateLater
@@ -166,7 +189,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await coordinator.ensureWindowExistsForReopen()
             }
         }
-        return true
+        // False: the coordinator handles the reopen itself. Returning true let SwiftUI's
+        // WindowGroup also create its (empty) placeholder window — the launch-time cleanup
+        // that closes those runs only once — so a Dock click left a stray blank window
+        // beside the document window.
+        return false
     }
 
     func application(_: NSApplication, openFiles filenames: [String]) {
@@ -175,11 +202,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // handler. Only regular files count as document opens; anything else
         // must not suppress the session restore.
         let fileURLs = filenames
-            .map { URL(fileURLWithPath: $0) }
+            .map { URL(fileURLWithPath: $0).resolvingFinalSymlink() }
             .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true }
         guard !fileURLs.isEmpty else { return }
         hasPendingDocumentOpen = true
         Task { @MainActor in
+            await coordinator.settleLaunchRestoration()
             for url in fileURLs {
                 await coordinator.openDocument(at: url)
             }
@@ -187,6 +215,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Launch argument parsing
+
+    /// The arguments the test hooks (`-UITesting`, `-sessionDir`, `-openFiles`, `-openFolder`) are read from.
+    /// Debug builds only: a release build ignores them, so they cannot redirect the session and recovery
+    /// directories, disable the single-instance guard or force-open paths.
+    static var launchArguments: [String] {
+        #if DEBUG
+            ProcessInfo.processInfo.arguments
+        #else
+            []
+        #endif
+    }
 
     private static func sessionDirectory(from args: [String]) -> URL {
         if let index = args.firstIndex(of: "-sessionDir"), index + 1 < args.count {

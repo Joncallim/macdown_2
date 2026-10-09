@@ -51,6 +51,7 @@ private func contentAreaPreview(
     return ContentAreaView(
         model: model,
         editorStore: EditorTextSystemStore(),
+        findStore: EditorFindModelStore(),
         highlightStore: SyntaxHighlightStore(),
         parseStore: MarkdownParseStore(),
         jsonAnalysisStore: JSONAnalysisStore(),

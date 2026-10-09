@@ -55,6 +55,7 @@ public enum InlineCodeSpanScanner {
 
     private static let backtick: UInt16 = 0x60 // "`"
     private static let newline: UInt16 = 0x0A // "\n"
+    private static let carriageReturn: UInt16 = 0x0D // "\r"
 
     /// The UTF-16 offset where a run of exactly `length` backticks starts,
     /// searching from `start`, or `nil` if none is found before a blank
@@ -64,10 +65,15 @@ public enum InlineCodeSpanScanner {
         var consecutiveNewlines = 0
 
         while index < units.count {
-            if units[index] == newline {
+            // A line break is `\n`, `\r\n` or a lone `\r`; counting only `\n` let a stray
+            // backtick pair across paragraphs of a CRLF document and hide math between.
+            if units[index] == newline || units[index] == carriageReturn {
                 consecutiveNewlines += 1
                 if consecutiveNewlines >= 2 {
                     return nil
+                }
+                if units[index] == carriageReturn, index + 1 < units.count, units[index + 1] == newline {
+                    index += 1
                 }
                 index += 1
                 continue

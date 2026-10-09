@@ -22,7 +22,9 @@ extension TabStore {
                 scrollOffset: nil,
                 previewLayout: tab.previewLayout,
                 previewMode: tab.previewMode,
+                syntaxOverride: tab.syntaxOverride,
                 encoding: tab.document.encoding,
+                baseSHA256: tab.document.baselineSHA256,
                 folderRootBookmark: tab.folderRootBookmark,
                 folderRootAlias: tab.folderRootAlias
             )
@@ -31,6 +33,9 @@ extension TabStore {
     }
 
     func restoreTab(from record: TabRecord) async -> WorkspaceTab? {
+        if let epoch = record.documentRecoveryEpoch {
+            await recoveryBuffer.adoptRecoveryEpoch(epoch)
+        }
         if let fileURL = record.fileURL {
             return await restoreFileTab(from: record, fileURL: fileURL)
         } else if let untitledID = record.untitledDocumentID {
@@ -55,6 +60,7 @@ extension TabStore {
                 scrollOffset: record.scrollOffset,
                 previewLayout: record.previewLayout,
                 previewMode: record.previewMode,
+                syntaxOverride: record.syntaxOverride,
                 folderRootBookmark: record.folderRootBookmark,
                 folderRootAlias: record.folderRootAlias
             )
@@ -78,8 +84,14 @@ extension TabStore {
                 try document.load()
             }.value
             let recovered = try? await recoveryBuffer.load(for: loaded.id, epoch: recoveryEpoch)
-            if let recovered, recovered != loaded.text {
+            if let recovered, !recovered.isExactlyEqual(to: loaded.text) {
                 loaded = loaded.updatingText(recovered)
+                // The file changed while the app was quit: the recovered text was
+                // written against different content, so saving it would silently
+                // overwrite that change.
+                if let base = record.baseSHA256, let disk = loaded.lastKnownRevision, base != disk.sha256 {
+                    loaded = loaded.markingExternalConflict(with: disk, baseSHA256: base)
+                }
             } else if recovered != nil {
                 // A stale copy identical to disk is not recovery state. Remove
                 // it during restore so a later crash cannot revive clean text.
@@ -93,6 +105,7 @@ extension TabStore {
             ) else { return nil }
             let unavailable = document
                 .updatingText(recovered)
+                .restoringBaseline(sha256: record.baseSHA256)
                 .markingBackingUnavailable(backingIssue(for: error))
             return tab(from: record, document: unavailable)
         } catch {
@@ -105,7 +118,8 @@ extension TabStore {
         case .fileMissing: .missingOrMoved
         case .permissionDenied: .permissionDenied
         case .notRegularFile: .notRegularFile
-        case .readFailed, .writeFailed, .invalidURL, .encodingDetectionFailed, .fileChangedDuringRead,
+        case .readFailed, .writeFailed, .invalidURL, .encodingDetectionFailed, .textNotRepresentable,
+             .fileChangedDuringRead,
              .decodingFailed, .conditionalPublicationRecoveryRequired:
             .readFailed(String(describing: error))
         }
@@ -121,6 +135,7 @@ extension TabStore {
             scrollOffset: record.scrollOffset,
             previewLayout: record.previewLayout,
             previewMode: record.previewMode,
+            syntaxOverride: record.syntaxOverride,
             folderRootBookmark: record.folderRootBookmark,
             folderRootAlias: record.folderRootAlias
         )

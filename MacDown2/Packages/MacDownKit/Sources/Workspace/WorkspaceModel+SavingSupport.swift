@@ -6,16 +6,44 @@ extension WorkspaceModel {
     func shouldSurfaceSaveFailure(
         for document: FileDocument,
         context: SaveContext,
-        error: Error
+        error _: Error
     ) -> Bool {
         guard isLatestSave(context),
               let current = tabStore.activeDocument,
               isSameDocumentLifetime(current, document)
         else { return false }
-        if case .conditionalPublicationRecoveryRequired = cast(error) {
-            return true
-        }
-        return isCurrent(document)
+        // Relevance is ownership — the latest save of the same document
+        // lifetime — not equality with the attempted text: a failure the user
+        // is waiting on must be visible even if they typed (or edited and
+        // undid) meanwhile. The document stays dirty and its text, undo
+        // history and recovery are untouched (#183 F15).
+        return true
+    }
+
+    /// The URL Save As should write for the chosen `url`, or `nil` (with `lastError` set) when it
+    /// must not. A symbolic-link name saves to the file it points at, as opening one does —
+    /// `FileStore`'s publication cannot replace a link. A file another window has open is refused.
+    func freeDestination(_ url: URL) -> URL? {
+        let resolved = url.resolvingFinalSymlink()
+        guard isOpenInAnotherWindow?(resolved) == true else { return resolved }
+        lastError = .destinationOpenInAnotherWindow(name: resolved.lastPathComponent)
+        return nil
+    }
+
+    /// Reads and hashes the destination off the main actor: choosing a very large existing file
+    /// would otherwise freeze the UI while it is loaded into memory.
+    func saveAsBaseline(of document: FileDocument, at url: URL) async throws -> DestinationBaseline? {
+        try await Task.detached(priority: .userInitiated) {
+            try document.saveAsBaseline(for: url)
+        }.value
+    }
+
+    /// After the off-main destination read the user may have typed. That is not a reason to abandon an explicit
+    /// command: `applySaveAs` merges later edits into the rebound document. Only a different document (closed,
+    /// replaced, another lifetime) cancels.
+    func activeDocumentSharesLifetime(with expected: FileDocument) -> Bool {
+        guard let active = tabStore.activeDocument else { return false }
+        return isSameDocumentLifetime(active, expected)
     }
 
     func isLatestSave(_ context: SaveContext) -> Bool {
@@ -42,7 +70,7 @@ extension WorkspaceModel {
 
     func sameSaveAsSnapshot(_ lhs: FileDocument, _ rhs: FileDocument) -> Bool {
         lhs.id == rhs.id && lhs.fileURL?.standardizedFileURL == rhs.fileURL?.standardizedFileURL
-            && lhs.recoveryEpoch == rhs.recoveryEpoch && lhs.text == rhs.text && lhs.state == rhs.state
+            && lhs.recoveryEpoch == rhs.recoveryEpoch && lhs.text.isExactlyEqual(to: rhs.text) && lhs.state == rhs.state
             && lhs.mutationGeneration == rhs.mutationGeneration && lhs.pendingExternalRevision == rhs
             .pendingExternalRevision
     }
@@ -57,7 +85,7 @@ extension WorkspaceModel {
                 for: replacement.id, version: replacement.mutationGeneration, epoch: replacement.recoveryEpoch
             )
             guard destinationCleanup.isAbsent else {
-                pendingRecoveryCleanupActions.insert(.remove(for: replacement))
+                registerPendingRecovery(.remove(for: replacement))
                 lastError = recoveryCleanupError(destinationCleanup, document: replacement)
                 return .failed
             }
@@ -82,7 +110,7 @@ extension WorkspaceModel {
         let pending = PendingRecoveryCleanupAction.retire(for: source)
         let outcome = await source.recoveryBuffer.retireWithOutcome(for: source.id, epoch: source.recoveryEpoch)
         guard outcome.isAbsent else {
-            pendingRecoveryCleanupActions.insert(pending)
+            registerPendingRecovery(pending)
             lastError = recoveryCleanupError(outcome, document: source)
             return false
         }
@@ -165,10 +193,8 @@ extension WorkspaceModel {
         let successorContinuation = continuation
             .withReplacement(replacement)
             .withPhase(.publishDestination)
-        pendingRecoveryCleanupActions.remove(action)
-        pendingSaveAsRecoveryContinuations.removeValue(forKey: action)
-        pendingRecoveryCleanupActions.insert(successor)
-        pendingSaveAsRecoveryContinuations[successor] = successorContinuation
+        completePendingRecovery(action)
+        registerPendingRecovery(successor, continuation: successorContinuation)
         return true
     }
 
@@ -180,6 +206,11 @@ extension WorkspaceModel {
         let fileStoreError = cast(error)
         if case let .conditionalPublicationRecoveryRequired(url) = fileStoreError {
             return .conditionalPublicationRecoveryRequired(url)
+        }
+        // Name the encoding the write actually attempted: a queued save can
+        // inherit an accepted encoding change (#183 F10).
+        if case let .textNotRepresentable(attempted) = fileStoreError {
+            return .textNotRepresentable(encodingName: attempted.displayName)
         }
         return .saveFailed(underlying: fileStoreError)
     }
@@ -216,6 +247,9 @@ extension WorkspaceModel {
 struct SaveContext: Sendable {
     let documentID: String
     let generation: UInt
+    /// `lastError`'s revision when the save began, so a late success cannot
+    /// erase an error another operation published meanwhile (#183 F15).
+    let errorRevision: UInt64
 }
 
 struct PendingRecoveryCleanupAction: Sendable, Hashable {
@@ -267,15 +301,29 @@ struct PendingRecoveryCleanupAction: Sendable, Hashable {
 
     func matches(_ document: FileDocument) -> Bool {
         document.id == documentID && document.recoveryEpoch == epoch
-            && document.mutationGeneration == mutationGeneration && document.text == text && document.state == state
+            && document.mutationGeneration == mutationGeneration && document.text.isExactlyEqual(to: text) && document
+            .state == state
     }
 
+    /// Identity is the action's kind and the exact lifetime(s) it targets — for
+    /// a migration both the source and destination lifetimes. It deliberately
+    /// excludes the captured payload (text, mutation, state), which a later
+    /// failure for the same lifetime must be able to replace; see
+    /// `WorkspaceModel.registerPendingRecovery(_:continuation:)` (#183 F01).
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.kind == rhs.kind && lhs.documentID == rhs.documentID && lhs.epoch == rhs.epoch
+            && lhs.sourceDocumentID == rhs.sourceDocumentID && lhs.sourceEpoch == rhs.sourceEpoch
     }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(kind); hasher.combine(documentID); hasher.combine(epoch)
+        hasher.combine(sourceDocumentID); hasher.combine(sourceEpoch)
+    }
+
+    /// Whether `other` (same identity) captured the same payload, i.e. the same
+    /// document version, so completing one completes the other.
+    func hasSamePayload(as other: Self) -> Bool {
+        mutationGeneration == other.mutationGeneration && state == other.state && text.isExactlyEqual(to: other.text)
     }
 
     private init(kind: Kind, document: FileDocument) {

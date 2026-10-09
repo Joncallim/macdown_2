@@ -51,22 +51,25 @@ public enum BuiltInExportTemplate {
 /// (title text and generated attribute values). Body and stylesheet bytes are
 /// produced by cmark / the bundled stylesheet and are not passed through here.
 public enum HTMLEscaping {
-    private static let escaped: Set<Character> = ["&", "<", ">", "\"", "'"]
+    private static let escaped: Set<Unicode.Scalar> = ["&", "<", ">", "\"", "'"]
 
+    /// Per unicode scalar, never per `Character`: a `<`, `>` or `"` preceded by a Prepend scalar (U+0600…) or followed
+    /// by a combining mark is merged into one `Character` that matched none of the cases, so it went out unescaped
+    /// into `<title>` / the synthesised `<h1>` of a self-contained export.
     public static func escape(_ text: String) -> String {
-        guard text.contains(where: escaped.contains) else { return text }
-        var result = ""
+        guard text.unicodeScalars.contains(where: escaped.contains) else { return text }
+        var result = String.UnicodeScalarView()
         result.reserveCapacity(text.utf8.count)
-        for character in text {
-            switch character {
-            case "&": result += "&amp;"
-            case "<": result += "&lt;"
-            case ">": result += "&gt;"
-            case "\"": result += "&quot;"
-            case "'": result += "&#39;"
-            default: result.append(character)
+        for scalar in text.unicodeScalars {
+            switch scalar {
+            case "&": result.append(contentsOf: "&amp;".unicodeScalars)
+            case "<": result.append(contentsOf: "&lt;".unicodeScalars)
+            case ">": result.append(contentsOf: "&gt;".unicodeScalars)
+            case "\"": result.append(contentsOf: "&quot;".unicodeScalars)
+            case "'": result.append(contentsOf: "&#39;".unicodeScalars)
+            default: result.append(scalar)
             }
         }
-        return result
+        return String(result)
     }
 }

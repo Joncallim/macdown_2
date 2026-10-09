@@ -7,13 +7,16 @@ extension WorkspaceModel {
     /// It can never retire a later Save As descendant by pathname alone.
     public func retryRecoveryCleanup() async {
         var failed = false
+        let errorRevisionAtStart = errorRevision
         let pendingActions = pendingRecoveryCleanupActions
         for pending in pendingActions {
             guard await preserveEditedCleanupDocument(for: pending) else {
                 failed = true
                 continue
             }
-            guard pendingRecoveryCleanupActions.contains(pending) else { continue }
+            // Replay the CURRENT registration for this identity: a newer failure
+            // may have replaced the payload this snapshot captured.
+            guard let pending = pendingRecoveryCleanupActions.first(where: { $0 == pending }) else { continue }
             if let continuation = pendingSaveAsRecoveryContinuations[pending] {
                 guard await advanceSaveAsRecoveryRetry(pending, continuation: continuation) else {
                     failed = true
@@ -27,11 +30,10 @@ extension WorkspaceModel {
                 lastError = .recoveryCleanupRequired(URL(fileURLWithPath: pending.documentID))
                 continue
             }
-            pendingRecoveryCleanupActions.remove(pending)
-            pendingSaveAsRecoveryContinuations.removeValue(forKey: pending)
+            completePendingRecovery(pending)
         }
         if !failed, pendingRecoveryCleanupActions.isEmpty {
-            lastError = nil
+            clearLastError(ifUnchangedSince: errorRevisionAtStart)
         }
     }
 
@@ -41,8 +43,7 @@ extension WorkspaceModel {
     ) async -> Bool {
         if continuation.phase == .retireSource {
             guard await replayRecoveryAction(action) else { return false }
-            pendingRecoveryCleanupActions.remove(action)
-            pendingSaveAsRecoveryContinuations.removeValue(forKey: action)
+            completePendingRecovery(action)
             return await retireFormerSaveAsSource(continuation.source, replacing: continuation.replacement)
         }
         if action.kind != .publishSession {
@@ -53,14 +54,11 @@ extension WorkspaceModel {
         let publishedContinuation = continuation
             .withReplacement(replacement)
             .withPhase(.sessionPublished)
-        pendingRecoveryCleanupActions.remove(action)
-        pendingSaveAsRecoveryContinuations.removeValue(forKey: action)
-        pendingRecoveryCleanupActions.insert(publicationAction)
-        pendingSaveAsRecoveryContinuations[publicationAction] = publishedContinuation
+        completePendingRecovery(action)
+        registerPendingRecovery(publicationAction, continuation: publishedContinuation)
         guard await replayRecoveryAction(publicationAction) else { return false }
         guard await completePublishedSaveAsRecoveryContinuation(publishedContinuation) else { return false }
-        pendingRecoveryCleanupActions.remove(publicationAction)
-        pendingSaveAsRecoveryContinuations.removeValue(forKey: publicationAction)
+        completePendingRecovery(publicationAction)
         return true
     }
 
@@ -154,12 +152,40 @@ extension WorkspaceModel {
         context: SaveContext,
         phase: SaveAsRecoveryRetryPhase
     ) {
-        pendingRecoveryCleanupActions.insert(action)
-        pendingSaveAsRecoveryContinuations[action] = SaveAsRecoveryContinuation(
-            source: source,
-            replacement: replacement,
-            context: context,
-            phase: phase
+        registerPendingRecovery(
+            action,
+            continuation: SaveAsRecoveryContinuation(
+                source: source,
+                replacement: replacement,
+                context: context,
+                phase: phase
+            )
         )
+    }
+
+    /// Registers `action`, REPLACING any registration with the same identity
+    /// (a newer failure for the same lifetime carries the newer payload;
+    /// `Set.insert` would have silently kept the older one) and its
+    /// continuation (#183 F01).
+    func registerPendingRecovery(
+        _ action: PendingRecoveryCleanupAction,
+        continuation: SaveAsRecoveryContinuation? = nil
+    ) {
+        pendingRecoveryCleanupActions.remove(action)
+        pendingRecoveryCleanupActions.insert(action)
+        pendingSaveAsRecoveryContinuations.removeValue(forKey: action)
+        if let continuation {
+            pendingSaveAsRecoveryContinuations[action] = continuation
+        }
+    }
+
+    /// Clears `action` once it has been replayed — but only if the registration
+    /// still holds the payload that was replayed. A newer failure registered
+    /// while the replay was awaiting must stay pending.
+    func completePendingRecovery(_ action: PendingRecoveryCleanupAction) {
+        guard let registered = pendingRecoveryCleanupActions.first(where: { $0 == action }),
+              registered.hasSamePayload(as: action) else { return }
+        pendingRecoveryCleanupActions.remove(action)
+        pendingSaveAsRecoveryContinuations.removeValue(forKey: action)
     }
 }

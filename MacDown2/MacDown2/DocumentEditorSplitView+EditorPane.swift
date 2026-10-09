@@ -1,4 +1,5 @@
 import EditorCore
+import FileCore
 import SwiftUI
 
 /// The editor pane and its status bar (epic-22-implementation.md §6.7, §17
@@ -10,6 +11,36 @@ import SwiftUI
 extension DocumentEditorSplitView {
     var editorPane: some View {
         VStack(spacing: 0) {
+            // EPIC-22 §6.14, Slice 5a: an inline docked bar, not a floating
+            // panel — see `FindBarView`'s own doc comment. Reading the
+            // model via `findStore.existingModel(for:)` rather than always
+            // calling `findStore.model(for:)` means a tab that has never
+            // had Find opened never allocates one, matching
+            // `editorStore.existingSystem(for:)`'s own lazy convention used
+            // just below for the status bar.
+            if let findModel = findStore.existingModel(for: identity), findModel.isActive {
+                FindBarView(
+                    model: findModel,
+                    text: text,
+                    resolvedText: { editorStore.existingSystem(for: identity)?.text ?? text },
+                    resolvedSelection: { editorStore.existingSystem(for: identity)?.selectedRange },
+                    initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
+                    onMatchesChanged: { reveal in applyFindHighlights(findModel, reveal: reveal) },
+                    onClose: { closeFindBar(findModel) },
+                    onReplace: { applyFindReplacement($0, model: findModel) },
+                    onSelectAll: { applySelectAllMatches($0) }
+                )
+                // The "In Selection" domain follows every edit while Find is open.
+                .onAppear {
+                    editorStore.existingSystem(for: identity)?.textChangeObserver = { [weak findModel] change in
+                        findModel?.noteTextChange(change)
+                    }
+                }
+                .onDisappear {
+                    editorStore.existingSystem(for: identity)?.textChangeObserver = nil
+                }
+            }
+
             EditorView(
                 text: $text,
                 identity: identity,
@@ -42,13 +73,29 @@ extension DocumentEditorSplitView {
             // real, mounted-window integration test).
             if appSettings?.editor.showsStatusBar != false,
                let system = editorStore.existingSystem(for: identity) {
+                let metrics = system.documentMetrics()
                 EditorStatusBarView(
-                    text: system.text,
+                    source: system.liveTextSource,
+                    metrics: metrics,
                     selectedRange: statusBarSelection,
                     lineIndex: system.lineIndex,
                     indentationWidth: appSettings?.editor.indentationWidth ?? 4,
                     convertsTabsToSpaces: appSettings?.editor.convertsTabsToSpaces ?? true,
-                    onGoToLine: { coordinator?.toggleGoToLine() }
+                    onGoToLine: { coordinator?.toggleGoToLine() },
+                    encoding: EncodingStatusItem(
+                        metadata: document.encoding,
+                        isChangeable: document.hasEncodableBackingFile,
+                        onReopen: { coordinator?.reopenDocument(in: model, withEncoding: $0) },
+                        onSave: { coordinator?.saveDocument(in: model, withEncoding: $0) }
+                    ),
+                    lineEnding: LineEndingStatusItem(
+                        profile: metrics.lineEndings,
+                        onConvert: { [weak system] in
+                            guard let system, system.convertLineEndings(to: $0) else { return }
+                            system.textView.window?.makeFirstResponder(system.textView)
+                        }
+                    ),
+                    syntaxMode: syntaxModeItem
                 )
             }
         }
@@ -73,13 +120,88 @@ extension DocumentEditorSplitView {
         outlineController.referenceOffsetDidChange(utf16Offset)
     }
 
+    var syntaxModeItem: SyntaxModeStatusItem {
+        SyntaxModeStatusItem(autoFormat: document.format, syntaxFormat: tab.syntaxFormat) { formatID in
+            model.tabStore.setSyntaxMode(formatID, for: tab.id)
+            coordinator?.scheduleSaveSession()
+            if let system = editorStore.existingSystem(for: identity) {
+                system.textView.window?.makeFirstResponder(system.textView)
+            }
+        }
+    }
+
     func attachHighlighter() {
         guard let textSystem = editorStore.existingSystem(for: identity) else { return }
         _ = highlightStore.highlighter(
             for: identity,
             textSystem: textSystem,
-            languageID: document.format.highlightLanguageID,
+            languageID: tab.syntaxFormat.highlightLanguageID,
             theme: themeController.current
         )
+    }
+
+    /// Pushes `model`'s current match list/index to the text view for
+    /// highlighting, and reveals (selects + scrolls to) the current match —
+    /// called by `FindBarView` after every query/option/text change and
+    /// every Find Next/Previous, so the visible highlight and the live
+    /// selection never lag behind the model by more than one SwiftUI update.
+    func applyFindHighlights(_ model: EditorFindModel, reveal: Bool = true) {
+        guard let system = editorStore.existingSystem(for: identity) else { return }
+        system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
+        if reveal, let current = model.currentMatch {
+            system.revealSelection(utf16Range: current.range, flash: false, animated: true)
+        }
+    }
+
+    /// Hides the Find bar and clears its highlighting — the model's own
+    /// query/options/matches are left untouched so reopening Find on this
+    /// tab (via `findStore`'s per-identity caching) restores exactly where
+    /// the user left off.
+    func closeFindBar(_ model: EditorFindModel) {
+        model.isActive = false
+        model.clearSearchDomain()
+        editorStore.existingSystem(for: identity)?.setFindHighlights(ranges: [], currentIndex: nil)
+    }
+
+    /// Applies a Replace/Replace All transaction `FindBarView` built
+    /// (EPIC-22 §6.14, Slice 5b) to the live text system — this is the only
+    /// thing that actually mutates the document; `EditorFindModel` itself
+    /// never does (see that type's own doc comment). Re-runs the search
+    /// against the POST-edit text afterward, anchored at the transaction's
+    /// own `resultingSelection` (already computed as "right after the
+    /// last thing this transaction replaced"), since every match after
+    /// what was just replaced has shifted and the replacement text itself
+    /// may have changed which text still matches at all.
+    func applyFindReplacement(_ transaction: EditorEditTransaction, model: EditorFindModel) {
+        guard let system = editorStore.existingSystem(for: identity) else { return }
+        // The matches were computed against the text as of the last SwiftUI change pass; an active IME composition
+        // (or one committed in this very click) changes the text without posting one, so applying now would write at
+        // stale offsets (`にほんabarfoo`). Refuse, and search the live text so the next click works.
+        guard system.canApplyCommandEdit,
+              model.matchesAreCurrent(forLiveLength: system.textView.textStorage?.length ?? 0)
+        else {
+            Task { await model.updateMatches(in: system.text, preferringLocationNear: nil) }
+            return
+        }
+        system.apply(transaction)
+        let anchor = transaction.resultingSelection?.primaryRange.location
+        Task {
+            guard await model.updateMatches(in: system.text, preferringLocationNear: anchor),
+                  model.isActive
+            else { return }
+            applyFindHighlights(model)
+        }
+    }
+
+    /// Installs "Select All Matches" (EPIC-22 §6.14, Slice 5c) on the live
+    /// text system. Deliberately does NOT call `revealSelection(utf16Range:)`
+    /// afterward — that method collapses to a SINGLE range internally
+    /// (`textView.setSelectedRange`), which would destroy the multi-selection
+    /// this just installed. `scrollToVisible(utf16Range:)` only scrolls, so
+    /// the primary match comes into view without touching selection at all.
+    func applySelectAllMatches(_ selection: EditorSelectionSet) {
+        guard let system = editorStore.existingSystem(for: identity) else { return }
+        system.selectionSet = selection
+        system.scrollToVisible(utf16Range: selection.primaryRange)
     }
 }

@@ -52,26 +52,36 @@ public struct TOCContribution: Contributing {
         let sourceMap = document.sourceMap
         let nsText = text as NSString
         var ranges: [Range<Int>] = []
+        var topLevelParagraphLines: Set<Int>?
         for line in 1 ... sourceMap.lineCount {
             let nsRange = sourceMap.utf16Range(ofLines: line ... line)
             let lineText = nsText.substring(with: nsRange)
             guard lineText.trimmingCharacters(in: .whitespacesAndNewlines) == "[TOC]" else { continue }
-            guard isTopLevelParagraphLine(line, in: document.blocks) else { continue }
+            // Built once, on the first candidate: a per-marker scan of every block was O(markers × blocks).
+            let paragraphLines = topLevelParagraphLines ?? Self.topLevelParagraphLines(in: document.blocks)
+            topLevelParagraphLines = paragraphLines
+            guard paragraphLines.contains(line) else { continue }
             ranges.append(nsRange.location ..< (nsRange.location + nsRange.length))
         }
         return ranges
     }
 
-    /// `true` only when exactly one TOP-LEVEL block (no recursion into
-    /// `children`) contains `line` and that block's kind is `.paragraph`.
-    /// Deliberately not `document.block(atLine:)`: that helper recurses into
-    /// children and would accept a paragraph nested inside a list item or
-    /// block quote, both still literal/unsupported placement contexts for
-    /// this first-party contribution.
-    private static func isTopLevelParagraphLine(_ line: Int, in topLevelBlocks: [MarkdownBlock]) -> Bool {
-        let containing = topLevelBlocks.filter { $0.lineRange.contains(line) }
-        guard containing.count == 1, case .paragraph = containing[0].kind else { return false }
-        return true
+    /// The lines that exactly one TOP-LEVEL block (no recursion into `children`) contains, where that block's kind
+    /// is `.paragraph`. Deliberately not `document.block(atLine:)`: that helper recurses into children and would
+    /// accept a paragraph nested inside a list item or block quote, both still literal/unsupported placement
+    /// contexts for this first-party contribution.
+    private static func topLevelParagraphLines(in topLevelBlocks: [MarkdownBlock]) -> Set<Int> {
+        var owners: [Int: Int] = [:]
+        var paragraphs: Set<Int> = []
+        for block in topLevelBlocks {
+            for line in block.lineRange {
+                owners[line, default: 0] += 1
+                if case .paragraph = block.kind {
+                    paragraphs.insert(line)
+                }
+            }
+        }
+        return paragraphs.filter { owners[$0] == 1 }
     }
 
     /// Nests by heading level using 2-space Markdown list indentation (the

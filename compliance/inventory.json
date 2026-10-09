@@ -1,0 +1,1852 @@
+{
+  "schema": 1,
+  "product": {
+    "name": "MostlyText",
+    "version": "1.0.0",
+    "note": "Release identity decided 2026-09-28 (planning/RELEASE_PATH.md §4). The current development build is still MacDown 2 0.1.0 until #158/E17."
+  },
+  "first_party": {
+    "licence": "MIT",
+    "licence_text": "LICENSE",
+    "paths": [
+      "MacDown2/**/*.swift",
+      "MacDown2/**/*.xcstrings",
+      "MacDown2/MacDown2/Assets.xcassets/**",
+      "MacDown2/Packages/MacDownKit/Sources/*/Resources/harness.html",
+      "MacDown2/Packages/MacDownKit/Sources/*/Resources/render.js",
+      "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/structural.css"
+    ]
+  },
+  "not_distributed": [
+    "MacDown2/**/Tests/**",
+    "MacDown2/MacDown2Tests/**",
+    "MacDown2/MacDown2UITests/**",
+    "MacDown2/README.md",
+    "MacDown2/project.yml",
+    "MacDown2/scripts/**",
+    "MacDown2/**/Package.swift",
+    "MacDown2/**/Package.resolved",
+    "MacDown2/*.xcodeproj/**",
+    "MacDown2/Packages/*/README.md"
+  ],
+  "manifests": [
+    "MacDown2/Packages/MacDownKit/Package.swift",
+    "MacDown2/Packages/TreeSitterMarkdown/Package.swift",
+    "MacDown2/Packages/TreeSitterJavaScript/Package.swift",
+    "MacDown2/Packages/TreeSitterSQL/Package.swift"
+  ],
+  "lockfiles": [
+    "MacDown2/Packages/MacDownKit/Package.resolved",
+    "MacDown2/MacDown2.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+  ],
+  "lockfile_enforced": true,
+  "build_only_packages": [
+    "https://github.com/pointfreeco/swift-snapshot-testing",
+    "https://github.com/apple/swift-docc-plugin",
+    "https://github.com/swiftlang/swift-docc-plugin",
+    "https://github.com/swiftlang/swift-docc-symbolkit"
+  ],
+  "artifact": {
+    "note": "What `check --artifact` proves about a built .app. Every component's runtime_resources must be present (by SHA-256), the required first-party files must be present, and no file with a registered extension (scripts, WebAssembly, fonts and tree-sitter query files) may ship unless its digest is a known runtime resource or first-party file. Compiled code (Swift packages, C parsers) cannot be matched by digest; it is covered by the source-tree check and the SBOM.",
+    "required_first_party": [
+      "LICENSE",
+      "compliance/generated/THIRD_PARTY_NOTICES.md"
+    ],
+    "registered_extensions": [
+      ".js",
+      ".mjs",
+      ".wasm",
+      ".otf",
+      ".ttf",
+      ".ttc",
+      ".woff",
+      ".woff2",
+      ".scm"
+    ]
+  },
+  "components": [
+    {
+      "id": "d2",
+      "name": "D2 (@terrastruct/d2)",
+      "kind": "vendored-bundle",
+      "version": "0.1.33",
+      "upstream": "https://github.com/terrastruct/d2",
+      "npm": "@terrastruct/d2@0.1.33",
+      "resolution": "exact",
+      "licence": "MPL-2.0",
+      "copyright": [
+        "Copyright Terrastruct, Inc."
+      ],
+      "licence_texts": [
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/D2-LICENSE.txt",
+          "sha256": "97933e571f92c0b21e09a59fe67d7ce9a77d3eac5efe5f341756d5f93d191775"
+        },
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/NOTICE.txt",
+          "sha256": "31d12ea70d767e555cccfee22c18a902176e76edc7e4f54e6cd94e82be63270d"
+        }
+      ],
+      "owns": [
+        "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/d2-browser.js",
+        "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/D2-LICENSE.txt",
+        "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/NOTICE.txt"
+      ],
+      "files": [
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/d2-browser.js",
+          "sha256": "991a44779c91b74cbdf141228a6ba34592fe9b708fe19c221eba9ef4a7cfe33e"
+        }
+      ],
+      "npm_file_sha256": "9898965444a940cdbedda3b039f717e96a86ffe9b3170bf30f8fea94ffb66e8a",
+      "modifications": "Trailing `export{lw as D2}` replaced with `window.D2=lw;` (one statement; every other byte identical). Documented in NOTICE.txt.",
+      "provenance": "verified",
+      "evidence": "Byte comparison with dist/browser/index.js in the npm tarball @terrastruct/d2@0.1.33 (2026-09-28): 8,194,848-byte common prefix, 2-byte common suffix, difference is exactly the export statement.",
+      "lc": [
+        "LC-01",
+        "LC-03",
+        "LC-07"
+      ],
+      "source_offer": {
+        "required": true,
+        "reason": "MPL-2.0 modified file",
+        "location": "https://mostlytext.app/opensource/1.0.0/d2/",
+        "status": "planned"
+      },
+      "open_items": [
+        "LC-03: identify the D2 Go source revision and the Go modules compiled into the embedded WebAssembly, record their licences, and publish the upstream package plus the one-line patch through LC-09."
+      ],
+      "runtime_resources": [
+        {
+          "name": "d2-browser.js",
+          "sha256": "991a44779c91b74cbdf141228a6ba34592fe9b708fe19c221eba9ef4a7cfe33e",
+          "path": "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/d2-browser.js"
+        }
+      ]
+    },
+    {
+      "id": "libyaml",
+      "name": "libyaml (vendored inside Yams as CYaml)",
+      "kind": "embedded",
+      "version": "0.2.5 (Yams import 2021-03, plus Yams' 2024 nesting-depth fix)",
+      "upstream": "https://github.com/yaml/libyaml",
+      "revision": "2c891fc7a770e8ba2fec34fc6b545c672beb37e6",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2017-2020 Ingy döt Net",
+        "Copyright (c) 2006-2016 Kirill Simonov"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/libyaml--License.txt",
+          "sha256": "c40112449f254b9753045925248313e9270efa36d226b22d82d4cc6c43c57f29",
+          "upstream": "https://github.com/yaml/libyaml",
+          "upstream_revision": "2c891fc7a770e8ba2fec34fc6b545c672beb37e6",
+          "upstream_path": "License"
+        }
+      ],
+      "embedded_in": "yams",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "notes": "Yams 6.2.2 ships libyaml's C sources in Sources/CYaml but not libyaml's License file, so the notice bundle adds it. Yams' README states both are MIT. Licence text taken from libyaml tag 0.2.5, the release Yams' 2021 import tracks."
+    },
+    {
+      "id": "mermaid",
+      "name": "Mermaid",
+      "kind": "vendored-bundle",
+      "version": "11.17.2",
+      "upstream": "https://github.com/mermaid-js/mermaid",
+      "npm": "mermaid@11.17.2",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2014 - 2022 Knut Sveidqvist"
+      ],
+      "licence_texts": [
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/DiagramRendering/Resources/MERMAID-LICENSE.txt",
+          "sha256": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80"
+        }
+      ],
+      "owns": [
+        "MacDown2/Packages/MacDownKit/Sources/DiagramRendering/Resources/mermaid.min.js",
+        "MacDown2/Packages/MacDownKit/Sources/DiagramRendering/Resources/MERMAID-LICENSE.txt"
+      ],
+      "files": [
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/DiagramRendering/Resources/mermaid.min.js",
+          "sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+        }
+      ],
+      "npm_file_sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+      "modifications": null,
+      "provenance": "verified",
+      "evidence": "SHA-256 equals dist/mermaid.min.js in the npm tarball mermaid@11.17.2 (2026-09-28).",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "nested": [
+        {
+          "name": "@braintree/sanitize-url",
+          "range": "^7.1.2"
+        },
+        {
+          "name": "@iconify/utils",
+          "range": "^3.0.2"
+        },
+        {
+          "name": "@mermaid-js/parser",
+          "range": "^1.2.1"
+        },
+        {
+          "name": "@upsetjs/venn.js",
+          "range": "^2.0.0"
+        },
+        {
+          "name": "cytoscape",
+          "range": "^3.34.0"
+        },
+        {
+          "name": "cytoscape-cose-bilkent",
+          "range": "^4.1.0"
+        },
+        {
+          "name": "cytoscape-fcose",
+          "range": "^2.2.0"
+        },
+        {
+          "name": "d3",
+          "range": "^7.9.0"
+        },
+        {
+          "name": "d3-sankey",
+          "range": "^0.12.3"
+        },
+        {
+          "name": "dagre-d3-es",
+          "range": "7.0.14"
+        },
+        {
+          "name": "dayjs",
+          "range": "^1.11.21"
+        },
+        {
+          "name": "dompurify",
+          "range": "^3.3.3"
+        },
+        {
+          "name": "es-toolkit",
+          "range": "^1.45.1"
+        },
+        {
+          "name": "fastdom",
+          "range": "1.0.12"
+        },
+        {
+          "name": "katex",
+          "range": "^0.16.47"
+        },
+        {
+          "name": "khroma",
+          "range": "^2.1.0"
+        },
+        {
+          "name": "marked",
+          "range": "^16.3.0"
+        },
+        {
+          "name": "roughjs",
+          "range": "^4.6.6"
+        },
+        {
+          "name": "stylis",
+          "range": "^4.3.6"
+        },
+        {
+          "name": "ts-dedent",
+          "range": "^2.2.0"
+        },
+        {
+          "name": "uuid",
+          "range": "^11.1.0 || ^12 || ^13 || ^14.0.0"
+        }
+      ],
+      "open_items": [
+        "mermaid.min.js is a single-file bundle of the runtime dependencies listed in `nested` (from mermaid@11.17.2 package.json). Resolve their exact bundled versions from the mermaid v11.17.2 release lockfile, record each licence (dompurify is MPL-2.0 OR Apache-2.0; d3 is ISC; most others MIT) and add the required texts."
+      ],
+      "runtime_resources": [
+        {
+          "name": "mermaid.min.js",
+          "sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+          "path": "MacDown2/Packages/MacDownKit/Sources/DiagramRendering/Resources/mermaid.min.js"
+        }
+      ]
+    },
+    {
+      "id": "neon",
+      "name": "Neon",
+      "kind": "swiftpm",
+      "version": "484d6fb",
+      "upstream": "https://github.com/ChimeHQ/Neon",
+      "revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+      "resolution": "exact",
+      "licence": "BSD-3-Clause",
+      "copyright": [
+        "Copyright (c) 2022, Chime"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/neon--LICENSE.txt",
+          "sha256": "d11b5eea8e9ae2f6dd06545633e8daf0dfcbc7dbb911a20d1504c905e5808775",
+          "upstream": "https://github.com/ChimeHQ/Neon",
+          "upstream_revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"
+      }
+    },
+    {
+      "id": "nvim-treesitter-markdown-queries",
+      "name": "nvim-treesitter Markdown highlight queries (via tree-sitter-markdown)",
+      "kind": "attribution",
+      "version": "2022-06 import",
+      "upstream": "https://github.com/nvim-treesitter/nvim-treesitter",
+      "revision": null,
+      "resolution": "not-applicable",
+      "licence": "Apache-2.0",
+      "copyright": [
+        "Copyright nvim-treesitter contributors"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/nvim-treesitter--LICENSE.txt",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "upstream": "https://github.com/nvim-treesitter/nvim-treesitter",
+          "upstream_revision": "cf12346a3414fa1b06af75c79faebe7f76df080a",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-04"
+      ],
+      "notes": "Conservative attribution. tree-sitter-markdown's highlights.scm files state they come from nvim-treesitter and upstream redistributes them under its MIT licence. Carrying the Apache-2.0 notice as well costs nothing and removes the ambiguity."
+    },
+    {
+      "id": "rearrange",
+      "name": "Rearrange",
+      "kind": "swiftpm",
+      "version": "2.1.1",
+      "upstream": "https://github.com/ChimeHQ/Rearrange",
+      "revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+      "resolution": "lockfile",
+      "licence": "BSD-3-Clause",
+      "copyright": [
+        "Copyright (c) 2019, Chime Systems Inc."
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/rearrange--LICENSE.txt",
+          "sha256": "72512faf072d3a4c0d9ae21552e0a3367e87b719ac511d06d2b5a0e427e8796d",
+          "upstream": "https://github.com/ChimeHQ/Rearrange",
+          "upstream_revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "transitive_via": "neon",
+      "declared_range": ">=2.0.0 <3.0.0",
+      "evidence": "Locked at 4de8be41dba304192e87dc0a11e0aa39e72aa2e8 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag 2.1.1 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
+    },
+    {
+      "id": "swift-cmark",
+      "name": "swift-cmark (cmark-gfm)",
+      "kind": "swiftpm",
+      "version": "0.8.0",
+      "upstream": "https://github.com/swiftlang/swift-cmark",
+      "revision": "924936d0427cb25a61169739a7660230bffa6ea6",
+      "resolution": "exact",
+      "licence": "BSD-2-Clause AND MIT",
+      "copyright": [
+        "Copyright (c) 2014, John MacFarlane",
+        "See COPYING for the complete set of notices"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/swift-cmark--COPYING.txt",
+          "sha256": "c22e885f33b821bddb24cf007145e5540655b6c0f403e49e6c76a93c28e6d9a9",
+          "upstream": "https://github.com/swiftlang/swift-cmark",
+          "upstream_revision": "924936d0427cb25a61169739a7660230bffa6ea6",
+          "upstream_path": "COPYING"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.8.0"
+      },
+      "notes": "COPYING bundles several notices (cmark BSD-2-Clause plus MIT-licensed components and test data). It is reproduced in full."
+    },
+    {
+      "id": "swift-concurrency-extras",
+      "name": "swift-concurrency-extras",
+      "kind": "swiftpm",
+      "version": "1.4.1",
+      "upstream": "https://github.com/pointfreeco/swift-concurrency-extras",
+      "revision": "5fa253428866f2360c3754e88537f700ed2656b5",
+      "resolution": "lockfile",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2023 Point-Free"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/swift-concurrency-extras--LICENSE.txt",
+          "sha256": "72565151804cdc168937ccc70e4c30c5afff92ff314bb9d504780a3ad1c1f868",
+          "upstream": "https://github.com/pointfreeco/swift-concurrency-extras",
+          "upstream_revision": "5fa253428866f2360c3754e88537f700ed2656b5",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "transitive_via": "textual",
+      "declared_range": ">=1.3.1 <2.0.0",
+      "evidence": "Locked at 5fa253428866f2360c3754e88537f700ed2656b5 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag 1.4.1 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
+    },
+    {
+      "id": "swift-markdown",
+      "name": "swift-markdown",
+      "kind": "swiftpm",
+      "version": "0.8.0",
+      "upstream": "https://github.com/swiftlang/swift-markdown",
+      "revision": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+      "resolution": "exact",
+      "licence": "Apache-2.0",
+      "copyright": [
+        "Copyright (c) 2021 Apple Inc. and the Swift project authors"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/swift-markdown--LICENSE.txt",
+          "sha256": "167beb36f181bd163c93c6feb45c68e5f9462fe1af55b278f7bfd1df20e673a3",
+          "upstream": "https://github.com/swiftlang/swift-markdown",
+          "upstream_revision": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+          "upstream_path": "LICENSE.txt"
+        },
+        {
+          "path": "compliance/licenses/swift-markdown--NOTICE.txt",
+          "sha256": "ee7da43afcac4a52196a2141024573ec2ceb84b14e74dfed38522d94586fbc52",
+          "upstream": "https://github.com/swiftlang/swift-markdown",
+          "upstream_revision": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+          "upstream_path": "NOTICE.txt"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.8.0"
+      }
+    },
+    {
+      "id": "swifttreesitter",
+      "name": "SwiftTreeSitter",
+      "kind": "swiftpm",
+      "version": "main",
+      "upstream": "https://github.com/ChimeHQ/SwiftTreeSitter",
+      "revision": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+      "resolution": "lockfile",
+      "licence": "BSD-3-Clause",
+      "copyright": [
+        "Copyright (c) 2021, Chime"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/swifttreesitter--LICENSE.txt",
+          "sha256": "792197b8debcdecb17f429bab3a43a5911364e2a6e8e7c0f7faf02032212fb5f",
+          "upstream": "https://github.com/ChimeHQ/SwiftTreeSitter",
+          "upstream_revision": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-05",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "branch": "main"
+      },
+      "evidence": "Locked at cbe31cb3601aa29c1f64b6e4328733511126d6d5 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; declared as branch main, so the lock is what fixes the revision; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
+    },
+    {
+      "id": "swiftui-math",
+      "name": "SwiftUIMath",
+      "kind": "swiftpm",
+      "version": "0.1.0",
+      "upstream": "https://github.com/gonzalezreal/swiftui-math",
+      "revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2026 Guille Gonzalez",
+        "Copyright (c) 2023 Computer Inspirations (SwiftMath)",
+        "Copyright (c) 2013 MathChat (iosMath)"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/swiftui-math--LICENSE.txt",
+          "sha256": "10023a3a8bab8cd2206023303aa8d104a9d1cfb184e18a2f7a48b5b34fc0bb8f",
+          "upstream": "https://github.com/gonzalezreal/swiftui-math",
+          "upstream_revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.1.0"
+      }
+    },
+    {
+      "id": "swiftui-math-fonts",
+      "name": "Math fonts bundled by SwiftUIMath",
+      "kind": "swiftpm-resource",
+      "version": "0.1.0",
+      "upstream": "https://github.com/gonzalezreal/swiftui-math",
+      "revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+      "resolution": "exact",
+      "licence": "OFL-1.1 AND LicenseRef-GUST-Font-License AND MIT",
+      "copyright": [
+        "Per-font copyright notices are in compliance/licenses/swiftui-math-fonts--FONT-COPYRIGHTS.txt"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/swiftui-math-fonts--OFL.txt",
+          "sha256": "a96bed88f867f6a5bbe78ced4ca52a3ce6e002475363d86edd9097b2f8206d8d",
+          "upstream": "https://github.com/gonzalezreal/swiftui-math",
+          "upstream_revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+          "upstream_path": "Sources/SwiftUIMath/mathFonts.bundle/OFL.txt"
+        },
+        {
+          "path": "compliance/licenses/swiftui-math-fonts--GUST-FONT-LICENSE.txt",
+          "sha256": "2bd69affc3da00715116f713f57eab9707e96daf3562ad0215987b15b9c16f73",
+          "upstream": "https://github.com/gonzalezreal/swiftui-math",
+          "upstream_revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+          "upstream_path": "Sources/SwiftUIMath/mathFonts.bundle/GUST-FONT-LICENSE.txt"
+        },
+        {
+          "path": "compliance/licenses/swiftui-math-fonts--LICENSE.txt",
+          "sha256": "431b2cb82b8a55977323598231f1baa44f32accac1231b4781a9a393d0bc29ed",
+          "upstream": "https://github.com/gonzalezreal/swiftui-math",
+          "upstream_revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+          "upstream_path": "Sources/SwiftUIMath/mathFonts.bundle/LICENSE"
+        },
+        {
+          "path": "compliance/licenses/swiftui-math-fonts--FONT-COPYRIGHTS.txt",
+          "sha256": "2753b1aa53493869ca99d3d535582d0b7d0f7c57facea7a23f67754e8642d7ac",
+          "generated_from": "OpenType name tables of the 12 .otf files at the revision above"
+        }
+      ],
+      "fonts": [
+        {
+          "name": "Asana Math",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "Euler Math",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "Fira Math",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "Garamond-Math",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "KpMath Light",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "KpMath Sans",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "Lete Sans Math",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "Libertinus Math",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "Noto Sans Math",
+          "licence": "OFL-1.1"
+        },
+        {
+          "name": "Latin Modern Math",
+          "licence": "GFL"
+        },
+        {
+          "name": "TeX Gyre Termes Math",
+          "licence": "GFL"
+        },
+        {
+          "name": "XITS Math",
+          "licence": "OFL-1.1"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "open_items": [
+        "Product decision, not a licensing gap: SwiftUIMath copies its whole font bundle, so all 12 fonts ship whether or not MostlyText ever selects them. The notices cover all 12, and the artifact check requires all 12 to be present with these digests. Whether to keep them all or trim unused fonts (which needs a patched or forked dependency) is for E19 and the owner to decide. Until that decision is recorded, this item stays open."
+      ],
+      "runtime_resources": [
+        {
+          "name": "Asana-Math.otf",
+          "sha256": "b0d9e681c08ff1f4dc6ebf085cc962585ec12cdbd25dc6225890b9f8fd12d568",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/Asana-Math.otf"
+        },
+        {
+          "name": "Euler-Math.otf",
+          "sha256": "bd07fef1faecea7fa4a89256e4e06ef94b19e23b1785db6e420229fda37c2efb",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/Euler-Math.otf"
+        },
+        {
+          "name": "FiraMath-Regular.otf",
+          "sha256": "2028cbd3dd4d8c0cf1608520eb4759956a83a67931d7b6d8e7c313520186e35b",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/FiraMath-Regular.otf"
+        },
+        {
+          "name": "Garamond-Math.otf",
+          "sha256": "c6161377e97084152b948f62abe874cbe27405938956346b54a4c6488a5009f1",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/Garamond-Math.otf"
+        },
+        {
+          "name": "KpMath-Light.otf",
+          "sha256": "aa6713ae76838a7db9eefe4f503b963dad50df77555ff67a50b72eb832221660",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/KpMath-Light.otf"
+        },
+        {
+          "name": "KpMath-Sans.otf",
+          "sha256": "a9e82575a514f10ceed193d393bf2ea6ac82980ce7eb8c81be085df159a8c253",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/KpMath-Sans.otf"
+        },
+        {
+          "name": "latinmodern-math.otf",
+          "sha256": "6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/latinmodern-math.otf"
+        },
+        {
+          "name": "LeteSansMath.otf",
+          "sha256": "b9242115e4d41b9ccbe179340d4ddaf5598863389a23677eefb87e8950781313",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/LeteSansMath.otf"
+        },
+        {
+          "name": "LibertinusMath-Regular.otf",
+          "sha256": "e81bd44acbb7119c8f00128b36fecc5d980e10d2450a226ba52402ccf4da9d32",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/LibertinusMath-Regular.otf"
+        },
+        {
+          "name": "NotoSansMath-Regular.otf",
+          "sha256": "9dda7e17fa67b7e34083798f56faf5e53ac524456e730ead35c2957e4397ca28",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/NotoSansMath-Regular.otf"
+        },
+        {
+          "name": "texgyretermes-math.otf",
+          "sha256": "e5ce42b4fe826b7ea4c0874359decf0b294439355c511a4794107a9924e2cd5a",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/texgyretermes-math.otf"
+        },
+        {
+          "name": "xits-math.otf",
+          "sha256": "d76666cb2dc222b4a811db96c41cc1853988b91008ec44a194126b4e010a5c6c",
+          "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/xits-math.otf"
+        }
+      ],
+      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence). runtime_resources records the 12 font files by upstream digest; they are not in this repository."
+    },
+    {
+      "id": "textual",
+      "name": "Textual",
+      "kind": "swiftpm",
+      "version": "0.5.0",
+      "upstream": "https://github.com/gonzalezreal/textual",
+      "revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2024 Guille Gonzalez"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/textual--LICENSE.txt",
+          "sha256": "9c9191ada6888f3da1a888b6c74dae46e98787b1150c734e3b1e5ec5bbf73b09",
+          "upstream": "https://github.com/gonzalezreal/textual",
+          "upstream_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.5.0"
+      }
+    },
+    {
+      "id": "theme-tomorrow-dark",
+      "name": "Editor theme “Tomorrow Dark” (colour values)",
+      "kind": "data",
+      "version": "n/a",
+      "upstream": "https://github.com/chriskempson/tomorrow-theme",
+      "revision": "ccf6666d888198d341b26b3a99d0bc96500ad503",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (C) 2011 Chris Kempson",
+        "Copyright (c) 2014 Tzu-ping Chung (MacDown's Tomorrow.style)"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tomorrow-theme--LICENSE.md.txt",
+          "sha256": "a9773fd575f48ea3648b54eeaf09d1512a9f0c7c20d284dc3f8295bd92123bf9",
+          "upstream": "https://github.com/chriskempson/tomorrow-theme",
+          "upstream_revision": "ccf6666d888198d341b26b3a99d0bc96500ad503",
+          "upstream_path": "LICENSE.md"
+        },
+        {
+          "path": "compliance/licenses/macdown-legacy--macdown.txt",
+          "sha256": "0393bce44b5e1168f46ba205b927e79d3e06bb96e93b5bdccb19944bf2c81a4a",
+          "upstream": "https://github.com/MacDownApp/macdown",
+          "upstream_revision": "3e2a2bf101c215c143bf00d9f857965f0ee82487",
+          "upstream_path": "LICENSE/macdown.txt"
+        }
+      ],
+      "owns": [
+        "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Dark.json"
+      ],
+      "files": [
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Dark.json",
+          "sha256": "0c383c0c91be8258b9a61788ebafdc6bd68f2079f60debd509bc3e80a706836e"
+        }
+      ],
+      "modifications": "Colour values re-expressed as this app's JSON theme format and mapped to tree-sitter capture names.",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-06"
+      ],
+      "evidence": "Every colour is in Chris Kempson's Tomorrow Night Eighties palette (textmate2 Tomorrow-Night-Eighties.tmTheme at ccf6666) except the comment grey #888888, which comes from MacDown's legacy Tomorrow.style (MacDownApp/macdown 3e2a2bf, itself a Night Eighties adaptation). Background #2d2d2d, foreground #cccccc, caret #cc99cc and selection #515151 match Tomorrow.style exactly.",
+      "runtime_resources": [
+        {
+          "name": "Tomorrow Dark.json",
+          "sha256": "0c383c0c91be8258b9a61788ebafdc6bd68f2079f60debd509bc3e80a706836e",
+          "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Dark.json"
+        }
+      ]
+    },
+    {
+      "id": "theme-tomorrow-light",
+      "name": "Editor theme “Tomorrow Light” (colour values)",
+      "kind": "data",
+      "version": "n/a",
+      "upstream": "https://github.com/primer/github-syntax-light",
+      "revision": "9b5f41973c9d804164b52a99d3adb61c56c29d36",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2016 GitHub, Inc."
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/github-syntax-light--LICENSE.txt",
+          "sha256": "dbc27809d79743b692d52cf27c6bd8003f1fe7df8019c30be0a62bdf7f042c8a",
+          "upstream": "https://github.com/primer/github-syntax-light",
+          "upstream_revision": "9b5f41973c9d804164b52a99d3adb61c56c29d36",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "owns": [
+        "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Light.json"
+      ],
+      "files": [
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Light.json",
+          "sha256": "87fee559710cc21c85a8fb424a2e62b191f5bc7c80c4abad208f55d5a3165be9"
+        }
+      ],
+      "modifications": "Token colours taken from GitHub Light syntax v0.4.1; chrome colours (#2d2d2d text, #6c4f6c caret, #b4d7ff selection) are local choices with no identified upstream.",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-06"
+      ],
+      "evidence": "All seven token colours (#a71d5d, #183691, #969896, #0086b3, #795da3, #ed6a43, #333333) appear in primer/github-syntax-light v0.4.1 lib/github-light.css. None of the canonical Tomorrow (light) palette colours are used.",
+      "open_items": [
+        "Naming, not licensing: the theme is called \"Tomorrow Light\" but is not derived from Tomorrow. E23 (#113), which owns theme integration, decides whether to rename it or re-source it from canonical Tomorrow. Either way this record must follow the shipped values."
+      ],
+      "runtime_resources": [
+        {
+          "name": "Tomorrow Light.json",
+          "sha256": "87fee559710cc21c85a8fb424a2e62b191f5bc7c80c4abad208f55d5a3165be9",
+          "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Light.json"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter",
+      "name": "tree-sitter (runtime)",
+      "kind": "swiftpm",
+      "version": "0.25.10",
+      "upstream": "https://github.com/tree-sitter/tree-sitter",
+      "revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+      "resolution": "lockfile",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2018-2024 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter--LICENSE.txt",
+          "sha256": "5f9cf9fb6acb1972b35ae29119ce563bb60ec097656bc4b69b9bac2d04c7a147",
+          "upstream": "https://github.com/tree-sitter/tree-sitter",
+          "upstream_revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "transitive_via": "swifttreesitter",
+      "declared_range": ">=0.25.0 <0.26.0",
+      "evidence": "Locked at da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag v0.25.10 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
+    },
+    {
+      "id": "tree-sitter-bash",
+      "name": "tree-sitter-bash",
+      "kind": "swiftpm",
+      "version": "0.25.1",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-bash",
+      "revision": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2017 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-bash--LICENSE.txt",
+          "sha256": "49bf33cf78ef5897e4e161ce1517df7de1ae5042a65b6bcfd44401e0fc606559",
+          "upstream": "https://github.com/tree-sitter/tree-sitter-bash",
+          "upstream_revision": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.25.1"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "b74220d954f485b7626d2b2b61f37b522e12eb1830803e388e57dd797dc99f11",
+          "source": "tree-sitter-bash v0.25.1 queries/highlights.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-cpp",
+      "name": "tree-sitter-cpp",
+      "kind": "swiftpm",
+      "version": "0.23.4",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-cpp",
+      "revision": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2014 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-cpp--LICENSE.txt",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "upstream": "https://github.com/tree-sitter/tree-sitter-cpp",
+          "upstream_revision": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.23.4"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "52136576a9a9dacd9e95a8de0f351689bf46140738572ab4e9f24c9278e6b458",
+          "source": "tree-sitter-cpp v0.23.4 queries/highlights.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "0791a308ef7c0a9e40b8415a2e9cee85b528a8bb21697e65c79872e8848dd972",
+          "source": "tree-sitter-cpp v0.23.4 queries/injections.scm"
+        },
+        {
+          "name": "tags.scm",
+          "sha256": "029731ca946e32f919491d9f76c85a50e5deb5ad1934e37fd6849312c0d4a705",
+          "source": "tree-sitter-cpp v0.23.4 queries/tags.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-css",
+      "name": "tree-sitter-css",
+      "kind": "swiftpm",
+      "version": "0.23.2",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-css",
+      "revision": "c0d581e32d183a536731ed6c3a72758b27e20411",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2018 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-css--LICENSE.txt",
+          "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+          "upstream": "https://github.com/tree-sitter/tree-sitter-css",
+          "upstream_revision": "c0d581e32d183a536731ed6c3a72758b27e20411",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.23.2"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "f66ed9c20a566a01084ec1dd5b0f72d8b08b221bde43e9fafef645498e90d28f",
+          "source": "tree-sitter-css v0.23.2 queries/highlights.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-html",
+      "name": "tree-sitter-html",
+      "kind": "swiftpm",
+      "version": "0.23.2",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-html",
+      "revision": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+      "resolution": "lockfile",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2014 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-html--LICENSE.txt",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "upstream": "https://github.com/tree-sitter/tree-sitter-html",
+          "upstream_revision": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "from": "0.23.2"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "1ebb3811a8cdc054385b847a3aac6fbf7079faefd5b3dfab5bbad256cd5afdcf",
+          "source": "tree-sitter-html v0.23.2 queries/highlights.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "6faa29537e952ee444aaa6ac00f72956d13f65616aade74bd665f5ac405f9c32",
+          "source": "tree-sitter-html v0.23.2 queries/injections.scm"
+        }
+      ],
+      "evidence": "Locked at 5a5ca8551a179998360b4a4ca2c0f366a35acc03 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag v0.23.2 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
+    },
+    {
+      "id": "tree-sitter-javascript",
+      "name": "tree-sitter-javascript",
+      "kind": "vendored-source",
+      "version": "0.25.0",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-javascript",
+      "revision": "44c892e0be055ac465d5eeddae6d3e194424e7de",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2014 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+        }
+      ],
+      "owns": [
+        "MacDown2/Packages/TreeSitterJavaScript/**"
+      ],
+      "files": [
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Package.swift",
+          "sha256": "e7f9f3a9aaf075d907f3d9b80f0b4305ec4226c4a8bc237a6d770c1590911d31"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/README.md",
+          "sha256": "1743b3303eb3d4fca98d79f5830e029e1d639f54719a9a0e0972060432f877c8"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/bindings/swift/TreeSitterJavaScript/javascript.h",
+          "sha256": "4b1c5b04bf06cc5d19e743cee75ae271fbc604493ea36cab3b80af944af77ac2"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/src/parser.c",
+          "sha256": "67209ca7ef6e1a4f74e29e48b5928455f892fe1821a3960fbcd62f4e972f7384"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/src/scanner.c",
+          "sha256": "b3d3f64284d97bf80749c026862427782cf7ecc0b7dc094e6698ab311c9a42c7"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/src/tree_sitter/alloc.h",
+          "sha256": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/src/tree_sitter/array.h",
+          "sha256": "5bdf6ed1a78e3409fd443e085ca967a64c188a5d082aaf7f819bccd53a471c94"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/src/tree_sitter/parser.h",
+          "sha256": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/TreeSitterJavaScriptResources.swift",
+          "sha256": "fde63290918a7bb0c4e2acbf44f71ce6745d45a41c21561ee6c75817ddd91317"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights-jsx.scm",
+          "sha256": "0cad1712acaf40804bc5dc7c8476858752c1f549cdf7d8c63c747317be0f8fa6"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights-params.scm",
+          "sha256": "bbe7a58cacfb1c954cb0eab44779fd80421ed59b762b975723447207635de50d"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights.scm",
+          "sha256": "d3630ae6dc9b2b27b230b5f8bb92b05cd491fb12bff353dae62a0a6d780461ee"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/injections.scm",
+          "sha256": "bea345407ce1f24bccf2b3c1a128acc14e19301327074285368586e793dcb86d"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/locals.scm",
+          "sha256": "c1dd2cfa1400d397fa974208fc9edfe817be4a3c8b42bb99af5c8d193b1bb753"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/tags.scm",
+          "sha256": "6ef988cce5a428a15b5460e3ee96f1478705f965fc6e848a91a18bfa6c6f0212"
+        }
+      ],
+      "modifications": null,
+      "provenance": "verified",
+      "evidence": "Git blob hash of every vendored grammar file equals upstream tag v0.25.0 (2026-09-28).",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "runtime_resources": [
+        {
+          "name": "highlights-jsx.scm",
+          "sha256": "0cad1712acaf40804bc5dc7c8476858752c1f549cdf7d8c63c747317be0f8fa6",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights-jsx.scm"
+        },
+        {
+          "name": "highlights-params.scm",
+          "sha256": "bbe7a58cacfb1c954cb0eab44779fd80421ed59b762b975723447207635de50d",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights-params.scm"
+        },
+        {
+          "name": "highlights.scm",
+          "sha256": "d3630ae6dc9b2b27b230b5f8bb92b05cd491fb12bff353dae62a0a6d780461ee",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/highlights.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "bea345407ce1f24bccf2b3c1a128acc14e19301327074285368586e793dcb86d",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/injections.scm"
+        },
+        {
+          "name": "locals.scm",
+          "sha256": "c1dd2cfa1400d397fa974208fc9edfe817be4a3c8b42bb99af5c8d193b1bb753",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/locals.scm"
+        },
+        {
+          "name": "tags.scm",
+          "sha256": "6ef988cce5a428a15b5460e3ee96f1478705f965fc6e848a91a18bfa6c6f0212",
+          "path": "MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScriptResources/queries/tags.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-json",
+      "name": "tree-sitter-json",
+      "kind": "swiftpm",
+      "version": "0.24.8",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-json",
+      "revision": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+      "resolution": "lockfile",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2014 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-json--LICENSE.txt",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "upstream": "https://github.com/tree-sitter/tree-sitter-json",
+          "upstream_revision": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "from": "0.24.8"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "0511524465b56aed122580792254e68b6abbbfde7119f1d02b135acbe278233f",
+          "source": "tree-sitter-json v0.24.8 queries/highlights.scm"
+        }
+      ],
+      "evidence": "Locked at ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; upstream tag v0.24.8 points at this commit; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
+    },
+    {
+      "id": "tree-sitter-markdown",
+      "name": "tree-sitter-markdown",
+      "kind": "vendored-source",
+      "version": "0.5.3",
+      "upstream": "https://github.com/tree-sitter-grammars/tree-sitter-markdown",
+      "revision": "f969cd3ae3f9fbd4e43205431d0ae286014c05b5",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2021 Matthias Deiml"
+      ],
+      "licence_texts": [
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/LICENSE",
+          "sha256": "52ec8a1bf8256511e2a92613e0bb41ffefba3897f16fa958d7bb28c466dd4804"
+        }
+      ],
+      "owns": [
+        "MacDown2/Packages/TreeSitterMarkdown/**"
+      ],
+      "files": [
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/LICENSE",
+          "sha256": "52ec8a1bf8256511e2a92613e0bb41ffefba3897f16fa958d7bb28c466dd4804"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Package.swift",
+          "sha256": "100b753b16b55f2609123ca3b55506609358a30c5086d148cff19a0522c2a820"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/README.md",
+          "sha256": "14fdd99d79f3858573ee9955c2220c8877545bcf798cb025675cbc5fa2442b04"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/bindings/swift/TreeSitterMarkdown/markdown.h",
+          "sha256": "8f90f461c5ffcf712ed4bb23a08664e1cc2e7d8f21fbf9920156f4d05477a985"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/src/parser.c",
+          "sha256": "0f51c93b5d79d08bc74088d91a9aafb7e40ad7e2f169164865c01d392277bb07"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/src/scanner.c",
+          "sha256": "02834bcbaf0cf51178e74450d487cc0231b9a52541cd374527ee35cfaf17fd4a"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/src/tree_sitter/alloc.h",
+          "sha256": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/src/tree_sitter/array.h",
+          "sha256": "31e60a1bff6f715afacce03b5b70efe42b58371b4f9595dd4af52a577ff9608c"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/src/tree_sitter/parser.h",
+          "sha256": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/bindings/swift/TreeSitterMarkdownInline/markdown_inline.h",
+          "sha256": "8acda8c6ce253d403fa214000f21c29d7e03240e35b4f71633cd63f0ef7ae52e"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/src/parser.c",
+          "sha256": "0c6aaec9097b10118b34601047c3b4d3d565defe48e95d133f714b592795fd2c"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/src/scanner.c",
+          "sha256": "6a9647420b7260955e8bf1b8338979726347211177bb5cf3d2a9c18109655ac3"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/src/tree_sitter/alloc.h",
+          "sha256": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/src/tree_sitter/array.h",
+          "sha256": "31e60a1bff6f715afacce03b5b70efe42b58371b4f9595dd4af52a577ff9608c"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/src/tree_sitter/parser.h",
+          "sha256": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInlineResources/TreeSitterMarkdownInlineResources.swift",
+          "sha256": "f91917b47fadcec64ff2833ca4686e3817395483dc31f2242868b1282913d445"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInlineResources/queries/highlights.scm",
+          "sha256": "b1b2604561026c3701aedbf0f594f69aa0571656eed9d62d139980721e9cdfa9"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInlineResources/queries/injections.scm",
+          "sha256": "97bf17b9a973db8ee6868f543dd1eabdd81f19b8751a4fcf92db45f74462f4c5"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownResources/TreeSitterMarkdownResources.swift",
+          "sha256": "033c9c96cabad83f2ac4a307bf0411751d39bda65bedf2e6cdf911cbc9c5c17d"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownResources/queries/highlights.scm",
+          "sha256": "ea193ee33a84d76d1cf5d84f73f438b2a1f13fc59be79ef457cfbd6b264490e6"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownResources/queries/injections.scm",
+          "sha256": "64b1a6006b40176d8db986cc41350e4f9b292fd06bfedb0abfcdb1fb989aca3e"
+        }
+      ],
+      "modifications": "Capture names in the two highlights.scm query files rewritten to this app's theme key space; see the package README.",
+      "provenance": "verified",
+      "evidence": "Git blob hash of every parser, scanner, header and injection-query file equals upstream tag v0.5.3 (2026-09-28). Package README records the table.",
+      "lc": [
+        "LC-01",
+        "LC-04",
+        "LC-07"
+      ],
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "b1b2604561026c3701aedbf0f594f69aa0571656eed9d62d139980721e9cdfa9",
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInlineResources/queries/highlights.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "97bf17b9a973db8ee6868f543dd1eabdd81f19b8751a4fcf92db45f74462f4c5",
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInlineResources/queries/injections.scm"
+        },
+        {
+          "name": "highlights.scm",
+          "sha256": "ea193ee33a84d76d1cf5d84f73f438b2a1f13fc59be79ef457cfbd6b264490e6",
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownResources/queries/highlights.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "64b1a6006b40176d8db986cc41350e4f9b292fd06bfedb0abfcdb1fb989aca3e",
+          "path": "MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownResources/queries/injections.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-python",
+      "name": "tree-sitter-python",
+      "kind": "swiftpm",
+      "version": "0.23.6",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-python",
+      "revision": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2016 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-python--LICENSE.txt",
+          "sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f",
+          "upstream": "https://github.com/tree-sitter/tree-sitter-python",
+          "upstream_revision": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.23.6"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "a6708f209381618e2b398972c8f1ccd892f0c064eab35a2a3f911c3e22e79a7e",
+          "source": "tree-sitter-python v0.23.6 queries/highlights.scm"
+        },
+        {
+          "name": "tags.scm",
+          "sha256": "d0f3e577878167bfabc30e526e497bce58d1699b9bcabf8ab3a50698efb5ca3e",
+          "source": "tree-sitter-python v0.23.6 queries/tags.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-ruby",
+      "name": "tree-sitter-ruby",
+      "kind": "swiftpm",
+      "version": "0.23.1",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-ruby",
+      "revision": "71bd32fb7607035768799732addba884a37a6210",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2016 Rob Rix"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-ruby--LICENSE.txt",
+          "sha256": "ee006f02a3d856df282e409be2a86e24a65bb573a98b9c28343771141351bb6b",
+          "upstream": "https://github.com/tree-sitter/tree-sitter-ruby",
+          "upstream_revision": "71bd32fb7607035768799732addba884a37a6210",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.23.1"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "0858de9feece6dcd3408a541f995a34918d587ac2c552096026b0e47e2b332e6",
+          "source": "tree-sitter-ruby v0.23.1 queries/highlights.scm"
+        },
+        {
+          "name": "locals.scm",
+          "sha256": "f00178e94b9c2ea672fd4ee2e60ac5d7d90be59c72e86292e22620358ac9dbb0",
+          "source": "tree-sitter-ruby v0.23.1 queries/locals.scm"
+        },
+        {
+          "name": "tags.scm",
+          "sha256": "ed1e7dc07a95b87aef267e7f9715c6717a70f09efbd7b6f48bbd51c7b7510cf3",
+          "source": "tree-sitter-ruby v0.23.1 queries/tags.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-sql",
+      "name": "tree-sitter-sql",
+      "kind": "vendored-source",
+      "version": "0.3.11-55-g3c99273",
+      "upstream": "https://github.com/DerekStride/tree-sitter-sql",
+      "revision": "851e9cb257ba7c66cc8c14214a31c44d2f1e954e",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2021 Derek Stride"
+      ],
+      "licence_texts": [
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/LICENSE",
+          "sha256": "3b3e4e4252d5d7d1c18e1257005f23242bf0580ad619204fd093c99b8c56748d"
+        }
+      ],
+      "owns": [
+        "MacDown2/Packages/TreeSitterSQL/**"
+      ],
+      "files": [
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/LICENSE",
+          "sha256": "3b3e4e4252d5d7d1c18e1257005f23242bf0580ad619204fd093c99b8c56748d"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Package.swift",
+          "sha256": "5aa019582ee867a52c0cf5a34b9dec7e1575c2168d8ee5bad7c890e2b5679440"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/README.md",
+          "sha256": "ede709efd1ad76a4c52ecc081c18479a2e92fcbae941f42827c3caf0e9963854"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/bindings/swift/TreeSitterSQL/sql.h",
+          "sha256": "c942a66768ff2453ed2a268e73973726268648fd861bc5309f50b37c758eb172"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/src/parser.c",
+          "sha256": "36ffce6999124e9762054f9bfe2cd3778db05288feb33a4e150dc17df2e73026"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/src/scanner.c",
+          "sha256": "de17b5cffc3c86f56cf6630abb969330c3c839a81ece0b901bdac0ecee93c403"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/src/tree_sitter/alloc.h",
+          "sha256": "b29c1c9fb7cc82f58c84b376df1297d6e2737a1d655fd356db0859e3c29c2fea"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/src/tree_sitter/array.h",
+          "sha256": "20e6ba85abb9d5b7e2e6dedf675c9424a057a06feee03aa3e2dd48a1cb4bf8a2"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/src/tree_sitter/parser.h",
+          "sha256": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQLResources/TreeSitterSQLResources.swift",
+          "sha256": "ad7ea28a8905445e04bd0f7de95a22743cb31dd58c62146b9cfbfdaf3246af77"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQLResources/queries/highlights.scm",
+          "sha256": "25b2a7b5e60f04012c28a5cf2a224311bdb213361ba2c6439bd50ea3fafb0c64"
+        },
+        {
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQLResources/queries/indents.scm",
+          "sha256": "c90c797ffe6ccee5912eab2c9b8644ba0db0477ed93cbfefa10c574552348b32"
+        }
+      ],
+      "modifications": null,
+      "provenance": "verified",
+      "evidence": "Git blob hash of every vendored grammar file equals upstream gh-pages deploy 851e9cb, built from main 3c99273 (2026-09-28).",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "source_revision": "3c99273f9b32a00e38a737e8a0dd37397f931916",
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "25b2a7b5e60f04012c28a5cf2a224311bdb213361ba2c6439bd50ea3fafb0c64",
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQLResources/queries/highlights.scm"
+        },
+        {
+          "name": "indents.scm",
+          "sha256": "c90c797ffe6ccee5912eab2c9b8644ba0db0477ed93cbfefa10c574552348b32",
+          "path": "MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQLResources/queries/indents.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-swift",
+      "name": "tree-sitter-swift",
+      "kind": "swiftpm",
+      "version": "0.7.3-with-generated-files",
+      "upstream": "https://github.com/alex-pinkus/tree-sitter-swift",
+      "revision": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2021 alex-pinkus"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-swift--LICENSE.txt",
+          "sha256": "3533cec129bb4bba015c0d61d86dd7c3b7e82110e4d2ff7837a01eff5bad5ccc",
+          "upstream": "https://github.com/alex-pinkus/tree-sitter-swift",
+          "upstream_revision": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.7.3-with-generated-files"
+      },
+      "runtime_resources": [
+        {
+          "name": "folds.scm",
+          "sha256": "4f00b0b392dce70a0127b67d1c7858f1074768125f3c1702b22acd036e5c9ba0",
+          "source": "tree-sitter-swift 0.7.3-with-generated-files queries/folds.scm"
+        },
+        {
+          "name": "highlights.scm",
+          "sha256": "b0bbeb918904b252e8bd361f4afb4756647232391110a67deecbf7227464aff8",
+          "source": "tree-sitter-swift 0.7.3-with-generated-files queries/highlights.scm"
+        },
+        {
+          "name": "indents.scm",
+          "sha256": "8c025f8b671167e87f371ef230cd68c953361c5a6f735cbb89985f791ffa7da0",
+          "source": "tree-sitter-swift 0.7.3-with-generated-files queries/indents.scm"
+        },
+        {
+          "name": "injections.scm",
+          "sha256": "fd541e467fd2667ed7cfdf604b0f3b3d1ac2632791972840eaedd0b99a581e58",
+          "source": "tree-sitter-swift 0.7.3-with-generated-files queries/injections.scm"
+        },
+        {
+          "name": "locals.scm",
+          "sha256": "430a7d71c30212e1e0e21eb1b3ed71959fb71bf74a6fea27a0efbf491ebda1c7",
+          "source": "tree-sitter-swift 0.7.3-with-generated-files queries/locals.scm"
+        },
+        {
+          "name": "outline.scm",
+          "sha256": "8646875169da813e8e273deb1e4a84627a11317c07cdad9dd6594279c4b73edd",
+          "source": "tree-sitter-swift 0.7.3-with-generated-files queries/outline.scm"
+        },
+        {
+          "name": "tags.scm",
+          "sha256": "6d3884e3f785d621128356a23ac81dfc438d9a853b8ee24b8070dc2caaf631ca",
+          "source": "tree-sitter-swift 0.7.3-with-generated-files queries/tags.scm"
+        },
+        {
+          "name": "textobjects.scm",
+          "sha256": "a8086f55963e0c79c91ded41c5dacc8da8ec8753f05b4db3ea70ce56e4281fa4",
+          "source": "tree-sitter-swift 0.7.3-with-generated-files queries/textobjects.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-toml",
+      "name": "tree-sitter-toml",
+      "kind": "swiftpm",
+      "version": "0.7.0",
+      "upstream": "https://github.com/tree-sitter-grammars/tree-sitter-toml",
+      "revision": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) Ika <ikatyang@gmail.com> (https://github.com/ikatyang)"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-toml--LICENSE.txt",
+          "sha256": "b727eee929bee836e8102cecf749a795b199f291b58c885bcd81cae727ac5a46",
+          "upstream": "https://github.com/tree-sitter-grammars/tree-sitter-toml",
+          "upstream_revision": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.7.0"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "2fb5c61d33a70389312254c9c392e2c5dd6313d958d6e5f8f74cadd5e0811707",
+          "source": "tree-sitter-toml v0.7.0 queries/highlights.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-typescript",
+      "name": "tree-sitter-typescript",
+      "kind": "swiftpm",
+      "version": "0.23.2",
+      "upstream": "https://github.com/tree-sitter/tree-sitter-typescript",
+      "revision": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2017 Max Brunsfeld"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-typescript--LICENSE.txt",
+          "sha256": "49bf33cf78ef5897e4e161ce1517df7de1ae5042a65b6bcfd44401e0fc606559",
+          "upstream": "https://github.com/tree-sitter/tree-sitter-typescript",
+          "upstream_revision": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.23.2"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "e0c35adb819127bfd4f853fac5419e7d8ba44760246201d04a4a5ce0228a10c5",
+          "source": "tree-sitter-typescript v0.23.2 queries/highlights.scm"
+        },
+        {
+          "name": "locals.scm",
+          "sha256": "c3680f9b56276fb2ccc9f1d5f4d03dbca5d64bdf3e6d52ce5a4ad342cec162d5",
+          "source": "tree-sitter-typescript v0.23.2 queries/locals.scm"
+        },
+        {
+          "name": "tags.scm",
+          "sha256": "b391288bcc71b513a5df7c9bb232d8bc7418d7e274b125aa0aa4bdd6121a0338",
+          "source": "tree-sitter-typescript v0.23.2 queries/tags.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-xml",
+      "name": "tree-sitter-xml",
+      "kind": "swiftpm",
+      "version": "0.7.0",
+      "upstream": "https://github.com/tree-sitter-grammars/tree-sitter-xml",
+      "revision": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2023 ObserverOfTime"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-xml--LICENSE.txt",
+          "sha256": "3297073719030b7261afd78b7267931ccc03a27f7a65ca6fc644316180f71bf6",
+          "upstream": "https://github.com/tree-sitter-grammars/tree-sitter-xml",
+          "upstream_revision": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.7.0"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "aa4a561c846928c3a4d885acbe690a60689661a45684babe16cf8b7a1509b610",
+          "source": "tree-sitter-xml v0.7.0 queries/xml/highlights.scm"
+        },
+        {
+          "name": "highlights.scm",
+          "sha256": "5091ae8e8311c16a1bbdffa0ee8819b55b97b786cca12392a9252a5393206bc9",
+          "source": "tree-sitter-xml v0.7.0 queries/dtd/highlights.scm"
+        }
+      ]
+    },
+    {
+      "id": "tree-sitter-yaml",
+      "name": "tree-sitter-yaml",
+      "kind": "swiftpm",
+      "version": "0.7.0",
+      "upstream": "https://github.com/tree-sitter-grammars/tree-sitter-yaml",
+      "revision": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2019-2021 Ika; Copyright (c) 2024 tree-sitter-grammars contributors"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/tree-sitter-yaml--LICENSE.txt",
+          "sha256": "2d181298822a124f6d106118dcc69c8d4d26ac668559be29682c452e712b0947",
+          "upstream": "https://github.com/tree-sitter-grammars/tree-sitter-yaml",
+          "upstream_revision": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "0.7.0"
+      },
+      "runtime_resources": [
+        {
+          "name": "highlights.scm",
+          "sha256": "2fbfbbd5ca0928d0a7e09e59f8f2964b14a328a7ee0ce799270d9013dcce49a0",
+          "source": "tree-sitter-yaml v0.7.0 queries/highlights.scm"
+        }
+      ]
+    },
+    {
+      "id": "viz-js",
+      "name": "Viz.js (@viz-js/viz)",
+      "kind": "vendored-bundle",
+      "version": "3.30.0",
+      "upstream": "https://github.com/mdaines/viz-js",
+      "npm": "@viz-js/viz@3.30.0",
+      "resolution": "exact",
+      "licence": "MIT AND EPL-2.0",
+      "copyright": [
+        "Copyright (c) Michael Daines (wrapper)",
+        "Graphviz: Copyright AT&T Research and the Graphviz authors"
+      ],
+      "licence_texts": [
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/VIZJS-LICENSE.txt",
+          "sha256": "b9a0b3fcb35b2b675f3a199c31eb19edd1dec3aa08687be4fb0d317e865e35cd"
+        },
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/GRAPHVIZ-EPL-LICENSE.txt",
+          "sha256": "6e1f002892b81cbe0647019b150c8a056efc1add565671a4f8af629b6cd2cc7b"
+        },
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/NOTICE.txt",
+          "sha256": "3bc3f8a7d7d089aad4fbc5b1486e9c00df4446f3f0c70bda8eceac7340fbe96f"
+        }
+      ],
+      "owns": [
+        "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/viz-global.js",
+        "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/VIZJS-LICENSE.txt",
+        "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/GRAPHVIZ-EPL-LICENSE.txt",
+        "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/NOTICE.txt"
+      ],
+      "files": [
+        {
+          "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/viz-global.js",
+          "sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab"
+        }
+      ],
+      "npm_file_sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
+      "modifications": null,
+      "provenance": "verified",
+      "evidence": "SHA-256 equals dist/viz-global.js in the npm tarball @viz-js/viz@3.30.0 (2026-09-28). The bundle reports Graphviz 16.0.0.",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "embedded": [
+        {
+          "name": "Graphviz",
+          "version": "16.0.0",
+          "licence": "EPL-2.0",
+          "upstream": "https://gitlab.com/graphviz/graphviz"
+        }
+      ],
+      "source_offer": {
+        "required": true,
+        "reason": "EPL-2.0 object-code distribution of Graphviz (compiled to WebAssembly)",
+        "location": "https://mostlytext.app/opensource/1.0.0/graphviz/",
+        "status": "planned"
+      },
+      "open_items": [
+        "LC-02: pin the exact Graphviz 16.0.0 source archive and the viz-js 3.30.0 build scripts, record their hashes and publish them through LC-09.",
+        "Confirm whether the Graphviz WebAssembly build links other libraries (for example expat) that need their own notices."
+      ],
+      "runtime_resources": [
+        {
+          "name": "viz-global.js",
+          "sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
+          "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/viz-global.js"
+        }
+      ]
+    },
+    {
+      "id": "yams",
+      "name": "Yams",
+      "kind": "swiftpm",
+      "version": "6.2.2",
+      "upstream": "https://github.com/jpsim/Yams",
+      "revision": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2016 JP Simard"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/yams--LICENSE.txt",
+          "sha256": "0354b0ea403d2e78059c5ae0510a2cfae9f8eb306fcef094ac9fff5b47e20bed",
+          "upstream": "https://github.com/jpsim/Yams",
+          "upstream_revision": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "manifest_requirement": {
+        "exact": "6.2.2"
+      }
+    }
+  ]
+}

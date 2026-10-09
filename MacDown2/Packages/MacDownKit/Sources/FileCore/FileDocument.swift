@@ -30,6 +30,14 @@ public struct FileDocument: Sendable {
     public var state: FileDocumentState
 
     public private(set) var lastKnownRevision: FileRevision?
+
+    /// The content hash this document's unsaved text was written against, when the file
+    /// was missing at session restore and so no revision could be read. It keeps the
+    /// baseline alive across another relaunch: if the file reappears with different
+    /// content, restore then reports a conflict instead of treating the new disk content
+    /// as the baseline (and letting the first save overwrite it).
+    public internal(set) var restoredBaseSHA256: String?
+
     public private(set) var pendingExternalRevision: FileRevision?
     public private(set) var backingState: FileBackingState
 
@@ -156,7 +164,7 @@ public struct FileDocument: Sendable {
         guard let fileURL else {
             throw .invalidURL
         }
-        let snapshot = try fileStore.readSnapshot(from: fileURL)
+        let snapshot = try fileStore.readSnapshot(from: fileURL, decoding: encoding.decodingPolicy)
         var copy = self
         copy.text = snapshot.text
         copy.encoding = snapshot.encodingMetadata
@@ -176,21 +184,30 @@ public struct FileDocument: Sendable {
     /// Saves using a caller-owned baseline. The workspace save serializer uses
     /// this to let a later queued save adopt the revision accepted by an
     /// earlier save without losing edits made in between.
-    public func saving(expectedRevision: FileRevision?) throws(FileStoreError) -> FileDocument {
+    ///
+    /// `encodingOverride` writes the text in a different encoding. The result
+    /// carries the override as its metadata only because the write succeeded;
+    /// a failure throws and the receiver is unchanged.
+    public func saving(
+        expectedRevision: FileRevision?,
+        encodingOverride: FileEncodingMetadata? = nil
+    ) throws(FileStoreError) -> FileDocument {
         guard let fileURL else {
             // Untitled documents are not saved to disk; their recovery buffer
             // is maintained separately by `autosave()`.
             throw .invalidURL
         }
 
+        let destinationEncoding = encodingOverride ?? encoding
         let revision = try fileStore.write(
             text,
             to: fileURL,
-            encoding: encoding.encoding,
-            bom: encoding.bom,
+            encoding: destinationEncoding.encoding,
+            bom: destinationEncoding.bom,
             expectedRevision: expectedRevision
         )
         var copy = self
+        copy.encoding = destinationEncoding
         copy.lastKnownRevision = revision
         copy.pendingExternalRevision = nil
         copy.backingState = .available
@@ -202,21 +219,15 @@ public struct FileDocument: Sendable {
     /// Saves the current text to a new URL and updates the document identity.
     /// The source document's encoding/BOM metadata is preserved unless an
     /// explicit `encodingOverride` is supplied.
-    public func saveAs(
-        _ url: URL,
-        encodingOverride: FileEncodingMetadata? = nil
-    ) throws(FileStoreError) -> FileDocument {
-        try saveAs(url, recoveryEpoch: UUID(), encodingOverride: encodingOverride)
-    }
-
     /// Saves to a new URL while adopting a caller-prepared recovery lifetime.
     /// Workspace production paths obtain this epoch from `RecoveryBuffer`
     /// before entering the write lane, so the resulting identity participates
     /// in the durable bounded-generation protocol.
     public func saveAs(
         _ url: URL,
-        recoveryEpoch: UUID,
-        encodingOverride: FileEncodingMetadata? = nil
+        recoveryEpoch: UUID = UUID(),
+        encodingOverride: FileEncodingMetadata? = nil,
+        destinationBaseline: DestinationBaseline? = nil
     ) throws(FileStoreError) -> FileDocument {
         let destination = url.standardizedFileURL
         // The destination encoding becomes document metadata only after the
@@ -228,7 +239,8 @@ public struct FileDocument: Sendable {
             text,
             to: destination,
             encoding: destinationEncoding.encoding,
-            bom: destinationEncoding.bom
+            bom: destinationEncoding.bom,
+            destinationBaseline: destinationBaseline
         )
         var copy = self
         copy.fileURL = destination
@@ -254,7 +266,7 @@ public struct FileDocument: Sendable {
     public func rebindingSavedDestination(from saved: FileDocument) -> FileDocument {
         var copy = saved
         copy.text = text
-        copy.state = text == saved.text ? .clean : .dirty
+        copy.state = text.isExactlyEqual(to: saved.text) ? .clean : .dirty
         // Preserve the fact that this is a post-save local transition while
         // making it newer than both inputs for recovery ordering.
         copy.mutationGeneration = max(mutationGeneration, saved.mutationGeneration)
@@ -342,12 +354,6 @@ public struct FileDocument: Sendable {
     // MARK: - External change detection
 
     // MARK: - Helpers
-
-    private static func format(for url: URL) -> FileFormat {
-        FileFormat.format(for: url, in: FileFormatRegistry())
-            ?? FileFormatRegistry.defaultFormats.first { $0.id == "plaintext" }
-            ?? FileFormat(id: "plaintext", name: "Plain Text", utType: .plainText, extensions: ["txt"])
-    }
 
     /// Internal mutation seam so the public state remains externally read-only
     /// while pure transitions can stay in their own source file.

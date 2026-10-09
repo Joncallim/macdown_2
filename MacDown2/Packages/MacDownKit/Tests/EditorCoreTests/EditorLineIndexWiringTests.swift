@@ -50,6 +50,46 @@ struct EditorLineIndexWiringTests {
         assertMatchesFreshRebuild(system)
     }
 
+    /// An IME / dead-key composition posts no `didChange` for its marked-text edits, so the index never saw
+    /// them and the commit's edit was applied to a stale index (wrong line starts; Delete Line then removed
+    /// the wrong text, and a later edit could scan out of bounds).
+    @Test func aDeadKeyCompositionKeepsTheLineIndexCorrect() {
+        let text = (1 ... 10).map { "line \($0)" }.joined(separator: "\n")
+        let system = support.makeSystem(text: text)
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        system.textView.setSelectedRange(NSRange(location: 6, length: 0))
+
+        system.textView.setMarkedText(
+            "´", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(
+                location: NSNotFound,
+                length: 0
+            )
+        )
+        system.textView.insertText("é", replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        assertMatchesFreshRebuild(system)
+    }
+
+    @Test func aMultiCharacterCompositionKeepsTheLineIndexCorrect() {
+        let system = support.makeSystem(text: "a\nb\nc")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        system.textView.setSelectedRange(NSRange(location: 1, length: 0))
+
+        system.textView.setMarkedText(
+            "ni", selectedRange: NSRange(location: 2, length: 0), replacementRange: NSRange(
+                location: NSNotFound,
+                length: 0
+            )
+        )
+        system.textView.insertText("你好", replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        assertMatchesFreshRebuild(system)
+    }
+
     @Test func multipleSequentialEditsKeepLineIndexCorrect() {
         let system = support.makeSystem(text: "a\nb\nc")
         let window = support.mountInWindow(system)
@@ -147,5 +187,102 @@ struct EditorLineIndexWiringTests {
 
         #expect(system.text == "hello world")
         #expect(system.lineIndex != EditorLineIndex(text: system.text as NSString))
+    }
+
+    @Test func multiRangeTransactionLeavesLineIndexMatchingARebuild() {
+        let system = support.makeSystem(text: "a\nb\nc\nd\n")
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+
+        // Net length change is zero, so a stale index would pass the length-consistency check.
+        system.apply(EditorEditTransaction(replacements: [
+            TextReplacement(range: NSRange(location: 0, length: 1), replacementText: "x\ny"),
+            TextReplacement(range: NSRange(location: 2, length: 1), replacementText: "q"),
+            TextReplacement(range: NSRange(location: 4, length: 1), replacementText: ""),
+            TextReplacement(range: NSRange(location: 6, length: 1), replacementText: "z"),
+        ]))
+
+        assertMatchesFreshRebuild(system)
+    }
+
+    @Test func largeMultiRangeTransactionReportsEveryRangeButRebuildsTheLineIndexOnce() {
+        let text = (0 ..< 2000).map { "line \($0) cat" }.joined(separator: "\n")
+        let system = support.makeSystem(text: text)
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        let source = text as NSString
+        var replacements: [TextReplacement] = []
+        var search = NSRange(location: 0, length: source.length)
+        while true {
+            let found = source.range(of: "cat", range: search)
+            guard found.location != NSNotFound else { break }
+            replacements.append(TextReplacement(range: found, replacementText: "dog"))
+            search = NSRange(location: NSMaxRange(found), length: source.length - NSMaxRange(found))
+        }
+        var changes: [EditorTextChange] = []
+        system.textChangeObserver = { changes.append($0) }
+
+        system.apply(EditorEditTransaction(replacements: replacements))
+
+        // Per-range patches each copy the whole line array (quadratic across a Replace All), but observers still get
+        // one `.edit` per range, highest offset first, so the Find model's search domain survives.
+        #expect(changes.count == replacements.count)
+        #expect(!changes.contains(.untracked))
+        #expect(changes.first == .edit(range: replacements.last?.range ?? NSRange(), replacementLength: 3))
+        #expect(system.text.hasSuffix("line 1999 dog"))
+        assertMatchesFreshRebuild(system)
+    }
+
+    /// A spliced transaction (above `spliceThreshold`) must produce exactly the text the per-range path would, undo as
+    /// one step, and keep untouched text between the matches byte-for-byte.
+    @Test func aSplicedTransactionMatchesThePerRangeResultAndUndoesAsOneStep() {
+        let original = (0 ..< 500).map { "row \($0) cat\r\nplain \($0)" }.joined(separator: "\n")
+        let system = support.makeSystem(text: original)
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        let source = original as NSString
+        var replacements: [TextReplacement] = []
+        var search = NSRange(location: 0, length: source.length)
+        while true {
+            let found = source.range(of: "cat", range: search)
+            guard found.location != NSNotFound else { break }
+            replacements.append(TextReplacement(range: found, replacementText: "wolf\nfox"))
+            search = NSRange(location: NSMaxRange(found), length: source.length - NSMaxRange(found))
+        }
+        #expect(replacements.count > EditorTextSystem.spliceThreshold)
+
+        system.apply(EditorEditTransaction(replacements: replacements, undoActionName: "Replace All"))
+
+        #expect(system.text == original.replacingOccurrences(of: "cat", with: "wolf\nfox"))
+        assertMatchesFreshRebuild(system)
+        system.undoManager.undo()
+        #expect(system.text == original)
+    }
+
+    @Test func aLargeTransactionIsNotQuadratic() {
+        let text = (0 ..< 20000).map { "line \($0) cat" }.joined(separator: "\n")
+        let system = support.makeSystem(text: text)
+        let window = support.mountInWindow(system)
+        defer { window.orderOut(nil) }
+        _ = support.makeCoordinator(system: system)
+        let source = text as NSString
+        var replacements: [TextReplacement] = []
+        var search = NSRange(location: 0, length: source.length)
+        while true {
+            let found = source.range(of: "cat", range: search)
+            guard found.location != NSNotFound else { break }
+            replacements.append(TextReplacement(range: found, replacementText: "dog"))
+            search = NSRange(location: NSMaxRange(found), length: source.length - NSMaxRange(found))
+        }
+        let start = ContinuousClock.now
+
+        system.apply(EditorEditTransaction(replacements: replacements))
+
+        // 20k per-range inserts took ~4.7 s; the spliced edit is a single native replacement.
+        #expect(ContinuousClock.now - start < .seconds(2))
+        #expect(system.text.hasSuffix("line 19999 dog"))
     }
 }

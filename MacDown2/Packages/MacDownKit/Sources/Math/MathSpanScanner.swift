@@ -48,55 +48,117 @@ public enum MathSpanScanner {
     /// correct on its own and Preview cannot be fixed without fragile,
     /// speculative rewriting of prose this epic does not otherwise touch.
     public static func scan(_ text: String) -> [MathSpan] {
+        // Scanned over UTF-16 units, not `Character`s: a `$` glued to a grapheme-extending scalar (ZWNJ after Latin
+        // text in Persian, ZWJ, VS16, combining marks) belongs to a different `Character`, so the closing delimiter
+        // of `$x$‌ها` was never seen and the span swallowed the prose. The matching rules are the two patterns
+        // documented below, hand-written so the scan stays linear.
+        let units = Array(text.utf16)
         var spans: [MathSpan] = []
-        var currentIndex = text.startIndex
-
-        while currentIndex < text.endIndex {
-            let remainder = text[currentIndex...]
-
-            if let match = try? displayPattern.prefixMatch(in: remainder) {
-                spans.append(span(for: match, style: .display, in: text))
-                currentIndex = match.range.upperBound
+        var index = 0
+        while index < units.count {
+            let unit = units[index]
+            if unit == backslash, index + 1 < units.count, units[index + 1] == dollar {
+                index += 2 // an escaped `\$` is never the start of a span
                 continue
             }
-            if let match = try? inlinePattern.prefixMatch(in: remainder) {
-                spans.append(span(for: match, style: .inline, in: text))
-                currentIndex = match.range.upperBound
+            guard unit == dollar else {
+                index += 1
                 continue
             }
-            if isEscapedDollar(at: currentIndex, in: text) {
-                currentIndex = text.index(currentIndex, offsetBy: 2)
-                continue
+            if let end = displayEnd(from: index, in: units) {
+                spans.append(makeSpan(units, index ..< end, delimiter: 2, style: .display))
+                index = end
+            } else if let end = inlineEnd(from: index, in: units) {
+                spans.append(makeSpan(units, index ..< end, delimiter: 1, style: .inline))
+                index = end
+            } else {
+                index += 1
             }
-            currentIndex = text.index(after: currentIndex)
         }
-
         return spans
     }
 
-    private static func isEscapedDollar(at index: String.Index, in text: String) -> Bool {
-        guard text[index] == "\\" else { return false }
-        let next = text.index(after: index)
-        return next < text.endIndex && text[next] == "$"
-    }
+    private static let dollar: UInt16 = 0x24
+    private static let backslash: UInt16 = 0x5C
+    private static let lineFeed: UInt16 = 0x0A
+    private static let carriageReturn: UInt16 = 0x0D
 
-    private static func span(
-        for match: Regex<(Substring, Substring)>.Match,
-        style: MathSpan.Style,
-        in text: String
+    private static func makeSpan(
+        _ units: [UInt16],
+        _ range: Range<Int>,
+        delimiter: Int,
+        style: MathSpan.Style
     ) -> MathSpan {
-        let lower = match.range.lowerBound.utf16Offset(in: text)
-        let upper = match.range.upperBound.utf16Offset(in: text)
-        return MathSpan(range: lower ..< upper, style: style, latex: String(match.output.1))
+        let latex = String(decoding: units[(range.lowerBound + delimiter) ..< (range.upperBound - delimiter)],
+                           as: UTF16.self)
+        return MathSpan(range: range, style: style, latex: latex)
     }
 
-    /// `Regex` is not `Sendable` (it is, in practice, an immutable compiled
-    /// value safe to share for concurrent reads — there is no mutation after
-    /// construction); `nonisolated(unsafe)` avoids recompiling either literal
-    /// on every `scan(_:)` call, which the sub-millisecond-per-block budget
-    /// in epic-19-implementation.md §11 assumes.
-    /// Verbatim copy of Textual's `PatternTokenizer.Pattern.mathBlock`.
-    private nonisolated(unsafe) static let displayPattern = /(?s)\$\$(.+?)\$\$/
-    /// Verbatim copy of Textual's `PatternTokenizer.Pattern.mathInline`.
-    private nonisolated(unsafe) static let inlinePattern = /\$(?!\$)((?:\\\$|[^$\n])+)\$/
+    /// Length of the line terminator at `index` (CRLF is one terminator), or 0.
+    private static func terminatorLength(at index: Int, in units: [UInt16]) -> Int {
+        guard index < units.count else { return 0 }
+        if units[index] == lineFeed {
+            return 1
+        }
+        guard units[index] == carriageReturn else { return 0 }
+        return index + 1 < units.count && units[index + 1] == lineFeed ? 2 : 1
+    }
+
+    /// Whether a blank line (terminator, optional spaces/tabs, terminator) starts at `index`.
+    private static func blankLineStarts(at index: Int, in units: [UInt16]) -> Bool {
+        let first = terminatorLength(at: index, in: units)
+        guard first > 0 else { return false }
+        var cursor = index + first
+        while cursor < units.count, units[cursor] == 0x20 || units[cursor] == 0x09 {
+            cursor += 1
+        }
+        return terminatorLength(at: cursor, in: units) > 0
+    }
+
+    /// `$$ … $$` with at least one content unit, the nearest closing `$$`, and no blank line in between — Textual's
+    /// `mathBlock` (`(?s)\$\$(.+?)\$\$`) plus the blank-line rule. Returns the end offset, or `nil`.
+    private static func displayEnd(from start: Int, in units: [UInt16]) -> Int? {
+        guard start + 1 < units.count, units[start + 1] == dollar else { return nil }
+        let contentStart = start + 2
+        var checked = contentStart // every position below this has been checked for a blank line
+        var closing = contentStart + 1
+        while closing + 1 < units.count {
+            while checked < closing {
+                if blankLineStarts(at: checked, in: units) {
+                    return nil
+                }
+                checked += 1
+            }
+            if units[closing] == dollar, units[closing + 1] == dollar {
+                return closing + 2
+            }
+            closing += 1
+        }
+        return nil
+    }
+
+    /// `$ … $` — Textual's `mathInline` (`\$(?!\$)((?:\\\$|[^$\n\r])+)\$`, with `\r` also excluded): one or more
+    /// units that are an escaped `\$` pair or anything but `$`/newline, then a closing `$`. When the greedy scan runs
+    /// into a newline or the end, the regex backtracks to the last `\$` pair and lets its `$` close the span.
+    private static func inlineEnd(from start: Int, in units: [UInt16]) -> Int? {
+        guard start + 1 < units.count, units[start + 1] != dollar else { return nil }
+        var cursor = start + 1
+        var lastEscape: Int?
+        while cursor < units.count {
+            let unit = units[cursor]
+            if unit == dollar {
+                return cursor + 1
+            }
+            if unit == lineFeed || unit == carriageReturn {
+                break
+            }
+            if unit == backslash, cursor + 1 < units.count, units[cursor + 1] == dollar {
+                lastEscape = cursor
+                cursor += 2
+            } else {
+                cursor += 1
+            }
+        }
+        return lastEscape.map { $0 + 2 }
+    }
 }

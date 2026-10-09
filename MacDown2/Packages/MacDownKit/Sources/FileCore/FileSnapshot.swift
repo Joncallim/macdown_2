@@ -20,6 +20,16 @@ public struct FileRevision: Sendable, Equatable {
         self.fileObjectID = fileObjectID
         self.sha256 = sha256
     }
+
+    /// The same file content and identity, ignoring the URL it was reached through: a case-only spelling of
+    /// the document's own file (or a hard-link / symlinked-directory spelling) is still that file, but the
+    /// synthesized `==` includes `url` and never matched.
+    public func isSameObjectAndContent(as other: FileRevision) -> Bool {
+        modificationDate == other.modificationDate
+            && fileSize == other.fileSize
+            && fileObjectID == other.fileObjectID
+            && sha256 == other.sha256
+    }
 }
 
 public struct FileSnapshot: Sendable, Equatable {

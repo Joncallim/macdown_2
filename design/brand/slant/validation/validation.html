@@ -1,0 +1,391 @@
+<title>MostlyText Slant Validation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,700;1,700&display=swap">
+<style>
+:root{--paper:#F4F5F8;--surface:#FFFFFF;--ink:#11141A;--muted:#5A6270;--line:#DCE0E7;--accent:#2F5FE6;--fin:#E8EEFF;
+ --good:#1D7A45;--good-bg:#E3F3E9;--ok:#8A5A00;--ok-bg:#FBF0D9;--bad:#B3322A;--bad-bg:#FBE5E3;
+ --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+ --wm:"Inter Tight","Helvetica Neue",Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--paper:#0E1014;--surface:#171A20;--ink:#E7EAF0;--muted:#9AA3B1;--line:#2A2F38;--accent:#8AA9FF;--fin:#1B2238;
+ --good:#6FD39A;--good-bg:#15301F;--ok:#E8BC62;--ok-bg:#33280F;--bad:#FF8C80;--bad-bg:#3A1A17}}
+:root[data-theme="dark"]{color-scheme:dark;--paper:#0E1014;--surface:#171A20;--ink:#E7EAF0;--muted:#9AA3B1;--line:#2A2F38;--accent:#8AA9FF;--fin:#1B2238;
+ --good:#6FD39A;--good-bg:#15301F;--ok:#E8BC62;--ok-bg:#33280F;--bad:#FF8C80;--bad-bg:#3A1A17}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--sans);padding-inline:clamp(16px,4vw,48px);padding-block:32px 64px}
+main{max-width:1180px;margin:0 auto;display:grid;gap:36px}
+h1{font-size:30px;line-height:1.15;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h2{font-size:21px;margin:0;letter-spacing:-.01em}h3{font-size:15px;margin:0}
+p{margin:0;max-width:78ch}
+.eyebrow{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.intro{display:grid;gap:10px}.intro p{color:var(--muted)}
+section{display:grid;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:12px;align-content:start}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.cap{font:11px/1.35 var(--mono);color:var(--muted)}
+.stage{border-radius:10px;padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;overflow:hidden}
+.lt{background:#FFFFFF;color:#11141A;box-shadow:0 0 0 1px #0000001a inset}.dk{background:#0D0F13;color:#F3F5F9}
+.lt .cap{color:#5A6270}.dk .cap{color:#9AA3B1}
+.fill{display:block;overflow:visible;width:100%;height:100%}
+.lk{display:inline-block;white-space:nowrap;line-height:1}
+.wm{font-family:var(--wm);font-weight:700;letter-spacing:-.025em;display:inline-block;transform-origin:0 100%}
+/* macOS-like contexts */
+.menubar{display:flex;align-items:center;gap:14px;height:24px;padding:0 10px;border-radius:6px;font-size:13px}
+.menubar.lt{background:#ECEDF0}.menubar.dk{background:#1D1F24}
+.toolbar{display:flex;align-items:center;gap:10px;height:38px;padding:0 12px;border-radius:10px;font-size:13px}
+.toolbar.lt{background:#F2F3F6}.toolbar.dk{background:#24262C}
+.dots{display:flex;gap:6px}.dots i{width:11px;height:11px;border-radius:50%;background:#FF5F57}.dots i+i{background:#FEBC2E}.dots i+i+i{background:#28C840}
+.tab{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:6px}.lt .tab{background:#fff}.dk .tab{background:#34363D}
+.finder{display:grid;gap:2px;font-size:13px;min-width:230px}.finder div{display:flex;align-items:center;gap:6px;padding:2px 6px;border-radius:5px}
+.finder .sel{background:#2F5FE6;color:#fff}
+.about{display:grid;justify-items:center;gap:6px;text-align:center;padding:22px 28px;border-radius:12px;min-width:250px}
+.about small{font-size:11px;opacity:.7}
+.site{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 18px;border-radius:10px;font-size:14px;gap:12px;flex-wrap:wrap}
+.site nav{display:flex;gap:16px;align-items:center}.btn{padding:6px 12px;border-radius:8px;font-weight:600}.lt .btn{background:#11141A;color:#fff}.dk .btn{background:#fff;color:#11141A}
+.sizes{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}.sizes figure{margin:0;display:grid;gap:6px;justify-items:center}
+.zf{margin:0;display:grid;gap:6px}.zc{width:160px;height:160px;image-rendering:pixelated;border:1px solid var(--line);border-radius:6px;background:#fff}
+.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+th,td{padding:10px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+thead th{font:600 11px/1.2 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+tbody tr:last-child>*{border-bottom:0}
+.rt{display:inline-block;font:600 12px/1 var(--sans);padding:4px 8px;border-radius:6px;white-space:nowrap}
+.rt.g{color:var(--good);background:var(--good-bg)}.rt.o{color:var(--ok);background:var(--ok-bg)}.rt.w{color:var(--bad);background:var(--bad-bg)}
+ul,ol{margin:0;padding-left:20px;display:grid;gap:4px}
+.verdict{border:1px solid var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.rec{outline:2px solid var(--accent);outline-offset:-2px}
+</style>
+<main>
+ <div class="intro">
+  <span class="eyebrow">MostlyText identity · pre-freeze validation · 25 Sep 2026</span>
+  <h1>Is Slant ready to freeze?</h1>
+  <p>Selected identity: the 12° Slant mark with a leaned Inter Tight Bold wordmark, in one colour (D-010 to D-013). Status: geometry release-candidate frozen (D-018). This page tests the mark at real sizes and in real contexts. It checks the small sizes pixel by pixel, looks for existing logos it could be confused with, tunes the lockup, and ends with a freeze verdict. It explores no new logo concepts.</p>
+ </div>
+
+ <section aria-labelledby="s1">
+  <h2 id="s1">1 · Read test in context</h2>
+  <p>Every context below uses the artwork drawn for that size: the 16 px microglyph up to 17 px, the 32 px master from 18 to 40 px, and the vector master above that. On a Retina Mac, a 16-point context is drawn with 32 physical pixels, so the 32 px master covers most real Mac use. The microglyph matters for non-Retina screens and 1× browser favicons.</p>
+  <div class="grid2">
+   <div class="card"><h3>Sizes, mark only</h3>
+    <div class="stage lt sizes"><figure><svg viewBox="0 0 16 16" width="16" height="16" class="" aria-hidden="true"><g transform="translate(1.5405777299185095 0) skewX(-10)">
+  <defs><clipPath id="cs-1"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
+  <g clip-path="url(#cs-1)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg><span class="cap">16</span></figure><figure><svg viewBox="0 0 32 32" width="20" height="20" class="" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-2"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-2)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg><span class="cap">20</span></figure><figure><svg viewBox="0 0 32 32" width="24" height="24" class="" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-3"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-3)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg><span class="cap">24</span></figure><figure><svg viewBox="0 0 32 32" width="32" height="32" class="" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-4"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-4)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg><span class="cap">32</span></figure><figure><svg viewBox="0 0 100 100" width="64" height="64" class="" aria-hidden="true"><defs><clipPath id="lc-s10-5"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-5)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><span class="cap">64</span></figure><figure><svg viewBox="0 0 100 100" width="128" height="128" class="" aria-hidden="true"><defs><clipPath id="lc-s10-6"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-6)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><span class="cap">128</span></figure></div>
+    <div class="stage dk sizes"><figure><svg viewBox="0 0 16 16" width="16" height="16" class="" aria-hidden="true"><g transform="translate(1.5405777299185095 0) skewX(-10)">
+  <defs><clipPath id="cs-7"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
+  <g clip-path="url(#cs-7)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg><span class="cap">16</span></figure><figure><svg viewBox="0 0 32 32" width="20" height="20" class="" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-8"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-8)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg><span class="cap">20</span></figure><figure><svg viewBox="0 0 32 32" width="24" height="24" class="" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-9"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-9)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg><span class="cap">24</span></figure><figure><svg viewBox="0 0 32 32" width="32" height="32" class="" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-10"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-10)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg><span class="cap">32</span></figure><figure><svg viewBox="0 0 100 100" width="64" height="64" class="" aria-hidden="true"><defs><clipPath id="lc-s10-11"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-11)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><span class="cap">64</span></figure><figure><svg viewBox="0 0 100 100" width="128" height="128" class="" aria-hidden="true"><defs><clipPath id="lc-s10-12"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-12)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><span class="cap">128</span></figure></div>
+   </div>
+   <div class="card"><h3>Sizes, app icon</h3>
+    <div class="stage lt sizes"><figure><svg class="ic" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g14" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="0.64" y="0.64" width="14.72" height="14.72" rx="3.6" fill="url(#g14)" stroke="#000" stroke-opacity=".12" stroke-width="0.08"/><g transform="translate(0 0)"><g transform="translate(3.5769237685015796 0) skewX(-10)">
+  <defs><clipPath id="ci-13"><rect x="-10" y="4" width="80" height="8"/></clipPath></defs>
+  <g clip-path="url(#ci-13)" fill="none" stroke="#14171D"><path stroke-width="2" d="M1.889 12V4"/><path stroke-width="1.765" stroke-linejoin="miter" d="M1.389 -1.295L4.556 8.889L7.333 -1.295"/></g>
+  <path fill="#2F5FE6" d="M6.333 4H8.333V12H6.333ZM3.778 4H10.778L9.889000000000001 6H3.778Z"/></g></g></svg><span class="cap">16</span></figure><figure><svg class="ic" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="1.28" y="1.28" width="29.44" height="29.44" rx="7.2" fill="url(#g16)" stroke="#000" stroke-opacity=".12" stroke-width="0.16"/><g transform="translate(5.5 5.5) scale(.66)"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-15"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-15)" fill="none" stroke="#14171D"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="#2F5FE6" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></g></svg><span class="cap">32</span></figure><figure><svg class="ic" viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g18" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g18)" stroke="#000" stroke-opacity=".12" stroke-width="0.5"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-17"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#14171D" clip-path="url(#lc-s10-17)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#2F5FE6" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><span class="cap">64</span></figure><figure><svg class="ic" viewBox="0 0 100 100" width="128" height="128" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g20" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g20)" stroke="#000" stroke-opacity=".12" stroke-width="0.5"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-19"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#14171D" clip-path="url(#lc-s10-19)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#2F5FE6" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><span class="cap">128</span></figure></div>
+    <div class="stage dk sizes"><figure><svg class="ic" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g22" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="0.64" y="0.64" width="14.72" height="14.72" rx="3.6" fill="url(#g22)"/><g transform="translate(0 0)"><g transform="translate(3.5769237685015796 0) skewX(-10)">
+  <defs><clipPath id="ci-21"><rect x="-10" y="4" width="80" height="8"/></clipPath></defs>
+  <g clip-path="url(#ci-21)" fill="none" stroke="#F3F5F9"><path stroke-width="2" d="M1.889 12V4"/><path stroke-width="1.765" stroke-linejoin="miter" d="M1.389 -1.295L4.556 8.889L7.333 -1.295"/></g>
+  <path fill="#7EA4FF" d="M6.333 4H8.333V12H6.333ZM3.778 4H10.778L9.889000000000001 6H3.778Z"/></g></g></svg><span class="cap">16</span></figure><figure><svg class="ic" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g24" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="1.28" y="1.28" width="29.44" height="29.44" rx="7.2" fill="url(#g24)"/><g transform="translate(5.5 5.5) scale(.66)"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-23"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-23)" fill="none" stroke="#F3F5F9"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="#7EA4FF" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></g></svg><span class="cap">32</span></figure><figure><svg class="ic" viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g26" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g26)"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-25"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#F3F5F9" clip-path="url(#lc-s10-25)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#7EA4FF" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><span class="cap">64</span></figure><figure><svg class="ic" viewBox="0 0 100 100" width="128" height="128" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g28" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g28)"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-27"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#F3F5F9" clip-path="url(#lc-s10-27)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#7EA4FF" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><span class="cap">128</span></figure></div>
+   </div>
+   <div class="card"><h3>Menu bar and toolbar scale</h3>
+    <div class="menubar lt"><svg viewBox="0 0 16 16" width="16" height="16" class="" aria-hidden="true"><g transform="translate(1.5405777299185095 0) skewX(-10)">
+  <defs><clipPath id="cs-29"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
+  <g clip-path="url(#cs-29)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg><b>MostlyText</b><span>File</span><span>Edit</span><span>Format</span><span>View</span></div>
+    <div class="menubar dk"><svg viewBox="0 0 16 16" width="16" height="16" class="" aria-hidden="true"><g transform="translate(1.5405777299185095 0) skewX(-10)">
+  <defs><clipPath id="cs-30"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
+  <g clip-path="url(#cs-30)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg><b>MostlyText</b><span>File</span><span>Edit</span><span>Format</span><span>View</span></div>
+    <div class="toolbar lt"><span class="dots"><i></i><i></i><i></i></span><span class="tab"><svg viewBox="0 0 16 16" width="16" height="16" class="" aria-hidden="true"><g transform="translate(1.5405777299185095 0) skewX(-10)">
+  <defs><clipPath id="cs-31"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
+  <g clip-path="url(#cs-31)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg>Draft.md</span><span class="tab"><svg viewBox="0 0 16 16" width="16" height="16" class="" aria-hidden="true"><g transform="translate(1.5405777299185095 0) skewX(-10)">
+  <defs><clipPath id="cs-32"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
+  <g clip-path="url(#cs-32)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg>Notes.txt</span></div>
+    <div class="toolbar dk"><span class="dots"><i></i><i></i><i></i></span><span class="tab"><svg viewBox="0 0 16 16" width="16" height="16" class="" aria-hidden="true"><g transform="translate(1.5405777299185095 0) skewX(-10)">
+  <defs><clipPath id="cs-33"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
+  <g clip-path="url(#cs-33)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg>Draft.md</span><span class="tab"><svg viewBox="0 0 16 16" width="16" height="16" class="" aria-hidden="true"><g transform="translate(1.5405777299185095 0) skewX(-10)">
+  <defs><clipPath id="cs-34"><rect x="-10" y="3" width="80" height="11"/></clipPath></defs>
+  <g clip-path="url(#cs-34)" fill="none" stroke="currentColor"><path stroke-width="3" d="M2.597 14V3"/><path stroke-width="2.647" stroke-linejoin="miter" d="M1.847 -4.940999999999999L6.264 9.722L10.208 -4.940999999999999"/></g>
+  <path fill="currentColor" d="M8.708 3H11.708V14H8.708ZM5.194 3H14.819L13.597000000000001 5H5.194Z"/></g></svg>Notes.txt</span></div>
+   </div>
+   <div class="card"><h3>Finder and Dock scale</h3>
+    <div class="stage lt"><div class="finder"><div><svg class="ic" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g36" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="0.64" y="0.64" width="14.72" height="14.72" rx="3.6" fill="url(#g36)" stroke="#000" stroke-opacity=".12" stroke-width="0.08"/><g transform="translate(0 0)"><g transform="translate(3.5769237685015796 0) skewX(-10)">
+  <defs><clipPath id="ci-35"><rect x="-10" y="4" width="80" height="8"/></clipPath></defs>
+  <g clip-path="url(#ci-35)" fill="none" stroke="#14171D"><path stroke-width="2" d="M1.889 12V4"/><path stroke-width="1.765" stroke-linejoin="miter" d="M1.389 -1.295L4.556 8.889L7.333 -1.295"/></g>
+  <path fill="#2F5FE6" d="M6.333 4H8.333V12H6.333ZM3.778 4H10.778L9.889000000000001 6H3.778Z"/></g></g></svg>Mail.app</div><div class="sel"><svg class="ic" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g38" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="0.64" y="0.64" width="14.72" height="14.72" rx="3.6" fill="url(#g38)" stroke="#000" stroke-opacity=".12" stroke-width="0.08"/><g transform="translate(0 0)"><g transform="translate(3.5769237685015796 0) skewX(-10)">
+  <defs><clipPath id="ci-37"><rect x="-10" y="4" width="80" height="8"/></clipPath></defs>
+  <g clip-path="url(#ci-37)" fill="none" stroke="#14171D"><path stroke-width="2" d="M1.889 12V4"/><path stroke-width="1.765" stroke-linejoin="miter" d="M1.389 -1.295L4.556 8.889L7.333 -1.295"/></g>
+  <path fill="#2F5FE6" d="M6.333 4H8.333V12H6.333ZM3.778 4H10.778L9.889000000000001 6H3.778Z"/></g></g></svg>MostlyText.app</div><div><svg class="ic" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g40" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="0.64" y="0.64" width="14.72" height="14.72" rx="3.6" fill="url(#g40)" stroke="#000" stroke-opacity=".12" stroke-width="0.08"/><g transform="translate(0 0)"><g transform="translate(3.5769237685015796 0) skewX(-10)">
+  <defs><clipPath id="ci-39"><rect x="-10" y="4" width="80" height="8"/></clipPath></defs>
+  <g clip-path="url(#ci-39)" fill="none" stroke="#14171D"><path stroke-width="2" d="M1.889 12V4"/><path stroke-width="1.765" stroke-linejoin="miter" d="M1.389 -1.295L4.556 8.889L7.333 -1.295"/></g>
+  <path fill="#2F5FE6" d="M6.333 4H8.333V12H6.333ZM3.778 4H10.778L9.889000000000001 6H3.778Z"/></g></g></svg>Notes.app</div></div><svg class="ic" viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g42" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g42)" stroke="#000" stroke-opacity=".12" stroke-width="0.5"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-41"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#14171D" clip-path="url(#lc-s10-41)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#2F5FE6" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><svg class="ic" viewBox="0 0 100 100" width="128" height="128" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g44" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g44)" stroke="#000" stroke-opacity=".12" stroke-width="0.5"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-43"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#14171D" clip-path="url(#lc-s10-43)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#2F5FE6" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg></div>
+    <div class="stage dk"><div class="finder"><div><svg class="ic" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g46" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="0.64" y="0.64" width="14.72" height="14.72" rx="3.6" fill="url(#g46)"/><g transform="translate(0 0)"><g transform="translate(3.5769237685015796 0) skewX(-10)">
+  <defs><clipPath id="ci-45"><rect x="-10" y="4" width="80" height="8"/></clipPath></defs>
+  <g clip-path="url(#ci-45)" fill="none" stroke="#F3F5F9"><path stroke-width="2" d="M1.889 12V4"/><path stroke-width="1.765" stroke-linejoin="miter" d="M1.389 -1.295L4.556 8.889L7.333 -1.295"/></g>
+  <path fill="#7EA4FF" d="M6.333 4H8.333V12H6.333ZM3.778 4H10.778L9.889000000000001 6H3.778Z"/></g></g></svg>Mail.app</div><div class="sel"><svg class="ic" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g48" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="0.64" y="0.64" width="14.72" height="14.72" rx="3.6" fill="url(#g48)"/><g transform="translate(0 0)"><g transform="translate(3.5769237685015796 0) skewX(-10)">
+  <defs><clipPath id="ci-47"><rect x="-10" y="4" width="80" height="8"/></clipPath></defs>
+  <g clip-path="url(#ci-47)" fill="none" stroke="#F3F5F9"><path stroke-width="2" d="M1.889 12V4"/><path stroke-width="1.765" stroke-linejoin="miter" d="M1.389 -1.295L4.556 8.889L7.333 -1.295"/></g>
+  <path fill="#7EA4FF" d="M6.333 4H8.333V12H6.333ZM3.778 4H10.778L9.889000000000001 6H3.778Z"/></g></g></svg>MostlyText.app</div><div><svg class="ic" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g50" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="0.64" y="0.64" width="14.72" height="14.72" rx="3.6" fill="url(#g50)"/><g transform="translate(0 0)"><g transform="translate(3.5769237685015796 0) skewX(-10)">
+  <defs><clipPath id="ci-49"><rect x="-10" y="4" width="80" height="8"/></clipPath></defs>
+  <g clip-path="url(#ci-49)" fill="none" stroke="#F3F5F9"><path stroke-width="2" d="M1.889 12V4"/><path stroke-width="1.765" stroke-linejoin="miter" d="M1.389 -1.295L4.556 8.889L7.333 -1.295"/></g>
+  <path fill="#7EA4FF" d="M6.333 4H8.333V12H6.333ZM3.778 4H10.778L9.889000000000001 6H3.778Z"/></g></g></svg>Notes.app</div></div><svg class="ic" viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g52" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g52)"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-51"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#F3F5F9" clip-path="url(#lc-s10-51)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#7EA4FF" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><svg class="ic" viewBox="0 0 100 100" width="128" height="128" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g54" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g54)"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-53"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#F3F5F9" clip-path="url(#lc-s10-53)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#7EA4FF" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg></div>
+   </div>
+   <div class="card"><h3>About window</h3>
+    <div class="stage lt" style="justify-content:center"><div class="about"><svg class="ic" viewBox="0 0 100 100" width="128" height="128" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g56" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E7EBF3"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g56)" stroke="#000" stroke-opacity=".12" stroke-width="0.5"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-55"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#14171D" clip-path="url(#lc-s10-55)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#2F5FE6" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><span class="lk" style="font-size:22px"><span style="display:inline-block;width:1.2322981818181817em;height:1.2322981818181817em;vertical-align:-0.1925465909090909em;margin:0 0.16919254545454546em 0 -0.07701863636363636em"><svg viewBox="0 0 32 32" width="27" height="27" class="fill" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-57"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-57)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span><small>Version 1.0 (100)</small><small>A MacDown descendant. © 2026</small></div></div>
+    <div class="stage dk" style="justify-content:center"><div class="about"><svg class="ic" viewBox="0 0 100 100" width="128" height="128" role="img" aria-label="MostlyText app icon"><defs><linearGradient id="g59" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262A33"/><stop offset="1" stop-color="#0D0F13"/></linearGradient></defs>
+  <rect x="4" y="4" width="92" height="92" rx="22.5" fill="url(#g59)"/><g transform="translate(19 19) scale(.62)"><defs><clipPath id="lc-s10-58"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="#F3F5F9" clip-path="url(#lc-s10-58)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="#7EA4FF" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></g></svg><span class="lk" style="font-size:22px"><span style="display:inline-block;width:1.2322981818181817em;height:1.2322981818181817em;vertical-align:-0.1925465909090909em;margin:0 0.16919254545454546em 0 -0.07701863636363636em"><svg viewBox="0 0 32 32" width="27" height="27" class="fill" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-60"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-60)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span><small>Version 1.0 (100)</small><small>A MacDown descendant. © 2026</small></div></div>
+   </div>
+   <div class="card"><h3>Website header, wordmark-only, monochrome</h3>
+    <div class="site lt"><span class="lk" style="font-size:22px"><span style="display:inline-block;width:1.2322981818181817em;height:1.2322981818181817em;vertical-align:-0.1925465909090909em;margin:0 0.16919254545454546em 0 -0.07701863636363636em"><svg viewBox="0 0 32 32" width="27" height="27" class="fill" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-61"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-61)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span><nav><span>Features</span><span>Download</span><span class="btn">Get MostlyText</span></nav></div>
+    <div class="site dk"><span class="lk" style="font-size:22px"><span style="display:inline-block;width:1.2322981818181817em;height:1.2322981818181817em;vertical-align:-0.1925465909090909em;margin:0 0.16919254545454546em 0 -0.07701863636363636em"><svg viewBox="0 0 32 32" width="27" height="27" class="fill" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-62"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-62)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span><nav><span>Features</span><span>Download</span><span class="btn">Get MostlyText</span></nav></div>
+    <div class="stage lt"><span class="lk" style="font-size:28px"><span class="wm" style="font-style:italic;transform:skewX(-2.63deg)">MostlyText</span></span><span class="cap">wordmark only</span></div>
+    <div class="stage dk"><svg viewBox="0 0 100 100" width="48" height="48" class="" aria-hidden="true"><defs><clipPath id="lc-s10-63"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-63)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg><span class="lk" style="font-size:28px"><span style="display:inline-block;width:1.2322981818181817em;height:1.2322981818181817em;vertical-align:-0.1925465909090909em;margin:0 0.16919254545454546em 0 -0.07701863636363636em"><svg viewBox="0 0 32 32" width="35" height="35" class="fill" aria-hidden="true"><g transform="translate(2.654828479128555 0) skewX(-10)">
+  <defs><clipPath id="v32-64"><rect x="-10" y="5" width="80" height="22"/></clipPath></defs>
+  <g clip-path="url(#v32-64)" fill="none" stroke="currentColor"><path stroke-width="5" d="M5.194 27V5"/><path stroke-width="4.412" stroke-linejoin="miter" d="M3.944 -8.236L12.528 18.444L19.917 -8.236"/></g>
+  <path fill="currentColor" d="M17.417 5H22.417V27H17.417ZM10.389 5H29.639L27.195 9H10.389Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span><span class="cap">monochrome on dark</span></div>
+   </div>
+  </div>
+  <div class="tw"><table><thead><tr><th>Context</th><th>M reads</th><th>T reads</th><th>Construction holds</th><th>Note</th></tr></thead><tbody>
+   <tr><th>Mark 64–128, icon 64–128</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>The shared stem, the V and the wedge are all visible.</td></tr>
+   <tr><th>Mark 20–32 (32 px master)</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>The redrawn V stays open. The crossbar’s wedge still shows at 20 px.</td></tr>
+   <tr><th>Mark 16 (microglyph)</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt o">Mostly</span></td><td>Reads as “MT”. The V is a small opening and the wedge is only suggested. The shared stem reads as touching letters rather than as one construction.</td></tr>
+   <tr><th>App icon 32</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>The coloured T separates the letters, which helps.</td></tr>
+   <tr><th>App icon 16 (Finder list)</th><td><span class="rt o">Shape</span></td><td><span class="rt g">Yes</span></td><td><span class="rt o">No</span></td><td>About 11 px of mark. It reads as a leaning dark “MT” block with a blue top. It is recognisable by shape, not by construction. This is normal at this size, and on Retina the 32 px master is used here instead.</td></tr>
+   <tr><th>Lockups (About, website, 22–28 px)</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>Mark and name read as one unit. With the name beside it, the MT initials become obvious.</td></tr>
+   <tr><th>Monochrome, light and dark</th><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td><span class="rt g">Yes</span></td><td>Nothing depends on colour. The white-on-dark version needs no change.</td></tr>
+  </tbody></table></div>
+  <div class="card"><h3>Human read test (to run before freezing)</h3>
+   <ol>
+    <li>Show exactly 8 valid participants who haven’t seen the design work each stimulus for 5 seconds, in this order: the mark at 64 px (S1), the app icon at 128 px (S2), a website header with the mark only (S3), then the 16 px line-up. Follow the exact wording in the kit’s README.</li>
+    <li>Ask “What letters, if any, do you see?”, then “What does it remind you of?”, then “What kind of app is this?”. Don’t prompt with M or T.</li>
+    <li><b>Gate 1, logo scale:</b> S1 alone (the first-exposure, monochrome 64 px mark). At least 6 of 8 valid participants, target 7, name both M and T without prompting. The icon and header answers are diagnostic only and can’t rescue a failed S1.</li>
+    <li><b>Gate 2, 16 px:</b> at least 6 of 8 pick the microglyph out of a five-glyph line-up. They don’t need to read the letters at this size.</li>
+    <li><b>Panel:</b> exactly 8 valid participants. Fewer is incomplete, not a scaled pass. Full kit and scorer: <code>design/validation/read-test/</code> (D-022, D-023).</li>
+    <li><b>Associations:</b> record every unprompted association word for word. If automotive or motorsport associations (BMW, car, racing, sport) come up independently from 3 or more people, treat the lean as needing reconsideration (see §3).</li>
+   </ol>
+  </div>
+ </section>
+
+ <section aria-labelledby="s2">
+  <h2 id="s2">2 · Small-size artwork: 32 px master and 16 px microglyph</h2>
+  <p>Each size below is rendered at its true pixel size and then enlarged. The scaled master loses the V, turns the peak-to-crossbar notch grey, and blurs every vertical edge because of the 12° lean. The small-size artwork is redrawn for its pixel grid. Top edges, the crossbar and the baseline land on whole pixels. Stems are whole pixels wide (2 at 16 px, 4 at 32 px). Diagonals are thinner and the V is opened, so the M keeps its counter.</p>
+  <div class="card"><div class="sizes"><figure class="zf"><canvas class="zc" data-w="16" data-svg='%3Cg%20transform%3D%22translate(-0.7209302325581395%20-1.0697674418604652)%20scale(0.1744186046511628)%22%3E%3Cdefs%3E%3CclipPath%20id%3D%22lc-s10%22%3E%3Crect%20x%3D%220%22%20y%3D%2216%22%20width%3D%22100%22%20height%3D%2272%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%0A%20%20%20%20%20%20%3Cg%20transform%3D%22translate(50%2052)%20scale(0.85)%20translate(-43.581%20-52)%20skewX(-10)%22%3E%0A%20%20%20%20%20%20%3Cg%20fill%3D%22none%22%20stroke%3D%22%23000%22%20clip-path%3D%22url(%23lc-s10)%22%3E%3Cpath%20stroke-width%3D%2217%22%20d%3D%22M17%2088V16%22%2F%3E%3Cpath%20stroke-width%3D%2215%22%20d%3D%22M12%207L41%2060L70%207%22%20stroke-linejoin%3D%22miter%22%2F%3E%3C%2Fg%3E%0A%20%20%20%20%20%20%3Cpath%20fill%3D%22%23000%22%20d%3D%22M57%2016H74V88H57ZM34%2016H97L89%2033H34Z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E' width="16" height="16"></canvas><figcaption>16 px, master scaled</figcaption></figure><figure class="zf"><canvas class="zc" data-w="16" data-svg='%3Cg%20transform%3D%22translate(1.5405777299185095%200)%20skewX(-10)%22%3E%0A%20%20%3Cdefs%3E%3CclipPath%20id%3D%22cs%22%3E%3Crect%20x%3D%22-10%22%20y%3D%223%22%20width%3D%2280%22%20height%3D%2211%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%0A%20%20%3Cg%20clip-path%3D%22url(%23cs)%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%3E%3Cpath%20stroke-width%3D%223%22%20d%3D%22M2.597%2014V3%22%2F%3E%3Cpath%20stroke-width%3D%222.647%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M1.847%20-4.940999999999999L6.264%209.722L10.208%20-4.940999999999999%22%2F%3E%3C%2Fg%3E%0A%20%20%3Cpath%20fill%3D%22%23000%22%20d%3D%22M8.708%203H11.708V14H8.708ZM5.194%203H14.819L13.597000000000001%205H5.194Z%22%2F%3E%3C%2Fg%3E' width="16" height="16"></canvas><figcaption>16 px microglyph</figcaption></figure><figure class="zf"><canvas class="zc" data-w="16" data-svg='%3Crect%20x%3D%22.5%22%20y%3D%22.5%22%20width%3D%2215%22%20height%3D%2215%22%20rx%3D%223.6%22%20fill%3D%22%23EEF1F6%22%20stroke%3D%22%230003%22%2F%3E%3Cg%20transform%3D%22translate(1.6046511627906976%201.3488372093023258)%20scale(0.12790697674418605)%22%3E%3Cdefs%3E%3CclipPath%20id%3D%22lc-s10%22%3E%3Crect%20x%3D%220%22%20y%3D%2216%22%20width%3D%22100%22%20height%3D%2272%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%0A%20%20%20%20%20%20%3Cg%20transform%3D%22translate(50%2052)%20scale(0.85)%20translate(-43.581%20-52)%20skewX(-10)%22%3E%0A%20%20%20%20%20%20%3Cg%20fill%3D%22none%22%20stroke%3D%22%23000%22%20clip-path%3D%22url(%23lc-s10)%22%3E%3Cpath%20stroke-width%3D%2217%22%20d%3D%22M17%2088V16%22%2F%3E%3Cpath%20stroke-width%3D%2215%22%20d%3D%22M12%207L41%2060L70%207%22%20stroke-linejoin%3D%22miter%22%2F%3E%3C%2Fg%3E%0A%20%20%20%20%20%20%3Cpath%20fill%3D%22%23000%22%20d%3D%22M57%2016H74V88H57ZM34%2016H97L89%2033H34Z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E' width="16" height="16"></canvas><figcaption>Icon 16, master scaled</figcaption></figure><figure class="zf"><canvas class="zc" data-w="16" data-svg='%3Crect%20x%3D%22.5%22%20y%3D%22.5%22%20width%3D%2215%22%20height%3D%2215%22%20rx%3D%223.6%22%20fill%3D%22%23EEF1F6%22%20stroke%3D%22%230003%22%2F%3E%3Cg%20transform%3D%22translate(3.5769237685015796%200)%20skewX(-10)%22%3E%0A%20%20%3Cdefs%3E%3CclipPath%20id%3D%22cs%22%3E%3Crect%20x%3D%22-10%22%20y%3D%224%22%20width%3D%2280%22%20height%3D%228%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%0A%20%20%3Cg%20clip-path%3D%22url(%23cs)%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%3E%3Cpath%20stroke-width%3D%222%22%20d%3D%22M1.889%2012V4%22%2F%3E%3Cpath%20stroke-width%3D%221.765%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M1.389%20-1.295L4.556%208.889L7.333%20-1.295%22%2F%3E%3C%2Fg%3E%0A%20%20%3Cpath%20fill%3D%22%23000%22%20d%3D%22M6.333%204H8.333V12H6.333ZM3.778%204H10.778L9.889000000000001%206H3.778Z%22%2F%3E%3C%2Fg%3E' width="16" height="16"></canvas><figcaption>Icon 16 microglyph</figcaption></figure><figure class="zf"><canvas class="zc" data-w="32" data-svg='%3Cg%20transform%3D%22translate(-1.441860465116279%20-2.1395348837209305)%20scale(0.3488372093023256)%22%3E%3Cdefs%3E%3CclipPath%20id%3D%22lc-s10%22%3E%3Crect%20x%3D%220%22%20y%3D%2216%22%20width%3D%22100%22%20height%3D%2272%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%0A%20%20%20%20%20%20%3Cg%20transform%3D%22translate(50%2052)%20scale(0.85)%20translate(-43.581%20-52)%20skewX(-10)%22%3E%0A%20%20%20%20%20%20%3Cg%20fill%3D%22none%22%20stroke%3D%22%23000%22%20clip-path%3D%22url(%23lc-s10)%22%3E%3Cpath%20stroke-width%3D%2217%22%20d%3D%22M17%2088V16%22%2F%3E%3Cpath%20stroke-width%3D%2215%22%20d%3D%22M12%207L41%2060L70%207%22%20stroke-linejoin%3D%22miter%22%2F%3E%3C%2Fg%3E%0A%20%20%20%20%20%20%3Cpath%20fill%3D%22%23000%22%20d%3D%22M57%2016H74V88H57ZM34%2016H97L89%2033H34Z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E' width="32" height="32"></canvas><figcaption>32 px, master scaled</figcaption></figure><figure class="zf"><canvas class="zc" data-w="32" data-svg='%3Cg%20transform%3D%22translate(2.654828479128555%200)%20skewX(-10)%22%3E%0A%20%20%3Cdefs%3E%3CclipPath%20id%3D%22v32%22%3E%3Crect%20x%3D%22-10%22%20y%3D%225%22%20width%3D%2280%22%20height%3D%2222%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%0A%20%20%3Cg%20clip-path%3D%22url(%23v32)%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%3E%3Cpath%20stroke-width%3D%225%22%20d%3D%22M5.194%2027V5%22%2F%3E%3Cpath%20stroke-width%3D%224.412%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M3.944%20-8.236L12.528%2018.444L19.917%20-8.236%22%2F%3E%3C%2Fg%3E%0A%20%20%3Cpath%20fill%3D%22%23000%22%20d%3D%22M17.417%205H22.417V27H17.417ZM10.389%205H29.639L27.195%209H10.389Z%22%2F%3E%3C%2Fg%3E' width="32" height="32"></canvas><figcaption>32 px, optical master</figcaption></figure></div></div>
+  <div class="grid3">
+   <div class="card"><h3>What changed</h3><ul>
+    <li>Horizontals sit on pixel rows, so the crossbar and baseline are crisp rather than half-toned.</li>
+    <li>Diagonals are lighter than stems (1.2 against 2 px at 16, 3.4 against 4 px at 32). This opens the V.</li>
+    <li>In the 16 px microglyph the vertex moves down and the stem moves right by half a pixel. This leaves a clear two-pixel V counter and a clear gap between the V and the stem.</li>
+    <li>Inside the 16 px icon, the V counter is given up. The mark keeps the stem, crossbar and lean.</li></ul></div>
+   <div class="card"><h3>Tested and rejected</h3><ul>
+    <li><b>Hand-drawn 1-bit pixel grids:</b> crisp, but the 12° lean becomes a 3-step staircase. That breaks the stems into blocks and fights the mark’s main gesture.</li>
+    <li><b>Master scaled to 16:</b> soft, and the V disappears.</li></ul></div>
+   <div class="card"><h3>Balance</h3><ul>
+    <li>The weight sits top-right (the crossbar and wedge), so the masters sit about 1 px left of centre at 16, and the icon masters sit slightly low.</li>
+    <li>Neither letter overwhelms the other: the M is wider, and the T is darker at the top.</li>
+    <li>Files: <code>slant-16.svg</code> (microglyph), <code>slant-32.svg</code>, <code>slant-icon-16-inner.svg</code> (microglyph), <code>slant-master.svg</code>.</li></ul></div>
+  </div>
+ </section>
+
+ <section aria-labelledby="s3">
+  <h2 id="s3">3 · Similarity and collision review</h2>
+  <p>This is a visual-neighbour screen, not a legal assessment. I searched by structure (a leaning heavy M, an MT or TM monogram, parallelogram-built letters, a T badge) and by category (Mac writing apps, Markdown editors, developer tools). This was a web search, not a trademark-register search. A formal image search in the WIPO Global Brand Database and at the USPTO (Classes 9 and 42) is still needed.</p>
+  <div class="tw"><table><thead><tr><th>Mark</th><th>What is shared</th><th>Level</th><th>Assessment</th></tr></thead><tbody>
+   <tr><th>BMW M (the “Giugiaro M”)</th><td>A heavy, forward-leaning capital M with bevelled, speed-coded geometry. The current version uses light blue, dark blue and red.</td><td><span class="rt o">Structural, bounded</span></td><td>The strongest perceptual concern. Slant’s shared T stem and flat crossbar are absent from BMW M, and BMW M’s three coloured stripes are absent from Slant. It doesn’t look like the BMW M logo, but at large size the heavy oblique M, forward motion and wedge do carry some motorsport character. Adding stripes, multicolour bars or red with blue would push it closer. <b>Rule:</b> never pair the mark with parallel stripes or a red-and-blue scheme. Whether there is any trademark concern is for the register search to establish, not this screen.</td></tr>
+   <tr><th>Stock MT / TM monograms (Scalebranding, Branition, Dribbble)</th><td>M and T sharing a stroke.</td><td><span class="rt o">Common vocabulary</span></td><td>Many generic MT ligatures exist, and some are sold as ready-made logos. None found uses the 12° lean with a wedge-cut crossbar. The risk is looking generic rather than colliding, which the lean and wedge answer. A ready-made logo sold to an unknown buyer can’t be ruled out by web search, which is why the register search is needed.</td></tr>
+   <tr><th>Monzo</th><td>An M built from slanted parallelograms.</td><td><span class="rt g">Common vocabulary</span></td><td>Upright, symmetric, four colours, no T. Visually distinct.</td></tr>
+   <tr><th>M&amp;T Bank</th><td>The letters M and T.</td><td><span class="rt g">Superficial</span></td><td>A condensed serif “M&amp;T” wordmark in green. Different structure and category.</td></tr>
+   <tr><th>Microsoft Teams</th><td>A T in a coloured badge.</td><td><span class="rt g">Superficial</span></td><td>An upright T with figures of people, in purple. Visually distinct.</td></tr>
+   <tr><th>Tesla</th><td>A stylised T.</td><td><span class="rt g">Not applicable</span></td><td>This risk belonged to the dropped Crown mark. Slant has no notch and no arched bar.</td></tr>
+   <tr><th>Markdown mark (M↓)</th><td>An M in the Markdown category.</td><td><span class="rt g">Common vocabulary</span></td><td>An upright M with a down arrow in a rectangle. Slant uses no arrow and no frame.</td></tr>
+   <tr><th>MarkText (Markdown editor)</th><td>The name pattern “M…Text” in the same category.</td><td><span class="rt o">Name, not logo</span></td><td>Its logo couldn’t be retrieved to check visually. The name overlap is the bigger point: two Markdown editors called M…Text. This doesn’t reopen the name, but the register search should cover MarkText, and the icon must not resemble MarkText’s.</td></tr>
+  </tbody></table></div>
+  <p><b>Conclusion:</b> in this screen, the only close visual neighbour is BMW M. The usage rule above keeps the mark clear of it, and the unprompted-association question in the human test is the real check on its motorsport character. If that test turns up automotive associations, compare 8°, 10° and 12° in a follow-up round and keep as much of the lean as passes. The motion is one of the identity’s strengths, so don’t decide the fallback angle in advance. Trademark conclusions wait for the register search.</p>
+ </section>
+
+ <section aria-labelledby="s4">
+  <h2 id="s4">4 · Lockup refinement</h2>
+  <p>Inter Tight’s true italic leans 9.5°, and the mark leans 12°. Three ways to relate them are shown below at the same size, with the mark set 1.15× the capital height and sitting on the baseline.</p>
+  <div class="grid3">
+   <div class="card"><div class="stage lt"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="57" height="57" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-65"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-65)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:normal;transform:skewX(-10deg)">MostlyText</span></span></div><div class="stage dk"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="57" height="57" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-66"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-66)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:normal;transform:skewX(-10deg)">MostlyText</span></span></div><h3>A · Mechanical 12°</h3><p class="cap">Upright letters slanted 12°. The angle matches. At this size it is hard to tell apart from C. At display sizes the o, e and y bowls look sheared, because their curves were drawn upright.</p></div>
+   <div class="card"><div class="stage lt"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="57" height="57" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-67"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-67)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic">MostlyText</span></span></div><div class="stage dk"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="57" height="57" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-68"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-68)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic">MostlyText</span></span></div><h3>B · True italic 9.5°</h3><p class="cap">The curves are drawn properly, but the name visibly leans less than the mark. You notice the mismatch against the shared stem.</p></div>
+   <div class="card rec"><div class="stage lt"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="57" height="57" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-69"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-69)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span></div><div class="stage dk"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="57" height="57" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-70"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-70)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span></div><h3>C · Italic + 2.6° (recommended)</h3><p class="cap">The drawn italic plus a small 2.6° slant, so both lean 12°. The curves stay natural because only 2.6° is synthetic.</p></div>
+  </div>
+  <div class="grid3">
+   <div class="card rec"><div class="stage lt"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="57" height="57" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-71"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-71)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span></div><h3>On the baseline, 1.15× caps (recommended)</h3><p class="cap">The mark stands on the baseline like a letter and rises just above the capitals. The top of the crossbar lines up with the name’s ascenders.</p></div>
+   <div class="card"><div class="stage lt"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.3139627516778524em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="57" height="57" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-72"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-72)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span></div><h3>Centred on the capitals</h3><p class="cap">The mark hangs slightly below the baseline, so it no longer sits on the same line as the letters. The difference is small but visible in large headers.</p></div>
+   <div class="card"><div class="stage lt"><span class="lk" style="font-size:40px"><span style="display:inline-block;width:1.6686996644295304em;height:1.6686996644295304em;vertical-align:-0.3037033389261746em;margin:0 0.08319102348993287em 0 -0.11680897651006714em"><svg viewBox="0 0 100 100" width="67" height="67" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-73"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-73)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span></div><h3>On the baseline, 1.35× caps</h3><p class="cap">The mark dominates, and the name reads as a caption.</p></div>
+  </div>
+  <div class="grid2">
+   <div class="card rec"><div class="stage lt"><span class="lk" style="font-size:44px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="63" height="63" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-74"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-74)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span></div><div class="stage dk"><span class="lk" style="font-size:44px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="63" height="63" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-75"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-75)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">MostlyText</span></span></div><h3>Canonical: one colour</h3></div>
+   <div class="card"><div class="stage lt"><span class="lk" style="font-size:44px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="63" height="63" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-76"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-76)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">Mostly<span style="color:#2F5FE6">Text</span></span></span></div><div class="stage dk"><span class="lk" style="font-size:44px"><span style="display:inline-block;width:1.4214848993288591em;height:1.4214848993288591em;vertical-align:-0.25871025167785244em;margin:0 0.10049605704697986em 0 -0.09950394295302015em"><svg viewBox="0 0 100 100" width="63" height="63" class="fill" aria-hidden="true"><defs><clipPath id="lc-s10-77"><rect x="0" y="16" width="100" height="72"/></clipPath></defs>
+      <g transform="translate(50 52) scale(0.85) translate(-43.581 -52) skewX(-10)">
+      <g fill="none" stroke="currentColor" clip-path="url(#lc-s10-77)"><path stroke-width="17" d="M17 88V16"/><path stroke-width="15" d="M12 7L41 60L70 7" stroke-linejoin="miter"/></g>
+      <path fill="currentColor" d="M57 16H74V88H57ZM34 16H97L89 33H34Z"/></g></svg></span><span class="wm" style="font-style:italic;transform:skewX(-0.6deg)">Mostly<span style="color:#7EA4FF">Text</span></span></span></div><h3>Control: two-tone</h3><p class="cap">It adds no function the one-colour version lacks: both read equally fast. It splits the name and adds a second device. One colour stays canonical, as decided in D-013.</p></div>
+  </div>
+  <div class="card"><h3>Lockup specification</h3><ul>
+   <li><b>Angle:</b> 12° for both. The wordmark is Inter Tight Bold Italic with an extra 2.6° slant, not slanted upright letters.</li>
+   <li><b>Baseline:</b> the bottom of the mark’s letters sits on the name’s baseline.</li>
+   <li><b>Height:</b> the mark’s letters are 1.15× the name’s capital height.</li>
+   <li><b>Spacing:</b> 0.2 em between the mark’s lower-right stem and the M of the name. Measure it along the 12° lean, not horizontally.</li>
+   <li><b>Weight:</b> the mark’s stems are about 1.4× the name’s stems, so the mark leads. Don’t use weight 800 for the name.</li>
+   <li><b>Letter-spacing:</b> −2.5% overall. Tighten the “yT” pair by eye in the outlined artwork.</li>
+   <li><b>Clear space:</b> the height of the crossbar on every side. <b>Minimum size:</b> 12 px text on screen; below that, use the mark alone.</li>
+  </ul></div>
+ </section>
+
+ <section aria-labelledby="s5">
+  <h2 id="s5">5 · Freeze recommendation</h2>
+  <div class="card verdict">
+   <h3>Geometry: release-candidate frozen. Public identity: not frozen until four items close.</h3>
+   <p>The mark has passed machine and visual validation: rendering at true pixel size, numerical coverage checks and in-context review. It reads as M and T from 20 px up. The 16 px microglyph keeps the MT look while simplifying the construction, and nothing depends on colour. It has <b>not</b> had perceptual validation (people seeing it cold) or rendering through the real macOS icon pipeline. Optical corrections from either are expected and are part of the release-candidate stage, not a breach of the design record. Four items remain:</p>
+   <ol>
+    <li><b>Wordmark outlines (production defect):</b> the lockup is still live text. Convert “MostlyText” to outlines using the specification above, correct the synthetic 2.6° on the curves of the o, y and x, and tighten the “yT” pair. Until then, the lockup depends on the Inter Tight web font loading.</li>
+    <li><b>macOS icon set (production defect):</b> build the light, dark, clear and tinted versions in Icon Composer on a Mac using the 16, 32 and vector masters, and check them in a real Dock and Finder. This can’t be done from this Linux environment.</li>
+    <li><b>Human read test (check):</b> run the protocol in §1, with the thresholds there.</li>
+    <li><b>Register search (check):</b> a WIPO and USPTO image and word search, covering BMW M, MT monograms and MarkText. This, not the visual screen, settles any trademark question.</li>
+   </ol>
+   <p>If the read test turns up automotive associations, compare 8°, 10° and 12° rather than switching straight to a fixed fallback. The identity doesn’t reopen.</p>
+  </div>
+ </section>
+</main>
+<script>
+document.querySelectorAll('canvas.zc').forEach(c=>{const W=+c.dataset.w,x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,W);const i=new Image();
+ i.onload=()=>x.drawImage(i,0,0);i.src='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+W+'" viewBox="0 0 '+W+' '+W+'">')+c.dataset.svg+encodeURIComponent('</svg>')});
+</script>

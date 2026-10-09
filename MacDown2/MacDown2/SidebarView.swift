@@ -11,6 +11,7 @@ struct SidebarView: View {
     @Bindable var model: WorkspaceModel
     @Bindable var outlineController: OutlineController
     @Bindable var fileTreeModel: FileTreeModel
+    @Bindable var folderSearchModel: FolderSearchModel
     @Environment(\.windowCoordinator) var coordinator
 
     @FocusState private var outlineFocused: Bool
@@ -176,6 +177,41 @@ struct SidebarView: View {
                 // confirmed via the same pattern in `SidebarView+Folder.swift`.
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("outlineSection")
+        case .search:
+            // Resolves against `folderSearchModel.root` -- the root the
+            // search actually ran against -- not `fileTreeModel.rootAccessURL`
+            // (the CURRENT, live root). An independent review of this slice
+            // found that using the live root here reproduces the exact bug
+            // class `closeQuickOpenIfOrigin` already exists to prevent for
+            // Quick Open: `setFileTreeRoot` updates `fileTreeModel`'s root
+            // synchronously, before the potentially long-running
+            // `workspaceFileIndex.rebuild`/`folderSearchModel.setRoot` that
+            // follows it completes, so a result computed against the OLD
+            // root could otherwise resolve its `relativePath` against a
+            // NEW root that happens to share that path -- silently opening
+            // the wrong file, rather than the file the user actually saw
+            // and clicked.
+            FolderSearchView(model: folderSearchModel) { fileMatch in
+                guard let root = folderSearchModel.root, let firstMatch = fileMatch.matches.first else { return }
+                Task {
+                    // `folderAccessURL: root`, not `fileTreeModel.rootAccessURL`
+                    // -- same reasoning as `root` just above: both must
+                    // come from the same, already-captured
+                    // `folderSearchModel.root` value, not whatever the
+                    // live file tree root happens to be right now.
+                    await coordinator?.openFolderSearchResult(
+                        relativePath: fileMatch.relativePath,
+                        // The folder as opened (a symlink root stays a symlink
+                        // path), so the file has the identity a sidebar open
+                        // would give it; access is still the physical root.
+                        root: folderSearchModel.lexicalRoot ?? root,
+                        folderAccessURL: root,
+                        range: firstMatch.range
+                    )
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("searchSection")
         }
     }
 

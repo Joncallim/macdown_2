@@ -29,18 +29,33 @@ extension WindowCoordinator {
     /// for the same keystroke, so both bindings can stay declared on it.
     var keyFolderSelection: URL? {
         _ = commandStateRevision
-        guard canPerformOccurrenceSelection == false else { return nil }
+        guard canPerformOccurrenceSelection == false,
+              !Self.isTextEditing(NSApp.keyWindow?.firstResponder)
+        else { return nil }
         return controllers.first(where: { $0.window == NSApp.keyWindow })?.fileTreeModel.selectedURL
     }
 
+    /// Any text control being edited — the Find or folder-search field, the rename field, a palette
+    /// field — owns Return, ⌘D and ⌘⌫ while it has focus; the Folder commands must not claim them.
+    static func isTextEditing(_ responder: NSResponder?) -> Bool {
+        responder is NSText
+    }
+
+    /// The key window's controller for a Folder command, unless a text control is being edited: the menu's enabled
+    /// state can be stale (it refreshes on mouse/focus events), and Return/⌘D/⌘⌫ belong to the field.
+    private func keyFolderCommandController() -> WindowController? {
+        guard !Self.isTextEditing(NSApp.keyWindow?.firstResponder) else { return nil }
+        return controllers.first(where: { $0.window == NSApp.keyWindow })
+    }
+
     func renameKeyFolderSelection() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
+        guard let controller = keyFolderCommandController(),
               let selected = controller.fileTreeModel.selectedURL else { return }
         controller.fileTreeModel.renamingURL = selected
     }
 
     func duplicateKeyFolderSelection() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
+        guard let controller = keyFolderCommandController(),
               let selected = controller.fileTreeModel.selectedURL else { return }
         let context = controller.fileTreeModel.beginOperation()
         Task { @MainActor in
@@ -53,7 +68,7 @@ extension WindowCoordinator {
     }
 
     func trashKeyFolderSelection() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
+        guard let controller = keyFolderCommandController(),
               let selected = controller.fileTreeModel.selectedURL,
               let window = controller.window else { return }
         let alert = NSAlert()
@@ -73,6 +88,25 @@ extension WindowCoordinator {
                     controller.fileTreeModel.recordOperationError(error)
                 } catch {}
             }
+        }
+    }
+
+    /// What ⌘N does. The standard New shortcut must never be dead: with a folder
+    /// open it creates a file in that folder, and otherwise (a fresh launch has
+    /// no folder) it opens a blank document, like ⌘T.
+    enum NewFileTarget: Equatable {
+        case fileInKeyFolder
+        case blankDocument
+
+        static func resolve(hasKeyFolder: Bool) -> Self {
+            hasKeyFolder ? .fileInKeyFolder : .blankDocument
+        }
+    }
+
+    func newFileCommand() {
+        switch NewFileTarget.resolve(hasKeyFolder: keyFolderRoot != nil) {
+        case .fileInKeyFolder: createInKeyFolder(isDirectory: false)
+        case .blankDocument: newDocument()
         }
     }
 
@@ -146,10 +180,10 @@ extension WindowCoordinator {
     ///   `NSApp.keyWindow` at call time (the real menu/recent-folder path,
     ///   invoked from that window already).
     func openFolder(_ url: URL, accessURL: URL? = nil, in controller: WindowController? = nil) {
-        guard let controller = controller ?? controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        guard let controller = controller ?? folderTargetController() else { return }
         controller.model.setFolderRoot(url)
         recentFolderRoots.record(url)
-        Task { await controller.fileTreeModel.setRoot(url, accessURL: accessURL) }
+        Task { await controller.setFileTreeRoot(url, accessURL: accessURL) }
         scheduleSaveSession()
     }
 
@@ -183,7 +217,7 @@ extension WindowCoordinator {
                 let root = url.deletingLastPathComponent()
                 controller.model.setFolderRoot(root)
                 self.recentFolderRoots.record(root)
-                await controller.fileTreeModel.setRoot(root)
+                await controller.setFileTreeRoot(root)
                 _ = await controller.fileTreeModel.reveal(url)
                 self.scheduleSaveSession()
             }
@@ -244,10 +278,21 @@ extension WindowCoordinator {
                     controller.model.tabStore.activate(tabID)
                     await controller.saveDocumentAs()
                 } else if response == .alertSecondButtonReturn {
-                    self.removeController(controller)
-                    controller.close()
+                    await self.discardDeletedDocument(in: controller)
                 }
             }
         }
+    }
+
+    /// "Close Without Saving" for a deleted document: the discarded text must also leave the
+    /// recovery store, or a later session replay can resurrect it as a dirty tab.
+    func discardDeletedDocument(in controller: WindowController) async {
+        guard let document = controller.model.activeDocument else {
+            removeController(controller)
+            controller.close()
+            return
+        }
+        guard await controller.externalFileController.retireRecovery(for: document).isAbsent else { return }
+        controller.closeAfterRetire(of: document)
     }
 }

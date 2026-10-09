@@ -3,60 +3,112 @@ import Foundation
 extension FileStore {
     /// Decodes a byte snapshot into text with its BOM and encoding.
     ///
-    /// Detection order: UTF-8 BOM, UTF-16 LE/BE BOM, then strict UTF-8.
-    /// Malformed input throws `.decodingFailed` with one diagnostic for the
-    /// first invalid byte sequence (zero-based byte offset into `data`); no
-    /// replacement characters or text snapshot are ever produced.
-    func decode(_ data: Data) throws(FileStoreError) -> FileDecodedPayload {
-        if data.starts(with: [0xEF, 0xBB, 0xBF]) {
-            // `subdata` (not `dropFirst`): a dropFirst slice keeps its original
-            // absolute indices, which traps when re-indexed as a `Data`.
-            let payload = data.subdata(in: 3 ..< data.count)
-            if let offset = utf8InvalidByteOffset(in: payload) {
-                throw .decodingFailed([
-                    FileDecodingDiagnostic(message: "Invalid UTF-8 byte sequence.", byteOffset: offset + 3),
-                ])
+    /// `.automatic` detection order: UTF-8 BOM, UTF-16 LE/BE BOM, then strict
+    /// UTF-8. Malformed input throws `.decodingFailed` with one diagnostic for
+    /// the first invalid byte sequence (zero-based byte offset into `data`);
+    /// no replacement characters or text snapshot are ever produced.
+    func decode(_ data: Data, policy: FileDecodingPolicy = .automatic) throws(FileStoreError) -> FileDecodedPayload {
+        switch policy {
+        case .automatic:
+            if data.starts(with: [0xFF, 0xFE]) {
+                return try decodeUTF16(data, encoding: .utf16LittleEndian, bom: .utf16LittleEndian)
             }
-            // The payload was just validated as strict UTF-8, so this decode
-            // is guaranteed to succeed.
-            // swiftlint:disable:next optional_data_string_conversion
-            return FileDecodedPayload(text: String(decoding: payload, as: UTF8.self), encoding: .utf8, bom: .utf8)
+            if data.starts(with: [0xFE, 0xFF]) {
+                return try decodeUTF16(data, encoding: .utf16BigEndian, bom: .utf16BigEndian)
+            }
+            return try decodeUTF8(data)
+        case let .explicit(encoding):
+            return try decodeExplicit(data, as: encoding)
         }
-        if data.starts(with: [0xFF, 0xFE]) {
-            return try decodeUTF16(
-                data.subdata(in: 2 ..< data.count),
-                encoding: .utf16LittleEndian,
-                bom: .utf16LittleEndian
-            )
-        }
-        if data.starts(with: [0xFE, 0xFF]) {
-            return try decodeUTF16(
-                data.subdata(in: 2 ..< data.count),
-                encoding: .utf16BigEndian,
-                bom: .utf16BigEndian
-            )
-        }
-        if let offset = utf8InvalidByteOffset(in: data) {
-            throw .decodingFailed([
-                FileDecodingDiagnostic(message: "Invalid UTF-8 byte sequence.", byteOffset: offset),
-            ])
-        }
-        // Same validation guarantee as the BOM path above.
-        // swiftlint:disable:next optional_data_string_conversion
-        return FileDecodedPayload(text: String(decoding: data, as: UTF8.self), encoding: .utf8, bom: .none)
     }
 
+    private func decodeExplicit(_ data: Data,
+                                as encoding: String.Encoding) throws(FileStoreError) -> FileDecodedPayload {
+        switch encoding {
+        case .utf8:
+            return try decodeUTF8(data)
+        case .utf16LittleEndian:
+            if data.starts(with: [0xFE, 0xFF]) {
+                throw Self.mismatch("UTF-16 LE", at: 0)
+            }
+            return try decodeUTF16(
+                data,
+                encoding: encoding,
+                bom: data.starts(with: [0xFF, 0xFE]) ? .utf16LittleEndian : .none
+            )
+        case .utf16BigEndian:
+            if data.starts(with: [0xFF, 0xFE]) {
+                throw Self.mismatch("UTF-16 BE", at: 0)
+            }
+            return try decodeUTF16(
+                data,
+                encoding: encoding,
+                bom: data.starts(with: [0xFE, 0xFF]) ? .utf16BigEndian : .none
+            )
+        case .utf16:
+            guard data.starts(with: [0xFF, 0xFE]) || data.starts(with: [0xFE, 0xFF]) else {
+                throw Self.mismatch("UTF-16", at: 0)
+            }
+            return try decode(data, policy: .automatic)
+        default:
+            return try decodeLegacy(data, as: encoding)
+        }
+    }
+
+    /// Lossless or nothing: the decoded text must re-encode to exactly the
+    /// bytes that were read, so saving unchanged text can never alter them.
+    private func decodeLegacy(_ data: Data, as encoding: String.Encoding) throws(FileStoreError) -> FileDecodedPayload {
+        guard FileEncodingCatalog.isSupported(rawValue: encoding.rawValue) else { throw .encodingDetectionFailed }
+        let name = String.localizedName(of: encoding)
+        guard let text = String(data: data, encoding: encoding) else { throw Self.mismatch(name, at: 0) }
+        let reencoded = text.data(using: encoding, allowLossyConversion: false) ?? Data()
+        guard reencoded == data else {
+            let offset = zip(data, reencoded).enumerated().first { $0.element.0 != $0.element.1 }?.offset
+                ?? min(data.count, reencoded.count)
+            throw Self.mismatch(name, at: offset)
+        }
+        return FileDecodedPayload(text: text, encoding: encoding, bom: .none)
+    }
+
+    private static func mismatch(_ name: String, at offset: Int) -> FileStoreError {
+        .decodingFailed([FileDecodingDiagnostic(message: "Invalid \(name) byte sequence.", byteOffset: offset)])
+    }
+
+    private func decodeUTF8(_ data: Data) throws(FileStoreError) -> FileDecodedPayload {
+        let hasBOM = data.starts(with: [0xEF, 0xBB, 0xBF])
+        let prefix = hasBOM ? 3 : 0
+        // `subdata` (not `dropFirst`): a dropFirst slice keeps its original
+        // absolute indices, which traps when re-indexed as a `Data`.
+        let payload = hasBOM ? data.subdata(in: 3 ..< data.count) : data
+        if let offset = utf8InvalidByteOffset(in: payload) {
+            throw .decodingFailed([
+                FileDecodingDiagnostic(message: "Invalid UTF-8 byte sequence.", byteOffset: offset + prefix),
+            ])
+        }
+        // The payload was just validated as strict UTF-8, so this decode
+        // is guaranteed to succeed.
+        return FileDecodedPayload(
+            // swiftlint:disable:next optional_data_string_conversion
+            text: String(decoding: payload, as: UTF8.self),
+            encoding: .utf8,
+            bom: hasBOM ? .utf8 : .none
+        )
+    }
+
+    /// `data` includes its BOM when `bom` is not `.none`.
     private func decodeUTF16(
         _ data: Data,
         encoding: String.Encoding,
         bom: FileBOM
     ) throws(FileStoreError) -> FileDecodedPayload {
-        guard let text = String(data: data, encoding: encoding) else {
-            let unitOffset = utf16InvalidUnitOffset(in: data, littleEndian: encoding == .utf16LittleEndian)
+        let prefix = bom == .none ? 0 : 2
+        let payload = data.subdata(in: prefix ..< data.count)
+        guard payload.count.isMultiple(of: 2), let text = String(data: payload, encoding: encoding) else {
+            let unitOffset = utf16InvalidUnitOffset(in: payload, littleEndian: encoding == .utf16LittleEndian)
             throw .decodingFailed([
                 FileDecodingDiagnostic(
                     message: "Invalid UTF-16 byte sequence.",
-                    byteOffset: unitOffset + 2 // + the BOM bytes
+                    byteOffset: unitOffset + prefix
                 ),
             ])
         }
