@@ -67,8 +67,17 @@ actor DocumentWriter {
         destinationBaseline: DestinationBaseline? = nil
     ) async throws(FileStoreError) -> FileDocument {
         let key = DocumentKey(document)
+        // Register the source before waiting (as `save` does) so an ordinary save's acknowledgement cannot compact the
+        // lineage this request still needs, then follow it once the lane is ours: a queued Save As built from an
+        // older snapshot must inherit the encoding/BOM an earlier save in the lineage already made (#183 F10).
+        let sourceRevision = document.lastKnownRevision
+        registerPendingSource(sourceRevision, for: key)
         await acquireLane(for: key)
-        defer { releaseLane(for: key) }
+        defer {
+            finishRequest(sourceRevision, for: key)
+            releaseLane(for: key)
+        }
+        let inheritedEncoding = inheritedEncoding(for: document, expected: baseline(for: document))
 
         let recoveryEpoch: UUID
         do {
@@ -80,6 +89,7 @@ actor DocumentWriter {
             document,
             to: url,
             recoveryEpoch: recoveryEpoch,
+            encodingOverride: inheritedEncoding,
             destinationBaseline: destinationBaseline
         )
         acceptedLineage.removeValue(forKey: key)
@@ -233,11 +243,17 @@ actor DocumentWriter {
         _ document: FileDocument,
         to url: URL,
         recoveryEpoch: UUID,
+        encodingOverride: FileEncodingMetadata?,
         destinationBaseline: DestinationBaseline?
     ) async throws(FileStoreError) -> FileDocument {
         do {
             return try await Task.detached(priority: .userInitiated) {
-                try document.saveAs(url, recoveryEpoch: recoveryEpoch, destinationBaseline: destinationBaseline)
+                try document.saveAs(
+                    url,
+                    recoveryEpoch: recoveryEpoch,
+                    encodingOverride: encodingOverride,
+                    destinationBaseline: destinationBaseline
+                )
             }.value
         } catch let error as FileStoreError {
             throw error

@@ -194,4 +194,42 @@ struct WorkspaceModelSaveQueueTests {
             onTimeout: { barrier.cancelWaiters() }
         )
     }
+
+    /// #183 F10 (tenth review): `saveAs` acquired the lane but, unlike `save`, neither registered its source nor
+    /// followed the accepted lineage, so a Save As built from an older snapshot silently reverted an accepted
+    /// encoding/BOM change on the new destination.
+    @Test func aSaveAsFromAStaleSnapshotInheritsTheAcceptedEncoding() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("encoding-save-as.txt")
+        try "café".write(to: url, atomically: true, encoding: .utf8)
+        let writer = DocumentWriter()
+        let latin1 = FileEncodingMetadata(encoding: .isoLatin1, bom: .none)
+        let original = try FileDocument(fileURL: url).load().edited(text: "café 1")
+        let encodingSave = try await writer.save(original, encodingOverride: latin1)
+        let staleSnapshot = original.edited(text: "café 2")
+        #expect(staleSnapshot.encoding == .utf8Default)
+        let destination = directory.appendingPathComponent("copy.txt")
+
+        let saved = try await writer.saveAs(staleSnapshot, to: destination)
+
+        #expect(saved.encoding == latin1)
+        #expect(try Data(contentsOf: destination) == "café 2".data(using: .isoLatin1))
+        await writer.acknowledge(encodingSave)
+    }
+
+    @Test func aSaveAsWithNoEarlierEncodingChangeKeepsTheSourceEncoding() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let url = directory.appendingPathComponent("plain-save-as.txt")
+        try "café".write(to: url, atomically: true, encoding: .utf8)
+        let writer = DocumentWriter()
+        let document = try FileDocument(fileURL: url).load().edited(text: "café 1")
+        let destination = directory.appendingPathComponent("copy.txt")
+
+        let saved = try await writer.saveAs(document, to: destination)
+
+        #expect(saved.encoding == .utf8Default)
+        #expect(try Data(contentsOf: destination) == Data("café 1".utf8))
+    }
 }
