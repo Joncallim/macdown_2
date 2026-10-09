@@ -161,6 +161,12 @@ extension WorkspaceModel {
                 lastError = .recoveryCleanupRequired(current.fileURL ?? URL(fileURLWithPath: current.id))
                 return false
             }
+            await afterRecoveryRetryPersistence?()
+            // The persistence above suspended: a newer edit must not be replaced by the older rotated payload.
+            guard isCurrent(current) else {
+                lastError = .recoveryCleanupRequired(current.fileURL ?? URL(fileURLWithPath: current.id))
+                return false
+            }
             tabStore.updateActiveDocument { _ in replacement }
             guard await rekeySaveAsContinuationIfNeeded(from: pending, to: replacement) else {
                 lastError = .recoveryCleanupRequired(replacement.fileURL ?? URL(fileURLWithPath: replacement.id))

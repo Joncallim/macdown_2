@@ -136,6 +136,9 @@ public final class WorkspaceModel {
 
     /// Called after a save or Save As published `url` on disk.
     public var onDocumentWritten: (@MainActor (URL) -> Void)?
+    /// Test seam: runs after a recovery-retry step finished persisting a replacement, before it revalidates and
+    /// publishes it (#183 F01 — the awaited persistence is a suspension point at which the user can edit).
+    var afterRecoveryRetryPersistence: (@MainActor () async -> Void)?
 
     /// The document currently shown in the content area.
     public var activeDocument: FileDocument? {
