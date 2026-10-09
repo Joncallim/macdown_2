@@ -125,4 +125,34 @@ struct ContentHeightMeterTests {
         #expect(estimated >= measured, "estimate \(estimated) is shorter than the layout \(measured)")
         #expect(estimated < measured * 2.5, "estimate \(estimated) is far longer than the layout \(measured)")
     }
+
+    /// Review pass 9: single-unit symbols/emoji (⌚ ✅ ❌) are wider than an em and `w`/`m`/`W` are far wider than `n`
+    /// in a proportional font; the estimate priced them at 1 em / the width of "n" and fell ~48% short.
+    @Test(arguments: [
+        String(repeating: "⌚✅", count: 800),
+        String(repeating: "wwwwwww mmmmmmm ", count: 300),
+        String(repeating: "WIDE CAPITAL LETTERS AND MORE ", count: 200),
+    ])
+    func theEstimateCoversSingleUnitEmojiAndWideProportionalGlyphs(text: String) throws {
+        let style = NSMutableParagraphStyle()
+        style.lineHeightMultiple = 1.2
+        for font in try [
+            NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
+            #require(NSFont(name: "Helvetica", size: 13)),
+        ] {
+            let attributes: [NSAttributedString.Key: Any] = [.font: font, .paragraphStyle: style]
+            let nsText = text as NSString
+            let measured = nsText.boundingRect(
+                with: NSSize(width: 500, height: CGFloat.greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: attributes
+            ).height
+
+            let estimated = LineHeightEstimator(width: 500, attributes: attributes)
+                .height(of: nsText, range: NSRange(location: 0, length: nsText.length))
+
+            #expect(estimated >= measured, "\(font.fontName): estimate \(estimated) < layout \(measured)")
+            #expect(estimated < measured * 2.5, "\(font.fontName): estimate \(estimated) far above \(measured)")
+        }
+    }
 }
