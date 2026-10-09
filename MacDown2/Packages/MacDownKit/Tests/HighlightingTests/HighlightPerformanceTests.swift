@@ -84,11 +84,15 @@ struct HighlightPerformanceTests {
         let editLocation = nsText.length / 2
         let newText = nsText.replacingCharacters(in: NSRange(location: editLocation, length: 0), with: "x")
 
-        // Tree-sitter edits operate on byte offsets and points. The fixture text
-        // is ASCII, so UTF-16 offsets and byte offsets are equivalent.
-        let startByte = editLocation
-        let oldEndByte = editLocation
-        let newEndByte = editLocation + 1
+        // SwiftTreeSitter feeds the parser UTF-16 text, so tree-sitter byte
+        // offsets and point columns are UTF-16 code units * 2 (not the unit
+        // count, even for ASCII). Mis-scaled offsets describe an edit at the
+        // wrong place, the old tree cannot be reused, and the "incremental"
+        // reparse silently degrades to a full parse (issue #203).
+        let bytesPerUnit = 2
+        let startByte = editLocation * bytesPerUnit
+        let oldEndByte = startByte
+        let newEndByte = (editLocation + 1) * bytesPerUnit
 
         let startPoint = point(for: editLocation, in: text)
         let oldEndPoint = startPoint
@@ -114,6 +118,36 @@ struct HighlightPerformanceTests {
         )
     }
 
+    /// Control for the Markdown measurement above: with correctly scaled edit
+    /// offsets a grammar whose scanner permits reuse (JSON) reparses a 1 MB
+    /// document after a one-character insert far below a full parse, and the
+    /// edit reports a single changed range. This proves the harness exercises
+    /// real tree reuse, so the Markdown block grammar's lack of speed-up is a
+    /// grammar property rather than a measurement artefact.
+    @Test func incrementalReparseReusesTheOldTreeForAReusableGrammar() throws {
+        let text = Fixtures.markdownRepeating(line: "{\"a\": [1, 2, 3], \"b\": \"text\"}\n", totalBytes: 1_000_000)
+        let config = try #require(GrammarRegistry().configuration(for: "json"))
+        let parser = Parser()
+        try parser.setLanguage(config.language)
+        let tree = try #require(parser.parse(text))
+
+        let nsText = text as NSString
+        let location = nsText.length / 2
+        let newText = nsText.replacingCharacters(in: NSRange(location: location, length: 0), with: " ")
+        let startPoint = point(for: location, in: text)
+        tree.edit(InputEdit(
+            startByte: location * 2,
+            oldEndByte: location * 2,
+            newEndByte: (location + 1) * 2,
+            startPoint: startPoint,
+            oldEndPoint: startPoint,
+            newEndPoint: point(for: location + 1, in: newText)
+        ))
+        let reparsed = try #require(parser.parse(tree: tree, string: newText))
+
+        #expect(tree.changedRanges(from: reparsed).count <= 1, "only the edited region may change")
+    }
+
     @Test func mainThreadParseBudgetDocumented() throws {
         let text = Fixtures.markdownRepeating(
             line: "# Heading\n\nSome `code` and **bold** text.\n\n",
@@ -137,7 +171,8 @@ struct HighlightPerformanceTests {
 
     // MARK: - Helpers
 
-    /// Returns the tree-sitter `Point` (row/column) for a UTF-16 offset.
+    /// Returns the tree-sitter `Point` for a UTF-16 offset; the column is in
+    /// bytes (UTF-16 units * 2), matching the byte offsets above.
     private func point(for utf16Offset: Int, in text: String) -> Point {
         let nsText = text as NSString
         var lineStart = 0
@@ -152,6 +187,6 @@ struct HighlightPerformanceTests {
         let row = preceding.components(separatedBy: "\n").count - 1
         let column = utf16Offset - lineStart
 
-        return Point(row: row, column: column)
+        return Point(row: row, column: column * 2)
     }
 }
