@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "FileCore", targets: ["FileCore"]),
+        .library(name: "LocalResourceAccess", targets: ["LocalResourceAccess"]),
         .library(name: "AppSettings", targets: ["AppSettings"]),
         .library(name: "Themes", targets: ["Themes"]),
         .library(name: "Workspace", targets: ["Workspace"]),
@@ -79,6 +80,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "FileCore"),
+        .target(name: "LocalResourceAccess"),
         .target(name: "TextSearch", dependencies: ["FileCore"]),
         .target(name: "AppSettings"),
         .target(name: "Themes", resources: [.process("Themes")]),
@@ -184,6 +186,7 @@ let package = Package(
         ),
 
         .testTarget(name: "FileCoreTests", dependencies: ["FileCore"]),
+        .testTarget(name: "LocalResourceAccessTests", dependencies: ["LocalResourceAccess"]),
         .testTarget(name: "TextSearchTests", dependencies: ["TextSearch"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"]),
         .testTarget(name: "ThemesTests", dependencies: ["Themes"]),
