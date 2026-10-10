@@ -76,4 +76,59 @@ struct UseDiskVersionRaceTests {
         #expect(result == .reopened)
         #expect(fixture.model.activeDocument?.encoding.encoding == .isoLatin1)
     }
+
+    // Handoff regression 1 (#375): the other transitions during the held cleanup.
+
+    @Test func aTabSwitchDuringTheRecoveryCleanupLeavesBothDocumentsAlone() async throws {
+        let fixture = try makeFixture(bytes: Data("caf\u{E9}".utf8))
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let model = fixture.model
+        let originalID = try #require(model.activeDocument?.id)
+        let original = try #require(model.activeDocument)
+        fixture.controller.externalFileController.afterUseExternalRecoveryCleanup = {
+            model.tabStore.newTab(document: FileDocument(text: "other tab text"))
+        }
+
+        let result = await fixture.controller.externalFileController.reopenWithEncoding(.isoLatin1) { _ in true }
+
+        #expect(result == .superseded)
+        #expect(model.activeDocument?.text == "other tab text", "the newly active tab must not receive the snapshot")
+        #expect(model.activeDocument?.encoding.encoding == .utf8)
+        let untouched = model.tabStore.tabs.compactMap(\.document).first { $0.id == originalID }
+        #expect(untouched?.text == original.text, "the original tab keeps its text")
+        #expect(untouched?.encoding.encoding == .utf8, "and its encoding")
+    }
+
+    @Test func aRecoveryLifetimeChangeDuringTheCleanupSupersedesTheReload() async throws {
+        let fixture = try makeFixture(bytes: Data("caf\u{E9}".utf8))
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let model = fixture.model
+        let epochBefore = try #require(model.activeDocument?.recoveryEpoch)
+        fixture.controller.externalFileController.afterUseExternalRecoveryCleanup = {
+            model.tabStore.updateActiveDocument { $0.withFreshRecoveryLifetime() }
+        }
+
+        let result = await fixture.controller.externalFileController.reopenWithEncoding(.isoLatin1) { _ in true }
+
+        #expect(result == .superseded)
+        #expect(model.activeDocument?.recoveryEpoch != epochBefore, "the new lifetime is kept, not overwritten")
+        #expect(model.activeDocument?.encoding.encoding == .utf8)
+    }
+
+    @Test func disposalDuringTheRecoveryCleanupNeverInstallsTheSnapshot() async throws {
+        let fixture = try makeFixture(bytes: Data("caf\u{E9}".utf8))
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let model = fixture.model
+        let controller = fixture.controller.externalFileController
+        let textBefore = try #require(model.activeDocument?.text)
+        controller.afterUseExternalRecoveryCleanup = {
+            controller.dispose()
+        }
+
+        let result = await controller.reopenWithEncoding(.isoLatin1) { _ in true }
+
+        #expect(result != .reopened)
+        #expect(model.activeDocument?.text == textBefore)
+        #expect(model.activeDocument?.encoding.encoding == .utf8)
+    }
 }
