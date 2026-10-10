@@ -14,6 +14,10 @@ public enum ResourceReadError: Error, Equatable, Sendable {
     /// The object's identity, size or modification time changed while it was being read.
     case changedDuringRead
     case cancelled
+    /// The lease the read was issued against has been closed (disposal, not cancellation).
+    case leaseClosed
+    /// The kernel rejected the containment open flags, so containment cannot be enforced; callers must not fall back.
+    case unsupportedEnforcement
     /// The object does not exist or could not be opened; the associated value is the errno.
     case unavailable(Int32)
     /// The malformed or unsupported reference was rejected before any filesystem access.

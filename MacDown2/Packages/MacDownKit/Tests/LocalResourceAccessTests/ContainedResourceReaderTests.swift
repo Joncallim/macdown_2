@@ -319,7 +319,7 @@ extension ContainedResourceReaderTests {
 
         #expect(snapshot.bytes.count == large.utf8.count)
         #expect(ResourceTestSupport.openFileDescriptorCount() <= baseline, "the deferred close ran and nothing leaked")
-        #expect(throws: ResourceReadError.cancelled) {
+        #expect(throws: ResourceReadError.leaseClosed) {
             try ContainedResourceReader.read(ResourceTestSupport.reference("big.txt"), in: lease, maxBytes: 1 << 20)
         }
     }
@@ -339,7 +339,7 @@ extension ContainedResourceReaderTests {
         #expect(snapshot.name == "only.txt")
         // There is no API to derive a directory grant or read a sibling from a FileLease.
         lease.close()
-        #expect(throws: ResourceReadError.cancelled) { try ContainedResourceReader.read(lease, maxBytes: 1024) }
+        #expect(throws: ResourceReadError.leaseClosed) { try ContainedResourceReader.read(lease, maxBytes: 1024) }
     }
 
     @Test func aFileLeaseRejectsAnythingThatIsNotARegularFile() throws {

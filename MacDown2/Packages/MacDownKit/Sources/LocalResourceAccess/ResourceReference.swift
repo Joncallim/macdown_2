@@ -21,10 +21,17 @@ public struct ResourceReference: Equatable, Sendable {
     /// Parses `rawPath` (an RFC 3986 path, optionally followed by `?query` / `#fragment`). A leading `/` is the load's
     /// root, not the filesystem root.
     public static func parse(_ rawPath: String) throws(ResourceReadError) -> ResourceReference {
-        let structural = rawPath.prefix { $0 != "?" && $0 != "#" }
+        // Work on UTF-8 bytes, never Characters: a combining mark after `/` or `?` is one grapheme and would hide the
+        // separator from Character-based splitting, making this parser disagree with the browser's URL parser.
+        let bytes = Array(rawPath.utf8)
+        // `//host/path` is a network-path reference (an authority), not a root-relative path.
+        guard !(bytes.count >= 2 && bytes[0] == UInt8(ascii: "/") && bytes[1] == UInt8(ascii: "/")) else {
+            throw .invalidReference
+        }
+        let structural = bytes.prefix { $0 != UInt8(ascii: "?") && $0 != UInt8(ascii: "#") }
         var resolved: [String] = []
-        for rawComponent in structural.split(separator: "/", omittingEmptySubsequences: true) {
-            let component = try decodeOnce(String(rawComponent))
+        for rawComponent in structural.split(separator: UInt8(ascii: "/"), omittingEmptySubsequences: true) {
+            let component = try decodeOnce(Array(rawComponent))
             switch component {
             case ".":
                 continue
@@ -38,9 +45,8 @@ public struct ResourceReference: Equatable, Sendable {
         return ResourceReference(components: resolved)
     }
 
-    private static func decodeOnce(_ component: String) throws(ResourceReadError) -> String {
+    private static func decodeOnce(_ units: [UInt8]) throws(ResourceReadError) -> String {
         var bytes: [UInt8] = []
-        let units = Array(component.utf8)
         var index = 0
         while index < units.count {
             let unit = units[index]
@@ -57,6 +63,13 @@ public struct ResourceReference: Equatable, Sendable {
         guard !bytes.contains(0), !bytes.contains(UInt8(ascii: "/")),
               let decoded = String(validating: bytes, as: UTF8.self)
         else { throw .invalidReference }
+        // Dot segments are decided on the decoded BYTES so "." followed by a combining mark stays a literal name.
+        if bytes == [UInt8(ascii: ".")] {
+            return "."
+        }
+        if bytes == [UInt8(ascii: "."), UInt8(ascii: ".")] {
+            return ".."
+        }
         return decoded
     }
 

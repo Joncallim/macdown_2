@@ -53,7 +53,7 @@ public enum ContainedResourceReader {
                 hooks: hooks
             )
         }
-        guard let result else { throw .cancelled }
+        guard let result else { throw .leaseClosed }
         return result
     }
 
@@ -63,6 +63,15 @@ public enum ContainedResourceReader {
         maxBytes: Int,
         cancellation: ResourceCancellation = ResourceCancellation()
     ) throws(ResourceReadError) -> ResourceSnapshot {
+        try read(lease, maxBytes: maxBytes, cancellation: cancellation, hooks: .none)
+    }
+
+    static func read(
+        _ lease: FileLease,
+        maxBytes: Int,
+        cancellation: ResourceCancellation,
+        hooks: ResourceReadHooks
+    ) throws(ResourceReadError) -> ResourceSnapshot {
         guard !cancellation.isCancelled else { throw .cancelled }
         let result = try lease.owned.withDescriptor { descriptor throws(ResourceReadError) in
             try snapshot(
@@ -70,10 +79,10 @@ public enum ContainedResourceReader {
                 name: lease.name,
                 maxBytes: maxBytes,
                 cancellation: cancellation,
-                hooks: .none
+                hooks: hooks
             )
         }
-        guard let result else { throw .cancelled }
+        guard let result else { throw .leaseClosed }
         return result
     }
 
@@ -90,14 +99,22 @@ public enum ContainedResourceReader {
         guard let resolved = realpath(candidate, nil) else { throw mapOpenError(errno) }
         defer { free(resolved) }
         let canonical = String(cString: resolved)
-        let prefix = directory.canonicalPath.hasSuffix("/") ? directory.canonicalPath : directory.canonicalPath + "/"
-        guard canonical.hasPrefix(prefix), canonical.count > prefix.count else { throw .denied }
-        return String(canonical.dropFirst(prefix.count))
+        // Compare UTF-8 bytes, not Characters: a combining mark right after the separator would otherwise fuse with
+        // it into one grapheme and defeat the prefix test.
+        let prefix =
+            Array((directory.canonicalPath.hasSuffix("/") ? directory.canonicalPath : directory.canonicalPath + "/")
+                    .utf8)
+        let bytes = Array(canonical.utf8)
+        guard bytes.count > prefix.count, bytes.starts(with: prefix),
+              let relative = String(validating: bytes[prefix.count...], as: UTF8.self)
+        else { throw .denied }
+        return relative
     }
 
     private static func mapOpenError(_ code: Int32) -> ResourceReadError {
         switch code {
         case ELOOP, EACCES, EPERM, ENOTCAPABLE, EXDEV: .denied
+        case EINVAL, ENOTSUP: .unsupportedEnforcement
         default: .unavailable(code)
         }
     }
@@ -146,7 +163,11 @@ public enum ContainedResourceReader {
         while true {
             guard !cancellation.isCancelled else { throw .cancelled }
             hooks.beforeChunk?(bytes.count)
-            let want = min(chunkSize, maxBytes - bytes.count + 1) // cap + 1 so growth past the cap is observable
+            // Read at most one byte past the cap so growth beyond it is observable; never more than the buffer holds.
+            // `remaining + 1` only runs when `remaining < chunkSize`, so it cannot overflow even for `maxBytes ==
+            // Int.max`.
+            let remaining = maxBytes - bytes.count
+            let want = remaining >= chunkSize ? chunkSize : remaining + 1
             let count = Darwin.read(descriptor, &buffer, want)
             if count < 0 {
                 if errno == EINTR {

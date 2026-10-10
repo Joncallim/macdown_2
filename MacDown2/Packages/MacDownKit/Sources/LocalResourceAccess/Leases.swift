@@ -14,8 +14,10 @@ public final class DirectoryLease: @unchecked Sendable {
         guard let canonical = realpath(url.path, nil) else { throw .unavailable(errno) }
         let canonicalPath = String(cString: canonical)
         free(canonical)
-        let descriptor = open(canonicalPath, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
-        guard descriptor >= 0 else { throw .unavailable(errno) }
+        // The canonical path has no symlinks left, so refusing any here means a component swapped for a symlink after
+        // `realpath` fails instead of pinning whatever it points at.
+        let descriptor = open(canonicalPath, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW_ANY)
+        guard descriptor >= 0 else { throw errno == ELOOP ? .denied : .unavailable(errno) }
         var info = stat()
         guard fstat(descriptor, &info) == 0 else {
             let failure = errno
@@ -34,7 +36,7 @@ public final class DirectoryLease: @unchecked Sendable {
     /// Whether the granted directory's current name still refers to the granted directory.
     func nameStillRefersToGrantedDirectory() -> Bool {
         var info = stat()
-        guard stat(canonicalPath, &info) == 0 else { return false }
+        guard lstat(canonicalPath, &info) == 0 else { return false }
         return ResourceIdentity(info) == identity
     }
 }
