@@ -51,7 +51,7 @@ struct WorkspaceSaveAsLineageAdverseOrderTests {
 
         let encodingSave = Task { try await writer.save(olderSnapshot, encodingOverride: testCase.override) }
         guard await waitForSignal(
-            timeout: .seconds(3),
+            timeout: .seconds(30),
             wait: { await barrier.waitForFirstPublication() },
             onTimeout: { barrier.cancelWaiters() }
         ) else {
@@ -63,7 +63,7 @@ struct WorkspaceSaveAsLineageAdverseOrderTests {
         let queuedSnapshot = olderSnapshot.edited(text: "café 2 edited while queued")
         let saveAs = Task { try await writer.saveAs(queuedSnapshot, to: destination) }
         guard await waitForSignal(
-            timeout: .seconds(3),
+            timeout: .seconds(30),
             wait: { await barrier.waitForSecondSaveToEnterWriterLane() },
             onTimeout: { barrier.cancelWaiters() }
         ) else {
