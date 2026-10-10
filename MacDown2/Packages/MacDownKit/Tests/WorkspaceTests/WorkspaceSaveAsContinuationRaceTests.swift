@@ -111,4 +111,35 @@ struct WorkspaceSaveAsContinuationRaceTests {
         #expect(fixture.model.activeDocument?.fileURL == fixture.destination.fileURL?.standardizedFileURL)
         #expect(!fixture.published.publications.isEmpty)
     }
+
+    @Test func aRecoveryLifetimeChangeDuringTheContinuationPersistenceIsNotReplaced() async throws {
+        let fixture = await makeFixture()
+        defer { cleanup(fixture.directory) }
+        let model = fixture.model
+        let epochBefore = try #require(model.activeDocument?.recoveryEpoch)
+        model.afterRecoveryRetryPersistence = {
+            model.tabStore.updateActiveDocument { $0.withFreshRecoveryLifetime() }
+        }
+
+        await model.retryRecoveryCleanup()
+
+        #expect(model.activeDocument?.id == fixture.source.id, "the destination must not replace the new lifetime")
+        #expect(model.activeDocument?.recoveryEpoch != epochBefore, "the fresh lifetime is retained")
+        #expect(fixture.published.publications.isEmpty, "nothing is published on behalf of the retired lifetime")
+        #expect(model.hasPendingRecoveryCleanup)
+    }
+
+    @Test func closingTheTabDuringTheContinuationPersistenceNeverPublishesTheDestination() async {
+        let fixture = await makeFixture()
+        defer { cleanup(fixture.directory) }
+        let model = fixture.model
+        model.afterRecoveryRetryPersistence = {
+            model.tabStore.removeTab(at: 0)
+        }
+
+        await model.retryRecoveryCleanup()
+
+        #expect(model.activeDocument?.fileURL != fixture.destination.fileURL, "the destination is not resurrected")
+        #expect(fixture.published.publications.isEmpty)
+    }
 }
