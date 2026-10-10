@@ -47,6 +47,11 @@ final class ExternalFileController {
     @ObservationIgnored var disposed = false
     /// Test seam: runs right after the recovery cleanup of a Use-Disk-Version reload returns, before it revalidates.
     @ObservationIgnored var afterUseExternalRecoveryCleanup: (@MainActor () async -> Void)?
+    /// Test seam: how a failed watcher bind waits before retrying (production: a real exponential sleep).
+    @ObservationIgnored var bindRetrySleep: @MainActor (Duration) async throws
+        -> Void = { try await Task.sleep(for: $0) }
+    /// Test seam: runs after every monitor observation context has been fully handled (applied or dropped as stale).
+    @ObservationIgnored var afterObservationContextHandled: (@MainActor (DocumentFileObservationContext) -> Void)?
 
     init(
         model: WorkspaceModel,
@@ -81,6 +86,7 @@ final class ExternalFileController {
     func handle(_ context: DocumentFileObservationContext) {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { afterObservationContextHandled?(context) }
             let currentRequest = await monitor.currentRequestGeneration()
             guard context.bindingGeneration == lifecycleGeneration,
                   context.expectedURL.standardizedFileURL == boundURL?.standardizedFileURL,

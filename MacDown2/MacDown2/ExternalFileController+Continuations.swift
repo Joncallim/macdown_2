@@ -122,7 +122,8 @@ extension ExternalFileController {
         bindRetryTask?.cancel()
         bindRetryTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: .milliseconds(250 * (1 << (attempt - 1))))
+                guard let sleep = self?.bindRetrySleep else { return }
+                try await sleep(.milliseconds(250 * (1 << (attempt - 1))))
             } catch {
                 return
             }
