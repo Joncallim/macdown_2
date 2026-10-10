@@ -1,0 +1,19 @@
+# RESOURCE-OPEN probe result (static + pin-then-swap schedules)
+# Source SHA (tree the probe was committed on): 0078da8d92c02c3f1ee99207ae479567f49d10a0
+# Host: macOS 26.5.1 (25F80), arm64, SDK 26.5, swift-driver version: 1.148.6 Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)
+# Command: swiftc -O probe.swift -o probe && ./probe   (flags: O_RDONLY|O_CLOEXEC|O_NONBLOCK|O_NOFOLLOW_ANY|O_RESOLVE_BENEATH via openat on a pinned directory fd)
+
+SDK/OS: Version 26.5.1 (Build 25F80)
+positive a.txt: OK regular=true bytes="inside-file" [expected OK inside-file] 
+positive sub/b.txt: OK regular=true bytes="inside-sub" [expected OK inside-sub] 
+leaf symlink outside: ERR errno=62 (Too many levels of symbolic links) [expected ERR] 
+intermediate symlink outside: ERR errno=62 (Too many levels of symbolic links) [expected ERR] 
+in-root symlink (NOFOLLOW_ANY): ERR errno=62 (Too many levels of symbolic links) [expected ERR (hint resolves it first)] 
+dotdot escape: ERR errno=107 (Capabilities insufficient) [expected ERR] 
+dotdot via sub: ERR errno=107 (Capabilities insufficient) [expected ERR] 
+absolute path: ERR errno=107 (Capabilities insufficient) [expected ERR] 
+fifo (nonblock): OK regular=false bytes="" [expected OK regular=false (caller rejects) -- must not hang] 
+after root rename+symlink swap, pinned fd a.txt: OK regular=true bytes="inside-file" [expected OK inside-file (pinned)] 
+after swap, secret via pinned fd: ERR errno=2 (No such file or directory) [expected ERR (not in original root)] 
+fresh open through swapped intermediate: ERR errno=62 (Too many levels of symbolic links) [expected ERR] 
+pinned sub fd b.txt: OK regular=true bytes="inside-sub" [expected OK inside-sub] 
