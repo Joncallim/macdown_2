@@ -74,13 +74,6 @@ extension MarkdownEditingAssistEngine {
         }
     }
 
-    /// `String.hasSuffix("\n")` is false for a trailing `"\r\n"` — one Character — so
-    /// a CRLF selection of whole lines was taken to have no trailing terminator and its
-    /// synthetic empty last piece was indented as if it were a line. Compare the bytes.
-    static func endsWithLineFeed(_ content: String) -> Bool {
-        content.utf8.last == 0x0A
-    }
-
     /// Splits the selected logical line range into real lines, applies a
     /// per-line transform producing per-line UTF-16 deltas, and replaces the
     /// whole range once with a remapped selection.
@@ -92,17 +85,19 @@ extension MarkdownEditingAssistEngine {
     ) -> EditingAssistOutcome {
         let range = selectedLineRange(text: text, selection: selection)
         let content = text.substring(with: range)
-        let pieces = content.components(separatedBy: "\n")
-        let hasSyntheticTrailing = Self.endsWithLineFeed(content)
+        // Split at LF AND lone CR (a CRLF pair stays one logical line terminator), keeping each exact separator, so a
+        // bare-CR or mixed-EOL selection indents/unindents every logical line and rejoins with its original
+        // terminators.
+        let (pieces, separators) = EditorLineTransforms.logicalLines(of: content)
+        let hasSyntheticTrailing = pieces.count > 1 && pieces.last == ""
         let realCount = pieces.count - (hasSyntheticTrailing ? 1 : 0)
         let realLines = Array(pieces.prefix(realCount))
 
         let (newLines, deltas) = transform(realLines)
-        var newPieces = newLines
-        if hasSyntheticTrailing {
-            newPieces.append("")
-        }
-        let newContent = newPieces.joined(separator: "\n")
+        let newContent = EditorLineTransforms.joinLogicalLines(
+            hasSyntheticTrailing ? newLines + [""] : newLines,
+            separators: separators
+        )
 
         let resultingSelection = absoluteRemappedSelection(
             original: selection,
@@ -243,8 +238,9 @@ extension MarkdownEditingAssistEngine {
             let separator = character(at: end, in: text)
             let isLF = separator == 0x0A
             let isCRLF = separator == 0x0D && end + 1 < text.length && character(at: end + 1, in: text) == 0x0A
-            if isLF || isCRLF, selection.location + selection.length > end {
-                length += isLF ? 1 : 2
+            let isLoneCR = separator == 0x0D && !isCRLF
+            if isLF || isCRLF || isLoneCR, selection.location + selection.length > end {
+                length += isCRLF ? 2 : 1
             }
         }
         return NSRange(location: start, length: length)
