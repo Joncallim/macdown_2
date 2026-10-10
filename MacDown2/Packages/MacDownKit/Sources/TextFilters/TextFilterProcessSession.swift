@@ -58,12 +58,22 @@ final class TextFilterProcessSession: @unchecked Sendable {
     /// runs leave this `nil` and use the Darwin process-table query.
     private let membershipStateOverride: (() -> TextFilterProcessGroup.MembershipState)?
 
+    /// How long the watchdog waits before committing `.timedOut`. Production
+    /// sleeps for the limit; tests substitute a readiness-gated wait so the
+    /// real timeout verdict and containment still run, but only after the
+    /// fixture has signalled that it is ready (no load-sensitive sleeps).
+    typealias WatchdogDelay = @Sendable (Duration) async -> Void
+    static let sleepingWatchdogDelay: WatchdogDelay = { try? await Task.sleep(for: $0) }
+    private let watchdogDelay: WatchdogDelay
+
     init(
         maxOutputBytes: Int,
-        membershipStateOverride: (() -> TextFilterProcessGroup.MembershipState)? = nil
+        membershipStateOverride: (() -> TextFilterProcessGroup.MembershipState)? = nil,
+        watchdogDelay: @escaping WatchdogDelay = TextFilterProcessSession.sleepingWatchdogDelay
     ) {
         self.maxOutputBytes = maxOutputBytes
         self.membershipStateOverride = membershipStateOverride
+        self.watchdogDelay = watchdogDelay
     }
 
     /// Launches `command` with `input` on stdin and `context`'s working
@@ -115,8 +125,9 @@ final class TextFilterProcessSession: @unchecked Sendable {
         observeExitAndDrainage()
         writeInputAndCloseStdin(input)
 
+        let watchdogDelay = watchdogDelay
         let watchdog = Task {
-            try? await Task.sleep(for: timeout)
+            await watchdogDelay(timeout)
             guard !Task.isCancelled else { return }
             terminalState.requestVerdict(.timedOut)
         }

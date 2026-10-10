@@ -81,7 +81,10 @@ struct TextFilterRunnerAdversarialTests {
             try await Task.sleep(for: .milliseconds(20))
         }
         let recordedPID = try #require(grandchildPID, "the grandchild fixture never reported its pid")
-        #expect(kill(recordedPID, 0) != 0, "the backgrounded grandchild must have been contained, not left running")
+        #expect(
+            TextFilterFixtures.processIsGone(recordedPID),
+            "the backgrounded grandchild must have been contained, not left running"
+        )
     }
 
     /// Third-adversarial-pass finding #7: this session's containment
@@ -127,7 +130,7 @@ struct TextFilterRunnerAdversarialTests {
         }
         let recordedPID = try #require(detachedPID, "the detached-descendant fixture never reported its pid")
         #expect(
-            kill(recordedPID, 0) == 0,
+            TextFilterFixtures.processExists(recordedPID),
             "a session-detached descendant is documented as outside this contract -- it must survive"
         )
         // This test intentionally leaves a real process running past

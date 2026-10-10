@@ -21,9 +21,18 @@ public struct TextFilterRunner: Sendable {
     }
 
     private let limits: Limits
+    private let watchdogDelay: TextFilterProcessSession.WatchdogDelay
 
     public init(limits: Limits = .standard) {
         self.limits = limits
+        watchdogDelay = TextFilterProcessSession.sleepingWatchdogDelay
+    }
+
+    /// Test seam: replaces the watchdog's sleep so a test can release the
+    /// real timeout path only after its fixture is ready.
+    init(limits: Limits, watchdogDelay: @escaping TextFilterProcessSession.WatchdogDelay) {
+        self.limits = limits
+        self.watchdogDelay = watchdogDelay
     }
 
     /// Launches `command` with structured arguments only — `input` travels
@@ -39,7 +48,7 @@ public struct TextFilterRunner: Sendable {
             documentURL: documentURL,
             selectionLength: (input as NSString).length
         )
-        let session = TextFilterProcessSession(maxOutputBytes: limits.maxOutputBytes)
+        let session = TextFilterProcessSession(maxOutputBytes: limits.maxOutputBytes, watchdogDelay: watchdogDelay)
         return try await session.run(command: command, input: input, context: context, timeout: limits.timeout)
     }
 }
