@@ -73,11 +73,12 @@ struct TextFilterProcessLifecycleTests {
             """,
             in: directory
         )
-        // A generous timeout: this test is about confirming a TERM-ignoring
-        // process is actually killed, not about racing shell-startup
-        // latency (observed to vary widely under concurrent test load)
-        // against a tight bound.
-        let runner = TextFilterRunner(limits: .init(timeout: .seconds(5), maxOutputBytes: 4 << 20))
+        // The fixture writes its pid after installing the TERM trap; the real
+        // timeout verdict is released only once that readiness is visible.
+        let runner = TextFilterRunner(
+            limits: .init(timeout: .seconds(5), maxOutputBytes: 4 << 20),
+            watchdogDelay: TextFilterFixtures.watchdogDelay(afterPIDLines: 1, at: pidFile)
+        )
 
         let outcome = Task {
             await #expect(throws: TextFilterError.timedOut) {
@@ -98,10 +99,13 @@ struct TextFilterProcessLifecycleTests {
             try await Task.sleep(for: .milliseconds(50))
         }
         let recordedPID = try #require(pid, "the fixture process never reported its pid")
-        #expect(kill(recordedPID, 0) == 0, "the fixture process must be running before the timeout fires")
+        #expect(
+            TextFilterFixtures.processExists(recordedPID),
+            "the fixture process must be running before the timeout fires"
+        )
 
         _ = await outcome.value
-        #expect(kill(recordedPID, 0) != 0, "the TERM-ignoring process must have been force-killed")
+        #expect(TextFilterFixtures.processIsGone(recordedPID), "the TERM-ignoring process must have been force-killed")
     }
 
     // MARK: - Whole-process-group containment (second-adversarial-pass finding #2)
@@ -129,9 +133,12 @@ struct TextFilterProcessLifecycleTests {
             """,
             in: directory
         )
-        // Both stages report their pid on start; the timeout leaves room for
-        // that handshake under load instead of racing it.
-        let runner = TextFilterRunner(limits: .init(timeout: .milliseconds(2000), maxOutputBytes: 4 << 20))
+        // Both stages report their pid on start; the real timeout verdict is
+        // released only after both have, so startup latency cannot race it.
+        let runner = TextFilterRunner(
+            limits: .init(timeout: .milliseconds(300), maxOutputBytes: 4 << 20),
+            watchdogDelay: TextFilterFixtures.watchdogDelay(afterPIDLines: 2, at: pidFile)
+        )
 
         await #expect(throws: TextFilterError.timedOut) {
             _ = try await runner.run(command, input: "")
@@ -139,7 +146,10 @@ struct TextFilterProcessLifecycleTests {
 
         let pids = try await Self.waitForReportedPIDs(at: pidFile, expectedCount: 2)
         for pid in pids {
-            #expect(kill(pid, 0) != 0, "every process the timed-out pipeline spawned must be contained")
+            #expect(
+                TextFilterFixtures.processIsGone(pid),
+                "every process the timed-out pipeline spawned must be contained"
+            )
         }
     }
 
@@ -182,7 +192,10 @@ struct TextFilterProcessLifecycleTests {
         } catch TextFilterError.cancelled {
             // expected
         }
-        #expect(kill(recordedPID, 0) != 0, "the backgrounded descendant must be contained on cancellation too")
+        #expect(
+            TextFilterFixtures.processIsGone(recordedPID),
+            "the backgrounded descendant must be contained on cancellation too"
+        )
     }
 
     /// Finding #2 explicitly calls out that TERM-ignoring behavior is not
@@ -201,16 +214,19 @@ struct TextFilterProcessLifecycleTests {
             in: directory
         )
         // The descendant reports its pid only after TERM is ignored, so the
-        // pid file doubles as the readiness signal; the timeout leaves room
-        // for that handshake under load instead of racing it.
-        let runner = TextFilterRunner(limits: .init(timeout: .milliseconds(2000), maxOutputBytes: 4 << 20))
+        // pid file doubles as the readiness signal that releases the real
+        // timeout verdict.
+        let runner = TextFilterRunner(
+            limits: .init(timeout: .milliseconds(300), maxOutputBytes: 4 << 20),
+            watchdogDelay: TextFilterFixtures.watchdogDelay(afterPIDLines: 1, at: pidFile)
+        )
 
         await #expect(throws: TextFilterError.timedOut) {
             _ = try await runner.run(command, input: "")
         }
 
         let recordedPID = try await Self.waitForReportedPID(at: pidFile)
-        #expect(kill(recordedPID, 0) != 0, "a TERM-ignoring descendant must still be force-killed")
+        #expect(TextFilterFixtures.processIsGone(recordedPID), "a TERM-ignoring descendant must still be force-killed")
     }
 
     /// The ordinary, non-adversarial case: an ordinary two-stage pipeline
@@ -234,7 +250,7 @@ struct TextFilterProcessLifecycleTests {
 
         let pids = try await Self.waitForReportedPIDs(at: pidFile, expectedCount: 2)
         for pid in pids {
-            #expect(kill(pid, 0) != 0, "an ordinary completed pipeline must leave no survivor")
+            #expect(TextFilterFixtures.processIsGone(pid), "an ordinary completed pipeline must leave no survivor")
         }
     }
 
