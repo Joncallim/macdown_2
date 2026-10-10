@@ -107,8 +107,8 @@ extension MarkdownEditingAssistEngine {
     private static func headingOutcome(level: Int, text: NSString, selection: NSRange) -> EditingAssistOutcome {
         let range = selectedLineRange(text: text, selection: selection)
         let content = text.substring(with: range)
-        let pieces = content.components(separatedBy: "\n")
-        let hasSyntheticTrailing = Self.endsWithLineFeed(content)
+        let (pieces, separators) = EditorLineTransforms.logicalLines(of: content)
+        let hasSyntheticTrailing = pieces.count > 1 && pieces.last == ""
         let realCount = pieces.count - (hasSyntheticTrailing ? 1 : 0)
         let realLines = Array(pieces.prefix(realCount))
 
@@ -143,11 +143,10 @@ extension MarkdownEditingAssistEngine {
             return newLine
         }
 
-        var newPieces = newLines
-        if hasSyntheticTrailing {
-            newPieces.append("")
-        }
-        let newContent = newPieces.joined(separator: "\n")
+        let newContent = EditorLineTransforms.joinLogicalLines(
+            hasSyntheticTrailing ? newLines + [""] : newLines,
+            separators: separators
+        )
 
         let selectionRange = resultingSelection ?? absoluteRemappedSelection(
             original: selection,

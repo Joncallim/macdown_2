@@ -80,7 +80,13 @@ extension MarkdownEditingAssistEngine {
         var index = min(max(0, location), text.length)
         while index > 0 {
             let previous = index - 1
-            if character(at: previous, in: text) == 0x0A {
+            let unit = character(at: previous, in: text)
+            if unit == 0x0A {
+                break
+            }
+            // A lone CR ends a line too (NSTextView's paragraph separator); a CR directly before an LF is the
+            // first half of a CRLF pair, so a caret between the two still belongs to the earlier line.
+            if unit == 0x0D, !(index < text.length && character(at: index, in: text) == 0x0A) {
                 break
             }
             index = previous
@@ -89,7 +95,7 @@ extension MarkdownEditingAssistEngine {
     }
 
     /// End of the line content containing `location`, excluding the trailing
-    /// line separator (a single `\n` or the `\r\n` pair).
+    /// line separator (a single `\n`, a lone `\r`, or the `\r\n` pair).
     static func lineContentEnd(of location: Int, in text: NSString) -> Int {
         var index = min(max(0, location), text.length)
         while index < text.length {
@@ -97,7 +103,7 @@ extension MarkdownEditingAssistEngine {
             if unit == 0x0A {
                 break
             }
-            if unit == 0x0D, index + 1 < text.length, character(at: index + 1, in: text) == 0x0A {
+            if unit == 0x0D { // CRLF pair or lone CR: either way the content ends here
                 break
             }
             index += 1
@@ -117,7 +123,8 @@ extension MarkdownEditingAssistEngine {
             if character(at: contentEnd, in: text) == 0x0A {
                 return "\n"
             }
-            return "\r\n"
+            let isCRLF = contentEnd + 1 < text.length && character(at: contentEnd + 1, in: text) == 0x0A
+            return isCRLF ? "\r\n" : "\r"
         }
         var index = min(max(0, location), text.length)
         while index > 0 {
