@@ -48,4 +48,36 @@ public struct EditorSettings: Codable, Sendable, Equatable {
     }
 
     public static let `default` = EditorSettings()
+
+    private enum CodingKeys: String, CodingKey {
+        case font, wrapsLines, showsInvisibles, showsStatusBar, indentationWidth, assistsEnabled
+        case continuesMarkdownPrefixes, completesMatchingCharacters, convertsTabsToSpaces
+        case smartHome, autoIncrementOrderedLists
+    }
+
+    /// Compatible decoding (#53). The historical schema-less blob lacks fields added later: those, and ONLY those,
+    /// take their documented default when absent (`showsStatusBar` is `true` when missing, but a present `false`
+    /// stays `false`). Every field that has always existed is required, and the clamped `indentationWidth` is
+    /// range-validated here because synthesized `Decodable` never runs the initializer's clamp: an out-of-range or
+    /// mistyped value is a corrupt blob (kept and reported by the store), not something to silently coerce.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        font = try container.decode(FontDescriptor.self, forKey: .font)
+        wrapsLines = try container.decode(Bool.self, forKey: .wrapsLines)
+        showsInvisibles = try container.decode(Bool.self, forKey: .showsInvisibles)
+        showsStatusBar = try container.decodeIfPresent(Bool.self, forKey: .showsStatusBar) ?? true
+        let width = try container.decode(Int.self, forKey: .indentationWidth)
+        guard (1 ... 8).contains(width) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .indentationWidth, in: container, debugDescription: "indentationWidth must be 1...8"
+            )
+        }
+        indentationWidth = width
+        assistsEnabled = try container.decode(Bool.self, forKey: .assistsEnabled)
+        continuesMarkdownPrefixes = try container.decode(Bool.self, forKey: .continuesMarkdownPrefixes)
+        completesMatchingCharacters = try container.decode(Bool.self, forKey: .completesMatchingCharacters)
+        convertsTabsToSpaces = try container.decode(Bool.self, forKey: .convertsTabsToSpaces)
+        smartHome = try container.decode(Bool.self, forKey: .smartHome)
+        autoIncrementOrderedLists = try container.decode(Bool.self, forKey: .autoIncrementOrderedLists)
+    }
 }
