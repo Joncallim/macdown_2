@@ -150,24 +150,27 @@ extension WorkspaceModel {
     /// the active document's newer state. Rotate and persist that state first,
     /// then replay the cleanup against the captured lifetime only.
     func preserveEditedCleanupDocument(for pending: PendingRecoveryCleanupAction) async -> Bool {
-        guard let current = tabStore.activeDocument,
-              current.id == pending.documentID,
-              current.recoveryEpoch == pending.epoch,
-              !pending.matches(current)
+        // The edited document may be in ANY tab: a user who switched away after the failed cleanup must not have the
+        // newer, unsaved recovery payload deleted by the replay just because its tab is not the active one.
+        guard let tab = tabStore.tabs.first(where: {
+            $0.document.id == pending.documentID && $0.document.recoveryEpoch == pending.epoch
+        }), !pending.matches(tab.document)
         else { return true }
+        let current = tab.document
+        let tabID = tab.id
         do {
             let replacement = try await current.withFreshRecoveryLifetime(preparedBy: current.recoveryBuffer)
-            guard isCurrent(current), await replacement.persistRecovery() else {
+            guard isCurrent(current, inTab: tabID), await replacement.persistRecovery() else {
                 lastError = .recoveryCleanupRequired(current.fileURL ?? URL(fileURLWithPath: current.id))
                 return false
             }
             await afterRecoveryRetryPersistence?()
             // The persistence above suspended: a newer edit must not be replaced by the older rotated payload.
-            guard isCurrent(current) else {
+            guard isCurrent(current, inTab: tabID) else {
                 lastError = .recoveryCleanupRequired(current.fileURL ?? URL(fileURLWithPath: current.id))
                 return false
             }
-            tabStore.updateActiveDocument { _ in replacement }
+            tabStore.updateDocument(inTab: tabID) { _ in replacement }
             guard await rekeySaveAsContinuationIfNeeded(from: pending, to: replacement) else {
                 lastError = .recoveryCleanupRequired(replacement.fileURL ?? URL(fileURLWithPath: replacement.id))
                 return false
