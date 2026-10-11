@@ -11,7 +11,7 @@ public enum DocumentFileMonitorHealth: Sendable, Equatable {
 public actor DocumentFileMonitor {
     private let debounce: Duration
     let watcher: any DocumentDirectoryWatching
-    private let prober: any DocumentFileProbing
+    let prober: any DocumentFileProbing
     private let sleeper: @Sendable (Duration) async -> Void
     var generation: UInt = 0
     /// The caller's own binding identity, echoed in every emitted context. The monitor's `generation` advances only
@@ -21,8 +21,8 @@ public actor DocumentFileMonitor {
     private var bindingToken: UInt?
     var probeSequence: UInt = 0
     var boundURL: URL?
-    private var priorFileObjectID: PhysicalFileIdentity.FileObjectID?
-    private var decoding: FileDecodingPolicy = .automatic
+    var priorFileObjectID: PhysicalFileIdentity.FileObjectID?
+    var decoding: FileDecodingPolicy = .automatic
     private var handle: (any DocumentDirectoryWatcherHandle)?
     var fileHandle: (any DocumentDirectoryWatcherHandle)?
     private var watcherHealthy = false
@@ -97,18 +97,6 @@ public actor DocumentFileMonitor {
         )
         guard isCurrent(generation: currentGeneration, sequence: initialSequence) else { return }
         emit(initial, generation: currentGeneration, sequence: initialSequence)
-    }
-
-    /// Updates the baseline identity and decoding policy in one actor turn so
-    /// no probe can observe one without the other.
-    public func updateBaseline(
-        priorFileObjectID id: PhysicalFileIdentity.FileObjectID?,
-        decoding policy: FileDecodingPolicy,
-        expectedURL: URL
-    ) {
-        guard boundURL == expectedURL.standardizedFileURL else { return }
-        priorFileObjectID = id
-        decoding = policy
     }
 
     public func snapshotNow() async -> DocumentFileObservation {
@@ -219,7 +207,7 @@ public actor DocumentFileMonitor {
         }
     }
 
-    private func emit(_ observation: DocumentFileObservation, generation: UInt, sequence: UInt) {
+    func emit(_ observation: DocumentFileObservation, generation: UInt, sequence: UInt) {
         guard isCurrent(generation: generation, sequence: sequence) else { return }
         if case let .available(snapshot) = observation {
             priorFileObjectID = snapshot.revision.fileObjectID
