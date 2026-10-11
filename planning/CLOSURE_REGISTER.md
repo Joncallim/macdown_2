@@ -4,7 +4,26 @@ Finite register for the file-safety and release-convergence handoff of 10 Octobe
 
 Reproducibility evidence: `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the package suite on `3f1ce29d` (2443 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (361 tests each, all passed). `MacDown2UITests` remain unexecuted.
 
-Baseline when written: `master` after #396 (source tree with the regressions below merged). Evidence is **CI-green PRs plus local runs**; no signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or consecutive-suite reproducibility run has been executed for this register yet. A local full serial package run on a heavily loaded machine (load ≈ 24) failed 41 wall-clock-sensitive tests (WebKit, subprocess, 2–5 s bounds) outside the areas below; it is not accepted evidence and the runs must be repeated on an idle machine.
+Baseline: `master` after #417 plus the independent reviews of 2026-10-11 (below). Evidence is **CI-green PRs plus local runs** on one host. The three serial package runs and three serial app-target runs above are the only consecutive-suite evidence; they predate the fixes #412–#416 (which changed Workspace, FileCore, EditorCore and the app target), so they are **invalidated for the final head and must be repeated** once the implementation set is stable. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier *parallel* runs of the package suite failed 41–59 wall-clock-sensitive tests under load and one stalled for hours (the stall was a process-terminating `NSFileHandleOperationException`, fixed in #406); none of those runs is accepted evidence.
+
+## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
+
+| Scope | Finding | Disposition |
+| --- | --- | --- |
+| Publication/recovery | **P1** Retry could delete the newer unsaved recovery of a document in a non-active tab | Reproduced; fixed #412 (`WorkspaceInactiveTabRetryTests`, fails on old source) |
+| Publication/recovery | P2 a save completing after a tab switch was applied to no tab → false external conflict on the next save | Reproduced; fixed #414 (`WorkspaceTabSwitchSaveTests`, 4 failed expectations before) |
+| Publication/recovery | P2 minor: temp-file removal failure after acceptance reports save failure | Source-confirmed only; unreproduced; open |
+| Publication/recovery | Recovery ledger quarantine drops fences/redirects after a crash | Unsupported suspicion; open limitation |
+| Authority | No outside-read path in the contained reader; test gaps and a runtime-enforcement check | #411 (`readStrict` tests, FIFO bound, `verifyEnforcement`) |
+| Authority | P2 `realpath` hint can block on a stalled network mount and ignores cancellation | Open; resolve with `readlinkat` beneath the descriptor in #121 stage C |
+| Authority | P1–P2 Preview/Export Unicode containment (NFC/NFD sibling) | **Refuted**: Foundation file URLs normalise to NFD on both sides, so the siblings are indistinguishable in URL space |
+| Authority | P2 stale load: one scheme handler for every HTML tab (documented #121 item) | Open; #121 stages B–D |
+| Authority | P2 Replace in Folder: dirty-open-file check precedes the write; old run keeps writing during a root switch | Source-confirmed; open |
+| Cross-feature | P1 text filter result applied without the IME guard | #413 guard added; the test does NOT discriminate headlessly, so source-confirmed only |
+| Cross-feature | P2 `updateBaseline` raced the first bind's probe | Reproduced; fixed #415 (2 failed expectations before) |
+| Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers) |
+| Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
+| Cross-feature | Register/README inconsistencies | Corrected in this change |
 
 Status: **PROVED** (production-path regression at the required layer, discrimination shown), **PARTIAL** (some scenarios proved; gap named), **OPEN** (not started or no proof), **BLOCKED** (needs an environment/authority not available).
 
@@ -55,7 +74,8 @@ Credentials or persistent access, signing/notarisation, source-archive publicati
 
 ## Next bounded steps
 
-1. Add the app-level JSON-formatting guard test (needs a mounted key window) and the exact-equality fix.
-2. R1/R2/R4 remaining schedules, then repeat on the final head.
-3. #121 RESOURCE-OPEN native probe design, then #53 compatible decoding.
-4. Idle-machine consecutive serial runs of package and app-target suites once the implementation set is stable.
+1. Replace in Folder: re-check dirty-open-file protection immediately before each write; retire the run before the root-switch rebuild is awaited.
+2. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
+3. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
+4. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
+5. After the implementation set is stable: repeat the three serial package runs and the three serial app-target runs on the final head, then request the post-fix cross-boundary review on that head.
