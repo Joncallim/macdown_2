@@ -343,20 +343,15 @@ public extension WorkspaceModel {
         expectedRevision: FileRevision?,
         context: SaveContext
     ) async {
-        guard let current = tabStore.activeDocument,
-              isSameDocumentLifetime(current, document)
-        else { return }
-        if isCurrent(document), isLatestSave(context) {
-            tabStore.updateActiveDocument { _ in saved }
-            let cleanup = await saved.recoveryBuffer.removeWithOutcome(
-                for: saved.id,
-                version: saved.mutationGeneration,
-                epoch: saved.recoveryEpoch
-            )
-            if !cleanup.isAbsent {
-                registerPendingRecovery(.remove(for: saved))
-            }
-            publishCleanupResult(cleanup, document: saved, since: context.errorRevision)
+        // Apply to the tab that OWNS this document lifetime, active or not: a save that completes after the user
+        // switched tabs must still update its own tab's baseline, or the next save of that tab fails its conditional
+        // write against the stale baseline and is misreported as an external-change conflict.
+        guard let owner = tabStore.tabs.first(where: { isSameDocumentLifetime($0.document, document) }) else { return }
+        let tabID = owner.id
+        let current = owner.document
+        if isCurrent(document, inTab: tabID), isLatestSave(context) {
+            tabStore.updateDocument(inTab: tabID) { _ in saved }
+            await retireRecoveryAfterCleanSave(saved, context: context)
             return
         }
         guard current.state != .conflict,
@@ -367,20 +362,12 @@ public extension WorkspaceModel {
               )
         else { return }
         if current.text.isExactlyEqual(to: saved.text), isLatestSave(context) {
-            tabStore.updateActiveDocument { _ in saved }
-            let cleanup = await saved.recoveryBuffer.removeWithOutcome(
-                for: saved.id,
-                version: saved.mutationGeneration,
-                epoch: saved.recoveryEpoch
-            )
-            if !cleanup.isAbsent {
-                registerPendingRecovery(.remove(for: saved))
-            }
-            publishCleanupResult(cleanup, document: saved, since: context.errorRevision)
+            tabStore.updateDocument(inTab: tabID) { _ in saved }
+            await retireRecoveryAfterCleanSave(saved, context: context)
             return
         }
         let merged = current.adoptingSavedBaseline(from: saved)
-        tabStore.updateActiveDocument { _ in merged }
+        tabStore.updateDocument(inTab: tabID) { _ in merged }
         guard await merged.persistRecovery() else {
             registerPendingRecovery(.persist(for: merged))
             lastError = .recoveryCleanupRequired(merged.fileURL ?? URL(fileURLWithPath: merged.id))
@@ -389,6 +376,19 @@ public extension WorkspaceModel {
         if isLatestSave(context) {
             clearLastError(ifUnchangedSince: context.errorRevision)
         }
+    }
+
+    /// Removes the recovery entry of a document that was just saved clean, registering a retry if removal fails.
+    private func retireRecoveryAfterCleanSave(_ saved: FileDocument, context: SaveContext) async {
+        let cleanup = await saved.recoveryBuffer.removeWithOutcome(
+            for: saved.id,
+            version: saved.mutationGeneration,
+            epoch: saved.recoveryEpoch
+        )
+        if !cleanup.isAbsent {
+            registerPendingRecovery(.remove(for: saved))
+        }
+        publishCleanupResult(cleanup, document: saved, since: context.errorRevision)
     }
 
     private func beginSave(for document: FileDocument) -> SaveContext {
