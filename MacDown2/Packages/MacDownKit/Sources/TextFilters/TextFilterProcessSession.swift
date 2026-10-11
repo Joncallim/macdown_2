@@ -44,8 +44,9 @@ final class TextFilterProcessSession: @unchecked Sendable {
     private static let terminationGracePeriod = Duration.milliseconds(500)
 
     private let stdinPipe = Pipe()
-    private let stdoutPipe = Pipe()
-    private let stderrPipe = Pipe()
+    let stdoutPipe = Pipe()
+    let stderrPipe = Pipe()
+    private var readers: PipeReadDescriptors?
     private let processGroup = TextFilterProcessGroup()
     private let terminalState = TextFilterTerminalState()
 
@@ -288,12 +289,38 @@ final class TextFilterProcessSession: @unchecked Sendable {
 
     // MARK: - I/O
 
-    private func installReadabilityHandlers() {
+    func installReadabilityHandlers() {
+        let readers = PipeReadDescriptors(
+            stdout: stdoutPipe.fileHandleForReading,
+            stderr: stderrPipe.fileHandleForReading
+        )
+        self.readers = readers
         stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            self?.handleStdout(handle.availableData, handle: handle)
+            guard let self, let chunk = chunk(from: readers, .stdout, handle) else { return }
+            handleStdout(chunk, handle: handle)
         }
         stderrPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            self?.handleStderr(handle.availableData, handle: handle)
+            guard let self, let chunk = chunk(from: readers, .stderr, handle) else { return }
+            handleStderr(chunk, handle: handle)
+        }
+    }
+
+    /// The chunk to process (empty = EOF), or `nil` when there is nothing to do: the readers were retired, the read
+    /// would block, or a read error was turned into a fail-closed verdict (a read error is NOT end-of-file).
+    private func chunk(from readers: PipeReadDescriptors, _ stream: PipeReadDescriptors.Stream,
+                       _ handle: FileHandle) -> Data? {
+        switch readers.read(stream) {
+        case let .chunk(data):
+            return data
+        case .idle:
+            return nil
+        case .retired:
+            handle.readabilityHandler = nil
+            return nil
+        case .failed:
+            handle.readabilityHandler = nil
+            terminalState.requestVerdict(.incompleteOutput)
+            return nil
         }
     }
 
@@ -342,9 +369,11 @@ final class TextFilterProcessSession: @unchecked Sendable {
         lock.unlock()
     }
 
-    private func teardownHandlers() {
+    func teardownHandlers() {
         stdoutPipe.fileHandleForReading.readabilityHandler = nil
         stderrPipe.fileHandleForReading.readabilityHandler = nil
+        // Waits for any callback currently reading; later ones see the readers retired and read nothing.
+        readers?.retire()
     }
 
     private func writeInputAndCloseStdin(_ input: String) {
