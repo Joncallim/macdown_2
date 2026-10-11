@@ -32,6 +32,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     /// `fileTreeModel.root` exclusively through `setFolderRoot(_:accessURL:)`
     /// below, never mutated directly by any other call site.
     let workspaceFileIndex: WorkspaceFileIndex
+    /// Test seam: runs just before a root switch awaits the new root's tree and index rebuild.
+    var beforeRootRebuild: (@MainActor () async -> Void)?
     /// Folder-wide search sidebar state (EPIC-22 §6.16, Slice 7b), one per
     /// window mirroring `workspaceFileIndex`'s own scope and kept in sync
     /// with `fileTreeModel.root` through the same

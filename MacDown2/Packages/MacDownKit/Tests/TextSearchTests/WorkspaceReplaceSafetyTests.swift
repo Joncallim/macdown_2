@@ -113,6 +113,28 @@ struct WorkspaceReplaceSafetyTests {
         #expect(try read(tree, "open.md") == "foo dirty")
     }
 
+    /// Authority review (2026-10-11), F1: the open-document protection was queried once, BEFORE the file was read and
+    /// hashed. If the user starts editing that document afterwards, the write must be skipped, not published under
+    /// a now-dirty buffer.
+    @Test
+    func aDocumentThatBecomesDirtyAfterTheFirstProtectionQueryIsNotWritten() async throws {
+        let tree = try WorkspaceSearchEngineTempTree()
+        try tree.write("open.md", text: "foo original")
+        let results = await searchResults(tree, query: "foo")
+        let planned = plans(results, replacement: "bar")
+        let queries = QueryCounter()
+
+        let outcomes = await WorkspaceReplaceEngine().replace(
+            root: tree.root,
+            plans: planned,
+            isProtected: { _ in queries.nextAnswerIsProtected() } // false on the first query, true afterwards
+        )
+
+        #expect(outcomes.map(\.outcome) == [.skippedOpenDocumentWithUnsavedChanges])
+        #expect(try read(tree, "open.md") == "foo original")
+        #expect(queries.count == 2, "protection must be asked again immediately before the write")
+    }
+
     /// #183 F14: the run can be cancelled (root change) while the awaited
     /// protection query is suspended; it must not go on to write.
     @Test
@@ -226,5 +248,23 @@ private final class TaskBox: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         cancelRequested = true
         task?.cancel()
+    }
+}
+
+private final class QueryCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var queries = 0
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return queries
+    }
+
+    func nextAnswerIsProtected() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        queries += 1
+        return queries > 1
     }
 }

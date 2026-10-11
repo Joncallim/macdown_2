@@ -87,7 +87,11 @@ public actor WorkspaceReplaceEngine {
         if Task.isCancelled {
             return .notAttempted
         }
-        return protected ? .skippedOpenDocumentWithUnsavedChanges : apply(plan, root: root)
+        return protected ? .skippedOpenDocumentWithUnsavedChanges : await apply(
+            plan,
+            root: root,
+            isProtected: isProtected
+        )
     }
 
     public func preview(root: URL, plan: ReplacementPlan) -> ReplacementFilePreview {
@@ -107,7 +111,11 @@ public actor WorkspaceReplaceEngine {
 
     // MARK: - Apply
 
-    private func apply(_ plan: ReplacementPlan, root: URL) -> ReplacementFileOutcome {
+    private func apply(
+        _ plan: ReplacementPlan,
+        root: URL,
+        isProtected: @Sendable (String) async -> Bool
+    ) async -> ReplacementFileOutcome {
         let snapshot: FileSnapshot
         switch verifiedSnapshot(for: plan, root: root) {
         case let .success(value): snapshot = value
@@ -119,6 +127,12 @@ public actor WorkspaceReplaceEngine {
             return .replaced(count: count)
         }
 
+        // The protection query above ran BEFORE this file was read and hashed; the user can have started editing the
+        // open document since. Ask again immediately before publishing (the remaining window is the actor hop plus
+        // the conditional write, which an open dirty document would see as an external change, never a silent loss).
+        if let refusal = await refusalBeforeWrite(plan, isProtected: isProtected) {
+            return refusal
+        }
         let url = snapshot.revision.url
         seams.beforeWrite?(url)
         do {
@@ -131,18 +145,38 @@ public actor WorkspaceReplaceEngine {
             )
             return .replaced(count: count)
         } catch {
-            switch error {
-            case .fileChangedDuringRead:
-                // `FileStore.write` also reports this from its post-publication
-                // read-back, after our bytes are already on disk.
-                return Self.contentEquals(url, updated) ? .replaced(count: count) : .skippedChangedSinceSearch
-            case .encodingDetectionFailed, .textNotRepresentable: return .skippedCannotRepresent
-            case .fileMissing, .permissionDenied, .notRegularFile: return .skippedUnreadable
-            case let .conditionalPublicationRecoveryRequired(recovery):
-                return .failed("An external change could not be restored; its bytes were kept at \(recovery.path)")
-            default: return .failed(String(describing: error))
-            }
+            return Self.outcome(forWriteError: error, url: url, updated: updated, count: count)
         }
+    }
+
+    private static func outcome(
+        forWriteError error: FileStoreError,
+        url: URL,
+        updated: String,
+        count: Int
+    ) -> ReplacementFileOutcome {
+        switch error {
+        case .fileChangedDuringRead:
+            // `FileStore.write` also reports this from its post-publication
+            // read-back, after our bytes are already on disk.
+            contentEquals(url, updated) ? .replaced(count: count) : .skippedChangedSinceSearch
+        case .encodingDetectionFailed, .textNotRepresentable: .skippedCannotRepresent
+        case .fileMissing, .permissionDenied, .notRegularFile: .skippedUnreadable
+        case let .conditionalPublicationRecoveryRequired(recovery):
+            .failed("An external change could not be restored; its bytes were kept at \(recovery.path)")
+        default: .failed(String(describing: error))
+        }
+    }
+
+    /// The last-moment gate: protection re-queried, cancellation re-observed.
+    private func refusalBeforeWrite(
+        _ plan: ReplacementPlan,
+        isProtected: @Sendable (String) async -> Bool
+    ) async -> ReplacementFileOutcome? {
+        if await isProtected(plan.relativePath) {
+            return .skippedOpenDocumentWithUnsavedChanges
+        }
+        return Task.isCancelled ? .notAttempted : nil
     }
 
     private static func contentEquals(_ url: URL, _ text: String) -> Bool {
