@@ -39,15 +39,35 @@ public enum ContainedResourceReader {
         guard !cancellation.isCancelled else { throw .cancelled }
         guard directory.nameStillRefersToGrantedDirectory() else { throw .changedRoot }
         let relative = try constrainedRelativePath(for: reference, in: directory)
+        return try readStrict(
+            relativePath: relative,
+            name: reference.components.last ?? "",
+            in: directory,
+            limits: (maxBytes, cancellation),
+            hooks: hooks
+        )
+    }
+
+    /// The security-bearing step on its own: open `relativePath` beneath the pinned directory with the containment
+    /// flags and read it. Nothing here consults the advisory hint, so tests (and any future caller) can hand it a
+    /// hostile relative path and see the KERNEL refuse it.
+    static func readStrict(
+        relativePath: String,
+        name: String,
+        in directory: DirectoryLease,
+        limits: (maxBytes: Int, cancellation: ResourceCancellation),
+        hooks: ResourceReadHooks
+    ) throws(ResourceReadError) -> ResourceSnapshot {
+        let (maxBytes, cancellation) = limits
         hooks.beforeOpen?()
         let result = try directory.owned.withDescriptor { rootDescriptor throws(ResourceReadError) in
-            let descriptor = openat(rootDescriptor, relative, openFlags)
+            let descriptor = openat(rootDescriptor, relativePath, openFlags)
             guard descriptor >= 0 else { throw mapOpenError(errno) }
             defer { Darwin.close(descriptor) }
             hooks.afterOpen?()
             return try snapshot(
                 descriptor: descriptor,
-                name: reference.components.last ?? "",
+                name: name,
                 maxBytes: maxBytes,
                 cancellation: cancellation,
                 hooks: hooks
@@ -55,6 +75,36 @@ public enum ContainedResourceReader {
         }
         guard let result else { throw .leaseClosed }
         return result
+    }
+
+    /// Confirms at runtime that this kernel actually enforces the containment flags (a kernel that silently ignored
+    /// `O_RESOLVE_BENEATH` / `O_NOFOLLOW_ANY` would otherwise go unnoticed): `..` must be refused and an in-root
+    /// symlink must be refused. Throws `.unsupportedEnforcement` otherwise; callers must not fall back.
+    public static func verifyEnforcement() throws(ResourceReadError) {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent("lra-probe-\(UUID().uuidString)")
+        let root = base.appendingPathComponent("root")
+        defer { try? FileManager.default.removeItem(at: base) }
+        do {
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            try Data("x".utf8).write(to: root.appendingPathComponent("f"))
+            try Data("y".utf8).write(to: base.appendingPathComponent("outside"))
+            try FileManager.default.createSymbolicLink(
+                atPath: root.appendingPathComponent("l").path,
+                withDestinationPath: "f"
+            )
+        } catch {
+            throw .unavailable(EIO)
+        }
+        let lease = try DirectoryLease(opening: root)
+        defer { lease.close() }
+        for (relative, expected) in [("../outside", ENOTCAPABLE), ("l", ELOOP)] {
+            let descriptor = lease.owned.withDescriptor { openat($0, relative, openFlags) }
+            if let descriptor, descriptor >= 0 {
+                Darwin.close(descriptor)
+                throw .unsupportedEnforcement
+            }
+            guard errno == expected else { throw .unsupportedEnforcement }
+        }
     }
 
     /// Single-file grant: the lease IS the authority, no path is involved.
