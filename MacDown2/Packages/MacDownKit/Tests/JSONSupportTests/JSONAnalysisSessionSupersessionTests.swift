@@ -20,7 +20,11 @@ struct JSONAnalysisSessionSupersessionTests {
         func analyze(_ text: String) -> JSONAnalysisResult {
             if text == held {
                 entered.signal()
-                release.wait()
+                // Bounded: the held analysis occupies a worker thread, and the test body needs another worker for
+                // the NEWER analysis before it can call `open()`. If the runtime ever grants only one (observed
+                // under process-level throttling: the suite then stalled forever), the wait expires instead of
+                // deadlocking; the assertions do not depend on which analysis finishes first.
+                _ = release.wait(timeout: .now() + 20)
             }
             return JSONAnalyzer.analyze(text)
         }
