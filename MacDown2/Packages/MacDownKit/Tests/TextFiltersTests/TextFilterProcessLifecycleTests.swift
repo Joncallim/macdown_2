@@ -257,7 +257,9 @@ struct TextFilterProcessLifecycleTests {
     /// Reads however many `label=pid` lines the fixture script has written
     /// so far, polling until at least `expectedCount` are present.
     private static func waitForReportedPIDs(at url: URL, expectedCount: Int) async throws -> [pid_t] {
-        for _ in 0 ..< 150 {
+        // A fixture-readiness bound (30 s), not a product threshold: it only stops a fixture that never reports from
+        // hanging the run, and is generous so parallel suites contending for cores cannot starve a healthy fixture.
+        for _ in 0 ..< 1500 {
             if let contents = try? String(contentsOf: url, encoding: .utf8) {
                 let pids = contents
                     .split(separator: "\n")
