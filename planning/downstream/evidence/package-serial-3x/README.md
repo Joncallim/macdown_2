@@ -1,13 +1,15 @@
 # Package suite, three consecutive serial runs (unchanged source)
 
-- **Source:** `3f1ce29d8be5deff802900f8b7b5357cb5181b98` (master after #408), clean tree, no local modifications.
-- **Command (each run):** `cd MacDown2/Packages/MacDownKit && swift test --no-parallel --force-resolved-versions` (the CI configuration).
-- **Dependency lock:** `Package.resolved` sha256 `9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977`, enforced by `--force-resolved-versions`.
-- **Host:** macOS 26.5.1 (25F80), arm64, SDK 26.5, swift-driver version: 1.148.6 Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 cla. Debug build. Idle machine at start of each run (load ≈ 3).
-- **Result:** run 1: 2443 tests / 312 suites passed (113.9 s, exit 0); run 2: 2443 / 312 passed (117.3 s, exit 0); run 3: 2443 / 312 passed (114.1 s, exit 0). No failed, skipped or retried test in any run; no retry was used.
+- **Source:** `2861e1a42b88f5fbb5823824a796630ef487be95` (master after #421); the evidence files were added on top of it afterwards (no source, test or dependency change). Clean tree, no local modifications.
+- **Command (each run):** `cd MacDown2/Packages/MacDownKit && swift test --no-parallel --force-resolved-versions` (the CI configuration). **No test was skipped or filtered**, WebKit-hosted suites included.
+- **Dependency lock:** `Package.resolved` sha256 `9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977`.
+- **Host:** macOS 26.5.1 (25F80), arm64, SDK 26.5, swift-driver version: 1.148.6 Apple Swift version 6.3.3 (swiftlang-6.3. Debug build, local (not CI).
+- **Result:** run 1: 2462 tests / 317 suites passed (100.4 s, exit 0); run 2: 2462 / 317 passed (98.1 s, exit 0); run 3: 2462 / 317 passed (97.8 s, exit 0). No failed, skipped or retried test.
 - **Raw artifacts:** `run1.log.gz` … `run3.log.gz` (full stdout/stderr).
 
+## History this record supersedes
+These runs replace the earlier set on `3f1ce29d`, which predated #411–#421 and is invalidated for the final head. Between them, runs of the same suite stalled indefinitely on this host. Root cause (stack-sampled): AppKit window-transition animations created by test windows run as blocking `NSAnimation`s that never complete headlessly, each stranding a dispatch worker until libdispatch's 64-thread soft limit starved the process (#155; fix #421: `animationBehavior = .none` on test windows). With it, the previously stalling command completed on every attempt.
+
 ## Limits
-- Debug configuration, one host and OS build; Release performance tests and the app-target suite (`MacDown2Tests`, serial) are separate and not covered here.
-- This is a reproducibility check, not statistical proof of absence of flakes. Earlier **parallel** runs of the same suite (not the CI configuration) failed 59 wall-clock-bound tests under load and a run stalled before #406; those runs are *not* part of this evidence and are described in the closure register.
+- Debug configuration, one host and OS build; a reproducibility check, not proof of absence of flakes. App-target tests and Release performance tests are separate.
 - Invalidated by any later source, dependency or toolchain change.
