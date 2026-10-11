@@ -145,7 +145,10 @@ struct TextFilterCoordinator {
               let tab = controller.model.tabStore.tabs.first(where: { $0.id == baseline.tabID }),
               let textSystem = controller.editorStore.existingSystem(for: baseline.tabID.uuidString),
               tab.document.mutationGeneration == baseline.documentGeneration,
-              textSystem.contentRevision == baseline.editorContentRevision
+              textSystem.contentRevision == baseline.editorContentRevision,
+              // Marked (IME) text never posts `textDidChange`, so the revision above cannot see a composition that
+              // started while the filter ran; applying at the old offsets would splice into / commit it.
+              textSystem.canApplyCommandEdit
         else {
             return
         }
