@@ -87,4 +87,37 @@ struct NavigationOriginTests {
 
         #expect(coordinator.quickOpen == nil)
     }
+
+    /// Authority review (2026-10-11), F2: the Replace run was retired only after the new root's tree and index
+    /// rebuild had been awaited, so the old run kept writing old-root files in the meantime.
+    @Test func aRootSwitchRetiresTheReplaceRunBeforeTheRebuildIsAwaited() async throws {
+        let base = try tempDirectory()
+        defer { try? FileManager.default.removeItem(at: base) }
+        let first = base.appendingPathComponent("first", isDirectory: true)
+        let second = base.appendingPathComponent("second", isDirectory: true)
+        try FileManager.default.createDirectory(at: first, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: second, withIntermediateDirectories: true)
+        let (_, controller) = makeController()
+        await controller.setFileTreeRoot(first)
+        let longRunning = Task<Void, Never> { _ = try? await Task.sleep(for: .seconds(30)) }
+        controller.folderSearchModel.replaceTask = longRunning
+        controller.folderSearchModel.isReplacing = true
+        defer { longRunning.cancel() }
+
+        struct Observed { let taskCleared: Bool, cancelled: Bool, replacing: Bool }
+        var retiredBeforeRebuild: Observed?
+        controller.beforeRootRebuild = {
+            retiredBeforeRebuild = Observed(
+                taskCleared: controller.folderSearchModel.replaceTask == nil,
+                cancelled: longRunning.isCancelled,
+                replacing: controller.folderSearchModel.isReplacing
+            )
+        }
+
+        await controller.setFileTreeRoot(second)
+
+        #expect(retiredBeforeRebuild?.taskCleared == true, "the run is retired before the rebuild is awaited")
+        #expect(retiredBeforeRebuild?.cancelled == true)
+        #expect(retiredBeforeRebuild?.replacing == false)
+    }
 }

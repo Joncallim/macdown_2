@@ -58,6 +58,13 @@ extension WindowController {
         // Before the first suspension: results shown against the old root must
         // never be actionable against the new one (#183 F19).
         coordinator?.closeQuickOpenIfOrigin(self)
+        // A Replace in Folder run authorised against the OLD root must stop before the (awaited) tree and index
+        // rebuild for the new one, not after it: otherwise it keeps writing old-root files while the window already
+        // shows the new folder, and its summary is then dropped.
+        if url != fileTreeModel.root {
+            folderSearchModel.retireReplaceRun()
+        }
+        await beforeRootRebuild?()
         await fileTreeModel.setRoot(url, accessURL: accessURL)
         // Closes Quick Open (Slice 6b) if it's open against this window —
         // an independent hostile review of that slice found the panel's
