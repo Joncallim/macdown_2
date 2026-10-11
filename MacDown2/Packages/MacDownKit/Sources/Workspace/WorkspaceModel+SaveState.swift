@@ -1,4 +1,5 @@
 import FileCore
+import Foundation
 
 @MainActor
 extension WorkspaceModel {
@@ -11,6 +12,16 @@ extension WorkspaceModel {
 
     func isCurrent(_ document: FileDocument) -> Bool {
         guard let current = tabStore.activeDocument else { return false }
+        return current.id == document.id
+            && current.fileURL?.standardizedFileURL == document.fileURL?.standardizedFileURL
+            && current.text.isExactlyEqual(to: document.text)
+            && current.state == document.state
+            && current.mutationGeneration == document.mutationGeneration
+    }
+
+    /// Like `isCurrent`, but for the document in a specific tab (active or not).
+    func isCurrent(_ document: FileDocument, inTab tabID: UUID) -> Bool {
+        guard let current = tabStore.tabs.first(where: { $0.id == tabID })?.document else { return false }
         return current.id == document.id
             && current.fileURL?.standardizedFileURL == document.fileURL?.standardizedFileURL
             && current.text.isExactlyEqual(to: document.text)

@@ -284,6 +284,14 @@ public final class TabStore {
 
     /// Applies a transform to the active document and writes the returned value
     /// back. `FileDocument` is a value type; mutations return new instances.
+    /// Applies a transform to the document of a specific tab, active or not. Used where an operation owns a document
+    /// lifetime that the user may have switched away from.
+    func updateDocument(inTab tabID: UUID, _ transform: (FileDocument) -> FileDocument) {
+        guard let index = tabIndex(of: tabID) else { return }
+        tabs[index].document = transform(tabs[index].document)
+        persist()
+    }
+
     public func updateActiveDocument(_ transform: (FileDocument) -> FileDocument) {
         guard let activeTabID, let index = tabIndex(of: activeTabID) else { return }
         tabs[index].document = transform(tabs[index].document)
