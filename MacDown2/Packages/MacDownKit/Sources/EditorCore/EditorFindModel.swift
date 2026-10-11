@@ -69,9 +69,10 @@ public final class EditorFindModel {
     /// against, used to adapt a multi-line replacement.
     private var searchedLineEnding: LineEnding?
     /// Exact identity of the text the current matches were computed against. SwiftUI reports text changes
-    /// canonically (Å U+00C5 vs U+212B) and never for marked-text edits, so before applying a transaction built from
-    /// them the caller compares this with the live text (`matchesAreCurrent(forLiveText:)`).
+    /// canonically (Å U+00C5 vs U+212B) and never for marked-text edits, so callers compare this with the live text.
     private var searchedFingerprint: ExactTextFingerprint?
+    /// The query/options those matches answer (their recompute starts asynchronously, so text alone is not enough).
+    private var searchedInputs: (query: String, options: SearchOptions)?
     /// The range "In Selection" searches, retained across refreshes and
     /// remapped through Replace edits (#183 F03). It is sampled from the live
     /// selection only when a caller passes `selection` to `updateMatches`
@@ -186,10 +187,10 @@ public final class EditorFindModel {
         searchedFingerprint = ExactTextFingerprint(text)
         let query = query
         let options = options
+        searchedInputs = (query, options)
         isSearching = true
-        // A superseded search is cancelled outright (its regex checks for
-        // cancellation while backtracking), not merely ignored when it
-        // finishes, so rapid edits cannot pile up unbounded regex work (#183 F08).
+        // A superseded search is cancelled outright (its regex checks for cancellation while backtracking), so rapid
+        // edits cannot pile up unbounded regex work (#183 F08).
         searchTask?.cancel()
         let task = Task.detached(priority: .userInitiated) {
             Self.search(text: text, query: query, options: options, domain: domain, scopeLost: scopeLost)
@@ -216,15 +217,14 @@ public final class EditorFindModel {
         return true
     }
 
-    /// Whether the current matches can still be applied to `text`, the live document: they were computed against
-    /// exactly this content and no search is in flight.
+    /// Whether the matches still apply to `text`: same exact content, same query and options, no search in flight.
     public func matchesAreCurrent(forLiveText text: String) -> Bool {
         !isSearching && searchedFingerprint == ExactTextFingerprint(text)
+            && searchedInputs?.query == query && searchedInputs?.options == options
     }
 
-    /// Retires any search in flight (closing Find, evicting the document): the matcher is cancelled, the search
-    /// generation moves on so a late result is discarded, and nothing is published afterwards. Without this a
-    /// dismissed bar's delayed result re-highlighted and reselected, and a pathological regex kept running.
+    /// Retires any search in flight (closing Find, evicting the document): the matcher is cancelled and a late result
+    /// is discarded, so a dismissed bar never re-highlights or reselects and a pathological regex stops running.
     public func cancelPendingSearch() {
         searchGeneration &+= 1
         searchTask?.cancel()
