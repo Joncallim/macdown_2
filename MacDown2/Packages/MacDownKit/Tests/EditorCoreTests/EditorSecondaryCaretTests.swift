@@ -36,6 +36,7 @@ struct EditorSecondaryCaretTests {
         textView.insertionPointColor = NSColor(red: 1, green: 0, blue: 0, alpha: 1)
 
         let window = NSWindow(contentRect: frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         window.contentView = scrollView
         window.makeKeyAndOrderFront(nil)
         return Mounted(system: system, textView: textView, window: window)

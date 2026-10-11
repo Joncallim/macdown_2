@@ -40,6 +40,7 @@ struct EditorUndoPublicationTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         window.contentView = hosting
         window.makeKeyAndOrderFront(nil)
         hosting.layoutSubtreeIfNeeded()

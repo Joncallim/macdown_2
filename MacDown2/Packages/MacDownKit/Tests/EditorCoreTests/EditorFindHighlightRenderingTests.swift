@@ -28,6 +28,7 @@ struct EditorFindHighlightRenderingTests {
         textView.backgroundColor = .white
         textView.textColor = .black
         let window = NSWindow(contentRect: frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         window.contentView = scrollView
         window.makeKeyAndOrderFront(nil)
         return Mounted(system: system, textView: textView, window: window)

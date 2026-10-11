@@ -8,11 +8,13 @@ import Testing
 struct TabHostTests {
     @Test func aPlainWindowIsNotATabHost() {
         let window = NSWindow(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: true)
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         #expect(WindowCoordinator.tabHost(window) == nil)
     }
 
     @Test func aPanelIsNotATabHost() {
         let panel = NSPanel(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: true)
+        panel.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         #expect(WindowCoordinator.tabHost(panel) == nil)
     }
 

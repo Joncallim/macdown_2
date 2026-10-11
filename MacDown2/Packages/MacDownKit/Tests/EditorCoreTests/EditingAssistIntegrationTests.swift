@@ -33,6 +33,7 @@ enum EditingAssistIntegrationSupport {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         window.contentView = system.textView
         window.makeKeyAndOrderFront(nil)
         return window

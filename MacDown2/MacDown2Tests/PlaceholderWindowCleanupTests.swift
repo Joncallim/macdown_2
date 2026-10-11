@@ -16,6 +16,7 @@ struct PlaceholderWindowCleanupTests {
         let window = NSWindow(
             contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: true
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         #expect(AppDelegate.isSwiftUIPlaceholder(window))
     }
 }

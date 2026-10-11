@@ -104,6 +104,8 @@ struct FormatChangeAnalysisMountTests {
             tab: tab,
             text: text
         )
+        harness.window
+            .animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         harness.window.contentView = harness.hosting
         harness.window.makeKeyAndOrderFront(nil)
         defer { harness.window.orderOut(nil) }

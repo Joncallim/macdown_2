@@ -47,6 +47,7 @@ struct EditorGutterBaselineAlignmentTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         window.contentView = scrollView
         window.makeKeyAndOrderFront(nil)
         return MountedSystem(system: system, window: window)
