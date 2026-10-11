@@ -49,6 +49,7 @@ struct EditorViewRealMountTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         window.contentView = hostingView
         window.makeKeyAndOrderFront(nil)
         hostingView.layoutSubtreeIfNeeded()

@@ -13,6 +13,7 @@ struct CloseNonDocumentWindowTests {
             backing: .buffered,
             defer: true
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         #expect(WindowCoordinator.isCloseableNonDocumentWindow(window))
     }
 
@@ -23,6 +24,7 @@ struct CloseNonDocumentWindowTests {
             backing: .buffered,
             defer: true
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         #expect(!WindowCoordinator.isCloseableNonDocumentWindow(window))
         #expect(!WindowCoordinator.isCloseableNonDocumentWindow(nil))
     }

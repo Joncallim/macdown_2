@@ -34,6 +34,7 @@ struct EditorAnimatedJumpTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 200))
         scrollView.documentView = system.textView
         system.scrollView = scrollView
@@ -72,6 +73,7 @@ struct EditorAnimatedJumpTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 200))
         scrollView.documentView = system.textView
         system.scrollView = scrollView

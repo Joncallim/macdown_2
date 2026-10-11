@@ -20,6 +20,7 @@ struct EditorTabUndoIsolationTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         defer { window.orderOut(nil) }
 
         window.contentView = first.textView
