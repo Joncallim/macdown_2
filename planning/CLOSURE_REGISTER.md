@@ -2,7 +2,7 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence: `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the package suite on `3f1ce29d` (2443 tests each, all passed).
+Reproducibility evidence: `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the package suite on `3f1ce29d` (2443 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (361 tests each, all passed). `MacDown2UITests` remain unexecuted.
 
 Baseline when written: `master` after #396 (source tree with the regressions below merged). Evidence is **CI-green PRs plus local runs**; no signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or consecutive-suite reproducibility run has been executed for this register yet. A local full serial package run on a heavily loaded machine (load ≈ 24) failed 41 wall-clock-sensitive tests (WebKit, subprocess, 2–5 s bounds) outside the areas below; it is not accepted evidence and the runs must be repeated on an idle machine.
 
