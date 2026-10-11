@@ -47,11 +47,28 @@ struct ExternalFileControllerBindRetryFlowTests {
             }
         }
 
-        func waitForCount(_ count: Int) async {
+        /// Waits for `count` handled contexts. `bound` only stops a context that never arrives from hanging the run
+        /// (the caller then fails on the returned `false`); it is not a product timing threshold.
+        @discardableResult
+        func waitForCount(_ count: Int, bound: Duration = .seconds(60)) async -> Bool {
             if contexts.count >= count {
-                return
+                return true
+            }
+            let timeout = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: bound)
+                // A cancelled timeout must not release a LATER waiter.
+                guard !Task.isCancelled else { return }
+                self?.releaseWaiter()
             }
             await withCheckedContinuation { waiter = (count, $0) }
+            timeout.cancel()
+            return contexts.count >= count
+        }
+
+        private func releaseWaiter() {
+            guard let waiter else { return }
+            self.waiter = nil
+            waiter.continuation.resume()
         }
     }
 
@@ -124,7 +141,7 @@ struct ExternalFileControllerBindRetryFlowTests {
         fixture.gate.letRetryRun()
         await controller.bindRetryTask?.value
         await controller.bindTask?.value
-        await fixture.observations.waitForCount(1)
+        #expect(await fixture.observations.waitForCount(1))
 
         #expect(
             controller.notice == .none,
@@ -136,7 +153,7 @@ struct ExternalFileControllerBindRetryFlowTests {
 
         // A later external edit is still reconciled by the rebound monitor.
         try "caf\u{E9} edited".write(to: fixture.url, atomically: false, encoding: .isoLatin1)
-        await fixture.observations.waitForCount(2)
+        #expect(await fixture.observations.waitForCount(2))
         #expect(fixture.model.activeDocument?.text == "caf\u{E9} edited")
     }
 
@@ -158,5 +175,76 @@ struct ExternalFileControllerBindRetryFlowTests {
         await controller.bindTask?.value
 
         #expect(fixture.observations.contexts.isEmpty, "no monitor may be bound on behalf of the stale document")
+    }
+
+    @Test func aBackToBackSynchronizeThatSkipsTheBindDoesNotCancelTheRetry() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let controller = fixture.controller
+
+        controller.synchronize(with: fixture.captured) // first bind fails; its retry waits on the sleeper
+        await fixture.gate.waitUntilEntered()
+        try FileManager.default.createDirectory(at: fixture.missingParent, withIntermediateDirectories: true)
+        try "text".write(to: fixture.url, atomically: true, encoding: .utf8)
+        let loaded = try FileDocument(fileURL: fixture.url).load()
+        fixture.model.tabStore.updateActiveDocument { _ in loaded }
+        let generationBefore = controller.lifecycleGeneration
+
+        // The URL is already "bound" (the failed first attempt recorded it), so this is skipped: only the baseline is
+        // refreshed and the monitor is NOT rebound here. The pending retry must therefore still be alive.
+        controller.synchronize(with: loaded)
+        #expect(controller.lifecycleGeneration == generationBefore, "a skipped bind must not advance the generation")
+        #expect(fixture.observations.contexts.isEmpty, "nothing is bound yet")
+        guard case .monitorFailed = controller.notice else {
+            Issue
+                .record(
+                    "the watcher failure must stay visible until the retry recovers it, notice=\(controller.notice)"
+                )
+            return
+        }
+
+        fixture.gate.letRetryRun()
+        await controller.bindRetryTask?.value
+        await controller.bindTask?.value
+
+        #expect(await fixture.observations.waitForCount(1), "the surviving retry binds the monitor")
+        #expect(controller.notice == .none)
+        #expect(fixture.model.activeDocument?.state == .clean)
+    }
+
+    @Test func anAToBToARoundTripDoesNotLetTheOldRetryRebindTheMonitor() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        let controller = fixture.controller
+
+        controller.synchronize(with: fixture.captured) // A fails, retry waits
+        await fixture.gate.waitUntilEntered()
+        try FileManager.default.createDirectory(at: fixture.missingParent, withIntermediateDirectories: true)
+        try "a".write(to: fixture.url, atomically: true, encoding: .utf8)
+        let otherURL = fixture.directory.appendingPathComponent("other.txt")
+        try "b".write(to: otherURL, atomically: true, encoding: .utf8)
+        let documentA = try FileDocument(fileURL: fixture.url).load()
+        let documentB = try FileDocument(fileURL: otherURL).load()
+
+        fixture.model.tabStore.updateActiveDocument { _ in documentB }
+        controller.synchronize(with: documentB) // B binds
+        await controller.bindTask?.value
+        #expect(await fixture.observations.waitForCount(1), "B bound")
+        fixture.model.tabStore.updateActiveDocument { _ in documentA }
+        controller.synchronize(with: documentA) // back to A: binds now that the directory exists
+        await controller.bindTask?.value
+        #expect(await fixture.observations.waitForCount(2), "A bound")
+        let generationAtARound = controller.lifecycleGeneration
+
+        fixture.gate.letRetryRun() // the ORIGINAL A retry wakes up
+        await controller.bindRetryTask?.value
+        await controller.bindTask?.value
+
+        #expect(
+            controller.lifecycleGeneration == generationAtARound,
+            "the first-A retry belongs to a retired generation"
+        )
+        #expect(fixture.observations.contexts.count == 2)
+        #expect(controller.boundURL == fixture.url.standardizedFileURL)
     }
 }
