@@ -78,4 +78,30 @@ struct DocumentFileMonitorBaselineRaceTests {
 
         #expect(await prober.callCount == 1)
     }
+
+    /// Cross-boundary review (2026-10-12), F1 (P1): the controller calls `updateBaseline` from the reconcile of each
+    /// probe result. A conflicted dirty document keeps its OLD revision while the file's identity is the new one, so
+    /// every probe result fed back a different identity; probing on identity change then looped forever (hundreds of
+    /// full-file reads/hashes, recovery writes and generation bumps per external change).
+    @Test func anIdentityOnlyBaselineChangeNeverProbes() async throws {
+        let url = URL(fileURLWithPath: "/tmp/epic18/baseline-loop.md")
+        let fresh = DocumentFileObservation.available(snapshot("x", at: url))
+        let prober = HeldFirstProber(old: fresh, new: fresh)
+        let monitor = DocumentFileMonitor(
+            debounce: .zero, watcher: MonitorWatcher(), prober: prober, sleeper: { _ in await Task.yield() }
+        )
+        let bind = Task { try await monitor.bind(to: url, priorFileObjectID: nil, decoding: .automatic) { _ in } }
+        await waitUntil { await prober.callCount == 1 }
+        await prober.releaseFirst()
+        try await bind.value
+        let sequenceBefore = await monitor.currentRequestGeneration()
+
+        for index in 0 ..< 50 { // the controller feeding back alternating identities, as a conflicted document does
+            let identity = PhysicalFileIdentity.FileObjectID(volume: "v", file: index.isMultiple(of: 2) ? "old" : "new")
+            await monitor.updateBaseline(priorFileObjectID: identity, decoding: .automatic, expectedURL: url)
+        }
+
+        #expect(await prober.callCount == 1, "no probe may be started by an identity-only update")
+        #expect(await monitor.currentRequestGeneration() == sequenceBefore, "and in-flight probes stay valid")
+    }
 }
