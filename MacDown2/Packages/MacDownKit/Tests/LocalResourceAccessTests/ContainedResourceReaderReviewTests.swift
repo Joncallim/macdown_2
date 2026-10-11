@@ -112,14 +112,14 @@ extension ContainedResourceReaderTests {
         let tree = try ResourceTestSupport.makeTree()
         defer { tree.cleanup() }
         try tree.write("data", to: "d.txt")
-        let baseline = ResourceTestSupport.openFileDescriptorCount()
+        let baseline = ResourceTestSupport.openDescriptorCount(under: tree.base)
         let lease = try DirectoryLease(opening: tree.root)
         let box = Box()
         var hooks = ResourceReadHooks()
         hooks.afterOpen = { // runs inside the root descriptor's use
-            box.before = ResourceTestSupport.openFileDescriptorCount()
+            box.before = ResourceTestSupport.openDescriptorCount(under: tree.base)
             lease.close()
-            box.after = ResourceTestSupport.openFileDescriptorCount()
+            box.after = ResourceTestSupport.openDescriptorCount(under: tree.base)
         }
 
         let snapshot = try ContainedResourceReader.read(
@@ -129,7 +129,10 @@ extension ContainedResourceReaderTests {
 
         #expect(snapshot.bytes == Data("data".utf8))
         #expect(box.after == box.before, "close() while the root descriptor is in use must not close it")
-        #expect(ResourceTestSupport.openFileDescriptorCount() <= baseline, "and it closes once the read returns")
+        #expect(
+            ResourceTestSupport.openDescriptorCount(under: tree.base) == baseline,
+            "and it closes once the read returns"
+        )
     }
 
     @Test func closingAFileLeaseMidReadDoesNotCloseTheDescriptorBeingRead() throws {
@@ -137,7 +140,7 @@ extension ContainedResourceReaderTests {
         defer { tree.cleanup() }
         let body = String(repeating: "z", count: 200_000)
         try tree.write(body, to: "f.txt")
-        let baseline = ResourceTestSupport.openFileDescriptorCount()
+        let baseline = ResourceTestSupport.openDescriptorCount(under: tree.base)
         let lease = try FileLease(opening: tree.root.appendingPathComponent("f.txt"))
         var hooks = ResourceReadHooks()
         hooks.beforeChunk = { done in
@@ -151,7 +154,7 @@ extension ContainedResourceReaderTests {
         )
 
         #expect(snapshot.bytes.count == body.utf8.count)
-        #expect(ResourceTestSupport.openFileDescriptorCount() <= baseline)
+        #expect(ResourceTestSupport.openDescriptorCount(under: tree.base) == baseline)
         #expect(throws: ResourceReadError.leaseClosed) { try ContainedResourceReader.read(lease, maxBytes: 1024) }
     }
 

@@ -39,8 +39,15 @@ enum ResourceTestSupport {
         try ResourceReference.parse(path)
     }
 
-    static func openFileDescriptorCount() -> Int {
-        (0 ..< 512).count { fcntl(Int32($0), F_GETFD) != -1 }
+    /// Open descriptors whose path lies under `base`. Counting by path (not the process-wide total) keeps the leak
+    /// checks exact while other suites in the same process open and close their own descriptors.
+    static func openDescriptorCount(under base: URL) -> Int {
+        let canonical = base.resolvingSymlinksInPath().path
+        return (0 ..< 1024).count { descriptor in
+            var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+            guard fcntl(Int32(descriptor), F_GETPATH, &buffer) == 0 else { return false }
+            return String(cString: buffer).hasPrefix(canonical)
+        }
     }
 
     static func leaked(_ snapshot: ResourceSnapshot?) -> Bool {

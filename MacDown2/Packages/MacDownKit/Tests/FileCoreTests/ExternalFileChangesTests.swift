@@ -111,13 +111,15 @@ struct ExternalFileChangesTests {
         let fixture = try FixtureFile(text: "baseline")
         let url = fixture.url
         let baseline = try FileStore().readSnapshot(from: url).revision
+        // The semaphore waits below are fixture signals (they return as soon as signalled); 30 s only stops a lost
+        // signal from hanging the run, and keeps the test from starving when the whole suite saturates the pool.
         let verified = DispatchSemaphore(value: 0)
         let writerQueued = DispatchSemaphore(value: 0)
         let permitReplacement = DispatchSemaphore(value: 0)
         let local = FileStore(afterBaselineVerification: { _ in
             verified.signal()
-            _ = writerQueued.wait(timeout: .now() + 1)
-            _ = permitReplacement.wait(timeout: .now() + 1)
+            _ = writerQueued.wait(timeout: .now() + 30)
+            _ = permitReplacement.wait(timeout: .now() + 30)
         })
 
         let results = FileStoreTestErrors()
@@ -131,7 +133,7 @@ struct ExternalFileChangesTests {
                 results.local = error
             }
         }
-        #expect(verified.wait(timeout: .now() + 1) == .success)
+        #expect(verified.wait(timeout: .now() + 30) == .success)
         group.enter()
         DispatchQueue.global().async {
             defer { group.leave() }
@@ -144,7 +146,7 @@ struct ExternalFileChangesTests {
         }
         permitReplacement.signal()
 
-        #expect(group.wait(timeout: .now() + 1) == .success)
+        #expect(group.wait(timeout: .now() + 30) == .success)
         #expect(results.local == nil)
         #expect(results.external == nil)
         #expect(try String(contentsOf: url, encoding: .utf8) == "external")

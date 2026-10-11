@@ -282,7 +282,7 @@ extension ContainedResourceReaderTests {
         defer { tree.cleanup() }
         try tree.write(String(repeating: "x", count: 2048), to: "big.txt")
         #expect(mkfifo(tree.root.appendingPathComponent("pipe").path, 0o600) == 0)
-        let baseline = ResourceTestSupport.openFileDescriptorCount()
+        let baseline = ResourceTestSupport.openDescriptorCount(under: tree.base)
         do {
             let lease = try DirectoryLease(opening: tree.root)
             for path in ["big.txt", "pipe", "missing.txt"] {
@@ -294,7 +294,10 @@ extension ContainedResourceReaderTests {
             }
             lease.close()
         }
-        #expect(ResourceTestSupport.openFileDescriptorCount() <= baseline, "no descriptor may outlive the lease")
+        #expect(
+            ResourceTestSupport.openDescriptorCount(under: tree.base) == baseline,
+            "no descriptor under the tree may outlive the lease"
+        )
     }
 
     @Test func closingTheLeaseMidReadDoesNotCloseTheDescriptorUnderTheReader() throws {
@@ -302,7 +305,7 @@ extension ContainedResourceReaderTests {
         defer { tree.cleanup() }
         let large = String(repeating: "y", count: 200_000)
         try tree.write(large, to: "big.txt")
-        let baseline = ResourceTestSupport.openFileDescriptorCount()
+        let baseline = ResourceTestSupport.openDescriptorCount(under: tree.base)
         let lease = try DirectoryLease(opening: tree.root)
         var hooks = ResourceReadHooks()
         hooks.beforeChunk = { done in
@@ -318,7 +321,10 @@ extension ContainedResourceReaderTests {
         )
 
         #expect(snapshot.bytes.count == large.utf8.count)
-        #expect(ResourceTestSupport.openFileDescriptorCount() <= baseline, "the deferred close ran and nothing leaked")
+        #expect(
+            ResourceTestSupport.openDescriptorCount(under: tree.base) == baseline,
+            "the deferred close ran and nothing leaked"
+        )
         #expect(throws: ResourceReadError.leaseClosed) {
             try ContainedResourceReader.read(ResourceTestSupport.reference("big.txt"), in: lease, maxBytes: 1 << 20)
         }
