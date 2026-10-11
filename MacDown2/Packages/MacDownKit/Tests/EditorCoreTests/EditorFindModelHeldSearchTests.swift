@@ -74,3 +74,32 @@ struct EditorFindModelHeldSearchTests {
         #expect(!model.matchesAreCurrent(forLiveText: "Foo foo foo foo"))
     }
 }
+
+/// Cross-feature review (2026-10-11), F4: freshness compared only the text, so in the gap between a query/option edit
+/// and the asynchronous recompute starting, Replace All could be built from the previous query's matches.
+@MainActor
+struct EditorFindModelQueryFreshnessTests {
+    @Test func matchesAreNotCurrentOnceTheQueryChangesEvenForTheSameText() async {
+        let text = "foo bar foo"
+        let model = EditorFindModel(query: "foo")
+        await model.updateMatches(in: text)
+        #expect(model.matchesAreCurrent(forLiveText: text))
+
+        model.query = "bar" // the recompute has not started yet
+
+        #expect(!model.matchesAreCurrent(forLiveText: text))
+    }
+
+    @Test func matchesAreNotCurrentOnceAnOptionChangesEvenForTheSameText() async {
+        let text = "Foo foo"
+        let model = EditorFindModel(query: "foo")
+        await model.updateMatches(in: text)
+        #expect(model.matchesAreCurrent(forLiveText: text))
+
+        model.options = SearchOptions(isCaseSensitive: true)
+
+        #expect(!model.matchesAreCurrent(forLiveText: text))
+        await model.updateMatches(in: text)
+        #expect(model.matchesAreCurrent(forLiveText: text), "and current again after the recompute")
+    }
+}
