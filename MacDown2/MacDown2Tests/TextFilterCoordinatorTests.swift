@@ -23,13 +23,13 @@ import Workspace
 struct TextFilterCoordinatorTests {
     // MARK: - Fixture plumbing
 
-    private static func makeTemporaryDirectory() throws -> URL {
+    static func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
 
-    private static func makeCommand(_ script: String, in directory: URL) throws -> TextFilterCommand {
+    static func makeCommand(_ script: String, in directory: URL) throws -> TextFilterCommand {
         let name = "\(UUID().uuidString).sh"
         let url = directory.appendingPathComponent(name)
         try script.write(to: url, atomically: true, encoding: .utf8)
@@ -39,7 +39,7 @@ struct TextFilterCoordinatorTests {
 
     /// A slow script the test can hold open across an intervening edit or a
     /// window close, then release by writing a sentinel file.
-    private static func makeGatedCommand(gate: URL, in directory: URL) throws -> TextFilterCommand {
+    static func makeGatedCommand(gate: URL, in directory: URL) throws -> TextFilterCommand {
         try makeCommand(
             """
             #!/bin/sh
@@ -50,13 +50,13 @@ struct TextFilterCoordinatorTests {
         )
     }
 
-    private struct Fixture {
+    struct Fixture {
         let coordinator: WindowCoordinator
         let controller: WindowController
         let tabID: UUID
     }
 
-    private static func makeController(text: String = "one two") throws -> Fixture {
+    static func makeController(text: String = "one two") throws -> Fixture {
         let preferences = FileTreePreferences()
         let coordinator = WindowCoordinator(
             themeController: ThemeController(),
@@ -81,7 +81,7 @@ struct TextFilterCoordinatorTests {
         return Fixture(coordinator: coordinator, controller: controller, tabID: tabID)
     }
 
-    private static func target(
+    static func target(
         controller: WindowController, tabID: UUID
     ) throws -> TextFilterCoordinator.TextFilterEditingTarget {
         let textSystem = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
