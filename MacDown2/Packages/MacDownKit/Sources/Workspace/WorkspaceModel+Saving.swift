@@ -196,9 +196,7 @@ public extension WorkspaceModel {
     /// captured before it presented its panel — to an already-chosen
     /// `url`. The caller having already presented (and dismissed) whatever
     /// panel it used to obtain it, explicitly against whichever window it
-    /// considers the operation's origin. `Workspace` has no AppKit window
-    /// type to accept here; the caller keeps that context and only hands
-    /// over the result.
+    /// considers the operation's origin. `Workspace` has no AppKit window type; the caller keeps that context.
     ///
     /// `expected` is what makes that hand-off safe. A panel stays open for
     /// as long as the user takes to answer it, and the active document can
@@ -220,7 +218,7 @@ public extension WorkspaceModel {
             lastError = workspaceError(for: error)
             return
         }
-        guard activeDocumentSharesLifetime(with: expected) else { return }
+        guard documentLifetimeIsOpen(with: expected) else { return }
         await publishSaveAs(expected, to: url, destinationBaseline: baseline)
     }
 
@@ -320,8 +318,9 @@ public extension WorkspaceModel {
             return nil
         }
         guard let finalReplacement = saveAsReplacement(saved: saved, source: document, context: context),
-              sameSaveAsSnapshot(finalReplacement, reconciled) else { return nil }
-        tabStore.updateActiveDocument { _ in finalReplacement }
+              sameSaveAsSnapshot(finalReplacement, reconciled),
+              let tabID = owningTabID(of: document) else { return nil }
+        tabStore.updateDocument(inTab: tabID) { _ in finalReplacement }
         guard await publishSaveAsSession() else {
             enqueueSaveAsRetry(
                 .publishSession(for: finalReplacement),

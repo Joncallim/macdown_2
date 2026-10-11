@@ -8,10 +8,7 @@ extension WorkspaceModel {
         context: SaveContext,
         error _: Error
     ) -> Bool {
-        guard isLatestSave(context),
-              let current = tabStore.activeDocument,
-              isSameDocumentLifetime(current, document)
-        else { return false }
+        guard isLatestSave(context), owningTabID(of: document) != nil else { return false }
         // Relevance is ownership — the latest save of the same document
         // lifetime — not equality with the attempted text: a failure the user
         // is waiting on must be visible even if they typed (or edited and
@@ -40,10 +37,9 @@ extension WorkspaceModel {
 
     /// After the off-main destination read the user may have typed. That is not a reason to abandon an explicit
     /// command: `applySaveAs` merges later edits into the rebound document. Only a different document (closed,
-    /// replaced, another lifetime) cancels.
-    func activeDocumentSharesLifetime(with expected: FileDocument) -> Bool {
-        guard let active = tabStore.activeDocument else { return false }
-        return isSameDocumentLifetime(active, expected)
+    /// replaced, another lifetime) cancels; the owning tab need not be the active one.
+    func documentLifetimeIsOpen(with expected: FileDocument) -> Bool {
+        owningTabID(of: expected) != nil
     }
 
     func isLatestSave(_ context: SaveContext) -> Bool {
@@ -51,9 +47,9 @@ extension WorkspaceModel {
     }
 
     func saveAsReplacement(saved: FileDocument, source: FileDocument, context: SaveContext) -> FileDocument? {
-        guard isLatestSave(context), let current = tabStore.activeDocument,
-              isSameDocumentLifetime(current, source) else { return nil }
-        return isCurrent(source) ? saved : current.rebindingSavedDestination(from: saved)
+        guard isLatestSave(context), let tabID = owningTabID(of: source),
+              let current = tabStore.tabs.first(where: { $0.id == tabID })?.document else { return nil }
+        return isCurrent(source, inTab: tabID) ? saved : current.rebindingSavedDestination(from: saved)
     }
 
     func persistReconciledSaveAsRecoveryIfNeeded(
