@@ -376,7 +376,7 @@ public final class WorkspaceModel {
         }
     }
 
-    private func recoveryCleanupWorkspaceError(
+    func recoveryCleanupWorkspaceError(
         _ outcome: RecoveryCleanupResult,
         document: FileDocument
     ) -> WorkspaceError {
