@@ -155,8 +155,10 @@ extension WindowController {
     }
 
     /// Every close path retires the document's recovery lifetime, which awaits I/O. Close only if the document is
-    /// still exactly what was retired; text typed or a state change in that gap must not be discarded unprompted,
-    /// so the normal close flow runs again and asks about whatever changed.
+    /// still what was retired: same text (exact scalars) and state. Text typed or a state change in that gap must not
+    /// be discarded unprompted, so the normal close flow runs again and asks about whatever changed. A bare
+    /// `mutationGeneration` bump (a background reconcile that changed neither) is not a reason to keep the window
+    /// open: comparing it made the close flaky.
     ///
     /// The retired lifetime rejects every later recovery write, so a window kept open on it would lose its edits to a
     /// crash and fail the session autosave for every window: it is moved to a fresh persisted lifetime first.
@@ -164,7 +166,8 @@ extension WindowController {
         guard let coordinator else { return }
         guard let active = model.activeDocument,
               active.id == document.id,
-              active.mutationGeneration == document.mutationGeneration
+              active.state == document.state,
+              active.text.isExactlyEqual(to: document.text)
         else {
             await model.renewRecoveryLifetime(retiredFrom: document)
             window?.performClose(nil)
