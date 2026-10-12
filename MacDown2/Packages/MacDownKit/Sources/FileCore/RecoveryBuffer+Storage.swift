@@ -376,7 +376,7 @@ extension RecoveryBuffer {
         try FileManager.default.createDirectory(at: recoveryDirectory, withIntermediateDirectories: true)
         try hooks?.beforeMarkerWrite?(recoveryFenceURL)
         let data = try JSONEncoder().encode(ledger)
-        try data.write(to: recoveryFenceURL, options: .atomic)
+        try DurableFileWriter.write(data, to: recoveryFenceURL)
     }
 
     /// Current owners cannot be compacted, but inactive managed ownership is
