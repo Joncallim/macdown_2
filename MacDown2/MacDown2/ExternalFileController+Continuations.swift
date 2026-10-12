@@ -169,7 +169,10 @@ extension ExternalFileController {
 
             let action = RecoveryAction.persist(replacement, lifecycleGeneration)
             let replacementContext = OperationContext(document: replacement, generation: lifecycleGeneration)
-            guard await recoveryExecutor.persist(replacement) else {
+            // A document that became clean during the mint (Use Disk Version, a Save) has nothing to recover; writing
+            // its text would leave a stale record that a later relaunch restores as a false conflict.
+            let persisted = replacement.state == .clean ? true : await recoveryExecutor.persist(replacement)
+            guard persisted else {
                 guard isCurrent(replacementContext, in: model) else { return }
                 recoveryRetryAction = action
                 let location = await replacement.recoveryBuffer.recoveryLocation(
@@ -212,7 +215,10 @@ extension ExternalFileController {
 
             let action = RecoveryAction.persist(replacement, lifecycleGeneration)
             let replacementContext = OperationContext(document: replacement, generation: lifecycleGeneration)
-            guard await recoveryExecutor.persist(replacement) else {
+            // A document that became clean during the mint (Use Disk Version, a Save) has nothing to recover; writing
+            // its text would leave a stale record that a later relaunch restores as a false conflict.
+            let persisted = replacement.state == .clean ? true : await recoveryExecutor.persist(replacement)
+            guard persisted else {
                 guard isCurrent(replacementContext, in: model) else { return }
                 recoveryRetryAction = action
                 notice = await .recoveryCleanup(replacement.recoveryBuffer.recoveryLocation(
