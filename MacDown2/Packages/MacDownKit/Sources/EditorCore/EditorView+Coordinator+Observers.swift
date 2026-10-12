@@ -34,6 +34,9 @@ extension EditorView.Coordinator {
               !system.isPerformingProgrammaticTextUpdate,
               !system.isApplyingMultiRangeTransaction
         else { return }
+        if adoptReplacedModelIfNeeded(into: system) {
+            return
+        }
         isApplyingModelText = true
         textBinding?.wrappedValue = system.text
         isApplyingModelText = false

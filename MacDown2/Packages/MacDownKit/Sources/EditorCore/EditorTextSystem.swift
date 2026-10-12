@@ -50,6 +50,7 @@ public final class EditorTextSystem {
     /// replacement, mirroring the incremental-edit path's own bump in
     /// `noteTextEdit()` below.
     var editRevision: UInt64 = 0
+    var lastExternalReplacementText: String?
     /// Told about every text change (see `EditorTextChange`); nil when nobody is watching.
     public var textChangeObserver: ((EditorTextChange) -> Void)?
     let metricsCache = EditorDocumentMetricsCache()

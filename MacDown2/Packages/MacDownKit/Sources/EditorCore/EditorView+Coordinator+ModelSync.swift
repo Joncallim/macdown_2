@@ -1,32 +1,28 @@
 import AppKit
 import SwiftUI
 
-/// Tracks the last text both sides agreed on, so a model replacement that arrives while an IME composition is open
-/// (when `updateNSView` deliberately skips the push) is not reverted by the composition's commit.
+/// The last text both sides agreed on, so a model replacement that has not been pushed into the view yet (a render
+/// is pending, or an IME composition is open and `updateNSView` skips the push) is never reverted when the view
+/// publishes its own, now stale, text.
 struct EditorModelSyncState {
     var lastSyncedText: String?
-    var divergedDuringComposition = false
 }
 
 extension EditorView.Coordinator {
-    func noteSynced(_ text: String) {
+    @MainActor func noteSynced(_ text: String) {
         sync.lastSyncedText = text
+        system?.lastExternalReplacementText = nil
     }
 
-    /// `updateNSView` skipped the model push because marked text is open. If the model no longer matches the last
-    /// agreed text, it was replaced from outside (not typed through this view).
-    func noteSkippedPush(model: String) {
-        guard let synced = sync.lastSyncedText, !model.isExactlyEqual(to: synced) else { return }
-        sync.divergedDuringComposition = true
-    }
-
-    /// Called when the view reports a text change. When the model was replaced during the composition that just ended,
-    /// the view's text (old text plus the composed characters) is stale: adopt the model instead of publishing it.
+    /// Called before the view publishes its text (a text change, an undo/redo). When the model changed since the last
+    /// agreed text, and it is not simply the text an external replacement just wrote into the view, the view's text
+    /// (the old text plus whatever was typed or composed since) is stale: adopt the model instead of publishing.
     /// Returns `true` when the model was adopted and the view's text must not be published.
     @MainActor func adoptReplacedModelIfNeeded(into system: EditorTextSystem) -> Bool {
-        guard sync.divergedDuringComposition else { return false }
-        sync.divergedDuringComposition = false
-        guard let model = textBinding?.wrappedValue, !model.isExactlyEqual(to: system.text) else { return false }
+        guard let model = textBinding?.wrappedValue, let synced = sync.lastSyncedText,
+              !model.isExactlyEqual(to: synced),
+              !(system.lastExternalReplacementText.map { model.isExactlyEqual(to: $0) } ?? false),
+              !model.isExactlyEqual(to: system.text) else { return false }
         isApplyingModelText = true
         system.setText(model)
         isApplyingModelText = false

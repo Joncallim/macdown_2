@@ -42,6 +42,7 @@ public extension EditorTextSystem {
         defer { isPerformingProgrammaticTextUpdate = false }
 
         textView.string = text
+        lastExternalReplacementText = text
         editRevision &+= 1
         lineIndex.rebuild(text: text as NSString)
         textChangeObserver?(.untracked)
