@@ -101,32 +101,6 @@ extension WorkspaceModel {
         return .migrationPending
     }
 
-    /// A close path retired `document`'s recovery lifetime, but the document was edited during the retire and stays
-    /// open. That lifetime now rejects every recovery write, so move the live document to a fresh persisted one.
-    public func renewRecoveryLifetime(retiredFrom document: FileDocument) async {
-        guard let current = tabStore.activeDocument, current.id == document.id,
-              current.recoveryEpoch == document.recoveryEpoch,
-              let replacement = try? await current.withFreshRecoveryLifetime(preparedBy: current.recoveryBuffer),
-              isCurrent(current), await replacement.persistRecovery() else { return }
-        tabStore.updateActiveDocument { _ in replacement }
-    }
-
-    /// After a close attempt: retire the closing document's recovery unless its tab is still open on the same
-    /// lifetime (a failed Save-and-close keeps the unsaved tab and its recovery).
-    func retireRecoveryIfClosed(_ closingDocument: FileDocument, tabID: UUID?) async {
-        let retained = tabStore.tabs.first { $0.id == tabID }
-            .map { isSameDocumentLifetime($0.document, closingDocument) }
-        guard retained != true else { return }
-        let cleanup = await closingDocument.recoveryBuffer.retireWithOutcome(
-            for: closingDocument.id,
-            epoch: closingDocument.recoveryEpoch
-        )
-        if !cleanup.isAbsent {
-            registerPendingRecovery(.retire(for: closingDocument))
-            lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
-        }
-    }
-
     func retireFormerSaveAsSource(_ source: FileDocument, replacing destination: FileDocument) async -> Bool {
         guard source.id != destination.id || source.recoveryEpoch != destination.recoveryEpoch else { return true }
         let pending = PendingRecoveryCleanupAction.retire(for: source)
