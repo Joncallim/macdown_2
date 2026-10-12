@@ -183,11 +183,8 @@ public final class EditorFindModel {
         }
         let domain = options.searchesSelectionOnly ? searchDomain : nil
         let scopeLost = options.searchesSelectionOnly && searchDomainLost
-        searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
-        searchedFingerprint = ExactTextFingerprint(text)
         let query = query
         let options = options
-        searchedInputs = (query, options)
         isSearching = true
         // A superseded search is cancelled outright (its regex checks for cancellation while backtracking), so rapid
         // edits cannot pile up unbounded regex work (#183 F08).
@@ -199,11 +196,14 @@ public final class EditorFindModel {
         let result = await task.value
         guard generation == searchGeneration else { return false }
         if case .failure(.cancelled) = result {
-            // Cancelled without being superseded: partial output is never a
-            // complete result, so leave the previous matches untouched.
+            // Cancelled without being superseded: partial output is never a complete result; keep the previous matches.
             isSearching = false
             return false
         }
+        // Stamped at commit, so a search cancelled first leaves the earlier matches stamped with what they answer.
+        searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
+        searchedFingerprint = ExactTextFingerprint(text)
+        searchedInputs = (query, options)
         switch result {
         case let .success(newMatches):
             matches = newMatches
