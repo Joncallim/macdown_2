@@ -132,11 +132,11 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private func makeSessionsForActiveTab() {
         guard let activeTab = model.tabStore.activeTab else { return }
         let identity = activeTab.id.uuidString
-        _ = editorStore.system(
+        editorStore.system(
             for: identity,
             initialText: activeTab.document.text,
             configuration: .default
-        )
+        ).setAwaitingEditorView(true)
         _ = parseStore.session(for: identity)
         _ = jsonAnalysisStore.session(for: identity)
     }

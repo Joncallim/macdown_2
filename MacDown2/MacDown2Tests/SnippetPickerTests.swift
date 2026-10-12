@@ -79,6 +79,7 @@ struct SnippetPickerTests {
         )
         coordinator.controllers = [controller]
         let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        system.setAwaitingEditorView(false) // these tests drive the system without an EditorView
         return Fixture(coordinator: coordinator, controller: controller, system: system)
     }
 

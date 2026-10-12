@@ -54,6 +54,7 @@ public final class EditorTextSystem {
     /// `true` while no `EditorView` hosts this system (Preview Only, between mounts): its text view has no delegate,
     /// so an edit made now would never reach the model and would be reverted by the next mount.
     public internal(set) var isDetachedFromEditorView = false
+
     /// Told about every text change (see `EditorTextChange`); nil when nobody is watching.
     public var textChangeObserver: ((EditorTextChange) -> Void)?
     let metricsCache = EditorDocumentMetricsCache()
