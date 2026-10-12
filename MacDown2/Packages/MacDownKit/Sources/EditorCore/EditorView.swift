@@ -134,6 +134,10 @@ public struct EditorView: NSViewRepresentable {
             // text was pushed from the model; user keystrokes already update
             // layout through the NSTextView directly.
             system.textView.sizeToFit()
+        } else if !system.textView.hasMarkedText(), system.text.isExactlyEqual(to: text) {
+            // Model and view agree (undo/redo, external replace and typing all end here): remember it, so a later
+            // composition is not mistaken for a model replacement.
+            context.coordinator.noteSynced(text)
         }
 
         // After any model push above (which bypasses the incremental
