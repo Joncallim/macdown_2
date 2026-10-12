@@ -2,9 +2,9 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence (head `d2b7e242`, after the reviews' fixes #412–#425): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2465 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (363 tests each, all passed). `MacDown2UITests` remain unexecuted.
+Reproducibility evidence (head `ebf6445e`, after the reviews' fixes #412–#431): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2469 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (363 tests each, all passed). `MacDown2UITests` remain unexecuted.
 
-Baseline: `master` after #426. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
+Baseline: `master` after #431. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
 
 ## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
 
@@ -24,6 +24,16 @@ Baseline: `master` after #426. Evidence is **CI-green PRs plus local runs** on o
 | Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers); on re-review only one Return test is shown to discriminate, so the others are regression guards, not proof |
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
+
+## Second post-fix review (2026-10-12, Opus, exact head `d2b7e242`)
+
+| Finding | Disposition |
+| --- | --- |
+| P2 (app-reachable) #423 stopped identity-only updates from retiring a probe already in flight, so a pre-save probe was published as current after the save's baseline update and could revert the just-saved text | Reproduced; fixed #428 (probes counted while in flight; retire + re-probe only if one is, so the #415 loop cannot return) |
+| P2 latent (package API; one tab per model in the app) Save-and-close judged success and retired recovery against the active tab, so a failed save with a tab switch closed the unsaved tab and deleted its recovery; `TabStore.resolveClose` used a pre-await index | Reproduced; fixed #429 (`WorkspaceCloseTabSwitchTests`) |
+| P2 latent `reconcileSaveConflict` and its retry were active-tab-only | Reproduced; fixed #430 |
+| P2 latent `prepareSaveAsRecoveryContinuation` was active-tab-only (retry stuck until the tab is activated) | Reproduced; fixed #431; one existing test's expectation changed deliberately (owner completes, active tab untouched) |
+| Watcher-rebind lost update | Refuted for the ordinary path (bind sets its policy synchronously before suspending; the update task is queued after it). Residual: if the two tasks ran at different priorities; unproven, open |
 
 ## Post-fix cross-boundary review (2026-10-12, Opus, exact head `2861e1a4`)
 
@@ -86,4 +96,4 @@ Credentials or persistent access, signing/notarisation, source-archive publicati
 1. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
 2. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
 3. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
-4. Request the post-fix cross-boundary review of head `d2b7e242` (serial evidence for it is recorded above); any later source change invalidates that evidence.
+4. Review of head `ebf6445e` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
