@@ -57,4 +57,52 @@ struct WorkspaceTabSwitchSaveTests {
         #expect(try FileStore().read(from: urlA).content == "A saved plus more")
         #expect(model.lastError == nil)
     }
+
+    /// Cross-boundary review F2 (P2): Save As finalisation looked only at the ACTIVE tab, so a Save As held at
+    /// publication while the user switched tabs wrote the file but never rebound its own tab to the new destination
+    /// (the tab stayed dirty and pointed at the old file).
+    @Test func aSaveAsCompletedWhileAnotherTabIsActiveRebindsItsOwnTab() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let urlA = directory.appendingPathComponent("a.md")
+        let urlB = directory.appendingPathComponent("b.md")
+        let destination = directory.appendingPathComponent("renamed.md")
+        _ = try FileStore().write("baseline", to: urlA)
+        _ = try FileStore().write("other", to: urlB)
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let barrier = SavePublicationBarrier()
+        let heldStore = FileStore(afterBaselineVerification: { _ in barrier.arriveAndWait() })
+        let documentA = try FileDocument(fileURL: urlA, fileStore: heldStore, recoveryBuffer: recovery)
+            .load().edited(text: "A saved as")
+        let documentB = try FileDocument(fileURL: urlB, recoveryBuffer: recovery).load()
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        store.newTab(document: documentA)
+        let tabA = try #require(store.activeTabID)
+        store.newTab(document: documentB)
+        let tabB = try #require(store.activeTabID)
+        store.activate(tabA)
+        let model = WorkspaceModel(tabStore: store, stateStore: FakeStateStore())
+        defer { barrier.cancelAndAllowPublication() }
+
+        let saveAs = Task { await model.saveAs(to: destination, expecting: documentA) }
+        guard await waitForSignal(
+            timeout: .seconds(30),
+            wait: { await barrier.waitForFirstPublication() },
+            onTimeout: { barrier.cancelWaiters() }
+        ) else {
+            Issue.record("The Save As never reached publication")
+            return
+        }
+        store.activate(tabB)
+        barrier.allowPublication()
+        await saveAs.value
+
+        let rebound = try #require(store.tabs.first { $0.id == tabA }?.document)
+        #expect(try FileStore().read(from: destination).content == "A saved as")
+        #expect(rebound.fileURL?.standardizedFileURL == destination.standardizedFileURL,
+                "the completed Save As must rebind its own tab")
+        #expect(rebound.state == .clean)
+        #expect(store.activeTabID == tabB, "finalisation must not steal or alter the active tab")
+        #expect(store.tabs.first { $0.id == tabB }?.document.fileURL?.standardizedFileURL == urlB.standardizedFileURL)
+    }
 }

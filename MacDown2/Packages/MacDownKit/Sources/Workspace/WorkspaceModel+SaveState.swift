@@ -29,6 +29,11 @@ extension WorkspaceModel {
             && current.mutationGeneration == document.mutationGeneration
     }
 
+    /// The tab that owns `document`'s lifetime, active or not.
+    func owningTabID(of document: FileDocument) -> UUID? {
+        tabStore.tabs.first { isSameDocumentLifetime($0.document, document) }?.id
+    }
+
     func isSameDocumentLifetime(_ lhs: FileDocument, _ rhs: FileDocument) -> Bool {
         lhs.id == rhs.id
             && lhs.recoveryEpoch == rhs.recoveryEpoch
