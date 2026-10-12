@@ -103,4 +103,37 @@ struct DurableFileWriterTests {
         #expect(try String(contentsOf: url, encoding: .utf8) == "new", "and the new file is what is published")
         #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["ledger.json"])
     }
+
+    /// Round-9 review P2: any `F_FULLFSYNC` failure fell back to plain `fsync`, so an EIO from the full flush could be
+    /// reported as durable. Only "not supported" may fall back.
+    @Test func onlyAnUnsupportedFullFlushFallsBackToPlainFsync() {
+        let counter = EventLog()
+        let eio = DurableFileWriter.flush(
+            0,
+            fullFlush: { _ in
+                errno = EIO
+                return -1
+            },
+            plainFlush: { _ in
+                counter.append("plain")
+                return 0
+            }
+        )
+        #expect(eio == -1, "an I/O error from the full flush is reported, not masked by fsync")
+        #expect(counter.values.isEmpty)
+
+        let unsupported = DurableFileWriter.flush(
+            0,
+            fullFlush: { _ in
+                errno = ENOTSUP
+                return -1
+            },
+            plainFlush: { _ in
+                counter.append("plain")
+                return 0
+            }
+        )
+        #expect(unsupported == 0)
+        #expect(counter.values == ["plain"])
+    }
 }

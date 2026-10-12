@@ -11,12 +11,18 @@ import Foundation
 enum DurableFileWriter {
     typealias Sync = @Sendable (Int32) -> Int32
 
-    /// `F_FULLFSYNC`, falling back to `fsync` on a filesystem that does not support it.
+    /// `F_FULLFSYNC`, falling back to plain `fsync` ONLY when the filesystem does not support the full flush. Any other
+    /// failure (EIO, ...) is reported: a plain `fsync` that then succeeds would claim durability the device never gave.
     static let fullSync: Sync = { descriptor in
-        if fcntl(descriptor, F_FULLFSYNC) == 0 {
+        flush(descriptor, fullFlush: { fcntl($0, F_FULLFSYNC) }, plainFlush: { fsync($0) })
+    }
+
+    static func flush(_ descriptor: Int32, fullFlush: Sync, plainFlush: Sync) -> Int32 {
+        if fullFlush(descriptor) == 0 {
             return 0
         }
-        return fsync(descriptor)
+        guard [ENOTSUP, EINVAL, ENOTTY].contains(errno) else { return -1 }
+        return plainFlush(descriptor)
     }
 
     /// Replaces `url` with `data`. Throws only BEFORE the rename publishes the new file (the old file is then intact);
