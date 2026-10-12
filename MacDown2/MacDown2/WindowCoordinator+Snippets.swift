@@ -90,7 +90,8 @@ extension WindowCoordinator {
     func insertSnippet(_ snippet: Snippet, into controller: WindowController, expectingTab: UUID? = nil) -> Bool {
         guard let activeTab = controller.model.tabStore.activeTab,
               expectingTab == nil || activeTab.id == expectingTab,
-              let system = controller.editorStore.existingSystem(for: activeTab.id.uuidString)
+              let system = controller.editorStore.existingSystem(for: activeTab.id.uuidString),
+              !system.isDetachedFromEditorView
         else { return false }
         let clipboard = NSPasteboard.general.string(forType: .string)
         let lineEnding = LineEndingProfile(detecting: system.textView.string).dominantEnding ?? .lineFeed

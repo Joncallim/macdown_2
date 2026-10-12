@@ -93,6 +93,7 @@ public struct EditorView: NSViewRepresentable {
         system.applyPendingScrollOffset()
 
         system.textView.delegate = context.coordinator
+        system.isDetachedFromEditorView = false
         context.coordinator.system = system
         context.coordinator.textBinding = $text
         context.coordinator.noteSynced(text)

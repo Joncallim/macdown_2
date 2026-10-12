@@ -19,6 +19,7 @@ public extension EditorView {
         guard let system = coordinator.system else { return }
         if system.textView.delegate === coordinator {
             system.textView.delegate = nil
+            system.isDetachedFromEditorView = true
         }
         if system.scrollView === scrollView {
             system.scrollView = nil
