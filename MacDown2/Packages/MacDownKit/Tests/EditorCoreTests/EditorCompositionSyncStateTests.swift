@@ -132,4 +132,32 @@ struct EditorCompositionSyncStateTests {
         spin()
         #expect(model.text.contains("é"), "final model=\(model.text) view=\(system.text)")
     }
+
+    /// Round-5 review (c64da714) P2: the flag was only set from `updateNSView`, so a view publish that came BEFORE
+    /// SwiftUI rendered a model-only replacement still reverted it. The check now happens at publish time.
+    @Test func aKeystrokeBeforeTheModelReplacementIsPushedDoesNotRevertIt() {
+        let mounted = mount()
+        defer { mounted.window.orderOut(nil) }
+        let unset = NSRange(location: NSNotFound, length: 0)
+        mounted.model.text = "EXTERNAL"
+        mounted.system.textView.insertText("Z", replacementRange: unset)
+        spin()
+        #expect(mounted.model.text.contains("EXTERNAL"), "model=\(mounted.model.text) view=\(mounted.system.text)")
+    }
+
+    @Test func aCompositionCommitBeforeTheModelReplacementIsRenderedDoesNotRevertIt() {
+        let mounted = mount()
+        defer { mounted.window.orderOut(nil) }
+        let unset = NSRange(location: NSNotFound, length: 0)
+        mounted.system.textView.setMarkedText(
+            "ni",
+            selectedRange: NSRange(location: 2, length: 0),
+            replacementRange: unset
+        )
+        spin()
+        mounted.model.text = "EXTERNAL"
+        mounted.system.textView.insertText("你好", replacementRange: unset)
+        spin()
+        #expect(mounted.model.text.contains("EXTERNAL"), "model=\(mounted.model.text) view=\(mounted.system.text)")
+    }
 }
