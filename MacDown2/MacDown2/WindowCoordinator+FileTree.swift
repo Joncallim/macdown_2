@@ -293,6 +293,6 @@ extension WindowCoordinator {
             return
         }
         guard await controller.externalFileController.retireRecovery(for: document).isAbsent else { return }
-        controller.closeAfterRetire(of: document)
+        await controller.closeAfterRetire(of: document)
     }
 }

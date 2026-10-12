@@ -37,16 +37,16 @@ struct CloseAfterRetireTests {
         return (coordinator, controller)
     }
 
-    @Test func anUnchangedDocumentClosesTheWindow() throws {
+    @Test func anUnchangedDocumentClosesTheWindow() async throws {
         let (coordinator, controller) = try makeController()
         let retired = try #require(controller.model.activeDocument)
 
-        controller.closeAfterRetire(of: retired)
+        await controller.closeAfterRetire(of: retired)
 
         #expect(coordinator.controllers.isEmpty)
     }
 
-    @Test func textTypedAfterTheRetireKeepsTheWindowOpen() throws {
+    @Test func textTypedAfterTheRetireKeepsTheWindowOpen() async throws {
         let (coordinator, controller) = try makeController()
         let retired = try #require(controller.model.activeDocument)
         controller.model.tabStore.updateActiveDocument { $0.updatingText("one, then typed") }
@@ -55,7 +55,7 @@ struct CloseAfterRetireTests {
             controller.close()
         }
 
-        controller.closeAfterRetire(of: retired)
+        await controller.closeAfterRetire(of: retired)
 
         #expect(coordinator.controllers.contains { $0 === controller })
         #expect(controller.model.activeDocument?.text == "one, then typed")
