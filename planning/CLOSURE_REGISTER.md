@@ -2,9 +2,9 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence (head `6e146d89`, after the reviews' fixes #412–#444): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2482 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (364 tests each, all passed). `MacDown2UITests` remain unexecuted.
+Reproducibility evidence (head `54b06b3a`, after the reviews' fixes #412–#446): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2483 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (364 tests each, all passed). `MacDown2UITests` remain unexecuted.
 
-Baseline: `master` after #444. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
+Baseline: `master` after #446. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
 
 ## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
 
@@ -24,6 +24,15 @@ Baseline: `master` after #444. Evidence is **CI-green PRs plus local runs** on o
 | Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers); on re-review only one Return test is shown to discriminate, so the others are regression guards, not proof |
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
+
+## Seventh review round (2026-10-12, Opus, exact head `6e146d89`)
+
+| Finding | Disposition |
+| --- | --- |
+| P2 (reproduced; real app: Preview Only + Text Filter / snippet) a command edit applied while the editor pane is unmounted reached the hidden text view but never the model (no delegate), and the next mount pushed the model back: the result vanished silently | Fixed #446: `EditorTextSystem.isDetachedFromEditorView` (set on dismantle, cleared on make); `canApplyCommandEdit` refuses while detached; the Text Filter editing target and `insertSnippet` decline. The app-level gates are not directly tested; Format JSON stays enabled in the menu but is a no-op |
+| #443 (publish-time model check) | Held against every attack: every writer of document text in `MacDown2/` and `Workspace` reviewed; reload/use-external/move paths set `lastExternalReplacementText`; no keystroke/undo/IME discarded except the stated trade-off |
+| `ExportCoordinator`, `TextFilterCoordinator`, `WindowCoordinator+FileTree` | Reviewed; sound |
+| Save As encoding lineage | New adverse-order test (encoding save held at publication, ordinary save and Save As queued behind it) passes. Package-API only, fails safe: an ordinary save queued behind a Save As reports `fileChangedDuringRead` (the app is protected by `inFlightSaveAsByDocumentID`) |
 
 ## Sixth review round (2026-10-12, Opus, exact head `c64da714`)
 
@@ -132,4 +141,4 @@ Credentials or persistent access, signing/notarisation, source-archive publicati
 1. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
 2. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
 3. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
-4. Review of head `6e146d89` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
+4. Review of head `54b06b3a` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
