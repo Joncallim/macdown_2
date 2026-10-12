@@ -23,7 +23,7 @@ extension WindowController {
                           resumeCloseOnSuccess: true
                       )).isAbsent
                 else { return }
-                closeAfterRetire(of: document)
+                await closeAfterRetire(of: document)
             }
             return false
         }
@@ -91,7 +91,7 @@ extension WindowController {
                                 for: saved,
                                 resumeCloseOnSuccess: true
                             )).isAbsent else { return }
-                            closeAfterRetire(of: saved)
+                            await closeAfterRetire(of: saved)
                         }
                     }
                 case .alertThirdButtonReturn:
@@ -99,7 +99,7 @@ extension WindowController {
                         for: current,
                         resumeCloseOnSuccess: true
                     )).isAbsent else { return }
-                    closeAfterRetire(of: current)
+                    await closeAfterRetire(of: current)
                 default:
                     sender.makeKeyAndOrderFront(nil)
                 }
@@ -148,7 +148,7 @@ extension WindowController {
                         for: saved,
                         resumeCloseOnSuccess: true
                     )).isAbsent else { return }
-                    closeAfterRetire(of: saved)
+                    await closeAfterRetire(of: saved)
                 }
             }
         }
@@ -157,12 +157,16 @@ extension WindowController {
     /// Every close path retires the document's recovery lifetime, which awaits I/O. Close only if the document is
     /// still exactly what was retired; text typed or a state change in that gap must not be discarded unprompted,
     /// so the normal close flow runs again and asks about whatever changed.
-    func closeAfterRetire(of document: FileDocument) {
+    ///
+    /// The retired lifetime rejects every later recovery write, so a window kept open on it would lose its edits to a
+    /// crash and fail the session autosave for every window: it is moved to a fresh persisted lifetime first.
+    func closeAfterRetire(of document: FileDocument) async {
         guard let coordinator else { return }
         guard let active = model.activeDocument,
               active.id == document.id,
               active.mutationGeneration == document.mutationGeneration
         else {
+            await model.renewRecoveryLifetime(retiredFrom: document)
             window?.performClose(nil)
             return
         }
