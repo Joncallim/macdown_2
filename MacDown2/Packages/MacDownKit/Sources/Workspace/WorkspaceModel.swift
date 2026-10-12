@@ -332,6 +332,11 @@ public final class WorkspaceModel {
 
     /// Resolves a dirty-close prompt for the active tab.
     public func resolveClose(_ resolution: CloseResolution) async {
+        // The prompt is about the PENDING tab, which a batch close or a tab switch after the request can leave
+        // inactive; save, Save As and discard all act on the active tab, so make the pending one active first.
+        if let pending = tabStore.pendingCloseTabID, pending != tabStore.activeTabID {
+            tabStore.activate(pending)
+        }
         let closingDocument = tabStore.activeDocument
         guard pendingRecoveryCleanupActions.isEmpty else {
             lastError = .recoveryCleanupRequired(closingDocument?.fileURL ?? URL(fileURLWithPath: "Recovery"))
