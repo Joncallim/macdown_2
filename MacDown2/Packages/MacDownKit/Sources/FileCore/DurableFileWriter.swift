@@ -19,7 +19,11 @@ enum DurableFileWriter {
         return fsync(descriptor)
     }
 
-    static func write(_ data: Data, to url: URL, sync: Sync = fullSync) throws {
+    /// Replaces `url` with `data`. Throws only BEFORE the rename publishes the new file (the old file is then intact);
+    /// once published it never throws, because a caller told "failed" would keep its old in-memory state while disk
+    /// already holds the new one. Returns whether the directory flush that makes the rename itself durable succeeded.
+    @discardableResult
+    static func write(_ data: Data, to url: URL, sync: Sync = fullSync) throws -> Bool {
         let directory = url.deletingLastPathComponent()
         let temporary = directory.appendingPathComponent(".\(url.lastPathComponent).\(UUID().uuidString).tmp")
         let descriptor = open(temporary.path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
@@ -43,11 +47,18 @@ enum DurableFileWriter {
                 }
             }
             guard sync(descriptor) == 0 else { throw posixError() }
-            guard close(descriptor) == 0 else { throw posixError() }
         } catch {
             close(descriptor)
             try? FileManager.default.removeItem(at: temporary)
             throw error
+        }
+        // Exactly one close on every path: a descriptor number is released even when close() reports an error, and
+        // may already belong to another thread, so it must never be closed a second time.
+        let closeResult = close(descriptor)
+        let closeError = errno
+        guard closeResult == 0 else {
+            try? FileManager.default.removeItem(at: temporary)
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(closeError))
         }
         guard rename(temporary.path, url.path) == 0 else {
             let error = posixError()
@@ -55,9 +66,9 @@ enum DurableFileWriter {
             throw error
         }
         let directoryDescriptor = open(directory.path, O_RDONLY | O_CLOEXEC)
-        guard directoryDescriptor >= 0 else { throw posixError() }
+        guard directoryDescriptor >= 0 else { return false }
         defer { close(directoryDescriptor) }
-        guard sync(directoryDescriptor) == 0 else { throw posixError() }
+        return sync(directoryDescriptor) == 0
     }
 
     private static func posixError() -> NSError {

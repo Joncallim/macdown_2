@@ -80,4 +80,27 @@ struct DurableFileWriterTests {
         #expect(try String(contentsOf: url, encoding: .utf8) == "kept")
         #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["ledger.json"])
     }
+
+    /// Round-8 review P2: a directory-flush failure used to throw AFTER the rename had published the new file, so a
+    /// caller that treats a throw as "nothing changed" kept the old state while disk held the new one.
+    @Test func aFailedDirectoryFlushNeverThrowsAfterThePublishAndIsReported() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("ledger.json")
+        try DurableFileWriter.write(Data("old".utf8), to: url)
+
+        let flushed = try DurableFileWriter.write(Data("new".utf8), to: url) { descriptor in
+            var info = stat()
+            fstat(descriptor, &info)
+            if (info.st_mode & S_IFMT) == S_IFDIR {
+                errno = ENOTSUP
+                return -1
+            }
+            return 0
+        }
+
+        #expect(!flushed, "the caller can see the rename is not yet known to be durable")
+        #expect(try String(contentsOf: url, encoding: .utf8) == "new", "and the new file is what is published")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["ledger.json"])
+    }
 }
