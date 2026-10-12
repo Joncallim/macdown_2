@@ -55,7 +55,7 @@ public extension TabStore {
         saveActiveDocument: () async -> Bool = { false }
     ) async {
         guard let pendingCloseTabID else { return }
-        guard let index = tabIndex(of: pendingCloseTabID) else {
+        guard var index = tabIndex(of: pendingCloseTabID) else {
             self.pendingCloseTabID = nil
             closeQueue.removeAll()
             return
@@ -64,6 +64,13 @@ public extension TabStore {
         switch resolution {
         case .save:
             let saved = await saveActiveDocument()
+            // The save awaited: tabs may have been opened, closed or reordered, so the index is stale.
+            guard let current = tabIndex(of: pendingCloseTabID) else {
+                self.pendingCloseTabID = nil
+                closeQueue.removeAll()
+                return
+            }
+            index = current
             if saved {
                 removeTab(at: index)
             } else {
