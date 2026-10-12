@@ -78,6 +78,7 @@ struct TextFilterCoordinatorTests {
             fileTreePreferences: preferences
         )
         coordinator.controllers = [controller]
+        controller.editorStore.existingSystem(for: tabID.uuidString)?.setAwaitingEditorView(false) // no EditorView here
         return Fixture(coordinator: coordinator, controller: controller, tabID: tabID)
     }
 
