@@ -139,11 +139,26 @@ extension ExternalFileController {
         }
     }
 
+    /// After a recovery-epoch mint await: the live document if it is still the same document on the same (retired)
+    /// lifetime within this controller's lifecycle. Text typed during the await is NOT a reason to give up: the old
+    /// lifetime is already retired, so giving up strands the window on it (every recovery write rejected). The new
+    /// lifetime is rebased onto the live document instead, as `WorkspaceModel.renewRecoveryLifetime` does.
+    private func liveDocumentOnSameLifetime(
+        as document: FileDocument,
+        generation: UInt,
+        in model: WorkspaceModel
+    ) -> FileDocument? {
+        guard lifecycleGeneration == generation, let live = model.activeDocument,
+              live.id == document.id, live.recoveryEpoch == document.recoveryEpoch else { return nil }
+        return live
+    }
+
     private func preserveOpenDocumentAfterFailedClose(_ document: FileDocument, model: WorkspaceModel) async {
         do {
-            let originalContext = OperationContext(document: document, generation: lifecycleGeneration)
-            let replacement = try await document.withFreshRecoveryLifetime(preparedBy: document.recoveryBuffer)
-            guard isCurrent(originalContext, in: model) else { return }
+            let generation = lifecycleGeneration
+            let epoch = try await document.recoveryBuffer.mintRecoveryEpoch()
+            guard let live = liveDocumentOnSameLifetime(as: document, generation: generation, in: model) else { return }
+            let replacement = live.withReplacementRecoveryLifetime(epoch)
 
             // The old lifetime was retired by the successful retry. Make the
             // fresh lifetime current before persistence so a failed write has
@@ -183,13 +198,14 @@ extension ExternalFileController {
             pendingMove = nil
             return
         }
-        let context = OperationContext(document: current, generation: lifecycleGeneration)
+        let generation = lifecycleGeneration
         do {
-            let replacement = try await current.withFreshRecoveryLifetime(preparedBy: current.recoveryBuffer)
-            guard isCurrent(context, in: model) else {
+            let epoch = try await current.recoveryBuffer.mintRecoveryEpoch()
+            guard let live = liveDocumentOnSameLifetime(as: current, generation: generation, in: model) else {
                 pendingMove = nil
                 return
             }
+            let replacement = live.withReplacementRecoveryLifetime(epoch)
             model.tabStore.updateActiveDocument { _ in replacement }
             pendingMove = nil
             synchronize(with: replacement)
