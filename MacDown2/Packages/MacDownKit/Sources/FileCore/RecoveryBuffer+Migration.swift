@@ -16,7 +16,9 @@ extension RecoveryBuffer {
                       canApply(version, kind: .persist, for: id, epoch: epoch),
                       try authorizeLifetime(id, epoch: epoch, maySupersede: true)
                 else { return .rejected }
-                try content.write(to: destination, atomically: true, encoding: .utf8)
+                // Durable: the ledger redirect recorded next is flushed (#449) and the source is deleted after it,
+                // so the destination bytes must not be the only unflushed link in that chain.
+                try DurableFileWriter.write(Data(content.utf8), to: destination)
                 guard try Self.readExactUTF8(at: destination).isExactlyEqual(to: content) else {
                     return .failed(.verificationFailed(destination))
                 }
