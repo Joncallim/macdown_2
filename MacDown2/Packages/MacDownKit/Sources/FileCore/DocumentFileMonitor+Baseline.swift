@@ -10,9 +10,11 @@ public extension DocumentFileMonitor {
     /// policy, so no observation is lost.
     ///
     /// An identity-only change (the file object after a save, or the controller echoing a conflicted document's old
-    /// revision) just updates the stored baseline. It must NOT probe: the controller feeds this call from the
-    /// reconcile of every probe result, so a probe-per-identity-change loops forever whenever the document's
-    /// revision and the file's identity disagree (a dirty document in conflict).
+    /// revision) updates the stored baseline and, only if a probe is in flight, retires it and probes again: that
+    /// probe may have read the file before the save and would be published as current. With nothing in flight it must
+    /// NOT probe: the controller feeds this call from the reconcile of every probe result (which arrives after the
+    /// emit), so a probe-per-identity-change loops forever whenever the document's revision and the file's identity
+    /// disagree (a dirty document in conflict).
     func updateBaseline(
         priorFileObjectID id: PhysicalFileIdentity.FileObjectID?,
         decoding policy: FileDecodingPolicy,
@@ -22,11 +24,22 @@ public extension DocumentFileMonitor {
         let policyChanged = policy != decoding
         priorFileObjectID = id
         decoding = policy
-        guard policyChanged else { return }
+        guard policyChanged || probesInFlight > 0 else { return }
         probeSequence &+= 1
         let currentGeneration = generation
         let sequence = probeSequence
-        let observation = await prober.observe(expectedURL: bound, priorFileObjectID: id, decoding: policy)
+        let observation = await trackedObserve(expectedURL: bound, priorFileObjectID: id, decoding: policy)
         emit(observation, generation: currentGeneration, sequence: sequence)
+    }
+
+    /// `prober.observe` for a probe whose result is emitted, counted while suspended.
+    internal func trackedObserve(
+        expectedURL: URL,
+        priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
+        decoding: FileDecodingPolicy
+    ) async -> DocumentFileObservation {
+        probesInFlight += 1
+        defer { probesInFlight -= 1 }
+        return await prober.observe(expectedURL: expectedURL, priorFileObjectID: priorFileObjectID, decoding: decoding)
     }
 }

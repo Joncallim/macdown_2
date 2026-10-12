@@ -83,6 +83,31 @@ struct DocumentFileMonitorBaselineRaceTests {
     /// probe result. A conflicted dirty document keeps its OLD revision while the file's identity is the new one, so
     /// every probe result fed back a different identity; probing on identity change then looped forever (hundreds of
     /// full-file reads/hashes, recovery writes and generation bumps per external change).
+    /// Post-fix review (d2b7e242) F1: after #423 an identity-only update no longer retired a probe already in flight,
+    /// so a pre-save read was published as current after the save's baseline update and reverted the saved text.
+    @Test func anIdentityOnlyBaselineChangeRetiresAProbeAlreadyInFlight() async throws {
+        let url = URL(fileURLWithPath: "/tmp/epic18/identity-in-flight.md")
+        let preSave = DocumentFileObservation.available(snapshot("pre-save", at: url))
+        let postSave = DocumentFileObservation.available(snapshot("saved", at: url))
+        let prober = HeldFirstProber(old: preSave, new: postSave)
+        let recorder = ObservationRecorder()
+        let monitor = DocumentFileMonitor(
+            debounce: .zero, watcher: MonitorWatcher(), prober: prober, sleeper: { _ in await Task.yield() }
+        )
+        let bind = Task {
+            try await monitor.bind(to: url, priorFileObjectID: nil, decoding: .automatic) { recorder.append($0) }
+        }
+        await waitUntil { await prober.callCount == 1 }
+
+        let saved = PhysicalFileIdentity.FileObjectID(volume: "v", file: "after-save")
+        await monitor.updateBaseline(priorFileObjectID: saved, decoding: .automatic, expectedURL: url)
+        await prober.releaseFirst()
+        try await bind.value
+        await waitUntil { recorder.count >= 1 }
+
+        #expect(recorder.values == [postSave], "only the probe taken after the baseline update may be published")
+    }
+
     @Test func anIdentityOnlyBaselineChangeNeverProbes() async throws {
         let url = URL(fileURLWithPath: "/tmp/epic18/baseline-loop.md")
         let fresh = DocumentFileObservation.available(snapshot("x", at: url))

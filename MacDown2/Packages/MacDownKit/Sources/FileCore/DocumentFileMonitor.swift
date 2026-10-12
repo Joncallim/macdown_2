@@ -20,6 +20,8 @@ public actor DocumentFileMonitor {
     /// its own count equal to this one; it supplies a token instead and compares that.
     private var bindingToken: UInt?
     var probeSequence: UInt = 0
+    /// Emitting probes currently suspended in `prober.observe`; see `updateBaseline`.
+    var probesInFlight = 0
     var boundURL: URL?
     var priorFileObjectID: PhysicalFileIdentity.FileObjectID?
     var decoding: FileDecodingPolicy = .automatic
@@ -90,7 +92,7 @@ public actor DocumentFileMonitor {
         fileHandle = try watchFileIfAvailable(standardized, generation: currentGeneration)
         watcherHealthy = true
         healthCallback?(.healthy)
-        let initial = await prober.observe(
+        let initial = await trackedObserve(
             expectedURL: standardized,
             priorFileObjectID: priorFileObjectID,
             decoding: decoding
@@ -130,7 +132,7 @@ public actor DocumentFileMonitor {
         fileHandle = replacementFile
         watcherHealthy = true
         healthCallback?(.healthy)
-        let initial = await prober.observe(
+        let initial = await trackedObserve(
             expectedURL: boundURL,
             priorFileObjectID: priorFileObjectID,
             decoding: decoding
@@ -180,7 +182,7 @@ public actor DocumentFileMonitor {
         sequence: UInt
     ) async {
         guard isCurrent(generation: generation, sequence: sequence), let boundURL else { return }
-        let first = await prober.observe(
+        let first = await trackedObserve(
             expectedURL: boundURL,
             priorFileObjectID: priorFileObjectID,
             decoding: decoding
@@ -189,7 +191,7 @@ public actor DocumentFileMonitor {
         if case .missing = first {
             await sleeper(.milliseconds(75))
             guard !Task.isCancelled, isCurrent(generation: generation, sequence: sequence) else { return }
-            let confirmed = await prober.observe(
+            let confirmed = await trackedObserve(
                 expectedURL: boundURL,
                 priorFileObjectID: priorFileObjectID,
                 decoding: decoding
@@ -265,7 +267,7 @@ public actor DocumentFileMonitor {
                 // publishing after this replacement probe.
                 probeSequence &+= 1
                 let replacementSequence = probeSequence
-                let observation = await prober.observe(
+                let observation = await trackedObserve(
                     expectedURL: boundURL,
                     priorFileObjectID: priorFileObjectID,
                     decoding: decoding
