@@ -2,9 +2,9 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence (head `52107b38`, after the reviews' fixes #412–#458): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2489 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (369 tests each, all passed). `MacDown2UITests` remain unexecuted.
+Reproducibility evidence (**final head `d1d8d4e8`**, after the reviews' fixes #412–#461): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2489 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (370 tests each, all passed). `MacDown2UITests` remain unexecuted.
 
-Baseline: `master` after #458. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
+Baseline: `master` after #461. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
 
 ## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
 
@@ -24,6 +24,15 @@ Baseline: `master` after #458. Evidence is **CI-green PRs plus local runs** on o
 | Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers); on re-review only one Return test is shown to discriminate, so the others are regression guards, not proof |
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
+
+## Thirteenth review round (2026-10-13, Opus, exact head `52107b38`)
+
+| Finding | Disposition |
+| --- | --- |
+| No P0/P1. #458 held against probes for a conflict arriving during the mint, a rename during the mint, a pending move, watcher rebind with the live document's revision/encoding, queued old-lifetime recovery writes, Save As -> edit -> relaunch, conflict flows (Use Disk Version, Keep Mine, relaunch) | Sound |
+| P3 (reproduced; needs a failed close retry then a retry; real-app reach believed, not shown) the #458 helpers persisted the disk-identical text of a document that turned clean during the epoch mint; nothing removes that record and a relaunch after the file changed restores it as a false conflict (Keep Mine would then overwrite the newer disk version) | Fixed #461: a clean document moves to the new lifetime without a recovery write (suite-level mutation: the record `saved text` appears with the unconditional persist). The failed-close helper shares the change; it is private and has no direct test |
+| Package-level `renewRecoveryLifetime` / `preserveOpenDocumentAfterFailedCloseRetirement` persist unconditionally | Harmless in `closeAfterRetire` (the next `performClose` retires the record); unchanged |
+| Independent review of the exact final head `d1d8d4e8` | The only change since the fully reviewed `52107b38` is #461 (a 3-line guard + one test). A narrow review of that commit was requested; its result is recorded in the handoff report, not here |
 
 ## Twelfth review round (2026-10-13, Opus, exact head `51ac4816`)
 
@@ -184,4 +193,4 @@ Credentials or persistent access, signing/notarisation, source-archive publicati
 1. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
 2. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
 3. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
-4. Review of head `52107b38` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
+4. Release-readiness: the software gate for `d1d8d4e8` is assessed in the handoff report; the final-release gates below remain open; any later source change invalidates that evidence.
