@@ -37,6 +37,7 @@ extension EditorView.Coordinator {
         isApplyingModelText = true
         textBinding?.wrappedValue = system.text
         isApplyingModelText = false
+        noteSynced(system.text)
         system.noteTextEdit()
         system.scheduleFrameHeightSync()
     }
