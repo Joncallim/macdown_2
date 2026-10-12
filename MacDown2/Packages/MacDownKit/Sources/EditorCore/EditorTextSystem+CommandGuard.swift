@@ -7,6 +7,7 @@ public extension EditorTextSystem {
     /// programmatic update. They fail open (return `false`), the same contract
     /// as snippet insertion.
     var canApplyCommandEdit: Bool {
-        !textView.hasMarkedText() && !isPerformingEditingAssist && !isPerformingProgrammaticTextUpdate
+        !isDetachedFromEditorView && !textView.hasMarkedText() && !isPerformingEditingAssist
+            && !isPerformingProgrammaticTextUpdate
     }
 }

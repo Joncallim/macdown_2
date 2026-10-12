@@ -236,7 +236,8 @@ struct TextFilterCoordinator {
 
     private static func editingTarget(for controller: WindowController) -> TextFilterEditingTarget? {
         guard let activeTab = controller.model.tabStore.activeTab,
-              let textSystem = controller.editorStore.existingSystem(for: activeTab.id.uuidString)
+              let textSystem = controller.editorStore.existingSystem(for: activeTab.id.uuidString),
+              !textSystem.isDetachedFromEditorView
         else {
             return nil
         }
