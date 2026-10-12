@@ -95,54 +95,13 @@ public struct EditorView: NSViewRepresentable {
         system.textView.delegate = context.coordinator
         context.coordinator.system = system
         context.coordinator.textBinding = $text
+        context.coordinator.noteSynced(text)
         context.coordinator.onSelectionChange = onSelectionChange
         context.coordinator.onScrollChange = onScrollChange
 
         registerCoordinatorObservers(scrollView: scrollView, coordinator: context.coordinator)
 
         return scrollView
-    }
-
-    /// Observes scroll changes through the clip view's bounds (NSScrollView
-    /// always owns a contentView, so the object is non-optional), plus
-    /// undo/redo so the gutter can redraw — `EditorTextSystem` itself keeps
-    /// `lineIndex` correct across undo/redo (see its
-    /// `registerUndoRedoObservers()`); this coordinator only needs to know
-    /// when to invalidate the gutter, which lives at this UI layer.
-    ///
-    /// The undo/redo observers register with `object: nil` (any sender)
-    /// rather than `system.undoManager` evaluated here: at this point
-    /// (called from `makeNSView`, before SwiftUI has attached the returned
-    /// `NSScrollView` to a window) `system.textView.window` is still nil,
-    /// so `EditorTextSystem.undoManager` resolves to its temporary
-    /// `fallbackUndoManager` — a different object than the real window
-    /// undo manager it switches to once actually mounted. An observer
-    /// registered against that stale fallback would never see a real
-    /// undo/redo notification (this exact bug was already found and fixed
-    /// for `EditorTextSystem`'s OWN line-index-correctness observer, in
-    /// `EditorTextSystem+LineIndex.swift` — it just hadn't been applied
-    /// here too). `Coordinator.undoManagerDidChange(_:)` re-resolves
-    /// `system.undoManager` fresh and checks the notification's sender
-    /// against it instead.
-    private func registerCoordinatorObservers(scrollView: NSScrollView, coordinator: Coordinator) {
-        NotificationCenter.default.addObserver(
-            coordinator,
-            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
-            name: NSView.boundsDidChangeNotification,
-            object: scrollView.contentView
-        )
-        NotificationCenter.default.addObserver(
-            coordinator,
-            selector: #selector(Coordinator.undoManagerDidChange(_:)),
-            name: .NSUndoManagerDidUndoChange,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            coordinator,
-            selector: #selector(Coordinator.undoManagerDidChange(_:)),
-            name: .NSUndoManagerDidRedoChange,
-            object: nil
-        )
     }
 
     public func updateNSView(_ scrollView: NSScrollView, context: Context) {
@@ -156,6 +115,9 @@ public struct EditorView: NSViewRepresentable {
         // current text *and* the change did not originate from the view itself.
         // This prevents the keystroke-echo feedback loop.
         var pushedModelText = false
+        if system.textView.hasMarkedText() {
+            context.coordinator.noteSkippedPush(model: text)
+        }
         // While an IME / dead-key composition is in progress the binding still holds the pre-composition
         // text (marked-text updates post no `didChange`); pushing it would clear the marked range
         // mid-composition. The binding catches up when the composition commits.
@@ -164,6 +126,7 @@ public struct EditorView: NSViewRepresentable {
             context.coordinator.isApplyingModelText = true
             system.setText(text)
             context.coordinator.isApplyingModelText = false
+            context.coordinator.noteSynced(text)
             pushedModelText = true
 
             // A vertically-resizable NSTextView only grows its document-view
@@ -208,6 +171,7 @@ public struct EditorView: NSViewRepresentable {
         var onSelectionChange: ((NSRange) -> Void)?
         var onScrollChange: ((Int) -> Void)?
         var isApplyingModelText = false
+        var sync = EditorModelSyncState()
         /// Captured in `shouldChangeTextIn` (every edit this delegate
         /// observes, any origin) and consumed in the very next
         /// `textDidChange` — see that method's doc comment for why this
@@ -245,9 +209,13 @@ public struct EditorView: NSViewRepresentable {
                   !system.isPerformingProgrammaticTextUpdate,
                   !system.isApplyingMultiRangeTransaction
             else { return }
+            if adoptReplacedModelIfNeeded(into: system) {
+                return
+            }
             isApplyingModelText = true
             textBinding?.wrappedValue = system.text
             isApplyingModelText = false
+            noteSynced(system.text)
             system.noteTextEdit()
             // Typing changes the content height; keep the document view's
             // frame in step so the caret always has somewhere to scroll to.

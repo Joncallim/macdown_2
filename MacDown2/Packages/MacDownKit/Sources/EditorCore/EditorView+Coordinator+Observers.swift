@@ -41,3 +41,47 @@ extension EditorView.Coordinator {
         system.scheduleFrameHeightSync()
     }
 }
+
+extension EditorView {
+    /// Observes scroll changes through the clip view's bounds (NSScrollView
+    /// always owns a contentView, so the object is non-optional), plus
+    /// undo/redo so the gutter can redraw — `EditorTextSystem` itself keeps
+    /// `lineIndex` correct across undo/redo (see its
+    /// `registerUndoRedoObservers()`); this coordinator only needs to know
+    /// when to invalidate the gutter, which lives at this UI layer.
+    ///
+    /// The undo/redo observers register with `object: nil` (any sender)
+    /// rather than `system.undoManager` evaluated here: at this point
+    /// (called from `makeNSView`, before SwiftUI has attached the returned
+    /// `NSScrollView` to a window) `system.textView.window` is still nil,
+    /// so `EditorTextSystem.undoManager` resolves to its temporary
+    /// `fallbackUndoManager` — a different object than the real window
+    /// undo manager it switches to once actually mounted. An observer
+    /// registered against that stale fallback would never see a real
+    /// undo/redo notification (this exact bug was already found and fixed
+    /// for `EditorTextSystem`'s OWN line-index-correctness observer, in
+    /// `EditorTextSystem+LineIndex.swift` — it just hadn't been applied
+    /// here too). `Coordinator.undoManagerDidChange(_:)` re-resolves
+    /// `system.undoManager` fresh and checks the notification's sender
+    /// against it instead.
+    func registerCoordinatorObservers(scrollView: NSScrollView, coordinator: Coordinator) {
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.undoManagerDidChange(_:)),
+            name: .NSUndoManagerDidUndoChange,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.undoManagerDidChange(_:)),
+            name: .NSUndoManagerDidRedoChange,
+            object: nil
+        )
+    }
+}
