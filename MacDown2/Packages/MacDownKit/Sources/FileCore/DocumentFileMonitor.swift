@@ -20,8 +20,9 @@ public actor DocumentFileMonitor {
     /// its own count equal to this one; it supplies a token instead and compares that.
     private var bindingToken: UInt?
     var probeSequence: UInt = 0
-    /// Emitting probes currently suspended in `prober.observe`; see `updateBaseline`.
-    var probesInFlight = 0
+    /// Emitting probes currently suspended in `prober.observe`, by the request sequence they will emit under; see
+    /// `updateBaseline`.
+    var probesInFlight: [UInt: Int] = [:]
     var boundURL: URL?
     var priorFileObjectID: PhysicalFileIdentity.FileObjectID?
     var decoding: FileDecodingPolicy = .automatic
@@ -93,6 +94,7 @@ public actor DocumentFileMonitor {
         watcherHealthy = true
         healthCallback?(.healthy)
         let initial = await trackedObserve(
+            sequence: initialSequence,
             expectedURL: standardized,
             priorFileObjectID: priorFileObjectID,
             decoding: decoding
@@ -133,6 +135,7 @@ public actor DocumentFileMonitor {
         watcherHealthy = true
         healthCallback?(.healthy)
         let initial = await trackedObserve(
+            sequence: sequence,
             expectedURL: boundURL,
             priorFileObjectID: priorFileObjectID,
             decoding: decoding
@@ -183,6 +186,7 @@ public actor DocumentFileMonitor {
     ) async {
         guard isCurrent(generation: generation, sequence: sequence), let boundURL else { return }
         let first = await trackedObserve(
+            sequence: sequence,
             expectedURL: boundURL,
             priorFileObjectID: priorFileObjectID,
             decoding: decoding
@@ -192,6 +196,7 @@ public actor DocumentFileMonitor {
             await sleeper(.milliseconds(75))
             guard !Task.isCancelled, isCurrent(generation: generation, sequence: sequence) else { return }
             let confirmed = await trackedObserve(
+                sequence: sequence,
                 expectedURL: boundURL,
                 priorFileObjectID: priorFileObjectID,
                 decoding: decoding
@@ -268,6 +273,7 @@ public actor DocumentFileMonitor {
                 probeSequence &+= 1
                 let replacementSequence = probeSequence
                 let observation = await trackedObserve(
+                    sequence: replacementSequence,
                     expectedURL: boundURL,
                     priorFileObjectID: priorFileObjectID,
                     decoding: decoding

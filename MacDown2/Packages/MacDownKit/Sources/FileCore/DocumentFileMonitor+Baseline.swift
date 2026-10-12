@@ -24,22 +24,35 @@ public extension DocumentFileMonitor {
         let policyChanged = policy != decoding
         priorFileObjectID = id
         decoding = policy
-        guard policyChanged || probesInFlight > 0 else { return }
+        guard policyChanged || probesInFlight[probeSequence, default: 0] > 0 else { return }
         probeSequence &+= 1
         let currentGeneration = generation
         let sequence = probeSequence
-        let observation = await trackedObserve(expectedURL: bound, priorFileObjectID: id, decoding: policy)
+        let observation = await trackedObserve(
+            sequence: sequence,
+            expectedURL: bound,
+            priorFileObjectID: id,
+            decoding: policy
+        )
         emit(observation, generation: currentGeneration, sequence: sequence)
     }
 
-    /// `prober.observe` for a probe whose result is emitted, counted while suspended.
+    /// `prober.observe` for a probe whose result is emitted under `sequence`, counted while suspended. Only a probe
+    /// of the CURRENT sequence is worth retiring and replacing: an older one is already discarded, and counting it let
+    /// every controller echo start another probe for as long as it stayed suspended.
     internal func trackedObserve(
+        sequence: UInt,
         expectedURL: URL,
         priorFileObjectID: PhysicalFileIdentity.FileObjectID?,
         decoding: FileDecodingPolicy
     ) async -> DocumentFileObservation {
-        probesInFlight += 1
-        defer { probesInFlight -= 1 }
+        probesInFlight[sequence, default: 0] += 1
+        defer {
+            probesInFlight[sequence, default: 1] -= 1
+            if probesInFlight[sequence] == 0 {
+                probesInFlight[sequence] = nil
+            }
+        }
         return await prober.observe(expectedURL: expectedURL, priorFileObjectID: priorFileObjectID, decoding: decoding)
     }
 }
