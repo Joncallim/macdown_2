@@ -110,19 +110,22 @@ extension WorkspaceModel {
     }
 
     private func prepareSaveAsRecoveryContinuation(_ continuation: SaveAsRecoveryContinuation) async -> FileDocument? {
-        guard let current = tabStore.activeDocument,
-              isSameDocumentLifetime(current, continuation.source)
-              || isSameDocumentLifetime(current, continuation.replacement) else { return nil }
+        // The owning tab, active or not: a retry must not stay stuck until the user happens to activate that tab.
+        guard let tab = tabStore.tabs.first(where: {
+            isSameDocumentLifetime($0.document, continuation.source)
+                || isSameDocumentLifetime($0.document, continuation.replacement)
+        }) else { return nil }
+        let current = tab.document
         let replacement = isSameDocumentLifetime(current, continuation.source)
-            ? (isCurrent(continuation.source)
+            ? (isCurrent(continuation.source, inTab: tab.id)
                 ? continuation.replacement
                 : current.rebindingSavedDestination(from: continuation.replacement))
             : current
         guard await recoverySnapshotIsDurable(for: replacement) else { return nil }
         await afterRecoveryRetryPersistence?()
         // Durability was awaited: if the live document changed meanwhile, publishing `replacement` would overwrite it.
-        guard isCurrent(current) else { return nil }
-        tabStore.updateActiveDocument { _ in replacement }
+        guard isCurrent(current, inTab: tab.id) else { return nil }
+        tabStore.updateDocument(inTab: tab.id) { _ in replacement }
         return replacement
     }
 

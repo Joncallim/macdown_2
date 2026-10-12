@@ -79,7 +79,10 @@ struct WorkspaceSaveAsContinuationRaceTests {
         #expect(surviving != nil, "the source's recovery bytes must not be retired by a stale continuation")
     }
 
-    @Test func aTabSwitchDuringTheContinuationPersistenceDoesNotPublishOverTheNewActiveTab() async throws {
+    /// Semantics changed deliberately with F4: the continuation completes against its OWNING tab (which nothing
+    /// edited), and never touches the tab that became active during the await. It used to stay pending because only
+    /// the active tab was consulted.
+    @Test func aTabSwitchDuringTheContinuationPersistenceLeavesTheNewActiveTabAloneAndCompletesTheOwner() async {
         let fixture = await makeFixture()
         defer { cleanup(fixture.directory) }
         let model = fixture.model
@@ -95,9 +98,35 @@ struct WorkspaceSaveAsContinuationRaceTests {
 
         #expect(model.activeDocument?.id == other.id, "the newly active tab must be left alone")
         #expect(model.activeDocument?.text == "other tab")
-        #expect(fixture.published.publications.isEmpty)
-        let surviving = try await fixture.recovery.load(for: fixture.source.id, epoch: fixture.source.recoveryEpoch)
-        #expect(surviving != nil)
+        #expect(!model.hasPendingRecoveryCleanup, "the owning tab's continuation completed")
+        #expect(model.tabStore.tabs
+            .contains { $0.document.fileURL == fixture.destination.fileURL?.standardizedFileURL })
+        #expect(!fixture.published.publications.isEmpty)
+    }
+
+    /// Post-fix review (d2b7e242) F4: the continuation resolved only the ACTIVE tab, so with its tab inactive the
+    /// retry replayed the migration, then returned nil and kept failing until the user activated that tab again.
+    @Test func aContinuationWhoseTabIsInactiveCompletesAgainstItsOwnTab() async throws {
+        let fixture = await makeFixture()
+        defer { cleanup(fixture.directory) }
+        let model = fixture.model
+        let ownerTab = try #require(model.tabStore.activeTabID)
+        let other = FileDocument(
+            fileURL: fixture.directory.appendingPathComponent("other.md"),
+            recoveryBuffer: fixture.recovery
+        ).updatingText("other tab")
+        model.tabStore.newTab(document: other)
+        let otherTab = try #require(model.tabStore.activeTabID)
+
+        await model.retryRecoveryCleanup()
+
+        #expect(model.tabStore.activeTabID == otherTab, "the active tab is left alone")
+        #expect(model.activeDocument?.text == "other tab")
+        let owner = try #require(model.tabStore.tabs.first { $0.id == ownerTab }?.document)
+        #expect(owner.fileURL == fixture.destination.fileURL?.standardizedFileURL, "the owning tab is rebound")
+        #expect(!model.hasPendingRecoveryCleanup)
+        #expect(model.lastError == nil)
+        #expect(!fixture.published.publications.isEmpty)
     }
 
     @Test func anUndisturbedContinuationStillCompletes() async {
