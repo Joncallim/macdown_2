@@ -367,20 +367,6 @@ public final class WorkspaceModel {
         }
     }
 
-    /// A failed retirement may have written the durable stale-write fence
-    /// before its cleanup marker failed. Keep the tab open on a new managed
-    /// lifetime and persist its exact current text before returning so future
-    /// edits and relaunch recovery never depend on that ambiguous lifetime.
-    private func preserveOpenDocumentAfterFailedCloseRetirement(_ document: FileDocument) async {
-        do {
-            let replacement = try await document.withFreshRecoveryLifetime(preparedBy: document.recoveryBuffer)
-            guard isCurrent(document), await replacement.persistRecovery() else { return }
-            tabStore.updateActiveDocument { _ in replacement }
-        } catch {
-            return
-        }
-    }
-
     func recoveryCleanupWorkspaceError(
         _ outcome: RecoveryCleanupResult,
         document: FileDocument

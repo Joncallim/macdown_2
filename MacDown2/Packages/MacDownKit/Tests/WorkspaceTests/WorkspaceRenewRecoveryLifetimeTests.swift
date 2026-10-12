@@ -42,4 +42,35 @@ struct WorkspaceRenewRecoveryLifetimeTests {
         #expect(reverted.isEmpty, "the edit was reverted at yield offsets \(reverted)")
         #expect(notRenewed.isEmpty, "the window stayed on the retired lifetime at yield offsets \(notRenewed)")
     }
+
+    /// Same shape in the failed-discard path (`preserveOpenDocumentAfterFailedCloseRetirement`): it checked the
+    /// document was current before awaiting the persist, then published the older copy.
+    @Test func anEditDuringAFailedDiscardPreservationIsKept() async throws {
+        var reverted: [Int] = []
+        for yields in 0 ..< 60 {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let buffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+            let store = TabStore(
+                sessionStore: WorkspaceSessionStore(fileURL: directory.appendingPathComponent("tabs.json")),
+                recoveryBuffer: buffer
+            )
+            let document = FileDocument(text: "draft", recoveryBuffer: buffer).updatingText("draft2")
+            store.newTab(document: document)
+            let model = WorkspaceModel(tabStore: store)
+            let preserve = Task { @MainActor in await model.preserveOpenDocumentAfterFailedCloseRetirement(document) }
+            for _ in 0 ..< yields {
+                await Task.yield()
+            }
+            model.tabStore.updateActiveDocument { $0.updatingText("typed \(yields)") }
+            await preserve.value
+
+            if model.tabStore.activeDocument?.text != "typed \(yields)" {
+                reverted.append(yields)
+            }
+        }
+        #expect(reverted.isEmpty, "the edit was reverted at yield offsets \(reverted)")
+    }
 }

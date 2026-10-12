@@ -34,4 +34,17 @@ extension WorkspaceModel {
             lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
         }
     }
+
+    /// A failed retirement may have written the durable stale-write fence before its cleanup marker failed. Keep the
+    /// tab open on a new managed lifetime so future edits and relaunch recovery never depend on that ambiguous one.
+    /// Like `renewRecoveryLifetime`, the new lifetime is rebased onto the LIVE document and published before it is
+    /// persisted, so text typed during either await is kept rather than replaced by an older copy.
+    func preserveOpenDocumentAfterFailedCloseRetirement(_ document: FileDocument) async {
+        guard let epoch = try? await document.recoveryBuffer.mintRecoveryEpoch(),
+              let live = tabStore.activeDocument, live.id == document.id,
+              live.recoveryEpoch == document.recoveryEpoch else { return }
+        let replacement = live.withReplacementRecoveryLifetime(epoch)
+        tabStore.updateActiveDocument { _ in replacement }
+        _ = await replacement.persistRecovery()
+    }
 }
