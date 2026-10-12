@@ -349,24 +349,16 @@ public final class WorkspaceModel {
                 return
             }
         }
+        // Judge the save and the close against the CLOSING tab, not whichever tab is active once the save returns:
+        // the user can switch tabs while it is writing, and a failed save must not close (or retire the recovery of)
+        // the unsaved tab because a clean one is now active. The tab id survives a Save As rebind.
+        let closingTabID = tabStore.activeTabID
         await tabStore.resolveClose(resolution) { [weak self] in
             await self?.saveInternalForClose()
-            return self?.tabStore.activeDocument?.state == .clean
+            return self?.tabStore.tabs.first { $0.id == closingTabID }?.document.state == .clean
         }
         if let closingDocument {
-            let retainedClosingLifetime = tabStore.activeDocument.map {
-                isSameDocumentLifetime($0, closingDocument)
-            }
-            if retainedClosingLifetime != true {
-                let cleanup = await closingDocument.recoveryBuffer.retireWithOutcome(
-                    for: closingDocument.id,
-                    epoch: closingDocument.recoveryEpoch
-                )
-                if !cleanup.isAbsent {
-                    registerPendingRecovery(.retire(for: closingDocument))
-                    lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
-                }
-            }
+            await retireRecoveryIfClosed(closingDocument, tabID: closingTabID)
         }
     }
 

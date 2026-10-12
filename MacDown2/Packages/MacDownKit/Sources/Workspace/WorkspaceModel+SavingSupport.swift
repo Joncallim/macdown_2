@@ -101,6 +101,22 @@ extension WorkspaceModel {
         return .migrationPending
     }
 
+    /// After a close attempt: retire the closing document's recovery unless its tab is still open on the same
+    /// lifetime (a failed Save-and-close keeps the unsaved tab and its recovery).
+    func retireRecoveryIfClosed(_ closingDocument: FileDocument, tabID: UUID?) async {
+        let retained = tabStore.tabs.first { $0.id == tabID }
+            .map { isSameDocumentLifetime($0.document, closingDocument) }
+        guard retained != true else { return }
+        let cleanup = await closingDocument.recoveryBuffer.retireWithOutcome(
+            for: closingDocument.id,
+            epoch: closingDocument.recoveryEpoch
+        )
+        if !cleanup.isAbsent {
+            registerPendingRecovery(.retire(for: closingDocument))
+            lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
+        }
+    }
+
     func retireFormerSaveAsSource(_ source: FileDocument, replacing destination: FileDocument) async -> Bool {
         guard source.id != destination.id || source.recoveryEpoch != destination.recoveryEpoch else { return true }
         let pending = PendingRecoveryCleanupAction.retire(for: source)
