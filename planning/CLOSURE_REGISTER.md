@@ -2,9 +2,9 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence (head `45d7966f`, after the reviews' fixes #412–#451): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2488 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (365 tests each, all passed). `MacDown2UITests` remain unexecuted.
+Reproducibility evidence (head `304713dd`, after the reviews' fixes #412–#454): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2489 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (366 tests each, all passed). An earlier attempt on `9f859e9c` had one app-target failure (a real flake, fixed in #454) and is not retained. `MacDown2UITests` remain unexecuted.
 
-Baseline: `master` after #451. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
+Baseline: `master` after #454. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
 
 ## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
 
@@ -24,6 +24,15 @@ Baseline: `master` after #451. Evidence is **CI-green PRs plus local runs** on o
 | Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers); on re-review only one Return test is shown to discriminate, so the others are regression guards, not proof |
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
+
+## Tenth review round (2026-10-12, Opus, exact head `45d7966f`) and the serial-run flake
+
+| Finding | Disposition |
+| --- | --- |
+| P2 (source-only; power loss only) the migration destination was written without a flush while the ledger redirect recorded next is flushed (#449) and the source is deleted after it | Fixed #453 (`writeMigrationDestination` uses `DurableFileWriter`). Ordinary recovery saves stay unflushed by owner decision |
+| P2 (source-only; failing disk only) `F_FULLFSYNC` failure of any kind fell back to plain `fsync`, which could report durability the device did not give | Fixed #453 (fallback only for ENOTSUP/EINVAL/ENOTTY; test) |
+| Serial evidence on `9f859e9c`: app-target run 3 failed `discardingADeletedDocumentRetiresItsRecoveryAndClosesTheWindow` | Product bug, not a test artifact: `closeAfterRetire` required an unchanged `mutationGeneration`; a background reconcile bumped it (2 -> 3) with identical text and state during the retire, leaving the window open and re-prompting (no data loss). Fixed #454: close when id, state and exact text are unchanged. Reproduced about 1 in 16 under `-run-tests-until-failure`; 5 close suites x 40 iterations pass after the fix |
+| Multi-window relaunch ordering of recovery epochs/fences | No dedicated test written in this round; remains PARTIAL (family D) |
 
 ## Ninth review round (2026-10-12, Opus, exact head `bb2775c1`)
 
@@ -159,4 +168,4 @@ Credentials or persistent access, signing/notarisation, source-archive publicati
 1. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
 2. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
 3. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
-4. Review of head `45d7966f` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
+4. Review of head `304713dd` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
