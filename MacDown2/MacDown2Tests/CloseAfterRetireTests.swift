@@ -60,4 +60,19 @@ struct CloseAfterRetireTests {
         #expect(coordinator.controllers.contains { $0 === controller })
         #expect(controller.model.activeDocument?.text == "one, then typed")
     }
+
+    /// A background reconcile can bump `mutationGeneration` during the retire without changing the text or state; the
+    /// window must still close (it used to stay open, intermittently failing the deleted-document discard).
+    @Test func aGenerationBumpWithoutATextOrStateChangeStillClosesTheWindow() async throws {
+        let (coordinator, controller) = try makeController()
+        let retired = try #require(controller.model.activeDocument)
+        controller.model.tabStore.updateActiveDocument { $0.withFreshRecoveryLifetime() }
+        let after = try #require(controller.model.activeDocument)
+        #expect(after.mutationGeneration != retired.mutationGeneration, "the fixture must bump the generation")
+        #expect(after.text.isExactlyEqual(to: retired.text) && after.state == retired.state)
+
+        await controller.closeAfterRetire(of: retired)
+
+        #expect(coordinator.controllers.isEmpty)
+    }
 }
