@@ -25,6 +25,14 @@ Baseline: `master` after #446. Evidence is **CI-green PRs plus local runs** on o
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
 
+## Eighth review round (2026-10-12, Opus, exact head `54b06b3a`)
+
+| Finding | Disposition |
+| --- | --- |
+| P2 (reproduced; real app: a window opened or restored in Preview Only) #446 marked a system detached only on dismantle, so the eagerly created system of a never-mounted window still accepted Text Filter / Insert Snippet / Convert Line Endings and lost the result on the next mount | Fixed #448 (`WindowController.makeSessionsForActiveTab` marks the system awaiting its view via `setAwaitingEditorView(true)`; `makeNSView` clears it) |
+| P2 (reproduced; needs a corrupt recovery fence ledger) a quarantined ledger is replaced by an empty one, dropping an unacknowledged migration redirect: the unsaved text stays on disk but `load(old)` returns nil. From source: the generation floors reset too, so a retired lifetime whose file deletion had failed could load again | **Decision (owner, 2026-10-12): the cheap option.** The ledger is now written durably (`DurableFileWriter`: data `F_FULLFSYNC` before the rename, directory flush after), shrinking the corruption window. NOT done: rebuilding floors/redirects on quarantine, orphan-recovery surfacing, and `F_FULLFSYNC` for document saves (no Swift code in the package fsyncs document writes; Foundation `.atomic` only). These remain a known limitation for the 1.0 decision |
+| Not covered in depth | WebKit scheme-handler reads while dirty, file drag-and-drop, opening an already-open dirty document from Recent Documents, Revert / Reopen with Encoding while dirty, autosave timers |
+
 ## Seventh review round (2026-10-12, Opus, exact head `6e146d89`)
 
 | Finding | Disposition |
