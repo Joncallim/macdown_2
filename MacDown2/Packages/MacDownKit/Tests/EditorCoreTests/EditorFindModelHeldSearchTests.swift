@@ -41,6 +41,24 @@ struct EditorFindModelHeldSearchTests {
         #expect(model.matchesAreCurrent(forLiveText: live))
     }
 
+    /// Cross-boundary review F3 (P2): freshness was stamped when a search STARTED, so a search cancelled before it
+    /// committed left the previous text's matches stamped as current for the new text.
+    @Test func aCancelledSearchLeavesTheEarlierMatchesNotCurrentForTheNewText() async {
+        let model = EditorFindModel(query: "(a+)+$")
+        model.options = SearchOptions(isRegex: true)
+        let earlier = "a"
+        await model.updateMatches(in: earlier)
+        #expect(model.matchesAreCurrent(forLiveText: earlier))
+        let later = String(repeating: "a", count: 40) + "!"
+        let held = await startHeldSearch(model, in: later)
+
+        model.cancelPendingSearch()
+        _ = await held.value
+
+        #expect(!model.matches.isEmpty, "the earlier matches are retained, uncommitted")
+        #expect(!model.matchesAreCurrent(forLiveText: later), "but they do not describe the new text")
+    }
+
     @Test func aCloseWithNoLaterSearchLeavesNothingToReplace() async {
         let model = EditorFindModel(query: "(a+)+$")
         model.options = SearchOptions(isRegex: true)
