@@ -2,9 +2,9 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence (head `b17bcf15`, after the reviews' fixes #412–#437): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2475 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (364 tests each, all passed). `MacDown2UITests` remain unexecuted.
+Reproducibility evidence (head `c64da714`, after the reviews' fixes #412–#440): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2479 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (364 tests each, all passed). `MacDown2UITests` remain unexecuted.
 
-Baseline: `master` after #437. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
+Baseline: `master` after #440. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
 
 ## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
 
@@ -24,6 +24,15 @@ Baseline: `master` after #437. Evidence is **CI-green PRs plus local runs** on o
 | Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers); on re-review only one Return test is shown to discriminate, so the others are regression guards, not proof |
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
+
+## Fifth review round (2026-10-12, Opus, exact head `b17bcf15`)
+
+| Finding | Disposition |
+| --- | --- |
+| **P1** (real app, regression from #436) the editor's last-agreed text was not updated after undo/redo or an external replacement, so the first IME/dead-key composition afterwards was mistaken for a model replacement and its commit discarded | Reproduced; fixed #439 (`updateNSView` records agreement whenever model and view are equal outside a composition; the undo/redo publish records it). Tested with `setMarkedText`/`insertText`, not a real input method |
+| P2 (real app, regression from #437) `renewRecoveryLifetime` published an older copy after its persist: keystrokes typed during the await were reverted (54/60 offsets); an edit during the epoch mint left the window on the retired lifetime (5/60) | Reproduced; fixed #440 (rebased on the live document, published before persisting; 60-offset sweep) |
+| `preserveOpenDocumentAfterFailedCloseRetirement` has the same check-before-persist, unconditional-publish shape | Source-only, package API only; open |
+| Save As encoding lineage (`DocumentWriter`), ExternalFileController publication sites | Reviewed; no defect found. No new adverse-order Save As lineage test was written |
 
 ## Fourth review round (2026-10-12, Opus, exact head `bcaea668`)
 
@@ -113,4 +122,4 @@ Credentials or persistent access, signing/notarisation, source-archive publicati
 1. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
 2. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
 3. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
-4. Review of head `b17bcf15` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
+4. Review of head `c64da714` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
