@@ -2,9 +2,9 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence (head `304713dd`, after the reviews' fixes #412–#454): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2489 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (366 tests each, all passed). An earlier attempt on `9f859e9c` had one app-target failure (a real flake, fixed in #454) and is not retained. `MacDown2UITests` remain unexecuted.
+Reproducibility evidence (head `51ac4816`, after the reviews' fixes #412–#456): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2489 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (367 tests each, all passed). `MacDown2UITests` remain unexecuted.
 
-Baseline: `master` after #454. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
+Baseline: `master` after #456. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
 
 ## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
 
@@ -24,6 +24,14 @@ Baseline: `master` after #454. Evidence is **CI-green PRs plus local runs** on o
 | Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers); on re-review only one Return test is shown to discriminate, so the others are regression guards, not proof |
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
+
+## Eleventh review round (2026-10-13, Opus, exact head `304713dd`)
+
+| Finding | Disposition |
+| --- | --- |
+| P2 (reproduced; reachable in principle: a rotation must finish on the same document inside the retire) #454 dropped the `mutationGeneration` comparison and with it the implicit catch of a recovery-lifetime change: a Discard whose retire of lifetime E1 overlapped a renew/preserve/move-follow onto E2 (same text and state) closed the window without retiring E2, leaving the discarded text loadable | Fixed #456: `closeAfterRetire` also requires the same recovery epoch. #454's deterministic test had used a lifetime change as its generation-bump fixture and so pinned the wrong behaviour; rewritten (edit reverted to identical text). The real reconcile stays covered by `DeletedDocumentDiscardTests` |
+| `resumePendingClose` / `completeCloseAfterRecoveryRetry` still compare `mutationGeneration` | P3, fail-safe (a bump keeps the window open on a fresh lifetime; the user closes again); open |
+| Flake hunt: 40 iterations of ~20 timing-sensitive app suites and 40 full serial runs of Workspace/FileCore/EditorCore | No intermittent failure. The #454 flake was a product-side reconcile racing the retire, made visible by a fixture whose 'deleted' file still exists |
 
 ## Tenth review round (2026-10-12, Opus, exact head `45d7966f`) and the serial-run flake
 
@@ -168,4 +176,4 @@ Credentials or persistent access, signing/notarisation, source-archive publicati
 1. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
 2. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
 3. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
-4. Review of head `304713dd` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
+4. Review of head `51ac4816` (serial evidence recorded above) is in progress; any later source change invalidates that evidence.
