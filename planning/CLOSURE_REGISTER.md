@@ -2,9 +2,9 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence (final head `2861e1a4`, after the reviews' fixes #412–#421): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2462 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (363 tests each, all passed). `MacDown2UITests` remain unexecuted.
+Reproducibility evidence (head `2861e1a4`, after the reviews' fixes #412–#421; **superseded** — the post-fix review's fixes #423–#425 changed source after it, so these runs must be repeated on the new final head): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2462 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (363 tests each, all passed). `MacDown2UITests` remain unexecuted.
 
-Baseline: `master` after #421. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
+Baseline: `master` after #424 (#425 pending). Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
 
 ## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
 
@@ -18,12 +18,21 @@ Baseline: `master` after #421. Evidence is **CI-green PRs plus local runs** on o
 | Authority | P2 `realpath` hint can block on a stalled network mount and ignores cancellation | Open; resolve with `readlinkat` beneath the descriptor in #121 stage C |
 | Authority | P1–P2 Preview/Export Unicode containment (NFC/NFD sibling) | **Refuted**: Foundation file URLs normalise to NFD on both sides, so the siblings are indistinguishable in URL space |
 | Authority | P2 stale load: one scheme handler for every HTML tab (documented #121 item) | Open; #121 stages B–D |
-| Authority | P2 Replace in Folder: dirty-open-file check precedes the write; old run keeps writing during a root switch | Source-confirmed; open |
+| Authority | P2 Replace in Folder: dirty-open-file check precedes the write; old run keeps writing during a root switch | Fixed #419 (`beforeRootRebuild` seam; the root-switch test uses a sleeping Task for ordering, so it is timing-sensitive in principle) |
 | Cross-feature | P1 text filter result applied without the IME guard | #413 guard added; the test does NOT discriminate headlessly, so source-confirmed only |
-| Cross-feature | P2 `updateBaseline` raced the first bind's probe | Reproduced; fixed #415 (2 failed expectations before) |
-| Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers) |
+| Cross-feature | P2 `updateBaseline` raced the first bind's probe | Reproduced; fixed #415 (2 failed expectations before). #415 had no bound on probes started: see the post-fix review below |
+| Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers); on re-review only one Return test is shown to discriminate, so the others are regression guards, not proof |
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
+
+## Post-fix cross-boundary review (2026-10-12, Opus, exact head `2861e1a4`)
+
+| Finding | Disposition |
+| --- | --- |
+| **P1** #415 `updateBaseline` re-probed on every identity change; the app feeds it each probe result, so a conflicted dirty document probed forever (201 probes for one external change) | Reproduced; fixed #423 (`anIdentityOnlyBaselineChangeNeverProbes`, 50 identities → exactly 1 probe; fails on the #415 behaviour). Only a decoding-policy change re-probes |
+| P2 Save As finishing after a tab switch was dropped (finalisation, rebind and failure surfacing consulted only the active tab) | Reproduced; fixed #424 (`aSaveAsCompletedWhileAnotherTabIsActiveRebindsItsOwnTab`) |
+| P2 Find provenance stamped at search start, so a cancelled search left earlier matches current for new text | Reproduced; fixed #425 (stamped at commit). `replaceAllTransaction` still takes no live text; callers must check `matchesAreCurrent` first |
+| Watcher rebind could lose an update between the captured policy and the live document | Hypothesis, unreproduced; open |
 
 Status: **PROVED** (production-path regression at the required layer, discrimination shown), **PARTIAL** (some scenarios proved; gap named), **OPEN** (not started or no proof), **BLOCKED** (needs an environment/authority not available).
 
@@ -74,8 +83,7 @@ Credentials or persistent access, signing/notarisation, source-archive publicati
 
 ## Next bounded steps
 
-1. Replace in Folder: re-check dirty-open-file protection immediately before each write; retire the run before the root-switch rebuild is awaited.
-2. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
-3. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
-4. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
-5. After the implementation set is stable: repeat the three serial package runs and the three serial app-target runs on the final head, then request the post-fix cross-boundary review on that head.
+1. #121 stages B–D (immutable contexts, bounded executor with cancellable `readlinkat` hint, quotas, WebKit proof).
+2. Native UI run (`MacDown2UITests`) and native corroboration for R1/R2/R4/R5/R6.
+3. Release performance tests; #203 owner decision (grammar investigation vs measured budget).
+4. After the implementation set is stable (i.e. now, once #425 merges): repeat the three serial package runs and the three serial app-target runs on the final head, then request the post-fix cross-boundary review on that head.
