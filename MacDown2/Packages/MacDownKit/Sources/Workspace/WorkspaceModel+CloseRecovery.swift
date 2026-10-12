@@ -1,0 +1,37 @@
+import FileCore
+import Foundation
+
+@MainActor
+extension WorkspaceModel {
+    /// A close path retired `document`'s recovery lifetime, but the document was edited during the retire and stays
+    /// open. That lifetime now rejects every recovery write, so move the live document to a fresh one. The renewal is
+    /// rebased onto the LIVE document and published before it is persisted: text typed during either await is kept
+    /// (and persisted by the normal dirty-recovery path), never replaced by an older copy.
+    public func renewRecoveryLifetime(retiredFrom document: FileDocument) async {
+        func isRetiredLifetime(_ candidate: FileDocument?) -> Bool {
+            candidate?.id == document.id && candidate?.recoveryEpoch == document.recoveryEpoch
+        }
+        guard isRetiredLifetime(tabStore.activeDocument),
+              let epoch = try? await document.recoveryBuffer.mintRecoveryEpoch(),
+              let live = tabStore.activeDocument, isRetiredLifetime(live) else { return }
+        let replacement = live.withReplacementRecoveryLifetime(epoch)
+        tabStore.updateActiveDocument { _ in replacement }
+        _ = await replacement.persistRecovery()
+    }
+
+    /// After a close attempt: retire the closing document's recovery unless its tab is still open on the same
+    /// lifetime (a failed Save-and-close keeps the unsaved tab and its recovery).
+    func retireRecoveryIfClosed(_ closingDocument: FileDocument, tabID: UUID?) async {
+        let retained = tabStore.tabs.first { $0.id == tabID }
+            .map { isSameDocumentLifetime($0.document, closingDocument) }
+        guard retained != true else { return }
+        let cleanup = await closingDocument.recoveryBuffer.retireWithOutcome(
+            for: closingDocument.id,
+            epoch: closingDocument.recoveryEpoch
+        )
+        if !cleanup.isAbsent {
+            registerPendingRecovery(.retire(for: closingDocument))
+            lastError = recoveryCleanupWorkspaceError(cleanup, document: closingDocument)
+        }
+    }
+}
