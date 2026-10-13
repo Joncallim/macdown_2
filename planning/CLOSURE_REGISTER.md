@@ -2,9 +2,9 @@
 
 Finite register for the file-safety and release-convergence handoff of 10 October 2026. It records, per obligation, what is proved, by which immutable evidence, and what is still missing. It is not an epic and does not replace the owner issues; it must be updated in the PR that changes an obligation's status. A shared predicate, a closed issue, a test count or a similar-looking passing test is not evidence for an obligation here.
 
-Reproducibility evidence (**head `b848deaa`**, after the reviews' fixes #412–#464 and the #203 tripwire #465): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2493 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (370 tests each, all passed). `MacDown2UITests` remain unexecuted.
+Reproducibility evidence (**head `cec1d28e`**, after the reviews' fixes #412–#468): `planning/downstream/evidence/package-serial-3x/` — three consecutive serial runs of the full package suite, nothing skipped (2494 tests each, all passed); `planning/downstream/evidence/app-target-serial-3x/` — three consecutive serial runs of `MacDown2Tests` (376 tests each, all passed); `planning/downstream/evidence/ui-native-run/` — one full native `MacDown2UITests` run, 33/33 passed (the first ever execution of that target; see the section below); `planning/downstream/evidence/release-performance/` — one Release-configuration run of the performance suites, 32/32 passed (the 50 ms Markdown budget at 1 MB remains the known #203 gap).
 
-Baseline: `master` after #465. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native UI run (`MacDown2UITests`), native Quick Look/WebKit corroboration or Release performance run has been executed. Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
+Baseline: `master` after #468. Evidence is **CI-green PRs plus local runs** on one host (macOS 26.5.1). The consecutive-suite evidence above is for the final implementation head; any later source change invalidates it. No signed candidate, native Quick Look/WebKit corroboration or whole-app Release memory/20-tab audit has been executed (a native `MacDown2UITests` run and a Release run of the performance suites now exist; see Reproducibility evidence). Earlier stalls of the package suite (and the 41–59 timing failures of parallel runs) were traced to AppKit window-transition animations in test windows stranding dispatch workers (#155, fixed by #421) and are not part of this evidence.
 
 ## Independent reviews (2026-10-11, three Opus reviewers, none of whom wrote the code)
 
@@ -24,6 +24,19 @@ Baseline: `master` after #465. Evidence is **CI-green PRs plus local runs** on o
 | Cross-feature | P2 line-helper change (#396) pinned only on the Tab path | #417 pins Return, Smart Home, fence, front matter (4 of 7 tests fail on pre-#396 helpers); on re-review only one Return test is shown to discriminate, so the others are regression guards, not proof |
 | Cross-feature | P2 Find freshness ignored query/options | Reproduced at model layer; fixed #416 |
 | Cross-feature | Register/README inconsistencies | Corrected in this change |
+
+## First native UI run and its review (2026-10-13)
+
+| Finding | Disposition |
+| --- | --- |
+| First execution of `MacDown2UITests` (on `b848deaa`): 25 passed, 8 failed. Triage found 6 PRODUCT defects, the rest stale tests, none environmental | Fixed #468; full target 33/33 afterwards (`evidence/ui-native-run/`) |
+| **Regression from #448 (mine):** the editor mounts while `WindowController.init` builds the window, then `makeSessionsForActiveTab` marked it 'awaiting EditorView', so Bold, Text Filter, snippets and Convert Line Endings were refused for the window's whole life in every ordinary window. The unit test passed only because of that bug | Fixed #468: only a system the call creates itself is marked; the test uses Preview Only and a mounted-case test was added |
+| Find in Document: the bar did not appear on the first ⌃F (`EditorFindModelStore` was not observable); query focus from `onAppear` was dropped (typing went into the document); menus did not refresh after focus moved in | Fixed #468 |
+| Close sheet and `resolveConflict` compared `mutationGeneration`, which background reconciles bump while a sheet is open, discarding the user's choice | Fixed #468 (identity, URL, exact text, state, revisions). **Independent review found the replacement dropped the backing-state check**: a file deleted while the 'Save changes?' sheet was up no longer re-ran the close flow (Discard discarded the last copy). Fixed in the same PR (`backingState` in the context; test fails without it) |
+| First-run welcome: the container's identifier overwrote both buttons' identifiers; either choice opened a second empty Untitled tab. **Review:** the first fix made launch skip the full session restore, dropping a real saved session | Fixed #468: only the empty-session Untitled fallback is skipped; saved session still restored (3 tests) |
+| Stale tests: bracket pairing in plain text is intended (EPIC-22 4a), so the test now asserts that `*`, `_`, backtick do not pair; one `isEnabled` check waits up to 2 s; a Find step matched the Help menu's search field | Fixed #468 without weakening the assertions (reviewed) |
+| Debug-only launch argument `-fileMonitorDebounceMs` (needs `-UITesting`; `launchArguments` is empty in Release) | Added #468; verified from source, not by a Release build |
+| ⌘F does nothing in the editor: Find in Document is ⌃F by an earlier deliberate choice and the Edit menu has no standard Find submenu | **Owner decision pending** |
 
 ## Thirteenth review round (2026-10-13, Opus, exact head `52107b38`)
 
@@ -153,7 +166,7 @@ Status: **PROVED** (production-path regression at the required layer, discrimina
 | R4 | #183 / #379 | Watcher bind retry uses the live document's policy; stale lifetimes bind nothing | #393 `ExternalFileControllerBindRetryFlowTests` (real first-watch failure, controlled sleeper, Latin-1 save during the wait, later external edit reconciles; reverting to the captured document fails with the historical symptoms) | PARTIAL | Deletion after rebind; native FSEvents timing beyond the controlled sleeper. Skipped-bind and A→B→A are covered by #405 |
 | R5 | #183 / #377 | Closed/held/stale Find results cannot authorise replacement or republish | #394 `EditorFindModelHeldSearchTests`; earlier `EditorFindModelStaleMatchTests` (exact-scalar identity, IME marked text, cancel) | PARTIAL | Mounted `FindBarView` live-refresh and closed-bar publication paths; committed IME replacement through the mounted editor |
 | R6 | #183 / #381, #382 | IME fail-open; bare-CR/mixed-EOL transforms; one undo transaction | #396 `EditingAssistBareCRTests` (Markdown-assist Tab, Shift-Tab, heading; 7 fail on old source); `EditorMixedSeparatorTransformTests`, `EditorCompositionBoundaryTests` | PARTIAL | App-level JSON-formatting capture/application guards (`WindowCoordinator.performJSONFormatting`: needs a mounted key-window harness; formatted-equals-snapshot check still uses canonical `!=`); Option-click/drag composition is not claimed |
-| R7 | #173, #119, #120, #88 | Navigation, external-file, close and Save As UI behave as promised | none executed natively | OPEN | `MacDown2UITests` are built but not run in CI; needs a native UI session |
+| R7 | #173, #119, #120, #88 | Navigation, external-file, close and Save As UI behave as promised | `MacDown2UITests` executed natively once: 33/33 on `cec1d28e` (`evidence/ui-native-run/`) | PARTIAL | `MacDown2UITests` are built but not run in CI; needs a native UI session |
 
 ## Harness trustworthiness
 
