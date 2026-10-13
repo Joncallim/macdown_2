@@ -23,8 +23,10 @@ extension WindowCoordinator {
         guard let window = existing.window else { return }
         guard shouldContinue?() ?? true else { return }
         if let root = folder.root, existing.fileTreeModel.root == nil {
+            guard shouldContinue?() ?? true else { return }
             existing.model.setFolderRoot(root)
             await existing.setFileTreeRoot(root, accessURL: folder.accessURL)
+            guard shouldContinue?() ?? true else { return }
         }
         existing.fileTreeModel.selectedURL = folder.selectionURL
         existing.fileTreeModel.renamingURL = folder.renameURL
