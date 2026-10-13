@@ -185,11 +185,16 @@ extension WindowController {
     /// silently discarded the user's choice: "Use Disk Version and Close" left the window open with the local
     /// edits (generation 16 → 21, everything else identical; found by the first real run of
     /// `ExternalFileChangesUITests.testConflictCloseUseDiskClosesWithoutDiscardingTheExternalVersion`).
-    private func matchesPresentedContext(_ document: FileDocument, _ context: CloseSheetContext) -> Bool {
+    func matchesPresentedContext(_ document: FileDocument, _ context: CloseSheetContext) -> Bool {
+        Self.presentedContextMatches(document, context)
+    }
+
+    static func presentedContextMatches(_ document: FileDocument, _ context: CloseSheetContext) -> Bool {
         document.id == context.documentID
             && document.fileURL?.standardizedFileURL == context.fileURL
             && document.text.isExactlyEqual(to: context.text)
             && document.state == context.state
+            && document.backingState == context.backingState
             && document.lastKnownRevision == context.lastKnownRevision
             && document.pendingExternalRevision == context.pendingExternalRevision
     }
@@ -210,11 +215,14 @@ extension WindowController {
     }
 }
 
-private struct CloseSheetContext {
+struct CloseSheetContext {
     let documentID: String
     let fileURL: URL?
     let text: String
     let state: FileDocumentState
+    /// A vanished backing file changes only this (and the generation): the sheet's "discard" would then discard the
+    /// last copy, so the close flow must be re-run to offer Save a Copy.
+    let backingState: FileBackingState
     let lastKnownRevision: FileRevision?
     let pendingExternalRevision: FileRevision?
 
@@ -223,6 +231,7 @@ private struct CloseSheetContext {
         fileURL = document.fileURL?.standardizedFileURL
         text = document.text
         state = document.state
+        backingState = document.backingState
         lastKnownRevision = document.lastKnownRevision
         pendingExternalRevision = document.pendingExternalRevision
     }

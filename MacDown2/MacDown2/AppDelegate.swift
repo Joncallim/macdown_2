@@ -139,9 +139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// once the first-run welcome window is dismissed.
     ///
     /// `documentAlreadyOpened` is true when that welcome window's choice has
-    /// already opened a document: launch then only brings back unsaved
-    /// session tabs, exactly as it does when a document open is pending,
-    /// instead of also opening an untitled document of its own.
+    /// already opened a document: launch then does not open an untitled
+    /// document of its own (the saved session, if any, is still restored).
     private func proceedWithNormalLaunch(documentAlreadyOpened: Bool = false) {
         if !launchURLs.isEmpty {
             Task { @MainActor in
@@ -168,8 +167,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Scheduled synchronously so the tracked restore task exists before
             // any reopen event can be handled; the grace delay inside gives
             // `application(_:openFiles:)` a few run-loop ticks to arrive first.
-            coordinator.scheduleSessionRestore { [weak self] in
-                documentAlreadyOpened || (self?.hasPendingDocumentOpen ?? false)
+            // A document the welcome window already opened must not discard a real saved session (only the empty-
+            // session fallback, which would add a second Untitled tab, is skipped).
+            coordinator.scheduleSessionRestore(createsUntitledWhenEmpty: !documentAlreadyOpened) { [weak self] in
+                self?.hasPendingDocumentOpen ?? false
             }
         }
     }
