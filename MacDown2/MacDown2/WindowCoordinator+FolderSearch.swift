@@ -2,6 +2,25 @@ import AppKit
 import FileCore
 import TextSearch
 
+struct FolderSearchRequestGate {
+    private var generation: UInt = 0
+
+    mutating func begin() -> UInt {
+        generation &+= 1
+        return generation
+    }
+
+    func owns(_ requestedGeneration: UInt) -> Bool {
+        generation == requestedGeneration
+    }
+}
+
+struct PendingFolderSearchReveal {
+    let generation: UInt
+    let range: NSRange
+    let controllerID: ObjectIdentifier
+}
+
 /// Opens a folder-search result and reveals the matched range (EPIC-22
 /// §6.16, Slice 7b) — reuses the existing document-open path
 /// (`openDocument(at:folderRoot:...)`, the same one Quick Open and the
@@ -24,40 +43,75 @@ extension WindowCoordinator {
         range: NSRange
     ) async {
         let url = root.appendingPathComponent(relativePath)
-        await openDocument(at: url, folderRoot: root, folderAccessURL: folderAccessURL, folderSelectionURL: url)
+        let requestGeneration = folderSearchRequestGate.begin()
+        pendingFolderSearchReveals.removeAll()
+        await openDocument(
+            at: url,
+            folderRoot: root,
+            folderAccessURL: folderAccessURL,
+            folderSelectionURL: url,
+            shouldContinue: { [self] in folderSearchRequestGate.owns(requestGeneration) }
+        )
+        guard folderSearchRequestGate.owns(requestGeneration), !Task.isCancelled else { return }
         guard let controller = controllerForDocument(url: url),
               let tabID = controller.model.tabStore.tabID(forFileURL: url)
         else { return }
 
-        // `WindowController.init` eagerly creates the ACTIVE tab's
-        // `EditorTextSystem` synchronously (`makeSessionsForActiveTab()`),
-        // so for a document that was not already open anywhere --
-        // `openDocument` opens it into a brand-new window and makes it the
-        // active tab -- `existingSystem` already succeeds on the very first
-        // try. The real gap this retry protects is `openDocument`'s OTHER
-        // branch: a document that is already open, but as a background
-        // (non-active) tab in an existing window, is brought to the front
-        // as a WINDOW without necessarily being switched to as the active
-        // TAB within it, and a non-active tab's own `EditorTextSystem` may
-        // not exist yet (`DocumentEditorSplitView`'s panes create their
-        // `EditorView`, and so their system, lazily as they mount). An
-        // independent review of this slice found the ORIGINAL version of
-        // this comment's own justification did not hold for the common
-        // case, but the underlying seam is still worth keeping for this
-        // background-tab case; if that tab genuinely never becomes active,
-        // this loop still exhausts and silently returns without revealing
-        // — a disclosed, known limitation (the file's window still comes
-        // forward via `openDocument` regardless), not something this
-        // bounded retry can fix on its own without a deeper change to
-        // `openDocument`'s own tab-activation behavior, which is shared
-        // with Quick Open and out of this slice's scope.
-        for _ in 0 ..< 10 {
-            if let textSystem = controller.editorStore.existingSystem(for: tabID.uuidString) {
-                textSystem.revealSelection(utf16Range: range, flash: true, animated: true)
-                return
-            }
-            await Task.yield()
+        guard !Task.isCancelled else { return }
+        if !attemptFolderSearchReveal(
+            tabID: tabID,
+            generation: requestGeneration,
+            range: range,
+            controller: controller
+        ) {
+            pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
+                generation: requestGeneration,
+                range: range,
+                controllerID: ObjectIdentifier(controller)
+            )
         }
+    }
+
+    /// Called after an editor pane mounts and whenever its layout changes.
+    /// Delayed background-tab attachment therefore keeps the request alive
+    /// without a fixed retry count or timeout.
+    func folderSearchEditorLayoutChanged(tabID: String) {
+        guard let tabUUID = UUID(uuidString: tabID),
+              let pending = pendingFolderSearchReveals[tabUUID],
+              folderSearchRequestGate.owns(pending.generation),
+              let controller = controllers.first(where: {
+                  ObjectIdentifier($0) == pending.controllerID
+                      && $0.model.tabStore.activeTabID == tabUUID
+              })
+        else { return }
+        pendingFolderSearchReveals.removeValue(forKey: tabUUID)
+        if attemptFolderSearchReveal(
+            tabID: tabUUID,
+            generation: pending.generation,
+            range: pending.range,
+            controller: controller
+        ) {
+            return
+        }
+        pendingFolderSearchReveals[tabUUID] = pending
+    }
+
+    private func attemptFolderSearchReveal(
+        tabID: UUID,
+        generation: UInt,
+        range: NSRange,
+        controller: WindowController
+    ) -> Bool {
+        guard folderSearchRequestGate.owns(generation),
+              controller.window?.isVisible == true,
+              controller.model.tabStore.activeTabID == tabID,
+              let textSystem = controller.editorStore.existingSystem(for: tabID.uuidString),
+              textSystem.textView.window != nil,
+              !textSystem.textView.bounds.isEmpty,
+              folderSearchRequestGate.owns(generation)
+        else { return false }
+        textSystem.revealSelection(utf16Range: range, flash: true, animated: true)
+        return true
     }
 
     /// Whether any window has `url` open with edits not yet on disk (dirty,
