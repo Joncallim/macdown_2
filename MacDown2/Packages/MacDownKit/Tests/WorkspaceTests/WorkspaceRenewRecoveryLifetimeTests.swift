@@ -73,4 +73,39 @@ struct WorkspaceRenewRecoveryLifetimeTests {
         }
         #expect(reverted.isEmpty, "the edit was reverted at yield offsets \(reverted)")
     }
+
+    /// A document that is clean when the lifetime is renewed (a clean close racing an external reload) moves to the new
+    /// lifetime but gets no recovery record: nothing would ever remove it and a relaunch after a disk change would
+    /// restore it as a false conflict.
+    @Test(arguments: [true, false])
+    func aCleanDocumentIsRenewedWithoutAStaleRecoveryRecord(viaRenew: Bool) async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent("a.md")
+        try "disk text".write(to: file, atomically: true, encoding: .utf8)
+        let buffer = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        // Edited then saved: clean, with a non-zero mutation generation (a fresh load's version 0 is never recorded).
+        let clean = try FileDocument(fileURL: file, recoveryBuffer: buffer).load().edited(text: "saved text").save()
+        #expect(clean.state == .clean)
+        let store = TabStore(
+            sessionStore: WorkspaceSessionStore(fileURL: directory.appendingPathComponent("tabs.json")),
+            recoveryBuffer: buffer
+        )
+        store.newTab(document: clean)
+        let model = WorkspaceModel(tabStore: store)
+
+        if viaRenew {
+            await model.renewRecoveryLifetime(retiredFrom: clean)
+        } else {
+            await model.preserveOpenDocumentAfterFailedCloseRetirement(clean)
+        }
+
+        let renewed = try #require(model.tabStore.activeDocument)
+        #expect(renewed.recoveryEpoch != clean.recoveryEpoch, "the document still moves to the new lifetime")
+        #expect(renewed.state == .clean)
+        let record = try await buffer.load(for: renewed.id, epoch: renewed.recoveryEpoch)
+        #expect(record == nil, "but no recovery record is written for clean text")
+    }
 }

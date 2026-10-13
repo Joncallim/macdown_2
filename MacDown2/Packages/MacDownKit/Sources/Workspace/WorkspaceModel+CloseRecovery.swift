@@ -16,7 +16,11 @@ extension WorkspaceModel {
               let live = tabStore.activeDocument, isRetiredLifetime(live) else { return }
         let replacement = live.withReplacementRecoveryLifetime(epoch)
         tabStore.updateActiveDocument { _ in replacement }
-        _ = await replacement.persistRecovery()
+        // A clean document has nothing to recover; a record for it would never be removed and a relaunch after the
+        // file changed would restore it as a false conflict.
+        if replacement.state != .clean {
+            _ = await replacement.persistRecovery()
+        }
     }
 
     /// After a close attempt: retire the closing document's recovery unless its tab is still open on the same
@@ -45,6 +49,10 @@ extension WorkspaceModel {
               live.recoveryEpoch == document.recoveryEpoch else { return }
         let replacement = live.withReplacementRecoveryLifetime(epoch)
         tabStore.updateActiveDocument { _ in replacement }
-        _ = await replacement.persistRecovery()
+        // A clean document has nothing to recover; a record for it would never be removed and a relaunch after the
+        // file changed would restore it as a false conflict.
+        if replacement.state != .clean {
+            _ = await replacement.persistRecovery()
+        }
     }
 }
