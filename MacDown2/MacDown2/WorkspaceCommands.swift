@@ -256,19 +256,15 @@ struct WorkspaceCommands: Commands {
 
             // EPIC-22 §6.14, Slice 5a: an inline docked bar, not a floating
             // panel, so this only toggles per-tab state — see
-            // `WindowCoordinator+Find.swift`. Deliberately ⌃F, not ⌘F:
-            // `.textEditing` (AppKit's own stock Find/Find Next/Find
-            // Previous/spelling/substitutions menu, driven by
-            // `NSTextFinder`'s responder-chain integration) is left
-            // untouched for now, matching "Go to Line/Column…"'s own choice
-            // of ⌃G just above rather than the ⌘G stock Find Next already
-            // owns. Replacing `.textEditing` outright is a separate,
-            // larger decision (it would also affect spelling/substitutions,
-            // unrelated to Find) left for a future slice.
+            // `WindowCoordinator+Find.swift`. Bound to the standard ⌘F (owner
+            // decision, 2026-10-13: the Edit menu has no stock Find submenu, so
+            // ⌘F previously did nothing in the editor); this replaces the
+            // original Slice 5a ⌃F binding (a second, hidden ⌃F item does not
+            // register its shortcut in a SwiftUI command).
             Button("Find in Document…") {
                 coordinator?.toggleFind()
             }
-            .keyboardShortcut("f", modifiers: [.control])
+            .keyboardShortcut("f", modifiers: [.command])
             .disabled(coordinator?.keyModel?.hasActiveDocument != true)
         }
 
