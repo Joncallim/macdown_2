@@ -53,6 +53,7 @@ final class WindowCoordinator {
     private var hasRestoredSession = false
     let documentOpens = KeyedSerialRunner<String>()
     @ObservationIgnored var folderSearchRequestGate = FolderSearchRequestGate()
+    @ObservationIgnored var pendingFolderSearchReveals: [UUID: PendingFolderSearchReveal] = [:]
     var launchSession: WorkspaceSession? // as at launch; handed out once by `consumeLaunchSession()`
     private var saveTask: Task<Void, Never>?
     var sessionPublicationOrder = SessionPublicationOrder()

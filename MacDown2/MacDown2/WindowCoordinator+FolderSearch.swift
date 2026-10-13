@@ -15,6 +15,11 @@ struct FolderSearchRequestGate {
     }
 }
 
+struct PendingFolderSearchReveal {
+    let generation: UInt
+    let range: NSRange
+}
+
 /// Opens a folder-search result and reveals the matched range (EPIC-22
 /// §6.16, Slice 7b) — reuses the existing document-open path
 /// (`openDocument(at:folderRoot:...)`, the same one Quick Open and the
@@ -50,27 +55,55 @@ extension WindowCoordinator {
               let tabID = controller.model.tabStore.tabID(forFileURL: url)
         else { return }
 
-        // A background tab can need several run-loop turns to attach its
-        // editor view after `openDocument` selects it. Wait only while this
-        // request is still authoritative and the view has a usable window
-        // and frame; never reveal into a detached or zero-sized view.
-        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-        while ContinuousClock.now < deadline {
-            guard folderSearchRequestGate.owns(requestGeneration),
-                  !Task.isCancelled,
-                  controller.window?.isVisible == true,
-                  controller.model.tabStore.activeTabID == tabID
-            else { return }
-            if let textSystem = controller.editorStore.existingSystem(for: tabID.uuidString),
-               textSystem.textView.window != nil,
-               !textSystem.textView.bounds.isEmpty {
-                guard folderSearchRequestGate.owns(requestGeneration),
-                      !Task.isCancelled else { return }
-                textSystem.revealSelection(utf16Range: range, flash: true, animated: true)
-                return
-            }
-            try? await Task.sleep(nanoseconds: 16_000_000)
+        guard !Task.isCancelled else { return }
+        if !attemptFolderSearchReveal(
+            tabID: tabID,
+            generation: requestGeneration,
+            range: range,
+            controller: controller
+        ) {
+            pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
+                generation: requestGeneration,
+                range: range
+            )
         }
+    }
+
+    /// Called after an editor pane mounts and whenever its layout changes.
+    /// Delayed background-tab attachment therefore keeps the request alive
+    /// without a fixed retry count or timeout.
+    func folderSearchEditorLayoutChanged(tabID: String) {
+        guard let tabUUID = UUID(uuidString: tabID),
+              let pending = pendingFolderSearchReveals[tabUUID],
+              folderSearchRequestGate.owns(pending.generation),
+              let controller = controllers.first(where: { $0.model.tabStore.activeTabID == tabUUID })
+        else { return }
+        if attemptFolderSearchReveal(
+            tabID: tabUUID,
+            generation: pending.generation,
+            range: pending.range,
+            controller: controller
+        ) {
+            pendingFolderSearchReveals.removeValue(forKey: tabUUID)
+        }
+    }
+
+    private func attemptFolderSearchReveal(
+        tabID: UUID,
+        generation: UInt,
+        range: NSRange,
+        controller: WindowController
+    ) -> Bool {
+        guard folderSearchRequestGate.owns(generation),
+              controller.window?.isVisible == true,
+              controller.model.tabStore.activeTabID == tabID,
+              let textSystem = controller.editorStore.existingSystem(for: tabID.uuidString),
+              textSystem.textView.window != nil,
+              !textSystem.textView.bounds.isEmpty,
+              folderSearchRequestGate.owns(generation)
+        else { return false }
+        textSystem.revealSelection(utf16Range: range, flash: true, animated: true)
+        return true
     }
 
     /// Whether any window has `url` open with edits not yet on disk (dirty,
