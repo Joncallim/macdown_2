@@ -52,6 +52,7 @@ final class WindowCoordinator {
     let sidebarLayoutBroadcaster = SidebarLayoutBroadcaster()
     private var hasRestoredSession = false
     let documentOpens = KeyedSerialRunner<String>()
+    @ObservationIgnored var folderSearchRequestGenerations: [String: UInt] = [:]
     var launchSession: WorkspaceSession? // as at launch; handed out once by `consumeLaunchSession()`
     private var saveTask: Task<Void, Never>?
     var sessionPublicationOrder = SessionPublicationOrder()

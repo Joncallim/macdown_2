@@ -24,39 +24,29 @@ extension WindowCoordinator {
         range: NSRange
     ) async {
         let url = root.appendingPathComponent(relativePath)
+        let requestKey = url.resolvingFinalSymlink().standardizedFileURL.path
+        let requestGeneration = (folderSearchRequestGenerations[requestKey] ?? 0) &+ 1
+        folderSearchRequestGenerations[requestKey] = requestGeneration
         await openDocument(at: url, folderRoot: root, folderAccessURL: folderAccessURL, folderSelectionURL: url)
+        guard folderSearchRequestGenerations[requestKey] == requestGeneration, !Task.isCancelled else { return }
         guard let controller = controllerForDocument(url: url),
               let tabID = controller.model.tabStore.tabID(forFileURL: url)
         else { return }
 
-        // `WindowController.init` eagerly creates the ACTIVE tab's
-        // `EditorTextSystem` synchronously (`makeSessionsForActiveTab()`),
-        // so for a document that was not already open anywhere --
-        // `openDocument` opens it into a brand-new window and makes it the
-        // active tab -- `existingSystem` already succeeds on the very first
-        // try. The real gap this retry protects is `openDocument`'s OTHER
-        // branch: a document that is already open, but as a background
-        // (non-active) tab in an existing window, is brought to the front
-        // as a WINDOW without necessarily being switched to as the active
-        // TAB within it, and a non-active tab's own `EditorTextSystem` may
-        // not exist yet (`DocumentEditorSplitView`'s panes create their
-        // `EditorView`, and so their system, lazily as they mount). An
-        // independent review of this slice found the ORIGINAL version of
-        // this comment's own justification did not hold for the common
-        // case, but the underlying seam is still worth keeping for this
-        // background-tab case; if that tab genuinely never becomes active,
-        // this loop still exhausts and silently returns without revealing
-        // — a disclosed, known limitation (the file's window still comes
-        // forward via `openDocument` regardless), not something this
-        // bounded retry can fix on its own without a deeper change to
-        // `openDocument`'s own tab-activation behavior, which is shared
-        // with Quick Open and out of this slice's scope.
-        for _ in 0 ..< 10 {
-            if let textSystem = controller.editorStore.existingSystem(for: tabID.uuidString) {
+        // A background tab can need several run-loop turns to attach its
+        // editor view after `openDocument` selects it. Wait only while this
+        // request is still authoritative and the view has a usable window
+        // and frame; never reveal into a detached or zero-sized view.
+        for _ in 0 ..< 120 {
+            guard folderSearchRequestGenerations[requestKey] == requestGeneration, !Task.isCancelled else { return }
+            if let textSystem = controller.editorStore.existingSystem(for: tabID.uuidString),
+               textSystem.textView.window != nil,
+               !textSystem.textView.bounds.isEmpty {
+                guard folderSearchRequestGenerations[requestKey] == requestGeneration, !Task.isCancelled else { return }
                 textSystem.revealSelection(utf16Range: range, flash: true, animated: true)
                 return
             }
-            await Task.yield()
+            try? await Task.sleep(nanoseconds: 16_000_000)
         }
     }
 
