@@ -2,6 +2,20 @@ import AppKit
 import FileCore
 import TextSearch
 
+struct FolderSearchRequestGate {
+    private var generations: [String: UInt] = [:]
+
+    mutating func begin(for key: String) -> UInt {
+        let generation = (generations[key] ?? 0) &+ 1
+        generations[key] = generation
+        return generation
+    }
+
+    func owns(_ generation: UInt, for key: String) -> Bool {
+        generations[key] == generation
+    }
+}
+
 /// Opens a folder-search result and reveals the matched range (EPIC-22
 /// §6.16, Slice 7b) — reuses the existing document-open path
 /// (`openDocument(at:folderRoot:...)`, the same one Quick Open and the
@@ -25,10 +39,9 @@ extension WindowCoordinator {
     ) async {
         let url = root.appendingPathComponent(relativePath)
         let requestKey = url.resolvingFinalSymlink().standardizedFileURL.path
-        let requestGeneration = (folderSearchRequestGenerations[requestKey] ?? 0) &+ 1
-        folderSearchRequestGenerations[requestKey] = requestGeneration
+        let requestGeneration = folderSearchRequestGate.begin(for: requestKey)
         await openDocument(at: url, folderRoot: root, folderAccessURL: folderAccessURL, folderSelectionURL: url)
-        guard folderSearchRequestGenerations[requestKey] == requestGeneration, !Task.isCancelled else { return }
+        guard folderSearchRequestGate.owns(requestGeneration, for: requestKey), !Task.isCancelled else { return }
         guard let controller = controllerForDocument(url: url),
               let tabID = controller.model.tabStore.tabID(forFileURL: url)
         else { return }
@@ -37,12 +50,18 @@ extension WindowCoordinator {
         // editor view after `openDocument` selects it. Wait only while this
         // request is still authoritative and the view has a usable window
         // and frame; never reveal into a detached or zero-sized view.
-        for _ in 0 ..< 120 {
-            guard folderSearchRequestGenerations[requestKey] == requestGeneration, !Task.isCancelled else { return }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while ContinuousClock.now < deadline {
+            guard folderSearchRequestGate.owns(requestGeneration, for: requestKey),
+                  !Task.isCancelled,
+                  controller.window?.isVisible == true,
+                  controller.model.tabStore.activeTabID == tabID
+            else { return }
             if let textSystem = controller.editorStore.existingSystem(for: tabID.uuidString),
                textSystem.textView.window != nil,
                !textSystem.textView.bounds.isEmpty {
-                guard folderSearchRequestGenerations[requestKey] == requestGeneration, !Task.isCancelled else { return }
+                guard folderSearchRequestGate.owns(requestGeneration, for: requestKey),
+                      !Task.isCancelled else { return }
                 textSystem.revealSelection(utf16Range: range, flash: true, animated: true)
                 return
             }
