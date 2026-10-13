@@ -6,6 +6,31 @@ import Foundation
 /// §14's note that this evidence is not subject to the no-macOS-runtime
 /// caveat that applies to on-device UI journeys).
 enum TextFilterFixtures {
+    /// Owns a fixture directory for the complete lifetime of an asynchronous
+    /// test operation. Keeping creation and teardown in one async scope avoids
+    /// the load-sensitive bug where a test's `defer` removes files while a
+    /// child task is still starting or draining its process.
+    static func withTemporaryDirectory<T: Sendable>(
+        _ operation: (URL) async throws -> T
+    ) async throws -> T {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        return try await operation(directory)
+    }
+
+    /// Parse the complete, newline-delimited PID record produced by a fixture.
+    /// A partial or malformed record is never treated as readiness: callers
+    /// must wait for a complete line containing a positive decimal PID.
+    static func completePIDs(in url: URL) -> [pid_t] {
+        guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return contents.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
+            let fields = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            guard fields.count == 2, !fields[0].isEmpty,
+                  let pid = pid_t(fields[1]), pid > 0 else { return nil }
+            return pid
+        }
+    }
+
     /// A watchdog delay that returns once the fixture has written
     /// `expectedCount` pid lines to `url` (its readiness signal), so the
     /// production timeout verdict and process-group containment run after the
