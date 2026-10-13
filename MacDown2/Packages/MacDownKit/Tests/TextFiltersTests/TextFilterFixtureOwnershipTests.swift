@@ -8,11 +8,11 @@ struct TextFilterFixtureOwnershipTests {
         let directory = try TextFilterFixtures.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("pids")
-        try "worker=123\nworker=123\npartial=\nnot-a-record\nnegative=-4\nworker=456 trailing\n".write(
+        try "worker=123\nworker=123\npartial=\nnot-a-record\nnegative=-4\nworker=456 trailing\n789\n".write(
             to: url, atomically: true, encoding: .utf8
         )
 
-        #expect(TextFilterFixtures.completePIDs(in: url) == [123])
+        #expect(TextFilterFixtures.completePIDs(in: url) == [123, 789])
 
         try "worker=123 trailing".write(to: url, atomically: true, encoding: .utf8)
         #expect(TextFilterFixtures.completePIDs(in: url).isEmpty)

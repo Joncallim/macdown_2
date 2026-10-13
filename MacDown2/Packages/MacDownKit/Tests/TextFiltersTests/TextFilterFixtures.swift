@@ -26,8 +26,13 @@ enum TextFilterFixtures {
         var seen = Set<pid_t>()
         return contents.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
             let fields = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
-            guard fields.count == 2, !fields[0].isEmpty,
-                  let pid = pid_t(fields[1]), pid > 0, seen.insert(pid).inserted else { return nil }
+            let rawPID: Substring?
+            switch fields.count {
+            case 1: rawPID = fields[0]
+            case 2: rawPID = fields[1].isEmpty ? nil : fields[1]
+            default: rawPID = nil
+            }
+            guard let rawPID, let pid = pid_t(rawPID), pid > 0, seen.insert(pid).inserted else { return nil }
             return pid
         }
     }
