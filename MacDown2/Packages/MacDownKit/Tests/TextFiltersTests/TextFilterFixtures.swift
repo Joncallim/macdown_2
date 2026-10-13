@@ -23,10 +23,12 @@ enum TextFilterFixtures {
     /// must wait for a complete line containing a positive decimal PID.
     static func completePIDs(in url: URL) -> [pid_t] {
         guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        guard contents.last == "\n" else { return [] }
+        var seen = Set<pid_t>()
         return contents.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
             let fields = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
             guard fields.count == 2, !fields[0].isEmpty,
-                  let pid = pid_t(fields[1]), pid > 0 else { return nil }
+                  let pid = pid_t(fields[1]), pid > 0, seen.insert(pid).inserted else { return nil }
             return pid
         }
     }
@@ -46,9 +48,7 @@ enum TextFilterFixtures {
         { _ in
             let deadline = ContinuousClock.now.advanced(by: readinessBound)
             while !Task.isCancelled, ContinuousClock.now < deadline {
-                let lines = (try? String(contentsOf: url, encoding: .utf8))?
-                    .split(separator: "\n").count ?? 0
-                if lines >= expectedCount {
+                if completePIDs(in: url).count >= expectedCount {
                     return
                 }
                 try? await Task.sleep(for: .milliseconds(10))
