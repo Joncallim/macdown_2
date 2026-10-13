@@ -18,9 +18,13 @@ struct HighlightPerformanceTests {
     /// incremental reparse after a one-character edit 0.19 s — the same cost as
     /// a full parse (it scales linearly with document size and does not reuse
     /// the old tree), so E05's 50 ms keystroke budget is NOT met for 1 MB
-    /// Markdown at the parser level (Neon runs it off the main actor). The 8 ms
-    /// main-thread budget applies to viewport-slice work, covered by
-    /// `EditorPerformanceTests`, not to a whole-document parse.
+    /// Markdown at the parser level. The cause is the upstream block grammar,
+    /// not the edit wiring: see `MarkdownTreeReuseTests`. Neon does not move
+    /// this off the main thread for a typing-sized edit that ends before
+    /// UTF-16 offset 1,048,576 (`BackgroundingLanguageLayerTree`'s
+    /// `synchronousDocumentSize`): it reparses synchronously on the main
+    /// actor. The 8 ms main-thread budget applies to viewport-slice work,
+    /// covered by `EditorPerformanceTests`, not to a whole-document parse.
     private enum ReleaseCeiling {
         static let fullHighlight: Duration = .milliseconds(500)
         static let fullParse: Duration = .milliseconds(400)
