@@ -18,6 +18,7 @@ struct FolderSearchRequestGate {
 struct PendingFolderSearchReveal {
     let generation: UInt
     let range: NSRange
+    let controllerID: ObjectIdentifier
 }
 
 /// Opens a folder-search result and reveals the matched range (EPIC-22
@@ -43,6 +44,7 @@ extension WindowCoordinator {
     ) async {
         let url = root.appendingPathComponent(relativePath)
         let requestGeneration = folderSearchRequestGate.begin()
+        pendingFolderSearchReveals.removeAll()
         await openDocument(
             at: url,
             folderRoot: root,
@@ -64,7 +66,8 @@ extension WindowCoordinator {
         ) {
             pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
                 generation: requestGeneration,
-                range: range
+                range: range,
+                controllerID: ObjectIdentifier(controller)
             )
         }
     }
@@ -76,16 +79,21 @@ extension WindowCoordinator {
         guard let tabUUID = UUID(uuidString: tabID),
               let pending = pendingFolderSearchReveals[tabUUID],
               folderSearchRequestGate.owns(pending.generation),
-              let controller = controllers.first(where: { $0.model.tabStore.activeTabID == tabUUID })
+              let controller = controllers.first(where: {
+                  ObjectIdentifier($0) == pending.controllerID
+                      && $0.model.tabStore.activeTabID == tabUUID
+              })
         else { return }
+        pendingFolderSearchReveals.removeValue(forKey: tabUUID)
         if attemptFolderSearchReveal(
             tabID: tabUUID,
             generation: pending.generation,
             range: pending.range,
             controller: controller
         ) {
-            pendingFolderSearchReveals.removeValue(forKey: tabUUID)
+            return
         }
+        pendingFolderSearchReveals[tabUUID] = pending
     }
 
     private func attemptFolderSearchReveal(
