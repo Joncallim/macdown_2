@@ -118,6 +118,13 @@ final class ExternalFileChangesUITests: XCTestCase {
     }
 
     func testUseDiskResolutionShowsUnavailableStateWhenBackingFileVanishes() {
+        // The monitor's default 150 ms debounce notices the deletion below
+        // before XCUITest's click lands (~300 ms), replacing the conflict
+        // banner — and its Use Disk Version button — with the unavailable
+        // banner, so the click never reached `resolveConflict(.useExternal)`.
+        // A 3 s debounce makes the click land first, so this exercises the
+        // Use-Disk-Version path's own "backing file vanished" handling.
+        app.launchArguments += ["-fileMonitorDebounceMs", "3000"]
         app.launch()
         app.activate()
         let textView = app.textViews.firstMatch
@@ -157,6 +164,10 @@ final class ExternalFileChangesUITests: XCTestCase {
         let closed = NSPredicate(format: "exists == false")
         expectation(for: closed, evaluatedWith: textView)
         waitForExpectations(timeout: 10)
+        XCTAssertEqual(
+            try? String(contentsOf: fixtureURL, encoding: .utf8),
+            "# Disk Version Chosen At Close\n"
+        )
     }
 
     private func atomicallyReplaceFixture(with text: String) {

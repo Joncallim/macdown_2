@@ -115,10 +115,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if shouldShowFirstRun, launchURLs.isEmpty, launchFolderURL == nil {
-            coordinator.showFirstRunWindow { [weak self] in
+            coordinator.showFirstRunWindow { [weak self] openedDocument in
                 guard let self else { return }
                 defaults.set(true, forKey: Self.hasCompletedFirstRunKey)
-                proceedWithNormalLaunch()
+                proceedWithNormalLaunch(documentAlreadyOpened: openedDocument)
             }
         } else {
             proceedWithNormalLaunch()
@@ -137,7 +137,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// command line, start a new document, or restore the prior session.
     /// Runs on every launch except a first-ever one, where it instead runs
     /// once the first-run welcome window is dismissed.
-    private func proceedWithNormalLaunch() {
+    ///
+    /// `documentAlreadyOpened` is true when that welcome window's choice has
+    /// already opened a document: launch then only brings back unsaved
+    /// session tabs, exactly as it does when a document open is pending,
+    /// instead of also opening an untitled document of its own.
+    private func proceedWithNormalLaunch(documentAlreadyOpened: Bool = false) {
         if !launchURLs.isEmpty {
             Task { @MainActor in
                 await coordinator.restoreUnsavedSessionTabs()
@@ -155,14 +160,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 coordinator.openFolder(launchFolderURL)
             }
         } else if appSettings.general.launchBehavior == .startWithNewDocument {
-            coordinator.newDocument()
+            if !documentAlreadyOpened {
+                coordinator.newDocument()
+            }
             Task { @MainActor in await coordinator.restoreUnsavedSessionTabs() }
         } else {
             // Scheduled synchronously so the tracked restore task exists before
             // any reopen event can be handled; the grace delay inside gives
             // `application(_:openFiles:)` a few run-loop ticks to arrive first.
             coordinator.scheduleSessionRestore { [weak self] in
-                self?.hasPendingDocumentOpen ?? false
+                documentAlreadyOpened || (self?.hasPendingDocumentOpen ?? false)
             }
         }
     }
@@ -248,6 +255,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .map { String($0).trimmingCharacters(in: .whitespaces) }
         }
         return []
+    }
+
+    /// UI-test hook: `-fileMonitorDebounceMs <n>` (with `-UITesting`, Debug only via `launchArguments`) lengthens
+    /// the external-file monitor's debounce, so a UI test can act on a conflict banner after deleting the backing
+    /// file but before the monitor itself notices the deletion — otherwise the default 150 ms debounce always
+    /// beats XCUITest's ~300 ms click and that action's own "file vanished" path can never be reached.
+    /// `nil` (the monitor's own default) for every other launch.
+    static var uiTestingFileMonitorDebounce: Duration? {
+        let args = launchArguments
+        guard args.contains("-UITesting"),
+              let index = args.firstIndex(of: "-fileMonitorDebounceMs"), index + 1 < args.count,
+              let milliseconds = Int(args[index + 1]), milliseconds >= 0
+        else { return nil }
+        return .milliseconds(milliseconds)
     }
 
     private static func openFolderPath(from args: [String]) -> String? {

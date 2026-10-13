@@ -36,6 +36,11 @@ struct FirstRunView: View {
         }
         .padding(40)
         .frame(minWidth: 480, minHeight: 380)
+        // Without `.contain`, SwiftUI propagates this identifier onto every
+        // descendant instead of creating a container, overwriting the two
+        // buttons' own identifiers (confirmed via a real accessibility-tree
+        // dump: both buttons reported `firstRunWelcomeView`).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("firstRunWelcomeView")
     }
 }

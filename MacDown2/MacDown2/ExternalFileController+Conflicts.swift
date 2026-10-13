@@ -19,9 +19,24 @@ extension ExternalFileController {
         } else {
             await monitor.snapshotNow()
         }
-        guard isCurrent(context, in: model) else { return }
+        // Revalidate on content, not the mutation counter: background reconciles advance it with nothing else
+        // changing while the snapshot is awaited, which silently dropped the user's choice — the conflict stayed
+        // and "Use Disk Version and Close" left the window open (generation 21 → 22, identical text, state and
+        // revisions; found by the first real run of `ExternalFileChangesUITests`). Apply to the live document.
+        guard let current = model.activeDocument, isSameContent(context, as: current) else { return }
 
-        await applyConflictObservation(observation, resolution: resolution, document: document, model: model)
+        await applyConflictObservation(observation, resolution: resolution, document: current, model: model)
+    }
+
+    /// `isCurrent(_:in:)` without the `mutationGeneration` comparison: the same document lifetime, URL, exact
+    /// text, state and pending external revision the conflict choice was made against.
+    private func isSameContent(_ context: OperationContext, as document: FileDocument) -> Bool {
+        lifecycleGeneration == context.generation
+            && document.id == context.documentID
+            && document.fileURL?.standardizedFileURL == context.fileURL
+            && document.text.isExactlyEqual(to: context.text)
+            && document.state == context.state
+            && document.pendingExternalRevision == context.pendingRevision
     }
 
     private func applyConflictObservation(

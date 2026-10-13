@@ -47,6 +47,20 @@ final class EditingAssistsUITests: XCTestCase {
         app.menuBars.menuBarItems["Window"].menuItems["Select Tab \(index)"].firstMatch.click()
     }
 
+    /// Waits (2 s, the bound the Focus Outline step always used) for a menu
+    /// item's enablement to reach `enabled`. SwiftUI publishes a command's
+    /// `.disabled` state to its `NSMenuItem` on its next update pass, not
+    /// synchronously with the focus change: logging showed
+    /// `canPerformMarkdownEditingCommand` already `true` while XCUITest still
+    /// read the item as disabled, then enabled on the next sample.
+    private func waitFor(_ item: XCUIElement, enabled: Bool) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "enabled == %@", NSNumber(value: enabled)),
+            object: item
+        )
+        return XCTWaiter().wait(for: [expectation], timeout: 2) == .completed
+    }
+
     func testListContinuationOnReturn() {
         app.launch()
         app.activate()
@@ -76,7 +90,11 @@ final class EditingAssistsUITests: XCTestCase {
         XCTAssertTrue((textView.value as? String)?.hasSuffix("- next") == true)
     }
 
-    func testNoPairingInPlainText() {
+    /// EPIC-22 Slice 4a (#140) made structural bracket/quote pairing a
+    /// general, every-format assist, so "(" → "()" is now correct in plain
+    /// text too. What must still never fire outside Markdown is E10's own
+    /// Markdown delimiter pairing (`*`, `_`, backtick).
+    func testNoMarkdownDelimiterPairingInPlainText() {
         app.launch()
         app.activate()
 
@@ -88,11 +106,14 @@ final class EditingAssistsUITests: XCTestCase {
         let textView = app.textViews.firstMatch
         XCTAssertTrue(textView.waitForExistence(timeout: 5))
 
-        // E10 must never fire outside Markdown: a typed "(" stays a lone "(".
+        // E10's Markdown delimiters stay lone characters outside Markdown…
         textView.click()
+        textView.typeText("*_`")
+        XCTAssertEqual(textView.value as? String ?? "", "*_`")
+
+        // …while the general structural pairing still applies here.
         textView.typeText("(")
-        let value = textView.value as? String ?? ""
-        XCTAssertEqual(value, "(")
+        XCTAssertEqual(textView.value as? String ?? "", "*_`()")
     }
 
     /// The Format menu's Markdown commands must be reachable while the editor
@@ -140,25 +161,41 @@ final class EditingAssistsUITests: XCTestCase {
         XCTAssertTrue(textView.waitForExistence(timeout: 5))
         textView.click()
         let boldItem = app.menuBars.menuBarItems["Format"].menuItems["Bold"].firstMatch
-        XCTAssertTrue(boldItem.isEnabled)
+        XCTAssertTrue(waitFor(boldItem, enabled: true))
 
-        // Not `app.otherElements[id]`: `.accessibilityElement(children: .contain)`
-        // (needed so this identifier attaches reliably rather than leaking
-        // onto its own child button — see `SidebarView+Folder.swift`)
-        // produces a `Group`-typed element, not `XCUIElementTypeOther`.
-        let folderSection = app.descendants(matching: .any).matching(identifier: "folderSection").firstMatch
-        XCTAssertTrue(folderSection.waitForExistence(timeout: 5))
-        folderSection.click()
-        XCTAssertFalse(boldItem.isEnabled)
+        // A sidebar control that really takes keyboard focus. The folder
+        // section's "No folder opened" placeholder this used to click centers
+        // on its "Open Folder…" button, which (like any macOS button without
+        // Full Keyboard Access) never becomes first responder — the editor
+        // kept focus, so Bold correctly stayed enabled.
+        let sidebarSearchField = app.textFields["folderSearchField"]
+        XCTAssertTrue(sidebarSearchField.waitForExistence(timeout: 5))
+        sidebarSearchField.click()
+        XCTAssertTrue(waitFor(boldItem, enabled: false))
 
-        app.typeKey("f", modifierFlags: .command)
-        let findField = app.searchFields.firstMatch
+        // Back to the editor first, so the Find step below proves its own
+        // transition rather than inheriting the sidebar's disabled state.
+        textView.click()
+        XCTAssertTrue(waitFor(boldItem, enabled: true))
+
+        // The app's own Find in Document bar (⌃F, EPIC-22 Slice 5a). ⌘F maps
+        // to no command in this app's menus (the Edit menu has no stock Find
+        // submenu), and `app.searchFields.firstMatch` only ever matched the
+        // Help menu's always-present search field — so this step never
+        // reached a Find field at all.
+        app.typeKey("f", modifierFlags: .control)
+        let findField = app.textFields["findBarQueryField"]
         XCTAssertTrue(findField.waitForExistence(timeout: 5))
-        XCTAssertFalse(boldItem.isEnabled)
+        XCTAssertTrue(waitFor(boldItem, enabled: false))
+        // The bar really took keyboard focus: typing goes to its query, not
+        // into the document.
+        app.typeText("zz")
+        XCTAssertEqual(findField.value as? String, "zz")
+        XCTAssertEqual(textView.value as? String, "- item")
         app.typeKey(.escape, modifierFlags: [])
 
         textView.click()
-        XCTAssertTrue(boldItem.isEnabled)
+        XCTAssertTrue(waitFor(boldItem, enabled: true))
     }
 
     func testFormattingMenuRefreshesAfterKeyboardTabAndFocusOutline() {
@@ -174,24 +211,20 @@ final class EditingAssistsUITests: XCTestCase {
         XCTAssertTrue(textView.waitForExistence(timeout: 5))
         textView.click()
         let boldItem = app.menuBars.menuBarItems["Format"].menuItems["Bold"].firstMatch
-        XCTAssertTrue(boldItem.isEnabled)
+        XCTAssertTrue(waitFor(boldItem, enabled: true))
 
         // Native tab navigation changes the active editor/responder without
         // generating ordinary typing events.
         app.typeKey(.tab, modifierFlags: .control)
-        XCTAssertFalse(boldItem.isEnabled)
+        XCTAssertTrue(waitFor(boldItem, enabled: false))
         app.typeKey(.tab, modifierFlags: [.control, .shift])
         textView.click()
-        XCTAssertTrue(boldItem.isEnabled)
+        XCTAssertTrue(waitFor(boldItem, enabled: true))
 
         // Focus Outline is a coordinator-owned programmatic focus transition.
         app.typeKey("o", modifierFlags: [.control, .command])
-        let focusExpectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "enabled == false"),
-            object: boldItem
-        )
-        XCTAssertEqual(XCTWaiter().wait(for: [focusExpectation], timeout: 2), .completed)
+        XCTAssertTrue(waitFor(boldItem, enabled: false))
         textView.click()
-        XCTAssertTrue(boldItem.isEnabled)
+        XCTAssertTrue(waitFor(boldItem, enabled: true))
     }
 }

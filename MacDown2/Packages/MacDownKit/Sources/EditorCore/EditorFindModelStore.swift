@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Caches one ``EditorFindModel`` per tab identity (EPIC-22 §6.14, Slice 5a).
 ///
@@ -8,7 +9,14 @@ import Foundation
 /// resetting it, and closing a tab evicts its model so a stale query for a
 /// document that no longer exists cannot leak into a future tab that
 /// happens to reuse the same identity slot.
+///
+/// `@Observable` so a view that read `existingModel(for:)` while it was still
+/// `nil` re-renders once `model(for:)` creates one. Without it the first ⌃F on
+/// a tab created and activated a model the editor pane had never observed, so
+/// the Find bar did not appear (found by the first real run of
+/// `EditingAssistsUITests`).
 @MainActor
+@Observable
 public final class EditorFindModelStore {
     private var models: [String: EditorFindModel] = [:]
 
