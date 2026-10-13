@@ -1,6 +1,6 @@
 # Release-configuration performance suites, one run
 
-- **Source:** `cec1d28e3cc8976221f6e85b54cf2edaf333f426` (master after #468). Evidence files added afterwards; no source change.
+- **Source:** `cec1d28e3cc8976221f6e85b54cf2edaf333f426` (master after #468). Evidence files added afterwards; no source change. (Taken on `cec1d28e`; the later change to `268bee5f` is the ⌘F menu binding and UI tests only.)
 - **Command:** `cd MacDown2/Packages/MacDownKit && swift test -c release -Xswiftc -enable-testing --no-parallel --force-resolved-versions --filter 'Performance|MarkdownTreeReuse'`
 - **Result:** 32 tests in 10 suites passed, 6.3 s of test time (115 s including the Release build), exit 0. Includes the editor, editing-assist (E10), highlighting, JSON outline, Markdown parse, math rendering, export-sentinel and tree-reuse (#203 tripwire) suites.
 - **Host:** macOS 26.5.1, arm64, Xcode 26.6, one run.
