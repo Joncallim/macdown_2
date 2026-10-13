@@ -3,16 +3,15 @@ import FileCore
 import TextSearch
 
 struct FolderSearchRequestGate {
-    private var generations: [String: UInt] = [:]
+    private var generation: UInt = 0
 
-    mutating func begin(for key: String) -> UInt {
-        let generation = (generations[key] ?? 0) &+ 1
-        generations[key] = generation
+    mutating func begin() -> UInt {
+        generation &+= 1
         return generation
     }
 
-    func owns(_ generation: UInt, for key: String) -> Bool {
-        generations[key] == generation
+    func owns(_ requestedGeneration: UInt) -> Bool {
+        generation == requestedGeneration
     }
 }
 
@@ -38,10 +37,15 @@ extension WindowCoordinator {
         range: NSRange
     ) async {
         let url = root.appendingPathComponent(relativePath)
-        let requestKey = url.resolvingFinalSymlink().standardizedFileURL.path
-        let requestGeneration = folderSearchRequestGate.begin(for: requestKey)
-        await openDocument(at: url, folderRoot: root, folderAccessURL: folderAccessURL, folderSelectionURL: url)
-        guard folderSearchRequestGate.owns(requestGeneration, for: requestKey), !Task.isCancelled else { return }
+        let requestGeneration = folderSearchRequestGate.begin()
+        await openDocument(
+            at: url,
+            folderRoot: root,
+            folderAccessURL: folderAccessURL,
+            folderSelectionURL: url,
+            shouldContinue: { [self] in folderSearchRequestGate.owns(requestGeneration) }
+        )
+        guard folderSearchRequestGate.owns(requestGeneration), !Task.isCancelled else { return }
         guard let controller = controllerForDocument(url: url),
               let tabID = controller.model.tabStore.tabID(forFileURL: url)
         else { return }
@@ -52,7 +56,7 @@ extension WindowCoordinator {
         // and frame; never reveal into a detached or zero-sized view.
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while ContinuousClock.now < deadline {
-            guard folderSearchRequestGate.owns(requestGeneration, for: requestKey),
+            guard folderSearchRequestGate.owns(requestGeneration),
                   !Task.isCancelled,
                   controller.window?.isVisible == true,
                   controller.model.tabStore.activeTabID == tabID
@@ -60,7 +64,7 @@ extension WindowCoordinator {
             if let textSystem = controller.editorStore.existingSystem(for: tabID.uuidString),
                textSystem.textView.window != nil,
                !textSystem.textView.bounds.isEmpty {
-                guard folderSearchRequestGate.owns(requestGeneration, for: requestKey),
+                guard folderSearchRequestGate.owns(requestGeneration),
                       !Task.isCancelled else { return }
                 textSystem.revealSelection(utf16Range: range, flash: true, animated: true)
                 return

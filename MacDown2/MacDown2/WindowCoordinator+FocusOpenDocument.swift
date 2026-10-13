@@ -17,15 +17,18 @@ extension WindowCoordinator {
         _ existing: WindowController,
         for url: URL,
         folder: FolderOpenContext,
-        encoding: FileEncodingMetadata?
+        encoding: FileEncodingMetadata?,
+        shouldContinue: (@MainActor () -> Bool)? = nil
     ) async {
         guard let window = existing.window else { return }
+        guard shouldContinue?() ?? true else { return }
         if let root = folder.root, existing.fileTreeModel.root == nil {
             existing.model.setFolderRoot(root)
             await existing.setFileTreeRoot(root, accessURL: folder.accessURL)
         }
         existing.fileTreeModel.selectedURL = folder.selectionURL
         existing.fileTreeModel.renamingURL = folder.renameURL
+        guard shouldContinue?() ?? true else { return }
         window.tabGroup?.selectedWindow = window
         window.makeKeyAndOrderFront(nil)
         recentFileDocuments.record(url)

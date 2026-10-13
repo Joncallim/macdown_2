@@ -144,11 +144,13 @@ final class WindowCoordinator {
         folderSelectionURL: URL? = nil,
         folderRenameURL: URL? = nil,
         relativeTo overrideKeyWindow: NSWindow? = nil,
-        encoding: FileEncodingMetadata? = nil
+        encoding: FileEncodingMetadata? = nil,
+        shouldContinue: (@MainActor () -> Bool)? = nil
     ) async {
         // A link to a file opens (and saves to) that file; resolved first so the
         // same file is not opened twice, once through the link and once directly.
         let url = url.resolvingFinalSymlink()
+        guard shouldContinue?() ?? true else { return }
         if let existing = controllerForDocument(url: url), existing.window != nil {
             await focus(
                 existing,
@@ -159,7 +161,8 @@ final class WindowCoordinator {
                     selectionURL: folderSelectionURL,
                     renameURL: folderRenameURL
                 ),
-                encoding: encoding
+                encoding: encoding,
+                shouldContinue: shouldContinue
             )
             return
         }
@@ -186,6 +189,7 @@ final class WindowCoordinator {
         }
         controller.fileTreeModel.selectedURL = folderSelectionURL
         controller.fileTreeModel.renamingURL = folderRenameURL
+        guard shouldContinue?() ?? true else { return }
         addController(controller, addingAsTab: true, keyWindow: keyWindow)
         recentFileDocuments.record(url)
     }
