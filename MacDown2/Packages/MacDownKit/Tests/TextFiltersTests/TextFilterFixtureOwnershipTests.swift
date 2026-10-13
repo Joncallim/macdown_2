@@ -14,7 +14,7 @@ struct TextFilterFixtureOwnershipTests {
 
         #expect(TextFilterFixtures.completePIDs(in: url) == [123])
 
-        try "worker=123".write(to: url, atomically: true, encoding: .utf8)
+        try "worker=123 trailing".write(to: url, atomically: true, encoding: .utf8)
         #expect(TextFilterFixtures.completePIDs(in: url).isEmpty)
     }
 
