@@ -178,12 +178,9 @@ final class EditingAssistsUITests: XCTestCase {
         textView.click()
         XCTAssertTrue(waitFor(boldItem, enabled: true))
 
-        // The app's own Find in Document bar (⌃F, EPIC-22 Slice 5a). ⌘F maps
-        // to no command in this app's menus (the Edit menu has no stock Find
-        // submenu), and `app.searchFields.firstMatch` only ever matched the
-        // Help menu's always-present search field — so this step never
-        // reached a Find field at all.
-        app.typeKey("f", modifierFlags: .control)
+        // The app's own Find in Document bar (EPIC-22 Slice 5a; ⌘F). Not
+        // `app.searchFields.firstMatch`: that only ever matched the Help menu's always-present search field.
+        app.typeKey("f", modifierFlags: .command)
         let findField = app.textFields["findBarQueryField"]
         XCTAssertTrue(findField.waitForExistence(timeout: 5))
         XCTAssertTrue(waitFor(boldItem, enabled: false))
@@ -196,6 +193,35 @@ final class EditingAssistsUITests: XCTestCase {
 
         textView.click()
         XCTAssertTrue(waitFor(boldItem, enabled: true))
+    }
+
+    /// The standard ⌘F opens the docked Find in Document bar and focuses its query field (owner decision: it used to
+    /// do nothing in the editor).
+    func testCommandFOpensTheFindBar() {
+        app.launch()
+        app.activate()
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
+        selectTab(1)
+        let textView = app.textViews.firstMatch
+        XCTAssertTrue(textView.waitForExistence(timeout: 5))
+        textView.click()
+        let findField = app.textFields["findBarQueryField"]
+
+        app.typeKey("f", modifierFlags: .command)
+        XCTAssertTrue(findField.waitForExistence(timeout: 5), "⌘F must open the Find bar")
+        app.typeText("zz")
+        XCTAssertEqual(findField.value as? String, "zz", "the bar took keyboard focus")
+        XCTAssertEqual(textView.value as? String, "- item", "typing did not reach the document")
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(waitForNonExistence(findField), "Escape closes the bar")
+    }
+
+    private func waitForNonExistence(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"), object: element
+        )
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 
     func testFormattingMenuRefreshesAfterKeyboardTabAndFocusOutline() {
