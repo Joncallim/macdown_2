@@ -179,12 +179,22 @@ extension WindowController {
         close()
     }
 
-    private func matchesPresentedContext(_ document: FileDocument, _ context: CloseSheetContext) -> Bool {
+    /// Whether the document is still what its close sheet asked about: same identity, URL, text (exact
+    /// scalars), state and disk revisions. Like `closeAfterRetire`, a bare `mutationGeneration` bump is NOT a
+    /// change — background reconciles advance it with none of the above moving while a sheet is up, which
+    /// silently discarded the user's choice: "Use Disk Version and Close" left the window open with the local
+    /// edits (generation 16 → 21, everything else identical; found by the first real run of
+    /// `ExternalFileChangesUITests.testConflictCloseUseDiskClosesWithoutDiscardingTheExternalVersion`).
+    func matchesPresentedContext(_ document: FileDocument, _ context: CloseSheetContext) -> Bool {
+        Self.presentedContextMatches(document, context)
+    }
+
+    static func presentedContextMatches(_ document: FileDocument, _ context: CloseSheetContext) -> Bool {
         document.id == context.documentID
             && document.fileURL?.standardizedFileURL == context.fileURL
-            && document.mutationGeneration == context.mutationGeneration
-            && document.text == context.text
+            && document.text.isExactlyEqual(to: context.text)
             && document.state == context.state
+            && document.backingState == context.backingState
             && document.lastKnownRevision == context.lastKnownRevision
             && document.pendingExternalRevision == context.pendingExternalRevision
     }
@@ -205,21 +215,23 @@ extension WindowController {
     }
 }
 
-private struct CloseSheetContext {
+struct CloseSheetContext {
     let documentID: String
     let fileURL: URL?
-    let mutationGeneration: UInt
     let text: String
     let state: FileDocumentState
+    /// A vanished backing file changes only this (and the generation): the sheet's "discard" would then discard the
+    /// last copy, so the close flow must be re-run to offer Save a Copy.
+    let backingState: FileBackingState
     let lastKnownRevision: FileRevision?
     let pendingExternalRevision: FileRevision?
 
     init(_ document: FileDocument) {
         documentID = document.id
         fileURL = document.fileURL?.standardizedFileURL
-        mutationGeneration = document.mutationGeneration
         text = document.text
         state = document.state
+        backingState = document.backingState
         lastKnownRevision = document.lastKnownRevision
         pendingExternalRevision = document.pendingExternalRevision
     }

@@ -1,5 +1,6 @@
 @testable import EditorCore
 import Foundation
+import Observation
 import Testing
 
 /// EPIC-22 §6.14, Slice 5a — per-identity caching for `EditorFindModel`,
@@ -19,6 +20,22 @@ struct EditorFindModelStoreTests {
 
         #expect(first === second)
         #expect(second.query == "needle")
+    }
+
+    @Test("a view that saw no model yet is invalidated when model(for:) creates one")
+    func creatingAModelInvalidatesAnObserverOfItsAbsence() {
+        let store = EditorFindModelStore()
+        let identity = UUID().uuidString
+        let invalidated = InvalidationFlag()
+
+        withObservationTracking {
+            _ = store.existingModel(for: identity)
+        } onChange: {
+            invalidated.set()
+        }
+        _ = store.model(for: identity)
+
+        #expect(invalidated.isSet)
     }
 
     @Test("a fresh model for a never-seen identity starts empty and inactive")
@@ -91,5 +108,20 @@ struct EditorFindModelStoreTests {
 
         #expect(reFetched.isActive)
         #expect(reFetched.matchCount == 2)
+    }
+}
+
+/// `withObservationTracking`'s `onChange` is `@Sendable`; it fires
+/// synchronously on the mutating (main) thread here, guarded by a lock anyway.
+private final class InvalidationFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+
+    var isSet: Bool {
+        lock.withLock { value }
+    }
+
+    func set() {
+        lock.withLock { value = true }
     }
 }

@@ -261,7 +261,10 @@ final class WindowCoordinator {
     /// tracked in `restoreTask` so ``ensureWindowExistsForReopen()`` can await
     /// it instead of racing a new window into existence ahead of the restored
     /// session.
-    func scheduleSessionRestore(isDocumentOpenPending: @escaping @MainActor () -> Bool) {
+    func scheduleSessionRestore(
+        createsUntitledWhenEmpty: Bool = true,
+        isDocumentOpenPending: @escaping @MainActor () -> Bool
+    ) {
         guard !hasRestoredSession else { return }
         hasRestoredSession = true
         restoreTask = Task { @MainActor [weak self] in
@@ -273,7 +276,7 @@ final class WindowCoordinator {
                 await restoreUnsavedSessionTabs()
                 return
             }
-            await restoreSession()
+            await restoreSession(createsUntitledWhenEmpty: createsUntitledWhenEmpty)
         }
     }
 

@@ -68,6 +68,7 @@ struct FindBarView: View {
     let onSelectAll: (EditorSelectionSet) -> Void
 
     @FocusState private var isQueryFocused: Bool
+    @Environment(\.windowCoordinator) private var coordinator
 
     var body: some View {
         VStack(spacing: 6) {
@@ -164,8 +165,27 @@ struct FindBarView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("findBar")
         .onAppear {
-            isQueryFocused = true
+            // Deferred one turn: set synchronously in `onAppear`, the focus
+            // request never took effect (`isQueryFocused` never changed and
+            // the editor stayed first responder), so typing after ⌃F went
+            // into the document instead of the query.
+            Task { @MainActor in
+                await Task.yield()
+                isQueryFocused = true
+            }
             recomputeMatches(anchor: model.currentMatch?.range.location ?? initialAnchor, sampleSelection: true)
+        }
+        // Opening the bar moves first responder into the query field on a
+        // later SwiftUI pass, after the ⌃F key event already re-validated the
+        // menus, so the Format menu kept offering Bold for the editor. Same
+        // fix as `SidebarView`'s Focus Outline: re-validate once the focus
+        // change has been applied (found by the first real run of
+        // `EditingAssistsUITests`).
+        .onChange(of: isQueryFocused) { _, _ in
+            Task { @MainActor in
+                await Task.yield()
+                coordinator?.commandStateDidChange()
+            }
         }
         .onChange(of: model.query) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
         .onChange(of: model.options) { old, new in

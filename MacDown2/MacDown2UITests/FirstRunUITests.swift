@@ -30,11 +30,19 @@ final class FirstRunUITests: XCTestCase {
         try? FileManager.default.removeItem(at: sessionDir)
     }
 
+    /// `.accessibilityElement(children: .contain)` exposes the welcome view
+    /// as a `Group`, not `XCUIElementTypeOther`, so it is matched by
+    /// identifier regardless of type — the same form
+    /// `ExternalFileChangesUITests.element(_:)` uses.
+    private var welcomeView: XCUIElement {
+        app.descendants(matching: .any).matching(identifier: "firstRunWelcomeView").firstMatch
+    }
+
     func testStartWritingDismissesWelcomeAndOpensAnEmptyDocument() {
         app.launch()
         app.activate()
 
-        let welcome = app.otherElements["firstRunWelcomeView"]
+        let welcome = welcomeView
         XCTAssertTrue(welcome.waitForExistence(timeout: 5))
 
         app.buttons["firstRunStartWritingButton"].click()
@@ -42,13 +50,14 @@ final class FirstRunUITests: XCTestCase {
         XCTAssertTrue(app.textViews.firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(welcome.exists)
         XCTAssertEqual(app.textViews.firstMatch.value as? String, "")
+        assertNoSecondDocumentAppears()
     }
 
     func testOpenSampleDocumentDismissesWelcomeAndOpensTheSampleText() {
         app.launch()
         app.activate()
 
-        let welcome = app.otherElements["firstRunWelcomeView"]
+        let welcome = welcomeView
         XCTAssertTrue(welcome.waitForExistence(timeout: 5))
 
         app.buttons["firstRunOpenSampleButton"].click()
@@ -56,6 +65,25 @@ final class FirstRunUITests: XCTestCase {
         let textView = app.textViews.firstMatch
         XCTAssertTrue(textView.waitForExistence(timeout: 5))
         XCTAssertFalse(welcome.exists)
+        let sampleText = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value CONTAINS %@", "Welcome to MacDown 2"),
+            object: textView
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [sampleText], timeout: 5), .completed)
+        assertNoSecondDocumentAppears()
         XCTAssertTrue((textView.value as? String)?.contains("Welcome to MacDown 2") == true)
+    }
+
+    /// The welcome choice opens the only document: the normal launch that
+    /// follows dismissal (session restore after its 200 ms grace delay) must
+    /// not add a second, untitled tab in front of it. The native tab bar —
+    /// hidden for a single tab — would otherwise list two tabs.
+    private func assertNoSecondDocumentAppears() {
+        let secondTab = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "count > 1"),
+            object: app.tabs
+        )
+        secondTab.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [secondTab], timeout: 2), .completed)
     }
 }

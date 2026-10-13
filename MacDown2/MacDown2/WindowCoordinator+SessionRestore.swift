@@ -55,7 +55,7 @@ extension WindowCoordinator {
     ///
     /// Reads the session frozen at launch, not the live file: a Quit during the grace period publishes a session
     /// built from the (still empty) window list, and re-reading the file here would restore that emptied session.
-    func restoreSession() async {
+    func restoreSession(createsUntitledWhenEmpty: Bool = true) async {
         let frozen = consumeLaunchSession()
         let tempStore = TabStore(
             sessionStore: frozen.map { LaunchSessionStore(session: $0) } ?? sessionStore,
@@ -64,7 +64,9 @@ extension WindowCoordinator {
         await tempStore.restoreSessionIfNeeded()
 
         guard !tempStore.tabs.isEmpty else {
-            newDocument()
+            if createsUntitledWhenEmpty {
+                newDocument()
+            }
             return
         }
 

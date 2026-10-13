@@ -129,14 +129,24 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     /// Eagerly creates the text system and both analysis sessions for the
     /// active tab so session-save can read cursor/scroll state and the preview
     /// can render immediately once SwiftUI mounts the view.
+    ///
+    /// Only a system created HERE is marked as awaiting its `EditorView`. SwiftUI can mount the editor
+    /// synchronously while `init` builds and frames the hosting window, before this runs; that mount's
+    /// `makeNSView` has then already created the system and cleared the flag, and re-marking it would refuse
+    /// every command edit (Bold, Text Filter, snippets, Convert Line Endings) for as long as that mount lives —
+    /// found by the first real run of `EditingAssistsUITests` (mount logged before `setAwaitingEditorView`).
     private func makeSessionsForActiveTab() {
         guard let activeTab = model.tabStore.activeTab else { return }
         let identity = activeTab.id.uuidString
-        editorStore.system(
+        let alreadyCreatedByAMountedEditor = editorStore.existingSystem(for: identity) != nil
+        let system = editorStore.system(
             for: identity,
             initialText: activeTab.document.text,
             configuration: .default
-        ).setAwaitingEditorView(true)
+        )
+        if !alreadyCreatedByAMountedEditor {
+            system.setAwaitingEditorView(true)
+        }
         _ = parseStore.session(for: identity)
         _ = jsonAnalysisStore.session(for: identity)
     }
@@ -152,6 +162,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             editorStore: editorStore,
             identity: model.tabStore.activeTab?.id.uuidString ?? UUID().uuidString,
             coordinator: coordinator,
+            monitor: AppDelegate.uiTestingFileMonitorDebounce.map { DocumentFileMonitor(debounce: $0) }
+                ?? DocumentFileMonitor(),
             recoveryExecutor: recoveryExecutor
         )
     }
