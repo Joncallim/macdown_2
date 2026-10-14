@@ -7,7 +7,9 @@ final class EditorAttachmentScrollView: NSScrollView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        onWindowChange?()
+        DispatchQueue.main.async { [weak self] in
+            self?.onWindowChange?()
+        }
     }
 }
 

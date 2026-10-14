@@ -36,16 +36,33 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         #expect(coordinator.controllers.isEmpty)
     }
 
-    @Test func falseAfterAwaitedLoadDoesNotPublishAWindow() async throws {
+    @Test func falseAfterFileLoadDoesNotPublishAWindow() async throws {
         let coordinator = makeCoordinator()
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
         try "needle".write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
         var checks = 0
+        var reachedFileLoad = false
+        coordinator.afterFolderSearchFileLoad = { reachedFileLoad = true }
+
+        await coordinator.openDocument(at: url, shouldContinue: {
+            checks += 1
+            return checks <= 2
+        })
+
+        #expect(reachedFileLoad)
+        #expect(checks == 3)
+        #expect(coordinator.controllers.isEmpty)
+    }
+
+    @Test func falseAfterRootRebuildDoesNotPublishAWindow() async throws {
+        let coordinator = makeCoordinator()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
+        try "needle".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
         var reachedRootRebuild = false
-        coordinator.afterFolderSearchRootRebuild = {
-            reachedRootRebuild = true
-        }
+        coordinator.afterFolderSearchRootRebuild = { reachedRootRebuild = true }
+        var checks = 0
 
         await coordinator.openDocument(at: url, shouldContinue: {
             checks += 1
@@ -73,6 +90,26 @@ struct WindowCoordinatorFolderSearchCancellationTests {
             == url.standardizedFileURL)
     }
 
+    @Test func ordinaryOpenCanRefocusAHiddenLiveWindow() async throws {
+        let coordinator = makeCoordinator()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
+        try "needle".write(to: url, atomically: true, encoding: .utf8)
+        defer {
+            coordinator.controllers.last?.close()
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        await coordinator.openDocument(at: url)
+        let controller = try #require(coordinator.controllers.first)
+        controller.window?.orderOut(nil)
+        #expect(controller.window?.isVisible == false)
+
+        await coordinator.openDocument(at: url)
+
+        #expect(coordinator.controllers.count == 1)
+        #expect(controller.window?.isVisible == true)
+    }
+
     @Test func cancelledFolderSearchDoesNotPublishAfterRootRebuild() async throws {
         let coordinator = makeCoordinator()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -82,9 +119,15 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         defer { try? FileManager.default.removeItem(at: root) }
 
         var reachedRootRebuild = false
+        var reachedSignal: AsyncStream<Void>.Continuation?
+        var release: CheckedContinuation<Void, Never>?
+        let reached = AsyncStream<Void> { continuation in reachedSignal = continuation }
         coordinator.afterFolderSearchRootRebuild = {
             reachedRootRebuild = true
-            try? await Task.sleep(for: .seconds(60))
+            await withCheckedContinuation { continuation in
+                release = continuation
+                reachedSignal?.yield()
+            }
         }
         let task = Task {
             await coordinator.openFolderSearchResult(
@@ -95,10 +138,10 @@ struct WindowCoordinatorFolderSearchCancellationTests {
             )
         }
 
-        for _ in 0 ..< 100 where !reachedRootRebuild {
-            await Task.yield()
-        }
+        var iterator = reached.makeAsyncIterator()
+        _ = await iterator.next()
         task.cancel()
+        release?.resume()
         await task.value
 
         #expect(reachedRootRebuild)

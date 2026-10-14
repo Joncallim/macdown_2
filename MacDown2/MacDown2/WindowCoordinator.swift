@@ -58,6 +58,8 @@ final class WindowCoordinator {
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
     /// Test seam: runs after a new controller's root/index rebuild and before publication.
     var afterFolderSearchRootRebuild: (@MainActor () async -> Void)?
+    /// Test seam: runs after file loading and before the post-load continuation check.
+    var afterFolderSearchFileLoad: (@MainActor () async -> Void)?
     var restoreTask: Task<Void, Never>?
     var unsavedRestoreTask: Task<Void, Never>?
     /// Latest-request ownership for folder-search navigation.
@@ -173,6 +175,7 @@ final class WindowCoordinator {
         let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
         let model = makeWindowModel()
         let outcome = await model.tabStore.openFileInTab(url, encoding: encoding)
+        await afterFolderSearchFileLoad?()
         guard shouldContinue?() ?? true else { return }
         model.setFolderRoot(folderRoot)
 
