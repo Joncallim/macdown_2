@@ -223,41 +223,50 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         #expect(coordinator.controllers.first?.model.activeDocument?.fileURL?.lastPathComponent == "two.md")
     }
 
-    @Test func queuedOlderFolderSearchCannotPublishAfterNewerRequest() async throws {
+    @Test func queuedFolderSearchCancellationDoesNotDisturbAnAdmittedOrdinaryOpen() async throws {
         let coordinator = makeCoordinator()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        try "one".write(to: root.appendingPathComponent("one.md"), atomically: true, encoding: .utf8)
-        try "two".write(to: root.appendingPathComponent("two.md"), atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("one.md")
+        try "one".write(to: url, atomically: true, encoding: .utf8)
+        defer {
+            coordinator.controllers.forEach { $0.close() }
+            try? FileManager.default.removeItem(at: root)
+        }
 
-        let firstGate = Gate()
-        let secondGate = Gate()
-        var calls = 0
+        let blockerGate = Gate()
+        var fileLoadCalls = 0
         coordinator.afterFolderSearchFileLoad = {
-            calls += 1
-            if calls == 1 { await firstGate.wait() } else { await secondGate.wait() }
+            fileLoadCalls += 1
+            if fileLoadCalls == 1 { await blockerGate.wait() }
         }
-        let first = Task {
+
+        let ordinaryOpen = Task {
+            await coordinator.openDocument(at: url, folderRoot: root, folderAccessURL: root, shouldContinue: { true })
+        }
+        #expect(await Gate.waitForEntry(blockerGate.entered))
+
+        var rootRebuildCalls = 0
+        coordinator.afterFolderSearchRootRebuild = {
+            rootRebuildCalls += 1
+        }
+        let queuedSearch = Task {
             await coordinator.openFolderSearchResult(
                 relativePath: "one.md", root: root, folderAccessURL: root,
                 range: NSRange(location: 0, length: 3)
             )
         }
-        let second = Task {
-            await coordinator.openFolderSearchResult(
-                relativePath: "one.md", root: root, folderAccessURL: root,
-                range: NSRange(location: 0, length: 3)
-            )
-        }
-        #expect(await Gate.waitForEntry(firstGate.entered))
-        second.cancel()
-        firstGate.release()
-        await first.value
-        await second.value
+
+        // The ordinary open owns this file's serial key. The queued request cannot
+        // reach its folder-search continuation while the blocker is admitted.
+        queuedSearch.cancel()
+        blockerGate.release()
+        await ordinaryOpen.value
+        await queuedSearch.value
 
         #expect(coordinator.controllers.count == 1)
         #expect(coordinator.controllers.first?.model.activeDocument?.fileURL?.lastPathComponent == "one.md")
+        #expect(rootRebuildCalls == 1)
     }
 
     @Test func closingExistingWindowDuringRootAwaitCannotRefocusIt() async throws {

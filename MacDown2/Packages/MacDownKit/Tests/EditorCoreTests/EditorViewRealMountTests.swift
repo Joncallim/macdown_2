@@ -57,6 +57,67 @@ struct EditorViewRealMountTests {
         return Mounted(hostingView: hostingView, window: window, store: store, identity: identity)
     }
 
+    @Test func attachmentCallbackRunsAfterSameSizeWindowAttachment() async {
+        let scrollView = EditorAttachmentScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        var observations: [(hasWindow: Bool, size: CGSize)] = []
+        var continuation: CheckedContinuation<Void, Never>?
+        scrollView.onWindowChange = {
+            observations.append((scrollView.window != nil, scrollView.bounds.size))
+            continuation?.resume()
+            continuation = nil
+        }
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.animationBehavior = .none
+        window.contentView = scrollView
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+
+        await withCheckedContinuation { (value: CheckedContinuation<Void, Never>) in
+            continuation = value
+        }
+
+        #expect(observations.count == 1)
+        #expect(observations.first?.hasWindow == true)
+        #expect(observations.first?.size == CGSize(width: 400, height: 300))
+    }
+
+    @Test func zeroSizeAttachmentCanReportUsableLayoutAfterWindowResize() async {
+        let scrollView = EditorAttachmentScrollView(frame: .zero)
+        var observations: [CGSize] = []
+        var continuation: CheckedContinuation<Void, Never>?
+        scrollView.onWindowChange = {
+            observations.append(scrollView.bounds.size)
+            continuation?.resume()
+            continuation = nil
+        }
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.animationBehavior = .none
+        window.contentView = scrollView
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+
+        await withCheckedContinuation { (value: CheckedContinuation<Void, Never>) in
+            continuation = value
+        }
+        #expect(observations == [.zero])
+
+        window.setContentSize(NSSize(width: 400, height: 300))
+        window.contentView?.layoutSubtreeIfNeeded()
+
+        #expect(scrollView.bounds.size == CGSize(width: 400, height: 300))
+        #expect(observations == [.zero])
+    }
+
     /// `makeNSView` pre-sized the text view with one `boundingRect` over the whole document, which is quadratic for
     /// CJK/emoji text: an 80 KB document froze the main thread for seconds when its tab opened.
     @Test func openingALargeCJKDocumentDoesNotFreezeTheMainThread() {
