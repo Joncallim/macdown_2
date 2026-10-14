@@ -60,6 +60,7 @@ final class WindowCoordinator {
     var afterFolderSearchRootRebuild: (@MainActor () async -> Void)?
     /// Test seam: runs after file loading and before the post-load continuation check.
     var afterFolderSearchFileLoad: (@MainActor () async -> Void)?
+    var afterFolderSearchEditorLayoutChange: (@MainActor () -> Void)?
     var restoreTask: Task<Void, Never>?
     var unsavedRestoreTask: Task<Void, Never>?
     /// Latest-request ownership for folder-search navigation.

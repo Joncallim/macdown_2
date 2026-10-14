@@ -210,6 +210,67 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         #expect(coordinator.pendingFolderSearchReveals.isEmpty)
     }
 
+    @Test func olderFindCompletionTokenCannotInvalidateNewerFolderSearch() async throws {
+        let coordinator = makeCoordinator()
+        let olderFindToken = coordinator.folderSearchNavigationDidChange()
+        let newerFolderToken = coordinator.folderSearchNavigationDidChange()
+
+        #expect(!coordinator.folderSearchNavigationIsCurrent(olderFindToken))
+        #expect(coordinator.folderSearchNavigationIsCurrent(newerFolderToken))
+    }
+
+    @Test func newerNavigationSurvivesActualPreviewOnlyToEditorMount() async throws {
+        let coordinator = makeCoordinator()
+        let preferences = FileTreePreferences()
+        let model = coordinator.makeWindowModel()
+        model.tabStore.newTab(document: FileDocument(text: "needle"))
+        let tabID = try #require(model.tabStore.activeTab?.id)
+        model.tabStore.setPreviewLayout(.previewOnly, for: tabID)
+        let controller = WindowController(
+            model: model,
+            coordinator: coordinator,
+            themeController: coordinator.themeController,
+            grammarRegistry: coordinator.grammarRegistry,
+            fileTreePreferences: preferences
+        )
+        coordinator.controllers = [controller]
+        controller.window?.makeKeyAndOrderFront(nil)
+        defer {
+            coordinator.removeController(controller)
+            controller.close()
+        }
+
+        let generation = coordinator.folderSearchRequestGate.begin()
+        coordinator.pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
+            generation: generation,
+            navigationRevision: coordinator.folderSearchNavigationRevision,
+            range: NSRange(location: 2, length: 0),
+            controllerID: ObjectIdentifier(controller)
+        )
+        let mounted = AsyncStream<Void>.makeStream()
+        var callbackCount = 0
+        coordinator.afterFolderSearchEditorLayoutChange = {
+            callbackCount += 1
+            mounted.continuation.yield(())
+            if callbackCount == 1 {
+                Task { @MainActor in
+                    coordinator.folderSearchEditorLayoutChanged(tabID: tabID.uuidString)
+                }
+            } else if coordinator.pendingFolderSearchReveals[tabID] == nil {
+                mounted.continuation.finish()
+            }
+        }
+        model.tabStore.setPreviewLayout(.split(fraction: 0.5), for: tabID)
+        var iterator = mounted.stream.makeAsyncIterator()
+        #expect(await iterator.next() != nil)
+        #expect(await iterator.next() != nil)
+
+        let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        #expect(!system.isDetachedFromEditorView)
+        #expect(system.selectedRange == NSRange(location: 2, length: 0))
+        #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
+    }
+
     @Test func newerFolderSearchSupersedesOlderResult() async throws {
         let coordinator = makeCoordinator()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

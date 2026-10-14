@@ -108,6 +108,7 @@ extension WindowCoordinator {
     /// Delayed background-tab attachment therefore keeps the request alive
     /// without a fixed retry count or timeout.
     func folderSearchEditorLayoutChanged(tabID: String) {
+        afterFolderSearchEditorLayoutChange?()
         guard let tabUUID = UUID(uuidString: tabID),
               let pending = pendingFolderSearchReveals[tabUUID],
               folderSearchRequestGate.owns(pending.generation),
@@ -133,9 +134,15 @@ extension WindowCoordinator {
     /// navigation command targets an editor. The revision is captured before
     /// the asynchronous open begins, so navigation during file loading also
     /// wins over the eventual reveal.
-    func folderSearchNavigationDidChange() {
+    @discardableResult
+    func folderSearchNavigationDidChange() -> UInt {
         folderSearchNavigationRevision &+= 1
         pendingFolderSearchReveals.removeAll()
+        return folderSearchNavigationRevision
+    }
+
+    func folderSearchNavigationIsCurrent(_ revision: UInt) -> Bool {
+        folderSearchNavigationRevision == revision
     }
 
     private func attemptFolderSearchReveal(

@@ -25,8 +25,10 @@ extension DocumentEditorSplitView {
                     resolvedText: { editorStore.existingSystem(for: identity)?.text ?? text },
                     resolvedSelection: { editorStore.existingSystem(for: identity)?.selectedRange },
                     initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
-                    onMatchesChanged: { reveal in applyFindHighlights(findModel, reveal: reveal) },
-                    onNavigationIntent: { coordinator?.folderSearchNavigationDidChange() },
+                    onMatchesChanged: { reveal, navigationToken in
+                        applyFindHighlights(findModel, reveal: reveal, navigationToken: navigationToken)
+                    },
+                    onNavigationIntent: { coordinator?.folderSearchNavigationDidChange() ?? 0 },
                     onClose: { closeFindBar(findModel) },
                     onReplace: { applyFindReplacement($0, model: findModel) },
                     onSelectAll: { applySelectAllMatches($0) }
@@ -149,11 +151,18 @@ extension DocumentEditorSplitView {
     /// called by `FindBarView` after every query/option/text change and
     /// every Find Next/Previous, so the visible highlight and the live
     /// selection never lag behind the model by more than one SwiftUI update.
-    func applyFindHighlights(_ model: EditorFindModel, reveal: Bool = true) {
+    func applyFindHighlights(
+        _ model: EditorFindModel,
+        reveal: Bool = true,
+        navigationToken: UInt? = nil
+    ) {
         // A result that lands after the bar was dismissed must not re-highlight or reselect.
         guard model.isActive, let system = editorStore.existingSystem(for: identity) else { return }
         system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
-        if reveal, let current = model.currentMatch {
+        if reveal,
+           let navigationToken,
+           coordinator?.folderSearchNavigationIsCurrent(navigationToken) == true,
+           let current = model.currentMatch {
             system.revealSelection(utf16Range: current.range, flash: false, animated: true)
         }
     }
@@ -189,11 +198,12 @@ extension DocumentEditorSplitView {
         }
         system.apply(transaction)
         let anchor = transaction.resultingSelection?.primaryRange.location
+        let navigationToken = coordinator?.folderSearchNavigationDidChange()
         Task {
             guard await model.updateMatches(in: system.text, preferringLocationNear: anchor),
                   model.isActive
             else { return }
-            applyFindHighlights(model)
+            applyFindHighlights(model, navigationToken: navigationToken)
         }
     }
 

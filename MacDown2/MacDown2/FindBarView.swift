@@ -54,8 +54,8 @@ struct FindBarView: View {
     /// changed (the user is typing in the editor): highlights refresh but the
     /// selection must not move onto the current match, or the next keystroke would
     /// replace the matched text.
-    let onMatchesChanged: (_ reveal: Bool) -> Void
-    let onNavigationIntent: () -> Void
+    let onMatchesChanged: (_ reveal: Bool, _ navigationToken: UInt?) -> Void
+    let onNavigationIntent: () -> UInt
     let onClose: () -> Void
     /// EPIC-22 §6.14, Slice 5b: called with the transaction Replace/Replace
     /// All built (`EditorFindModel.replaceCurrentTransaction(with:)`/
@@ -298,9 +298,9 @@ struct FindBarView: View {
     /// resulting state up — used by both the keyboard (Return/Shift-Return)
     /// and the toolbar chevron buttons so both paths behave identically.
     private func navigate(_ navigation: () -> SearchMatch?) {
-        onNavigationIntent()
+        let navigationToken = onNavigationIntent()
         _ = navigation()
-        onMatchesChanged(true)
+        onMatchesChanged(true, navigationToken)
     }
 
     /// `updateMatches(in:)` runs off-main and can be superseded by a later
@@ -316,16 +316,14 @@ struct FindBarView: View {
         // Sampled only when "In Selection" is being (re)established; every
         // other refresh uses the model's retained domain (#183 F03).
         let selection = sampleSelection ? resolvedSelection() : nil
-        if reveal {
-            onNavigationIntent()
-        }
+        let navigationToken = reveal ? onNavigationIntent() : nil
         Task {
             guard await model.updateMatches(in: text, selection: selection, preferringLocationNear: anchor),
                   model.isActive
             else {
                 return
             }
-            onMatchesChanged(reveal)
+            onMatchesChanged(reveal, navigationToken)
         }
     }
 
