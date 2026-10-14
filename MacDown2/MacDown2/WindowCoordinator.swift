@@ -163,7 +163,8 @@ final class WindowCoordinator {
                     selectionURL: folderSelectionURL,
                     renameURL: folderRenameURL
                 ),
-                encoding: encoding
+                encoding: encoding,
+                shouldContinue: shouldContinue
             )
             return
         }
@@ -188,6 +189,10 @@ final class WindowCoordinator {
         )
         if let folderRoot {
             await controller.setFileTreeRoot(folderRoot, accessURL: folderAccessURL)
+        }
+        guard shouldContinue?() ?? true else {
+            controller.window?.close()
+            return
         }
         controller.fileTreeModel.selectedURL = folderSelectionURL
         controller.fileTreeModel.renamingURL = folderRenameURL

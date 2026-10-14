@@ -1,8 +1,7 @@
 import Foundation
 
-/// Theme inputs, mirroring `MermaidRenderContext`'s shape. Not yet acted
-/// on by `GraphvizWebRenderer` — same disclosed, deliberate scope limit
-/// already recorded for Mermaid (issue #79).
+/// Theme inputs, mirroring `MermaidRenderContext`'s shape. Graphviz uses these
+/// values as defaults while preserving explicit colors in the diagram source.
 public struct GraphvizRenderContext: Sendable, Equatable, Hashable {
     public let foregroundRed: Double
     public let foregroundGreen: Double

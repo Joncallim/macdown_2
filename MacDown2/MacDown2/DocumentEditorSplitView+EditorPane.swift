@@ -54,6 +54,9 @@ extension DocumentEditorSplitView {
                 onScrollChange: { offset in
                     handleEditorScroll(utf16Offset: offset)
                     outlineController.jsonReferenceOffsetDidChange(offset)
+                },
+                onLayoutChange: {
+                    coordinator?.folderSearchEditorLayoutChanged(tabID: identity)
                 }
             )
             .accessibilityIdentifier("editorPane")

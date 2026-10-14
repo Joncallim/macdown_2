@@ -2,6 +2,19 @@ import AppKit
 import FileCore
 import TextSearch
 
+final class FolderSearchRequestToken: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    var isCancelled: Bool {
+        lock.withLock { cancelled }
+    }
+
+    func cancel() {
+        lock.withLock { cancelled = true }
+    }
+}
+
 struct FolderSearchRequestGate {
     private var generation: UInt = 0
 
@@ -44,20 +57,31 @@ extension WindowCoordinator {
     ) async {
         let url = root.appendingPathComponent(relativePath)
         let requestGeneration = folderSearchRequestGate.begin()
+        let requestToken = FolderSearchRequestToken()
         pendingFolderSearchReveals.removeAll()
-        await openDocument(
-            at: url,
-            folderRoot: root,
-            folderAccessURL: folderAccessURL,
-            folderSelectionURL: url,
-            shouldContinue: { [self] in folderSearchRequestGate.owns(requestGeneration) }
-        )
-        guard folderSearchRequestGate.owns(requestGeneration), !Task.isCancelled else { return }
+        await withTaskCancellationHandler {
+            await openDocument(
+                at: url,
+                folderRoot: root,
+                folderAccessURL: folderAccessURL,
+                folderSelectionURL: url,
+                shouldContinue: { [self] in
+                    folderSearchRequestGate.owns(requestGeneration)
+                        && !requestToken.isCancelled
+                        && !Task.isCancelled
+                }
+            )
+        } onCancel: {
+            requestToken.cancel()
+        }
+        guard folderSearchRequestGate.owns(requestGeneration), !requestToken.isCancelled, !Task.isCancelled else {
+            return
+        }
         guard let controller = controllerForDocument(url: url),
               let tabID = controller.model.tabStore.tabID(forFileURL: url)
         else { return }
 
-        guard !Task.isCancelled else { return }
+        guard !requestToken.isCancelled, !Task.isCancelled else { return }
         if !attemptFolderSearchReveal(
             tabID: tabID,
             generation: requestGeneration,

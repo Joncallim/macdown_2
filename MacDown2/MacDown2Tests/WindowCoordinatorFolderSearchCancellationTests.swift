@@ -2,8 +2,8 @@ import AppSettings
 import FileCore
 import FileTree
 import Foundation
-@testable import MacDown2
 import Highlighting
+@testable import MacDown2
 import Testing
 import Themes
 import Workspace
@@ -45,10 +45,10 @@ struct WindowCoordinatorFolderSearchCancellationTests {
 
         await coordinator.openDocument(at: url, shouldContinue: {
             checks += 1
-            return checks == 1
+            return checks <= 2
         })
 
-        #expect(checks == 2)
+        #expect(checks == 3)
         #expect(coordinator.controllers.isEmpty)
     }
 

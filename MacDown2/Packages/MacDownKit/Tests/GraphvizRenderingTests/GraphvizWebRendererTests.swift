@@ -50,6 +50,46 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
+    @Test func graphAndClusterDefaultsUseThemeForeground() async throws {
+        let renderer = GraphvizWebRenderer()
+        let themedContext = GraphvizRenderContext(
+            foregroundRed: 0x11 / 255.0, foregroundGreen: 0x22 / 255.0, foregroundBlue: 0x33 / 255.0,
+            backgroundRed: 0xEE / 255.0, backgroundGreen: 0xDD / 255.0, backgroundBlue: 0xCC / 255.0
+        )
+        let source = "digraph { label=\"Graph label\"; subgraph cluster_one { label=\"Cluster label\"; a -> b; } }"
+        let diagram = try await renderer.render(Self.fence(source), context: themedContext)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("stroke=\"#112233\""))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#EEDDCC\""))
+        #expect(diagram.svg.contains("Graph label"))
+        #expect(diagram.svg.contains("Cluster label"))
+        await renderer.shutdown()
+    }
+
+    @Test func samePooledPageTracksLightDarkLightContexts() async throws {
+        let renderer = GraphvizWebRenderer(poolSize: 1)
+        let light = Self.context
+        let dark = GraphvizRenderContext(
+            foregroundRed: 0xEE / 255.0, foregroundGreen: 0xDD / 255.0, foregroundBlue: 0xCC / 255.0,
+            backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
+        )
+        for context in [light, dark, light] {
+            let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: context)
+            #expect(diagram.svg.contains("<svg"))
+        }
+        await renderer.shutdown()
+    }
+
+    @Test func nonFiniteAndOutOfRangeComponentsNormalizeSafely() async throws {
+        let renderer = GraphvizWebRenderer()
+        let context = GraphvizRenderContext(
+            foregroundRed: .nan, foregroundGreen: .infinity, foregroundBlue: -.infinity,
+            backgroundRed: 2, backgroundGreen: -1, backgroundBlue: .nan
+        )
+        let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: context)
+        #expect(diagram.svg.contains("<svg"))
+        await renderer.shutdown()
+    }
+
     @Test func renderThrowsInvalidSyntaxForMalformedSource() async throws {
         let renderer = GraphvizWebRenderer()
         await #expect(throws: GraphvizRenderError.self) {

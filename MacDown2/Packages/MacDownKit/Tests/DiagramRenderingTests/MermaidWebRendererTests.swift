@@ -67,6 +67,31 @@ struct MermaidWebRendererTests {
         await renderer.shutdown()
     }
 
+    @Test func samePooledPageTracksLightDarkLightContexts() async throws {
+        let renderer = MermaidWebRenderer(poolSize: 1)
+        let light = Self.context
+        let dark = MermaidRenderContext(
+            foregroundRed: 0xEE / 255.0, foregroundGreen: 0xDD / 255.0, foregroundBlue: 0xCC / 255.0,
+            backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
+        )
+        for context in [light, dark, light] {
+            let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: context)
+            #expect(diagram.svg.contains("<svg"))
+        }
+        await renderer.shutdown()
+    }
+
+    @Test func nonFiniteAndOutOfRangeComponentsNormalizeSafely() async throws {
+        let renderer = MermaidWebRenderer()
+        let context = MermaidRenderContext(
+            foregroundRed: .nan, foregroundGreen: .infinity, foregroundBlue: -.infinity,
+            backgroundRed: 2, backgroundGreen: -1, backgroundBlue: .nan
+        )
+        let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: context)
+        #expect(diagram.svg.contains("<svg"))
+        await renderer.shutdown()
+    }
+
     @Test func renderTimesOutWhenTheBudgetIsSetBelowRealRenderTime() async throws {
         let renderer = MermaidWebRenderer(timeout: .milliseconds(1))
         await #expect(throws: MermaidRenderError.timedOut) {
