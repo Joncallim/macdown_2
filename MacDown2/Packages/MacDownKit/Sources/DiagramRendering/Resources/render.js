@@ -49,16 +49,16 @@ function addOpaqueCanvas(svg) {
 
     var viewBox = root.getAttribute("viewBox");
     var values = viewBox ? viewBox.trim().split(/[\s,]+/).map(Number) : [];
-    var valid = values.length === 4 && values.every(Number.isFinite);
+    var valid = values.length === 4 && values.every(Number.isFinite) && values[2] > 0 && values[3] > 0;
     var x = valid ? values[0] : 0;
     var y = valid ? values[1] : 0;
-    var width = valid ? values[2] : 1;
-    var height = valid ? values[3] : 1;
+    var width = valid ? String(values[2]) : (root.getAttribute("width") || "100%");
+    var height = valid ? String(values[3]) : (root.getAttribute("height") || "100%");
     var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", String(x));
     rect.setAttribute("y", String(y));
-    rect.setAttribute("width", String(width));
-    rect.setAttribute("height", String(height));
+    rect.setAttribute("width", width);
+    rect.setAttribute("height", height);
     rect.setAttribute("fill", "#FFFFFF");
     root.insertBefore(rect, root.firstChild);
     return new XMLSerializer().serializeToString(root);
