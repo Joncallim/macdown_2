@@ -10,6 +10,10 @@ Audit date: 2026-10-14. This is provenance evidence, not legal clearance.
 - Existing inventory evidence says the hash equals `dist/mermaid.min.js`
   from the `mermaid@11.17.2` npm tarball.
 - Existing inventory records the top-level `nested` dependency ranges below.
+- The official root MIT license was retrieved from
+  `https://raw.githubusercontent.com/mermaid-js/mermaid/dcb694d/LICENSE` and
+  matches the checked-in `MERMAID-LICENSE.txt` byte-for-byte (SHA-256
+  `ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80`).
 
 The official release is verified at GitHub commit `dcb694d` from the
 `mermaid@11.17.2` release page. Its official
@@ -18,6 +22,17 @@ lockfile proves the release's resolved dependency graph; it does not by
 itself prove that every resolved package's bytes are present in the generated
 single-file bundle, so bundle/source-map evidence remains a required final
 check.
+
+The expected source-map URL
+`https://raw.githubusercontent.com/mermaid-js/mermaid/dcb694d/packages/mermaid/dist/mermaid.min.js.map`
+returned HTTP 404, as did the corresponding generated bundle path in the
+source tag. Those generated files are release artifacts rather than tracked
+source-tree files. The GitHub release page confirms the immutable release and
+commit, but its generated asset list was not machine-readable through the
+authorized fetcher. The npm registry metadata URL
+`https://registry.npmjs.org/mermaid/11.17.2` was also inaccessible through
+that fetcher. Thus the local bundle hash and release lock are proven, while
+the generated source-map/module-content linkage remains explicitly open.
 
 ## Declared nested inputs requiring lockfile resolution
 
