@@ -42,6 +42,14 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
+    @Test func sourceLevelGraphvizColorsRemainAuthoritative() async throws {
+        let renderer = GraphvizWebRenderer()
+        let source = "digraph { node [color=\"#ABCDEF\"]; a -> b; }"
+        let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#ABCDEF"))
+        await renderer.shutdown()
+    }
+
     @Test func renderThrowsInvalidSyntaxForMalformedSource() async throws {
         let renderer = GraphvizWebRenderer()
         await #expect(throws: GraphvizRenderError.self) {
