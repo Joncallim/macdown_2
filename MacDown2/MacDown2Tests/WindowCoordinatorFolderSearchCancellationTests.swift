@@ -247,6 +247,10 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         #expect(await Gate.waitForEntry(blockerGate.entered))
 
         var rootRebuildCalls = 0
+        let queuedAdmission = AsyncStream<Void>.makeStream()
+        coordinator.documentOpens.onEnqueue = {
+            queuedAdmission.continuation.yield(())
+        }
         coordinator.afterFolderSearchRootRebuild = {
             rootRebuildCalls += 1
         }
@@ -257,8 +261,10 @@ struct WindowCoordinatorFolderSearchCancellationTests {
             )
         }
 
-        // The ordinary open owns this file's serial key. The queued request cannot
-        // reach its folder-search continuation while the blocker is admitted.
+        var admissionIterator = queuedAdmission.stream.makeAsyncIterator()
+        #expect(await admissionIterator.next() != nil)
+        // The ordinary open owns this file's serial key. The admitted request is
+        // queued behind it, and cancellation must prevent any later navigation.
         queuedSearch.cancel()
         blockerGate.release()
         await ordinaryOpen.value

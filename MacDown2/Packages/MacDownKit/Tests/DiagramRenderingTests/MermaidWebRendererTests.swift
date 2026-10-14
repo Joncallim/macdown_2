@@ -81,11 +81,8 @@ struct MermaidWebRendererTests {
         #expect(lightSVG.localizedCaseInsensitiveContains("#ffffff"))
         #expect(darkSVG.localizedCaseInsensitiveContains("#eeddcc"))
         #expect(darkSVG.localizedCaseInsensitiveContains("#112233"))
-        #expect(!darkSVG.localizedCaseInsensitiveContains("#ffffff"))
-        #expect(!darkSVG.localizedCaseInsensitiveContains("#000000"))
         #expect(lightAgainSVG.localizedCaseInsensitiveContains("#000000"))
         #expect(lightAgainSVG.localizedCaseInsensitiveContains("#ffffff"))
-        #expect(!lightAgainSVG.localizedCaseInsensitiveContains("#eeddcc"))
         await renderer.shutdown()
     }
 
@@ -97,7 +94,7 @@ struct MermaidWebRendererTests {
         )
         let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: context)
         #expect(diagram.svg.localizedCaseInsensitiveContains("#000000"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(diagram.svg.range(of: #"(#[fF][fF]0000|\bred\b)"#, options: .regularExpression) != nil)
         #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
         #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()

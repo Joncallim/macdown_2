@@ -33,7 +33,9 @@ struct EditorViewRealMountTests {
     private func mount(
         initialText: String,
         store: EditorTextSystemStore = EditorTextSystemStore(),
-        identity: String = UUID().uuidString
+        identity: String = UUID().uuidString,
+        contentRect: NSRect = NSRect(x: 0, y: 0, width: 400, height: 300),
+        onLayoutChange: (() -> Void)? = nil
     ) -> Mounted {
         let binding = Binding<String>(get: { initialText }, set: { _ in })
 
@@ -41,10 +43,11 @@ struct EditorViewRealMountTests {
             text: binding,
             identity: identity,
             configuration: .default,
-            store: store
+            store: store,
+            onLayoutChange: onLayoutChange
         ))
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            contentRect: contentRect,
             styleMask: [.titled],
             backing: .buffered,
             defer: false
@@ -57,65 +60,51 @@ struct EditorViewRealMountTests {
         return Mounted(hostingView: hostingView, window: window, store: store, identity: identity)
     }
 
-    @Test func attachmentCallbackRunsAfterSameSizeWindowAttachment() async {
-        let scrollView = EditorAttachmentScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
-        var observations: [(hasWindow: Bool, size: CGSize)] = []
-        var continuation: CheckedContinuation<Void, Never>?
-        scrollView.onWindowChange = {
-            observations.append((scrollView.window != nil, scrollView.bounds.size))
-            continuation?.resume()
-            continuation = nil
+    private func waitForSignal(_ stream: AsyncStream<Void>, timeout: Duration = .seconds(2)) async -> Bool {
+        await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                var iterator = stream.makeAsyncIterator()
+                return await iterator.next() != nil
+            }
+            group.addTask {
+                try? await Task.sleep(for: timeout)
+                return false
+            }
+            let result = await group.next() ?? false
+            group.cancelAll()
+            return result
         }
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        window.animationBehavior = .none
-        window.contentView = scrollView
-        window.makeKeyAndOrderFront(nil)
-        defer { window.orderOut(nil) }
-
-        await withCheckedContinuation { (value: CheckedContinuation<Void, Never>) in
-            continuation = value
-        }
-
-        #expect(observations.count == 1)
-        #expect(observations.first?.hasWindow == true)
-        #expect(observations.first?.size == CGSize(width: 400, height: 300))
     }
 
-    @Test func zeroSizeAttachmentCanReportUsableLayoutAfterWindowResize() async {
-        let scrollView = EditorAttachmentScrollView(frame: .zero)
-        var observations: [CGSize] = []
-        var continuation: CheckedContinuation<Void, Never>?
-        scrollView.onWindowChange = {
-            observations.append(scrollView.bounds.size)
-            continuation?.resume()
-            continuation = nil
-        }
-        let window = NSWindow(
-            contentRect: .zero,
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        window.animationBehavior = .none
-        window.contentView = scrollView
-        window.makeKeyAndOrderFront(nil)
-        defer { window.orderOut(nil) }
-
-        await withCheckedContinuation { (value: CheckedContinuation<Void, Never>) in
-            continuation = value
-        }
-        #expect(observations == [.zero])
-
-        window.setContentSize(NSSize(width: 400, height: 300))
-        window.contentView?.layoutSubtreeIfNeeded()
-
+    @Test func attachmentCallbackRunsAfterSameSizeWindowAttachment() async throws {
+        let signals = AsyncStream<Void>.makeStream()
+        let mounted = mount(initialText: "text", onLayoutChange: { signals.continuation.yield(()) })
+        defer { mounted.window.close() }
+        let scrollView = try #require(Self.findScrollView(in: mounted.hostingView))
+        #expect(scrollView.window === mounted.window)
         #expect(scrollView.bounds.size == CGSize(width: 400, height: 300))
-        #expect(observations == [.zero])
+        #expect(await waitForSignal(signals.stream))
+    }
+
+    @Test func zeroSizeAttachmentCanReportUsableLayoutAfterWindowResize() async throws {
+        let signals = AsyncStream<Void>.makeStream()
+        let mounted = mount(
+            initialText: "text",
+            contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+            onLayoutChange: { signals.continuation.yield(()) }
+        )
+        defer { mounted.window.close() }
+        let scrollView = try #require(Self.findScrollView(in: mounted.hostingView))
+        #expect(await waitForSignal(signals.stream))
+        scrollView.frame = .zero
+        mounted.hostingView.layoutSubtreeIfNeeded()
+        #expect(scrollView.bounds.size == .zero)
+
+        mounted.window.setContentSize(NSSize(width: 400, height: 300))
+        mounted.hostingView.layoutSubtreeIfNeeded()
+        #expect(scrollView.window === mounted.window)
+        #expect(scrollView.bounds.width > 0)
+        #expect(scrollView.bounds.height > 0)
     }
 
     /// `makeNSView` pre-sized the text view with one `boundingRect` over the whole document, which is quadratic for

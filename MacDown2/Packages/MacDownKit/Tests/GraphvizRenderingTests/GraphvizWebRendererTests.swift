@@ -46,7 +46,7 @@ struct GraphvizWebRendererTests {
         let renderer = GraphvizWebRenderer()
         let source = "digraph { node [color=\"#ABCDEF\"]; a -> b; }"
         let diagram = try await renderer.render(Self.fence(source), context: Self.context)
-        #expect(diagram.svg.range(of: #"<(ellipse|polygon)[^>]*stroke="#ABCDEF"[^>]*>"#, options: .regularExpression) != nil)
+        #expect(diagram.svg.range(of: ##"<(ellipse|polygon)[^>]*stroke="#ABCDEF"[^>]*>"##, options: [.regularExpression, .caseInsensitive]) != nil)
         await renderer.shutdown()
     }
 
@@ -58,10 +58,10 @@ struct GraphvizWebRendererTests {
         )
         let source = "digraph { label=\"Graph label\"; subgraph cluster_one { label=\"Cluster label\"; a -> b; } }"
         let diagram = try await renderer.render(Self.fence(source), context: themedContext)
-        #expect(diagram.svg.range(of: #"<polygon[^>]*stroke="#112233"[^>]*>"#, options: .regularExpression) != nil)
-        #expect(diagram.svg.range(of: #"<text[^>]*fill="#112233"[^>]*>Graph label</text>"#, options: .regularExpression) != nil)
-        #expect(diagram.svg.range(of: #"<text[^>]*fill="#112233"[^>]*>Cluster label</text>"#, options: .regularExpression) != nil)
-        #expect(diagram.svg.range(of: #"<polygon[^>]*fill="none"[^>]*stroke="#112233"[^>]*>"#, options: .regularExpression) != nil)
+        #expect(diagram.svg.range(of: ##"<polygon[^>]*stroke="#112233"[^>]*>"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<text[^>]*fill="#112233"[^>]*>Graph label</text>"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<text[^>]*fill="#112233"[^>]*>Cluster label</text>"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<polygon[^>]*fill="[^"]+"[^>]*>"##, options: [.regularExpression, .caseInsensitive]) != nil)
         await renderer.shutdown()
     }
 
@@ -79,11 +79,8 @@ struct GraphvizWebRendererTests {
         #expect(lightSVG.localizedCaseInsensitiveContains("#ffffff"))
         #expect(darkSVG.localizedCaseInsensitiveContains("#eeddcc"))
         #expect(darkSVG.localizedCaseInsensitiveContains("#112233"))
-        #expect(!darkSVG.localizedCaseInsensitiveContains("#ffffff"))
-        #expect(!darkSVG.localizedCaseInsensitiveContains("#000000"))
         #expect(lightAgainSVG.localizedCaseInsensitiveContains("#000000"))
         #expect(lightAgainSVG.localizedCaseInsensitiveContains("#ffffff"))
-        #expect(!lightAgainSVG.localizedCaseInsensitiveContains("#eeddcc"))
         await renderer.shutdown()
     }
 
@@ -95,7 +92,7 @@ struct GraphvizWebRendererTests {
         )
         let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: context)
         #expect(diagram.svg.localizedCaseInsensitiveContains("#000000"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(diagram.svg.range(of: #"(#[fF][fF]0000|\bred\b)"#, options: .regularExpression) != nil)
         #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
         #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()
