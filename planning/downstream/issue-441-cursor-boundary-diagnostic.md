@@ -28,11 +28,15 @@ claims the cursor, rather than an existing application-wide cursor policy.
 
 ## Reproduction status
 
-Source inspection was completed on the integration head. A native desktop
-reproduction could not be completed in this execution environment without
-an available, safe interactive desktop session. Consequently there is no
-claim here for native acceptance across document sizes, editor-only/split
-layouts, scrolling/resizing, or tab/window changes.
+Source inspection was completed on the integration head. Computer-use tooling
+confirmed an active macOS session and an installed MacDown2 bundle, but no
+MacDown2 process was running and the current-head build could not produce a
+launchable app: SwiftPM failed while building `swift-cmark` after the
+workspace-local-cache retry with a CFNetwork module-cache rename error.
+Launching an older installed bundle would not test this exact head and could
+disrupt the user's activity. Consequently there is no claim here for native
+acceptance across document sizes, editor-only/split layouts,
+scrolling/resizing, or tab/window changes.
 
 ## Safe next experiment
 
