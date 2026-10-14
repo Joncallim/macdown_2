@@ -30,6 +30,7 @@ struct FolderSearchRequestGate {
 
 struct PendingFolderSearchReveal {
     let generation: UInt
+    let navigationRevision: UInt
     let range: NSRange
     let controllerID: ObjectIdentifier
 }
@@ -57,6 +58,7 @@ extension WindowCoordinator {
     ) async {
         let url = root.appendingPathComponent(relativePath)
         let requestGeneration = folderSearchRequestGate.begin()
+        let navigationRevision = folderSearchNavigationRevision
         let requestToken = FolderSearchRequestToken()
         pendingFolderSearchReveals.removeAll()
         await withTaskCancellationHandler {
@@ -74,7 +76,11 @@ extension WindowCoordinator {
         } onCancel: {
             requestToken.cancel()
         }
-        guard folderSearchRequestGate.owns(requestGeneration), !requestToken.isCancelled, !Task.isCancelled else {
+        guard folderSearchRequestGate.owns(requestGeneration),
+              folderSearchNavigationRevision == navigationRevision,
+              !requestToken.isCancelled,
+              !Task.isCancelled
+        else {
             return
         }
         guard let controller = controllerForDocument(url: url),
@@ -90,6 +96,7 @@ extension WindowCoordinator {
         ) {
             pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
                 generation: requestGeneration,
+                navigationRevision: navigationRevision,
                 range: range,
                 controllerID: ObjectIdentifier(controller)
             )
@@ -103,6 +110,7 @@ extension WindowCoordinator {
         guard let tabUUID = UUID(uuidString: tabID),
               let pending = pendingFolderSearchReveals[tabUUID],
               folderSearchRequestGate.owns(pending.generation),
+              folderSearchNavigationRevision == pending.navigationRevision,
               let controller = controllers.first(where: {
                   ObjectIdentifier($0) == pending.controllerID
                       && $0.model.tabStore.activeTabID == tabUUID
@@ -118,6 +126,15 @@ extension WindowCoordinator {
             return
         }
         pendingFolderSearchReveals[tabUUID] = pending
+    }
+
+    /// Invalidates a deferred folder-search reveal when a newer user-driven
+    /// navigation command targets an editor. The revision is captured before
+    /// the asynchronous open begins, so navigation during file loading also
+    /// wins over the eventual reveal.
+    func folderSearchNavigationDidChange() {
+        folderSearchNavigationRevision &+= 1
+        pendingFolderSearchReveals.removeAll()
     }
 
     private func attemptFolderSearchReveal(

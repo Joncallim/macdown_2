@@ -324,15 +324,18 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         let generation = coordinator.folderSearchRequestGate.begin()
         coordinator.pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
             generation: generation,
+            navigationRevision: coordinator.folderSearchNavigationRevision,
             range: NSRange(location: 2, length: 0),
             controllerID: ObjectIdentifier(controller)
         )
         controller.window?.makeKeyAndOrderFront(nil)
 
+        let panel = GoToLinePanel(coordinator: coordinator, originController: controller)
+        panel.jump(to: "1")
         coordinator.folderSearchEditorLayoutChanged(tabID: tabID.uuidString)
 
         let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
-        #expect(system.selectedRange == NSRange(location: 2, length: 0))
+        #expect(system.selectedRange == NSRange(location: 0, length: 0))
         #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
     }
 }

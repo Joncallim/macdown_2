@@ -64,6 +64,7 @@ final class WindowCoordinator {
     var unsavedRestoreTask: Task<Void, Never>?
     /// Latest-request ownership for folder-search navigation.
     @ObservationIgnored var folderSearchRequestGate = FolderSearchRequestGate()
+    @ObservationIgnored var folderSearchNavigationRevision: UInt = 0
     @ObservationIgnored var pendingFolderSearchReveals: [UUID: PendingFolderSearchReveal] = [:]
     // `pendingNewDocumentTasks` and `addController` are internal rather than
     // private for the same reason as the properties above:

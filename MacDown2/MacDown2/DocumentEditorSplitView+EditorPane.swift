@@ -153,6 +153,7 @@ extension DocumentEditorSplitView {
         guard model.isActive, let system = editorStore.existingSystem(for: identity) else { return }
         system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
         if reveal, let current = model.currentMatch {
+            coordinator?.folderSearchNavigationDidChange()
             system.revealSelection(utf16Range: current.range, flash: false, animated: true)
         }
     }
