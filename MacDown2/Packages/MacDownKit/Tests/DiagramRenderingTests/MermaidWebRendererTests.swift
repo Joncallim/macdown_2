@@ -50,7 +50,7 @@ struct MermaidWebRendererTests {
     @Test func pieChartsUseDistinctCategoricalSliceColors() async throws {
         let renderer = MermaidWebRenderer()
         let diagram = try await renderer.render(
-            Self.fence("pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3\n    \"Four\" : 4\n    \"Five\" : 5\n    \"Six\" : 6"),
+            Self.fence("pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3\n    \"Four\" : 4\n    \"Five\" : 5\n    \"Six\" : 6\n    \"Seven\" : 7\n    \"Eight\" : 8\n    \"Nine\" : 9\n    \"Ten\" : 10\n    \"Eleven\" : 11\n    \"Twelve\" : 12"),
             context: Self.context
         )
         #expect(diagram.svg.range(of: ##"<path[^>]*fill="#4E79A7"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
@@ -59,10 +59,16 @@ struct MermaidWebRendererTests {
         #expect(diagram.svg.range(of: ##"<path[^>]*fill="#E15759"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
         #expect(diagram.svg.range(of: ##"<path[^>]*fill="#B07AA1"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
         #expect(diagram.svg.range(of: ##"<path[^>]*fill="#76B7B2"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#EDC949"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#FF9DA7"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#9C755F"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#BAB0AC"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#86BCB6"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#D37295"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
         let sliceCount = diagram.svg.components(separatedBy: "class=\"pieCircle\"").count - 1
         let legendSwatchCount = diagram.svg.components(separatedBy: "class=\"legend\"").count - 1
-        #expect(sliceCount == 6)
-        #expect(legendSwatchCount >= 6)
+        #expect(sliceCount == 12)
+        #expect(legendSwatchCount >= 12)
         #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(78, 121, 167\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
         #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(242, 142, 43\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
         #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(89, 161, 79\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
