@@ -42,3 +42,47 @@ proof that an isolated fix is impossible. Native reproduction remains an
 acceptance item.
 
 No issue is claimed closed by these preparation commits.
+
+## 2026-10-14 implementation checkpoint
+
+Commit `1a6e9a7b2665a2e43b9e306105b96c6543437c99` is the only new source
+implementation after the published documentation branch. It changes exactly
+two files: `MacDown2/MacDown2/WindowCoordinator.swift` (7 insertions, 1
+deletion) and `MacDown2/MacDown2/WindowCoordinator+OpenDocument.swift` (5
+insertions, 2 deletions). It adds the missing folder-search request gate and
+pending-reveal state, and threads a MainActor `shouldContinue` callback through
+the async open path. This is a bounded #173 lifecycle/compile fix; it does not
+touch parser, highlighter, save, or recovery code.
+
+Verification at that head:
+
+- current-head app build via `xcodegen generate --spec MacDown2/project.yml`
+  and `xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2
+  -configuration Debug -derivedDataPath .app-build build
+  CODE_SIGNING_ALLOWED=NO`: `BUILD SUCCEEDED`;
+- `swift test --package-path MacDown2/Packages/MacDownKit --filter
+  WorkspaceSearchEngineCancellationTests`: 5/5 passed;
+- `swift test --package-path MacDown2/Packages/MacDownKit --filter
+  SettingsCompatibilityTests`: 9/9 passed;
+- independent reviewer: same-task self-review (no separate reviewer agent was
+  available); it found MainActor serialization, generation invalidation, and
+  pre/post-open stale completion guards correct. No remaining compile finding.
+
+The #53 compatibility code and tests predate `1a6e9a7`; they were verified,
+not authored by this implementation checkpoint. The Mermaid provenance audit
+and lock-resolution tooling likewise predate this commit; it records official
+commit `dcb694d`, exact lock resolutions, bundle hash, and root MIT license
+match, but does not claim nested notices or source-map linkage complete.
+
+Remaining concrete gates:
+
+- #173: native acceptance across background tabs, zero-size/pre-attachment
+  reveal, stale cancellation, and no focus/source/undo mutation still needs
+  broader app-level evidence;
+- #441: current-head app launched successfully, but computer-use cannot expose
+  cursor identity/shape, so no cursor fix is justified and native cursor
+  acceptance remains open;
+- #53: legacy importer and final parser/theme dispositions remain outside the
+  bounded compatibility slice and require Claude’s E22/E23 integration;
+- #148: ledger/provenance is prepared, but nested notices, source archives,
+  release inventory decisions, and legal/release gates remain open.
