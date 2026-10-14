@@ -58,6 +58,9 @@ final class WindowCoordinator {
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
     var restoreTask: Task<Void, Never>?
     var unsavedRestoreTask: Task<Void, Never>?
+    /// Latest-request ownership for folder-search navigation.
+    @ObservationIgnored var folderSearchRequestGate = FolderSearchRequestGate()
+    @ObservationIgnored var pendingFolderSearchReveals: [UUID: PendingFolderSearchReveal] = [:]
     // `pendingNewDocumentTasks` and `addController` are internal rather than
     // private for the same reason as the properties above:
     // `WindowCoordinator+NewDocument.swift` is a same-module extension in a
@@ -143,8 +146,10 @@ final class WindowCoordinator {
         folderSelectionURL: URL? = nil,
         folderRenameURL: URL? = nil,
         relativeTo overrideKeyWindow: NSWindow? = nil,
-        encoding: FileEncodingMetadata? = nil
+        encoding: FileEncodingMetadata? = nil,
+        shouldContinue: (@MainActor () -> Bool)? = nil
     ) async {
+        guard shouldContinue?() ?? true else { return }
         // A link to a file opens (and saves to) that file; resolved first so the
         // same file is not opened twice, once through the link and once directly.
         let url = url.resolvingFinalSymlink()
@@ -165,6 +170,7 @@ final class WindowCoordinator {
         let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
         let model = makeWindowModel()
         let outcome = await model.tabStore.openFileInTab(url, encoding: encoding)
+        guard shouldContinue?() ?? true else { return }
         model.setFolderRoot(folderRoot)
 
         guard !model.tabStore.tabs.isEmpty else {
