@@ -64,6 +64,13 @@ Verification at that head:
   WorkspaceSearchEngineCancellationTests`: 5/5 passed;
 - `swift test --package-path MacDown2/Packages/MacDownKit --filter
   SettingsCompatibilityTests`: 9/9 passed;
+- added app-target coverage in
+  `MacDown2/MacDown2Tests/WindowCoordinatorFolderSearchCancellationTests.swift`
+  for false-before-admission, false-after-awaited-load, and ordinary nil
+  callers. The supported `xcodebuild test` invocation compiled the target but
+  the test runner then hung before establishing its connection; result:
+  **not passed**, with exact error `MacDown2 (67183) encountered an error (The
+  test runner hung before establishing connection.)`.
 - independent reviewer: same-task self-review (no separate reviewer agent was
   available); it found MainActor serialization, generation invalidation, and
   pre/post-open stale completion guards correct. No remaining compile finding.
