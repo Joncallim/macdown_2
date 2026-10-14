@@ -43,6 +43,23 @@ struct MermaidExportRegistryTests {
         #expect(context.backgroundBlue == 1)
     }
 
+    @Test func printExportRendersSequenceDiagramWithPrintSafeColors() async throws {
+        let text = "```mermaid\nsequenceDiagram\n    Alice->>Bob: Hello\n```\n"
+        let parsed = try await ParseEngine().parse(text, revision: 0)
+        let registry = ContributionRegistry.standardForExport(theme: BundledThemes.dark, isPrintTarget: true)
+        let results = try await registry.run(document: parsed, sourceText: text, sourceGeneration: 1)
+        let contribution = try #require(results.first)
+        let content = try #require(contribution.content)
+        let rendered: String
+        switch content.representation {
+        case let .markdown(value), let .html(value):
+            rendered = value
+        }
+        #expect(rendered.localizedCaseInsensitiveContains("<svg"))
+        #expect(rendered.localizedCaseInsensitiveContains("#1A1A1A"))
+        #expect(rendered.localizedCaseInsensitiveContains("#FFFFFF"))
+    }
+
     @Test func aRealMermaidFenceComposesIntoSelfContainedHTMLWithNoExternalReferences() async throws {
         let text = "# Title\n\n[TOC]\n\nA flow:\n\n```mermaid\ngraph TD; A-->B;\n```\n\n## Section\n"
         let parsed = try await ParseEngine().parse(text, revision: 0)

@@ -53,10 +53,16 @@ struct MermaidWebRendererTests {
             Self.fence("pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3"),
             context: Self.context
         )
-        let fills = Set(
-            diagram.svg.matches(of: /fill="(#[0-9A-Fa-f]{6})"/).map { String($0.output.1) }
-        )
-        #expect(fills.count >= 3)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#4E79A7"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#F28E2B"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#59A14F"))
+        let sliceCount = diagram.svg.components(separatedBy: "class=\"pieCircle\"").count - 1
+        let legendSwatchCount = diagram.svg.components(separatedBy: "class=\"legend\"").count - 1
+        #expect(sliceCount == 3)
+        #expect(legendSwatchCount >= 3)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill: rgb(78, 121, 167)"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill: rgb(242, 142, 43)"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill: rgb(89, 161, 79)"))
         await renderer.shutdown()
     }
 

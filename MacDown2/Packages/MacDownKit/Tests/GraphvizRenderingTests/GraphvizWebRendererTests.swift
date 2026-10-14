@@ -52,12 +52,26 @@ struct GraphvizWebRendererTests {
 
     @Test func filledNodesUseAContrastingDefaultFill() async throws {
         let renderer = GraphvizWebRenderer()
-        let diagram = try await renderer.render(
+        let light = try await renderer.render(
             Self.fence("digraph { node [style=filled]; a -> b; }"),
             context: Self.context
         )
-        #expect(diagram.svg.range(of: ##"<ellipse[^>]*fill="#FFFFFF"[^>]*stroke="#000000"[^>]*>"##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<text[^>]*fill="#000000"[^>]*>a</text>"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        let dark = try await renderer.render(
+            Self.fence("digraph { node [style=filled]; a -> b; }"),
+            context: GraphvizRenderContext(
+                foregroundRed: 0xEE / 255.0, foregroundGreen: 0xDD / 255.0, foregroundBlue: 0xCC / 255.0,
+                backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
+            )
+        )
+        #expect(light.svg.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
+        #expect(light.svg.localizedCaseInsensitiveContains("fill=\"#000000\""))
+        #expect(dark.svg.localizedCaseInsensitiveContains("fill=\"#112233\""))
+        #expect(dark.svg.localizedCaseInsensitiveContains("fill=\"#EEDDCC\""))
+        let authored = try await renderer.render(
+            Self.fence("digraph { node [style=filled, fillcolor=\"#ABCDEF\"]; a -> b; }"),
+            context: Self.context
+        )
+        #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"#ABCDEF\""))
         await renderer.shutdown()
     }
 
