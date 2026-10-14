@@ -11,31 +11,46 @@ import Workspace
 @MainActor
 @Suite("WindowCoordinator folder-search cancellation")
 struct WindowCoordinatorFolderSearchCancellationTests {
-    private final class Barrier: @unchecked Sendable {
-        private let lock = NSLock()
-        private var released = false
-        private var waiter: CheckedContinuation<Void, Never>?
+    private final class Gate: @unchecked Sendable {
+        let entered: AsyncStream<Void>
+        private let enteredContinuation: AsyncStream<Void>.Continuation
+        private let releaseStream: AsyncStream<Void>
+        private let releaseContinuation: AsyncStream<Void>.Continuation
+
+        init() {
+            (entered, enteredContinuation) = AsyncStream<Void>.makeStream()
+            (releaseStream, releaseContinuation) = AsyncStream<Void>.makeStream()
+        }
 
         func wait() async {
-            await withCheckedContinuation { continuation in
-                lock.lock()
-                if released {
-                    lock.unlock()
-                    continuation.resume()
-                } else {
-                    waiter = continuation
-                    lock.unlock()
-                }
-            }
+            enteredContinuation.yield(())
+            var iterator = releaseStream.makeAsyncIterator()
+            _ = await iterator.next()
         }
 
         func release() {
-            lock.lock()
-            released = true
-            let waiter = waiter
-            self.waiter = nil
-            lock.unlock()
-            waiter?.resume()
+            releaseContinuation.yield(())
+            releaseContinuation.finish()
+            enteredContinuation.finish()
+        }
+
+        static func waitForEntry(
+            _ stream: AsyncStream<Void>,
+            timeout: Duration = .seconds(2)
+        ) async -> Bool {
+            await withTaskGroup(of: Bool.self) { group in
+                group.addTask {
+                    var iterator = stream.makeAsyncIterator()
+                    return await iterator.next() != nil
+                }
+                group.addTask {
+                    try? await Task.sleep(for: timeout)
+                    return false
+                }
+                let result = await group.next() ?? false
+                group.cancelAll()
+                return result
+            }
         }
     }
 
@@ -148,13 +163,9 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         try "needle".write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: root) }
 
-        var reachedRootRebuild = false
-        var release: CheckedContinuation<Void, Never>?
+        let gate = Gate()
         coordinator.afterFolderSearchRootRebuild = {
-            reachedRootRebuild = true
-            await withCheckedContinuation { continuation in
-                release = continuation
-            }
+            await gate.wait()
         }
         let task = Task {
             await coordinator.openFolderSearchResult(
@@ -165,14 +176,12 @@ struct WindowCoordinatorFolderSearchCancellationTests {
             )
         }
 
-        for _ in 0..<2_000 where !reachedRootRebuild {
-            await Task.yield()
-        }
+        let entered = await Gate.waitForEntry(gate.entered)
         task.cancel()
-        release?.resume()
+        gate.release()
         await task.value
 
-        #expect(reachedRootRebuild)
+        #expect(entered)
         #expect(coordinator.controllers.isEmpty)
     }
 
@@ -184,22 +193,29 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         try "two".write(to: root.appendingPathComponent("two.md"), atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let olderBarrier = Barrier()
-        coordinator.afterFolderSearchFileLoad = { await olderBarrier.wait() }
+        let olderGate = Gate()
+        let newerGate = Gate()
+        var calls = 0
+        coordinator.afterFolderSearchFileLoad = {
+            calls += 1
+            if calls == 1 { await olderGate.wait() } else { await newerGate.wait() }
+        }
         let older = Task {
             await coordinator.openFolderSearchResult(
                 relativePath: "one.md", root: root, folderAccessURL: root,
                 range: NSRange(location: 0, length: 3)
             )
         }
-        await Task.yield()
+        #expect(await Gate.waitForEntry(olderGate.entered))
         let newer = Task {
             await coordinator.openFolderSearchResult(
                 relativePath: "two.md", root: root, folderAccessURL: root,
                 range: NSRange(location: 0, length: 3)
             )
         }
-        olderBarrier.release()
+        #expect(await Gate.waitForEntry(newerGate.entered))
+        newerGate.release()
+        olderGate.release()
         await older.value
         await newer.value
 
@@ -215,8 +231,13 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         try "two".write(to: root.appendingPathComponent("two.md"), atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let barrier = Barrier()
-        coordinator.afterFolderSearchFileLoad = { await barrier.wait() }
+        let firstGate = Gate()
+        let secondGate = Gate()
+        var calls = 0
+        coordinator.afterFolderSearchFileLoad = {
+            calls += 1
+            if calls == 1 { await firstGate.wait() } else { await secondGate.wait() }
+        }
         let first = Task {
             await coordinator.openFolderSearchResult(
                 relativePath: "one.md", root: root, folderAccessURL: root,
@@ -225,17 +246,18 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         }
         let second = Task {
             await coordinator.openFolderSearchResult(
-                relativePath: "two.md", root: root, folderAccessURL: root,
+                relativePath: "one.md", root: root, folderAccessURL: root,
                 range: NSRange(location: 0, length: 3)
             )
         }
-        await Task.yield()
-        barrier.release()
+        #expect(await Gate.waitForEntry(firstGate.entered))
+        second.cancel()
+        firstGate.release()
         await first.value
         await second.value
 
         #expect(coordinator.controllers.count == 1)
-        #expect(coordinator.controllers.first?.model.activeDocument?.fileURL?.lastPathComponent == "two.md")
+        #expect(coordinator.controllers.first?.model.activeDocument?.fileURL?.lastPathComponent == "one.md")
     }
 
     @Test func closingExistingWindowDuringRootAwaitCannotRefocusIt() async throws {
@@ -252,8 +274,8 @@ struct WindowCoordinatorFolderSearchCancellationTests {
 
         await coordinator.openDocument(at: url)
         let controller = try #require(coordinator.controllers.first)
-        let barrier = Barrier()
-        controller.beforeRootRebuild = { await barrier.wait() }
+        let gate = Gate()
+        controller.beforeRootRebuild = { await gate.wait() }
 
         let task = Task {
             await coordinator.openDocument(
@@ -263,10 +285,10 @@ struct WindowCoordinatorFolderSearchCancellationTests {
                 shouldContinue: { true }
             )
         }
-        await Task.yield()
+        #expect(await Gate.waitForEntry(gate.entered))
         coordinator.removeController(controller)
         controller.close()
-        barrier.release()
+        gate.release()
         await task.value
 
         #expect(!coordinator.controllers.contains { $0 === controller })

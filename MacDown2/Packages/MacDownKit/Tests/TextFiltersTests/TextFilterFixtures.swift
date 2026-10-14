@@ -7,9 +7,8 @@ import Foundation
 /// caveat that applies to on-device UI journeys).
 enum TextFilterFixtures {
     /// Owns a fixture directory for the complete lifetime of an asynchronous
-    /// test operation. Keeping creation and teardown in one async scope avoids
-    /// the load-sensitive bug where a test's `defer` removes files while a
-    /// child task is still starting or draining its process.
+    /// test operation. The scoped async `defer` is equivalent to any properly
+    /// scoped async cleanup; it does not join tasks escaped by the operation.
     static func withTemporaryDirectory<T: Sendable>(
         _ operation: (URL) async throws -> T
     ) async throws -> T {
@@ -23,9 +22,9 @@ enum TextFilterFixtures {
     /// must wait for a complete line containing a positive decimal PID.
     static func completePIDs(in url: URL) -> [pid_t] {
         guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return [] }
-        guard contents.last == "\n" else { return [] }
+        let completePrefix = contents[..<(contents.lastIndex(of: "\n").map { contents.index(after: $0) } ?? contents.startIndex)]
         var seen = Set<pid_t>()
-        return contents.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
+        return completePrefix.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
             let fields = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
             let rawPID: Substring? = switch fields.count {
             case 1: fields[0]
