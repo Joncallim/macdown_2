@@ -175,7 +175,9 @@ final class WindowCoordinator {
         let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
         let model = makeWindowModel()
         let outcome = await model.tabStore.openFileInTab(url, encoding: encoding)
-        await afterFolderSearchFileLoad?()
+        if shouldContinue != nil {
+            await afterFolderSearchFileLoad?()
+        }
         guard shouldContinue?() ?? true else { return }
         model.setFolderRoot(folderRoot)
 
@@ -195,7 +197,9 @@ final class WindowCoordinator {
         if let folderRoot {
             await controller.setFileTreeRoot(folderRoot, accessURL: folderAccessURL)
         }
-        await afterFolderSearchRootRebuild?()
+        if shouldContinue != nil {
+            await afterFolderSearchRootRebuild?()
+        }
         guard shouldContinue?() ?? true else {
             controller.window?.close()
             return
