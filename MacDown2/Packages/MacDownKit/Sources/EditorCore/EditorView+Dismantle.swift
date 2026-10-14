@@ -13,8 +13,17 @@ public extension EditorView {
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
+        NotificationCenter.default.removeObserver(
+            coordinator,
+            name: NSView.frameDidChangeNotification,
+            object: scrollView.documentView
+        )
+        (scrollView as? EditorAttachmentScrollView)?.onWindowChange = nil
         NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidUndoChange, object: nil)
         NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidRedoChange, object: nil)
+        coordinator.onSelectionChange = nil
+        coordinator.onScrollChange = nil
+        coordinator.onLayoutChange = nil
         coordinator.gutterView = nil
         guard let system = coordinator.system else { return }
         if system.textView.delegate === coordinator {

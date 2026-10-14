@@ -15,6 +15,10 @@ extension EditorView.Coordinator {
         onLayoutChange?()
     }
 
+    @MainActor func editorAttachmentDidChange() {
+        onLayoutChange?()
+    }
+
     /// `EditorTextSystem` itself keeps `lineIndex` correct across undo/redo
     /// (see its own `registerUndoRedoObservers()`); this coordinator-level
     /// observer exists only to redraw the gutter, which `EditorTextSystem`

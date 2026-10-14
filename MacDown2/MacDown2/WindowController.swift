@@ -41,6 +41,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let folderSearchModel: FolderSearchModel
     let externalFileController: ExternalFileController
     weak var coordinator: WindowCoordinator?
+    private(set) var isClosed = false
     private var observationTask: Task<Void, Never>?
     /// Running text-filter commands, keyed by tab — see
     /// `WindowController+TextFilterTasks.swift`.
@@ -237,6 +238,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_: Notification) {
+        isClosed = true
         observationTask?.cancel()
         externalFileController.dispose()
         editorStore.evictAll()

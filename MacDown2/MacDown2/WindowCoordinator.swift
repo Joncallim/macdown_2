@@ -56,6 +56,8 @@ final class WindowCoordinator {
     private var saveTask: Task<Void, Never>?
     var sessionPublicationOrder = SessionPublicationOrder()
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
+    /// Test seam: runs after a new controller's root/index rebuild and before publication.
+    var afterFolderSearchRootRebuild: (@MainActor () async -> Void)?
     var restoreTask: Task<Void, Never>?
     var unsavedRestoreTask: Task<Void, Never>?
     /// Latest-request ownership for folder-search navigation.
@@ -190,6 +192,7 @@ final class WindowCoordinator {
         if let folderRoot {
             await controller.setFileTreeRoot(folderRoot, accessURL: folderAccessURL)
         }
+        await afterFolderSearchRootRebuild?()
         guard shouldContinue?() ?? true else {
             controller.window?.close()
             return
