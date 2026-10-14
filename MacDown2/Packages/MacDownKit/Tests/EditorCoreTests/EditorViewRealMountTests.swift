@@ -52,6 +52,9 @@ struct EditorViewRealMountTests {
             backing: .buffered,
             defer: false
         )
+        // The test retains the window through teardown; keep AppKit from
+        // releasing it again when close() removes it from the window list.
+        window.isReleasedWhenClosed = false
         window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
         window.contentView = hostingView
         window.makeKeyAndOrderFront(nil)
