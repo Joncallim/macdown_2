@@ -30,15 +30,14 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
-    @Test func renderAppliesThemeColorsToGraphvizDefaults() async throws {
+    @Test func renderUsesNeutralLightCanvasRegardlessOfThemeContext() async throws {
         let renderer = GraphvizWebRenderer()
         let themedContext = GraphvizRenderContext(
             foregroundRed: 0x11 / 255.0, foregroundGreen: 0x22 / 255.0, foregroundBlue: 0x33 / 255.0,
             backgroundRed: 0xEE / 255.0, backgroundGreen: 0xDD / 255.0, backgroundBlue: 0xCC / 255.0
         )
         let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: themedContext)
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#112233"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#EEDDCC"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
         await renderer.shutdown()
     }
 
@@ -50,7 +49,7 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
-    @Test func filledNodesUseAContrastingDefaultFill() async throws {
+    @Test func filledNodesPreserveNativeDefaultsAndAuthoredFillFallback() async throws {
         let renderer = GraphvizWebRenderer()
         let light = try await renderer.render(
             Self.fence("digraph { node [style=filled]; a -> b; }"),
@@ -63,10 +62,8 @@ struct GraphvizWebRendererTests {
                 backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
             )
         )
-        #expect(light.svg.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
-        #expect(light.svg.localizedCaseInsensitiveContains("fill=\"#000000\""))
-        #expect(dark.svg.localizedCaseInsensitiveContains("fill=\"#112233\""))
-        #expect(dark.svg.localizedCaseInsensitiveContains("fill=\"#EEDDCC\""))
+        #expect(light.svg.localizedCaseInsensitiveContains("fill=\"none\""))
+        #expect(dark.svg.localizedCaseInsensitiveContains("fill=\"none\""))
         let authored = try await renderer.render(
             Self.fence("digraph { node [style=filled, fillcolor=\"#ABCDEF\"]; a -> b; }"),
             context: Self.context
@@ -75,7 +72,7 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
-    @Test func graphAndClusterDefaultsUseThemeForeground() async throws {
+    @Test func graphAndClusterDefaultsUseNeutralLightCanvasAndNativeForeground() async throws {
         let renderer = GraphvizWebRenderer()
         let themedContext = GraphvizRenderContext(
             foregroundRed: 0x11 / 255.0, foregroundGreen: 0x22 / 255.0, foregroundBlue: 0x33 / 255.0,
@@ -83,9 +80,9 @@ struct GraphvizWebRendererTests {
         )
         let source = "digraph { label=\"Graph label\"; subgraph cluster_one { label=\"Cluster label\"; a -> b; } }"
         let diagram = try await renderer.render(Self.fence(source), context: themedContext)
-        #expect(diagram.svg.range(of: ##"<polygon[^>]*stroke="#112233"[^>]*>"##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<text[^>]*fill="#112233"[^>]*>Graph label</text>"##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<text[^>]*fill="#112233"[^>]*>Cluster label</text>"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("Graph label"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("Cluster label"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
         #expect(diagram.svg.range(of: ##"<polygon[^>]*fill="[^"]+"[^>]*>"##, options: [.regularExpression, .caseInsensitive]) != nil)
         await renderer.shutdown()
     }
@@ -99,7 +96,7 @@ struct GraphvizWebRendererTests {
                 backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
             )
         )
-        #expect(clustered.svg.localizedCaseInsensitiveContains("fill=\"#112233\""))
+        #expect(clustered.svg.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
 
         let authored = try await renderer.render(
             Self.fence("digraph { node [style=filled, color=red, fontcolor=white]; a -> b; }"),
@@ -120,12 +117,9 @@ struct GraphvizWebRendererTests {
         let lightSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: light).svg
         let darkSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: dark).svg
         let lightAgainSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: light).svg
-        #expect(lightSVG.localizedCaseInsensitiveContains("#000000"))
-        #expect(lightSVG.localizedCaseInsensitiveContains("#ffffff"))
-        #expect(darkSVG.localizedCaseInsensitiveContains("#eeddcc"))
-        #expect(darkSVG.localizedCaseInsensitiveContains("#112233"))
-        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#000000"))
-        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(lightSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
+        #expect(darkSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
         await renderer.shutdown()
     }
 
@@ -136,8 +130,8 @@ struct GraphvizWebRendererTests {
             backgroundRed: 2, backgroundGreen: -1, backgroundBlue: .nan
         )
         let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: context)
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#000000"))
-        #expect(diagram.svg.range(of: #"(#[fF][fF]0000|\bred\b)"#, options: .regularExpression) != nil)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("stroke=\"black\""))
         #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
         #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()

@@ -1,7 +1,9 @@
 import Foundation
 
-/// Theme inputs, mirroring `MermaidRenderContext`'s shape. Graphviz uses these
-/// values as defaults while preserving explicit colors in the diagram source.
+/// Fixed neutral-light policy for Graphviz. The legacy component-shaped
+/// initializer remains source-compatible, but app-theme colors are deliberately
+/// ignored because Graphviz artwork uses native defaults on an opaque white
+/// canvas.
 public struct GraphvizRenderContext: Sendable, Equatable, Hashable {
     public let foregroundRed: Double
     public let foregroundGreen: Double
@@ -18,11 +20,16 @@ public struct GraphvizRenderContext: Sendable, Equatable, Hashable {
         backgroundGreen: Double,
         backgroundBlue: Double
     ) {
-        self.foregroundRed = foregroundRed
-        self.foregroundGreen = foregroundGreen
-        self.foregroundBlue = foregroundBlue
-        self.backgroundRed = backgroundRed
-        self.backgroundGreen = backgroundGreen
-        self.backgroundBlue = backgroundBlue
+        self.foregroundRed = 0
+        self.foregroundGreen = 0
+        self.foregroundBlue = 0
+        self.backgroundRed = 1
+        self.backgroundGreen = 1
+        self.backgroundBlue = 1
     }
+
+    public static let neutralLight = GraphvizRenderContext(
+        foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
+        backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
+    )
 }

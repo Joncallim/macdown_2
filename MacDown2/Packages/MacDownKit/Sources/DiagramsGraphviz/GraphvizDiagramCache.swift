@@ -33,7 +33,7 @@ public actor GraphvizDiagramCache: GraphvizDiagramRendering {
     }
 
     public func render(_ fence: GraphvizFence, context: GraphvizRenderContext) async throws -> RenderedGraphvizDiagram {
-        let key = Key(source: fence.source, context: context)
+        let key = Key(source: fence.source, context: .neutralLight)
         if let cached = entries[key] {
             touch(key)
             return cached
