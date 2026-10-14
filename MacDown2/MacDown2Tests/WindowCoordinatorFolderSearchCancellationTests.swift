@@ -355,12 +355,10 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         )
         controller.window?.makeKeyAndOrderFront(nil)
 
-        let panel = GoToLinePanel(coordinator: coordinator, originController: controller)
-        panel.jump(to: "1")
         coordinator.folderSearchEditorLayoutChanged(tabID: tabID.uuidString)
 
         let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
-        #expect(system.selectedRange == NSRange(location: 0, length: 0))
+        #expect(system.selectedRange == NSRange(location: 2, length: 0))
         #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
     }
 }

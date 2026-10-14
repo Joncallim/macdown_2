@@ -26,6 +26,7 @@ extension DocumentEditorSplitView {
                     resolvedSelection: { editorStore.existingSystem(for: identity)?.selectedRange },
                     initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
                     onMatchesChanged: { reveal in applyFindHighlights(findModel, reveal: reveal) },
+                    onNavigationIntent: { coordinator?.folderSearchNavigationDidChange() },
                     onClose: { closeFindBar(findModel) },
                     onReplace: { applyFindReplacement($0, model: findModel) },
                     onSelectAll: { applySelectAllMatches($0) }
@@ -153,7 +154,6 @@ extension DocumentEditorSplitView {
         guard model.isActive, let system = editorStore.existingSystem(for: identity) else { return }
         system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
         if reveal, let current = model.currentMatch {
-            coordinator?.folderSearchNavigationDidChange()
             system.revealSelection(utf16Range: current.range, flash: false, animated: true)
         }
     }
