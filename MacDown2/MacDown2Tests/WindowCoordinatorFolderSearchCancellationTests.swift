@@ -213,10 +213,25 @@ struct WindowCoordinatorFolderSearchCancellationTests {
     @Test func olderFindCompletionTokenCannotInvalidateNewerFolderSearch() async throws {
         let coordinator = makeCoordinator()
         let olderFindToken = coordinator.folderSearchNavigationDidChange()
-        let newerFolderToken = coordinator.folderSearchNavigationDidChange()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try "needle".write(to: root.appendingPathComponent("result.md"), atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var folderSearchStarted = false
+        coordinator.afterFolderSearchFileLoad = {
+            folderSearchStarted = true
+            #expect(!coordinator.folderSearchNavigationIsCurrent(olderFindToken))
+        }
+
+        await coordinator.openFolderSearchResult(
+            relativePath: "result.md",
+            root: root,
+            folderAccessURL: root,
+            range: NSRange(location: 0, length: 6)
+        )
 
         #expect(!coordinator.folderSearchNavigationIsCurrent(olderFindToken))
-        #expect(coordinator.folderSearchNavigationIsCurrent(newerFolderToken))
+        #expect(folderSearchStarted)
     }
 
     @Test func newerNavigationSurvivesActualPreviewOnlyToEditorMount() async throws {
@@ -260,6 +275,10 @@ struct WindowCoordinatorFolderSearchCancellationTests {
                 mounted.continuation.finish()
             }
         }
+        let panel = GoToLinePanel(coordinator: coordinator, originController: controller)
+        panel.jump(to: "1")
+        #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
+
         model.tabStore.setPreviewLayout(.split(fraction: 0.5), for: tabID)
         var iterator = mounted.stream.makeAsyncIterator()
         #expect(await iterator.next() != nil)
@@ -267,7 +286,7 @@ struct WindowCoordinatorFolderSearchCancellationTests {
 
         let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
         #expect(!system.isDetachedFromEditorView)
-        #expect(system.selectedRange == NSRange(location: 2, length: 0))
+        #expect(system.selectedRange == NSRange(location: 0, length: 0))
         #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
     }
 

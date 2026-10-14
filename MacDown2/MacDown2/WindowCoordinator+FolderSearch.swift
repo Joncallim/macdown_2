@@ -57,8 +57,8 @@ extension WindowCoordinator {
         range: NSRange
     ) async {
         let url = root.appendingPathComponent(relativePath)
+        let navigationRevision = folderSearchNavigationDidChange()
         let requestGeneration = folderSearchRequestGate.begin()
-        let navigationRevision = folderSearchNavigationRevision
         let requestToken = FolderSearchRequestToken()
         pendingFolderSearchReveals.removeAll()
         await withTaskCancellationHandler {
