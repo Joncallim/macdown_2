@@ -56,8 +56,11 @@ struct MermaidExportRegistryTests {
             rendered = value
         }
         #expect(rendered.localizedCaseInsensitiveContains("<svg"))
-        #expect(rendered.localizedCaseInsensitiveContains("#1A1A1A"))
-        #expect(rendered.localizedCaseInsensitiveContains("#FFFFFF"))
+        #expect(rendered.localizedCaseInsensitiveContains("Alice"))
+        #expect(rendered.localizedCaseInsensitiveContains("Bob"))
+        #expect(rendered.localizedCaseInsensitiveContains("Hello"))
+        #expect(rendered.range(of: ##"stroke:#1A1A1A|stroke="#1A1A1A""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(rendered.range(of: ##"fill:#FFFFFF|fill="#FFFFFF""##, options: [.regularExpression, .caseInsensitive]) != nil)
     }
 
     @Test func aRealMermaidFenceComposesIntoSelfContainedHTMLWithNoExternalReferences() async throws {

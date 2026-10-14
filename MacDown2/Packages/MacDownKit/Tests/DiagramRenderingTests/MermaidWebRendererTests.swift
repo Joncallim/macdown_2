@@ -50,19 +50,22 @@ struct MermaidWebRendererTests {
     @Test func pieChartsUseDistinctCategoricalSliceColors() async throws {
         let renderer = MermaidWebRenderer()
         let diagram = try await renderer.render(
-            Self.fence("pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3"),
+            Self.fence("pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3\n    \"Four\" : 4\n    \"Five\" : 5\n    \"Six\" : 6"),
             context: Self.context
         )
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#4E79A7"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#F28E2B"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#59A14F"))
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#4E79A7"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#F28E2B"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#59A14F"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#E15759"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#B07AA1"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#76B7B2"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
         let sliceCount = diagram.svg.components(separatedBy: "class=\"pieCircle\"").count - 1
         let legendSwatchCount = diagram.svg.components(separatedBy: "class=\"legend\"").count - 1
-        #expect(sliceCount == 3)
-        #expect(legendSwatchCount >= 3)
-        #expect(diagram.svg.localizedCaseInsensitiveContains("fill: rgb(78, 121, 167)"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("fill: rgb(242, 142, 43)"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("fill: rgb(89, 161, 79)"))
+        #expect(sliceCount == 6)
+        #expect(legendSwatchCount >= 6)
+        #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(78, 121, 167\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(242, 142, 43\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(89, 161, 79\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
         await renderer.shutdown()
     }
 

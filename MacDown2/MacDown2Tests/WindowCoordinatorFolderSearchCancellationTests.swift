@@ -215,30 +215,42 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         let olderFindToken = coordinator.folderSearchNavigationDidChange()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        try "needle".write(to: root.appendingPathComponent("result.md"), atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: root) }
+        try "prefix needle suffix".write(
+            to: root.appendingPathComponent("result.md"),
+            atomically: true,
+            encoding: .utf8
+        )
+        defer {
+            coordinator.controllers.forEach { $0.close() }
+            try? FileManager.default.removeItem(at: root)
+        }
         var folderSearchStarted = false
         coordinator.afterFolderSearchFileLoad = {
             folderSearchStarted = true
             #expect(!coordinator.folderSearchNavigationIsCurrent(olderFindToken))
         }
+        defer { coordinator.afterFolderSearchFileLoad = nil }
 
         await coordinator.openFolderSearchResult(
             relativePath: "result.md",
             root: root,
             folderAccessURL: root,
-            range: NSRange(location: 0, length: 6)
+            range: NSRange(location: 7, length: 6)
         )
 
         #expect(!coordinator.folderSearchNavigationIsCurrent(olderFindToken))
         #expect(folderSearchStarted)
+        let controller = try #require(coordinator.controllers.first)
+        let activeTabID = try #require(controller.model.tabStore.activeTab?.id.uuidString)
+        let system = try #require(controller.editorStore.existingSystem(for: activeTabID))
+        #expect(system.selectedRange == NSRange(location: 7, length: 6))
     }
 
     @Test func newerNavigationSurvivesActualPreviewOnlyToEditorMount() async throws {
         let coordinator = makeCoordinator()
         let preferences = FileTreePreferences()
         let model = coordinator.makeWindowModel()
-        model.tabStore.newTab(document: FileDocument(text: "needle"))
+        model.tabStore.newTab(document: FileDocument(text: "line one\nline two\nline three"))
         let tabID = try #require(model.tabStore.activeTab?.id)
         model.tabStore.setPreviewLayout(.previewOnly, for: tabID)
         let controller = WindowController(
@@ -263,30 +275,22 @@ struct WindowCoordinatorFolderSearchCancellationTests {
             controllerID: ObjectIdentifier(controller)
         )
         let mounted = AsyncStream<Void>.makeStream()
-        var callbackCount = 0
         coordinator.afterFolderSearchEditorLayoutChange = {
-            callbackCount += 1
             mounted.continuation.yield(())
-            if callbackCount == 1 {
-                Task { @MainActor in
-                    coordinator.folderSearchEditorLayoutChanged(tabID: tabID.uuidString)
-                }
-            } else if coordinator.pendingFolderSearchReveals[tabID] == nil {
-                mounted.continuation.finish()
-            }
+        }
+        defer {
+            coordinator.afterFolderSearchEditorLayoutChange = nil
         }
         let panel = GoToLinePanel(coordinator: coordinator, originController: controller)
-        panel.jump(to: "1")
+        panel.jump(to: "2")
         #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
 
         model.tabStore.setPreviewLayout(.split(fraction: 0.5), for: tabID)
-        var iterator = mounted.stream.makeAsyncIterator()
-        #expect(await iterator.next() != nil)
-        #expect(await iterator.next() != nil)
+        #expect(await Gate.waitForEntry(mounted.stream))
 
         let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
         #expect(!system.isDetachedFromEditorView)
-        #expect(system.selectedRange == NSRange(location: 0, length: 0))
+        #expect(system.selectedRange == NSRange(location: 9, length: 0))
         #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
     }
 

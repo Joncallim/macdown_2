@@ -87,6 +87,9 @@ window.__macdownRenderMermaid = async function (source, theme) {
                 pie1: "#4E79A7",
                 pie2: "#F28E2B",
                 pie3: "#59A14F",
+                pie4: "#E15759",
+                pie5: "#B07AA1",
+                pie6: "#76B7B2",
                 textColor: foreground
             }
         });

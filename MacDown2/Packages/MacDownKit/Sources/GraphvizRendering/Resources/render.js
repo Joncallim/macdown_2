@@ -28,10 +28,40 @@ window.__macdownRenderGraphviz = async function (source, theme) {
         const viz = await getViz();
         const foreground = theme && theme.foreground ? theme.foreground : "#000000";
         const background = theme && theme.background ? theme.background : "#FFFFFF";
+        const nodeDefaultsHaveAuthoredColor = (() => {
+            const lower = source.toLowerCase();
+            let cursor = 0;
+            while ((cursor = lower.indexOf("node", cursor)) >= 0) {
+                let open = cursor + 4;
+                while (open < lower.length && " \t\r\n".includes(lower[open])) open += 1;
+                if (lower[open] !== "[") { cursor += 4; continue; }
+                let quote = false;
+                let close = open + 1;
+                for (; close < lower.length; close += 1) {
+                    if (lower[close] === '"' && lower[close - 1] !== "\\") quote = !quote;
+                    if (!quote && lower[close] === "]") break;
+                }
+                if (lower.slice(open, close).includes("color=")) return true;
+                cursor = close + 1;
+            }
+            return false;
+        })();
         const svg = viz.renderString(source, {
             format: "svg",
-            graphAttributes: { bgcolor: background, color: foreground, fontcolor: foreground },
-            nodeAttributes: { color: foreground, fontcolor: foreground, fillcolor: background },
+            graphAttributes: {
+                bgcolor: background,
+                color: foreground,
+                fontcolor: foreground,
+                fillcolor: background
+            },
+            // Graphviz uses color as the fill fallback for a filled node. Do
+            // not install a default fillcolor when the source supplies a
+            // node color, or that native fallback would be shadowed.
+            nodeAttributes: {
+                color: foreground,
+                fontcolor: foreground,
+                ...(nodeDefaultsHaveAuthoredColor ? {} : { fillcolor: background })
+            },
             edgeAttributes: { color: foreground, fontcolor: foreground }
         });
         let width = 0;

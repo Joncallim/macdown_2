@@ -90,6 +90,26 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
+    @Test func filledClustersContrastAndAuthoredColorKeepsGraphvizFallback() async throws {
+        let renderer = GraphvizWebRenderer()
+        let clustered = try await renderer.render(
+            Self.fence("digraph { subgraph cluster_a { label=\"Group\"; style=filled; a; b; } a -> b; }"),
+            context: GraphvizRenderContext(
+                foregroundRed: 0xCC / 255.0, foregroundGreen: 0xCC / 255.0, foregroundBlue: 0xCC / 255.0,
+                backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
+            )
+        )
+        #expect(clustered.svg.localizedCaseInsensitiveContains("fill=\"#112233\""))
+
+        let authored = try await renderer.render(
+            Self.fence("digraph { node [style=filled, color=red, fontcolor=white]; a -> b; }"),
+            context: Self.context
+        )
+        #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"red\""))
+        #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"white\""))
+        await renderer.shutdown()
+    }
+
     @Test func samePooledPageTracksLightDarkLightContexts() async throws {
         let renderer = GraphvizWebRenderer(poolSize: 1)
         let light = Self.context
