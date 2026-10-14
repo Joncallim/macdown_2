@@ -1,3 +1,4 @@
+import AppKit
 @testable import DiagramRendering
 import Diagrams
 import Foundation
@@ -12,6 +13,53 @@ struct MermaidWebRendererTests {
 
     private static func fence(_ source: String) -> MermaidFence {
         MermaidFence(source: source, sourceRange: 0 ..< source.count)
+    }
+
+    @MainActor
+    private static func canvasProbe(
+        _ svg: String
+    ) async throws -> (svg: String, pngData: Data, width: Double, height: Double) {
+        let page = try await MermaidHarnessPage.make()
+        defer { page.teardown() }
+        let result = try await page.inspectSVGCanvasForTesting(svg)
+        let renderedSVG = try #require(result["svg"] as? String)
+        let pngBase64 = try #require(result["png"] as? String)
+        let pngData = try #require(Data(base64Encoded: pngBase64))
+        let width = try #require((result["width"] as? NSNumber)?.doubleValue)
+        let height = try #require((result["height"] as? NSNumber)?.doubleValue)
+        return (renderedSVG, pngData, width, height)
+    }
+
+    private static func pngDimensions(_ data: Data) throws -> (width: UInt32, height: UInt32) {
+        let bytes = Array(data)
+        try #require(bytes.count >= 24)
+        let width = bytes[16 ..< 20].reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        let height = bytes[20 ..< 24].reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        return (width, height)
+    }
+
+    private static func pngPixelEvidence(_ data: Data) throws -> (hasOpaqueWhite: Bool, hasDiagramContent: Bool) {
+        let bitmap = try #require(NSBitmapImageRep(data: data))
+        var hasOpaqueWhite = false
+        var hasDiagramContent = false
+        for y in 0 ..< bitmap.pixelsHigh {
+            for x in 0 ..< bitmap.pixelsWide {
+                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                let isOpaque = color.alphaComponent >= 0.99
+                if isOpaque,
+                   color.redComponent >= 0.98,
+                   color.greenComponent >= 0.98,
+                   color.blueComponent >= 0.98 {
+                    hasOpaqueWhite = true
+                }
+                if color.alphaComponent >= 0.2,
+                   color.redComponent < 0.95 || color.greenComponent < 0.95 || color.blueComponent < 0.95 {
+                    hasDiagramContent = true
+                }
+                if hasOpaqueWhite, hasDiagramContent { return (true, true) }
+            }
+        }
+        return (hasOpaqueWhite, hasDiagramContent)
     }
 
     /// A real, end-to-end pipeline test — genuine WebKit, genuine bundled
@@ -46,6 +94,53 @@ struct MermaidWebRendererTests {
         #expect(Array(pngData.prefix(8)) == pngMagicBytes)
         #expect(pngData.count > 100)
         await renderer.shutdown()
+    }
+
+    @Test @MainActor func canvasUsesNegativeOriginAndCommaSeparatedExponentViewBoxForPNG() async throws {
+        let probe = try await Self.canvasProbe(
+            #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10,-20,3.2e2,1.8e2"><circle cx="20" cy="20" r="10"/></svg>"#
+        )
+        #expect(probe.width == 320)
+        #expect(probe.height == 180)
+        #expect(probe.svg.contains(##"<rect x="-10" y="-20" width="320" height="180" fill="#FFFFFF""##))
+        let png = try Self.pngDimensions(probe.pngData)
+        #expect(png.width == 640)
+        #expect(png.height == 360)
+        let pixels = try Self.pngPixelEvidence(probe.pngData)
+        #expect(pixels.hasOpaqueWhite)
+        #expect(pixels.hasDiagramContent)
+    }
+
+    @Test @MainActor func canvasFallsBackToNumericRootDimensionsWhenViewBoxIsMissing() async throws {
+        let probe = try await Self.canvasProbe(
+            #"<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><circle cx="20" cy="20" r="10"/></svg>"#
+        )
+        #expect(probe.width == 320)
+        #expect(probe.height == 180)
+        #expect(probe.svg.contains(##"<rect x="0" y="0" width="320" height="180" fill="#FFFFFF""##))
+        #expect(!probe.svg.contains("viewBox="))
+        let png = try Self.pngDimensions(probe.pngData)
+        #expect(png.width == 640)
+        #expect(png.height == 360)
+        let pixels = try Self.pngPixelEvidence(probe.pngData)
+        #expect(pixels.hasOpaqueWhite)
+        #expect(pixels.hasDiagramContent)
+    }
+
+    @Test @MainActor func canvasFallsBackToNumericRootDimensionsWhenViewBoxIsInvalid() async throws {
+        let probe = try await Self.canvasProbe(
+            #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 -320 180" width="240" height="135"><circle cx="20" cy="20" r="10"/></svg>"#
+        )
+        #expect(probe.width == 240)
+        #expect(probe.height == 135)
+        #expect(probe.svg.contains(##"<rect x="0" y="0" width="240" height="135" fill="#FFFFFF""##))
+        #expect(!probe.svg.contains("viewBox="))
+        let png = try Self.pngDimensions(probe.pngData)
+        #expect(png.width == 480)
+        #expect(png.height == 270)
+        let pixels = try Self.pngPixelEvidence(probe.pngData)
+        #expect(pixels.hasOpaqueWhite)
+        #expect(pixels.hasDiagramContent)
     }
 
     @Test func pieChartsUseDistinctCategoricalSliceColors() async throws {

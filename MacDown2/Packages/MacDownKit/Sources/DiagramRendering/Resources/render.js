@@ -41,27 +41,63 @@ function rasterize(svg, width, height) {
     });
 }
 
+function positiveLength(value) {
+    var text = String(value || "").trim();
+    var match = text.match(/^([+]?\d+(?:\.\d*)?|[+]?\.\d+)(?:[eE][+-]?\d+)?(?:px)?$/i);
+    if (!match) return 0;
+    var number = Number(text.replace(/px$/i, ""));
+    return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function svgCanvasDimensions(root) {
+    var viewBox = root.getAttribute("viewBox");
+    var values = viewBox ? viewBox.trim().split(/[\s,]+/).map(Number) : [];
+    var validViewBox = values.length === 4 && values.every(Number.isFinite) && values[2] > 0 && values[3] > 0;
+    if (validViewBox) {
+        return {
+            x: values[0],
+            y: values[1],
+            width: values[2],
+            height: values[3],
+            usesViewBox: true,
+            rectWidth: String(values[2]),
+            rectHeight: String(values[3])
+        };
+    }
+
+    var rectWidth = root.getAttribute("width") || "100%";
+    var rectHeight = root.getAttribute("height") || "100%";
+    return {
+        x: 0,
+        y: 0,
+        width: positiveLength(rectWidth) || 1,
+        height: positiveLength(rectHeight) || 1,
+        usesViewBox: false,
+        rectWidth: rectWidth,
+        rectHeight: rectHeight
+    };
+}
+
 function addOpaqueCanvas(svg) {
     var parser = new DOMParser();
     var document = parser.parseFromString(svg, "image/svg+xml");
     var root = document.documentElement;
-    if (!root || root.nodeName.toLowerCase() !== "svg") return svg;
+    if (!root || root.nodeName.toLowerCase() !== "svg") return { svg: svg, width: 1, height: 1 };
 
-    var viewBox = root.getAttribute("viewBox");
-    var values = viewBox ? viewBox.trim().split(/[\s,]+/).map(Number) : [];
-    var valid = values.length === 4 && values.every(Number.isFinite) && values[2] > 0 && values[3] > 0;
-    var x = valid ? values[0] : 0;
-    var y = valid ? values[1] : 0;
-    var width = valid ? String(values[2]) : (root.getAttribute("width") || "100%");
-    var height = valid ? String(values[3]) : (root.getAttribute("height") || "100%");
+    var dimensions = svgCanvasDimensions(root);
+    if (!dimensions.usesViewBox) root.removeAttribute("viewBox");
     var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", String(x));
-    rect.setAttribute("y", String(y));
-    rect.setAttribute("width", width);
-    rect.setAttribute("height", height);
+    rect.setAttribute("x", String(dimensions.x));
+    rect.setAttribute("y", String(dimensions.y));
+    rect.setAttribute("width", dimensions.rectWidth);
+    rect.setAttribute("height", dimensions.rectHeight);
     rect.setAttribute("fill", "#FFFFFF");
     root.insertBefore(rect, root.firstChild);
-    return new XMLSerializer().serializeToString(root);
+    return {
+        svg: new XMLSerializer().serializeToString(root),
+        width: dimensions.width,
+        height: dimensions.height
+    };
 }
 
 // Returns a plain, JSON-serializable object so it bridges cleanly across
@@ -123,16 +159,9 @@ window.__macdownRenderMermaid = async function (source, theme) {
             }
         });
         var result = await mermaid.render(id, source);
-        var svg = addOpaqueCanvas(result.svg);
-        var width = 0;
-        var height = 0;
-        var viewBoxMatch = svg.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/);
-        if (viewBoxMatch) {
-            width = parseFloat(viewBoxMatch[3]);
-            height = parseFloat(viewBoxMatch[4]);
-        }
-        var png = await rasterize(svg, width || 1, height || 1);
-        return { ok: true, svg: svg, png: png, width: width, height: height };
+        var canvas = addOpaqueCanvas(result.svg);
+        var png = await rasterize(canvas.svg, canvas.width, canvas.height);
+        return { ok: true, svg: canvas.svg, png: png, width: canvas.width, height: canvas.height };
     } catch (error) {
         var message = error && error.message ? error.message : String(error);
         return { ok: false, message: message };
@@ -147,4 +176,14 @@ window.__macdownRenderMermaid = async function (source, theme) {
             stray.parentNode.removeChild(stray);
         }
     }
+};
+
+// The production renderer receives only Mermaid-generated SVG, but keeping
+// this probe beside the production path lets package tests exercise the same
+// real WebKit canvas/rasterization logic with SVG edge cases Mermaid does not
+// normally emit (for example comma-separated viewBox values).
+window.__macdownInspectMermaidSVG = async function (svg) {
+    var canvas = addOpaqueCanvas(svg);
+    var png = await rasterize(canvas.svg, canvas.width, canvas.height);
+    return { svg: canvas.svg, png: png, width: canvas.width, height: canvas.height };
 };

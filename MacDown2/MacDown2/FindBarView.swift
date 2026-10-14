@@ -174,7 +174,14 @@ struct FindBarView: View {
                 await Task.yield()
                 isQueryFocused = true
             }
-            recomputeMatches(anchor: model.currentMatch?.range.location ?? initialAnchor, sampleSelection: true)
+            let navigationToken = model.pendingRevealNavigationToken
+            model.pendingRevealNavigationToken = nil
+            recomputeMatches(
+                anchor: model.currentMatch?.range.location ?? initialAnchor,
+                sampleSelection: true,
+                reveal: navigationToken != nil,
+                navigationToken: navigationToken
+            )
         }
         // Opening the bar moves first responder into the query field on a
         // later SwiftUI pass, after the ⌃F key event already re-validated the
@@ -311,19 +318,24 @@ struct FindBarView: View {
     /// discarded call and re-announcing it would be a redundant, no-op
     /// re-application of whatever the current, still-authoritative state
     /// already is.
-    private func recomputeMatches(anchor: Int?, sampleSelection: Bool = false, reveal: Bool = true) {
+    private func recomputeMatches(
+        anchor: Int?,
+        sampleSelection: Bool = false,
+        reveal: Bool = true,
+        navigationToken: UInt? = nil
+    ) {
         let text = resolvedText()
         // Sampled only when "In Selection" is being (re)established; every
         // other refresh uses the model's retained domain (#183 F03).
         let selection = sampleSelection ? resolvedSelection() : nil
-        let navigationToken = reveal ? onNavigationIntent() : nil
+        let intentToken = reveal ? (navigationToken ?? onNavigationIntent()) : nil
         Task {
             guard await model.updateMatches(in: text, selection: selection, preferringLocationNear: anchor),
                   model.isActive
             else {
                 return
             }
-            onMatchesChanged(reveal, navigationToken)
+            onMatchesChanged(reveal, intentToken)
         }
     }
 

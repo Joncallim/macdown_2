@@ -111,6 +111,22 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         return RenderedMermaidDiagram(svg: svg, pngData: pngData, naturalWidth: width, naturalHeight: height)
     }
 
+    /// Runs the same real WebKit canvas path as production rendering against
+    /// a supplied SVG. Package tests use this to cover valid SVG dimension
+    /// forms that Mermaid's normal output does not currently generate.
+    func inspectSVGCanvasForTesting(_ svg: String) async throws -> [String: Any] {
+        let result = try await webView.callAsyncJavaScript(
+            "return await window.__macdownInspectMermaidSVG(svg);",
+            arguments: ["svg": svg],
+            in: nil,
+            contentWorld: .page
+        )
+        guard let dict = result as? [String: Any] else {
+            throw MermaidRenderError.rendererUnavailable
+        }
+        return dict
+    }
+
     func teardown() {
         webView.navigationDelegate = nil
         webView.uiDelegate = nil

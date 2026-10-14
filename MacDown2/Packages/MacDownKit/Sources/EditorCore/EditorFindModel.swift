@@ -40,6 +40,12 @@ public final class EditorFindModel {
     /// via `EditorFindModelStore`'s own per-identity caching, exactly like
     /// `query`/`options`/`matches` already do.
     public var isActive = false
+    /// Minted by an explicit user activation and consumed by the first
+    /// mounted Find bar. A view remount (for example when returning from
+    /// Preview Only) must refresh highlights without becoming a new
+    /// navigation intent, and a delayed mount must not mint an intent after
+    /// newer folder navigation has already happened.
+    public var pendingRevealNavigationToken: UInt? = nil
 
     public private(set) var matches: [SearchMatch] = []
     public private(set) var currentIndex: Int?

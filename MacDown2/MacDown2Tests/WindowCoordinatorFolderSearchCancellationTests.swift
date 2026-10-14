@@ -1,9 +1,13 @@
+import AppKit
 import AppSettings
+import EditorCore
 import FileCore
 import FileTree
 import Foundation
 import Highlighting
 @testable import MacDown2
+import Preview
+import SwiftUI
 import Testing
 import Themes
 import Workspace
@@ -271,6 +275,13 @@ struct WindowCoordinatorFolderSearchCancellationTests {
             controller.close()
         }
 
+        let findModel = controller.findStore.model(for: tabID.uuidString)
+        findModel.query = "line"
+        let previewSystem = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        findModel.isActive = true
+        findModel.pendingRevealNavigationToken = coordinator.folderSearchNavigationDidChange()
+        #expect(findModel.pendingRevealNavigationToken != nil)
+
         let generation = coordinator.folderSearchRequestGate.begin()
         coordinator.pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
             generation: generation,
@@ -293,9 +304,11 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         #expect(await Gate.waitForEntry(mounted.stream))
 
         let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        #expect(system === previewSystem)
         #expect(!system.isDetachedFromEditorView)
         #expect(system.selectedRange == NSRange(location: 9, length: 0))
         #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
+        #expect(findModel.pendingRevealNavigationToken == nil)
     }
 
     @Test func newerFolderSearchSupersedesOlderResult() async throws {
@@ -448,5 +461,74 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
         #expect(system.selectedRange == NSRange(location: 2, length: 0))
         #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
+    }
+
+    @Test func selectAllMatchesInvalidatesSuspendedExistingWindowFolderSearch() async throws {
+        let coordinator = makeCoordinator()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let url = root.appendingPathComponent("result.md")
+        let text = "cat one cat"
+        try text.write(to: url, atomically: true, encoding: .utf8)
+        defer {
+            coordinator.controllers.forEach { $0.close() }
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        await coordinator.openDocument(at: url)
+        let controller = try #require(coordinator.controllers.first)
+        let tab = try #require(controller.model.tabStore.activeTab)
+        let identity = tab.id.uuidString
+        let system = try #require(controller.editorStore.existingSystem(for: identity))
+        controller.window?.makeKeyAndOrderFront(nil)
+        #expect(system.textView.window === controller.window)
+
+        let findModel = controller.findStore.model(for: identity)
+        findModel.query = "cat"
+        findModel.isActive = true
+        #expect(await findModel.updateMatches(in: text, preferringLocationNear: 0))
+        let selection = try #require(findModel.selectionSetForAllMatches)
+        #expect(selection.isMultiple)
+
+        let split = DocumentEditorSplitView(
+            model: controller.model,
+            document: tab.document,
+            tab: tab,
+            identity: identity,
+            text: .constant(text),
+            editorStore: controller.editorStore,
+            findStore: controller.findStore,
+            highlightStore: controller.highlightStore,
+            parseStore: controller.parseStore,
+            jsonAnalysisStore: controller.jsonAnalysisStore,
+            themeController: controller.themeController,
+            scrollController: ScrollSyncController(),
+            outlineController: controller.outlineController
+        )
+
+        let gate = Gate()
+        controller.beforeRootRebuild = { await gate.wait() }
+        defer { controller.beforeRootRebuild = nil }
+        let folderOpen = Task {
+            await coordinator.openFolderSearchResult(
+                relativePath: "result.md",
+                root: root,
+                folderAccessURL: root,
+                range: NSRange(location: 0, length: 3)
+            )
+        }
+        #expect(await Gate.waitForEntry(gate.entered))
+
+        // Exercise the production Select All Matches application path while
+        // the older folder-search open is suspended in its root rebuild.
+        split.applySelectAllMatches(selection, navigationCoordinator: coordinator)
+        split.closeFindBar(findModel)
+        #expect(system.selectionSet == selection)
+
+        gate.release()
+        await folderOpen.value
+
+        #expect(system.selectionSet == selection)
+        #expect(system.selectionSet.isMultiple)
     }
 }

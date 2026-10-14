@@ -174,6 +174,7 @@ extension DocumentEditorSplitView {
     /// the user left off.
     func closeFindBar(_ model: EditorFindModel) {
         model.isActive = false
+        model.pendingRevealNavigationToken = nil
         model.cancelPendingSearch()
         model.clearSearchDomain()
         editorStore.existingSystem(for: identity)?.setFindHighlights(ranges: [], currentIndex: nil)
@@ -214,8 +215,15 @@ extension DocumentEditorSplitView {
     /// (`textView.setSelectedRange`), which would destroy the multi-selection
     /// this just installed. `scrollToVisible(utf16Range:)` only scrolls, so
     /// the primary match comes into view without touching selection at all.
-    func applySelectAllMatches(_ selection: EditorSelectionSet) {
+    func applySelectAllMatches(
+        _ selection: EditorSelectionSet,
+        navigationCoordinator: WindowCoordinator? = nil
+    ) {
         guard let system = editorStore.existingSystem(for: identity) else { return }
+        // Installing a multi-selection is itself a user-driven navigation
+        // intent. Invalidate any folder-search open that is still suspended
+        // on file/root work before it can resume and collapse this selection.
+        (navigationCoordinator ?? coordinator)?.folderSearchNavigationDidChange()
         system.selectionSet = selection
         system.scrollToVisible(utf16Range: selection.primaryRange)
     }
