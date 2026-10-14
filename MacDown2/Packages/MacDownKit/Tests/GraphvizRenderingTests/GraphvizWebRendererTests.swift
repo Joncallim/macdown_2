@@ -16,6 +16,19 @@ struct GraphvizWebRendererTests {
         GraphvizFence(source: source, sourceRange: 0 ..< source.count)
     }
 
+    private static func groupBody(
+        className: String,
+        title: String,
+        in svg: String
+    ) throws -> String {
+        let pattern = "(?s)<g id=\"[^\"]+\" class=\"\(NSRegularExpression.escapedPattern(for: className))\">.*?<title>\(NSRegularExpression.escapedPattern(for: title))</title>.*?</g>"
+        let regex = try NSRegularExpression(pattern: pattern)
+        let range = NSRange(svg.startIndex..., in: svg)
+        let match = try #require(regex.firstMatch(in: svg, range: range))
+        let matchRange = try #require(Range(match.range, in: svg))
+        return String(svg[matchRange])
+    }
+
     @Test func renderProducesRealSVGForValidSource() async throws {
         let renderer = GraphvizWebRenderer()
         let diagram = try await renderer.render(Self.fence("digraph { a -> b; b -> c; }"), context: Self.context)
@@ -45,7 +58,10 @@ struct GraphvizWebRendererTests {
         let renderer = GraphvizWebRenderer()
         let source = "digraph { node [color=\"#ABCDEF\"]; a -> b; }"
         let diagram = try await renderer.render(Self.fence(source), context: Self.context)
-        #expect(diagram.svg.range(of: ##"<(ellipse|polygon)[^>]*stroke="#ABCDEF"[^>]*>"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<(ellipse|polygon)[^>]*stroke="#ABCDEF"[^>]*>"##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
         await renderer.shutdown()
     }
 
@@ -62,13 +78,22 @@ struct GraphvizWebRendererTests {
                 backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
             )
         )
-        #expect(light.svg.localizedCaseInsensitiveContains("fill=\"none\""))
-        #expect(dark.svg.localizedCaseInsensitiveContains("fill=\"none\""))
+        let lightNode = try Self.groupBody(className: "node", title: "a", in: light.svg)
+        let darkNode = try Self.groupBody(className: "node", title: "a", in: dark.svg)
+        #expect(lightNode.range(
+            of: ##"<(ellipse|polygon)[^>]*fill="lightgrey"[^>]*stroke="black""##,
+            options: [.regularExpression]
+        ) != nil)
+        #expect(darkNode.range(
+            of: ##"<(ellipse|polygon)[^>]*fill="lightgrey"[^>]*stroke="black""##,
+            options: [.regularExpression]
+        ) != nil)
         let authored = try await renderer.render(
             Self.fence("digraph { node [style=filled, fillcolor=\"#ABCDEF\"]; a -> b; }"),
             context: Self.context
         )
-        #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"#ABCDEF\""))
+        let authoredNode = try Self.groupBody(className: "node", title: "a", in: authored.svg)
+        #expect(authoredNode.localizedCaseInsensitiveContains("fill=\"#ABCDEF\""))
         await renderer.shutdown()
     }
 
@@ -82,8 +107,14 @@ struct GraphvizWebRendererTests {
         let diagram = try await renderer.render(Self.fence(source), context: themedContext)
         #expect(diagram.svg.localizedCaseInsensitiveContains("Graph label"))
         #expect(diagram.svg.localizedCaseInsensitiveContains("Cluster label"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
-        #expect(diagram.svg.range(of: ##"<polygon[^>]*fill="[^"]+"[^>]*>"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        let cluster = try Self.groupBody(className: "cluster", title: "cluster_one", in: diagram.svg)
+        let node = try Self.groupBody(className: "node", title: "a", in: diagram.svg)
+        #expect(cluster
+            .range(of: ##"<polygon[^>]*fill="#ffffff"[^>]*stroke="black""##, options: [.regularExpression]) != nil)
+        #expect(node.range(
+            of: ##"<(ellipse|polygon)[^>]*fill="none"[^>]*stroke="black""##,
+            options: [.regularExpression]
+        ) != nil)
         await renderer.shutdown()
     }
 
@@ -96,14 +127,17 @@ struct GraphvizWebRendererTests {
                 backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
             )
         )
-        #expect(clustered.svg.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
+        let cluster = try Self.groupBody(className: "cluster", title: "cluster_a", in: clustered.svg)
+        #expect(cluster
+            .range(of: ##"<polygon[^>]*fill="#ffffff"[^>]*stroke="black""##, options: [.regularExpression]) != nil)
 
         let authored = try await renderer.render(
             Self.fence("digraph { node [style=filled, color=red, fontcolor=white]; a -> b; }"),
             context: Self.context
         )
-        #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"red\""))
-        #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"white\""))
+        let authoredNode = try Self.groupBody(className: "node", title: "a", in: authored.svg)
+        #expect(authoredNode.localizedCaseInsensitiveContains("fill=\"red\""))
+        #expect(authoredNode.localizedCaseInsensitiveContains("fill=\"white\""))
         await renderer.shutdown()
     }
 

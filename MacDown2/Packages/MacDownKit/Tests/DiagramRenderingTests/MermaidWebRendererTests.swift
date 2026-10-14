@@ -56,10 +56,80 @@ struct MermaidWebRendererTests {
                    color.redComponent < 0.95 || color.greenComponent < 0.95 || color.blueComponent < 0.95 {
                     hasDiagramContent = true
                 }
-                if hasOpaqueWhite, hasDiagramContent { return (true, true) }
+                if hasOpaqueWhite, hasDiagramContent {
+                    return (true, true)
+                }
             }
         }
         return (hasOpaqueWhite, hasDiagramContent)
+    }
+
+    private static func svgTag(
+        named name: String,
+        withClass className: String,
+        in svg: String
+    ) throws -> String {
+        let regex = try NSRegularExpression(pattern: "<\(name)\\b[^>]*>", options: [.caseInsensitive])
+        let range = NSRange(svg.startIndex..., in: svg)
+        for match in regex.matches(in: svg, range: range) {
+            guard let matchRange = Range(match.range, in: svg) else { continue }
+            let tag = String(svg[matchRange])
+            if tag.contains("class=\"\(className)\"") {
+                return tag
+            }
+        }
+        throw MermaidRenderError.rendererUnavailable
+    }
+
+    private static func svgNumberAttribute(_ name: String, from tag: String) throws -> Double {
+        let pattern = "\\b\(NSRegularExpression.escapedPattern(for: name))=\"([-+0-9.eE]+)\""
+        let regex = try NSRegularExpression(pattern: pattern)
+        let range = NSRange(tag.startIndex..., in: tag)
+        let match = try #require(regex.firstMatch(in: tag, range: range))
+        let valueRange = try #require(Range(match.range(at: 1), in: tag))
+        return try #require(Double(tag[valueRange]))
+    }
+
+    private static func svgViewBox(in svg: String) throws -> (x: Double, y: Double, width: Double, height: Double) {
+        let svgTag = try #require(svg.range(of: "<svg\\b[^>]*>", options: [.regularExpression]))
+        let tag = String(svg[svgTag])
+        let regex = try NSRegularExpression(pattern: "\\bviewBox=\"([^\"]+)\"")
+        let range = NSRange(tag.startIndex..., in: tag)
+        let match = try #require(regex.firstMatch(in: tag, range: range))
+        let valueRange = try #require(Range(match.range(at: 1), in: tag))
+        let values = tag[valueRange].split(whereSeparator: { $0 == " " || $0 == "," }).compactMap(Double.init)
+        guard values.count == 4 else { throw MermaidRenderError.rendererUnavailable }
+        return (
+            x: values[0],
+            y: values[1],
+            width: values[2],
+            height: values[3]
+        )
+    }
+
+    private static func containsDarkPixel(
+        in pngData: Data,
+        aroundSVGPoint point: (x: Double, y: Double),
+        viewBox: (x: Double, y: Double, width: Double, height: Double),
+        radius: Int
+    ) throws -> Bool {
+        let bitmap = try #require(NSBitmapImageRep(data: pngData))
+        let pixelX = Int(((point.x - viewBox.x) / viewBox.width) * Double(bitmap.pixelsWide - 1))
+        let pixelY = Int(((point.y - viewBox.y) / viewBox.height) * Double(bitmap.pixelsHigh - 1))
+        let xRange = max(0, pixelX - radius) ... min(bitmap.pixelsWide - 1, pixelX + radius)
+        let yRange = max(0, pixelY - radius) ... min(bitmap.pixelsHigh - 1, pixelY + radius)
+        for y in yRange {
+            for x in xRange {
+                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                if color.alphaComponent >= 0.5,
+                   color.redComponent < 0.35,
+                   color.greenComponent < 0.35,
+                   color.blueComponent < 0.35 {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     /// A real, end-to-end pipeline test — genuine WebKit, genuine bundled
@@ -73,9 +143,57 @@ struct MermaidWebRendererTests {
         let renderer = MermaidWebRenderer()
         let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: Self.context)
         #expect(diagram.svg.contains("<svg"))
-        #expect(diagram.svg.range(of: ##"<rect x=\"0\" y=\"0\" width=\"[0-9.]+\" height=\"[0-9.]+\" fill=\"#FFFFFF\""##, options: [.regularExpression]) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<rect x=\"0\" y=\"0\" width=\"[0-9.]+\" height=\"[0-9.]+\" fill=\"#FFFFFF\""##,
+            options: [.regularExpression]
+        ) != nil)
         #expect(diagram.naturalWidth > 0)
         #expect(diagram.naturalHeight > 0)
+        await renderer.shutdown()
+    }
+
+    @Test func sequenceThemeDirectivesCannotOverrideNeutralLightPalette() async throws {
+        let renderer = MermaidWebRenderer()
+        let sources = [
+            """
+            %%{init: {"theme":"dark"}}%%
+            sequenceDiagram
+                Alice->>Bob: Hello
+            """,
+            """
+            ---
+            config:
+              theme: dark
+            ---
+            sequenceDiagram
+                Alice->>Bob: Hello
+            """,
+        ]
+
+        for source in sources {
+            let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+            #expect(!diagram.svg.localizedCaseInsensitiveContains("lightgrey"))
+            #expect(diagram.svg
+                .range(of: #"\.messageLine0\{[^}]*stroke:#1A1A1A"#, options: [.regularExpression]) != nil)
+            #expect(diagram.svg.range(of: #"\.messageText\{[^}]*fill:#1A1A1A"#, options: [.regularExpression]) != nil)
+            #expect(diagram.svg.contains(#"[id$="-arrowhead"] path{fill:#1A1A1A;stroke:#1A1A1A;}"#))
+
+            let messageLine = try Self.svgTag(named: "line", withClass: "messageLine0", in: diagram.svg)
+            let viewBox = try Self.svgViewBox(in: diagram.svg)
+            let pngData = try #require(diagram.pngData)
+            let lineStart = try (
+                x: Self.svgNumberAttribute("x1", from: messageLine),
+                y: Self.svgNumberAttribute("y1", from: messageLine)
+            )
+            let lineEnd = try (
+                x: Self.svgNumberAttribute("x2", from: messageLine),
+                y: Self.svgNumberAttribute("y2", from: messageLine)
+            )
+            let lineMidpoint = (x: (lineStart.x + lineEnd.x) / 2, y: (lineStart.y + lineEnd.y) / 2)
+            #expect(try Self.containsDarkPixel(in: pngData, aroundSVGPoint: lineMidpoint, viewBox: viewBox, radius: 5))
+            #expect(try Self.containsDarkPixel(in: pngData, aroundSVGPoint: lineEnd, viewBox: viewBox, radius: 14))
+        }
+
         await renderer.shutdown()
     }
 
@@ -146,28 +264,76 @@ struct MermaidWebRendererTests {
     @Test func pieChartsUseDistinctCategoricalSliceColors() async throws {
         let renderer = MermaidWebRenderer()
         let diagram = try await renderer.render(
-            Self.fence("pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3\n    \"Four\" : 4\n    \"Five\" : 5\n    \"Six\" : 6\n    \"Seven\" : 7\n    \"Eight\" : 8\n    \"Nine\" : 9\n    \"Ten\" : 10\n    \"Eleven\" : 11\n    \"Twelve\" : 12"),
+            Self
+                .fence(
+                    "pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3\n    \"Four\" : 4\n    \"Five\" : 5\n    \"Six\" : 6\n    \"Seven\" : 7\n    \"Eight\" : 8\n    \"Nine\" : 9\n    \"Ten\" : 10\n    \"Eleven\" : 11\n    \"Twelve\" : 12"
+                ),
             context: Self.context
         )
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#4E79A7"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#F28E2B"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#59A14F"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#E15759"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#B07AA1"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#76B7B2"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#EDC949"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#FF9DA7"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#9C755F"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#BAB0AC"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#86BCB6"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<path[^>]*fill="#D37295"[^>]*class="pieCircle""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#4E79A7"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#F28E2B"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#59A14F"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#E15759"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#B07AA1"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#76B7B2"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#EDC949"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#FF9DA7"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#9C755F"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#BAB0AC"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#86BCB6"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<path[^>]*fill="#D37295"[^>]*class="pieCircle""##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
         let sliceCount = diagram.svg.components(separatedBy: "class=\"pieCircle\"").count - 1
         let legendSwatchCount = diagram.svg.components(separatedBy: "class=\"legend\"").count - 1
         #expect(sliceCount == 12)
         #expect(legendSwatchCount >= 12)
-        #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(78, 121, 167\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(242, 142, 43\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(diagram.svg.range(of: ##"<g class="legend"[^>]*>.*fill: rgb\(89, 161, 79\)"##, options: [.regularExpression, .caseInsensitive]) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<g class="legend"[^>]*>.*fill: rgb\(78, 121, 167\)"##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<g class="legend"[^>]*>.*fill: rgb\(242, 142, 43\)"##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: ##"<g class="legend"[^>]*>.*fill: rgb\(89, 161, 79\)"##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
         await renderer.shutdown()
     }
 

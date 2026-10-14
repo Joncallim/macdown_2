@@ -4,7 +4,18 @@
 // disables Mermaid's own `click` interaction directives and sanitizes HTML
 // inside diagram labels — defense in depth alongside the page's own CSP and
 // the containing WKWebView's lack of network access.
-mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    // Mermaid applies init directives and frontmatter config through the
+    // same config sanitizer. Keep the product's neutral-light-v1 palette
+    // authoritative by protecting the supported theme keys there, rather
+    // than rewriting authored source text.
+    secure: [
+        "secure", "securityLevel", "startOnLoad", "maxTextSize",
+        "suppressErrorRendering", "maxEdges", "theme", "themeVariables", "themeCSS"
+    ]
+});
 
 // Real WebKit-composited raster snapshot resolution multiplier for the
 // `png` field below (see the long comment on that field for why this
@@ -134,6 +145,10 @@ window.__macdownRenderMermaid = async function (source, theme) {
         mermaid.initialize({
             startOnLoad: false,
             securityLevel: "strict",
+            secure: [
+                "secure", "securityLevel", "startOnLoad", "maxTextSize",
+                "suppressErrorRendering", "maxEdges", "theme", "themeVariables", "themeCSS"
+            ],
             theme: "base",
             themeVariables: {
                 background: background,
