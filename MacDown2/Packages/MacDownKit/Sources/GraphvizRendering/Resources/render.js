@@ -31,7 +31,7 @@ window.__macdownRenderGraphviz = async function (source, theme) {
         const svg = viz.renderString(source, {
             format: "svg",
             graphAttributes: { bgcolor: background, color: foreground, fontcolor: foreground },
-            nodeAttributes: { color: foreground, fontcolor: foreground },
+            nodeAttributes: { color: foreground, fontcolor: foreground, fillcolor: background },
             edgeAttributes: { color: foreground, fontcolor: foreground }
         });
         let width = 0;

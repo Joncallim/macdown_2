@@ -47,6 +47,19 @@ struct MermaidWebRendererTests {
         await renderer.shutdown()
     }
 
+    @Test func pieChartsUseDistinctCategoricalSliceColors() async throws {
+        let renderer = MermaidWebRenderer()
+        let diagram = try await renderer.render(
+            Self.fence("pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3"),
+            context: Self.context
+        )
+        let fills = Set(
+            diagram.svg.matches(of: /fill="(#[0-9A-Fa-f]{6})"/).map { String($0.output.1) }
+        )
+        #expect(fills.count >= 3)
+        await renderer.shutdown()
+    }
+
     @Test func renderThrowsInvalidSyntaxForMalformedSource() async throws {
         let renderer = MermaidWebRenderer()
         await #expect(throws: MermaidRenderError.self) {

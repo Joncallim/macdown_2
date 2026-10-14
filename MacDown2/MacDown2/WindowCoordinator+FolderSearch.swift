@@ -69,6 +69,7 @@ extension WindowCoordinator {
                 folderSelectionURL: url,
                 shouldContinue: { [self] in
                     folderSearchRequestGate.owns(requestGeneration)
+                        && folderSearchNavigationRevision == navigationRevision
                         && !requestToken.isCancelled
                         && !Task.isCancelled
                 }

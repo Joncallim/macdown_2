@@ -78,12 +78,12 @@ window.__macdownRenderMermaid = async function (source, theme) {
             theme: "base",
             themeVariables: {
                 background: background,
-                primaryColor: background,
+                primaryColor: "#4E79A7",
                 primaryTextColor: foreground,
                 primaryBorderColor: foreground,
                 lineColor: foreground,
-                secondaryColor: background,
-                tertiaryColor: background,
+                secondaryColor: "#F28E2B",
+                tertiaryColor: "#59A14F",
                 textColor: foreground
             }
         });

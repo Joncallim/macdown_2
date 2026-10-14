@@ -33,6 +33,16 @@ struct MermaidExportRegistryTests {
         #expect(context.backgroundBlue == dark.background.blue)
     }
 
+    @Test func mermaidRenderContextUsesPrintSafeColorsForPDF() {
+        let context = ContributionRegistry.mermaidRenderContext(theme: BundledThemes.dark, isPrintTarget: true)
+        #expect(abs(context.foregroundRed - 0x1A / 255.0) < 0.001)
+        #expect(abs(context.foregroundGreen - 0x1A / 255.0) < 0.001)
+        #expect(abs(context.foregroundBlue - 0x1A / 255.0) < 0.001)
+        #expect(context.backgroundRed == 1)
+        #expect(context.backgroundGreen == 1)
+        #expect(context.backgroundBlue == 1)
+    }
+
     @Test func aRealMermaidFenceComposesIntoSelfContainedHTMLWithNoExternalReferences() async throws {
         let text = "# Title\n\n[TOC]\n\nA flow:\n\n```mermaid\ngraph TD; A-->B;\n```\n\n## Section\n"
         let parsed = try await ParseEngine().parse(text, revision: 0)

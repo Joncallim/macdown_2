@@ -185,6 +185,31 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         #expect(coordinator.controllers.isEmpty)
     }
 
+    @Test func newerNavigationDuringFileLoadDoesNotPublishFolderSearchResult() async throws {
+        let coordinator = makeCoordinator()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try "needle".write(to: root.appendingPathComponent("result.md"), atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        var reachedFileLoad = false
+        coordinator.afterFolderSearchFileLoad = {
+            reachedFileLoad = true
+            coordinator.folderSearchNavigationDidChange()
+        }
+
+        await coordinator.openFolderSearchResult(
+            relativePath: "result.md",
+            root: root,
+            folderAccessURL: root,
+            range: NSRange(location: 0, length: 6)
+        )
+
+        #expect(reachedFileLoad)
+        #expect(coordinator.controllers.isEmpty)
+        #expect(coordinator.pendingFolderSearchReveals.isEmpty)
+    }
+
     @Test func newerFolderSearchSupersedesOlderResult() async throws {
         let coordinator = makeCoordinator()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
