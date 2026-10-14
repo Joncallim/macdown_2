@@ -261,8 +261,7 @@ struct WindowCoordinatorFolderSearchCancellationTests {
             )
         }
 
-        var admissionIterator = queuedAdmission.stream.makeAsyncIterator()
-        #expect(await admissionIterator.next() != nil)
+        #expect(await Gate.waitForEntry(queuedAdmission.stream))
         // The ordinary open owns this file's serial key. The admitted request is
         // queued behind it, and cancellation must prevent any later navigation.
         queuedSearch.cancel()
@@ -308,5 +307,32 @@ struct WindowCoordinatorFolderSearchCancellationTests {
 
         #expect(!coordinator.controllers.contains { $0 === controller })
         #expect(controller.isClosed)
+    }
+
+    @Test func pendingFolderSearchRevealDrainsIntoTheMountedEditorSelection() async throws {
+        let coordinator = makeCoordinator()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
+        try "needle".write(to: url, atomically: true, encoding: .utf8)
+        defer {
+            coordinator.controllers.forEach { $0.close() }
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        await coordinator.openDocument(at: url)
+        let controller = try #require(coordinator.controllers.first)
+        let tabID = try #require(controller.model.tabStore.tabID(forFileURL: url))
+        let generation = coordinator.folderSearchRequestGate.begin()
+        coordinator.pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
+            generation: generation,
+            range: NSRange(location: 2, length: 0),
+            controllerID: ObjectIdentifier(controller)
+        )
+        controller.window?.makeKeyAndOrderFront(nil)
+
+        coordinator.folderSearchEditorLayoutChanged(tabID: tabID.uuidString)
+
+        let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        #expect(system.selectedRange == NSRange(location: 2, length: 0))
+        #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
     }
 }

@@ -21,7 +21,7 @@ import Testing
 /// registration never actually fires in production. This suite exists
 /// specifically to close that gap.
 @MainActor
-@Suite("EditorView real makeNSView path")
+@Suite("EditorView real makeNSView path", .serialized)
 struct EditorViewRealMountTests {
     private struct Mounted {
         let hostingView: NSHostingView<EditorView>
@@ -76,10 +76,28 @@ struct EditorViewRealMountTests {
         }
     }
 
+    private func close(_ mounted: Mounted) {
+        mounted.window.contentView = nil
+        mounted.window.close()
+    }
+
     @Test func attachmentCallbackRunsAfterSameSizeWindowAttachment() async throws {
+        let store = EditorTextSystemStore()
+        let identity = UUID().uuidString
         let signals = AsyncStream<Void>.makeStream()
-        let mounted = mount(initialText: "text", onLayoutChange: { signals.continuation.yield(()) })
-        defer { mounted.window.close() }
+        let mounted = mount(
+            initialText: "text",
+            store: store,
+            identity: identity,
+            onLayoutChange: {
+                guard let system = store.existingSystem(for: identity),
+                      system.textView.window != nil,
+                      !system.textView.bounds.isEmpty
+                else { return }
+                signals.continuation.yield(())
+            }
+        )
+        defer { close(mounted) }
         let scrollView = try #require(Self.findScrollView(in: mounted.hostingView))
         #expect(scrollView.window === mounted.window)
         #expect(scrollView.bounds.size == CGSize(width: 400, height: 300))
@@ -87,21 +105,40 @@ struct EditorViewRealMountTests {
     }
 
     @Test func zeroSizeAttachmentCanReportUsableLayoutAfterWindowResize() async throws {
+        let store = EditorTextSystemStore()
+        let identity = UUID().uuidString
         let signals = AsyncStream<Void>.makeStream()
+        let resizedSignals = AsyncStream<Void>.makeStream()
+        var waitingForResize = false
         let mounted = mount(
             initialText: "text",
-            contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
-            onLayoutChange: { signals.continuation.yield(()) }
+            store: store,
+            identity: identity,
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            onLayoutChange: {
+                guard let system = store.existingSystem(for: identity),
+                      system.textView.window != nil,
+                      !system.textView.bounds.isEmpty
+                else { return }
+                if waitingForResize {
+                    resizedSignals.continuation.yield(())
+                } else {
+                    signals.continuation.yield(())
+                }
+            }
         )
-        defer { mounted.window.close() }
+        defer { close(mounted) }
         let scrollView = try #require(Self.findScrollView(in: mounted.hostingView))
         #expect(await waitForSignal(signals.stream))
-        scrollView.frame = .zero
+        mounted.hostingView.frame = NSRect(x: 0, y: 0, width: 0, height: 0)
         mounted.hostingView.layoutSubtreeIfNeeded()
-        #expect(scrollView.bounds.size == .zero)
+        #expect(mounted.hostingView.bounds.isEmpty)
 
+        waitingForResize = true
         mounted.window.setContentSize(NSSize(width: 400, height: 300))
+        mounted.hostingView.frame = NSRect(x: 0, y: 0, width: 400, height: 300)
         mounted.hostingView.layoutSubtreeIfNeeded()
+        #expect(await waitForSignal(resizedSignals.stream))
         #expect(scrollView.window === mounted.window)
         #expect(scrollView.bounds.width > 0)
         #expect(scrollView.bounds.height > 0)
