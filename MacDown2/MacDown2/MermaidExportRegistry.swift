@@ -19,10 +19,11 @@ extension ContributionRegistry {
     /// (`MermaidDiagramCache`, epic-20-implementation.md §5).
     static let sharedMermaidRenderer = MermaidDiagramCache(renderer: MermaidWebRenderer())
 
-    /// The export path derives its Mermaid context here so print output does
-    /// not inherit light-on-dark colors from the live editor theme. Live
-    /// preview keeps the colors from the active editor theme.
-    static func mermaidRenderContext(theme: Theme, isPrintTarget: Bool) -> MermaidRenderContext {
+    /// Mermaid uses the approved neutral-light-v1 palette for every
+    /// destination. The returned SVG is authored with opaque neutral canvas
+    /// and default text colors, so a dark editor theme cannot produce
+    /// light-on-white export artwork or a mismatched preview canvas.
+    static func mermaidRenderContext(theme _: Theme, isPrintTarget _: Bool) -> MermaidRenderContext {
         .neutralLight
     }
 }

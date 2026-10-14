@@ -176,7 +176,11 @@ struct WindowCoordinatorFolderSearchCancellationTests {
             )
         }
 
-        let entered = await Gate.waitForEntry(gate.entered)
+        // The real folder-open path can spend several seconds rebuilding its
+        // root before reaching this deliberate suspension point. The gate's
+        // buffered entry stream is retained by `gate`, so waiting here cannot
+        // lose the signal even when the callback fires before iteration starts.
+        let entered = await Gate.waitForEntry(gate.entered, timeout: .seconds(10))
         task.cancel()
         gate.release()
         await task.value

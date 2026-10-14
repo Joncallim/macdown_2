@@ -22,25 +22,16 @@ struct MermaidExportRegistryTests {
         #expect(!ContributionRegistry.standard.contributions.contains { $0.id == "mermaid" })
     }
 
-    @Test func mermaidRenderContextReflectsTheLiveTheme() {
-        let dark = BundledThemes.dark.chrome
-        let context = ContributionRegistry.mermaidRenderContext(theme: BundledThemes.dark, isPrintTarget: false)
-        #expect(context.foregroundRed == dark.foreground.red)
-        #expect(context.foregroundGreen == dark.foreground.green)
-        #expect(context.foregroundBlue == dark.foreground.blue)
-        #expect(context.backgroundRed == dark.background.red)
-        #expect(context.backgroundGreen == dark.background.green)
-        #expect(context.backgroundBlue == dark.background.blue)
-    }
+    @Test func mermaidRenderContextUsesNeutralLightPolicyForEveryDestination() {
+        let darkPreview = ContributionRegistry.mermaidRenderContext(
+            theme: BundledThemes.dark, isPrintTarget: false
+        )
+        let lightPrint = ContributionRegistry.mermaidRenderContext(
+            theme: BundledThemes.light, isPrintTarget: true
+        )
 
-    @Test func mermaidRenderContextUsesPrintSafeColorsForPDF() {
-        let context = ContributionRegistry.mermaidRenderContext(theme: BundledThemes.dark, isPrintTarget: true)
-        #expect(abs(context.foregroundRed - 0x1A / 255.0) < 0.001)
-        #expect(abs(context.foregroundGreen - 0x1A / 255.0) < 0.001)
-        #expect(abs(context.foregroundBlue - 0x1A / 255.0) < 0.001)
-        #expect(context.backgroundRed == 1)
-        #expect(context.backgroundGreen == 1)
-        #expect(context.backgroundBlue == 1)
+        #expect(darkPreview == .neutralLight)
+        #expect(lightPrint == .neutralLight)
     }
 
     @Test func printExportRendersSequenceDiagramWithPrintSafeColors() async throws {

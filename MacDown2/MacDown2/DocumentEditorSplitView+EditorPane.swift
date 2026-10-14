@@ -154,14 +154,15 @@ extension DocumentEditorSplitView {
     func applyFindHighlights(
         _ model: EditorFindModel,
         reveal: Bool = true,
-        navigationToken: UInt? = nil
+        navigationToken: UInt? = nil,
+        navigationCoordinator: WindowCoordinator? = nil
     ) {
         // A result that lands after the bar was dismissed must not re-highlight or reselect.
         guard model.isActive, let system = editorStore.existingSystem(for: identity) else { return }
         system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
         if reveal,
            let navigationToken,
-           coordinator?.folderSearchNavigationIsCurrent(navigationToken) == true,
+           (navigationCoordinator ?? coordinator)?.folderSearchNavigationIsCurrent(navigationToken) == true,
            let current = model.currentMatch {
             system.revealSelection(utf16Range: current.range, flash: false, animated: true)
         }
