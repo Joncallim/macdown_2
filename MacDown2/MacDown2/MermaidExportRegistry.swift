@@ -23,25 +23,6 @@ extension ContributionRegistry {
     /// not inherit light-on-dark colors from the live editor theme. Live
     /// preview keeps the colors from the active editor theme.
     static func mermaidRenderContext(theme: Theme, isPrintTarget: Bool) -> MermaidRenderContext {
-        if isPrintTarget {
-            return MermaidRenderContext(
-                foregroundRed: printSafeForegroundComponent,
-                foregroundGreen: printSafeForegroundComponent,
-                foregroundBlue: printSafeForegroundComponent,
-                backgroundRed: 1,
-                backgroundGreen: 1,
-                backgroundBlue: 1
-            )
-        }
-        let foreground = theme.chrome.foreground
-        let background = theme.chrome.background
-        return MermaidRenderContext(
-            foregroundRed: foreground.red,
-            foregroundGreen: foreground.green,
-            foregroundBlue: foreground.blue,
-            backgroundRed: background.red,
-            backgroundGreen: background.green,
-            backgroundBlue: background.blue
-        )
+        .neutralLight
     }
 }

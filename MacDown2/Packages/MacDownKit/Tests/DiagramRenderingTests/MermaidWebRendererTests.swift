@@ -25,6 +25,7 @@ struct MermaidWebRendererTests {
         let renderer = MermaidWebRenderer()
         let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: Self.context)
         #expect(diagram.svg.contains("<svg"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("<rect width=\"100%\" height=\"100%\" fill=\"#FFFFFF\"/>"))
         #expect(diagram.naturalWidth > 0)
         #expect(diagram.naturalHeight > 0)
         await renderer.shutdown()
@@ -95,7 +96,7 @@ struct MermaidWebRendererTests {
         await renderer.shutdown()
     }
 
-    @Test func samePooledPageTracksLightDarkLightContexts() async throws {
+    @Test func samePooledPageUsesNeutralLightContextAcrossThemeInputs() async throws {
         let renderer = MermaidWebRenderer(poolSize: 1)
         let light = Self.context
         let dark = MermaidRenderContext(
@@ -105,11 +106,11 @@ struct MermaidWebRendererTests {
         let lightSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: light).svg
         let darkSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: dark).svg
         let lightAgainSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: light).svg
-        #expect(lightSVG.localizedCaseInsensitiveContains("#000000"))
+        #expect(lightSVG.localizedCaseInsensitiveContains("#1A1A1A"))
         #expect(lightSVG.localizedCaseInsensitiveContains("#ffffff"))
-        #expect(darkSVG.localizedCaseInsensitiveContains("#eeddcc"))
-        #expect(darkSVG.localizedCaseInsensitiveContains("#112233"))
-        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#000000"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#1A1A1A"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#1A1A1A"))
         #expect(lightAgainSVG.localizedCaseInsensitiveContains("#ffffff"))
         await renderer.shutdown()
     }
@@ -121,8 +122,8 @@ struct MermaidWebRendererTests {
             backgroundRed: 2, backgroundGreen: -1, backgroundBlue: .nan
         )
         let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: context)
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#000000"))
-        #expect(diagram.svg.range(of: #"(#[fF][fF]0000|\bred\b)"#, options: .regularExpression) != nil)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#1A1A1A"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
         #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
         #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()

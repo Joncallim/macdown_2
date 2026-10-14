@@ -100,7 +100,7 @@ window.__macdownRenderMermaid = async function (source, theme) {
             }
         });
         var result = await mermaid.render(id, source);
-        var svg = result.svg;
+        var svg = result.svg.replace(/^\s*<svg([^>]*)>/i, '<svg$1><rect width="100%" height="100%" fill="#FFFFFF"/>');
         var width = 0;
         var height = 0;
         var viewBoxMatch = svg.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/);
