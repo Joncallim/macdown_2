@@ -46,7 +46,7 @@ struct GraphvizWebRendererTests {
         let renderer = GraphvizWebRenderer()
         let source = "digraph { node [color=\"#ABCDEF\"]; a -> b; }"
         let diagram = try await renderer.render(Self.fence(source), context: Self.context)
-        #expect(diagram.svg.localizedCaseInsensitiveContains("#ABCDEF"))
+        #expect(diagram.svg.range(of: #"<(ellipse|polygon)[^>]*stroke="#ABCDEF"[^>]*>"#, options: .regularExpression) != nil)
         await renderer.shutdown()
     }
 
@@ -58,10 +58,10 @@ struct GraphvizWebRendererTests {
         )
         let source = "digraph { label=\"Graph label\"; subgraph cluster_one { label=\"Cluster label\"; a -> b; } }"
         let diagram = try await renderer.render(Self.fence(source), context: themedContext)
-        #expect(diagram.svg.localizedCaseInsensitiveContains("stroke=\"#112233\""))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#EEDDCC\""))
-        #expect(diagram.svg.contains("Graph label"))
-        #expect(diagram.svg.contains("Cluster label"))
+        #expect(diagram.svg.range(of: #"<polygon[^>]*stroke="#112233"[^>]*>"#, options: .regularExpression) != nil)
+        #expect(diagram.svg.range(of: #"<text[^>]*fill="#112233"[^>]*>Graph label</text>"#, options: .regularExpression) != nil)
+        #expect(diagram.svg.range(of: #"<text[^>]*fill="#112233"[^>]*>Cluster label</text>"#, options: .regularExpression) != nil)
+        #expect(diagram.svg.range(of: #"<polygon[^>]*fill="none"[^>]*stroke="#112233"[^>]*>"#, options: .regularExpression) != nil)
         await renderer.shutdown()
     }
 
@@ -72,10 +72,18 @@ struct GraphvizWebRendererTests {
             foregroundRed: 0xEE / 255.0, foregroundGreen: 0xDD / 255.0, foregroundBlue: 0xCC / 255.0,
             backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
         )
-        for context in [light, dark, light] {
-            let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: context)
-            #expect(diagram.svg.contains("<svg"))
-        }
+        let lightSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: light).svg
+        let darkSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: dark).svg
+        let lightAgainSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: light).svg
+        #expect(lightSVG.localizedCaseInsensitiveContains("#000000"))
+        #expect(lightSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#eeddcc"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#112233"))
+        #expect(!darkSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(!darkSVG.localizedCaseInsensitiveContains("#000000"))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#000000"))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(!lightAgainSVG.localizedCaseInsensitiveContains("#eeddcc"))
         await renderer.shutdown()
     }
 
@@ -86,7 +94,10 @@ struct GraphvizWebRendererTests {
             backgroundRed: 2, backgroundGreen: -1, backgroundBlue: .nan
         )
         let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: context)
-        #expect(diagram.svg.contains("<svg"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#000000"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
+        #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()
     }
 

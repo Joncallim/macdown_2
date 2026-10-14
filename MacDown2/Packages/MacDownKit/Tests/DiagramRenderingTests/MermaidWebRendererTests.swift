@@ -74,10 +74,18 @@ struct MermaidWebRendererTests {
             foregroundRed: 0xEE / 255.0, foregroundGreen: 0xDD / 255.0, foregroundBlue: 0xCC / 255.0,
             backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
         )
-        for context in [light, dark, light] {
-            let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: context)
-            #expect(diagram.svg.contains("<svg"))
-        }
+        let lightSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: light).svg
+        let darkSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: dark).svg
+        let lightAgainSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: light).svg
+        #expect(lightSVG.localizedCaseInsensitiveContains("#000000"))
+        #expect(lightSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#eeddcc"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#112233"))
+        #expect(!darkSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(!darkSVG.localizedCaseInsensitiveContains("#000000"))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#000000"))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(!lightAgainSVG.localizedCaseInsensitiveContains("#eeddcc"))
         await renderer.shutdown()
     }
 
@@ -88,7 +96,10 @@ struct MermaidWebRendererTests {
             backgroundRed: 2, backgroundGreen: -1, backgroundBlue: .nan
         )
         let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: context)
-        #expect(diagram.svg.contains("<svg"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#000000"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
+        #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()
     }
 
