@@ -66,10 +66,27 @@ function rasterize(svg, width, height) {
 // uses this raster snapshot instead (mirroring `MathContribution`'s own
 // PNG-based approach), while Export keeps using `svg` untouched, genuinely
 // vector, and unaffected by any of this.
-window.__macdownRenderMermaid = async function (source) {
+window.__macdownRenderMermaid = async function (source, theme) {
     __macdownRenderCounter += 1;
     var id = "macdown-diagram-" + __macdownRenderCounter;
     try {
+        var foreground = theme && theme.foreground ? theme.foreground : "#000000";
+        var background = theme && theme.background ? theme.background : "#FFFFFF";
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: "strict",
+            theme: "base",
+            themeVariables: {
+                background: background,
+                primaryColor: background,
+                primaryTextColor: foreground,
+                primaryBorderColor: foreground,
+                lineColor: foreground,
+                secondaryColor: background,
+                tertiaryColor: background,
+                textColor: foreground
+            }
+        });
         var result = await mermaid.render(id, source);
         var svg = result.svg;
         var width = 0;
