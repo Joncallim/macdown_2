@@ -25,7 +25,7 @@ struct MermaidWebRendererTests {
         let renderer = MermaidWebRenderer()
         let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: Self.context)
         #expect(diagram.svg.contains("<svg"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("<rect width=\"100%\" height=\"100%\" fill=\"#FFFFFF\"/>"))
+        #expect(diagram.svg.range(of: ##"<rect x=\"0\" y=\"0\" width=\"[0-9.]+\" height=\"[0-9.]+\" fill=\"#FFFFFF\""##, options: [.regularExpression]) != nil)
         #expect(diagram.naturalWidth > 0)
         #expect(diagram.naturalHeight > 0)
         await renderer.shutdown()

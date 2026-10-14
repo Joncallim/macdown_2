@@ -41,6 +41,29 @@ function rasterize(svg, width, height) {
     });
 }
 
+function addOpaqueCanvas(svg) {
+    var parser = new DOMParser();
+    var document = parser.parseFromString(svg, "image/svg+xml");
+    var root = document.documentElement;
+    if (!root || root.nodeName.toLowerCase() !== "svg") return svg;
+
+    var viewBox = root.getAttribute("viewBox");
+    var values = viewBox ? viewBox.trim().split(/[\s,]+/).map(Number) : [];
+    var valid = values.length === 4 && values.every(Number.isFinite);
+    var x = valid ? values[0] : 0;
+    var y = valid ? values[1] : 0;
+    var width = valid ? values[2] : 1;
+    var height = valid ? values[3] : 1;
+    var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", String(x));
+    rect.setAttribute("y", String(y));
+    rect.setAttribute("width", String(width));
+    rect.setAttribute("height", String(height));
+    rect.setAttribute("fill", "#FFFFFF");
+    root.insertBefore(rect, root.firstChild);
+    return new XMLSerializer().serializeToString(root);
+}
+
 // Returns a plain, JSON-serializable object so it bridges cleanly across
 // WKWebView's evaluateJavaScript boundary:
 // { ok: true, svg, png, width, height } on success, { ok: false, message }
@@ -100,7 +123,7 @@ window.__macdownRenderMermaid = async function (source, theme) {
             }
         });
         var result = await mermaid.render(id, source);
-        var svg = result.svg.replace(/^\s*<svg([^>]*)>/i, '<svg$1><rect width="100%" height="100%" fill="#FFFFFF"/>');
+        var svg = addOpaqueCanvas(result.svg);
         var width = 0;
         var height = 0;
         var viewBoxMatch = svg.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/);
