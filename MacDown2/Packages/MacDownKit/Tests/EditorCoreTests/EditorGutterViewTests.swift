@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 @testable import EditorCore
 import Foundation
 import Testing
@@ -8,9 +9,8 @@ import Testing
 /// exhaustive); these confirm the thin AppKit glue is actually wired up
 /// end-to-end (attached to the scroll view, redraws without crashing
 /// against a real mounted `NSTextView`, and its width tracks the
-/// document's digit count) — not pixel-level rendering, which this
-/// session has no way to verify visually and honestly discloses as such
-/// rather than claiming it as tested.
+/// document's digit count). The asymmetric-glyph bitmap regression also
+/// locks Core Text orientation in the mounted ruler's flipped context.
 @MainActor
 @Suite("EditorGutterView")
 struct EditorGutterViewTests {
@@ -44,6 +44,51 @@ struct EditorGutterViewTests {
         return MountedGutter(system: system, gutter: gutter, window: window)
     }
 
+    /// Rasterizes an asymmetric digit in the same flipped Core Graphics
+    /// arrangement that AppKit gives a mounted gutter.  A "2" is deliberate:
+    /// its top-heavy curve and bottom stroke make a vertical inversion visible
+    /// to a bitmap comparison, unlike symmetric digits such as 0 or 8.
+    private func digitPixels(textMatrix: CGAffineTransform) throws -> [Bool] {
+        let side = 80
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: side,
+            pixelsHigh: side,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        let cgContext = try #require(NSGraphicsContext(bitmapImageRep: bitmap)?.cgContext)
+        cgContext.setFillColor(NSColor.white.cgColor)
+        cgContext.fill(CGRect(x: 0, y: 0, width: side, height: side))
+        cgContext.translateBy(x: 0, y: CGFloat(side))
+        cgContext.scaleBy(x: 1, y: -1)
+        let context = NSGraphicsContext(cgContext: cgContext, flipped: true)
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        defer { NSGraphicsContext.restoreGraphicsState() }
+
+        cgContext.textMatrix = textMatrix
+        let line = CTLineCreateWithAttributedString(NSAttributedString(
+            string: "2",
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 28, weight: .regular), .foregroundColor: NSColor.black]
+        ))
+        cgContext.textPosition = CGPoint(x: 24, y: 42)
+        CTLineDraw(line, cgContext)
+
+        return (0 ..< side).flatMap { y in
+            (0 ..< side).map { x in
+                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { return false }
+                return color.redComponent < 0.5
+            }
+        }
+    }
+
     @Test func gutterIsAttachedAsTheScrollViewsVerticalRuler() {
         let mounted = makeMountedGutter(text: "one\ntwo\nthree")
         defer { mounted.window.orderOut(nil) }
@@ -51,6 +96,55 @@ struct EditorGutterViewTests {
         let scrollView = mounted.window.contentView as? NSScrollView
         #expect(scrollView?.verticalRulerView === mounted.gutter)
         #expect(scrollView?.rulersVisible == true)
+    }
+
+    @Test func gutterUsesTheEditorsFlippedCoordinateSystem() {
+        let mounted = makeMountedGutter(text: "one")
+        defer { mounted.window.orderOut(nil) }
+
+        // Core Text's default text matrix assumes an unflipped coordinate
+        // system. Keep this runtime fact explicit: the draw path must
+        // compensate for this flipped ruler without changing its baseline.
+        #expect(mounted.gutter.isFlipped)
+    }
+
+    @Test func coreTextMatrixKeepsAsymmetricGlyphsUprightInTheFlippedGutter() throws {
+        let mounted = makeMountedGutter(text: "one")
+        defer { mounted.window.orderOut(nil) }
+
+        let corrected = try digitPixels(textMatrix: EditorGutterView.coreTextMatrix(forFlippedView: mounted.gutter.isFlipped))
+        let expectedUpright = try digitPixels(textMatrix: CGAffineTransform(scaleX: 1, y: -1))
+        let inverted = try digitPixels(textMatrix: .identity)
+
+        #expect(corrected == expectedUpright, "the mounted ruler must use Core Text's flipped-view text matrix")
+        #expect(corrected != inverted, "the bitmap must distinguish an upright 2 from its vertically inverted glyph")
+    }
+
+    @Test func drawingRestoresTheCallersCoreTextState() throws {
+        let mounted = makeMountedGutter(text: "one\ntwo")
+        defer { mounted.window.orderOut(nil) }
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 80,
+            pixelsHigh: 80,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
+        let callerMatrix = CGAffineTransform(a: 1, b: 0, c: 0, d: 1, tx: 7, ty: 11)
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        context.cgContext.textMatrix = callerMatrix
+        mounted.gutter.drawHashMarksAndLabels(in: mounted.gutter.bounds)
+
+        #expect(context.cgContext.textMatrix == callerMatrix)
     }
 
     @Test func drawingDoesNotCrashAgainstARealMountedTextView() throws {
