@@ -7,37 +7,75 @@ import SwiftTreeSitterLayer
 import Themes
 
 /// Concrete highlighter: wraps Neon's `TextViewHighlighter` over an E04 `EditorTextSystem`.
+///
+/// Size fallback (register row H5): for a language with a
+/// ``HighlightingSizePolicy``, a document longer than the cut-off gets no
+/// tree-sitter parser — not on open, restore, reload or a language change, and
+/// not on the edit that crosses the cut-off, which a ``HighlightingStorageGate``
+/// withholds from Neon before Neon's synchronous reparse. ``state`` reports the
+/// requested language and the effective mode separately. See
+/// `NeonSyntaxHighlighter+SizeFallback.swift`.
 @MainActor
 public final class NeonSyntaxHighlighter: SyntaxHighlighting {
-    private let textSystem: EditorTextSystem
-    private let registry: GrammarRegistry
+    let textSystem: EditorTextSystem
+    let registry: GrammarRegistry
     private var currentTheme: Theme
-    private var highlighter: TextViewHighlighter?
+    /// Neon's highlighter while ``state`` is `.full`; `nil` otherwise.
+    var highlighter: TextViewHighlighter?
     public private(set) var languageID: String?
     private var baseFont: NSFont
     /// Tokens Neon has styled so far. Lets tests detect when highlighting has
     /// gone quiet without reaching into Neon's private state.
     private(set) var styledTokenCount = 0
+    /// Bumped whenever a Neon highlighter is built or discarded. A discarded
+    /// highlighter's in-flight work cannot be cancelled (Neon exposes no
+    /// cancellation), so its attribute provider checks this and styles nothing.
+    var generation: UInt64 = 0
+    /// Styling requests that arrived from a discarded highlighter's late work.
+    private(set) var staleStyleRequestCount = 0
+    /// Times the highlighter-owned presentation was cleared, and when (uptime
+    /// ns) it last was: lets benchmarks time "reduced mode has settled".
+    var presentationClearCount = 0
+    var lastPresentationClearUptime: UInt64 = 0
+    let gate = HighlightingStorageGate()
+    let policyProvider: (String?) -> HighlightingSizePolicy?
+    var restoreTask: Task<Void, Never>?
+
+    public private(set) var state: HighlightingState {
+        didSet {
+            if state != oldValue {
+                onStateChange?(state)
+            }
+        }
+    }
+
+    public var onStateChange: ((HighlightingState) -> Void)?
 
     /// - textSystem: the E04 system whose `.textView` we attach to.
     /// - languageID: `FileFormat.highlightLanguageID` (nil / unknown ⇒ plain text + chrome only).
     /// - theme: initial theme; chrome is applied to the text view immediately.
     /// - registry: shared grammar registry.
+    /// - sizePolicy: the size fallback per language (tests pass `{ _ in nil }`
+    ///   to measure Neon unbounded).
     public init(
         textSystem: EditorTextSystem,
         languageID: String?,
         theme: Theme,
-        registry: GrammarRegistry
+        registry: GrammarRegistry,
+        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = HighlightingSizePolicy.default(for:)
     ) {
         self.textSystem = textSystem
         self.languageID = languageID
         self.registry = registry
+        policyProvider = sizePolicy
         currentTheme = theme
         baseFont = textSystem.textView.font
             ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        state = HighlightingState(requestedLanguageID: languageID, mode: .plain)
 
         applyChrome(theme: theme)
-        buildHighlighter(languageID: languageID)
+        installGate()
+        configure(languageID: languageID)
     }
 
     // MARK: - SyntaxHighlighting
@@ -57,8 +95,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     public func setLanguage(_ highlightLanguageID: String?) {
         guard languageID != highlightLanguageID else { return }
         languageID = highlightLanguageID
-        highlighter = nil
-        buildHighlighter(languageID: highlightLanguageID)
+        configure(languageID: highlightLanguageID)
     }
 
     public func invalidateAll() {
@@ -66,7 +103,18 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     }
 
     public func tearDown() {
-        highlighter = nil
+        restoreTask?.cancel()
+        restoreTask = nil
+        discardHighlighter()
+        clearHighlighterPresentation()
+        if let storage = textSystem.textView.textStorage {
+            gate.uninstall(from: storage)
+        }
+    }
+
+    /// Sets the effective mode for the current requested language.
+    func setMode(_ mode: HighlightingState.Mode) {
+        state = HighlightingState(requestedLanguageID: languageID, mode: mode)
     }
 
     // MARK: - Internal
@@ -84,12 +132,18 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
             ?? theme.chrome.foreground.nsColor.withAlphaComponent(0.35)
     }
 
-    private func buildHighlighter(languageID: String?) {
-        guard let config = registry.configuration(for: languageID) else { return }
-
+    /// Builds Neon's highlighter for `config` and puts the gate back in front
+    /// of the storage delegate Neon installs. Returns false if Neon failed.
+    func buildHighlighter(config: LanguageConfiguration) -> Bool {
+        generation &+= 1
+        let builtGeneration = generation
         do {
             let attributeProvider: TokenAttributeProvider = { [weak self] token in
                 guard let self else { return [:] }
+                guard generation == builtGeneration else {
+                    staleStyleRequestCount &+= 1
+                    return [:]
+                }
                 styledTokenCount &+= 1
                 let style = currentTheme.style(for: token.name)
                 var attrs: [NSAttributedString.Key: Any] = [
@@ -115,9 +169,14 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
                     }
                 )
             )
+            if let storage = textSystem.textView.textStorage {
+                gate.adoptDownstream(from: storage)
+            }
+            return true
         } catch {
             // Graceful degradation: leave highlighter nil, plain text + chrome.
             highlighter = nil
+            return false
         }
     }
 

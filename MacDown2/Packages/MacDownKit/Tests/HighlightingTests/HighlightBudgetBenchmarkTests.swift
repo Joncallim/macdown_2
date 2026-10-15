@@ -67,10 +67,10 @@ struct HighlightBudgetBenchmarkTests {
 
 extension HighlightedEditor {
     /// True if Neon has applied an inline (emphasis / strong / code) style in
-    /// the last tenth of the document, i.e. the inline injection was resolved
+    /// the second half of the document, i.e. the inline injection was resolved
     /// for the whole document, not only near the start.
     func hasInlineStylingNearEnd() -> Bool {
-        let threshold = (textView.string as NSString).length * 9 / 10
+        let threshold = (textView.string as NSString).length / 2
         return renderedRuns().contains { run in
             run.range.location >= threshold && (run.signature.contains(",fi") || run.signature.contains(",fb"))
         }

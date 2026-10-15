@@ -138,14 +138,22 @@ final class HighlightedEditor {
     private var wideningDelegate: EditWideningStorageDelegate?
 
     /// - widensEdits: install the ``EditWideningStorageDelegate`` experiment.
-    init(text: String, widensEdits: Bool = false, theme: Theme = BundledThemes.light) {
+    /// - sizePolicy: the H5 size fallback; unbounded by default, so these
+    ///   harnesses keep measuring Neon itself at every size.
+    init(
+        text: String,
+        widensEdits: Bool = false,
+        theme: Theme = BundledThemes.light,
+        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = { _ in nil }
+    ) {
         system = EditorTextSystem(identity: UUID().uuidString, initialText: text, configuration: .default)
         system.textView.frame = NSRect(x: 0, y: 0, width: 800, height: 1000)
         highlighter = NeonSyntaxHighlighter(
             textSystem: system,
             languageID: "markdown",
             theme: theme,
-            registry: GrammarRegistry()
+            registry: GrammarRegistry(),
+            sizePolicy: sizePolicy
         )
         if widensEdits, let storage = system.textView.textStorage, let neon = storage.delegate {
             let delegate = EditWideningStorageDelegate(downstream: neon)
