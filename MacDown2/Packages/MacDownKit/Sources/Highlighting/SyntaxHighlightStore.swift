@@ -1,12 +1,19 @@
 import AppKit
 import EditorCore
+import Observation
 import Themes
 
 /// Caches one `SyntaxHighlighting` per tab identity. Parallels `EditorTextSystemStore`.
+///
+/// Observable only through ``states``, so a view can show that a document's
+/// highlighting is reduced (register row H5) without observing the cache.
 @MainActor
+@Observable
 public final class SyntaxHighlightStore {
-    private var highlighters: [String: SyntaxHighlighting] = [:]
-    private let registry: GrammarRegistry
+    @ObservationIgnored private var highlighters: [String: SyntaxHighlighting] = [:]
+    @ObservationIgnored private let registry: GrammarRegistry
+    /// Each live highlighter's state, by identity.
+    public private(set) var states: [String: HighlightingState] = [:]
 
     public init(registry: GrammarRegistry = GrammarRegistry()) {
         self.registry = registry
@@ -36,21 +43,29 @@ public final class SyntaxHighlightStore {
             registry: registry
         )
         highlighters[identity] = newHighlighter
+        states[identity] = newHighlighter.state
+        newHighlighter.onStateChange = { [weak self] state in
+            self?.states[identity] = state
+        }
         return newHighlighter
     }
 
     /// Removes the cached highlighter for `identity` and tears it down.
     public func evict(_ identity: String) {
+        highlighters[identity]?.onStateChange = nil
         highlighters[identity]?.tearDown()
         highlighters.removeValue(forKey: identity)
+        states.removeValue(forKey: identity)
     }
 
     /// Removes every cached highlighter. Call when the owning window closes.
     public func evictAll() {
         for highlighter in highlighters.values {
+            highlighter.onStateChange = nil
             highlighter.tearDown()
         }
         highlighters.removeAll()
+        states.removeAll()
     }
 
     /// Re-theme every live highlighter.
@@ -65,6 +80,11 @@ public final class SyntaxHighlightStore {
         for highlighter in highlighters.values {
             highlighter.applyFont(font)
         }
+    }
+
+    /// The state of the highlighter for `identity`, if one is live.
+    public func state(for identity: String) -> HighlightingState? {
+        states[identity]
     }
 
     /// The identities currently held in the cache.

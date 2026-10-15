@@ -7,34 +7,93 @@ import SwiftTreeSitterLayer
 import Themes
 
 /// Concrete highlighter: wraps Neon's `TextViewHighlighter` over an E04 `EditorTextSystem`.
+///
+/// Size fallback (register row H5): for a language with a
+/// ``HighlightingSizePolicy``, a document longer than the cut-off gets no
+/// tree-sitter parser — not on open, restore, reload or a language change, and
+/// not on the edit that crosses the cut-off, which a ``HighlightingStorageGate``
+/// withholds from Neon before Neon's synchronous reparse. ``state`` reports the
+/// requested language and the effective mode separately. See
+/// `NeonSyntaxHighlighter+SizeFallback.swift`.
 @MainActor
 public final class NeonSyntaxHighlighter: SyntaxHighlighting {
-    private let textSystem: EditorTextSystem
-    private let registry: GrammarRegistry
+    let textSystem: EditorTextSystem
+    let registry: GrammarRegistry
     private var currentTheme: Theme
-    private var highlighter: TextViewHighlighter?
+    /// Neon's highlighter while ``state`` is `.full`; `nil` otherwise.
+    var highlighter: TextViewHighlighter?
     public private(set) var languageID: String?
     private var baseFont: NSFont
+    /// Tokens Neon has styled so far. Lets tests detect when highlighting has
+    /// gone quiet without reaching into Neon's private state.
+    private(set) var styledTokenCount = 0
+    /// Bumped whenever a Neon highlighter is built or discarded. A discarded
+    /// highlighter's in-flight work cannot be cancelled (Neon exposes no
+    /// cancellation), so its attribute provider checks this and styles nothing.
+    var generation: UInt64 {
+        get { layerState.generation }
+        set { layerState.generation = newValue }
+    }
+
+    /// Shared with Neon's closures, which run on its background queue.
+    let layerState = LayerRequestState()
+    /// Styling requests that arrived from a discarded highlighter's late work.
+    private(set) var staleStyleRequestCount = 0
+    /// Parse-adjacent requests Neon made through the language provider and the
+    /// location transformer, split by whether the highlighter that made them
+    /// is still current. Stale ones are a discarded highlighter's surviving
+    /// work entering the tree-sitter layer (register row H5).
+    var liveLayerRequestCount: Int {
+        layerState.liveCount
+    }
+
+    var staleLayerRequestCount: Int {
+        layerState.staleCount
+    }
+
+    /// Times the highlighter-owned presentation was cleared, and when (uptime
+    /// ns) it last was: lets benchmarks time "reduced mode has settled".
+    var presentationClearCount = 0
+    var lastPresentationClearUptime: UInt64 = 0
+    let gate = HighlightingStorageGate()
+    let policyProvider: (String?) -> HighlightingSizePolicy?
+    var restoreTask: Task<Void, Never>?
+
+    public private(set) var state: HighlightingState {
+        didSet {
+            if state != oldValue {
+                onStateChange?(state)
+            }
+        }
+    }
+
+    public var onStateChange: ((HighlightingState) -> Void)?
 
     /// - textSystem: the E04 system whose `.textView` we attach to.
     /// - languageID: `FileFormat.highlightLanguageID` (nil / unknown ⇒ plain text + chrome only).
     /// - theme: initial theme; chrome is applied to the text view immediately.
     /// - registry: shared grammar registry.
+    /// - sizePolicy: the size fallback per language (tests pass `{ _ in nil }`
+    ///   to measure Neon unbounded).
     public init(
         textSystem: EditorTextSystem,
         languageID: String?,
         theme: Theme,
-        registry: GrammarRegistry
+        registry: GrammarRegistry,
+        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = HighlightingSizePolicy.default(for:)
     ) {
         self.textSystem = textSystem
         self.languageID = languageID
         self.registry = registry
+        policyProvider = sizePolicy
         currentTheme = theme
         baseFont = textSystem.textView.font
             ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        state = HighlightingState(requestedLanguageID: languageID, mode: .plain)
 
         applyChrome(theme: theme)
-        buildHighlighter(languageID: languageID)
+        installGate()
+        configure(languageID: languageID)
     }
 
     // MARK: - SyntaxHighlighting
@@ -54,8 +113,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     public func setLanguage(_ highlightLanguageID: String?) {
         guard languageID != highlightLanguageID else { return }
         languageID = highlightLanguageID
-        highlighter = nil
-        buildHighlighter(languageID: highlightLanguageID)
+        configure(languageID: highlightLanguageID)
     }
 
     public func invalidateAll() {
@@ -63,7 +121,18 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     }
 
     public func tearDown() {
-        highlighter = nil
+        restoreTask?.cancel()
+        restoreTask = nil
+        discardHighlighter()
+        clearHighlighterPresentation()
+        if let storage = textSystem.textView.textStorage {
+            gate.uninstall(from: storage)
+        }
+    }
+
+    /// Sets the effective mode for the current requested language.
+    func setMode(_ mode: HighlightingState.Mode) {
+        state = HighlightingState(requestedLanguageID: languageID, mode: mode)
     }
 
     // MARK: - Internal
@@ -81,12 +150,19 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
             ?? theme.chrome.foreground.nsColor.withAlphaComponent(0.35)
     }
 
-    private func buildHighlighter(languageID: String?) {
-        guard let config = registry.configuration(for: languageID) else { return }
-
+    /// Builds Neon's highlighter for `config` and puts the gate back in front
+    /// of the storage delegate Neon installs. Returns false if Neon failed.
+    func buildHighlighter(config: LanguageConfiguration) -> Bool {
+        generation &+= 1
+        let builtGeneration = generation
         do {
             let attributeProvider: TokenAttributeProvider = { [weak self] token in
                 guard let self else { return [:] }
+                guard generation == builtGeneration else {
+                    staleStyleRequestCount &+= 1
+                    return [:]
+                }
+                styledTokenCount &+= 1
                 let style = currentTheme.style(for: token.name)
                 var attrs: [NSAttributedString.Key: Any] = [
                     .foregroundColor: (style?.color ?? currentTheme.chrome.foreground).nsColor,
@@ -105,15 +181,31 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
                 configuration: TextViewHighlighter.Configuration(
                     languageConfiguration: config,
                     attributeProvider: attributeProvider,
-                    languageProvider: registry.languageProvider,
-                    locationTransformer: Self.locationTransformer(for: textSystem.textView) { [weak textSystem] in
-                        textSystem?.contentRevision ?? 0
-                    }
+                    languageProvider: { [state = layerState, registryProvider = registry.languageProvider] name in
+                        guard state.note(builtGeneration: builtGeneration) else { return nil }
+                        return registryProvider(name)
+                    },
+                    locationTransformer: countedLocationTransformer(builtGeneration: builtGeneration)
                 )
             )
+            if let storage = textSystem.textView.textStorage {
+                gate.adoptDownstream(from: storage)
+            }
+            return true
         } catch {
             // Graceful degradation: leave highlighter nil, plain text + chrome.
             highlighter = nil
+            return false
+        }
+    }
+
+    private func countedLocationTransformer(builtGeneration: UInt64) -> (Int) -> Point? {
+        let transform = Self.locationTransformer(for: textSystem.textView) { [weak textSystem] in
+            textSystem?.contentRevision ?? 0
+        }
+        return { [state = layerState] offset in
+            guard state.note(builtGeneration: builtGeneration) else { return nil }
+            return transform(offset)
         }
     }
 
@@ -204,5 +296,42 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
         }
 
         return offsets
+    }
+}
+
+/// The current highlighter generation and the layer requests Neon made, safe
+/// to touch from Neon's background queue (`languageProvider` runs there).
+///
+/// A request from a discarded highlighter is refused: it must not resolve
+/// injected layers (the dominant cost) against text it no longer describes.
+final class LayerRequestState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var currentGeneration: UInt64 = 0
+    private var live = 0
+    private var stale = 0
+
+    var generation: UInt64 {
+        get { lock.withLock { currentGeneration } }
+        set { lock.withLock { currentGeneration = newValue } }
+    }
+
+    var liveCount: Int {
+        lock.withLock { live }
+    }
+
+    var staleCount: Int {
+        lock.withLock { stale }
+    }
+
+    /// Counts the request; true if the highlighter that made it is current.
+    func note(builtGeneration: UInt64) -> Bool {
+        lock.withLock {
+            if currentGeneration == builtGeneration {
+                live &+= 1
+                return true
+            }
+            stale &+= 1
+            return false
+        }
     }
 }
