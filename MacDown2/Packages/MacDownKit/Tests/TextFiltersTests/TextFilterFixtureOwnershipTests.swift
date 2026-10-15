@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Testing
 @testable import TextFilters
@@ -12,6 +13,11 @@ struct TextFilterFixtureOwnershipTests {
         private(set) var directory: URL?
         private(set) var taskWasCancelled = false
         private(set) var directoryWasPresentWhenTaskCancelled = false
+        private(set) var taskFinished = false
+        private(set) var lateTaskStarted = false
+        private(set) var cleanupJoinStarted = false
+        private var taskBObservedCancellation = false
+        private var taskBWaiters: [CheckedContinuation<Void, Never>] = []
 
         func record(directory: URL) {
             self.directory = directory
@@ -20,6 +26,39 @@ struct TextFilterFixtureOwnershipTests {
         func recordTaskCancellation(directory: URL) {
             taskWasCancelled = true
             directoryWasPresentWhenTaskCancelled = FileManager.default.fileExists(atPath: directory.path)
+        }
+
+        func recordTaskFinished() {
+            taskFinished = true
+        }
+
+        func recordLateTaskStarted() {
+            lateTaskStarted = true
+        }
+
+        func recordCleanupJoinStarted() {
+            cleanupJoinStarted = true
+        }
+
+        func recordTaskBObservedCancellation() {
+            taskBObservedCancellation = true
+            for waiter in taskBWaiters {
+                waiter.resume()
+            }
+            taskBWaiters.removeAll()
+        }
+
+        func taskBObservedCancellationValue() -> Bool {
+            taskBObservedCancellation
+        }
+
+        func waitForTaskBToObserveCancellation() async {
+            if taskBObservedCancellation {
+                return
+            }
+            await withCheckedContinuation { continuation in
+                taskBWaiters.append(continuation)
+            }
         }
     }
 
@@ -69,7 +108,7 @@ struct TextFilterFixtureOwnershipTests {
         try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
             observed = directory
             let marker = directory.appendingPathComponent("marker")
-            let task = await owner.start {
+            let task = try await owner.start {
                 try await Task.sleep(for: .milliseconds(1))
                 try "done".write(to: marker, atomically: true, encoding: .utf8)
             }
@@ -88,7 +127,7 @@ struct TextFilterFixtureOwnershipTests {
         await #expect(throws: FixtureFailure.expected) {
             try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
                 observed = directory
-                _ = await owner.start {
+                _ = try await owner.start {
                     do {
                         try await Task.sleep(for: .seconds(30))
                     } catch {
@@ -110,7 +149,7 @@ struct TextFilterFixtureOwnershipTests {
         let scope = Task {
             try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
                 await probe.record(directory: directory)
-                _ = await owner.start {
+                _ = try await owner.start {
                     do {
                         try await Task.sleep(for: .seconds(30))
                     } catch {
@@ -136,5 +175,58 @@ struct TextFilterFixtureOwnershipTests {
         } else {
             Issue.record("the owned fixture scope never started")
         }
+    }
+
+    @Test func cancellationCancelsEveryTrackedTaskBeforeJoiningAnyTask() async throws {
+        let probe = LifecycleProbe()
+
+        try await TextFilterFixtures.withOwnedTemporaryDirectory { _, owner in
+            _ = try await owner.start {
+                do {
+                    try await Task.sleep(for: .seconds(30))
+                } catch {
+                    await probe.waitForTaskBToObserveCancellation()
+                    throw error
+                }
+            }
+            _ = try await owner.start {
+                do {
+                    try await Task.sleep(for: .seconds(30))
+                } catch {
+                    await probe.recordTaskBObservedCancellation()
+                    throw error
+                }
+            }
+        }
+
+        #expect(await probe.taskBObservedCancellationValue())
+    }
+
+    @Test func lateRegistrationIsRejectedWhileCleanupIsAlreadyJoining() async throws {
+        let probe = LifecycleProbe()
+        let owner = TextFilterFixtures.TaskOwner()
+        try await owner.registerCleanup(
+            cancel: {},
+            join: {
+                await probe.recordCleanupJoinStarted()
+                try? await Task.sleep(for: .milliseconds(100))
+                return .completed(nil)
+            }
+        )
+
+        let joinTask = await owner.cancelAllAndCreateJoinTask()
+        let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+        while await !(probe.cleanupJoinStarted), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(await probe.cleanupJoinStarted)
+
+        await #expect(throws: TextFilterFixtures.TaskOwnerError.closed) {
+            _ = try await owner.start {
+                await probe.recordLateTaskStarted()
+            }
+        }
+        _ = await joinTask.value
+        #expect(await !(probe.lateTaskStarted))
     }
 }

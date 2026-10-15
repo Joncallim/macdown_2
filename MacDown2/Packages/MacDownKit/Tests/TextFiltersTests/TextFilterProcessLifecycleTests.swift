@@ -79,7 +79,7 @@ struct TextFilterProcessLifecycleTests {
                 watchdogDelay: TextFilterFixtures.watchdogDelay(afterPIDLines: 1, at: pidFile)
             )
 
-            let outcome = await owner.start {
+            let outcome = try await owner.start {
                 await #expect(throws: TextFilterError.timedOut) {
                     _ = try await runner.run(command, input: "")
                 }
@@ -166,7 +166,7 @@ struct TextFilterProcessLifecycleTests {
                 in: directory
             )
 
-            let task = await owner.start {
+            let task = try await owner.start {
                 try await TextFilterRunner().run(command, input: "")
             }
             let recordedPID = try await Self.waitForReportedPID(at: pidFile)

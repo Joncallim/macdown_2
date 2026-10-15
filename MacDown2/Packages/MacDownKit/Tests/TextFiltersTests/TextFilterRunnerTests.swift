@@ -100,7 +100,7 @@ struct TextFilterRunnerTests {
         try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
             let command = try Self.command(TextFilterFixtures.sleepLong, in: directory)
 
-            let task = await owner.start {
+            let task = try await owner.start {
                 try await TextFilterRunner().run(command, input: "")
             }
             try await Task.sleep(for: .milliseconds(100))
