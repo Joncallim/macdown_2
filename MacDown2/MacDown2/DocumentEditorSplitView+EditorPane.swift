@@ -57,6 +57,15 @@ extension DocumentEditorSplitView {
                 }
             )
             .accessibilityIdentifier("editorPane")
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { coordinator?.folderSearchEditorLayoutChanged(tabID: identity) }
+                        .onChange(of: proxy.size) { _, _ in
+                            coordinator?.folderSearchEditorLayoutChanged(tabID: identity)
+                        }
+                }
+            }
             .task(id: identity) {
                 attachHighlighter()
             }
