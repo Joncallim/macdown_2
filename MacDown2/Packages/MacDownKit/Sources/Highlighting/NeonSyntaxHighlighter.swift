@@ -15,6 +15,9 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     private var highlighter: TextViewHighlighter?
     public private(set) var languageID: String?
     private var baseFont: NSFont
+    /// Tokens Neon has styled so far. Lets tests detect when highlighting has
+    /// gone quiet without reaching into Neon's private state.
+    private(set) var styledTokenCount = 0
 
     /// - textSystem: the E04 system whose `.textView` we attach to.
     /// - languageID: `FileFormat.highlightLanguageID` (nil / unknown ⇒ plain text + chrome only).
@@ -87,6 +90,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
         do {
             let attributeProvider: TokenAttributeProvider = { [weak self] token in
                 guard let self else { return [:] }
+                styledTokenCount &+= 1
                 let style = currentTheme.style(for: token.name)
                 var attrs: [NSAttributedString.Key: Any] = [
                     .foregroundColor: (style?.color ?? currentTheme.chrome.foreground).nsColor,
