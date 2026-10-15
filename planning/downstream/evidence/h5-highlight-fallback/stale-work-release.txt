@@ -1,0 +1,5 @@
+Release (M3 Pro, macOS 26.5.1), base cc8b054f + this change; temporary STALE-REPORT print removed from the committed tests.
+openAndImmediatelyCross:   staleLayer=5 staleStyle=23216 liveLayer=3 styled=0   maxGap=44.2ms
+backgroundThenCross:       staleLayer=2 staleStyle=25774 liveLayer=7 styled=669 maxGap=46.4ms
+controlQuietThenCross:     staleLayer=0 staleStyle=0     liveLayer=4 styled=1326 maxGap=19.5ms
+Debug: 135-208ms vs 27ms control. 200K vs 400K-unit pastes gave 23k vs 26k stale requests (bounded, not size-proportional).

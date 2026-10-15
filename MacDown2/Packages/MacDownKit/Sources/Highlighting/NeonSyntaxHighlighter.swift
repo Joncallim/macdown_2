@@ -33,6 +33,12 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     var generation: UInt64 = 0
     /// Styling requests that arrived from a discarded highlighter's late work.
     private(set) var staleStyleRequestCount = 0
+    /// Parse-adjacent requests Neon made through the language provider and the
+    /// location transformer, split by whether the highlighter that made them
+    /// is still current. Stale ones are a discarded highlighter's surviving
+    /// work entering the tree-sitter layer (register row H5).
+    private(set) var liveLayerRequestCount = 0
+    private(set) var staleLayerRequestCount = 0
     /// Times the highlighter-owned presentation was cleared, and when (uptime
     /// ns) it last was: lets benchmarks time "reduced mode has settled".
     var presentationClearCount = 0
@@ -163,10 +169,11 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
                 configuration: TextViewHighlighter.Configuration(
                     languageConfiguration: config,
                     attributeProvider: attributeProvider,
-                    languageProvider: registry.languageProvider,
-                    locationTransformer: Self.locationTransformer(for: textSystem.textView) { [weak textSystem] in
-                        textSystem?.contentRevision ?? 0
-                    }
+                    languageProvider: { [weak self, registryProvider = registry.languageProvider] name in
+                        guard self?.noteLayerRequest(builtGeneration: builtGeneration) == true else { return nil }
+                        return registryProvider(name)
+                    },
+                    locationTransformer: countedLocationTransformer(builtGeneration: builtGeneration)
                 )
             )
             if let storage = textSystem.textView.textStorage {
@@ -177,6 +184,29 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
             // Graceful degradation: leave highlighter nil, plain text + chrome.
             highlighter = nil
             return false
+        }
+    }
+
+    /// Counts a layer request and says whether the highlighter that made it is
+    /// still current. A discarded highlighter's request is refused: it must not
+    /// resolve injected layers (the dominant cost) against text it no longer
+    /// describes.
+    private func noteLayerRequest(builtGeneration: UInt64) -> Bool {
+        if generation == builtGeneration {
+            liveLayerRequestCount &+= 1
+            return true
+        }
+        staleLayerRequestCount &+= 1
+        return false
+    }
+
+    private func countedLocationTransformer(builtGeneration: UInt64) -> (Int) -> Point? {
+        let transform = Self.locationTransformer(for: textSystem.textView) { [weak textSystem] in
+            textSystem?.contentRevision ?? 0
+        }
+        return { [weak self] offset in
+            guard self?.noteLayerRequest(builtGeneration: builtGeneration) == true else { return nil }
+            return transform(offset)
         }
     }
 
