@@ -11,19 +11,19 @@ public struct MermaidRenderContext: Sendable, Equatable, Hashable {
     public let backgroundBlue: Double
 
     public init(
-        foregroundRed: Double,
-        foregroundGreen: Double,
-        foregroundBlue: Double,
-        backgroundRed: Double,
-        backgroundGreen: Double,
-        backgroundBlue: Double
+        foregroundRed _: Double,
+        foregroundGreen _: Double,
+        foregroundBlue _: Double,
+        backgroundRed _: Double,
+        backgroundGreen _: Double,
+        backgroundBlue _: Double
     ) {
-        self.foregroundRed = 0x1A / 255.0
-        self.foregroundGreen = 0x1A / 255.0
-        self.foregroundBlue = 0x1A / 255.0
-        self.backgroundRed = 1
-        self.backgroundGreen = 1
-        self.backgroundBlue = 1
+        foregroundRed = 0x1A / 255.0
+        foregroundGreen = 0x1A / 255.0
+        foregroundBlue = 0x1A / 255.0
+        backgroundRed = 1
+        backgroundGreen = 1
+        backgroundBlue = 1
     }
 
     public static let neutralLight = MermaidRenderContext(

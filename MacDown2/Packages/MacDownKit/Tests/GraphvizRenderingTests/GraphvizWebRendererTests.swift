@@ -21,7 +21,9 @@ struct GraphvizWebRendererTests {
         title: String,
         in svg: String
     ) throws -> String {
-        let pattern = "(?s)<g id=\"[^\"]+\" class=\"\(NSRegularExpression.escapedPattern(for: className))\">.*?<title>\(NSRegularExpression.escapedPattern(for: title))</title>.*?</g>"
+        let escapedClass = NSRegularExpression.escapedPattern(for: className)
+        let escapedTitle = NSRegularExpression.escapedPattern(for: title)
+        let pattern = "(?s)<g id=\"[^\"]+\" class=\"\(escapedClass)\">.*?<title>\(escapedTitle)</title>.*?</g>"
         let regex = try NSRegularExpression(pattern: pattern)
         let range = NSRange(svg.startIndex..., in: svg)
         let match = try #require(regex.firstMatch(in: svg, range: range))

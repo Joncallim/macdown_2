@@ -22,4 +22,16 @@ extension WindowCoordinator {
         model.onDocumentWritten = { [weak self] url in self?.recentFileDocuments.noteWrite(of: url) }
         return model
     }
+
+    /// The one way a coordinator-owned document window controller is built
+    /// around a freshly made `WorkspaceModel` (open, new, and restore paths).
+    func makeWindowController(model: WorkspaceModel) -> WindowController {
+        WindowController(
+            model: model,
+            coordinator: self,
+            themeController: themeController,
+            grammarRegistry: grammarRegistry,
+            fileTreePreferences: fileTreePreferences
+        )
+    }
 }

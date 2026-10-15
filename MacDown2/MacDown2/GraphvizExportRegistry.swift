@@ -10,7 +10,7 @@ import Themes
 extension ContributionRegistry {
     static let sharedGraphvizRenderer = GraphvizDiagramCache(renderer: GraphvizWebRenderer())
 
-    static func graphvizRenderContext(theme: Theme, isPrintTarget _: Bool) -> GraphvizRenderContext {
+    static func graphvizRenderContext(theme _: Theme, isPrintTarget _: Bool) -> GraphvizRenderContext {
         .neutralLight
     }
 }

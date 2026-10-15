@@ -6,130 +6,13 @@ import Testing
 
 @Suite("MermaidWebRenderer")
 struct MermaidWebRendererTests {
-    private static let context = MermaidRenderContext(
+    static let context = MermaidRenderContext(
         foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
         backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
     )
 
-    private static func fence(_ source: String) -> MermaidFence {
+    static func fence(_ source: String) -> MermaidFence {
         MermaidFence(source: source, sourceRange: 0 ..< source.count)
-    }
-
-    @MainActor
-    private static func canvasProbe(
-        _ svg: String
-    ) async throws -> (svg: String, pngData: Data, width: Double, height: Double) {
-        let page = try await MermaidHarnessPage.make()
-        defer { page.teardown() }
-        let result = try await page.inspectSVGCanvasForTesting(svg)
-        let renderedSVG = try #require(result["svg"] as? String)
-        let pngBase64 = try #require(result["png"] as? String)
-        let pngData = try #require(Data(base64Encoded: pngBase64))
-        let width = try #require((result["width"] as? NSNumber)?.doubleValue)
-        let height = try #require((result["height"] as? NSNumber)?.doubleValue)
-        return (renderedSVG, pngData, width, height)
-    }
-
-    private static func pngDimensions(_ data: Data) throws -> (width: UInt32, height: UInt32) {
-        let bytes = Array(data)
-        try #require(bytes.count >= 24)
-        let width = bytes[16 ..< 20].reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
-        let height = bytes[20 ..< 24].reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
-        return (width, height)
-    }
-
-    private static func pngPixelEvidence(_ data: Data) throws -> (hasOpaqueWhite: Bool, hasDiagramContent: Bool) {
-        let bitmap = try #require(NSBitmapImageRep(data: data))
-        var hasOpaqueWhite = false
-        var hasDiagramContent = false
-        for y in 0 ..< bitmap.pixelsHigh {
-            for x in 0 ..< bitmap.pixelsWide {
-                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
-                let isOpaque = color.alphaComponent >= 0.99
-                if isOpaque,
-                   color.redComponent >= 0.98,
-                   color.greenComponent >= 0.98,
-                   color.blueComponent >= 0.98 {
-                    hasOpaqueWhite = true
-                }
-                if color.alphaComponent >= 0.2,
-                   color.redComponent < 0.95 || color.greenComponent < 0.95 || color.blueComponent < 0.95 {
-                    hasDiagramContent = true
-                }
-                if hasOpaqueWhite, hasDiagramContent {
-                    return (true, true)
-                }
-            }
-        }
-        return (hasOpaqueWhite, hasDiagramContent)
-    }
-
-    private static func svgTag(
-        named name: String,
-        withClass className: String,
-        in svg: String
-    ) throws -> String {
-        let regex = try NSRegularExpression(pattern: "<\(name)\\b[^>]*>", options: [.caseInsensitive])
-        let range = NSRange(svg.startIndex..., in: svg)
-        for match in regex.matches(in: svg, range: range) {
-            guard let matchRange = Range(match.range, in: svg) else { continue }
-            let tag = String(svg[matchRange])
-            if tag.contains("class=\"\(className)\"") {
-                return tag
-            }
-        }
-        throw MermaidRenderError.rendererUnavailable
-    }
-
-    private static func svgNumberAttribute(_ name: String, from tag: String) throws -> Double {
-        let pattern = "\\b\(NSRegularExpression.escapedPattern(for: name))=\"([-+0-9.eE]+)\""
-        let regex = try NSRegularExpression(pattern: pattern)
-        let range = NSRange(tag.startIndex..., in: tag)
-        let match = try #require(regex.firstMatch(in: tag, range: range))
-        let valueRange = try #require(Range(match.range(at: 1), in: tag))
-        return try #require(Double(tag[valueRange]))
-    }
-
-    private static func svgViewBox(in svg: String) throws -> (x: Double, y: Double, width: Double, height: Double) {
-        let svgTag = try #require(svg.range(of: "<svg\\b[^>]*>", options: [.regularExpression]))
-        let tag = String(svg[svgTag])
-        let regex = try NSRegularExpression(pattern: "\\bviewBox=\"([^\"]+)\"")
-        let range = NSRange(tag.startIndex..., in: tag)
-        let match = try #require(regex.firstMatch(in: tag, range: range))
-        let valueRange = try #require(Range(match.range(at: 1), in: tag))
-        let values = tag[valueRange].split(whereSeparator: { $0 == " " || $0 == "," }).compactMap(Double.init)
-        guard values.count == 4 else { throw MermaidRenderError.rendererUnavailable }
-        return (
-            x: values[0],
-            y: values[1],
-            width: values[2],
-            height: values[3]
-        )
-    }
-
-    private static func containsDarkPixel(
-        in pngData: Data,
-        aroundSVGPoint point: (x: Double, y: Double),
-        viewBox: (x: Double, y: Double, width: Double, height: Double),
-        radius: Int
-    ) throws -> Bool {
-        let bitmap = try #require(NSBitmapImageRep(data: pngData))
-        let pixelX = Int(((point.x - viewBox.x) / viewBox.width) * Double(bitmap.pixelsWide - 1))
-        let pixelY = Int(((point.y - viewBox.y) / viewBox.height) * Double(bitmap.pixelsHigh - 1))
-        let xRange = max(0, pixelX - radius) ... min(bitmap.pixelsWide - 1, pixelX + radius)
-        let yRange = max(0, pixelY - radius) ... min(bitmap.pixelsHigh - 1, pixelY + radius)
-        for y in yRange {
-            for x in xRange {
-                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
-                if color.alphaComponent >= 0.5,
-                   color.redComponent < 0.35,
-                   color.greenComponent < 0.35,
-                   color.blueComponent < 0.35 {
-                    return true
-                }
-            }
-        }
-        return false
     }
 
     /// A real, end-to-end pipeline test — genuine WebKit, genuine bundled
@@ -178,20 +61,24 @@ struct MermaidWebRendererTests {
             #expect(diagram.svg.range(of: #"\.messageText\{[^}]*fill:#1A1A1A"#, options: [.regularExpression]) != nil)
             #expect(diagram.svg.contains(#"[id$="-arrowhead"] path{fill:#1A1A1A;stroke:#1A1A1A;}"#))
 
-            let messageLine = try Self.svgTag(named: "line", withClass: "messageLine0", in: diagram.svg)
-            let viewBox = try Self.svgViewBox(in: diagram.svg)
+            let messageLine = try MermaidSVGProbe.svgTag(named: "line", withClass: "messageLine0", in: diagram.svg)
+            let viewBox = try MermaidSVGProbe.svgViewBox(in: diagram.svg)
             let pngData = try #require(diagram.pngData)
-            let lineStart = try (
-                x: Self.svgNumberAttribute("x1", from: messageLine),
-                y: Self.svgNumberAttribute("y1", from: messageLine)
+            let lineStart = try CGPoint(
+                x: MermaidSVGProbe.svgNumberAttribute("x1", from: messageLine),
+                y: MermaidSVGProbe.svgNumberAttribute("y1", from: messageLine)
             )
-            let lineEnd = try (
-                x: Self.svgNumberAttribute("x2", from: messageLine),
-                y: Self.svgNumberAttribute("y2", from: messageLine)
+            let lineEnd = try CGPoint(
+                x: MermaidSVGProbe.svgNumberAttribute("x2", from: messageLine),
+                y: MermaidSVGProbe.svgNumberAttribute("y2", from: messageLine)
             )
-            let lineMidpoint = (x: (lineStart.x + lineEnd.x) / 2, y: (lineStart.y + lineEnd.y) / 2)
-            #expect(try Self.containsDarkPixel(in: pngData, aroundSVGPoint: lineMidpoint, viewBox: viewBox, radius: 5))
-            #expect(try Self.containsDarkPixel(in: pngData, aroundSVGPoint: lineEnd, viewBox: viewBox, radius: 14))
+            let lineMidpoint = CGPoint(x: (lineStart.x + lineEnd.x) / 2, y: (lineStart.y + lineEnd.y) / 2)
+            #expect(try MermaidSVGProbe.containsDarkPixel(
+                in: pngData, aroundSVGPoint: lineMidpoint, viewBox: viewBox, radius: 5
+            ))
+            #expect(try MermaidSVGProbe.containsDarkPixel(
+                in: pngData, aroundSVGPoint: lineEnd, viewBox: viewBox, radius: 14
+            ))
         }
 
         await renderer.shutdown()
@@ -211,129 +98,6 @@ struct MermaidWebRendererTests {
         let pngMagicBytes: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
         #expect(Array(pngData.prefix(8)) == pngMagicBytes)
         #expect(pngData.count > 100)
-        await renderer.shutdown()
-    }
-
-    @Test @MainActor func canvasUsesNegativeOriginAndCommaSeparatedExponentViewBoxForPNG() async throws {
-        let probe = try await Self.canvasProbe(
-            #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10,-20,3.2e2,1.8e2"><circle cx="20" cy="20" r="10"/></svg>"#
-        )
-        #expect(probe.width == 320)
-        #expect(probe.height == 180)
-        #expect(probe.svg.contains(##"<rect x="-10" y="-20" width="320" height="180" fill="#FFFFFF""##))
-        let png = try Self.pngDimensions(probe.pngData)
-        #expect(png.width == 640)
-        #expect(png.height == 360)
-        let pixels = try Self.pngPixelEvidence(probe.pngData)
-        #expect(pixels.hasOpaqueWhite)
-        #expect(pixels.hasDiagramContent)
-    }
-
-    @Test @MainActor func canvasFallsBackToNumericRootDimensionsWhenViewBoxIsMissing() async throws {
-        let probe = try await Self.canvasProbe(
-            #"<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><circle cx="20" cy="20" r="10"/></svg>"#
-        )
-        #expect(probe.width == 320)
-        #expect(probe.height == 180)
-        #expect(probe.svg.contains(##"<rect x="0" y="0" width="320" height="180" fill="#FFFFFF""##))
-        #expect(!probe.svg.contains("viewBox="))
-        let png = try Self.pngDimensions(probe.pngData)
-        #expect(png.width == 640)
-        #expect(png.height == 360)
-        let pixels = try Self.pngPixelEvidence(probe.pngData)
-        #expect(pixels.hasOpaqueWhite)
-        #expect(pixels.hasDiagramContent)
-    }
-
-    @Test @MainActor func canvasFallsBackToNumericRootDimensionsWhenViewBoxIsInvalid() async throws {
-        let probe = try await Self.canvasProbe(
-            #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 -320 180" width="240" height="135"><circle cx="20" cy="20" r="10"/></svg>"#
-        )
-        #expect(probe.width == 240)
-        #expect(probe.height == 135)
-        #expect(probe.svg.contains(##"<rect x="0" y="0" width="240" height="135" fill="#FFFFFF""##))
-        #expect(!probe.svg.contains("viewBox="))
-        let png = try Self.pngDimensions(probe.pngData)
-        #expect(png.width == 480)
-        #expect(png.height == 270)
-        let pixels = try Self.pngPixelEvidence(probe.pngData)
-        #expect(pixels.hasOpaqueWhite)
-        #expect(pixels.hasDiagramContent)
-    }
-
-    @Test func pieChartsUseDistinctCategoricalSliceColors() async throws {
-        let renderer = MermaidWebRenderer()
-        let diagram = try await renderer.render(
-            Self
-                .fence(
-                    "pie title Categories\n    \"One\" : 1\n    \"Two\" : 2\n    \"Three\" : 3\n    \"Four\" : 4\n    \"Five\" : 5\n    \"Six\" : 6\n    \"Seven\" : 7\n    \"Eight\" : 8\n    \"Nine\" : 9\n    \"Ten\" : 10\n    \"Eleven\" : 11\n    \"Twelve\" : 12"
-                ),
-            context: Self.context
-        )
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#4E79A7"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#F28E2B"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#59A14F"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#E15759"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#B07AA1"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#76B7B2"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#EDC949"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#FF9DA7"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#9C755F"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#BAB0AC"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#86BCB6"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<path[^>]*fill="#D37295"[^>]*class="pieCircle""##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        let sliceCount = diagram.svg.components(separatedBy: "class=\"pieCircle\"").count - 1
-        let legendSwatchCount = diagram.svg.components(separatedBy: "class=\"legend\"").count - 1
-        #expect(sliceCount == 12)
-        #expect(legendSwatchCount >= 12)
-        #expect(diagram.svg.range(
-            of: ##"<g class="legend"[^>]*>.*fill: rgb\(78, 121, 167\)"##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<g class="legend"[^>]*>.*fill: rgb\(242, 142, 43\)"##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
-        #expect(diagram.svg.range(
-            of: ##"<g class="legend"[^>]*>.*fill: rgb\(89, 161, 79\)"##,
-            options: [.regularExpression, .caseInsensitive]
-        ) != nil)
         await renderer.shutdown()
     }
 

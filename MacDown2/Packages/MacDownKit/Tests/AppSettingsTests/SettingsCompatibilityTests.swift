@@ -110,12 +110,26 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func aLargeFinitePersistedFontSizeHasNoArbitraryUpperCap() {
+    @Test func aLargeButSupportedPersistedFontSizeIsKept() {
         isolated { defaults, store in
-            defaults.set(editorJSON(fontSize: "1e100"), forKey: Self.editorKey)
+            defaults.set(editorJSON(fontSize: "1000"), forKey: Self.editorKey)
 
-            #expect(store.editor.font.size == 1e100)
+            #expect(store.editor.font.size == 1000)
             #expect(store.unreadableDomains.isEmpty)
+        }
+    }
+
+    /// Review of the combined tree: a persisted size of 1e100 was accepted and then trapped the Settings pane's
+    /// `Int(size)` label. Sizes beyond the supported bound are unreadable and preserved, never applied.
+    @Test(arguments: ["1000.5", "1e100", "1.7976931348623157e308"])
+    func aPersistedFontSizeBeyondTheSupportedBoundIsUnreadableAndPreserved(size: String) {
+        isolated { defaults, store in
+            let invalid = editorJSON(fontSize: size)
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
         }
     }
 

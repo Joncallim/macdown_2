@@ -18,13 +18,19 @@ public struct FontDescriptor: Codable, Sendable, Equatable {
         self.size = size
     }
 
+    /// Generous upper bound for a PERSISTED size (the Settings UI offers 9...36). Without one, a corrupt or foreign
+    /// blob could hand NSFont and the Settings pane's integer label a size such as 1e100 (`Int(size)` traps for any
+    /// value >= 2^63). An out-of-range blob is unreadable and preserved verbatim like any other invalid one.
+    public static let maximumSupportedSize: Double = 1000
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let familyName = try container.decode(String.self, forKey: .familyName)
         let size = try container.decode(Double.self, forKey: .size)
-        guard size.isFinite, size > 0 else {
+        guard size.isFinite, size > 0, size <= Self.maximumSupportedSize else {
             throw DecodingError.dataCorruptedError(
-                forKey: .size, in: container, debugDescription: "font size must be finite and positive"
+                forKey: .size, in: container,
+                debugDescription: "font size must be finite, positive and at most \(Self.maximumSupportedSize)"
             )
         }
         self.init(familyName: familyName, size: size)

@@ -41,9 +41,9 @@ struct DocumentEditorFindNavigationTests {
         }
     }
 
-    @Test func staleFindCompletionCannotMoveNewerFolderSearchSelection() async throws {
+    private static func makeCoordinator() -> WindowCoordinator {
         let preferences = FileTreePreferences()
-        let coordinator = WindowCoordinator(
+        return WindowCoordinator(
             themeController: ThemeController(),
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
@@ -51,38 +51,36 @@ struct DocumentEditorFindNavigationTests {
             recentFileDocuments: RecentFileDocuments(preferences: preferences),
             appSettings: AppSettingsModel()
         )
-        let model = coordinator.makeWindowModel()
-        let text = "old result\nnew result"
-        model.tabStore.newTab(document: FileDocument(text: text))
-        let tab = try #require(model.tabStore.activeTab)
-        let identity = tab.id.uuidString
-        let editorStore = EditorTextSystemStore()
-        let findStore = EditorFindModelStore()
-        let parseStore = MarkdownParseStore(debounce: .zero)
-        let jsonStore = JSONAnalysisStore(debounce: .zero)
-        let split = DocumentEditorSplitView(
+    }
+
+    private static func makeSplit(
+        model: WorkspaceModel,
+        tab: WorkspaceTab,
+        text: String,
+        editorStore: EditorTextSystemStore,
+        findStore: EditorFindModelStore
+    ) -> DocumentEditorSplitView {
+        DocumentEditorSplitView(
             model: model,
             document: tab.document,
             tab: tab,
-            identity: identity,
+            identity: tab.id.uuidString,
             text: .constant(text),
             editorStore: editorStore,
             findStore: findStore,
             highlightStore: SyntaxHighlightStore(registry: GrammarRegistry()),
-            parseStore: parseStore,
-            jsonAnalysisStore: jsonStore,
+            parseStore: MarkdownParseStore(debounce: .zero),
+            jsonAnalysisStore: JSONAnalysisStore(debounce: .zero),
             themeController: ThemeController(),
             scrollController: ScrollSyncController(),
             outlineController: OutlineController()
         )
-        let hosting = NSHostingView(rootView: AnyView(
-            EditorView(
-                text: .constant(text),
-                identity: identity,
-                configuration: .default,
-                store: editorStore
-            )
-        ))
+    }
+
+    /// Hosts `rootView` in a real key window so the editor mounts through
+    /// `makeNSView`; the caller closes the window.
+    private static func mountInWindow(_ rootView: AnyView) -> (NSHostingView<AnyView>, NSWindow) {
+        let hosting = NSHostingView(rootView: rootView)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 300),
             styleMask: [.titled], backing: .buffered, defer: false
@@ -92,6 +90,76 @@ struct DocumentEditorFindNavigationTests {
         window.contentView = hosting
         window.makeKeyAndOrderFront(nil)
         hosting.layoutSubtreeIfNeeded()
+        return (hosting, window)
+    }
+
+    /// The Find bar wired exactly as the split view wires it: published
+    /// matches go through the production `applyFindHighlights`, then the
+    /// returned stream yields once per publication.
+    private static func makeFindBar(
+        findModel: EditorFindModel,
+        text: String,
+        system: EditorTextSystem,
+        split: DocumentEditorSplitView,
+        coordinator: WindowCoordinator
+    ) -> (FindBarView, AsyncStream<Void>) {
+        let published = AsyncStream<Void>.makeStream()
+        let findBar = FindBarView(
+            model: findModel,
+            text: text,
+            resolvedText: { text },
+            resolvedSelection: { system.selectedRange },
+            initialAnchor: 0,
+            onMatchesChanged: { reveal, navigationToken in
+                split.applyFindHighlights(
+                    findModel,
+                    reveal: reveal,
+                    navigationToken: navigationToken,
+                    navigationCoordinator: coordinator
+                )
+                published.continuation.yield(())
+            },
+            onNavigationIntent: { coordinator.folderSearchNavigationDidChange() },
+            onClose: { split.closeFindBar(findModel) },
+            onReplace: { _ in },
+            onSelectAll: { _ in }
+        )
+        return (findBar, published.stream)
+    }
+
+    /// The tab's cached Find model, activated with `query` and with its
+    /// matches computed against `text`.
+    private static func activeFindModel(
+        in findStore: EditorFindModelStore,
+        identity: String,
+        query: String,
+        text: String
+    ) async -> EditorFindModel {
+        let findModel = findStore.model(for: identity)
+        findModel.query = query
+        findModel.isActive = true
+        #expect(await findModel.updateMatches(in: text, preferringLocationNear: 0))
+        return findModel
+    }
+
+    @Test func staleFindCompletionCannotMoveNewerFolderSearchSelection() async throws {
+        let coordinator = Self.makeCoordinator()
+        let model = coordinator.makeWindowModel()
+        let text = "old result\nnew result"
+        model.tabStore.newTab(document: FileDocument(text: text))
+        let tab = try #require(model.tabStore.activeTab)
+        let identity = tab.id.uuidString
+        let editorStore = EditorTextSystemStore()
+        let findStore = EditorFindModelStore()
+        let split = Self.makeSplit(model: model, tab: tab, text: text, editorStore: editorStore, findStore: findStore)
+        let (_, window) = Self.mountInWindow(AnyView(
+            EditorView(
+                text: .constant(text),
+                identity: identity,
+                configuration: .default,
+                store: editorStore
+            )
+        ))
         defer { window.contentView = nil; window.close() }
 
         let staleModel = EditorFindModel(query: "old")
@@ -125,15 +193,7 @@ struct DocumentEditorFindNavigationTests {
     }
 
     @Test func cachedFindBarRemountRefreshDoesNotRevealOverNewerSelection() async throws {
-        let preferences = FileTreePreferences()
-        let coordinator = WindowCoordinator(
-            themeController: ThemeController(),
-            grammarRegistry: GrammarRegistry(),
-            fileTreePreferences: preferences,
-            recentFolderRoots: RecentFolderRoots(preferences: preferences),
-            recentFileDocuments: RecentFileDocuments(preferences: preferences),
-            appSettings: AppSettingsModel()
-        )
+        let coordinator = Self.makeCoordinator()
         let model = coordinator.makeWindowModel()
         let text = "old result\nnew result"
         model.tabStore.newTab(document: FileDocument(text: text))
@@ -141,10 +201,7 @@ struct DocumentEditorFindNavigationTests {
         let identity = tab.id.uuidString
         let editorStore = EditorTextSystemStore()
         let findStore = EditorFindModelStore()
-        let findModel = findStore.model(for: identity)
-        findModel.query = "old"
-        findModel.isActive = true
-        #expect(await findModel.updateMatches(in: text, preferringLocationNear: 0))
+        let findModel = await Self.activeFindModel(in: findStore, identity: identity, query: "old", text: text)
         // Capture the activation revision before the view remount. This is
         // the token `WindowCoordinator.toggleFind()` now stores; the later
         // folder navigation must make it stale without a delayed onAppear
@@ -152,37 +209,14 @@ struct DocumentEditorFindNavigationTests {
         let activationToken = coordinator.folderSearchNavigationDidChange()
         findModel.pendingRevealNavigationToken = activationToken
 
-        let split = DocumentEditorSplitView(
-            model: model,
-            document: tab.document,
-            tab: tab,
-            identity: identity,
-            text: .constant(text),
-            editorStore: editorStore,
-            findStore: findStore,
-            highlightStore: SyntaxHighlightStore(registry: GrammarRegistry()),
-            parseStore: MarkdownParseStore(debounce: .zero),
-            jsonAnalysisStore: JSONAnalysisStore(debounce: .zero),
-            themeController: ThemeController(),
-            scrollController: ScrollSyncController(),
-            outlineController: OutlineController()
-        )
+        let split = Self.makeSplit(model: model, tab: tab, text: text, editorStore: editorStore, findStore: findStore)
         let editor = EditorView(
             text: .constant(text),
             identity: identity,
             configuration: .default,
             store: editorStore
         )
-        let hosting = NSHostingView(rootView: AnyView(editor))
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 300),
-            styleMask: [.titled], backing: .buffered, defer: false
-        )
-        window.isReleasedWhenClosed = false
-        window.animationBehavior = .none
-        window.contentView = hosting
-        window.makeKeyAndOrderFront(nil)
-        hosting.layoutSubtreeIfNeeded()
+        let (hosting, window) = Self.mountInWindow(AnyView(editor))
         defer { window.contentView = nil; window.close() }
 
         let system = try #require(editorStore.existingSystem(for: identity))
@@ -190,31 +224,16 @@ struct DocumentEditorFindNavigationTests {
         let newerFolderSelection = NSRange(location: 11, length: 3)
         coordinator.folderSearchNavigationDidChange()
         system.revealSelection(utf16Range: newerFolderSelection, flash: false)
-        let callback = AsyncStream<Void>.makeStream()
-        let callbackObserved = Task {
-            await Self.waitForSignal(callback.stream)
-        }
-
-        let findBar = FindBarView(
-            model: findModel,
+        let (findBar, published) = Self.makeFindBar(
+            findModel: findModel,
             text: text,
-            resolvedText: { text },
-            resolvedSelection: { system.selectedRange },
-            initialAnchor: 0,
-            onMatchesChanged: { reveal, navigationToken in
-                split.applyFindHighlights(
-                    findModel,
-                    reveal: reveal,
-                    navigationToken: navigationToken,
-                    navigationCoordinator: coordinator
-                )
-                callback.continuation.yield(())
-            },
-            onNavigationIntent: { coordinator.folderSearchNavigationDidChange() },
-            onClose: { split.closeFindBar(findModel) },
-            onReplace: { _ in },
-            onSelectAll: { _ in }
+            system: system,
+            split: split,
+            coordinator: coordinator
         )
+        let callbackObserved = Task {
+            await Self.waitForSignal(published)
+        }
         hosting.rootView = AnyView(
             VStack(spacing: 0) {
                 findBar.environment(\.windowCoordinator, coordinator)
