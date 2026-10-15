@@ -1,5 +1,6 @@
 import EditorCore
 import FileCore
+import Highlighting
 import SwiftUI
 
 /// The editor pane and its status bar (epic-22-implementation.md §6.7, §17
@@ -63,6 +64,19 @@ extension DocumentEditorSplitView {
                 }
             )
             .accessibilityIdentifier("editorPane")
+            .overlay(alignment: .bottomTrailing) {
+                // With the status bar hidden, the reduced-highlighting note
+                // still needs a non-modal home (register row H5).
+                if appSettings?.editor.showsStatusBar == false,
+                   let note = ReducedHighlightingNote(highlightStore.state(for: identity)) {
+                    ReducedHighlightingNoteView(note: note)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(6)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                        .padding(8)
+                }
+            }
             .task(id: identity) {
                 attachHighlighter()
             }
@@ -101,7 +115,8 @@ extension DocumentEditorSplitView {
                             system.textView.window?.makeFirstResponder(system.textView)
                         }
                     ),
-                    syntaxMode: syntaxModeItem
+                    syntaxMode: syntaxModeItem,
+                    reducedHighlighting: ReducedHighlightingNote(highlightStore.state(for: identity))
                 )
             }
         }
