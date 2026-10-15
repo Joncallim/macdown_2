@@ -41,17 +41,17 @@ struct MermaidExportRegistryTests {
         let results = try await registry.run(document: parsed, sourceText: text, sourceGeneration: 1)
         let contribution = try #require(results.first)
         let content = try #require(contribution.content)
-        let rendered: String
-        switch content.representation {
+        let rendered: String = switch content.representation {
         case let .markdown(value), let .html(value):
-            rendered = value
+            value
         }
         #expect(rendered.localizedCaseInsensitiveContains("<svg"))
         #expect(rendered.localizedCaseInsensitiveContains("Alice"))
         #expect(rendered.localizedCaseInsensitiveContains("Bob"))
         #expect(rendered.localizedCaseInsensitiveContains("Hello"))
-        #expect(rendered.range(of: ##"stroke:#1A1A1A|stroke="#1A1A1A""##, options: [.regularExpression, .caseInsensitive]) != nil)
-        #expect(rendered.range(of: ##"fill:#FFFFFF|fill="#FFFFFF""##, options: [.regularExpression, .caseInsensitive]) != nil)
+        let regexOptions: String.CompareOptions = [.regularExpression, .caseInsensitive]
+        #expect(rendered.range(of: ##"stroke:#1A1A1A|stroke="#1A1A1A""##, options: regexOptions) != nil)
+        #expect(rendered.range(of: ##"fill:#FFFFFF|fill="#FFFFFF""##, options: regexOptions) != nil)
     }
 
     @Test func aRealMermaidFenceComposesIntoSelfContainedHTMLWithNoExternalReferences() async throws {

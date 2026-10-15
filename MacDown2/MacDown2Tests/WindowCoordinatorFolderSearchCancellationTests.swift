@@ -324,7 +324,11 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         var calls = 0
         coordinator.afterFolderSearchFileLoad = {
             calls += 1
-            if calls == 1 { await olderGate.wait() } else { await newerGate.wait() }
+            if calls == 1 {
+                await olderGate.wait()
+            } else {
+                await newerGate.wait()
+            }
         }
         let older = Task {
             await coordinator.openFolderSearchResult(
@@ -364,7 +368,9 @@ struct WindowCoordinatorFolderSearchCancellationTests {
         var fileLoadCalls = 0
         coordinator.afterFolderSearchFileLoad = {
             fileLoadCalls += 1
-            if fileLoadCalls == 1 { await blockerGate.wait() }
+            if fileLoadCalls == 1 {
+                await blockerGate.wait()
+            }
         }
 
         let ordinaryOpen = Task {

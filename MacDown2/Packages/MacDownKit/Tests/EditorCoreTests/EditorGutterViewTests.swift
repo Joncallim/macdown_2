@@ -76,7 +76,10 @@ struct EditorGutterViewTests {
         cgContext.textMatrix = textMatrix
         let line = CTLineCreateWithAttributedString(NSAttributedString(
             string: "2",
-            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 28, weight: .regular), .foregroundColor: NSColor.black]
+            attributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 28, weight: .regular),
+                .foregroundColor: NSColor.black,
+            ]
         ))
         cgContext.textPosition = CGPoint(x: 24, y: 42)
         CTLineDraw(line, cgContext)
@@ -112,7 +115,8 @@ struct EditorGutterViewTests {
         let mounted = makeMountedGutter(text: "one")
         defer { mounted.window.orderOut(nil) }
 
-        let corrected = try digitPixels(textMatrix: EditorGutterView.coreTextMatrix(forFlippedView: mounted.gutter.isFlipped))
+        let corrected = try digitPixels(textMatrix: EditorGutterView
+            .coreTextMatrix(forFlippedView: mounted.gutter.isFlipped))
         let expectedUpright = try digitPixels(textMatrix: CGAffineTransform(scaleX: 1, y: -1))
         let inverted = try digitPixels(textMatrix: .identity)
 

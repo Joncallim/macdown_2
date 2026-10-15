@@ -45,7 +45,7 @@ public final class EditorFindModel {
     /// Preview Only) must refresh highlights without becoming a new
     /// navigation intent, and a delayed mount must not mint an intent after
     /// newer folder navigation has already happened.
-    public var pendingRevealNavigationToken: UInt? = nil
+    public var pendingRevealNavigationToken: UInt?
 
     public private(set) var matches: [SearchMatch] = []
     public private(set) var currentIndex: Int?
