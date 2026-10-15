@@ -1,4 +1,4 @@
-# H5 dependency follow-up plan (not implemented)
+# H5 dependency follow-up plan (reproduced 2026-10-16; no patch adopted)
 
 Register row H5 / issue #203. This is a plan only. Nothing here has been
 done, and no speed-up is claimed. The size-based fallback that shipped with
@@ -95,3 +95,64 @@ its `synchronousLengthThreshold` / `synchronousDocumentSize` and to coalesce
 queued reparses, or our own client in place of `TreeSitterClient`. Revisit
 the size-fallback cut-off too, using the measured numbers. Windowed parsing
 (step 2 of the H5 plan) remains a separate design.
+
+## Reproduction results (2026-10-16)
+
+Scratch reproductions only. Nothing was patched in this repository, no fork was
+adopted, and nothing was sent upstream. Sources, results and diffs:
+`planning/downstream/evidence/h5-dependency-repro/`. tree-sitter
+`da6fe9beb4f7f67beb75914ca8e0d48ae48d6406` (v0.25.10, resolved by SwiftTreeSitter
+`cbe31cb3`); vendored `TreeSitterMarkdown` grammar; Release/`-O2`, M3 Pro.
+
+### Problem A: **proven** (synthetic ranges)
+A standalone C harness parses 262,144 bytes of `markdown_inline` text split into
+N evenly spaced included ranges, then reparses after a one-character edit.
+Reparse p50 (stock): 137 ms at N=10, 175 at 1,000, 492 at 10,000, 1,122 at
+30,000, 4,739 at 100,000. `ts_lexer_goto` is called about 248k times at every N,
+and its loop iterations grow linearly with N (1.4 million at N=10; 1.26 billion
+at N=10,000): O(tokens × N). A `sample` profile at N=100,000 puts about 97 % of
+samples in `ts_lexer_goto`. A binary-search variant (about 6 lines in
+`lexer.c`, `A/ts_lexer_goto_bsearch.diff`) is flat at 136–153 ms for all N and
+gives an identical tree hash at N = 10, 1k, 10k and 30k (`A/equiv_A.txt`).
+Limits: synthetic, evenly spaced ranges, not the real `inlineDense` fixture; no
+Instruments run; the tree-sitter test suite has not been run on the patch. Side
+finding: in this harness the reparse of the inline layer costs as much as a full
+parse, so almost nothing is reused.
+
+### Problem B: **proven; the stated cause was too narrow**
+With SwiftTreeSitterLayer alone (no Neon), a 48 KB document, in a scratch copy
+that records the result of `ts_parser_set_included_ranges`:
+- Replacing 600 units mid-document: 15 zero-length ranges remain, one old range
+  spans the whole replaced region, and the call returned **false** (1,271
+  ranges rejected). The inline tree differs from a fresh parse (16 ranges only in
+  the fresh one, 1 only in the edited one, 3 extra highlight captures).
+- Deleting a block, and type-then-delete in one turn: also rejected (38
+  zero-length ranges; range lists differ, 1255 vs 1216); highlights happened to
+  match in this fixture.
+- **Correction:** the ordinary one-character typing edit is also rejected.
+  Typing can move an inline node's start (24599 to 24597), and
+  `encorporateRanges` drops an old range only when its start equals a new
+  range's start, so an overlapping old range survives. Any old range that
+  overlaps a new one with a different start triggers the rejection; zero-length
+  ranges are one way to get there. Highlights matched only by luck.
+- An experimental B1 (drop empty ranges and old ranges overlapping a new one)
+  gives 0 rejections, range lists and S-expressions identical to a fresh parse,
+  and no highlight difference in every scenario tried (`B/results_B_release_B1sketch.txt`).
+Not done: the patches have not been run against Neon or `NeonReplacementEditTests`
+(the `withKnownIssue` flip), nor under Debug.
+
+### Patch size and maintenance (for the fork decision)
+- A: about 6 lines in tree-sitter C (`lexer.c`). Upstream is tree-sitter itself.
+- B1: about 5–10 lines in SwiftTreeSitterLayer `encorporateRanges` (a sort-and-merge
+  pass would avoid the O(old × new) filter in the sketch). B2: about 3 lines in
+  `Parser.includedRanges`; throwing would change a public API, asserting would not.
+  Upstream is ChimeHQ/SwiftTreeSitter.
+- Total patch under ~25 lines across two upstreams. Recommendation: upstream first,
+  pin a fork revision only while a PR is pending. **Not done and needs the owner's
+  go-ahead: opening upstream issues/PRs (outward-facing), adopting any fork.**
+
+### Next steps (in order, none started)
+1. Apply A and B1/B2 on isolated local branches; run the tree-sitter and
+   SwiftTreeSitter test suites, flip the `NeonReplacementEditTests` known issues,
+   then `HighlightBudgetBenchmarkTests` and `KeystrokeStallBenchmarkTests` in Release.
+2. Only then revisit the 8,192-unit cut-off and the off-main-thread question.
