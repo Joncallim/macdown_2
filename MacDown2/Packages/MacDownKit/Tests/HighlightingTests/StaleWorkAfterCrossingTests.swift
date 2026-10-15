@@ -12,7 +12,7 @@ import Themes
 /// begins. What these tests establish deterministically (no timing): that batch
 /// is *inert* — it styles nothing, builds no live layer, and leaves a plain
 /// document — and that nothing new is queued afterwards. Its main-thread cost
-/// (about 25 elapsed extra in Release, independent of paste size; 150–200 elapsed in
+/// (about 25 ms extra in Release; 135–210 ms in
 /// Debug) is measured in `planning/downstream/evidence/h5-highlight-fallback`
 /// and is a known, bounded limitation, not a guarantee of zero stall.
 @MainActor
@@ -22,7 +22,7 @@ struct StaleWorkAfterCrossingTests {
     private let cutoff = SizeFallbackFixtures.policy.reduceAboveUTF16Units
 
     /// Runs the main loop for `duration`, returning the longest scheduling gap
-    /// beyond the 5 elapsed tick (a main-thread stall indicator).
+    /// beyond the 5 ms tick (a main-thread stall indicator).
     private func drain(_ duration: Duration) async -> Double {
         let clock = ContinuousClock()
         let end = clock.now + duration
@@ -97,23 +97,18 @@ struct StaleWorkAfterCrossingTests {
         highlighter.tearDown()
     }
 
-    @Test func undoingTheCrossingPasteAndCrossingAgainRestoresOnlyWhenIdle() async {
-        let (system, highlighter) = make(units: cutoff - 100)
+    @Test func undoRedoAcrossTheCutoffRestoresOnlyAfterAnIdleStretch() async {
+        let (system, highlighter) = make(units: cutoff - 2500)
         system.textView.insertText(Fixtures.markdown(units: 20000), replacementRange: NSRange(location: 0, length: 0))
         system.textView.breakUndoCoalescing()
         #expect(highlighter.state.isReduced)
         system.undoManager.undo()
-        #expect(highlighter.state.isReduced, "back under the cut-off but not under the restore threshold-and-idle")
         system.undoManager.redo()
+        #expect(highlighter.state.isReduced, "redo re-crossed before the idle delay: nothing was restored")
         system.undoManager.undo()
-        system.undoManager.redo()
-        #expect(highlighter.state.isReduced)
-        await expectInert(
-            highlighter,
-            system,
-            live: highlighter.liveLayerRequestCount,
-            styled: highlighter.styledTokenCount
-        )
+        #expect(highlighter.state.isReduced, "below the restore threshold, but not yet idle")
+        _ = await drain(.seconds(1))
+        #expect(highlighter.state.mode == .full, "idle below the restore threshold restores")
         highlighter.tearDown()
     }
 
@@ -142,5 +137,23 @@ struct StaleWorkAfterCrossingTests {
         )
         #expect(highlighter.staleStyleRequestCount == 0, "control: nothing was queued, so nothing survives")
         highlighter.tearDown()
+    }
+
+    @Test func aStaleGenerationIsRefusedAndCountedFromAnyThread() async {
+        let state = LayerRequestState()
+        state.generation = 3
+        #expect(state.note(builtGeneration: 3))
+        #expect(!state.note(builtGeneration: 2))
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0 ..< 8 {
+                group.addTask {
+                    for _ in 0 ..< 1000 {
+                        _ = state.note(builtGeneration: index.isMultiple(of: 2) ? 3 : 2)
+                    }
+                }
+            }
+        }
+        #expect(state.liveCount == 1 + 4000)
+        #expect(state.staleCount == 1 + 4000)
     }
 }

@@ -30,15 +30,27 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     /// Bumped whenever a Neon highlighter is built or discarded. A discarded
     /// highlighter's in-flight work cannot be cancelled (Neon exposes no
     /// cancellation), so its attribute provider checks this and styles nothing.
-    var generation: UInt64 = 0
+    var generation: UInt64 {
+        get { layerState.generation }
+        set { layerState.generation = newValue }
+    }
+
+    /// Shared with Neon's closures, which run on its background queue.
+    let layerState = LayerRequestState()
     /// Styling requests that arrived from a discarded highlighter's late work.
     private(set) var staleStyleRequestCount = 0
     /// Parse-adjacent requests Neon made through the language provider and the
     /// location transformer, split by whether the highlighter that made them
     /// is still current. Stale ones are a discarded highlighter's surviving
     /// work entering the tree-sitter layer (register row H5).
-    private(set) var liveLayerRequestCount = 0
-    private(set) var staleLayerRequestCount = 0
+    var liveLayerRequestCount: Int {
+        layerState.liveCount
+    }
+
+    var staleLayerRequestCount: Int {
+        layerState.staleCount
+    }
+
     /// Times the highlighter-owned presentation was cleared, and when (uptime
     /// ns) it last was: lets benchmarks time "reduced mode has settled".
     var presentationClearCount = 0
@@ -169,8 +181,8 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
                 configuration: TextViewHighlighter.Configuration(
                     languageConfiguration: config,
                     attributeProvider: attributeProvider,
-                    languageProvider: { [weak self, registryProvider = registry.languageProvider] name in
-                        guard self?.noteLayerRequest(builtGeneration: builtGeneration) == true else { return nil }
+                    languageProvider: { [state = layerState, registryProvider = registry.languageProvider] name in
+                        guard state.note(builtGeneration: builtGeneration) else { return nil }
                         return registryProvider(name)
                     },
                     locationTransformer: countedLocationTransformer(builtGeneration: builtGeneration)
@@ -187,25 +199,12 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
         }
     }
 
-    /// Counts a layer request and says whether the highlighter that made it is
-    /// still current. A discarded highlighter's request is refused: it must not
-    /// resolve injected layers (the dominant cost) against text it no longer
-    /// describes.
-    private func noteLayerRequest(builtGeneration: UInt64) -> Bool {
-        if generation == builtGeneration {
-            liveLayerRequestCount &+= 1
-            return true
-        }
-        staleLayerRequestCount &+= 1
-        return false
-    }
-
     private func countedLocationTransformer(builtGeneration: UInt64) -> (Int) -> Point? {
         let transform = Self.locationTransformer(for: textSystem.textView) { [weak textSystem] in
             textSystem?.contentRevision ?? 0
         }
-        return { [weak self] offset in
-            guard self?.noteLayerRequest(builtGeneration: builtGeneration) == true else { return nil }
+        return { [state = layerState] offset in
+            guard state.note(builtGeneration: builtGeneration) else { return nil }
             return transform(offset)
         }
     }
@@ -297,5 +296,42 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
         }
 
         return offsets
+    }
+}
+
+/// The current highlighter generation and the layer requests Neon made, safe
+/// to touch from Neon's background queue (`languageProvider` runs there).
+///
+/// A request from a discarded highlighter is refused: it must not resolve
+/// injected layers (the dominant cost) against text it no longer describes.
+final class LayerRequestState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var currentGeneration: UInt64 = 0
+    private var live = 0
+    private var stale = 0
+
+    var generation: UInt64 {
+        get { lock.withLock { currentGeneration } }
+        set { lock.withLock { currentGeneration = newValue } }
+    }
+
+    var liveCount: Int {
+        lock.withLock { live }
+    }
+
+    var staleCount: Int {
+        lock.withLock { stale }
+    }
+
+    /// Counts the request; true if the highlighter that made it is current.
+    func note(builtGeneration: UInt64) -> Bool {
+        lock.withLock {
+            if currentGeneration == builtGeneration {
+                live &+= 1
+                return true
+            }
+            stale &+= 1
+            return false
+        }
     }
 }
