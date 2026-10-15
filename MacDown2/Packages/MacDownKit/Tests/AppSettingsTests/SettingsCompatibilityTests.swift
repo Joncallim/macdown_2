@@ -103,9 +103,30 @@ struct SettingsCompatibilityTests {
 
             #expect(store.editor == .default)
             #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
 
             store.editor = EditorSettings(indentationWidth: 5)
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
+        }
+    }
+
+    @Test func aLargeFinitePersistedFontSizeHasNoArbitraryUpperCap() {
+        isolated { defaults, store in
+            defaults.set(editorJSON(fontSize: "1e100"), forKey: Self.editorKey)
+
+            #expect(store.editor.font.size == 1e100)
+            #expect(store.unreadableDomains.isEmpty)
+        }
+    }
+
+    @Test(arguments: ["1.0000000000000001", "0.99999999999999999"])
+    func schemaVersionUsesTheFoundationParsedNumericValue(version: String) {
+        isolated { defaults, store in
+            defaults.set(editorJSON(extra: "\"schemaVersion\":\(version)"), forKey: Self.editorKey)
+
+            // Foundation has already rounded both literals to the exact NSNumber value 1.
+            #expect(store.editor.indentationWidth == 2)
+            #expect(store.unreadableDomains.isEmpty)
         }
     }
 
@@ -149,7 +170,10 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test(arguments: ["0", "-1", "true", "false", "\"1\"", "1.5"])
+    @Test(arguments: [
+        "0", "-1", "true", "false", "\"1\"", "1.5", "9223372036854775808", "-9223372036854775809",
+        "1e100", "-1e100", "1e400", "-1e400",
+    ])
     func anInvalidDeclaredSchemaVersionIsUnreadableAndPreserved(version: String) {
         isolated { defaults, store in
             var store = store
@@ -158,10 +182,26 @@ struct SettingsCompatibilityTests {
 
             #expect(store.editor == .default)
             #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
 
             store.editor = EditorSettings(indentationWidth: 5)
             #expect(defaults.data(forKey: Self.editorKey) != invalid)
             #expect(store.editor.indentationWidth == 5)
+            #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
+        }
+    }
+
+    @Test func anUnparseableFutureSchemaPayloadIsUnreadableAndPreserved() {
+        isolated { defaults, store in
+            var store = store
+            let invalid = editorJSON(extra: "\"schemaVersion\":2,\"futureOnlyField\":1e400")
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
+
+            store.editor = EditorSettings(indentationWidth: 5)
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
         }
     }

@@ -65,16 +65,36 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
     nonisolated static let supportedSchemaVersion = 1
 
     fileprivate nonisolated static func decode<T: Decodable>(_: T.Type, from data: Data) -> T? {
-        if let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-           let declared = object["schemaVersion"] {
-            // JSON booleans bridge to NSNumber and can otherwise cast to Int (true == 1).
-            let isBoolean = (declared as? NSNumber).map { CFGetTypeID($0) == CFBooleanGetTypeID() } == true
-            guard let version = declared as? Int,
-                  !isBoolean,
-                  (1 ... supportedSchemaVersion).contains(version)
-            else { return nil }
+        guard let object = try? JSONSerialization.jsonObject(with: data),
+              let object = object as? [String: Any]
+        else { return nil }
+
+        if let declared = object["schemaVersion"] {
+            guard isSupportedSchemaVersion(declared) else { return nil }
         }
         return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private nonisolated static func isSupportedSchemaVersion(_ value: Any) -> Bool {
+        // JSON booleans bridge to NSNumber, but are not schema versions. Check
+        // the Core Foundation type identity before reading numeric accessors.
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID()
+        else { return false }
+
+        let numericValue = number.doubleValue
+        guard numericValue.isFinite,
+              numericValue.rounded(.towardZero) == numericValue
+        else { return false }
+
+        // NSNumber's fixed-width accessors do not trap for oversized values;
+        // the explicit range and round-trip comparison reject values that
+        // saturate or lose precision during accessor conversion, without
+        // converting an untrusted value to Int. Lexical precision already
+        // discarded by JSONSerialization cannot be recovered here.
+        let version = number.int64Value
+        return (1 ... Int64(supportedSchemaVersion)).contains(version)
+            && Double(version) == numericValue
     }
 
     /// Domains whose stored bytes exist but cannot be read by this build; empty when everything is absent or valid.
