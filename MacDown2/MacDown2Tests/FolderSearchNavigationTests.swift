@@ -200,7 +200,9 @@ struct FolderSearchNavigationTests {
                 relativePath: "result.md",
                 root: root,
                 folderAccessURL: root,
-                range: NSRange(location: 0, length: 3)
+                // Deliberately NOT the Select-All primary match (0,3): the multi-selection cache returns the cached set
+                // whenever the live ranges equal its primary range, which would hide the collapse this test guards.
+                range: NSRange(location: 4, length: 3)
             )
         }
         #expect(await FolderSearchGate.waitForEntry(gate.entered))
