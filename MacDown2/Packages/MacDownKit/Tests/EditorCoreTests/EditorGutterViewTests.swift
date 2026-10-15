@@ -84,9 +84,9 @@ struct EditorGutterViewTests {
         cgContext.textPosition = CGPoint(x: 24, y: 42)
         CTLineDraw(line, cgContext)
 
-        return (0 ..< side).flatMap { y in
-            (0 ..< side).map { x in
-                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { return false }
+        return (0 ..< side).flatMap { row in
+            (0 ..< side).map { column in
+                guard let color = bitmap.colorAt(x: column, y: row)?.usingColorSpace(.deviceRGB) else { return false }
                 return color.redComponent < 0.5
             }
         }
@@ -115,8 +115,8 @@ struct EditorGutterViewTests {
         let mounted = makeMountedGutter(text: "one")
         defer { mounted.window.orderOut(nil) }
 
-        let corrected = try digitPixels(textMatrix: EditorGutterView
-            .coreTextMatrix(forFlippedView: mounted.gutter.isFlipped))
+        let flippedMatrix = EditorGutterView.coreTextMatrix(forFlippedView: mounted.gutter.isFlipped)
+        let corrected = try digitPixels(textMatrix: flippedMatrix)
         let expectedUpright = try digitPixels(textMatrix: CGAffineTransform(scaleX: 1, y: -1))
         let inverted = try digitPixels(textMatrix: .identity)
 
