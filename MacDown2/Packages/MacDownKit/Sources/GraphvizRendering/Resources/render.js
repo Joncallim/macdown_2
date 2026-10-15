@@ -23,10 +23,17 @@ function getViz() {
     return __vizInstancePromise;
 }
 
-window.__macdownRenderGraphviz = async function (source) {
+window.__macdownRenderGraphviz = async function (source, theme) {
     try {
         const viz = await getViz();
-        const svg = viz.renderString(source, { format: "svg" });
+        const foreground = theme && theme.foreground ? theme.foreground : "#000000";
+        const background = theme && theme.background ? theme.background : "#FFFFFF";
+        const svg = viz.renderString(source, {
+            format: "svg",
+            graphAttributes: { bgcolor: background },
+            nodeAttributes: { color: foreground, fontcolor: foreground },
+            edgeAttributes: { color: foreground, fontcolor: foreground }
+        });
         let width = 0;
         let height = 0;
         const viewBoxMatch = svg.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/);

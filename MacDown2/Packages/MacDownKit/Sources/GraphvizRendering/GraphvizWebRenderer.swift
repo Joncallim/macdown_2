@@ -25,14 +25,11 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
         self.maxOutputBytes = maxOutputBytes
     }
 
-    /// `context`'s theme colors are accepted but not yet passed through
-    /// to Graphviz's own theming — the same disclosed, deliberate scope
-    /// limit already recorded for Mermaid (issue #79).
     public func render(_ fence: GraphvizFence,
-                       context _: GraphvizRenderContext) async throws -> RenderedGraphvizDiagram {
+                       context: GraphvizRenderContext) async throws -> RenderedGraphvizDiagram {
         let diagram = try await withPoolErrorMapping {
             try await pool.withPage { page in
-                try await Self.render(fence, on: page)
+                try await Self.render(fence, context: context, on: page)
             }
         }
         let byteCount = diagram.svg.utf8.count
@@ -48,10 +45,17 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
 
     @MainActor
     private static func render(_ fence: GraphvizFence,
+                               context: GraphvizRenderContext,
                                on page: DiagramHarnessPage) async throws -> RenderedGraphvizDiagram {
         let result = try await page.evaluate(
-            "return await window.__macdownRenderGraphviz(source);",
-            arguments: ["source": fence.source]
+            "return await window.__macdownRenderGraphviz(source, theme);",
+            arguments: [
+                "source": fence.source,
+                "theme": [
+                    "foreground": context.foregroundHex,
+                    "background": context.backgroundHex,
+                ],
+            ]
         )
         guard let dict = result as? [String: Any], let succeeded = dict["ok"] as? Bool else {
             throw GraphvizRenderError.rendererUnavailable
@@ -76,5 +80,22 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
         } catch DiagramPoolError.pageUnavailable {
             throw GraphvizRenderError.rendererUnavailable
         }
+    }
+}
+
+private extension GraphvizRenderContext {
+    var foregroundHex: String {
+        hex(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue)
+    }
+
+    var backgroundHex: String {
+        hex(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
+    }
+
+    func hex(red: Double, green: Double, blue: Double) -> String {
+        let components = [red, green, blue].map { value in
+            UInt8((min(max(value, 0), 1) * 255).rounded())
+        }
+        return String(format: "#%02X%02X%02X", components[0], components[1], components[2])
     }
 }
