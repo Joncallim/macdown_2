@@ -1,3 +1,4 @@
+import CoreFoundation
 import Foundation
 
 /// `UserDefaults`-backed `AppSettingsStoring`. Each domain is one JSON blob
@@ -66,7 +67,12 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
     fileprivate nonisolated static func decode<T: Decodable>(_: T.Type, from data: Data) -> T? {
         if let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
            let declared = object["schemaVersion"] {
-            guard let version = declared as? Int, version <= supportedSchemaVersion else { return nil }
+            // JSON booleans bridge to NSNumber and can otherwise cast to Int (true == 1).
+            let isBoolean = (declared as? NSNumber).map { CFGetTypeID($0) == CFBooleanGetTypeID() } == true
+            guard let version = declared as? Int,
+                  !isBoolean,
+                  (1 ... supportedSchemaVersion).contains(version)
+            else { return nil }
         }
         return try? JSONDecoder().decode(T.self, from: data)
     }

@@ -18,10 +18,10 @@ struct SettingsCompatibilityTests {
         try body(defaults, UserDefaultsAppSettingsStore(defaults: defaults))
     }
 
-    private func editorJSON(statusBar: String? = nil, width: String = "2", extra: String = "",
+    private func editorJSON(statusBar: String? = nil, fontSize: String = "15", width: String = "2", extra: String = "",
                             omit: String? = nil) -> Data {
         var fields = [
-            "\"font\":{\"familyName\":\"Menlo\",\"size\":15}",
+            "\"font\":{\"familyName\":\"Menlo\",\"size\":\(fontSize)}",
             "\"wrapsLines\":false",
             "\"showsInvisibles\":true",
             "\"indentationWidth\":\(width)",
@@ -94,6 +94,21 @@ struct SettingsCompatibilityTests {
         }
     }
 
+    @Test(arguments: ["0", "-1"])
+    func anInvalidPersistedFontSizeIsUnreadableAndPreserved(size: String) {
+        isolated { defaults, store in
+            var store = store
+            let invalid = editorJSON(fontSize: size)
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+
+            store.editor = EditorSettings(indentationWidth: 5)
+            #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
+        }
+    }
+
     @Test func aNewerSchemaVersionIsKeptAndNotRewrittenByAnOlderBuild() {
         isolated { defaults, store in
             var store = store
@@ -113,6 +128,41 @@ struct SettingsCompatibilityTests {
             defaults.set(editorJSON(extra: "\"schemaVersion\":1"), forKey: Self.editorKey)
             #expect(store.editor.indentationWidth == 2)
             #expect(store.unreadableDomains.isEmpty)
+
+            defaults.removeObject(forKey: Self.editorKey)
+            defaults.set(editorJSON(), forKey: Self.editorKey)
+            #expect(store.editor.indentationWidth == 2)
+            #expect(store.unreadableDomains.isEmpty)
+        }
+    }
+
+    @Test(arguments: ["Inf", "-Inf", "NaN"])
+    func nonFiniteFontSizesAreRejectedByTheDecodingBoundary(value: String) {
+        let data = Data("{\"familyName\":\"Menlo\",\"size\":\"\(value)\"}".utf8)
+        let decoder = JSONDecoder()
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: "Inf", negativeInfinity: "-Inf", nan: "NaN"
+        )
+
+        #expect(throws: DecodingError.self) {
+            try decoder.decode(FontDescriptor.self, from: data)
+        }
+    }
+
+    @Test(arguments: ["0", "-1", "true", "false", "\"1\"", "1.5"])
+    func anInvalidDeclaredSchemaVersionIsUnreadableAndPreserved(version: String) {
+        isolated { defaults, store in
+            var store = store
+            let invalid = editorJSON(extra: "\"schemaVersion\":\(version)")
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+
+            store.editor = EditorSettings(indentationWidth: 5)
+            #expect(defaults.data(forKey: Self.editorKey) != invalid)
+            #expect(store.editor.indentationWidth == 5)
+            #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
         }
     }
 
