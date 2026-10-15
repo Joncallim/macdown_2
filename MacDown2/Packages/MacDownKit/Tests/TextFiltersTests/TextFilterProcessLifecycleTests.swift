@@ -260,13 +260,9 @@ struct TextFilterProcessLifecycleTests {
         // A fixture-readiness bound (30 s), not a product threshold: it only stops a fixture that never reports from
         // hanging the run, and is generous so parallel suites contending for cores cannot starve a healthy fixture.
         for _ in 0 ..< 1500 {
-            if let contents = try? String(contentsOf: url, encoding: .utf8) {
-                let pids = contents
-                    .split(separator: "\n")
-                    .compactMap { line in line.split(separator: "=").last.flatMap { pid_t($0) } }
-                if pids.count >= expectedCount {
-                    return pids
-                }
+            let pids = TextFilterFixtures.completePIDs(in: url)
+            if pids.count >= expectedCount {
+                return pids
             }
             try await Task.sleep(for: .milliseconds(20))
         }
