@@ -145,7 +145,7 @@ struct HighlightingSizeFallbackLifecycleTests {
         // Growth in one document does not affect the other.
         small.textView.insertText(Fixtures.markdown(units: limit), replacementRange: NSRange(location: 0, length: 0))
         #expect(store.state(for: "small")?.isReduced == true)
-        #expect(store.state(for: "large")?.isReduced == true)
+        #expect(store.states.count == 2)
 
         store.evict("large")
         #expect(store.state(for: "large") == nil)

@@ -66,10 +66,10 @@ public struct HighlightingSizePolicy: Equatable, Sendable {
     /// `HighlightBudgetBenchmarkTests` (M3 Pro, 2026-10-15; see
     /// `planning/CLOSURE_REGISTER.md`): with five workloads and edits at the
     /// start, middle and end, every one-character edit stayed within the 50 ms
-    /// keystroke budget up to ≈12,400 units (worst p95 44.8 ms, inline-dense),
-    /// and 16,400 units already exceeded it (50.5 ms). The cut-off is the next
-    /// lower measured step, ≈8,400 units (worst p95/max 32.6 ms), rounded down,
-    /// leaving headroom for slower Macs and denser text. Restore is three
+    /// keystroke budget up to ≈16,400 units (inline-dense p95 48.0 ms), and
+    /// long lines at ≈18,300 units exceeded it (50.8 ms). The cut-off is a
+    /// conservative step well below that, ≈8,400 units (worst measured cell:
+    /// unicode, p95 38.2 ms), rounded down to 8,192, leaving headroom for slower Macs and denser text. Restore is three
     /// quarters of it.
     public static let markdown = HighlightingSizePolicy(
         reduceAboveUTF16Units: 8 * 1024,

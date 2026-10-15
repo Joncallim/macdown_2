@@ -21,7 +21,7 @@ struct ReducedHighlightingNote: Equatable {
             localized: """
             Syntax highlighting is off for this large document to keep typing responsive. \
             The text, editing and search are unaffected. Highlighting returns automatically \
-            once the document is shorter than about \(restore) characters.
+            once the document is at or below \(restore) UTF-16 units (roughly that many characters of ordinary text).
             """
         )
     }
