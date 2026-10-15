@@ -85,14 +85,31 @@ struct HighlightFallbackBenchmarkTests {
         #expect(editor.highlighter.styledTokenCount == styled)
     }
 
+    /// Full-mode comparison: the same paste with the fallback disabled
+    /// (Neon unbounded, as before H5). Settle = until Neon goes quiet.
+    @Test(arguments: [256, 1024])
+    func pasteWithoutTheFallback(kilobytes: Int) async throws {
+        let editor = try await highlightedJustBelowCutoff(.inlineDense, margin: 200, policy: { _ in nil })
+        let paste = HighlightBudgetFixture.inlineDense.markdown(utf8Bytes: kilobytes * 1024)
+        let pasteResult = await editor.measureCalls(1, quiet: .seconds(3)) { _ in
+            editor.textView.insertText(paste, replacementRange: NSRange(location: 100, length: 0))
+        }
+        #expect(editor.highlighter.state.mode == .full)
+        print("H5-FALLBACK paste=\(kilobytes)KB mode=full phase=paste \(pasteResult)")
+        let location = HighlightBudgetFixture.editLocations(in: editor.textView.string)[1].location
+        let typing = await editor.measureEdits(4, at: location, quiet: .seconds(3))
+        print("H5-FALLBACK paste=\(kilobytes)KB mode=full phase=type-after-paste \(typing)")
+    }
+
     private func highlightedJustBelowCutoff(
         _ fixture: HighlightBudgetFixture,
-        margin: Int
+        margin: Int,
+        policy: @escaping (String?) -> HighlightingSizePolicy? = shipped
     ) async throws -> HighlightedEditor {
         let full = fixture.markdown(utf8Bytes: Self.cutoff * 3)
         let end = (full as NSString).rangeOfComposedCharacterSequence(at: Self.cutoff - margin).location
         let text = (full as NSString).substring(to: end)
-        let editor = HighlightedEditor(text: text, sizePolicy: Self.shipped)
+        let editor = HighlightedEditor(text: text, sizePolicy: policy)
         try #require(editor.highlighter.state.mode == .full)
         try #require(await editor.waitUntilQuiet(quietPeriod: .seconds(1)))
         return editor
