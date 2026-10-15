@@ -170,6 +170,7 @@ final class EditingAssistsUITests: XCTestCase {
         // kept focus, so Bold correctly stayed enabled.
         let sidebarSearchField = app.textFields["folderSearchField"]
         XCTAssertTrue(sidebarSearchField.waitForExistence(timeout: 5))
+        XCTAssertTrue(sidebarSearchField.isHittable, "Sidebar focus target must be interactable")
         sidebarSearchField.click()
         XCTAssertTrue(waitFor(boldItem, enabled: false))
 
