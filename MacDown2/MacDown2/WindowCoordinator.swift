@@ -189,13 +189,7 @@ final class WindowCoordinator {
             }
             return
         }
-        let controller = WindowController(
-            model: model,
-            coordinator: self,
-            themeController: themeController,
-            grammarRegistry: grammarRegistry,
-            fileTreePreferences: fileTreePreferences
-        )
+        let controller = makeWindowController(model: model)
         if let folderRoot {
             await controller.setFileTreeRoot(folderRoot, accessURL: folderAccessURL)
         }

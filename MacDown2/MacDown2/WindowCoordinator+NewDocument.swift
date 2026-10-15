@@ -23,13 +23,7 @@ extension WindowCoordinator {
         let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
 
         let model = makeWindowModel()
-        let controller = WindowController(
-            model: model,
-            coordinator: self,
-            themeController: themeController,
-            grammarRegistry: grammarRegistry,
-            fileTreePreferences: fileTreePreferences
-        )
+        let controller = makeWindowController(model: model)
         addController(controller, addingAsTab: addAsTab, keyWindow: keyWindow)
         let key = ObjectIdentifier(controller)
         model.onManagedDocumentLifetimePrepared = { [weak self] in
