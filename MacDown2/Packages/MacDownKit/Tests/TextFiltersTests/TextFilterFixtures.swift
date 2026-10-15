@@ -6,15 +6,63 @@ import Foundation
 /// §14's note that this evidence is not subject to the no-macOS-runtime
 /// caveat that applies to on-device UI journeys).
 enum TextFilterFixtures {
+    /// Tracks unstructured async work which touches a fixture directory. The
+    /// owner cancels and joins every tracked task before its directory scope
+    /// can be torn down, including when the scoped operation throws or is
+    /// cancelled.
+    actor TaskOwner {
+        private var cleanupHandlers: [@Sendable () async -> Void] = []
+
+        func start<T: Sendable>(
+            _ operation: @escaping @Sendable () async throws -> T
+        ) -> Task<T, any Error> {
+            let task = Task(operation: operation)
+            cleanupHandlers.append { @Sendable in
+                task.cancel()
+                _ = await task.result
+            }
+            return task
+        }
+
+        func cancelAndAwaitAll() async {
+            let handlers = cleanupHandlers
+            cleanupHandlers.removeAll()
+            for handler in handlers {
+                await handler()
+            }
+        }
+    }
+
     /// Owns a fixture directory for the complete lifetime of an asynchronous
-    /// test operation. The scoped async `defer` is equivalent to any properly
-    /// scoped async cleanup; it does not join tasks escaped by the operation.
+    /// test operation. Callers that create unstructured tasks must use
+    /// `withOwnedTemporaryDirectory` so those tasks can be joined explicitly.
     static func withTemporaryDirectory<T: Sendable>(
         _ operation: (URL) async throws -> T
     ) async throws -> T {
+        try await withOwnedTemporaryDirectory { directory, _ in
+            try await operation(directory)
+        }
+    }
+
+    /// Owns a temporary directory and any unstructured tasks registered with
+    /// its `TaskOwner`. Task cleanup always completes before the directory is
+    /// removed, preserving the fixture for late process I/O and callbacks.
+    static func withOwnedTemporaryDirectory<T: Sendable>(
+        _ operation: (URL, TaskOwner) async throws -> T
+    ) async throws -> T {
         let directory = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        return try await operation(directory)
+        let owner = TaskOwner()
+
+        do {
+            let result = try await operation(directory, owner)
+            await owner.cancelAndAwaitAll()
+            try? FileManager.default.removeItem(at: directory)
+            return result
+        } catch {
+            await owner.cancelAndAwaitAll()
+            try? FileManager.default.removeItem(at: directory)
+            throw error
+        }
     }
 
     /// Parse the complete, newline-delimited PID record produced by a fixture.
@@ -22,7 +70,9 @@ enum TextFilterFixtures {
     /// must wait for a complete line containing a positive decimal PID.
     static func completePIDs(in url: URL) -> [pid_t] {
         guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return [] }
-        let completePrefix = contents[..<(contents.lastIndex(of: "\n").map { contents.index(after: $0) } ?? contents.startIndex)]
+        let completePrefix = contents[
+            ..<(contents.lastIndex(of: "\n").map { contents.index(after: $0) } ?? contents.startIndex)
+        ]
         var seen = Set<pid_t>()
         return completePrefix.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
             let fields = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)

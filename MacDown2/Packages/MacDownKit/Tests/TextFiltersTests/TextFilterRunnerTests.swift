@@ -97,21 +97,21 @@ struct TextFilterRunnerTests {
     }
 
     @Test func cancellationTerminatesTheProcessAndThrowsCancelled() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let command = try Self.command(TextFilterFixtures.sleepLong, in: directory)
+        try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
+            let command = try Self.command(TextFilterFixtures.sleepLong, in: directory)
 
-        let task = Task {
-            try await TextFilterRunner().run(command, input: "")
-        }
-        try await Task.sleep(for: .milliseconds(100))
-        task.cancel()
+            let task = await owner.start {
+                try await TextFilterRunner().run(command, input: "")
+            }
+            try await Task.sleep(for: .milliseconds(100))
+            task.cancel()
 
-        do {
-            _ = try await task.value
-            Issue.record("expected cancelled")
-        } catch TextFilterError.cancelled {
-            // expected
+            do {
+                _ = try await task.value
+                Issue.record("expected cancelled")
+            } catch TextFilterError.cancelled {
+                // expected
+            }
         }
     }
 
