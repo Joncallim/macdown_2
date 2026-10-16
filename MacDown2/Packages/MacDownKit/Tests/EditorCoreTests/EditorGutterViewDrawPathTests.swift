@@ -68,15 +68,17 @@ struct EditorGutterViewDrawPathTests {
         return Mask(rows: band.map { row in (first ... last).map { inked($0, row) } })
     }
 
-    /// Ink width of the bottom two rows minus the top two rows. An upright "2" has a wide bottom bar and a narrow
-    /// curved
-    /// top (positive); a vertically inverted one is the opposite (negative). Robust against anti-aliasing and scale,
-    /// unlike a pixel-overlap comparison.
-    private func bottomHeaviness(_ mask: Mask) -> Int {
-        func width(of rows: ArraySlice<[Bool]>) -> Int {
-            rows.map { row in row.filter(\.self).count }.reduce(0, +)
-        }
-        return width(of: mask.rows.suffix(2)) - width(of: mask.rows.prefix(2))
+    /// Where the glyph's widest horizontal stroke sits, as a fraction of the glyph's height from the top (0 = top
+    /// edge, 1 = bottom edge). The "2" is the one digit whose widest stroke is its flat base: about 1 when drawn
+    /// upright and about 0 when vertically inverted. Rows that carry at least 80% of the widest row's ink count, so
+    /// the answer does not depend on the installed font, the pixel size or anti-aliasing (a raw ink-count difference
+    /// scored 1 instead of > 2 on the hosted runner, and a bottom-versus-top ink ratio was too close to zero).
+    private func widestStrokePosition(_ mask: Mask) -> Double {
+        let inkPerRow = mask.rows.map { row in row.filter(\.self).count }
+        guard let widest = inkPerRow.max(), widest > 0, mask.height > 1 else { return 0.5 }
+        let heavyRows = inkPerRow.indices.filter { Double(inkPerRow[$0]) >= 0.8 * Double(widest) }
+        let centre = Double(heavyRows.reduce(0, +)) / Double(heavyRows.count)
+        return centre / Double(mask.height - 1)
     }
 
     @Test func theProductionDrawPathRendersAnUprightSecondLineNumberInTheFlippedGutter() throws {
@@ -100,10 +102,12 @@ struct EditorGutterViewDrawPathTests {
 
         let bounds = gutter.bounds
         let height = max(1, Int(bounds.height))
-        let bitmap = try makeBitmap(width: max(1, Int(bounds.width)), height: height)
+        // Rendered at 4x so the glyph has enough pixels for the shape test to be meaningful on any font.
+        let scale = 4
+        let bitmap = try makeBitmap(width: max(1, Int(bounds.width)) * scale, height: height * scale)
         let cgContext = try #require(NSGraphicsContext(bitmapImageRep: bitmap)?.cgContext)
-        cgContext.translateBy(x: 0, y: CGFloat(height))
-        cgContext.scaleBy(x: 1, y: -1)
+        cgContext.translateBy(x: 0, y: CGFloat(height * scale))
+        cgContext.scaleBy(x: CGFloat(scale), y: -CGFloat(scale))
         let context = NSGraphicsContext(cgContext: cgContext, flipped: true)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = context
@@ -112,9 +116,11 @@ struct EditorGutterViewDrawPathTests {
 
         let background = luma(bitmap, 0, 0)
         let produced = try #require(secondLabelMask(in: bitmap, background: background), "two labels must be drawn")
-        // Polarity was established by mutation: with the production `textMatrix` line removed the same render scores
-        // about -7 (an inverted glyph); with it, clearly positive.
-        let producedScore = bottomHeaviness(produced)
-        #expect(producedScore > 2, "the production-drawn '2' must be upright, i.e. bottom-heavy (\(producedScore))")
+        // Mutation-checked: without the production `textMatrix` line the base sits at about 0.19; with it, 0.81.
+        let producedScore = widestStrokePosition(produced)
+        #expect(
+            producedScore > 0.6,
+            "the production-drawn '2' must be upright, i.e. its flat base is at the bottom (\(producedScore))"
+        )
     }
 }
