@@ -24,3 +24,16 @@
 
 ## Where the evidence lives
 UI diagnosis: `planning/downstream/evidence/ui-automation-timeout/README.md`. H5: register row H5, `planning/h5-dependency-followup.md`, `planning/downstream/evidence/h5-*`.
+
+## Addendum (2026-10-16, later)
+- **#476/#477 vs the integration are a product conflict, not just a textual one.** `integration-final` carries the Codex lane's
+  commits "Apply neutral light Mermaid rendering policy" (9db79954), "Use neutral light Graphviz rendering policy" (4c1027cb) and
+  "Protect neutral-light diagram rendering" (bf1a91bf): diagrams render with a neutral light policy. #476/#477 instead apply the app
+  theme's colours. Merging both is not a conflict-resolution exercise; it needs an owner decision on the intended diagram colour policy
+  (and #79's acceptance criteria say "theme-coherent"). Until decided, neither is merged and #79 stays open.
+- **Intermittent Release-performance failure (`handledAssistOn1MB`, 63.4 ms vs 50 ms on `5ccfaf89`) investigated.** The test is a single
+  `ContinuousClock` measurement of EditorCore code that this integration does not change. Instrumented in a scratch worktree and run as 12
+  separate processes in isolation plus 6 inside the full `Performance|MarkdownTreeReuse` filter (18 samples, Release, M3 Pro, load average
+  4-7 from background processes): typical 15.9-18.8 ms, two outliers at 30.4 and 38.6 ms. The 63.4 ms failure is a heavy-tail sample of the
+  same measurement under machine load, about 3.5x the typical value, not a regression: the median is about a third of the budget.
+  The test and its 50 ms budget are unchanged. Making it robust (median/p95 of N samples) would change what it asserts and is left as a decision.
