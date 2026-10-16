@@ -172,7 +172,7 @@ Not done: the patches have not been run against Neon or `NeonReplacementEditTest
   root, after a package resolve:
   `planning/downstream/evidence/h5-dependency-repro/A/run_A.sh MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter MacDown2/Packages/TreeSitterMarkdown /tmp/repoA`.
   Re-run on 2026-10-16 (second run): stock p50 reparse 139 / 177 / 512 / 1,194 ms at N = 10 / 1,000 / 10,000 /
-  30,000; binary search 141–157 ms at every N; goto iterations 1,364,897 (N=10)
+  30,000; binary search 140–157 ms at every N; goto iterations 1,364,897 (N=10)
   to 1,256,776,080 (N=10,000) over about 248k calls (`A/instr_counts_rerun.txt`
   and the first run in `A/results_A.txt`; the earlier "1.4 million / 1.26 billion"
   were these figures rounded). Timings vary by a few percent between runs.
