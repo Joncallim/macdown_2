@@ -222,3 +222,24 @@ Candidate fixes, ranked by evidence (none adopted): (1) autorelease-pool batchin
 (3) A + (2) together, ≈5.5×, still ≈300 ms per edit; (4) separate inline trees per injection in SwiftTreeSitterLayer (non-combined injections) — the only fix that makes keystroke cost
 depend on the paragraph, large design change, unmeasured in the app; (5) cache the four styled fonts in `NeonSyntaxHighlighter.styledFont` — ≈0.3 s of a 1 MB paste after (1).
 None of this supports raising the 8,192-unit cut-off. The upstream AI-policy note in `planning/upstream/tree-sitter-lexer-goto/README.md` applies to any of (2)–(4) as well.
+
+## Why Neon-level highlights still diverge with B1+B2 (2026-10-16; scratch, evidence in `planning/downstream/evidence/h5-neon-divergence/`)
+Release, M3 Pro; variant B (SwiftTreeSitter B1+B2 `dcdd9465`, tree-sitter 0.25.10) with Neon `484d6fb9` as a path dependency plus trace-only instrumentation.
+Units that differ from a fresh highlighter (replacing the earlier "cause not isolated" note):
+
+| case | as shipped | + invalidateAll | + whole-doc resolve + invalidateAll | Neon fix (resolve after edits) | fix + stock merge |
+|---|---|---|---|---|---|
+| type, then delete a block in one turn | 2 | 0 | 0 | 2 | 2 |
+| replace 600 units | 60 | 60 | 0 | 0 | 60 (range list rejected) |
+| replace with markup removed | 33 | 33 | 0 | 0 | 33 (rejected) |
+| widened background typing | 770 | 770 | 0 | 0 | 770 (rejected) |
+
+- **Proven:** three failures are a Neon bug, not a dependency bug: after an edit Neon calls `handleInvalidation(_, sublayers: false)`, so `resolveSublayers` is never re-run
+  (the sublayer validator's valid set stays "the whole document" after an interior edit); the inline layer is reparsed with stale ranges (e.g. one range spanning a fenced block).
+  Replaying Neon's recorded call sequence on a bare `LanguageLayer` reproduces the divergence exactly, and a final whole-document resolve makes it equal to fresh.
+- **Proven:** B1 is needed and correct there: with Neon's resolve forced but the stock merge, tree-sitter rejects the range list and the divergence stays; with B1 the merge gives 1,265 ranges equal to a fresh parse.
+  So the right order is: fix the Neon resolve call, and carry B1 (and B2 to make rejections visible). Neither alone fixes the highlights.
+- **Proven:** the fourth case (type then delete) is a separate Neon bug, styling only: `RangeInvalidationBuffer` holds the invalidation from the typing and a later deletion arrives before the async flush without shifting the buffered set, so the wrong place is restyled. Tree and highlights otherwise equal fresh.
+- **Not an issue:** wrong edit points (UTF-16 columns passed where tree-sitter expects bytes) change nothing in these cases (replay with corrected points is identical), though the mismatch exists.
+- **Not proven:** other edit shapes (scrolling-split valid sets, single async edits of 2,048+ units); B1 when a stale range has no overlapping new range; the cost of forcing `sublayers: true` (it re-resolves; cost unmeasured and likely large, cf. the profile); the Debug "location is greater than end" abort in the widened case.
+- **Consequence for proposals:** B1/B2 remain held for upstream until the Neon-side fix and its cost are understood; the Neon issues (missing resolve after edits; unshifted buffered invalidations) are Neon's, not SwiftTreeSitter's. The same upstream/agent-policy caution applies; check each project's contribution rules before any submission.
