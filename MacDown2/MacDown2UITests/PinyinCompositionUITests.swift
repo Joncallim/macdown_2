@@ -61,6 +61,15 @@ final class PinyinCompositionUITests: XCTestCase {
         app?.terminate()
         if let previous = previousSourceID {
             _ = Self.select(previous)
+            let deadline = Date().addingTimeInterval(5)
+            while Self.currentSourceID() != previous, Date() < deadline {
+                RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            }
+            XCTAssertEqual(
+                Self.currentSourceID(),
+                previous,
+                "the input source selected before the test must be restored"
+            )
         }
         try? sessionDir.map(FileManager.default.removeItem(at:))
         try? fixturesDir.map(FileManager.default.removeItem(at:))
@@ -102,7 +111,7 @@ final class PinyinCompositionUITests: XCTestCase {
     func testPinyinCompositionCommitsAChineseCandidate() throws {
         let textView = try launchAndFocusEditor()
         compose("nihao", in: textView)
-        XCTAssertTrue(wait(textView) { $0.contains("你好") }, "value: \(value(of: textView))")
+        XCTAssertTrue(wait(textView) { $0 == "start\n你好" }, "value: \(value(of: textView))")
         XCTAssertFalse(value(of: textView).contains("nihao"), "the pre-edit letters must be replaced by the candidate")
     }
 
@@ -116,17 +125,17 @@ final class PinyinCompositionUITests: XCTestCase {
     func testUndoAndRedoAroundACommittedComposition() throws {
         let textView = try launchAndFocusEditor()
         compose("nihao", in: textView)
-        XCTAssertTrue(wait(textView) { $0.contains("你好") })
+        XCTAssertTrue(wait(textView) { $0 == "start\n你好" })
         app.typeKey("z", modifierFlags: .command)
         XCTAssertTrue(
-            wait(textView) { !$0.contains("你好") },
+            wait(textView) { $0 == "start\n" },
             "undo must remove the committed text; value: \(value(of: textView))"
         )
         app.typeKey("z", modifierFlags: [.command, .shift])
-        XCTAssertTrue(wait(textView) { $0.contains("你好") }, "redo must restore it; value: \(value(of: textView))")
+        XCTAssertTrue(wait(textView) { $0 == "start\n你好" }, "redo must restore it; value: \(value(of: textView))")
         // A new composition still commits after undo/redo (the stale-model class of bug, #439).
         compose("shijie", in: textView)
-        XCTAssertTrue(wait(textView) { $0.contains("世界") }, "value: \(value(of: textView))")
+        XCTAssertTrue(wait(textView) { $0 == "start\n你好世界" }, "value: \(value(of: textView))")
     }
 
     /// A document 8,190 UTF-16 units long is under the 8,192-unit highlighting cut-off. Opening a Pinyin composition
@@ -143,11 +152,15 @@ final class PinyinCompositionUITests: XCTestCase {
         text = String(text.prefix(8189)) + "\n"
         XCTAssertEqual(text.utf16.count, 8190)
         let textView = try launchAndFocusEditor(text: text)
+        XCTAssertTrue(wait(textView) { $0 == text }, "the document must open exactly as written")
 
         textView.typeText("nihaoma") // 7 pre-edit letters: 8,197 units while composing
         textView.typeText(" ") // commit
-        XCTAssertTrue(wait(textView) { $0.contains("你好吗") }, "committed text must be present")
-        XCTAssertTrue(value(of: textView).hasPrefix("# Title"), "the rest of the document must be intact")
+        // The whole document, not just its start and the new phrase: the original text followed by the candidate.
+        XCTAssertTrue(
+            wait(textView) { $0 == text + "你好吗" },
+            "the full document must be the original plus the committed phrase; got \(value(of: textView).suffix(40))"
+        )
         let phrase = "Syntax highlighting is off"
         let predicate = NSPredicate(
             format: "label CONTAINS %@ OR value CONTAINS %@ OR help CONTAINS %@",
@@ -158,10 +171,35 @@ final class PinyinCompositionUITests: XCTestCase {
         let note = app.descendants(matching: .any).matching(predicate)
         XCTAssertTrue(note.firstMatch.waitForExistence(timeout: 10), "the reduced-highlighting note should be shown")
 
-        // Editing continues normally in reduced mode, including undo of the committed composition.
+        // Undo returns exactly the original document; redo restores exactly the composed one.
         app.typeKey("z", modifierFlags: .command)
-        XCTAssertTrue(wait(textView) { !$0.contains("你好吗") }, "undo works in reduced mode")
+        XCTAssertTrue(
+            wait(textView) { $0 == text },
+            "undo must restore the original document; got \(value(of: textView).suffix(40))"
+        )
+        app.typeKey("z", modifierFlags: [.command, .shift])
+        XCTAssertTrue(wait(textView) { $0 == text + "你好吗" }, "redo must restore the composed document")
+
+        // Composition keeps working in reduced mode, and the document remains the sum of its parts.
         compose("zhongwen", in: textView)
-        XCTAssertTrue(wait(textView) { $0.contains("中文") }, "composition still commits in reduced mode")
+        XCTAssertTrue(wait(textView) { $0 == text + "你好吗中文" }, "got \(value(of: textView).suffix(40))")
+    }
+
+    /// Cancelling a composition that is open across the cut-off must leave the original document byte-for-byte.
+    func testCancellingACompositionAcrossTheCutoffLeavesTheOriginalDocument() throws {
+        let line = "plain words on a line\n"
+        var text = ""
+        while text.utf16.count < 8190 {
+            text += line
+        }
+        text = String(text.prefix(8189)) + "\n"
+        XCTAssertEqual(text.utf16.count, 8190)
+        let textView = try launchAndFocusEditor(text: text)
+        textView.typeText("nihaoma") // crosses the cut-off while composing
+        textView.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(
+            wait(textView) { $0 == text },
+            "cancel must leave exactly the original; got \(value(of: textView).suffix(40))"
+        )
     }
 }
