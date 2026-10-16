@@ -192,3 +192,33 @@ Not done: the patches have not been run against Neon or `NeonReplacementEditTest
   vendored `Packages/TreeSitterMarkdown` of this repository at the commit that
   contains this file. The B fixture is the 48 KB document in `B/main.swift`
   (a copy of `StallFixtures`); the A text is synthetic.
+
+## Profile of the remaining cost (2026-10-16; full highlighting only, fallback disabled)
+Evidence: `planning/downstream/evidence/h5-profile/` (xctrace Time Profiler on Release, M3 Pro, macOS 26.5.1,
+Xcode 26.6; machine load 4.5–13.8, so shares are solid and absolute times noisy; only the `inlineDense` fixture; the
+harness has no window, so visible-range validation and `resolveSublayers` per keystroke were not exercised).
+Throwaway experiments E1/E3 were not run through any test suite.
+
+- **One-character edit, 256 KB inlineDense: about 99.8 % synchronous** in `processEditing → TreeSitterClient.didChangeContent →
+  LanguageLayer.parse`. Median per edit, stock / patch A: block grammar 38 / 24 ms; **inline layer 1,627 / 1,600 ms**.
+  Inside it `ts_parser__select_children` is 69 % / 81 %, dominated by `ts_subtree_compare` (49 % + 20 % / 55 % + 24 %);
+  `ts_lexer_goto` is 16 % stock and 0.4 % with A. So A removes the lexer cost but the inline reparse stays ~1.6 s here.
+- **No incremental reuse in the inline layer (proven):** tree-sitter reuses nodes only with a single parse-stack version;
+  590,364 of 590,379 steps ran with two or more versions and 76 of 524,239 bytes were reused. Every keystroke reparses the whole
+  combined inline tree (4,545 included ranges). Why the versions never merge (grammar conflicts vs scanner state) is **not proven**.
+  `ts_subtree_compare` nodes visited grow ×15.5 per ×4 size (quadratic).
+- **Throwaway E1** (skip child pairs that point at the same subtree in `ts_subtree_compare`): nodes visited 151 M → 5,454, rendered
+  highlighting hash identical to stock at 16 and 64 KB; inline reparse 1,627 → 523 ms (E1 alone), 258 ms (A + E1); whole edit ≈1,700 → ≈300 ms.
+  Still far over the 50 ms keystroke budget: every keystroke remains a full inline reparse. Not run through the tree-sitter suite.
+- **1 MB paste (fallback off):** the paste call returns in 18 ms and the parses run off the main thread; the ~25 s main-thread busy
+  time is Neon's single `applyStyles` call over 143,461 tokens (21.1 s in the per-token `setRenderingAttributes` loop + ~2.2 s
+  autorelease-pool pop; 79 % in TextKit `NSCountableTextRange` creation → hash-table rehash). Per-token cost 6.9 / 7.8 µs at 64 / 256 KB but 147 µs at 1 MB.
+  **Throwaway E3** (drain an autorelease pool every 64 tokens in `applyStyles`): 21,056 → 979 ms, linear again; paste main-thread busy 25.1 → 1.37 s.
+  This is irrelevant to the shipped fallback (documents over 8,192 units never reach Neon) but matters if full highlighting is ever re-enabled for large documents.
+- **E2 (probe only, not in the app):** one tree per paragraph costs ≤ 0.5 ms per tree against 62 / 335 / 2,701 ms to reparse the combined tree at 49 / 200 / 809 KB.
+
+Candidate fixes, ranked by evidence (none adopted): (1) autorelease-pool batching in Neon's TextKit 2 `applyStyles` — a few lines, paste only;
+(2) pointer-equality short-circuit in `ts_subtree_compare` — one line, ~3× on the inline reparse at 256 KB, needs the tree-sitter suite;
+(3) A + (2) together, ≈5.5×, still ≈300 ms per edit; (4) separate inline trees per injection in SwiftTreeSitterLayer (non-combined injections) — the only fix that makes keystroke cost
+depend on the paragraph, large design change, unmeasured in the app; (5) cache the four styled fonts in `NeonSyntaxHighlighter.styledFont` — ≈0.3 s of a 1 MB paste after (1).
+None of this supports raising the 8,192-unit cut-off. The upstream AI-policy note in `planning/upstream/tree-sitter-lexer-goto/README.md` applies to any of (2)–(4) as well.

@@ -1,0 +1,75 @@
+== out/cnt-si-16/run.log
+  TS block  n=6 ms=3.623 ranges=1 advance=2726 noreuse=0 reuse_bytes=32547 bytes=32845 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=94 goto_iters=94 vc1=2726
+  TS inline n=6 ms=32.999 ranges=290 advance=37638 noreuse=37623 reuse_bytes=76 bytes=32783 select_children=812 compare=58 compare_nodes=621905 ptr_skips=0 lexer_goto=28701 goto_iters=4.17642e+06 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=3.669 sum=25.7 changedSet_ms_med=0.115
+  LL parse:MarkdownInline         n=6 parse_ms: med=33.041 sum=207.6 changedSet_ms_med=1.253
+== out/cnt-si-64/run.log
+  TS block  n=6 ms=8.915 ranges=1 advance=11387 noreuse=0 reuse_bytes=131021 bytes=131263 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=201.5 goto_iters=201.5 vc1=11387
+  TS inline n=6 ms=146.785 ranges=1145 advance=148379 noreuse=148364 reuse_bytes=76 bytes=131199 select_children=3197 compare=229 compare_nodes=9.57575e+06 ptr_skips=0 lexer_goto=113214 goto_iters=6.48723e+07 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=8.950 sum=58.2 changedSet_ms_med=0.208
+  LL parse:MarkdownInline         n=6 parse_ms: med=146.859 sum=906.8 changedSet_ms_med=4.076
+== out/cnt-si-256/run.log
+  TS block  n=6 ms=37.6575 ranges=1 advance=45596 noreuse=0 reuse_bytes=523149 bytes=524303 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=839 goto_iters=839 vc1=45596
+  TS inline n=6 ms=1626.68 ranges=4545 advance=590379 noreuse=590364 reuse_bytes=76 bytes=524239 select_children=12717 compare=909 compare_nodes=1.50817e+08 ptr_skips=0 lexer_goto=450494 goto_iters=1.02398e+09 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=37.684 sum=207.1 changedSet_ms_med=0.329
+  LL parse:MarkdownInline         n=6 parse_ms: med=1626.922 sum=9794.3 changedSet_ms_med=16.315
+== out/cnt-ai-16/run.log
+  TS block  n=6 ms=4.7495 ranges=1 advance=2726 noreuse=0 reuse_bytes=32547 bytes=32845 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=94 goto_iters=94 vc1=2726
+  TS inline n=6 ms=41.9825 ranges=290 advance=37638 noreuse=37623 reuse_bytes=76 bytes=32783 select_children=812 compare=58 compare_nodes=621905 ptr_skips=0 lexer_goto=28701 goto_iters=28701 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=4.827 sum=29.7 changedSet_ms_med=0.152
+  LL parse:MarkdownInline         n=6 parse_ms: med=42.026 sum=249.1 changedSet_ms_med=1.476
+== out/cnt-ai-64/run.log
+  TS block  n=6 ms=12.5705 ranges=1 advance=11387 noreuse=0 reuse_bytes=131021 bytes=131263 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=201.5 goto_iters=201.5 vc1=11387
+  TS inline n=6 ms=126.524 ranges=1145 advance=148379 noreuse=148364 reuse_bytes=76 bytes=131199 select_children=3197 compare=229 compare_nodes=9.57575e+06 ptr_skips=0 lexer_goto=113214 goto_iters=113214 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=12.622 sum=85.9 changedSet_ms_med=0.252
+  LL parse:MarkdownInline         n=6 parse_ms: med=126.599 sum=774.0 changedSet_ms_med=4.102
+== out/cnt-ai-256/run.log
+  TS block  n=6 ms=24.452 ranges=1 advance=45596 noreuse=0 reuse_bytes=523149 bytes=524303 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=839 goto_iters=839 vc1=45596
+  TS inline n=6 ms=1600.07 ranges=4545 advance=590379 noreuse=590364 reuse_bytes=76 bytes=524239 select_children=12717 compare=909 compare_nodes=1.50817e+08 ptr_skips=0 lexer_goto=450494 goto_iters=450494 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=24.483 sum=195.7 changedSet_ms_med=0.365
+  LL parse:MarkdownInline         n=6 parse_ms: med=1600.298 sum=9965.9 changedSet_ms_med=16.867
+== out/cnt-se1-16/run.log
+  TS block  n=6 ms=3.1135 ranges=1 advance=2726 noreuse=0 reuse_bytes=32547 bytes=32845 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=94 goto_iters=94 vc1=2726
+  TS inline n=6 ms=24.917 ranges=290 advance=37638 noreuse=37623 reuse_bytes=76 bytes=32783 select_children=812 compare=58 compare_nodes=348 ptr_skips=58 lexer_goto=28701 goto_iters=4.17642e+06 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=3.158 sum=23.7 changedSet_ms_med=0.134
+  LL parse:MarkdownInline         n=6 parse_ms: med=24.950 sum=147.9 changedSet_ms_med=1.111
+== out/cnt-se1-64/run.log
+  TS block  n=6 ms=8.68 ranges=1 advance=11387 noreuse=0 reuse_bytes=131021 bytes=131263 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=201.5 goto_iters=201.5 vc1=11387
+  TS inline n=6 ms=84.9785 ranges=1145 advance=148379 noreuse=148364 reuse_bytes=76 bytes=131199 select_children=3197 compare=229 compare_nodes=1374 ptr_skips=229 lexer_goto=113214 goto_iters=6.48723e+07 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=8.711 sum=72.0 changedSet_ms_med=0.223
+  LL parse:MarkdownInline         n=6 parse_ms: med=85.052 sum=527.0 changedSet_ms_med=4.173
+== out/cnt-se1-256/run.log
+  TS block  n=6 ms=27.3815 ranges=1 advance=45596 noreuse=0 reuse_bytes=523149 bytes=524303 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=839 goto_iters=839 vc1=45596
+  TS inline n=6 ms=523.307 ranges=4545 advance=590379 noreuse=590364 reuse_bytes=76 bytes=524239 select_children=12717 compare=909 compare_nodes=5454 ptr_skips=909 lexer_goto=450494 goto_iters=1.02398e+09 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=27.410 sum=191.6 changedSet_ms_med=0.423
+  LL parse:MarkdownInline         n=6 parse_ms: med=523.522 sum=3148.7 changedSet_ms_med=16.471
+== out/cnt-ae1-16/run.log
+  TS block  n=6 ms=3.949 ranges=1 advance=2726 noreuse=0 reuse_bytes=32547 bytes=32845 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=94 goto_iters=94 vc1=2726
+  TS inline n=6 ms=23.279 ranges=290 advance=37638 noreuse=37623 reuse_bytes=76 bytes=32783 select_children=812 compare=58 compare_nodes=348 ptr_skips=58 lexer_goto=28701 goto_iters=28701 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=3.985 sum=26.8 changedSet_ms_med=0.095
+  LL parse:MarkdownInline         n=6 parse_ms: med=23.318 sum=138.4 changedSet_ms_med=1.105
+== out/cnt-ae1-64/run.log
+  TS block  n=6 ms=14.2805 ranges=1 advance=11387 noreuse=0 reuse_bytes=131021 bytes=131263 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=201.5 goto_iters=201.5 vc1=11387
+  TS inline n=6 ms=81.3705 ranges=1145 advance=148379 noreuse=148364 reuse_bytes=76 bytes=131199 select_children=3197 compare=229 compare_nodes=1374 ptr_skips=229 lexer_goto=113214 goto_iters=113214 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=14.335 sum=85.2 changedSet_ms_med=0.423
+  LL parse:MarkdownInline         n=6 parse_ms: med=81.440 sum=483.9 changedSet_ms_med=4.048
+== out/cnt-ae1-256/run.log
+  TS block  n=6 ms=26.024 ranges=1 advance=45596 noreuse=0 reuse_bytes=523149 bytes=524303 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=839 goto_iters=839 vc1=45596
+  TS inline n=6 ms=258.303 ranges=4545 advance=590379 noreuse=590364 reuse_bytes=76 bytes=524239 select_children=12717 compare=909 compare_nodes=5454 ptr_skips=909 lexer_goto=450494 goto_iters=450494 vc1=15
+  LL parse:Markdown               n=6 parse_ms: med=26.047 sum=182.6 changedSet_ms_med=0.342
+  LL parse:MarkdownInline         n=6 parse_ms: med=258.510 sum=1549.7 changedSet_ms_med=16.468
+== out/cnt-si-paste64/run.log
+  TS block  n=1 ms=17.714 ranges=1 advance=46396 noreuse=0 reuse_bytes=15164 bytes=147246 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=20031 goto_iters=20031 vc1=46396
+  TS inline n=1 ms=94.018 ranges=142 advance=182331 noreuse=182310 reuse_bytes=32 bytes=147246 select_children=2457 compare=29 compare_nodes=2.87845e+06 ptr_skips=0 lexer_goto=131929 goto_iters=1.23691e+06 vc1=21
+  LL parse:Markdown               n=1 parse_ms: med=17.729 sum=17.7 changedSet_ms_med=0.054
+  LL parse:MarkdownInline         n=1 parse_ms: med=94.042 sum=94.0 changedSet_ms_med=0.549
+== out/cnt-si-paste256/run.log
+  TS block  n=1 ms=81.779 ranges=1 advance=171516 noreuse=0 reuse_bytes=15164 bytes=540286 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=78511 goto_iters=78511 vc1=171516
+  TS inline n=1 ms=448.606 ranges=142 advance=669211 noreuse=669190 reuse_bytes=32 bytes=540286 select_children=8577 compare=29 compare_nodes=1.09895e+07 ptr_skips=0 lexer_goto=482129 goto_iters=1.93731e+06 vc1=21
+  LL parse:Markdown               n=1 parse_ms: med=81.804 sum=81.8 changedSet_ms_med=0.191
+  LL parse:MarkdownInline         n=1 parse_ms: med=448.642 sum=448.6 changedSet_ms_med=0.546
+== out/cnt-si-paste1024/run.log
+  TS block  n=1 ms=264.894 ranges=1 advance=664084 noreuse=0 reuse_bytes=15164 bytes=2.11345e+06 select_children=0 compare=0 compare_nodes=0 ptr_skips=0 lexer_goto=308733 goto_iters=308733 vc1=664084
+  TS inline n=1 ms=2047.83 ranges=142 advance=2.58594e+06 noreuse=2.58592e+06 reuse_bytes=32 bytes=2.11345e+06 select_children=32670 compare=29 compare_nodes=4.29208e+07 ptr_skips=0 lexer_goto=1.86078e+06 goto_iters=4.69462e+06 vc1=21
+  LL parse:Markdown               n=1 parse_ms: med=264.928 sum=264.9 changedSet_ms_med=0.871
+  LL parse:MarkdownInline         n=1 parse_ms: med=2047.871 sum=2047.9 changedSet_ms_med=0.573
