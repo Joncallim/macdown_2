@@ -1,0 +1,10 @@
+== ts-lib
+N=10 sexp_len=894781 hash=ba9c294eb595f70f
+N=1000 sexp_len=894322 hash=179da69a796c1856
+N=10000 sexp_len=887515 hash=f6634b6cb7d94be
+N=30000 sexp_len=819208 hash=4727ba9959e46a55
+== ts-lib-bsearch
+N=10 sexp_len=894781 hash=ba9c294eb595f70f
+N=1000 sexp_len=894322 hash=179da69a796c1856
+N=10000 sexp_len=887515 hash=f6634b6cb7d94be
+N=30000 sexp_len=819208 hash=4727ba9959e46a55

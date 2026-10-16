@@ -1,0 +1,546 @@
+Analysis of sampling h_noinline (pid 76120) every 1 millisecond
+Process:         h_noinline [76120]
+Path:            /private/tmp/*/h_noinline
+Load Address:    0x1043b4000
+Identifier:      h_noinline
+Version:         0
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  zsh [76112]
+Target Type:     live task
+
+Date/Time:       2026-10-16 07:27:20.843 +0800
+Launch Time:     2026-10-16 07:27:19.797 +0800
+OS Version:      macOS 26.5.1 (25F80)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         45.8M
+Physical footprint (peak):  45.8M
+Idle exit:                  untracked
+----
+
+Call graph:
+    4623 Thread_44786098   DispatchQueue_1: com.apple.main-thread  (serial)
+      4623 start  (in dyld) + 6992  [0x185f77e00]
+        2816 main  (in h_noinline) + 1232  [0x1043b4a68]  harness.c:66
+        + 2816 ts_parser_parse_string_encoding  (in h_noinline) + 52  [0x1043bacf4]  parser.c:2267
+        +   2796 ts_parser_parse  (in h_noinline) + 920  [0x1043b9534]  parser.c:2175
+        +   ! 2706 ts_parser__advance  (in h_noinline) + 236  [0x1043b9b8c]  parser.c:1602
+        +   ! : 2570 ts_parser__lex  (in h_noinline) + 216  [0x1043c5df0]  parser.c:535
+        +   ! : | 2187 ts_lexer_goto  (in h_noinline) + 80,92  [0x1043b6a8c,0x1043b6a98]  lexer.c:147
+        +   ! : | 378 ts_lexer_goto  (in h_noinline) + 96  [0x1043b6a9c]  lexer.c:150
+        +   ! : | 1 ts_lexer_goto  (in h_noinline) + 108  [0x1043b6aa8]  lexer.c:151
+        +   ! : | 1 ts_lexer_goto  (in h_noinline) + 148  [0x1043b6ad0]  lexer.c:169
+        +   ! : | 1 ts_lexer_reset  (in h_noinline) + 0  [0x1043b6b50]  lexer.c:397
+        +   ! : | 1 ts_lexer_reset  (in h_noinline) + 16  [0x1043b6b60]  lexer.c:398
+        +   ! : | 1 ts_lexer_reset  (in h_noinline) + 12  [0x1043b6b5c]  lexer.c:400
+        +   ! : 114 ts_parser__lex  (in h_noinline) + 680  [0x1043c5fc0]  parser.c:595
+        +   ! : | 90 ts_lexer_goto  (in h_noinline) + 80,92  [0x1043b6a8c,0x1043b6a98]  lexer.c:147
+        +   ! : | 23 ts_lexer_goto  (in h_noinline) + 96  [0x1043b6a9c]  lexer.c:150
+        +   ! : | 1 ts_lexer_goto  (in h_noinline) + 68  [0x1043b6a80]  lexer.c:0
+        +   ! : 8 ts_parser__lex  (in h_noinline) + 784  [0x1043c6028]  parser.c:606
+        +   ! : | 2 ts_lex  (in h_noinline) + 2748,159860  [0x1043cbd54,0x1043f230c]  parser.c:0
+        +   ! : | 2 ts_lex  (in h_noinline) + 159732,159792  [0x1043f228c,0x1043f22c8]  parser.c:12112
+        +   ! : | 2 ts_lex  (in h_noinline) + 64  [0x1043cb2d8]  parser.c:2321
+        +   ! : | + 1 ts_lexer__do_advance  (in h_noinline) + 160  [0x1043c5460]  lexer.c:218
+        +   ! : | + 1 ts_lexer__get_lookahead  (in h_noinline) + 108  [0x1043b6cd0]  lexer.c:122
+        +   ! : | +   1 ts_decode_utf8  (in h_noinline) + 16  [0x1043c5544]  unicode.h:0
+        +   ! : | 2 ts_lex  (in h_noinline) + 648,696  [0x1043cb520,0x1043cb550]  parser.c:2410
+        +   ! : 2 scan  (in h_noinline) + 60  [0x1043f3a9c]  scanner.c:349
+        +   ! : 2 ts_parser__lex  (in h_noinline) + 432  [0x1043c5ec8]  parser.c:551
+        +   ! : | 1 parse_leaf_delimiter  (in h_noinline) + 228  [0x1043f4108]  scanner.c:124
+        +   ! : | + 1 ts_lexer__advance  (in h_noinline) + 0  [0x1043b66d0]  lexer.c:256
+        +   ! : | 1 parse_star  (in h_noinline) + 44  [0x1043f3b88]  scanner.c:154
+        +   ! : |   1 ts_lexer__get_lookahead  (in h_noinline) + 92  [0x1043b6cc0]  lexer.c:0
+        +   ! : 1 scan  (in h_noinline) + 104  [0x1043f3ac8]  scanner.c:360
+        +   ! : 1 scan  (in h_noinline) + 36  [0x1043f3a84]  scanner.c:367
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 148  [0x1043c5dac]  parser.c:522
+        +   ! : | 1 ts_stack_position  (in h_noinline) + 32  [0x1043b9a70]  stack.c:479
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 408  [0x1043c5eb0]  parser.c:549
+        +   ! : | 1 ts_lexer_start  (in h_noinline) + 64  [0x1043b6ba8]  lexer.c:408
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 456  [0x1043c5ee0]  parser.c:553
+        +   ! : | 1 ts_lexer_finish  (in h_noinline) + 56  [0x1043b6d6c]  lexer.c:421
+        +   ! : |   1 ts_lexer__mark_end  (in h_noinline) + 20  [0x1043b678c]  lexer.c:271
+        +   ! : |     1 ts_lexer__eof  (in h_noinline) + 0  [0x1043b68c4]  lexer.c:76
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 704  [0x1043c5fd8]  parser.c:599
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 800  [0x1043c6038]  parser.c:607
+        +   ! : | 1 ts_lexer_finish  (in h_noinline) + 60  [0x1043b6d70]  lexer.c:427
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 1204  [0x1043c61cc]  parser.c:653
+        +   ! : | 1 length_sub  (in h_noinline) + 52  [0x1043c2f1c]  length.h:35
+        +   ! : |   1 point_sub  (in h_noinline) + 0  [0x1043b8880]  point.h:21
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 1272  [0x1043c6210]  parser.c:659
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 1516  [0x1043c6304]  parser.c:678
+        +   ! :   1 ts_subtree_new_leaf  (in h_noinline) + 252  [0x1043c1868]  subtree.c:199
+        +   ! :     1 ts_malloc_default  (in h_noinline) + 24  [0x1043b4c24]  alloc.c:6
+        +   ! :       1 _xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib) + 12  [0x186157ee0]
+        +   ! 60 ts_parser__advance  (in h_noinline) + 488  [0x1043b9c88]  parser.c:1660
+        +   ! : 24 ts_parser__reduce  (in h_noinline) + 92  [0x1043c6920]  parser.c:954
+        +   ! : | 24 ts_stack_pop_count  (in h_noinline) + 36  [0x1043c0018]  stack.c:535
+        +   ! : |   10 stack__iter  (in h_noinline) + 144  [0x1043c00b4]  stack.c:345
+        +   ! : |   + 10 _array__reserve  (in h_noinline) + 80  [0x1043b89d8]  array.h:188
+        +   ! : |   +   9 ts_malloc_default  (in h_noinline) + 24  [0x1043b4c24]  alloc.c:6
+        +   ! : |   +   ! 6 _xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib) + 364,312,...  [0x186158040,0x18615800c,...]
+        +   ! : |   +   ! 1 <deduplicated_symbol>  (in libsystem_malloc.dylib) + 112  [0x186152144]
+        +   ! : |   +   ! 1 DYLD-STUB$$malloc  (in h_noinline) + 4  [0x1043f429c]
+        +   ! : |   +   ! 1 _xzm_xzone_malloc_freelist_outlined  (in libsystem_malloc.dylib) + 756  [0x18615992c]
+        +   ! : |   +   1 ts_malloc_default  (in h_noinline) + 0  [0x1043b4c0c]  alloc.c:5
+        +   ! : |   4 stack__iter  (in h_noinline) + 568  [0x1043c025c]  stack.c:394
+        +   ! : |   + 4 ts_subtree_array_copy  (in h_noinline) + 56  [0x1043c1530]  subtree.c:73
+        +   ! : |   +   4 ts_calloc_default  (in h_noinline) + 28  [0x1043b4c78]  alloc.c:15
+        +   ! : |   +     4 _xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib) + 364,312,...  [0x186158040,0x18615800c,...]
+        +   ! : |   2 stack__iter  (in h_noinline) + 268  [0x1043c0130]  stack.c:359
+        +   ! : |   2 stack__iter  (in h_noinline) + 636  [0x1043c02a0]  stack.c:404
+        +   ! : |   + 1 ts_subtree_extra  (in h_noinline) + 12  [0x1043b7140]  subtree.h:0
+        +   ! : |   + 1 ts_subtree_extra  (in h_noinline) + 4  [0x1043b7138]  subtree.h:237
+        +   ! : |   1 _array__reserve  (in h_noinline) + 92  [0x1043b89e4]  array.h:190
+        +   ! : |   1 stack__iter  (in h_noinline) + 232  [0x1043c010c]  stack.c:0
+        +   ! : |   1 stack__iter  (in h_noinline) + 164  [0x1043c00c8]  stack.c:348
+        +   ! : |   + 1 _array__grow  (in h_noinline) + 0  [0x1043bb1c8]  array.h:210
+        +   ! : |   1 stack__iter  (in h_noinline) + 732  [0x1043c0300]  stack.c:351
+        +   ! : |   1 stack__iter  (in h_noinline) + 688  [0x1043c02d4]  stack.c:364
+        +   ! : |   + 1 ts_subtree_array_reverse  (in h_noinline) + 72  [0x1043c16e4]  subtree.c:115
+        +   ! : |   1 stack__iter  (in h_noinline) + 376  [0x1043c019c]  stack.c:382
+        +   ! : 23 ts_parser__reduce  (in h_noinline) + 452  [0x1043c6a88]  parser.c:985
+        +   ! : | 20 ts_subtree_new_node  (in h_noinline) + 336  [0x1043c24fc]  subtree.c:515
+        +   ! : | + 3 ts_subtree_summarize_children  (in h_noinline) + 168,352,...  [0x1043c1e74,0x1043c1f2c,...]  subtree.c:0
+        +   ! : | + 3 ts_subtree_summarize_children  (in h_noinline) + 552  [0x1043c1ff4]  subtree.c:408
+        +   ! : | + ! 2 ts_subtree_visible_descendant_count  (in h_noinline) + 12  [0x1043b72b4]  subtree.h:320
+        +   ! : | + ! 1 ts_subtree_visible_descendant_count  (in h_noinline) + 0  [0x1043b72a8]  subtree.h:318
+        +   ! : | + 2 ts_subtree_summarize_children  (in h_noinline) + 352  [0x1043c1f2c]  subtree.c:384
+        +   ! : | + ! 2 ts_subtree_lookahead_bytes  (in h_noinline) + 12  [0x1043c22f4]  subtree.h:242
+        +   ! : | + 2 ts_subtree_summarize_children  (in h_noinline) + 432  [0x1043c1f7c]  subtree.c:395
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 184  [0x1043c1e84]  subtree.c:361
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 220  [0x1043c1ea8]  subtree.c:370
+        +   ! : | + ! 1 ts_subtree_has_external_scanner_state_change  (in h_noinline) + 12  [0x1043c2260]  subtree.h:364
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 284  [0x1043c1ee8]  subtree.c:378
+        +   ! : | + ! 1 length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        +   ! : | + !   1 point_add  (in h_noinline) + 20  [0x1043b6ed8]  point.h:0
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 404  [0x1043c1f60]  subtree.c:390
+        +   ! : | + ! 1 ts_subtree_error_cost  (in h_noinline) + 20  [0x1043b7244]  subtree.h:332
+        +   ! : | + !   1 ts_subtree_missing  (in h_noinline) + 0  [0x1043b71cc]  subtree.h:239
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 536  [0x1043c1fe4]  subtree.c:407
+        +   ! : | + ! 1 ts_subtree_dynamic_precedence  (in h_noinline) + 20  [0x1043c13d8]  subtree.h:0
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 840  [0x1043c2114]  subtree.c:440
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 912  [0x1043c215c]  subtree.c:456
+        +   ! : | + ! 1 ts_subtree_leaf_symbol  (in h_noinline) + 0  [0x1043c2314]  subtree.h:266
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 956  [0x1043c2188]  subtree.c:460
+        +   ! : | + ! 1 ts_subtree_fragile_right  (in h_noinline) + 0  [0x1043c2380]  subtree.h:356
+        +   ! : | + 1 ts_subtree_summarize_children  (in h_noinline) + 992  [0x1043c21ac]  subtree.c:466
+        +   ! : | + ! 1 ts_subtree_symbol  (in h_noinline) + 0  [0x1043b6f30]  subtree.h:234
+        +   ! : | + 1 ts_subtree_total_size  (in h_noinline) + 76  [0x1043b5cec]  subtree.h:296
+        +   ! : | 3 ts_subtree_new_node  (in h_noinline) + 240,276,...  [0x1043c249c,0x1043c24c0,...]  subtree.c:497
+        +   ! : 3 ts_parser__reduce  (in h_noinline) + 468,740,...  [0x1043c6a98,0x1043c6ba8,...]  parser.c:0
+        +   ! : 3 ts_parser__reduce  (in h_noinline) + 928  [0x1043c6c64]  parser.c:1041
+        +   ! : | 2 ts_stack_merge  (in h_noinline) + 44  [0x1043c0cf8]  stack.c:709
+        +   ! : | + 1 ts_external_scanner_state_eq  (in h_noinline) + 48  [0x1043c14dc]  subtree.c:63
+        +   ! : | + ! 1 _platform_memcmp  (in libsystem_platform.dylib) + 272  [0x18633d020]
+        +   ! : | + 1 ts_stack_can_merge  (in h_noinline) + 0  [0x1043c0df4]  stack.c:722
+        +   ! : | 1 ts_stack_merge  (in h_noinline) + 144  [0x1043c0d5c]  stack.c:713
+        +   ! : |   1 stack_node_add_link  (in h_noinline) + 108  [0x1043c0f30]  stack.c:209
+        +   ! : |     1 stack__subtree_is_equivalent  (in h_noinline) + 152  [0x1043cb0d8]  stack.c:193
+        +   ! : |       1 ts_subtree_size  (in h_noinline) + 0  [0x1043b6e40]  subtree.h:287
+        +   ! : 2 ts_parser__reduce  (in h_noinline) + 708  [0x1043c6b88]  parser.c:1019
+        +   ! : | 1 ts_language_lookup  (in h_noinline) + 0  [0x1043b5ee4]  language.h:78
+        +   ! : | 1 ts_language_lookup  (in h_noinline) + 92  [0x1043b5f40]  language.h:85
+        +   ! : 2 ts_parser__reduce  (in h_noinline) + 112  [0x1043c6934]  parser.c:956
+        +   ! : | 1 ts_stack_halted_version_count  (in h_noinline) + 8  [0x1043bfc34]  stack.c:0
+        +   ! : | 1 ts_stack_halted_version_count  (in h_noinline) + 40  [0x1043bfc54]  stack.c:465
+        +   ! : 1 ts_parser__reduce  (in h_noinline) + 808  [0x1043c6bec]  parser.c:1035
+        +   ! : 1 ts_parser__reduce  (in h_noinline) + 912  [0x1043c6c54]  parser.c:1041
+        +   ! : 1 ts_parser__reduce  (in h_noinline) + 432  [0x1043c6a74]  parser.c:983
+        +   ! :   1 ts_subtree_array_remove_trailing_extras  (in h_noinline) + 24  [0x1043c1634]  subtree.c:98
+        +   ! 8 ts_parser__advance  (in h_noinline) + 928  [0x1043b9e40]  parser.c:1694
+        +   ! : 7 ts_stack_renumber_version  (in h_noinline) + 124  [0x1043c04f8]  stack.c:686
+        +   ! : | 4 stack_node_release  (in h_noinline) + 168  [0x1043bfb1c]  stack.c:104
+        +   ! : | + 4 ts_subtree_release  (in h_noinline) + 136  [0x1043b8de8]  subtree.c:586
+        +   ! : | +   4 _xzm_free  (in libsystem_malloc.dylib) + 28,264,...  [0x186153088,0x186153174,...]
+        +   ! : | 1 stack_node_release  (in h_noinline) + 172  [0x1043bfb20]  stack.c:107
+        +   ! : | 1 stack_node_release  (in h_noinline) + 188  [0x1043bfb30]  stack.c:108
+        +   ! : | + 1 ts_subtree_release  (in h_noinline) + 60  [0x1043b8d9c]  subtree.c:574
+        +   ! : | 1 ts_subtree_release  (in h_noinline) + 328  [0x1043b8ea8]  subtree.c:594
+        +   ! : 1 _array__erase  (in h_noinline) + 12  [0x1043bdd50]  array.h:175
+        +   ! 7 ts_parser__advance  (in h_noinline) + 180  [0x1043b9b54]  parser.c:1592
+        +   ! : 5 ts_parser__get_cached_token  (in h_noinline) + 64  [0x1043c5cb0]  parser.c:719
+        +   ! : | 3 ts_external_scanner_state_eq  (in h_noinline) + 48  [0x1043c14dc]  subtree.c:63
+        +   ! : | + 3 _platform_memcmp  (in libsystem_platform.dylib) + 192,0  [0x18633cfd0,0x18633cf10]
+        +   ! : | 1 ts_external_scanner_state_eq  (in h_noinline) + 0  [0x1043c14ac]  subtree.c:62
+        +   ! : | 1 ts_subtree_external_scanner_state_eq  (in h_noinline) + 20  [0x1043c10f0]  subtree.c:1027
+        +   ! : |   1 ts_subtree_external_scanner_state  (in h_noinline) + 16  [0x1043c3710]  subtree.c:1015
+        +   ! : 1 ts_parser__get_cached_token  (in h_noinline) + 64  [0x1043c5cb0]  parser.c:718
+        +   ! : 1 ts_parser__get_cached_token  (in h_noinline) + 100  [0x1043c5cd4]  parser.c:721
+        +   ! :   1 ts_language_table_entry  (in h_noinline) + 64  [0x1043b5e98]  language.c:84
+        +   ! :     1 ts_language_lookup  (in h_noinline) + 92  [0x1043b5f40]  language.h:85
+        +   ! 4 ts_parser__advance  (in h_noinline) + 1404  [0x1043ba01c]  parser.c:1651
+        +   ! : 4 ts_parser__shift  (in h_noinline) + 136  [0x1043c674c]  parser.c:929
+        +   ! :   4 ts_stack_push  (in h_noinline) + 68  [0x1043bffb8]  stack.c:520
+        +   ! :     3 stack_node_new  (in h_noinline) + 244  [0x1043bfa14]  stack.c:169
+        +   ! :     | 2 ts_subtree_total_size  (in h_noinline) + 40  [0x1043b5cc8]  subtree.h:296
+        +   ! :     | + 1 ts_subtree_size  (in h_noinline) + 28  [0x1043b6e5c]  subtree.h:291
+        +   ! :     | + 1 ts_subtree_size  (in h_noinline) + 36  [0x1043b6e64]  subtree.h:293
+        +   ! :     | 1 ts_subtree_total_size  (in h_noinline) + 64  [0x1043b5ce0]  subtree.h:296
+        +   ! :     |   1 length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        +   ! :     |     1 point__new  (in h_noinline) + 0  [0x1043c573c]  point.h:11
+        +   ! :     1 stack_node_new  (in h_noinline) + 108  [0x1043bf98c]  stack.c:148
+        +   ! 3 ts_parser__advance  (in h_noinline) + 276  [0x1043b9bb4]  parser.c:1606
+        +   ! : 1 ts_parser__set_cached_token  (in h_noinline) + 44  [0x1043b8b08]  parser.c:737
+        +   ! : | 1 ts_subtree_retain  (in h_noinline) + 32  [0x1043b9864]  subtree.c:561
+        +   ! : |   1 atomic_inc  (in h_noinline) + 8  [0x1043c25e0]  atomic.h:52
+        +   ! : 1 ts_parser__set_cached_token  (in h_noinline) + 88  [0x1043b8b34]  parser.c:740
+        +   ! : | 1 ts_subtree_release  (in h_noinline) + 56  [0x1043b8d98]  subtree.c:570
+        +   ! : |   1 atomic_dec  (in h_noinline) + 8  [0x1043c25ec]  atomic.h:60
+        +   ! : 1 ts_subtree_release  (in h_noinline) + 324  [0x1043b8ea4]  subtree.c:594
+        +   ! 2 ts_parser__advance  (in h_noinline) + 328  [0x1043b9be8]  parser.c:0
+        +   ! : 1 ts_language_table_entry  (in h_noinline) + 0  [0x1043b5e58]  language.c:77
+        +   ! : 1 ts_language_table_entry  (in h_noinline) + 64  [0x1043b5e98]  language.c:84
+        +   ! :   1 ts_language_lookup  (in h_noinline) + 0  [0x1043b5ee4]  language.h:78
+        +   ! 1 ts_parser__advance  (in h_noinline) + 324  [0x1043b9be4]  parser.c:0
+        +   ! 1 ts_parser__advance  (in h_noinline) + 52  [0x1043b9ad4]  parser.c:1573
+        +   ! : 1 ts_stack_state  (in h_noinline) + 28  [0x1043b9a20]  stack.c:475
+        +   ! 1 ts_parser__advance  (in h_noinline) + 352  [0x1043b9c00]  parser.c:1620
+        +   ! : 1 ts_parser__check_progress  (in h_noinline) + 32  [0x1043c64b0]  parser.c:0
+        +   ! 1 ts_parser__advance  (in h_noinline) + 1256  [0x1043b9f88]  parser.c:1643
+        +   ! 1 ts_parser__advance  (in h_noinline) + 600  [0x1043b9cf8]  parser.c:1693
+        +   ! 1 ts_parser__advance  (in h_noinline) + 1040  [0x1043b9eb0]  parser.c:1706
+        +   !   1 ts_language_table_entry  (in h_noinline) + 44  [0x1043b5e84]  language.c:83
+        +   12 ts_parser_parse  (in h_noinline) + 1028  [0x1043b95a0]  parser.c:2192
+        +   ! 7 ts_parser__condense_stack  (in h_noinline) + 180  [0x1043ba7b4]  parser.c:1811
+        +   ! : 3 ts_stack_merge  (in h_noinline) + 44  [0x1043c0cf8]  stack.c:709
+        +   ! : | 2 ts_subtree_external_scanner_state_eq  (in h_noinline) + 20  [0x1043c10f0]  subtree.c:1027
+        +   ! : | + 2 ts_subtree_external_scanner_state  (in h_noinline) + 0  [0x1043c3700]  subtree.c:1012
+        +   ! : | 1 ts_external_scanner_state_eq  (in h_noinline) + 36  [0x1043c14d0]  subtree.c:63
+        +   ! : |   1 ts_external_scanner_state_data  (in h_noinline) + 16  [0x1043c12f4]  subtree.c:58
+        +   ! : 3 ts_stack_merge  (in h_noinline) + 144  [0x1043c0d5c]  stack.c:713
+        +   ! : | 1 stack_node_add_link  (in h_noinline) + 108  [0x1043c0f30]  stack.c:209
+        +   ! : | + 1 ts_external_scanner_state_eq  (in h_noinline) + 48  [0x1043c14dc]  subtree.c:63
+        +   ! : | +   1 _platform_memcmp  (in libsystem_platform.dylib) + 272  [0x18633d020]
+        +   ! : | 1 stack_node_add_link  (in h_noinline) + 112  [0x1043c0f34]  stack.c:214
+        +   ! : | 1 stack_node_add_link  (in h_noinline) + 308  [0x1043c0ff8]  stack.c:251
+        +   ! : |   1 stack_node_retain  (in h_noinline) + 24  [0x1043c0c7c]  stack.c:86
+        +   ! : 1 ts_stack_merge  (in h_noinline) + 200  [0x1043c0d94]  stack.c:718
+        +   ! :   1 ts_stack_remove_version  (in h_noinline) + 60  [0x1043c0a54]  stack.c:672
+        +   ! :     1 stack_node_release  (in h_noinline) + 188  [0x1043bfb30]  stack.c:108
+        +   ! :       1 ts_subtree_release  (in h_noinline) + 136  [0x1043b8de8]  subtree.c:586
+        +   ! :         1 _xzm_free  (in libsystem_malloc.dylib) + 196  [0x186153130]
+        +   ! 2 ts_parser__version_status  (in h_noinline) + 148,152  [0x1043c83b8,0x1043c83bc]  parser.c:308
+        +   ! 1 ts_parser__condense_stack  (in h_noinline) + 224  [0x1043ba7e0]  parser.c:1799
+        +   ! : 1 ts_parser__version_status  (in h_noinline) + 120  [0x1043c839c]  parser.c:306
+        +   ! :   1 ts_stack_state  (in h_noinline) + 0  [0x1043b9a04]  stack.c:475
+        +   ! 1 ts_parser__condense_stack  (in h_noinline) + 392  [0x1043ba888]  parser.c:1840
+        +   ! : 1 ts_stack_version_count  (in h_noinline) + 0  [0x1043b99ac]  stack.c:460
+        +   ! 1 ts_parser__condense_stack  (in h_noinline) + 636  [0x1043ba97c]  parser.c:1870
+        +   8 ts_parser_parse  (in h_noinline) + 220  [0x1043b9278]  parser.c:2215
+        +     7 ts_parser__balance_subtree  (in h_noinline) + 272  [0x1043bab00]  parser.c:1908
+        +     : 5 ts_subtree_compress  (in h_noinline) + 352  [0x1043c1da8]  subtree.c:334
+        +     : | 1 ts_subtree_summarize_children  (in h_noinline) + 244  [0x1043c1ec0]  subtree.c:378
+        +     : | + 1 ts_subtree_total_size  (in h_noinline) + 64  [0x1043b5ce0]  subtree.h:296
+        +     : | +   1 length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        +     : | +     1 point_add  (in h_noinline) + 20  [0x1043b6ed8]  point.h:0
+        +     : | 1 ts_subtree_summarize_children  (in h_noinline) + 352  [0x1043c1f2c]  subtree.c:384
+        +     : | + 1 ts_subtree_lookahead_bytes  (in h_noinline) + 0  [0x1043c22e8]  subtree.h:242
+        +     : | 1 ts_subtree_summarize_children  (in h_noinline) + 552  [0x1043c1ff4]  subtree.c:408
+        +     : | + 1 ts_subtree_visible_descendant_count  (in h_noinline) + 20  [0x1043b72bc]  subtree.h:0
+        +     : | 1 ts_subtree_summarize_children  (in h_noinline) + 156  [0x1043c1e68]  subtree.c:437
+        +     : | + 1 ts_subtree_extra  (in h_noinline) + 12  [0x1043b7140]  subtree.h:0
+        +     : | 1 ts_subtree_total_size  (in h_noinline) + 76  [0x1043b5cec]  subtree.h:296
+        +     : 1 ts_subtree_compress  (in h_noinline) + 136  [0x1043c1cd0]  subtree.c:316
+        +     : 1 ts_subtree_compress  (in h_noinline) + 340  [0x1043c1d9c]  subtree.c:333
+        +     :   1 ts_subtree_summarize_children  (in h_noinline) + 372  [0x1043c1f40]  subtree.c:0
+        +     1 ts_parser__balance_subtree  (in h_noinline) + 404  [0x1043bab84]  parser.c:1927
+        +       1 _array__grow  (in h_noinline) + 52  [0x1043bb1fc]  array.h:217
+        1806 main  (in h_noinline) + 1368  [0x1043b4af0]  harness.c:79
+        + 1806 ts_parser_parse_string_encoding  (in h_noinline) + 52  [0x1043bacf4]  parser.c:2267
+        +   1794 ts_parser_parse  (in h_noinline) + 920  [0x1043b9534]  parser.c:2175
+        +   ! 1708 ts_parser__advance  (in h_noinline) + 236  [0x1043b9b8c]  parser.c:1602
+        +   ! : 1624 ts_parser__lex  (in h_noinline) + 216  [0x1043c5df0]  parser.c:535
+        +   ! : | 1159 ts_lexer_goto  (in h_noinline) + 80,92  [0x1043b6a8c,0x1043b6a98]  lexer.c:147
+        +   ! : | 462 ts_lexer_goto  (in h_noinline) + 96  [0x1043b6a9c]  lexer.c:150
+        +   ! : | 1 ts_lexer_goto  (in h_noinline) + 60  [0x1043b6a78]  lexer.c:0
+        +   ! : | 1 ts_lexer_goto  (in h_noinline) + 108  [0x1043b6aa8]  lexer.c:151
+        +   ! : | 1 ts_lexer_goto  (in h_noinline) + 144  [0x1043b6acc]  lexer.c:160
+        +   ! : 64 ts_parser__lex  (in h_noinline) + 680  [0x1043c5fc0]  parser.c:595
+        +   ! : | 43 ts_lexer_goto  (in h_noinline) + 80,92  [0x1043b6a8c,0x1043b6a98]  lexer.c:147
+        +   ! : | 21 ts_lexer_goto  (in h_noinline) + 96  [0x1043b6a9c]  lexer.c:150
+        +   ! : 8 ts_parser__lex  (in h_noinline) + 784  [0x1043c6028]  parser.c:606
+        +   ! : | 3 ts_lex  (in h_noinline) + 159732,159792  [0x1043f228c,0x1043f22c8]  parser.c:12112
+        +   ! : | 3 ts_lex  (in h_noinline) + 64  [0x1043cb2d8]  parser.c:2321
+        +   ! : | + 3 ts_lexer__get_lookahead  (in h_noinline) + 24  [0x1043b6c7c]  lexer.c:107
+        +   ! : | 1 ts_lex  (in h_noinline) + 162036  [0x1043f2b8c]  parser.c:12302
+        +   ! : | 1 ts_lex  (in h_noinline) + 648  [0x1043cb520]  parser.c:2410
+        +   ! : 2 ts_parser__lex  (in h_noinline) + 432  [0x1043c5ec8]  parser.c:551
+        +   ! : | 1 parse_leaf_delimiter  (in h_noinline) + 228  [0x1043f4108]  scanner.c:124
+        +   ! : | + 1 ts_lexer__do_advance  (in h_noinline) + 104  [0x1043c5428]  lexer.c:209
+        +   ! : | +   1 ts_lexer__increment_column_data  (in h_noinline) + 0  [0x1043c550c]  lexer.c:57
+        +   ! : | 1 ts_parser__external_scanner_scan  (in h_noinline) + 28  [0x1043c7a94]  parser.c:464
+        +   ! : |   1 ts_language_enabled_external_tokens  (in h_noinline) + 0  [0x1043c7b3c]  language.h:197
+        +   ! : 2 ts_parser__lex  (in h_noinline) + 1204  [0x1043c61cc]  parser.c:653
+        +   ! : | 2 length_sub  (in h_noinline) + 52  [0x1043c2f1c]  length.h:35
+        +   ! : |   2 point__new  (in h_noinline) + 0  [0x1043c573c]  point.h:11
+        +   ! : 1 scan  (in h_noinline) + 60  [0x1043f3a9c]  scanner.c:349
+        +   ! : 1 scan  (in h_noinline) + 104  [0x1043f3ac8]  scanner.c:360
+        +   ! : 1 scan  (in h_noinline) + 36  [0x1043f3a84]  scanner.c:367
+        +   ! : 1 ts_parser__external_scanner_deserialize  (in h_noinline) + 64  [0x1043c7a70]  parser.c:441
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 700  [0x1043c5fd4]  parser.c:0
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 420  [0x1043c5ebc]  parser.c:550
+        +   ! : | 1 deserialize  (in h_noinline) + 0  [0x1043f3a30]  scanner.c:83
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 456  [0x1043c5ee0]  parser.c:553
+        +   ! : | 1 ts_lexer_finish  (in h_noinline) + 112  [0x1043b6da4]  lexer.c:441
+        +   ! : 1 ts_parser__lex  (in h_noinline) + 800  [0x1043c6038]  parser.c:607
+        +   ! :   1 ts_lexer_finish  (in h_noinline) + 44  [0x1043b6d60]  lexer.c:420
+        +   ! :     1 length_is_undefined  (in h_noinline) + 0  [0x1043b6dc4]  length.h:18
+        +   ! 52 ts_parser__advance  (in h_noinline) + 488  [0x1043b9c88]  parser.c:1660
+        +   ! : 18 ts_parser__reduce  (in h_noinline) + 92  [0x1043c6920]  parser.c:954
+        +   ! : | 18 ts_stack_pop_count  (in h_noinline) + 36  [0x1043c0018]  stack.c:535
+        +   ! : |   7 stack__iter  (in h_noinline) + 144  [0x1043c00b4]  stack.c:345
+        +   ! : |   + 7 _array__reserve  (in h_noinline) + 80  [0x1043b89d8]  array.h:188
+        +   ! : |   +   6 ts_malloc_default  (in h_noinline) + 24  [0x1043b4c24]  alloc.c:6
+        +   ! : |   +   ! 3 _xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib) + 12,312,...  [0x186157ee0,0x18615800c,...]
+        +   ! : |   +   ! 2 _xzm_xzone_malloc_freelist_outlined  (in libsystem_malloc.dylib) + 756  [0x18615992c]
+        +   ! : |   +   ! 1 _xzm_xzone_malloc  (in libsystem_malloc.dylib) + 180  [0x186152974]
+        +   ! : |   +   1 ts_malloc_default  (in h_noinline) + 24  [0x1043b4c24]  alloc.c:7
+        +   ! : |   3 stack__iter  (in h_noinline) + 568  [0x1043c025c]  stack.c:394
+        +   ! : |   + 2 ts_subtree_array_copy  (in h_noinline) + 56  [0x1043c1530]  subtree.c:73
+        +   ! : |   + ! 2 ts_calloc_default  (in h_noinline) + 28  [0x1043b4c78]  alloc.c:15
+        +   ! : |   + !   1 _xzm_malloc_zone_malloc_type_calloc_entry  (in libsystem_malloc.dylib) + 160  [0x1861610b8]
+        +   ! : |   + !   1 _xzm_xzone_malloc_freelist_outlined  (in libsystem_malloc.dylib) + 324  [0x18615977c]
+        +   ! : |   + !     1 _xzm_xzone_find_and_malloc_from_freelist_chunk  (in libsystem_malloc.dylib) + 336  [0x18615a064]
+        +   ! : |   + !       1 _xzm_xzone_malloc_from_freelist_chunk  (in libsystem_malloc.dylib) + 336  [0x186159c68]
+        +   ! : |   + 1 ts_subtree_array_copy  (in h_noinline) + 28  [0x1043c1514]  subtree.c:72
+        +   ! : |   3 stack__iter  (in h_noinline) + 628  [0x1043c0298]  stack.c:401
+        +   ! : |   + 2 ts_subtree_retain  (in h_noinline) + 32  [0x1043b9864]  subtree.c:561
+        +   ! : |   + ! 2 atomic_inc  (in h_noinline) + 8  [0x1043c25e0]  atomic.h:52
+        +   ! : |   + 1 ts_subtree_retain  (in h_noinline) + 40  [0x1043b986c]  subtree.c:563
+        +   ! : |   2 stack__iter  (in h_noinline) + 708  [0x1043c02e8]  stack.c:365
+        +   ! : |   + 1 ts_stack__add_slice  (in h_noinline) + 160  [0x1043caf10]  stack.c:319
+        +   ! : |   + ! 1 ts_stack__add_version  (in h_noinline) + 20  [0x1043caf98]  stack.c:293
+        +   ! : |   + 1 ts_stack__add_slice  (in h_noinline) + 192  [0x1043caf30]  stack.c:321
+        +   ! : |   +   1 _array__grow  (in h_noinline) + 0  [0x1043bb1c8]  array.h:210
+        +   ! : |   1 stack__iter  (in h_noinline) + 164  [0x1043c00c8]  stack.c:348
+        +   ! : |   + 1 _array__grow  (in h_noinline) + 52  [0x1043bb1fc]  array.h:217
+        +   ! : |   1 stack__iter  (in h_noinline) + 688  [0x1043c02d4]  stack.c:364
+        +   ! : |   + 1 ts_subtree_array_reverse  (in h_noinline) + 8  [0x1043c16a4]  subtree.c:111
+        +   ! : |   1 stack__iter  (in h_noinline) + 636  [0x1043c02a0]  stack.c:404
+        +   ! : |     1 ts_subtree_extra  (in h_noinline) + 0  [0x1043b7134]  subtree.h:237
+        +   ! : 16 ts_parser__reduce  (in h_noinline) + 452  [0x1043c6a88]  parser.c:985
+        +   ! : | 16 ts_subtree_new_node  (in h_noinline) + 336  [0x1043c24fc]  subtree.c:515
+        +   ! : |   4 ts_subtree_summarize_children  (in h_noinline) + 284  [0x1043c1ee8]  subtree.c:378
+        +   ! : |   + 3 length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        +   ! : |   + ! 1 point__new  (in h_noinline) + 0  [0x1043c573c]  point.h:11
+        +   ! : |   + ! 1 point_add  (in h_noinline) + 20  [0x1043b6ed8]  point.h:0
+        +   ! : |   + ! 1 point_add  (in h_noinline) + 12  [0x1043b6ed0]  point.h:16
+        +   ! : |   + 1 length_add  (in h_noinline) + 16  [0x1043c22ac]  length.h:25
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 168  [0x1043c1e74]  subtree.c:0
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 80  [0x1043c1e1c]  subtree.c:356
+        +   ! : |   + 1 ts_language_alias_sequence  (in h_noinline) + 4  [0x1043c2220]  language.h:209
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 224  [0x1043c1eac]  subtree.c:371
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 244  [0x1043c1ec0]  subtree.c:378
+        +   ! : |   + 1 ts_subtree_total_size  (in h_noinline) + 64  [0x1043b5ce0]  subtree.h:296
+        +   ! : |   +   1 length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 352  [0x1043c1f2c]  subtree.c:384
+        +   ! : |   + 1 ts_subtree_lookahead_bytes  (in h_noinline) + 12  [0x1043c22f4]  subtree.h:242
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 384  [0x1043c1f4c]  subtree.c:389
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 404  [0x1043c1f60]  subtree.c:390
+        +   ! : |   + 1 ts_subtree_error_cost  (in h_noinline) + 20  [0x1043b7244]  subtree.h:332
+        +   ! : |   +   1 ts_subtree_missing  (in h_noinline) + 0  [0x1043b71cc]  subtree.h:239
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 580  [0x1043c2010]  subtree.c:421
+        +   ! : |   + 1 ts_subtree_visible  (in h_noinline) + 0  [0x1043c12f8]  subtree.h:235
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 616  [0x1043c2034]  subtree.c:424
+        +   ! : |   + 1 ts_subtree_named  (in h_noinline) + 0  [0x1043b71a0]  subtree.h:236
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 776  [0x1043c20d4]  subtree.c:432
+        +   ! : |   + 1 ts_subtree_is_error  (in h_noinline) + 12  [0x1043c0674]  subtree.h:376
+        +   ! : |   +   1 ts_subtree_symbol  (in h_noinline) + 12  [0x1043b6f3c]  subtree.h:234
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 156  [0x1043c1e68]  subtree.c:437
+        +   ! : |   + 1 ts_subtree_extra  (in h_noinline) + 0  [0x1043b7134]  subtree.h:237
+        +   ! : |   1 ts_subtree_summarize_children  (in h_noinline) + 968  [0x1043c2194]  subtree.c:463
+        +   ! : 4 ts_parser__reduce  (in h_noinline) + 808  [0x1043c6bec]  parser.c:1034
+        +   ! : | 3 ts_stack_push  (in h_noinline) + 68  [0x1043bffb8]  stack.c:520
+        +   ! : | + 2 stack_node_new  (in h_noinline) + 268  [0x1043bfa2c]  stack.c:169
+        +   ! : | + ! 1 length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        +   ! : | + ! : 1 point_add  (in h_noinline) + 0  [0x1043b6ec4]  point.h:14
+        +   ! : | + ! 1 length_add  (in h_noinline) + 64  [0x1043c22dc]  length.h:29
+        +   ! : | + 1 stack_node_new  (in h_noinline) + 284  [0x1043bfa3c]  stack.c:170
+        +   ! : | +   1 stack__subtree_node_count  (in h_noinline) + 20  [0x1043cae40]  stack.c:127
+        +   ! : | +     1 ts_subtree_visible_descendant_count  (in h_noinline) + 0  [0x1043b72a8]  subtree.h:318
+        +   ! : | 1 ts_stack_push  (in h_noinline) + 12  [0x1043bff80]  stack.c:519
+        +   ! : 4 ts_parser__reduce  (in h_noinline) + 112  [0x1043c6934]  parser.c:956
+        +   ! : | 2 ts_stack_halted_version_count  (in h_noinline) + 364,368  [0x1043bfd98,0x1043bfd9c]  stack.c:465
+        +   ! : | 1 ts_stack_halted_version_count  (in h_noinline) + 20  [0x1043bfc40]  stack.c:0
+        +   ! : | 1 ts_stack_halted_version_count  (in h_noinline) + 416  [0x1043bfdcc]  stack.c:471
+        +   ! : 2 ts_parser__reduce  (in h_noinline) + 944  [0x1043c6c74]  parser.c:0
+        +   ! : 2 ts_parser__reduce  (in h_noinline) + 892  [0x1043c6c40]  parser.c:1039
+        +   ! : 2 ts_parser__reduce  (in h_noinline) + 928  [0x1043c6c64]  parser.c:1041
+        +   ! : | 1 ts_stack_merge  (in h_noinline) + 0  [0x1043c0ccc]  stack.c:708
+        +   ! : | 1 ts_stack_merge  (in h_noinline) + 44  [0x1043c0cf8]  stack.c:709
+        +   ! : |   1 ts_stack_can_merge  (in h_noinline) + 136  [0x1043c0e7c]  stack.c:725
+        +   ! : 1 ts_parser__reduce  (in h_noinline) + 968  [0x1043c6c8c]  parser.c:1049
+        +   ! : | 1 ts_stack_version_count  (in h_noinline) + 0  [0x1043b99ac]  stack.c:460
+        +   ! : 1 ts_parser__reduce  (in h_noinline) + 236  [0x1043c69b0]  parser.c:965
+        +   ! : 1 ts_stack_merge  (in h_noinline) + 216  [0x1043c0da4]  stack.c:720
+        +   ! : 1 ts_stack_pop_count  (in h_noinline) + 44  [0x1043c0020]  stack.c:535
+        +   ! 12 ts_parser__advance  (in h_noinline) + 928  [0x1043b9e40]  parser.c:1694
+        +   ! : 11 ts_stack_renumber_version  (in h_noinline) + 124  [0x1043c04f8]  stack.c:686
+        +   ! : | 4 stack_node_release  (in h_noinline) + 168  [0x1043bfb1c]  stack.c:104
+        +   ! : | + 4 ts_subtree_release  (in h_noinline) + 136  [0x1043b8de8]  subtree.c:586
+        +   ! : | +   2 _free  (in libsystem_malloc.dylib) + 28,96  [0x186162c68,0x186162cac]
+        +   ! : | +   2 _xzm_free  (in libsystem_malloc.dylib) + 564,708  [0x1861532a0,0x186153330]
+        +   ! : | 2 ts_subtree_release  (in h_noinline) + 324,328  [0x1043b8ea4,0x1043b8ea8]  subtree.c:594
+        +   ! : | 1 stack_head_delete  (in h_noinline) + 36  [0x1043bfbd0]  stack.c:272
+        +   ! : | 1 stack_head_delete  (in h_noinline) + 52  [0x1043bfbe0]  stack.c:273
+        +   ! : | + 1 ts_subtree_release  (in h_noinline) + 56  [0x1043b8d98]  subtree.c:570
+        +   ! : | +   1 atomic_dec  (in h_noinline) + 8  [0x1043c25ec]  atomic.h:60
+        +   ! : | 1 stack_head_delete  (in h_noinline) + 68  [0x1043bfbf0]  stack.c:278
+        +   ! : | 1 stack_node_release  (in h_noinline) + 228  [0x1043bfb58]  stack.c:113
+        +   ! : | + 1 _array__grow  (in h_noinline) + 52  [0x1043bb1fc]  array.h:217
+        +   ! : | 1 stack_node_release  (in h_noinline) + 244  [0x1043bfb68]  stack.c:113
+        +   ! : 1 stack_node_release  (in h_noinline) + 272  [0x1043bfb84]  stack.c:122
+        +   ! 5 ts_parser__advance  (in h_noinline) + 328  [0x1043b9be8]  parser.c:0
+        +   ! : 5 ts_language_table_entry  (in h_noinline) + 64  [0x1043b5e98]  language.c:84
+        +   ! :   2 ts_language_lookup  (in h_noinline) + 92,96  [0x1043b5f40,0x1043b5f44]  language.h:85
+        +   ! :   2 ts_language_lookup  (in h_noinline) + 80  [0x1043b5f34]  language.h:86
+        +   ! :   1 ts_language_lookup  (in h_noinline) + 136  [0x1043b5f6c]  language.h:0
+        +   ! 5 ts_parser__advance  (in h_noinline) + 1404  [0x1043ba01c]  parser.c:1651
+        +   ! : 5 ts_parser__shift  (in h_noinline) + 136  [0x1043c674c]  parser.c:929
+        +   ! :   5 ts_stack_push  (in h_noinline) + 68  [0x1043bffb8]  stack.c:520
+        +   ! :     3 stack_node_new  (in h_noinline) + 244  [0x1043bfa14]  stack.c:169
+        +   ! :     | 2 ts_subtree_total_size  (in h_noinline) + 64  [0x1043b5ce0]  subtree.h:296
+        +   ! :     | + 1 length_add  (in h_noinline) + 32  [0x1043c22bc]  length.h:27
+        +   ! :     | + 1 length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        +   ! :     | +   1 point__new  (in h_noinline) + 0  [0x1043c573c]  point.h:11
+        +   ! :     | 1 ts_subtree_total_size  (in h_noinline) + 40  [0x1043b5cc8]  subtree.h:296
+        +   ! :     |   1 ts_subtree_size  (in h_noinline) + 36  [0x1043b6e64]  subtree.h:293
+        +   ! :     1 stack_node_new  (in h_noinline) + 36  [0x1043bf944]  stack.c:145
+        +   ! :     1 stack_node_new  (in h_noinline) + 268  [0x1043bfa2c]  stack.c:169
+        +   ! :       1 length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        +   ! :         1 point_add  (in h_noinline) + 12  [0x1043b6ed0]  point.h:16
+        +   ! 4 ts_parser__advance  (in h_noinline) + 1040  [0x1043b9eb0]  parser.c:1706
+        +   ! : 4 ts_language_table_entry  (in h_noinline) + 64  [0x1043b5e98]  language.c:84
+        +   ! :   1 ts_language_lookup  (in h_noinline) + 136  [0x1043b5f6c]  language.h:0
+        +   ! :   1 ts_language_lookup  (in h_noinline) + 44  [0x1043b5f10]  language.h:81
+        +   ! :   1 ts_language_lookup  (in h_noinline) + 56  [0x1043b5f1c]  language.h:84
+        +   ! :   1 ts_language_lookup  (in h_noinline) + 92  [0x1043b5f40]  language.h:85
+        +   ! 2 ts_parser__advance  (in h_noinline) + 180  [0x1043b9b54]  parser.c:1592
+        +   ! : 1 ts_parser__get_cached_token  (in h_noinline) + 64  [0x1043c5cb0]  parser.c:719
+        +   ! : | 1 ts_external_scanner_state_eq  (in h_noinline) + 48  [0x1043c14dc]  subtree.c:63
+        +   ! : |   1 _platform_memcmp  (in libsystem_platform.dylib) + 208  [0x18633cfe0]
+        +   ! : 1 ts_parser__get_cached_token  (in h_noinline) + 100  [0x1043c5cd4]  parser.c:721
+        +   ! :   1 ts_language_table_entry  (in h_noinline) + 64  [0x1043b5e98]  language.c:84
+        +   ! :     1 ts_language_lookup  (in h_noinline) + 112  [0x1043b5f54]  language.h:0
+        +   ! 1 ts_language_table_entry  (in h_noinline) + 100  [0x1043b5ebc]  language.c:90
+        +   ! 1 ts_parser__advance  (in h_noinline) + 68  [0x1043b9ae4]  parser.c:1574
+        +   ! : 1 ts_stack_position  (in h_noinline) + 0  [0x1043b9a50]  stack.c:479
+        +   ! 1 ts_parser__advance  (in h_noinline) + 128  [0x1043b9b20]  parser.c:1583
+        +   ! : 1 ts_parser__reuse_node  (in h_noinline) + 332  [0x1043c5a18]  parser.c:789
+        +   ! :   1 ts_subtree_external_scanner_state_eq  (in h_noinline) + 40  [0x1043c1104]  subtree.c:1031
+        +   ! :     1 ts_external_scanner_state_data  (in h_noinline) + 0  [0x1043c12e4]  subtree.c:53
+        +   ! 1 ts_parser__advance  (in h_noinline) + 352  [0x1043b9c00]  parser.c:1620
+        +   ! : 1 ts_parser__check_progress  (in h_noinline) + 32  [0x1043c64b0]  parser.c:0
+        +   ! 1 ts_parser__advance  (in h_noinline) + 488  [0x1043b9c88]  parser.c:1666
+        +   ! 1 ts_parser__advance  (in h_noinline) + 984  [0x1043b9e78]  parser.c:1696
+        +   !   1 ts_stack_state  (in h_noinline) + 0  [0x1043b9a04]  stack.c:475
+        +   10 ts_parser_parse  (in h_noinline) + 1028  [0x1043b95a0]  parser.c:2192
+        +   ! 7 ts_parser__condense_stack  (in h_noinline) + 180  [0x1043ba7b4]  parser.c:1811
+        +   ! : 3 ts_stack_merge  (in h_noinline) + 200  [0x1043c0d94]  stack.c:718
+        +   ! : | 3 ts_stack_remove_version  (in h_noinline) + 60  [0x1043c0a54]  stack.c:672
+        +   ! : |   3 stack_node_release  (in h_noinline) + 188  [0x1043bfb30]  stack.c:108
+        +   ! : |     1 ts_subtree_release  (in h_noinline) + 248  [0x1043b8e58]  subtree.c:583
+        +   ! : |     + 1 _array__grow  (in h_noinline) + 52  [0x1043bb1fc]  array.h:217
+        +   ! : |     1 ts_subtree_release  (in h_noinline) + 136  [0x1043b8de8]  subtree.c:586
+        +   ! : |     + 1 _xzm_free  (in libsystem_malloc.dylib) + 196  [0x186153130]
+        +   ! : |     1 ts_subtree_release  (in h_noinline) + 288  [0x1043b8e80]  subtree.c:591
+        +   ! : 2 ts_stack_merge  (in h_noinline) + 44  [0x1043c0cf8]  stack.c:709
+        +   ! : | 1 ts_stack_can_merge  (in h_noinline) + 20  [0x1043c0e08]  stack.c:724
+        +   ! : | 1 ts_subtree_external_scanner_state_eq  (in h_noinline) + 20  [0x1043c10f0]  subtree.c:1027
+        +   ! : |   1 ts_subtree_external_scanner_state  (in h_noinline) + 0  [0x1043c3700]  subtree.c:1012
+        +   ! : 2 ts_stack_merge  (in h_noinline) + 144  [0x1043c0d5c]  stack.c:713
+        +   ! :   1 stack_node_add_link  (in h_noinline) + 108  [0x1043c0f30]  stack.c:209
+        +   ! :   + 1 ts_external_scanner_state_eq  (in h_noinline) + 48  [0x1043c14dc]  subtree.c:63
+        +   ! :   +   1 _platform_memcmp  (in libsystem_platform.dylib) + 168  [0x18633cfb8]
+        +   ! :   1 stack_node_add_link  (in h_noinline) + 224  [0x1043c0fa4]  stack.c:235
+        +   ! :     1 stack_node_add_link  (in h_noinline) + 108  [0x1043c0f30]  stack.c:209
+        +   ! :       1 ts_subtree_external_scanner_state_eq  (in h_noinline) + 20  [0x1043c10f0]  subtree.c:1027
+        +   ! :         1 ts_subtree_external_scanner_state  (in h_noinline) + 28  [0x1043c371c]  subtree.c:1018
+        +   ! 2 ts_parser__condense_stack  (in h_noinline) + 224  [0x1043ba7e0]  parser.c:1799
+        +   ! : 1 ts_parser__version_status  (in h_noinline) + 40  [0x1043c834c]  parser.c:299
+        +   ! : | 1 ts_stack_error_cost  (in h_noinline) + 0  [0x1043bfe9c]  stack.c:494
+        +   ! : 1 ts_parser__version_status  (in h_noinline) + 72  [0x1043c836c]  parser.c:304
+        +   ! :   1 ts_stack_node_count_since_error  (in h_noinline) + 0  [0x1043bff10]  stack.c:505
+        +   ! 1 ts_parser__condense_stack  (in h_noinline) + 236  [0x1043ba7ec]  parser.c:1801
+        +   !   1 ts_parser__compare_versions  (in h_noinline) + 104  [0x1043c8434]  parser.c:282
+        +   1 ts_parser_parse  (in h_noinline) + 736  [0x1043b947c]  parser.c:0
+        +   1 ts_parser_parse  (in h_noinline) + 768  [0x1043b949c]  parser.c:2165
+        1 main  (in h_noinline) + 1340  [0x1043b4ad4]  harness.c:74
+          1 ts_tree_edit  (in h_noinline) + 224  [0x1043c4fc4]  tree.c:74
+
+Total number in stack (recursive counted multiple, when >=5):
+        7       length_add  (in h_noinline) + 48  [0x1043c22cc]  length.h:28
+        5       _platform_memcmp  (in libsystem_platform.dylib) + 0  [0x18633cf10]
+        5       ts_external_scanner_state_eq  (in h_noinline) + 48  [0x1043c14dc]  subtree.c:63
+        5       ts_language_table_entry  (in h_noinline) + 64  [0x1043b5e98]  language.c:84
+
+Sort by top of stack, same collapsed (when >= 5):
+        ts_lexer_goto  (in h_noinline)        4369
+        _xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib)        14
+        ts_language_lookup  (in h_noinline)        14
+        ts_subtree_summarize_children  (in h_noinline)        12
+        ts_lex  (in h_noinline)        11
+        ts_parser__reduce  (in h_noinline)        10
+        _xzm_free  (in libsystem_malloc.dylib)        8
+        _platform_memcmp  (in libsystem_platform.dylib)        7
+        scan  (in h_noinline)        7
+        _array__grow  (in h_noinline)        6
+        point_add  (in h_noinline)        6
+        ts_stack_halted_version_count  (in h_noinline)        6
+        ts_subtree_release  (in h_noinline)        6
+        point__new  (in h_noinline)        5
+        stack__iter  (in h_noinline)        5
+        ts_subtree_external_scanner_state  (in h_noinline)        5
+        ts_subtree_extra  (in h_noinline)        5
+        ts_subtree_visible_descendant_count  (in h_noinline)        5
+
+Binary Images:
+       0x1043b4000 -        0x10442b593 +h_noinline (0) <A290706D-4A63-3952-AC85-2C637C7D8F09> /tmp/*/h_noinline
+       0x185ed0000 -        0x185f22b4b  libobjc.A.dylib (951.7) <FF1D8AE4-ABEF-35F1-A30A-1183B9CB414F> /usr/lib/libobjc.A.dylib
+       0x185f23000 -        0x185f57d07  libdyld.dylib (1378) <B147D877-D0C2-388F-B38D-D3132E39905F> /usr/lib/system/libdyld.dylib
+       0x185f58000 -        0x185ffe217  dyld (1.0.0 - 1378) <A237EF81-B68B-37BA-A165-92C965529534> /usr/lib/dyld
+       0x185fff000 -        0x186002228  libsystem_blocks.dylib (96) <CC947089-488D-316B-A9C7-46DEC0F73145> /usr/lib/system/libsystem_blocks.dylib
+       0x186003000 -        0x18605755f  libxpc.dylib (3102.120.13) <C40FCAE8-7A17-3D82-87CB-3DA4802ADEF1> /usr/lib/system/libxpc.dylib
+       0x186058000 -        0x1860789ff  libsystem_trace.dylib (1861.120.4) <D0FABAB3-5AE7-3F10-8C62-60CBF5D70850> /usr/lib/system/libsystem_trace.dylib
+       0x186079000 -        0x1861275f7  libcorecrypto.dylib (1922.121.1) <A01A158D-6FE7-3B1C-A2C4-6BCB90D7314A> /usr/lib/system/libcorecrypto.dylib
+       0x186128000 -        0x1861781d7  libsystem_malloc.dylib (812.100.31) <5FAE4807-4D2B-3A95-A63A-DD96D3DA11B4> /usr/lib/system/libsystem_malloc.dylib
+       0x186179000 -        0x1861c023f  libdispatch.dylib (1542.100.32) <F071EFE4-299F-3089-ACC4-0025B8FFB52A> /usr/lib/system/libdispatch.dylib
+       0x1861c1000 -        0x1861c3ffb  libsystem_featureflags.dylib (103) <71FCFFBD-85F8-3365-AFE0-BECEA4369122> /usr/lib/system/libsystem_featureflags.dylib
+       0x1861c4000 -        0x186244d9f  libsystem_c.dylib (1752.120.2) <694B7881-1BF3-3D0F-8F19-B50AE4E8EF8A> /usr/lib/system/libsystem_c.dylib
+       0x186245000 -        0x1862d5ae7  libc++.1.dylib (2100.43) <5013C0F8-84A9-3B56-9FEB-C353816A750F> /usr/lib/libc++.1.dylib
+       0x1862d6000 -        0x1862f075f  libc++abi.dylib (2100.43) <E482D257-E5A0-3816-BD97-7B39342958DA> /usr/lib/libc++abi.dylib
+       0x1862f1000 -        0x18632e2af  libsystem_kernel.dylib (12377.121.6) <CC1CF985-BC65-3725-809F-4C1E36B8F4BA> /usr/lib/system/libsystem_kernel.dylib
+       0x18632f000 -        0x18633bb3b  libsystem_pthread.dylib (539.100.4) <4F33683C-18C8-39A1-800B-2E3BD43BCC13> /usr/lib/system/libsystem_pthread.dylib
+       0x18633c000 -        0x186344963  libsystem_platform.dylib (375.120.2) <160FD864-8D15-36FC-9E97-9725388CFAFE> /usr/lib/system/libsystem_platform.dylib
+       0x186345000 -        0x1863746eb  libsystem_info.dylib (600) <3D62F2D9-F516-31BF-83C7-E203D872300B> /usr/lib/system/libsystem_info.dylib
+       0x18a30c000 -        0x18a315e5f  libsystem_darwin.dylib (1752.120.2) <8858F025-745A-388E-9544-080781CC9A69> /usr/lib/system/libsystem_darwin.dylib
+       0x18a777000 -        0x18a7891b6  libsystem_notify.dylib (348.120.4) <64D76451-1E0C-369B-A631-54DA3140E083> /usr/lib/system/libsystem_notify.dylib
+       0x18ca44000 -        0x18ca5ef7b  libsystem_networkextension.dylib (2226.121.1) <0331EE20-A1FB-3C0D-990A-F65939CFF505> /usr/lib/system/libsystem_networkextension.dylib
+       0x18cae1000 -        0x18caf8fdf  libsystem_asl.dylib (406) <F40838DF-2F15-3F62-970F-DEE25706BF1B> /usr/lib/system/libsystem_asl.dylib
+       0x18e69f000 -        0x18e6a7387  libsystem_symptoms.dylib (2169.120.7) <F5029F5C-1BF3-31C7-892E-BC8606AC829E> /usr/lib/system/libsystem_symptoms.dylib
+       0x192943000 -        0x19297b257  libsystem_containermanager.dylib (725.120.2) <518BE44D-AA31-31E6-B44B-A37AD5E47040> /usr/lib/system/libsystem_containermanager.dylib
+       0x193d54000 -        0x193d585d7  libsystem_configuration.dylib (1405.120.5) <0F7BBC1C-3D50-3E59-A31F-E4672A80BCEB> /usr/lib/system/libsystem_configuration.dylib
+       0x193d59000 -        0x193d5f8cf  libsystem_sandbox.dylib (2680.120.12) <EC3A75EA-44C0-3A0B-9BF7-71C117B0A9C6> /usr/lib/system/libsystem_sandbox.dylib
+       0x1953b3000 -        0x1953b61fb  libquarantine.dylib (196.120.2) <5849009B-ACA3-3796-94C4-BBDF8D300EBA> /usr/lib/system/libquarantine.dylib
+       0x195b52000 -        0x195b58d03  libsystem_coreservices.dylib (191.4.5) <9576143B-C303-35A3-BA63-1FD06EDA2BB1> /usr/lib/system/libsystem_coreservices.dylib
+       0x1960dd000 -        0x19611aa77  libsystem_m.dylib (3312.100.1) <A7E0863C-101A-31A0-922B-ED9B02626151> /usr/lib/system/libsystem_m.dylib
+       0x19611c000 -        0x19611f527  libmacho.dylib (1378) <755441B4-C034-3E3A-8E3C-F424FBB28261> /usr/lib/system/libmacho.dylib
+       0x196139000 -        0x1961463a7  libcommonCrypto.dylib (600035) <CE357BB1-2D49-37CC-9FFE-D093936B1475> /usr/lib/system/libcommonCrypto.dylib
+       0x196147000 -        0x196150ca3  libunwind.dylib (2100.2) <FC8F0C4E-6FB0-3E27-ABEF-B0FA720CD5E4> /usr/lib/system/libunwind.dylib
+       0x196159000 -        0x1961637ff  libcopyfile.dylib (240) <8ACFAC7A-88E9-3EF4-853F-A9140FF110E5> /usr/lib/system/libcopyfile.dylib
+       0x196164000 -        0x196167987  libcompiler_rt.dylib (103.3) <AA79151F-C19D-3C7C-92F8-B10F04D82C1C> /usr/lib/system/libcompiler_rt.dylib
+       0x196168000 -        0x19616c78b  libsystem_collections.dylib (1752.120.2) <72DB5BE7-EF78-37D0-8AAD-53E37CFE4287> /usr/lib/system/libsystem_collections.dylib
+       0x19616d000 -        0x1961704cf  libsystem_secinit.dylib (168.100.7) <E525C566-CDA4-3D99-B12B-1615FD54A1F3> /usr/lib/system/libsystem_secinit.dylib
+       0x196171000 -        0x196173bf7  libremovefile.dylib (85.100.6) <635E661D-80A7-340D-A165-3F7D318FDFC9> /usr/lib/system/libremovefile.dylib
+       0x196174000 -        0x196174f27  libkeymgr.dylib (31) <8C08891A-DF1C-3DCC-AB64-4742FD6BE9BA> /usr/lib/system/libkeymgr.dylib
+       0x196175000 -        0x19617de37  libsystem_dnssd.dylib (2881.120.11) <6F45DF3F-233B-3BC3-BA8C-B43E7DA884BF> /usr/lib/system/libsystem_dnssd.dylib
+       0x19617e000 -        0x19618309b  libcache.dylib (95) <189B576E-6176-3F82-8FA4-5914B0BEAEE7> /usr/lib/system/libcache.dylib
+       0x196184000 -        0x196185ce3  libSystem.B.dylib (1356) <D65E4112-C151-3FF8-BEB7-4841436012D6> /usr/lib/libSystem.B.dylib
+       0x2893bb000 -        0x2893c2349  libRosetta.dylib (367.9) <8651ED4F-6506-3788-B56B-32EE414A85CA> /usr/lib/libRosetta.dylib
+       0x28afd8000 -        0x28afdba4b  libsystem_darwindirectory.dylib (122) <CF277A2C-C818-3F16-8B3F-3C7B39FCD164> /usr/lib/system/libsystem_darwindirectory.dylib
+       0x28afdc000 -        0x28afe55d3  libsystem_eligibility.dylib (319.121.1) <DDAC0531-0262-3DDC-8EC8-80EB9438847A> /usr/lib/system/libsystem_eligibility.dylib
+       0x28afe6000 -        0x28afed88b  libsystem_sanitizers.dylib (26.1) <44C4234F-8B2D-38D3-A774-B4B3C75AF3A7> /usr/lib/system/libsystem_sanitizers.dylib
+       0x28afee000 -        0x28afeebb7  libsystem_trial.dylib (474.2.18.2) <68C583BA-AFF5-3916-86AE-6E38BFEF98D6> /usr/lib/system/libsystem_trial.dylib

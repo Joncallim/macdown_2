@@ -1,0 +1,48 @@
+diff -ru a/SwiftTreeSitter/Parser.swift b/SwiftTreeSitter/Parser.swift
+--- a/SwiftTreeSitter/Parser.swift	2026-10-16 08:19:22
++++ b/SwiftTreeSitter/Parser.swift	2026-10-16 08:19:22
+@@ -75,7 +75,9 @@
+ 					preconditionFailure("unable to convert pointer")
+ 				}
+ 
+-				ts_parser_set_included_ranges(internalParser, ptr, UInt32(count))
++				// SCRATCH INSTRUMENTATION (not for commit): record the ignored Bool
++				let ok = ts_parser_set_included_ranges(internalParser, ptr, UInt32(count))
++				IncludedRangesDiagnostics.record(ok: ok, ranges: newValue)
+ 			}
+ 		}
+ 	}
+@@ -159,4 +161,15 @@
+ 			)
+ 		}
+ 	}
++}
++
++/// SCRATCH INSTRUMENTATION: counts results of ts_parser_set_included_ranges.
++public enum IncludedRangesDiagnostics {
++	nonisolated(unsafe) public static var accepted = 0
++	nonisolated(unsafe) public static var rejected = 0
++	nonisolated(unsafe) public static var lastRejected: [TSRange] = []
++	static func record(ok: Bool, ranges: [TSRange]) {
++		if ok { accepted += 1 } else { rejected += 1; lastRejected = ranges }
++	}
++	public static func reset() { accepted = 0; rejected = 0; lastRejected = [] }
+ }
+diff -ru a/SwiftTreeSitterLayer/LanguageLayer.swift b/SwiftTreeSitterLayer/LanguageLayer.swift
+--- a/SwiftTreeSitterLayer/LanguageLayer.swift	2026-10-16 08:19:22
++++ b/SwiftTreeSitterLayer/LanguageLayer.swift	2026-10-16 08:19:22
+@@ -346,6 +346,14 @@
+ 			invalidation.insert(integersIn: Range(newTSRange.bytes.range)!)
+ 		}
+ 
++		// SCRATCH EXPERIMENT (B1 sketch), enabled by env REPRO_B1=1: drop empty ranges and
++		// old ranges overlapping any new range, so the list is sorted and disjoint.
++		if ProcessInfo.processInfo.environment["REPRO_B1"] == "1" {
++			let fresh = tsRanges.filter { !$0.bytes.isEmpty }
++			allRanges = includedRanges.filter { old in
++				!old.bytes.isEmpty && !fresh.contains(where: { $0.bytes.overlaps(old.bytes) || $0.bytes.lowerBound == old.bytes.lowerBound })
++			} + fresh
++		}
+ 		// included ranges must be sorted and the above algorithm does not guarantee that
+ 		self.parser.includedRanges = allRanges.sorted()
+ 
