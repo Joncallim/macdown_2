@@ -6,6 +6,23 @@ Import useful original-MacDown preferences without changing that app, reviving i
 
 Reviewed baseline: `b95fe439672dbcad4e5c9d04f7f353ffc85ff26b`, 2026-09-26. Read [README](README.md) and [readiness review](READINESS_REVIEW.md). E22 exclusively owns the inert MarkdownParseOptions cleanup. This document changes no active E22 code and cannot close its parser half. The full issue closes only after both halves have evidence.
 
+## 2026-10-14 integration-branch reconciliation
+
+The current source still matches the boundary above: `LegacyPreferencesDetector`
+only performs presence detection for `com.uranusjr.macdown`, while
+`UserDefaultsAppSettingsStore` owns five whole-JSON domains
+(`appSettings.general`, `editor`, `markdown`, `previewExport`, and `formats`).
+The store preserves unreadable raw bytes and reports them; it does not import
+legacy values. No real user domain was read or changed during this
+reconciliation.
+
+The key-by-key table below remains the source-grounded disposition map, not an
+implemented migration. Parser-specific rows remain delegated to E22, and
+theme rows remain delegated to E23. The next executable unit is still
+SETTINGS-COMPAT plus a machine-readable coverage test; no legacy import,
+preference write, or migration completion claim is made by this integration
+branch.
+
 ## Current source reconciliation
 
 LegacyPreferencesDetector still only checks `com.uranusjr.macdown`. Current settings are whole JSON blobs under appSettings.general/editor/markdown/previewExport/formats. Original MPPreferences.h/.m at upstream `3e2a2bf101c215c143bf00d9f857965f0ee82487` define the legacy keys below. Do not instantiate MPPreferences: its initializer writes defaults/version state and cleans old autosave records.

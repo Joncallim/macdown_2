@@ -54,7 +54,7 @@ struct MermaidDiagramCacheTests {
         #expect(await counting.callCount == 2)
     }
 
-    @Test func differentContextIsNotCachedTogether() async throws {
+    @Test func appThemeContextVariantsShareNeutralLightCacheIdentity() async throws {
         let counting = CountingRenderer()
         let cache = MermaidDiagramCache(renderer: counting)
         let otherContext = MermaidRenderContext(
@@ -65,7 +65,7 @@ struct MermaidDiagramCacheTests {
         _ = try await cache.render(Self.fence("graph TD; A-->B;"), context: Self.context)
         _ = try await cache.render(Self.fence("graph TD; A-->B;"), context: otherContext)
 
-        #expect(await counting.callCount == 2)
+        #expect(await counting.callCount == 1)
     }
 
     @Test func aFailedRenderIsNotCached() async throws {

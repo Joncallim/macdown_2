@@ -1,5 +1,6 @@
 import EditorCore
 import FileCore
+import Highlighting
 import SwiftUI
 
 /// The editor pane and its status bar (epic-22-implementation.md §6.7, §17
@@ -25,7 +26,10 @@ extension DocumentEditorSplitView {
                     resolvedText: { editorStore.existingSystem(for: identity)?.text ?? text },
                     resolvedSelection: { editorStore.existingSystem(for: identity)?.selectedRange },
                     initialAnchor: editorStore.existingSystem(for: identity)?.selectedRange.location ?? 0,
-                    onMatchesChanged: { reveal in applyFindHighlights(findModel, reveal: reveal) },
+                    onMatchesChanged: { reveal, navigationToken in
+                        applyFindHighlights(findModel, reveal: reveal, navigationToken: navigationToken)
+                    },
+                    onNavigationIntent: { coordinator?.folderSearchNavigationDidChange() ?? 0 },
                     onClose: { closeFindBar(findModel) },
                     onReplace: { applyFindReplacement($0, model: findModel) },
                     onSelectAll: { applySelectAllMatches($0) }
@@ -54,9 +58,25 @@ extension DocumentEditorSplitView {
                 onScrollChange: { offset in
                     handleEditorScroll(utf16Offset: offset)
                     outlineController.jsonReferenceOffsetDidChange(offset)
+                },
+                onLayoutChange: {
+                    coordinator?.folderSearchEditorLayoutChanged(tabID: identity)
                 }
             )
             .accessibilityIdentifier("editorPane")
+            .overlay(alignment: .bottomTrailing) {
+                // With the status bar hidden, the reduced-highlighting note
+                // still needs a non-modal home (register row H5).
+                if appSettings?.editor.showsStatusBar == false,
+                   let note = ReducedHighlightingNote(highlightStore.state(for: identity)) {
+                    ReducedHighlightingNoteView(note: note)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(6)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                        .padding(8)
+                }
+            }
             .task(id: identity) {
                 attachHighlighter()
             }
@@ -95,7 +115,8 @@ extension DocumentEditorSplitView {
                             system.textView.window?.makeFirstResponder(system.textView)
                         }
                     ),
-                    syntaxMode: syntaxModeItem
+                    syntaxMode: syntaxModeItem,
+                    reducedHighlighting: ReducedHighlightingNote(highlightStore.state(for: identity))
                 )
             }
         }
@@ -145,11 +166,19 @@ extension DocumentEditorSplitView {
     /// called by `FindBarView` after every query/option/text change and
     /// every Find Next/Previous, so the visible highlight and the live
     /// selection never lag behind the model by more than one SwiftUI update.
-    func applyFindHighlights(_ model: EditorFindModel, reveal: Bool = true) {
+    func applyFindHighlights(
+        _ model: EditorFindModel,
+        reveal: Bool = true,
+        navigationToken: UInt? = nil,
+        navigationCoordinator: WindowCoordinator? = nil
+    ) {
         // A result that lands after the bar was dismissed must not re-highlight or reselect.
         guard model.isActive, let system = editorStore.existingSystem(for: identity) else { return }
         system.setFindHighlights(ranges: model.matches.map(\.range), currentIndex: model.currentIndex)
-        if reveal, let current = model.currentMatch {
+        if reveal,
+           let navigationToken,
+           (navigationCoordinator ?? coordinator)?.folderSearchNavigationIsCurrent(navigationToken) == true,
+           let current = model.currentMatch {
             system.revealSelection(utf16Range: current.range, flash: false, animated: true)
         }
     }
@@ -160,6 +189,7 @@ extension DocumentEditorSplitView {
     /// the user left off.
     func closeFindBar(_ model: EditorFindModel) {
         model.isActive = false
+        model.pendingRevealNavigationToken = nil
         model.cancelPendingSearch()
         model.clearSearchDomain()
         editorStore.existingSystem(for: identity)?.setFindHighlights(ranges: [], currentIndex: nil)
@@ -185,11 +215,12 @@ extension DocumentEditorSplitView {
         }
         system.apply(transaction)
         let anchor = transaction.resultingSelection?.primaryRange.location
+        let navigationToken = coordinator?.folderSearchNavigationDidChange()
         Task {
             guard await model.updateMatches(in: system.text, preferringLocationNear: anchor),
                   model.isActive
             else { return }
-            applyFindHighlights(model)
+            applyFindHighlights(model, navigationToken: navigationToken)
         }
     }
 
@@ -199,8 +230,15 @@ extension DocumentEditorSplitView {
     /// (`textView.setSelectedRange`), which would destroy the multi-selection
     /// this just installed. `scrollToVisible(utf16Range:)` only scrolls, so
     /// the primary match comes into view without touching selection at all.
-    func applySelectAllMatches(_ selection: EditorSelectionSet) {
+    func applySelectAllMatches(
+        _ selection: EditorSelectionSet,
+        navigationCoordinator: WindowCoordinator? = nil
+    ) {
         guard let system = editorStore.existingSystem(for: identity) else { return }
+        // Installing a multi-selection is itself a user-driven navigation
+        // intent. Invalidate any folder-search open that is still suspended
+        // on file/root work before it can resume and collapse this selection.
+        (navigationCoordinator ?? coordinator)?.folderSearchNavigationDidChange()
         system.selectionSet = selection
         system.scrollToVisible(utf16Range: selection.primaryRange)
     }

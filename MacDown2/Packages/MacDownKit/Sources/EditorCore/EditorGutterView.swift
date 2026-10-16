@@ -66,6 +66,13 @@ public final class EditorGutterView: NSRulerView {
         }
     }
 
+    /// Core Text uses y-up glyph coordinates even when AppKit gives a view a
+    /// flipped drawing context. Keep this small policy separate so the
+    /// rendering regression can verify the exact orientation contract.
+    static func coreTextMatrix(forFlippedView isFlipped: Bool) -> CGAffineTransform {
+        isFlipped ? CGAffineTransform(scaleX: 1, y: -1) : .identity
+    }
+
     override public func drawHashMarksAndLabels(in _: NSRect) {
         guard let system, let cgContext = NSGraphicsContext.current?.cgContext else { return }
         let font = system.textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
@@ -81,6 +88,23 @@ public final class EditorGutterView: NSRulerView {
 
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
         let insetTop = system.textView.textContainerInset.height
+
+        // Core Text's default text matrix assumes a y-up coordinate system.
+        // A mounted ruler follows the editor's flipped coordinates, so
+        // normalize only Core Text's glyph orientation -- not the context's
+        // CTM or the already-correct TextKit baseline below.  Scope this so
+        // nothing about the caller's drawing state leaks out of the gutter.
+        // `textMatrix` is not included in CGContext's saved graphics state,
+        // and CTLineDraw advances it to the final glyph position. Preserve it
+        // explicitly as well as the ordinary graphics state.
+        let callerTextMatrix = cgContext.textMatrix
+        cgContext.saveGState()
+        defer {
+            cgContext.restoreGState()
+            cgContext.textMatrix = callerTextMatrix
+        }
+        cgContext.textMatrix = Self.coreTextMatrix(forFlippedView: isFlipped)
+
         for label in labels {
             let string = String(label.lineNumber)
             // Drawn via CoreText's own baseline-relative `textPosition`,

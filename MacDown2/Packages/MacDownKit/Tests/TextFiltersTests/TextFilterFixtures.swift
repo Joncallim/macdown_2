@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 @testable import TextFilters
 
@@ -6,6 +7,37 @@ import Foundation
 /// §14's note that this evidence is not subject to the no-macOS-runtime
 /// caveat that applies to on-device UI journeys).
 enum TextFilterFixtures {
+    /// Parse the complete, newline-delimited PID record produced by a fixture.
+    /// A partial or malformed record is never treated as readiness: callers
+    /// must wait for a complete line containing a positive decimal PID.
+    static func completePIDs(in url: URL) -> [pid_t] {
+        guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        let completePrefix = contents[
+            ..<(contents.lastIndex(of: "\n").map { contents.index(after: $0) } ?? contents.startIndex)
+        ]
+        var seen = Set<pid_t>()
+        return completePrefix.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
+            let fields = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            let rawPID: Substring? = switch fields.count {
+            case 1: fields[0]
+            case 2:
+                fields[0].allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }
+                    && !fields[0].isEmpty
+                    ? fields[1]
+                    : nil
+            default: nil
+            }
+            guard let rawPID,
+                  !rawPID.isEmpty,
+                  rawPID.allSatisfy(\.isNumber),
+                  let pid = pid_t(rawPID),
+                  pid > 0,
+                  seen.insert(pid).inserted
+            else { return nil }
+            return pid
+        }
+    }
+
     /// A watchdog delay that returns once the fixture has written
     /// `expectedCount` pid lines to `url` (its readiness signal), so the
     /// production timeout verdict and process-group containment run after the
@@ -21,9 +53,7 @@ enum TextFilterFixtures {
         { _ in
             let deadline = ContinuousClock.now.advanced(by: readinessBound)
             while !Task.isCancelled, ContinuousClock.now < deadline {
-                let lines = (try? String(contentsOf: url, encoding: .utf8))?
-                    .split(separator: "\n").count ?? 0
-                if lines >= expectedCount {
+                if completePIDs(in: url).count >= expectedCount {
                     return
                 }
                 try? await Task.sleep(for: .milliseconds(10))

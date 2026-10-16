@@ -61,51 +61,47 @@ struct TextFilterProcessLifecycleTests {
     /// Before the fix, a TERM-ignoring process was left running while
     /// MacDown reported it as "stopped."
     @Test func timeoutEscalatesToSigkillAndConfirmsTheProcessIsActuallyDead() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let pidFile = directory.appendingPathComponent("pid")
-        let command = try Self.command(
-            """
-            #!/bin/sh
-            trap '' TERM
-            echo $$ > "\(pidFile.path)"
-            sleep 30
-            """,
-            in: directory
-        )
-        // The fixture writes its pid after installing the TERM trap; the real
-        // timeout verdict is released only once that readiness is visible.
-        let runner = TextFilterRunner(
-            limits: .init(timeout: .seconds(5), maxOutputBytes: 4 << 20),
-            watchdogDelay: TextFilterFixtures.watchdogDelay(afterPIDLines: 1, at: pidFile)
-        )
+        try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
+            let pidFile = directory.appendingPathComponent("pid")
+            let command = try Self.command(
+                """
+                #!/bin/sh
+                trap '' TERM
+                echo $$ > "\(pidFile.path)"
+                sleep 30
+                """,
+                in: directory
+            )
+            // The fixture writes its pid after installing the TERM trap; the real
+            // timeout verdict is released only once that readiness is visible.
+            let runner = TextFilterRunner(
+                limits: .init(timeout: .seconds(5), maxOutputBytes: 4 << 20),
+                watchdogDelay: TextFilterFixtures.watchdogDelay(afterPIDLines: 1, at: pidFile)
+            )
 
-        let outcome = Task {
-            await #expect(throws: TextFilterError.timedOut) {
-                _ = try await runner.run(command, input: "")
+            let outcome = try await owner.start {
+                await #expect(throws: TextFilterError.timedOut) {
+                    _ = try await runner.run(command, input: "")
+                }
             }
-        }
 
-        // Confirm the fixture actually installed its trap and is running —
-        // read back its own reported pid rather than assuming shell-startup
-        // finished within some fixed budget.
-        var pid: pid_t?
-        for _ in 0 ..< 150 {
-            if let contents = try? String(contentsOf: pidFile, encoding: .utf8),
-               let value = pid_t(contents.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                pid = value
-                break
-            }
-            try await Task.sleep(for: .milliseconds(50))
-        }
-        let recordedPID = try #require(pid, "the fixture process never reported its pid")
-        #expect(
-            TextFilterFixtures.processExists(recordedPID),
-            "the fixture process must be running before the timeout fires"
-        )
+            // Confirm the fixture actually installed its trap and is running —
+            // read back its own reported pid rather than assuming shell-startup
+            // finished within some fixed budget. A readiness error now exits
+            // this owned scope, which cancels and joins `outcome` before the
+            // directory can be removed.
+            let recordedPID = try await Self.waitForReportedPID(at: pidFile)
+            #expect(
+                TextFilterFixtures.processExists(recordedPID),
+                "the fixture process must be running before the timeout fires"
+            )
 
-        _ = await outcome.value
-        #expect(TextFilterFixtures.processIsGone(recordedPID), "the TERM-ignoring process must have been force-killed")
+            _ = try await outcome.value
+            #expect(
+                TextFilterFixtures.processIsGone(recordedPID),
+                "the TERM-ignoring process must have been force-killed"
+            )
+        }
     }
 
     // MARK: - Whole-process-group containment (second-adversarial-pass finding #2)
@@ -158,44 +154,35 @@ struct TextFilterProcessLifecycleTests {
     /// `$!` (not `$$` inside the backgrounded subshell) captures the
     /// background job's own real pid — see the doc comment above.
     @Test func cancellationContainsEveryProcessInABackgroundedDescendant() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let pidFile = directory.appendingPathComponent("pid")
-        let command = try Self.command(
-            """
-            #!/bin/sh
-            sleep 30 &
-            echo $! > "\(pidFile.path)"
-            sleep 30
-            """,
-            in: directory
-        )
+        try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
+            let pidFile = directory.appendingPathComponent("pid")
+            let command = try Self.command(
+                """
+                #!/bin/sh
+                sleep 30 &
+                echo $! > "\(pidFile.path)"
+                sleep 30
+                """,
+                in: directory
+            )
 
-        let task = Task {
-            try await TextFilterRunner().run(command, input: "")
-        }
-        let recordedPID: pid_t
-        do {
-            recordedPID = try await Self.waitForReportedPID(at: pidFile)
-        } catch {
-            // A readiness failure must not leave the runner (and its process
-            // group) alive while the fixture directory is torn down.
+            let task = try await owner.start {
+                try await TextFilterRunner().run(command, input: "")
+            }
+            let recordedPID = try await Self.waitForReportedPID(at: pidFile)
             task.cancel()
-            _ = await task.result
-            throw error
-        }
-        task.cancel()
 
-        do {
-            _ = try await task.value
-            Issue.record("expected cancelled")
-        } catch TextFilterError.cancelled {
-            // expected
+            do {
+                _ = try await task.value
+                Issue.record("expected cancelled")
+            } catch TextFilterError.cancelled {
+                // expected
+            }
+            #expect(
+                TextFilterFixtures.processIsGone(recordedPID),
+                "the backgrounded descendant must be contained on cancellation too"
+            )
         }
-        #expect(
-            TextFilterFixtures.processIsGone(recordedPID),
-            "the backgrounded descendant must be contained on cancellation too"
-        )
     }
 
     /// Finding #2 explicitly calls out that TERM-ignoring behavior is not
@@ -260,13 +247,9 @@ struct TextFilterProcessLifecycleTests {
         // A fixture-readiness bound (30 s), not a product threshold: it only stops a fixture that never reports from
         // hanging the run, and is generous so parallel suites contending for cores cannot starve a healthy fixture.
         for _ in 0 ..< 1500 {
-            if let contents = try? String(contentsOf: url, encoding: .utf8) {
-                let pids = contents
-                    .split(separator: "\n")
-                    .compactMap { line in line.split(separator: "=").last.flatMap { pid_t($0) } }
-                if pids.count >= expectedCount {
-                    return pids
-                }
+            let pids = TextFilterFixtures.completePIDs(in: url)
+            if pids.count >= expectedCount {
+                return pids
             }
             try await Task.sleep(for: .milliseconds(20))
         }

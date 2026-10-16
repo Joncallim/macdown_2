@@ -8,6 +8,10 @@ import Testing
 /// and verified process-group membership.
 @Suite("TextFilterProcessGroup")
 struct TextFilterProcessGroupTests {
+    private enum FixtureFailure: Error {
+        case readiness
+    }
+
     /// A leader that exits promptly with status 0. `spawn()` never passes
     /// arguments (structured launch only — always a real script file, not
     /// a bare interpreter, which would otherwise block reading stdin as a
@@ -16,13 +20,24 @@ struct TextFilterProcessGroupTests {
         try TextFilterFixtures.makeExecutableScript("#!/bin/sh\nexit 0\n", named: "exit0.sh", in: directory)
     }
 
+    private static func withOwnedGroup<T: Sendable>(
+        startsExitObserverAutomatically: Bool = true,
+        _ operation: (URL, TextFilterProcessGroup, FixtureProcessGroupCleanup) async throws -> T
+    ) async throws -> T {
+        try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
+            let group = TextFilterProcessGroup(startsExitObserverAutomatically: startsExitObserverAutomatically)
+            let cleanup = try await TextFilterFixtures.registerProcessGroupCleanup(group, with: owner)
+            return try await operation(directory, group, cleanup)
+        }
+    }
+
     /// A pipe whose read end names a descriptor number at or above
     /// `RLIMIT_NOFILE`, which the process can never allocate. Closing a real
     /// pipe's descriptor instead hands its number back to the table, where a
     /// concurrently running test can be given it (making this test pass or
     /// fail by timing) and the `Pipe`'s own later close then hits that
     /// other test's descriptor.
-    private final class UnopenableReadEndPipe: Pipe {
+    private final class UnopenableReadEndPipe: Pipe, @unchecked Sendable {
         private let unopenable = FileHandle(
             fileDescriptor: UnopenableReadEndPipe.neverAllocatedDescriptor(),
             closeOnDealloc: false
@@ -82,25 +97,25 @@ struct TextFilterProcessGroupTests {
     // MARK: - Leader identity stays pinned until reapLeader()
 
     @Test func leaderExitIsObservedWithoutReapingUntilReapLeaderIsCalled() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let group = TextFilterProcessGroup()
-        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
-        try group.spawn(
-            executableURL: Self.exitZeroScript(in: directory),
-            workingDirectoryURL: directory,
-            environment: [:],
-            pipes: pipes
-        )
-        let pid = try #require(group.pid)
+        try await Self.withOwnedGroup { directory, group, cleanup in
+            let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+            try group.spawn(
+                executableURL: Self.exitZeroScript(in: directory),
+                workingDirectoryURL: directory,
+                environment: [:],
+                pipes: pipes
+            )
+            let pid = try #require(group.pid)
 
-        let status = await group.waitForExit()
-        #expect(status == 0)
-        #expect(kill(pid, 0) == 0, "the leader must remain a held zombie until explicit reap")
+            let status = await group.waitForExit()
+            #expect(status == 0)
+            #expect(kill(pid, 0) == 0, "the leader must remain a held zombie until explicit reap")
 
-        group.reapLeader()
+            cleanup.reapLeader()
 
-        #expect(kill(pid, 0) == -1 && errno == ESRCH, "reapLeader() must actually release the pid")
+            #expect(cleanup.isOwnershipReleased)
+            #expect(kill(pid, 0) == -1 && errno == ESRCH, "reapLeader() must actually release the pid")
+        }
     }
 
     /// Fifth-pass race regression: the direct child is allowed to become a
@@ -108,27 +123,26 @@ struct TextFilterProcessGroupTests {
     /// path cannot safely guarantee that late registration sees this state;
     /// a direct `waitid(WNOWAIT)` on our child must still return status 0.
     @Test func exitObservationStartedAfterTheLeaderAlreadyExitedStillReportsItsStatus() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let group = TextFilterProcessGroup(startsExitObserverAutomatically: false)
-        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
-        try group.spawn(
-            executableURL: Self.exitZeroScript(in: directory),
-            workingDirectoryURL: directory,
-            environment: [:],
-            pipes: pipes
-        )
+        try await Self.withOwnedGroup(startsExitObserverAutomatically: false) { directory, group, cleanup in
+            let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+            try group.spawn(
+                executableURL: Self.exitZeroScript(in: directory),
+                workingDirectoryURL: directory,
+                environment: [:],
+                pipes: pipes
+            )
 
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while group.verifiedMembershipState() == .live, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(20))
+            let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+            while group.verifiedMembershipState() == .live, ContinuousClock.now < deadline {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            #expect(group.verifiedMembershipState() == .empty, "the leader must already be a held zombie")
+
+            group.startExitObservation()
+
+            #expect(await group.waitForExit() == 0, "late observation must not miss an already-exited child")
+            cleanup.reapLeader()
         }
-        #expect(group.verifiedMembershipState() == .empty, "the leader must already be a held zombie")
-
-        group.startExitObservation()
-
-        #expect(await group.waitForExit() == 0, "late observation must not miss an already-exited child")
-        group.reapLeader()
     }
 
     /// Fourth-pass race regression: process-table containment can observe the
@@ -138,76 +152,73 @@ struct TextFilterProcessGroupTests {
     /// `reapLeader()` itself must record the exit before removing the zombie,
     /// so a subsequent waiter returns immediately.
     @Test func reapRecordsAnExitedLeaderBeforeRemovingItEvenWithoutTheAsyncObserver() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let group = TextFilterProcessGroup(startsExitObserverAutomatically: false)
-        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
-        try group.spawn(
-            executableURL: Self.exitZeroScript(in: directory),
-            workingDirectoryURL: directory,
-            environment: [:],
-            pipes: pipes
-        )
-        let pid = try #require(group.pid)
+        try await Self.withOwnedGroup(startsExitObserverAutomatically: false) { directory, group, cleanup in
+            let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+            try group.spawn(
+                executableURL: Self.exitZeroScript(in: directory),
+                workingDirectoryURL: directory,
+                environment: [:],
+                pipes: pipes
+            )
+            let pid = try #require(group.pid)
 
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while group.verifiedMembershipState() == .live, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(20))
+            let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+            while group.verifiedMembershipState() == .live, ContinuousClock.now < deadline {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            #expect(group.verifiedMembershipState() == .empty, "the leader must have reached its held-zombie state")
+
+            cleanup.reapLeader()
+
+            #expect(kill(pid, 0) == -1 && errno == ESRCH)
+            #expect(await group.waitForExit() == 0, "pre-reap observation must preserve the exit fact for late waiters")
         }
-        #expect(group.verifiedMembershipState() == .empty, "the leader must have reached its held-zombie state")
-
-        group.reapLeader()
-
-        #expect(kill(pid, 0) == -1 && errno == ESRCH)
-        #expect(await group.waitForExit() == 0, "pre-reap observation must preserve the exit fact for late waiters")
     }
 
     // MARK: - Verified group membership
 
     @Test func verifiedMembershipIgnoresAHeldZombieLeaderWithNoLiveDescendant() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let group = TextFilterProcessGroup()
-        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
-        try group.spawn(
-            executableURL: Self.exitZeroScript(in: directory),
-            workingDirectoryURL: directory,
-            environment: [:],
-            pipes: pipes
-        )
-        _ = await group.waitForExit()
+        try await Self.withOwnedGroup { directory, group, cleanup in
+            let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+            try group.spawn(
+                executableURL: Self.exitZeroScript(in: directory),
+                workingDirectoryURL: directory,
+                environment: [:],
+                pipes: pipes
+            )
+            _ = await group.waitForExit()
 
-        #expect(group.verifiedMembershipState() == .empty)
+            #expect(group.verifiedMembershipState() == .empty)
 
-        group.reapLeader()
+            cleanup.reapLeader()
+        }
     }
 
     @Test func verifiedMembershipDetectsALiveDescendantAlongsideAHeldZombieLeader() async throws {
-        let group = TextFilterProcessGroup()
-        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
-        let script = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: script) }
-        let scriptURL = try TextFilterFixtures.makeExecutableScript(
-            "#!/bin/sh\nsleep 30 &\nexit 0\n", named: "bg.sh", in: script
-        )
-        try group.spawn(
-            executableURL: scriptURL,
-            workingDirectoryURL: FileManager.default.temporaryDirectory,
-            environment: [:],
-            pipes: pipes
-        )
-        _ = await group.waitForExit()
+        try await Self.withOwnedGroup { directory, group, cleanup in
+            let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+            let scriptURL = try TextFilterFixtures.makeExecutableScript(
+                "#!/bin/sh\nsleep 30 &\nexit 0\n", named: "bg.sh", in: directory
+            )
+            try group.spawn(
+                executableURL: scriptURL,
+                workingDirectoryURL: FileManager.default.temporaryDirectory,
+                environment: [:],
+                pipes: pipes
+            )
+            _ = await group.waitForExit()
 
-        #expect(group.verifiedMembershipState() == .live, "the backgrounded sleep must still be live")
+            #expect(group.verifiedMembershipState() == .live, "the backgrounded sleep must still be live")
 
-        group.terminateGroup(SIGKILL)
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while group.verifiedMembershipState() != .empty, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(20))
+            group.terminateGroup(SIGKILL)
+            let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+            while group.verifiedMembershipState() != .empty, ContinuousClock.now < deadline {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            #expect(group.verifiedMembershipState() == .empty, "SIGKILL must reach the live descendant")
+
+            cleanup.reapLeader()
         }
-        #expect(group.verifiedMembershipState() == .empty, "SIGKILL must reach the live descendant")
-
-        group.reapLeader()
     }
 
     /// Darwin answers `EPERM`, **not** `ESRCH`, when the only member of a
@@ -219,41 +230,67 @@ struct TextFilterProcessGroupTests {
     /// is timing-dependent and so surfaced only on CI. The process-table
     /// snapshot is the authority; this pins both halves of that.
     @Test func killpgOnAZombieOnlyGroupFailsWithEPERMWhileMembershipReadsEmpty() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let group = TextFilterProcessGroup()
-        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
-        try group.spawn(
-            executableURL: Self.exitZeroScript(in: directory),
-            workingDirectoryURL: directory,
-            environment: [:],
-            pipes: pipes
-        )
-        _ = await group.waitForExit()
+        try await Self.withOwnedGroup { directory, group, cleanup in
+            let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+            try group.spawn(
+                executableURL: Self.exitZeroScript(in: directory),
+                workingDirectoryURL: directory,
+                environment: [:],
+                pipes: pipes
+            )
+            _ = await group.waitForExit()
 
-        #expect(group.verifiedMembershipState() == .empty, "a held zombie leader alone is a contained group")
-        #expect(
-            group.terminateGroup(SIGTERM) == .failed(EPERM),
-            "Darwin reports EPERM for a zombie-only group — this must not be read as a containment failure"
-        )
+            #expect(group.verifiedMembershipState() == .empty, "a held zombie leader alone is a contained group")
+            #expect(
+                group.terminateGroup(SIGTERM) == .failed(EPERM),
+                "Darwin reports EPERM for a zombie-only group — this must not be read as a containment failure"
+            )
 
-        group.reapLeader()
+            cleanup.reapLeader()
+        }
     }
 
     @Test func reapLeaderIsIdempotentAndSafeToCallMoreThanOnce() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let group = TextFilterProcessGroup()
-        let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
-        try group.spawn(
-            executableURL: Self.exitZeroScript(in: directory),
-            workingDirectoryURL: directory,
-            environment: [:],
-            pipes: pipes
-        )
-        _ = await group.waitForExit()
+        try await Self.withOwnedGroup { directory, group, cleanup in
+            let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+            try group.spawn(
+                executableURL: Self.exitZeroScript(in: directory),
+                workingDirectoryURL: directory,
+                environment: [:],
+                pipes: pipes
+            )
+            _ = await group.waitForExit()
 
-        group.reapLeader()
-        group.reapLeader() // must not double-reap an unrelated, possibly-reused pid
+            #expect(cleanup.reapLeader())
+            group.reapLeader() // production reaping must remain idempotent after ownership release
+        }
+    }
+
+    @Test func ownedProcessGroupIsTerminatedWhenReadinessFailsBeforeObservation() async throws {
+        var spawnedPID: pid_t?
+
+        do {
+            try await Self.withOwnedGroup { directory, group, _ in
+                let pipes = TextFilterProcessGroup.StandardStreamPipes(stdin: Pipe(), stdout: Pipe(), stderr: Pipe())
+                let script = try TextFilterFixtures.makeExecutableScript(
+                    "#!/bin/sh\nsleep 30\n", named: "readiness.sh", in: directory
+                )
+                try group.spawn(
+                    executableURL: script,
+                    workingDirectoryURL: directory,
+                    environment: [:],
+                    pipes: pipes
+                )
+                spawnedPID = group.pid
+                throw FixtureFailure.readiness
+            }
+            Issue.record("expected readiness failure")
+        } catch FixtureFailure.readiness {
+            // The scope owner must terminate and reap the exact group before
+            // this primary readiness failure is rethrown.
+        }
+
+        let pid = try #require(spawnedPID)
+        #expect(TextFilterFixtures.processIsGone(pid), "readiness failure must not leak the owned leader")
     }
 }

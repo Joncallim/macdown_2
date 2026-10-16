@@ -21,40 +21,72 @@ import Testing
 /// registration never actually fires in production. This suite exists
 /// specifically to close that gap.
 @MainActor
-@Suite("EditorView real makeNSView path")
+@Suite("EditorView real makeNSView path", .serialized)
 struct EditorViewRealMountTests {
-    private struct Mounted {
-        let hostingView: NSHostingView<EditorView>
-        let window: NSWindow
-        let store: EditorTextSystemStore
-        let identity: String
+    private typealias Support = EditorViewRealMountSupport
+    private typealias Mounted = Support.Mounted
+
+    @Test func attachmentCallbackRunsAfterSameSizeWindowAttachment() async throws {
+        let store = EditorTextSystemStore()
+        let identity = UUID().uuidString
+        let signals = AsyncStream<Void>.makeStream()
+        let mounted = Support.mount(
+            initialText: "text",
+            store: store,
+            identity: identity,
+            onLayoutChange: {
+                guard let system = store.existingSystem(for: identity),
+                      system.textView.window != nil,
+                      !system.textView.bounds.isEmpty
+                else { return }
+                signals.continuation.yield(())
+            }
+        )
+        defer { Support.close(mounted) }
+        let scrollView = try #require(Support.findScrollView(in: mounted.hostingView))
+        #expect(scrollView.window === mounted.window)
+        #expect(scrollView.bounds.size == CGSize(width: 400, height: 300))
+        #expect(await Support.waitForSignal(signals.stream))
     }
 
-    private func mount(
-        initialText: String,
-        store: EditorTextSystemStore = EditorTextSystemStore(),
-        identity: String = UUID().uuidString
-    ) -> Mounted {
-        let binding = Binding<String>(get: { initialText }, set: { _ in })
-
-        let hostingView = NSHostingView(rootView: EditorView(
-            text: binding,
+    @Test func zeroSizeAttachmentCanReportUsableLayoutAfterWindowResize() async throws {
+        let store = EditorTextSystemStore()
+        let identity = UUID().uuidString
+        let signals = AsyncStream<Void>.makeStream()
+        let resizedSignals = AsyncStream<Void>.makeStream()
+        var waitingForResize = false
+        let mounted = Support.mount(
+            initialText: "text",
+            store: store,
             identity: identity,
-            configuration: .default,
-            store: store
-        ))
-        let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
+            onLayoutChange: {
+                guard let system = store.existingSystem(for: identity),
+                      system.textView.window != nil,
+                      !system.textView.bounds.isEmpty
+                else { return }
+                if waitingForResize {
+                    resizedSignals.continuation.yield(())
+                } else {
+                    signals.continuation.yield(())
+                }
+            }
         )
-        window.animationBehavior = .none // headless tests: window transition animations leak blocked dispatch workers
-        window.contentView = hostingView
-        window.makeKeyAndOrderFront(nil)
-        hostingView.layoutSubtreeIfNeeded()
+        defer { Support.close(mounted) }
+        let scrollView = try #require(Support.findScrollView(in: mounted.hostingView))
+        #expect(await Support.waitForSignal(signals.stream))
+        mounted.hostingView.frame = NSRect(x: 0, y: 0, width: 0, height: 0)
+        mounted.hostingView.layoutSubtreeIfNeeded()
+        #expect(mounted.hostingView.bounds.isEmpty)
 
-        return Mounted(hostingView: hostingView, window: window, store: store, identity: identity)
+        waitingForResize = true
+        mounted.window.setContentSize(NSSize(width: 400, height: 300))
+        mounted.hostingView.frame = NSRect(x: 0, y: 0, width: 400, height: 300)
+        mounted.hostingView.layoutSubtreeIfNeeded()
+        #expect(await Support.waitForSignal(resizedSignals.stream))
+        #expect(scrollView.window === mounted.window)
+        #expect(scrollView.bounds.width > 0)
+        #expect(scrollView.bounds.height > 0)
     }
 
     /// `makeNSView` pre-sized the text view with one `boundingRect` over the whole document, which is quadratic for
@@ -64,7 +96,7 @@ struct EditorViewRealMountTests {
         let text = (0 ..< 80).map { _ in paragraph }.joined(separator: "\n")
         let start = ContinuousClock.now
 
-        let mounted = mount(initialText: text)
+        let mounted = Support.mount(initialText: text)
         defer { mounted.window.orderOut(nil) }
 
         #expect(ContinuousClock.now - start < .seconds(1))
@@ -80,10 +112,10 @@ struct EditorViewRealMountTests {
         let systemBeforeMount = store.system(for: identity, initialText: "a", configuration: .default)
         let preMountUndoManagerIdentity = ObjectIdentifier(systemBeforeMount.undoManager)
 
-        let mounted = mount(initialText: "a", store: store, identity: identity)
+        let mounted = Support.mount(initialText: "a", store: store, identity: identity)
         defer { mounted.window.orderOut(nil) }
 
-        let scrollView = try #require(Self.findScrollView(in: mounted.hostingView), "makeNSView did not run")
+        let scrollView = try #require(Support.findScrollView(in: mounted.hostingView), "makeNSView did not run")
         let gutter = try #require(scrollView.verticalRulerView as? EditorGutterView)
 
         let system = store.system(for: identity, initialText: "a", configuration: .default)
@@ -158,7 +190,7 @@ struct EditorViewRealMountTests {
             "expected the real Coordinator to still be the text view's delegate before dismantle"
         )
 
-        Self.dismantleThroughTheProtocol(EditorView.self, scrollView, coordinator)
+        Support.dismantleThroughTheProtocol(EditorView.self, scrollView, coordinator)
 
         #expect(coordinator.gutterView == nil, "dismantleNSView did not clear the coordinator's gutterView")
 
@@ -189,10 +221,10 @@ struct EditorViewRealMountTests {
     }
 
     @Test func gutterResizesAfterAModelTextPushAcrossADigitBoundaryGrowing() throws {
-        let mounted = mount(initialText: "a")
+        let mounted = Support.mount(initialText: "a")
         defer { mounted.window.orderOut(nil) }
 
-        let scrollView = try #require(Self.findScrollView(in: mounted.hostingView), "makeNSView did not run")
+        let scrollView = try #require(Support.findScrollView(in: mounted.hostingView), "makeNSView did not run")
         let gutter = try #require(scrollView.verticalRulerView as? EditorGutterView)
         let thicknessBefore = gutter.ruleThickness
         let lineCountBefore = mounted.store.system(
@@ -205,7 +237,7 @@ struct EditorViewRealMountTests {
         // a document reload), not through `textView.insertText` -- this
         // goes through `updateNSView`'s `system.setText(text)` path, which
         // bypasses the incremental delegate hooks entirely.
-        pushModelText((1 ... 100).map { "line \($0)" }.joined(separator: "\n"), into: mounted)
+        Support.pushModelText((1 ... 100).map { "line \($0)" }.joined(separator: "\n"), into: mounted)
 
         let system = mounted.store.system(for: mounted.identity, initialText: "", configuration: .default)
         #expect(system.lineIndex.lineCount == 100)
@@ -217,17 +249,17 @@ struct EditorViewRealMountTests {
     }
 
     @Test func gutterResizesAfterAModelTextPushAcrossADigitBoundaryShrinking() throws {
-        let mounted = mount(initialText: (1 ... 100).map { "line \($0)" }.joined(separator: "\n"))
+        let mounted = Support.mount(initialText: (1 ... 100).map { "line \($0)" }.joined(separator: "\n"))
         defer { mounted.window.orderOut(nil) }
 
-        let scrollView = try #require(Self.findScrollView(in: mounted.hostingView), "makeNSView did not run")
+        let scrollView = try #require(Support.findScrollView(in: mounted.hostingView), "makeNSView did not run")
         let gutter = try #require(scrollView.verticalRulerView as? EditorGutterView)
         gutter.updateThickness()
         let thicknessBefore = gutter.ruleThickness
 
         // 100 -> 9 lines, the mirror direction: shrinking must update the
         // ruler immediately too, not just growing.
-        pushModelText((1 ... 9).map { "line \($0)" }.joined(separator: "\n"), into: mounted)
+        Support.pushModelText((1 ... 9).map { "line \($0)" }.joined(separator: "\n"), into: mounted)
 
         let system = mounted.store.system(for: mounted.identity, initialText: "", configuration: .default)
         #expect(system.lineIndex.lineCount == 9)
@@ -238,10 +270,10 @@ struct EditorViewRealMountTests {
     }
 
     @Test func gutterExposesBasicAccessibilityMetadataWithoutPerLineChildren() throws {
-        let mounted = mount(initialText: (1 ... 50).map { "line \($0)" }.joined(separator: "\n"))
+        let mounted = Support.mount(initialText: (1 ... 50).map { "line \($0)" }.joined(separator: "\n"))
         defer { mounted.window.orderOut(nil) }
 
-        let scrollView = try #require(Self.findScrollView(in: mounted.hostingView), "makeNSView did not run")
+        let scrollView = try #require(Support.findScrollView(in: mounted.hostingView), "makeNSView did not run")
         let gutter = try #require(scrollView.verticalRulerView as? EditorGutterView)
 
         #expect(gutter.isAccessibilityElement())
@@ -250,41 +282,6 @@ struct EditorViewRealMountTests {
         // A single accessibility element for the whole ruler -- VoiceOver
         // must not be asked to traverse one child per visible line.
         #expect((gutter.accessibilityChildren() ?? []).isEmpty)
-    }
-
-    private func pushModelText(_ newText: String, into mounted: Mounted) {
-        let binding = Binding<String>(get: { newText }, set: { _ in })
-        mounted.hostingView.rootView = EditorView(
-            text: binding,
-            identity: mounted.identity,
-            configuration: .default,
-            store: mounted.store
-        )
-        mounted.hostingView.layoutSubtreeIfNeeded()
-    }
-
-    private static func findScrollView(in view: NSView) -> NSScrollView? {
-        if let scrollView = view as? NSScrollView {
-            return scrollView
-        }
-        for subview in view.subviews {
-            if let found = findScrollView(in: subview) {
-                return found
-            }
-        }
-        return nil
-    }
-
-    /// SwiftUI reaches teardown through the `NSViewRepresentable` requirement
-    /// (`static func dismantleNSView`). Dispatching through the generic
-    /// constraint is what proves the implementation is the protocol witness; an
-    /// instance method of the same name is never called this way (#183 F09).
-    private static func dismantleThroughTheProtocol<V: NSViewRepresentable>(
-        _: V.Type,
-        _ view: V.NSViewType,
-        _ coordinator: V.Coordinator
-    ) {
-        V.dismantleNSView(view, coordinator: coordinator)
     }
 
     @Test func anOlderMountsTeardownDoesNotDetachANewerMount() {
@@ -298,7 +295,7 @@ struct EditorViewRealMountTests {
         system.scrollView = newerScroll
         system.textView.delegate = newer
 
-        Self.dismantleThroughTheProtocol(EditorView.self, olderScroll, older)
+        Support.dismantleThroughTheProtocol(EditorView.self, olderScroll, older)
 
         #expect(system.textView.delegate === newer)
         #expect(system.scrollView === newerScroll)
@@ -310,7 +307,7 @@ struct EditorViewRealMountTests {
         let scroll = NSScrollView(frame: .zero)
         system.scrollView = scroll
 
-        Self.dismantleThroughTheProtocol(EditorView.self, scroll, coordinator)
+        Support.dismantleThroughTheProtocol(EditorView.self, scroll, coordinator)
 
         #expect(system.textView.delegate == nil)
         #expect(system.scrollView == nil)

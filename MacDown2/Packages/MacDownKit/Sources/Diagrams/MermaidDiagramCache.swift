@@ -47,7 +47,7 @@ public actor MermaidDiagramCache: MermaidDiagramRendering {
     }
 
     public func render(_ fence: MermaidFence, context: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
-        let key = Key(source: fence.source, context: context)
+        let key = Key(source: fence.source, context: .neutralLight)
         if let cached = entries[key] {
             touch(key)
             return cached

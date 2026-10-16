@@ -1,0 +1,242 @@
+== cnt-ae1-16
+# variant=ae1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:13:15Z load={ 13.44 18.26 13.08 }
+# env: H5PROF_TS=1 H5PROF_KB=16 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.591254375 seconds units=16422 mode=full inlineNearEnd=true
+H5PROF edit call ms: [37, 30, 29, 30, 29, 32]
+== cnt-ae1-256
+# variant=ae1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:13:39Z load={ 10.07 17.08 12.80 }
+# env: H5PROF_TS=1 H5PROF_KB=256 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=3.875552333 seconds units=262151 mode=full inlineNearEnd=true
+H5PROF edit call ms: [344, 304, 319, 299, 308, 308]
+== cnt-ae1-64
+# variant=ae1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:13:27Z load={ 11.27 17.55 12.92 }
+# env: H5PROF_TS=1 H5PROF_KB=64 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.727157916 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [118, 101, 102, 99, 102, 99]
+== cnt-ai-16
+# variant=ai SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:07:37Z load={ 6.46 10.31 8.34 }
+# env: H5PROF_TS=1 H5PROF_KB=16 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.614334834 seconds units=16422 mode=full inlineNearEnd=true
+H5PROF edit call ms: [59, 48, 51, 48, 50, 48]
+== cnt-ai-256
+# variant=ai SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:08:01Z load={ 8.63 10.52 8.48 }
+# env: H5PROF_TS=1 H5PROF_KB=256 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=4.981529958 seconds units=262151 mode=full inlineNearEnd=true
+H5PROF edit call ms: [1403, 1552, 1478, 1745, 2209, 1956]
+== cnt-ai-64
+# variant=ai SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:07:49Z load={ 5.93 10.07 8.28 }
+# env: H5PROF_TS=1 H5PROF_KB=64 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.763137459 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [174, 164, 143, 141, 142, 142]
+== cnt-se1-16
+# variant=se1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:12:24Z load={ 21.36 20.08 13.36 }
+# env: H5PROF_TS=1 H5PROF_KB=16 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.662020792 seconds units=16422 mode=full inlineNearEnd=true
+H5PROF edit call ms: [55, 31, 31, 31, 29, 30]
+== cnt-se1-256
+# variant=se1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:12:57Z load={ 16.31 19.03 13.25 }
+# env: H5PROF_TS=1 H5PROF_KB=256 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=4.254379541 seconds units=262151 mode=full inlineNearEnd=true
+H5PROF edit call ms: [609, 575, 568, 571, 584, 586]
+== cnt-se1-64
+# variant=se1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:12:45Z load={ 18.59 19.57 13.34 }
+# env: H5PROF_TS=1 H5PROF_KB=64 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.768033375 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [145, 98, 97, 97, 98, 116]
+== cnt-si-16
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:06:49Z load={ 5.32 10.58 8.30 }
+# env: H5PROF_TS=1 H5PROF_KB=16 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.608802959 seconds units=16422 mode=full inlineNearEnd=true
+H5PROF edit call ms: [58, 49, 49, 33, 34, 33]
+== cnt-si-256
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:07:12Z load={ 8.12 10.93 8.50 }
+# env: H5PROF_TS=1 H5PROF_KB=256 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=5.212689833 seconds units=262151 mode=full inlineNearEnd=true
+H5PROF edit call ms: [1708, 1629, 1694, 1712, 1657, 1749]
+== cnt-si-64
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:07:00Z load={ 9.31 11.29 8.58 }
+# env: H5PROF_TS=1 H5PROF_KB=64 H5PROF_EDITS=6 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.816916333 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [173, 162, 158, 159, 178, 177]
+== cnt-si-paste1024
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:21:54Z load={ 4.51 7.78 9.71 }
+# env: H5PROF_TS=1 H5PROF_MODE=paste H5PROF_KB=1024 H5PROF_LEAD_MS=300 sample_secs=1
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.018583 tokens_ms=2.052208 e3=0
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.009333 tokens_ms=1.860167 e3=0
+H5NEON applyStyles range=2+7990 tokens=1105 clear_ms=0.012916 tokens_ms=7.559417 e3=0
+H5PROF open quiet=true took=1.583390292 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.018922542 seconds
+H5NEON applyStyles range=25+1048850 tokens=143461 clear_ms=0.028125 tokens_ms=21056.431958 e3=0
+H5PROF paste settled after=31.084083917 seconds
+== cnt-si-paste1024-e3-1
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:23:04Z load={ 6.28 7.49 9.43 }
+# env: H5PROF_TS=1 H5PROF_E3=1 H5PROF_MODE=paste H5PROF_KB=1024 H5PROF_LEAD_MS=300 sample_secs=1
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.02175 tokens_ms=2.141917 e3=1
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.010042 tokens_ms=1.907875 e3=1
+H5NEON applyStyles range=2+7990 tokens=1105 clear_ms=0.008708 tokens_ms=7.463709 e3=1
+H5PROF open quiet=true took=1.569109042 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.027896959 seconds
+H5NEON applyStyles range=25+1048850 tokens=143461 clear_ms=0.029541 tokens_ms=986.085125 e3=1
+H5PROF paste settled after=6.700425459000001 seconds
+== cnt-si-paste1024-e3-64
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:23:19Z load={ 5.63 7.29 9.32 }
+# env: H5PROF_TS=1 H5PROF_E3=64 H5PROF_MODE=paste H5PROF_KB=1024 H5PROF_LEAD_MS=300 sample_secs=1
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.024625 tokens_ms=2.21675 e3=64
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.010666 tokens_ms=1.872667 e3=64
+H5NEON applyStyles range=2+7990 tokens=1105 clear_ms=0.026916 tokens_ms=7.8655 e3=64
+H5PROF open quiet=true took=1.561380334 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.020203667 seconds
+H5NEON applyStyles range=25+1048850 tokens=143461 clear_ms=0.023458 tokens_ms=979.488042 e3=64
+H5PROF paste settled after=6.728893708999999 seconds
+== cnt-si-paste256
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:22:51Z load={ 4.08 7.11 9.33 }
+# env: H5PROF_TS=1 H5PROF_MODE=paste H5PROF_KB=256 H5PROF_LEAD_MS=300 sample_secs=1
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.023917 tokens_ms=2.25 e3=0
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.012 tokens_ms=1.866917 e3=0
+H5NEON applyStyles range=2+7990 tokens=1105 clear_ms=0.012167 tokens_ms=7.658125 e3=0
+H5PROF open quiet=true took=1.597606792 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.021040542 seconds
+H5NEON applyStyles range=25+262267 tokens=36381 clear_ms=0.029542 tokens_ms=284.854625 e3=0
+H5PROF paste settled after=3.933694834 seconds
+== cnt-si-paste256-e3-64
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:28:16Z load={ 5.62 6.85 8.54 }
+# env: H5PROF_TS=1 H5PROF_E3=64 H5PROF_MODE=paste H5PROF_KB=256 H5PROF_LEAD_MS=300 sample_secs=1
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.021917 tokens_ms=2.153708 e3=64
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.010333 tokens_ms=1.919792 e3=64
+H5NEON applyStyles range=2+7990 tokens=1105 clear_ms=0.00975 tokens_ms=7.6185 e3=64
+H5PROF open quiet=true took=1.557947167 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.016079583 seconds
+H5NEON applyStyles range=25+262267 tokens=36381 clear_ms=0.026541 tokens_ms=239.732959 e3=64
+H5PROF paste settled after=3.824352083 seconds
+== cnt-si-paste64
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:22:38Z load={ 3.94 7.19 9.39 }
+# env: H5PROF_TS=1 H5PROF_MODE=paste H5PROF_KB=64 H5PROF_LEAD_MS=300 sample_secs=1
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.021125 tokens_ms=2.245792 e3=0
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.009833 tokens_ms=1.90275 e3=0
+H5NEON applyStyles range=2+7990 tokens=1105 clear_ms=0.00775 tokens_ms=7.300875 e3=0
+H5PROF open quiet=true took=1.565432958 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.015850958 seconds
+H5NEON applyStyles range=25+65747 tokens=9181 clear_ms=0.019083 tokens_ms=63.657792 e3=0
+H5PROF paste settled after=3.222908167 seconds
+== cnt-si-paste64-e3-64
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:28:03Z load={ 6.02 6.97 8.60 }
+# env: H5PROF_TS=1 H5PROF_E3=64 H5PROF_MODE=paste H5PROF_KB=64 H5PROF_LEAD_MS=300 sample_secs=1
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.023208 tokens_ms=2.372708 e3=64
+H5NEON applyStyles range=0+7992 tokens=309 clear_ms=0.010542 tokens_ms=1.965125 e3=64
+H5NEON applyStyles range=2+7990 tokens=1105 clear_ms=0.010709 tokens_ms=7.62425 e3=64
+H5PROF open quiet=true took=1.595090083 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.021147333 seconds
+H5NEON applyStyles range=25+65747 tokens=9181 clear_ms=0.022416 tokens_ms=60.568167 e3=64
+H5PROF paste settled after=3.247095 seconds
+== dump-ae1-16
+# variant=ae1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:26:24Z load={ 7.65 7.18 8.85 }
+# env: H5PROF_DUMP=1 H5PROF_KB=16 H5PROF_EDITS=5 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.578205791 seconds units=16422 mode=full inlineNearEnd=true
+H5PROF edit call ms: [54, 28, 28, 28, 30]
+H5PROF rendered runs=2030 hash=adeb1d298b7e5019
+== dump-ae1-64
+# variant=ae1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:27:04Z load={ 9.00 7.52 8.90 }
+# env: H5PROF_DUMP=1 H5PROF_KB=64 H5PROF_EDITS=5 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.699562 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [116, 106, 81, 78, 79]
+H5PROF rendered runs=7994 hash=12b45dd4c1cf16cf
+== dump-se1-16
+# variant=se1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:26:10Z load={ 5.64 6.75 8.74 }
+# env: H5PROF_DUMP=1 H5PROF_KB=16 H5PROF_EDITS=5 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.581974625 seconds units=16422 mode=full inlineNearEnd=true
+H5PROF edit call ms: [36, 43, 43, 43, 43]
+H5PROF rendered runs=2030 hash=adeb1d298b7e5019
+== dump-se1-64
+# variant=se1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:26:50Z load={ 6.29 6.90 8.71 }
+# env: H5PROF_DUMP=1 H5PROF_KB=64 H5PROF_EDITS=5 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.74594175 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [113, 99, 121, 118, 116]
+H5PROF rendered runs=7994 hash=12b45dd4c1cf16cf
+== dump-si-16
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:25:56Z load={ 5.77 6.83 8.80 }
+# env: H5PROF_DUMP=1 H5PROF_KB=16 H5PROF_EDITS=5 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.617200417 seconds units=16422 mode=full inlineNearEnd=true
+H5PROF edit call ms: [68, 48, 49, 48, 47]
+H5PROF rendered runs=2030 hash=adeb1d298b7e5019
+== dump-si-64
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:26:37Z load={ 7.15 7.09 8.80 }
+# env: H5PROF_DUMP=1 H5PROF_KB=64 H5PROF_EDITS=5 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=300 sample_secs=1
+H5PROF open quiet=true took=1.794914708 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [192, 178, 155, 177, 173]
+H5PROF rendered runs=7994 hash=12b45dd4c1cf16cf
+== tp-A-256
+# variant=A SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 
+# waited=0s start=2026-10-16T05:16:34Z load={ 5.96 12.39 11.65 }
+# env: H5PROF_KB=256 H5PROF_EDITS=8 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=3000 sample_secs=25
+H5PROF open quiet=true took=4.942833834 seconds units=262151 mode=full inlineNearEnd=true
+H5PROF edit call ms: [1470, 1632, 1562, 1655, 1561, 2203, 1442, 1633]
+== tp-A-64
+# variant=A SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 
+# waited=0s start=2026-10-16T05:17:16Z load={ 5.57 11.52 11.37 }
+# env: H5PROF_KB=64 H5PROF_EDITS=20 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=3000 sample_secs=12
+H5PROF open quiet=true took=1.811081916 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [175, 146, 149, 149, 143, 143, 143, 143, 154, 151, 147, 147, 147, 145, 147, 147, 162, 165, 150, 171]
+== tp-A-paste1024
+# variant=A SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 
+# waited=0s start=2026-10-16T05:29:02Z load={ 4.78 6.46 8.31 }
+# env: H5PROF_MODE=paste H5PROF_KB=1024 H5PROF_LEAD_MS=3000 sample_secs=45
+H5PROF open quiet=true took=1.561878791 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.019986792 seconds
+H5PROF paste settled after=31.620206417000002 seconds
+== tp-ae1-256
+# variant=ae1 SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 instrumented copy of A + EXPERIMENT E1 (ts_subtree_compare pointer-equality skip) 
+# waited=0s start=2026-10-16T05:27:26Z load={ 8.12 7.42 8.83 }
+# env: H5PROF_KB=256 H5PROF_EDITS=8 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=3000 sample_secs=12
+H5PROF open quiet=true took=3.924799792 seconds units=262151 mode=full inlineNearEnd=true
+H5PROF edit call ms: [341, 349, 312, 295, 298, 296, 307, 310]
+== tp-si-e3-paste1024
+# variant=si SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 instrumented copy of stock (H5 profile scratch) 
+# waited=0s start=2026-10-16T05:23:46Z load={ 6.32 7.29 9.26 }
+# env: H5PROF_E3=64 H5PROF_MODE=paste H5PROF_KB=1024 H5PROF_LEAD_MS=3000 sample_secs=20
+H5PROF open quiet=true took=1.56023525 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.015137666 seconds
+H5PROF paste settled after=6.8552163329999996 seconds
+== tp-stock-256
+# variant=stock SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 
+# waited=0s start=2026-10-16T05:15:29Z load={ 6.69 13.81 12.05 }
+# env: H5PROF_KB=256 H5PROF_EDITS=8 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=3000 sample_secs=25
+H5PROF open quiet=true took=5.182669916999999 seconds units=262151 mode=full inlineNearEnd=true
+H5PROF edit call ms: [2113, 1854, 1735, 1782, 1743, 2016, 1735, 2216]
+== tp-stock-64
+# variant=stock SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 
+# waited=0s start=2026-10-16T05:16:11Z load={ 7.21 13.16 11.89 }
+# env: H5PROF_KB=64 H5PROF_EDITS=20 H5PROF_GAP_MS=300 H5PROF_LEAD_MS=3000 sample_secs=12
+H5PROF open quiet=true took=1.821946709 seconds units=65631 mode=full inlineNearEnd=true
+H5PROF edit call ms: [184, 171, 212, 168, 163, 151, 156, 161, 564, 160, 159, 168, 149, 157, 153, 153, 153, 152, 148, 161]
+== tp-stock-paste1024
+# variant=stock SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 
+# waited=0s start=2026-10-16T05:19:41Z load={ 5.95 9.18 10.42 }
+# env: H5PROF_MODE=paste H5PROF_KB=1024 H5PROF_LEAD_MS=3000 sample_secs=45
+H5PROF open quiet=true took=1.602542042 seconds units=7992 mode=full inlineNearEnd=true
+H5PROF paste call=0.018202958 seconds
+H5PROF paste settled after=31.481932 seconds

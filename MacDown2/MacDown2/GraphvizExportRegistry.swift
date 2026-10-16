@@ -10,19 +10,7 @@ import Themes
 extension ContributionRegistry {
     static let sharedGraphvizRenderer = GraphvizDiagramCache(renderer: GraphvizWebRenderer())
 
-    /// `GraphvizWebRenderer.render`'s `context` parameter is not yet wired
-    /// to Graphviz's own theming — same disclosed, deliberate scope limit
-    /// already recorded for Mermaid (issue #79).
-    static func graphvizRenderContext(theme: Theme, isPrintTarget _: Bool) -> GraphvizRenderContext {
-        let foreground = theme.chrome.foreground
-        let background = theme.chrome.background
-        return GraphvizRenderContext(
-            foregroundRed: foreground.red,
-            foregroundGreen: foreground.green,
-            foregroundBlue: foreground.blue,
-            backgroundRed: background.red,
-            backgroundGreen: background.green,
-            backgroundBlue: background.blue
-        )
+    static func graphvizRenderContext(theme _: Theme, isPrintTarget _: Bool) -> GraphvizRenderContext {
+        .neutralLight
     }
 }

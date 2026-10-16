@@ -4,8 +4,16 @@ import Themes
 /// The internal seam the app talks to. One instance per open document/text system.
 @MainActor
 public protocol SyntaxHighlighting: AnyObject {
-    /// The language identifier currently in use (nil = plain text).
+    /// The language the document's format requested (nil = plain text).
+    /// Unchanged by the size fallback: see ``state`` for the effective mode.
     var languageID: String? { get }
+
+    /// Requested language versus effective full / plain / reduced mode and
+    /// the reason (register row H5).
+    var state: HighlightingState { get }
+
+    /// Called on the main actor whenever ``state`` changes.
+    var onStateChange: ((HighlightingState) -> Void)? { get set }
 
     /// Recolour the visible range for a new theme WITHOUT reparsing.
     func applyTheme(_ theme: Theme)
