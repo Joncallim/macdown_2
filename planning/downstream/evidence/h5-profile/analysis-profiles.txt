@@ -1,0 +1,312 @@
+## tp-stock-64: main-thread busy samples = 1359 (1 ms each)
+  98.6%  Neon edit path: TreeSitterClient.didChangeContent
+  98.5%    LanguageLayer.parse(with:affecting:resolveSublayers:)
+  94.8%      tree-sitter ts_parser_parse (Parser.parse)
+  41.1%        ts_parser__select_children (GLR merge)
+  29.1%          ts_subtree_compare
+  12.0%        ts_lexer_goto
+   2.7%        ts_parser__lex (lexing incl. scanner)
+   1.3%        ts_parser__external_scanner_scan
+   2.2%        SwiftTreeSitter read callback (readFunction)
+  15.1%        ts_parser__reduce (incl. select_children)
+   3.7%        ts_parser__condense_stack
+   0.0%        ts_parser__breakdown_*
+   1.2%        ts_parser__balance_subtree
+   2.9%      ParseState.changedSet (ts_tree_get_changed_ranges)
+   0.7%      old ParseState/Tree release (ts_tree_delete)
+   0.0%  resolveSublayers (any caller)
+   0.0%    encorporateRanges
+   0.0%    injection query (executeShallowQuery/injections)
+   0.1%  Neon validation / styling (TextSystemStyler, Token validator)
+   0.0%    token query execution (highlights query, ts_query_cursor)
+   0.1%    TextKit setRenderingAttributes / apply styles
+   0.0%  TextKit 2 layout (NSTextLayoutManager ensureLayout etc.)
+  99.5%  MacDownKit code frames (NeonSyntaxHighlighter/HighlightingStorageGate/EditorTextView) inclusive
+   3.8%  malloc/free (any)
+top self frames:
+  29.1%  ts_subtree_compare
+  12.0%  ts_lexer_goto
+   7.4%  ts_subtree_symbol
+   4.4%  ts_subtree_child_count
+   2.7%  ts_subtree_summarize_children
+   2.6%  stack__iter
+   2.0%  ts_lex
+   1.8%  ts_language_lookup
+   1.8%  ts_subtree_release
+   1.4%  ts_parser__reduce
+   1.2%  length_add
+   1.2%  _xzm_free
+
+## tp-A-64: main-thread busy samples = 3022 (1 ms each)
+  98.9%  Neon edit path: TreeSitterClient.didChangeContent
+  98.9%    LanguageLayer.parse(with:affecting:resolveSublayers:)
+  95.1%      tree-sitter ts_parser_parse (Parser.parse)
+  44.1%        ts_parser__select_children (GLR merge)
+  29.0%          ts_subtree_compare
+   1.8%        ts_lexer_goto
+   3.3%        ts_parser__lex (lexing incl. scanner)
+   1.1%        ts_parser__external_scanner_scan
+   2.6%        SwiftTreeSitter read callback (readFunction)
+  17.4%        ts_parser__reduce (incl. select_children)
+   3.3%        ts_parser__condense_stack
+   0.0%        ts_parser__breakdown_*
+   1.2%        ts_parser__balance_subtree
+   3.0%      ParseState.changedSet (ts_tree_get_changed_ranges)
+   0.7%      old ParseState/Tree release (ts_tree_delete)
+   0.0%  resolveSublayers (any caller)
+   0.0%    encorporateRanges
+   0.0%    injection query (executeShallowQuery/injections)
+   0.1%  Neon validation / styling (TextSystemStyler, Token validator)
+   0.0%    token query execution (highlights query, ts_query_cursor)
+   0.0%    TextKit setRenderingAttributes / apply styles
+   0.0%  TextKit 2 layout (NSTextLayoutManager ensureLayout etc.)
+  99.7%  MacDownKit code frames (NeonSyntaxHighlighter/HighlightingStorageGate/EditorTextView) inclusive
+   4.0%  malloc/free (any)
+top self frames:
+  29.0%  ts_subtree_compare
+   9.7%  ts_subtree_symbol
+   5.0%  ts_subtree_child_count
+   3.8%  ts_lex
+   3.0%  ts_subtree_summarize_children
+   2.6%  stack__iter
+   2.5%  ts_subtree_release
+   1.9%  ts_parser__reduce
+   1.8%  ts_lexer_goto
+   1.7%  ts_language_lookup
+   1.7%  ts_stack_can_merge
+   1.6%  ts_stack_merge
+
+## tp-stock-256: main-thread busy samples = 15057 (1 ms each)
+  99.8%  Neon edit path: TreeSitterClient.didChangeContent
+  99.8%    LanguageLayer.parse(with:affecting:resolveSublayers:)
+  98.5%      tree-sitter ts_parser_parse (Parser.parse)
+  69.1%        ts_parser__select_children (GLR merge)
+  48.9%          ts_subtree_compare
+  15.8%        ts_lexer_goto
+   1.0%        ts_parser__lex (lexing incl. scanner)
+   0.4%        ts_parser__external_scanner_scan
+   1.0%        SwiftTreeSitter read callback (readFunction)
+   4.7%        ts_parser__reduce (incl. select_children)
+   1.0%        ts_parser__condense_stack
+   0.0%        ts_parser__breakdown_*
+   0.5%        ts_parser__balance_subtree
+   0.9%      ParseState.changedSet (ts_tree_get_changed_ranges)
+   0.3%      old ParseState/Tree release (ts_tree_delete)
+   0.0%  resolveSublayers (any caller)
+   0.0%    encorporateRanges
+   0.0%    injection query (executeShallowQuery/injections)
+   0.0%  Neon validation / styling (TextSystemStyler, Token validator)
+   0.0%    token query execution (highlights query, ts_query_cursor)
+   0.0%    TextKit setRenderingAttributes / apply styles
+   0.0%  TextKit 2 layout (NSTextLayoutManager ensureLayout etc.)
+ 100.0%  MacDownKit code frames (NeonSyntaxHighlighter/HighlightingStorageGate/EditorTextView) inclusive
+   1.3%  malloc/free (any)
+top self frames:
+  48.9%  ts_subtree_compare
+  15.8%  ts_lexer_goto
+  13.0%  ts_subtree_symbol
+   6.7%  ts_subtree_child_count
+   0.9%  ts_lex
+   0.8%  ts_subtree_summarize_children
+   0.7%  _array__grow
+   0.7%  ts_language_lookup
+   0.7%  ts_subtree_release
+   0.6%  stack__iter
+   0.5%  ts_stack_can_merge
+   0.4%  stack_node_new
+
+## tp-A-256: main-thread busy samples = 12789 (1 ms each)
+  99.8%  Neon edit path: TreeSitterClient.didChangeContent
+  99.8%    LanguageLayer.parse(with:affecting:resolveSublayers:)
+  98.2%      tree-sitter ts_parser_parse (Parser.parse)
+  80.6%        ts_parser__select_children (GLR merge)
+  55.3%          ts_subtree_compare
+   0.4%        ts_lexer_goto
+   1.2%        ts_parser__lex (lexing incl. scanner)
+   0.6%        ts_parser__external_scanner_scan
+   1.1%        SwiftTreeSitter read callback (readFunction)
+   5.8%        ts_parser__reduce (incl. select_children)
+   1.3%        ts_parser__condense_stack
+   0.0%        ts_parser__breakdown_*
+   0.5%        ts_parser__balance_subtree
+   1.1%      ParseState.changedSet (ts_tree_get_changed_ranges)
+   0.4%      old ParseState/Tree release (ts_tree_delete)
+   0.0%  resolveSublayers (any caller)
+   0.0%    encorporateRanges
+   0.0%    injection query (executeShallowQuery/injections)
+   0.0%  Neon validation / styling (TextSystemStyler, Token validator)
+   0.0%    token query execution (highlights query, ts_query_cursor)
+   0.0%    TextKit setRenderingAttributes / apply styles
+   0.0%  TextKit 2 layout (NSTextLayoutManager ensureLayout etc.)
+ 100.0%  MacDownKit code frames (NeonSyntaxHighlighter/HighlightingStorageGate/EditorTextView) inclusive
+   1.4%  malloc/free (any)
+top self frames:
+  55.3%  ts_subtree_compare
+  15.7%  ts_subtree_symbol
+   8.1%  ts_subtree_child_count
+   1.8%  _array__grow
+   1.2%  ts_lex
+   1.1%  ts_subtree_summarize_children
+   0.8%  ts_subtree_release
+   0.7%  ts_language_lookup
+   0.6%  stack__iter
+   0.5%  ts_stack_merge
+   0.5%  stack_node_new
+   0.5%  ts_parser__reduce
+
+## tp-ae1-256: main-thread busy samples = 2501 (1 ms each)
+  99.1%  Neon edit path: TreeSitterClient.didChangeContent
+  99.1%    LanguageLayer.parse(with:affecting:resolveSublayers:)
+  91.4%      tree-sitter ts_parser_parse (Parser.parse)
+   0.2%        ts_parser__select_children (GLR merge)
+   0.0%          ts_subtree_compare
+   2.4%        ts_lexer_goto
+   7.4%        ts_parser__lex (lexing incl. scanner)
+   3.0%        ts_parser__external_scanner_scan
+   5.9%        SwiftTreeSitter read callback (readFunction)
+  29.0%        ts_parser__reduce (incl. select_children)
+   6.4%        ts_parser__condense_stack
+   0.0%        ts_parser__breakdown_*
+   3.2%        ts_parser__balance_subtree
+   5.8%      ParseState.changedSet (ts_tree_get_changed_ranges)
+   1.7%      old ParseState/Tree release (ts_tree_delete)
+   0.0%  resolveSublayers (any caller)
+   0.0%    encorporateRanges
+   0.0%    injection query (executeShallowQuery/injections)
+   0.0%  Neon validation / styling (TextSystemStyler, Token validator)
+   0.0%    token query execution (highlights query, ts_query_cursor)
+   0.0%    TextKit setRenderingAttributes / apply styles
+   0.0%  TextKit 2 layout (NSTextLayoutManager ensureLayout etc.)
+  99.7%  MacDownKit code frames (NeonSyntaxHighlighter/HighlightingStorageGate/EditorTextView) inclusive
+   7.7%  malloc/free (any)
+top self frames:
+   7.5%  ts_lex
+   5.1%  ts_subtree_summarize_children
+   3.6%  ts_subtree_release
+   3.5%  ts_language_lookup
+   3.4%  ts_parser__reduce
+   3.4%  stack__iter
+   2.6%  ts_stack_can_merge
+   2.6%  _xzm_free
+   2.4%  ts_lexer_goto
+   2.4%  stack_node_new
+   2.4%  _xzm_xzone_malloc_tiny
+   2.3%  ts_parser__advance
+
+## tp-stock-paste1024: main-thread busy samples = 25100 (1 ms each)
+   0.0%  Neon edit path: TreeSitterClient.didChangeContent
+   0.0%    LanguageLayer.parse(with:affecting:resolveSublayers:)
+   0.0%      tree-sitter ts_parser_parse (Parser.parse)
+   0.0%        ts_parser__select_children (GLR merge)
+   0.0%          ts_subtree_compare
+   0.0%        ts_lexer_goto
+   0.0%        ts_parser__lex (lexing incl. scanner)
+   0.0%        ts_parser__external_scanner_scan
+   0.0%        SwiftTreeSitter read callback (readFunction)
+   0.0%        ts_parser__reduce (incl. select_children)
+   0.0%        ts_parser__condense_stack
+   0.0%        ts_parser__breakdown_*
+   0.0%        ts_parser__balance_subtree
+   0.0%      ParseState.changedSet (ts_tree_get_changed_ranges)
+   0.0%      old ParseState/Tree release (ts_tree_delete)
+   0.0%  resolveSublayers (any caller)
+   0.0%    encorporateRanges
+   0.0%    injection query (executeShallowQuery/injections)
+  87.7%  Neon validation / styling (TextSystemStyler, Token validator)
+   1.1%    token query execution (highlights query, ts_query_cursor)
+  86.4%    TextKit setRenderingAttributes / apply styles
+   0.0%  TextKit 2 layout (NSTextLayoutManager ensureLayout etc.)
+   0.8%  MacDownKit code frames (NeonSyntaxHighlighter/HighlightingStorageGate/EditorTextView) inclusive
+   1.7%  malloc/free (any)
+top self frames:
+   7.4%  objc_msgSend
+   6.5%  locker_mixin<lockdebug::lock_mixin<objc_lock_base_t>>::lockWith(lockdebug::lock_mixin<objc_lock_base_t>&)
+   6.1%  AutoreleasePoolPage::add(objc_object*)
+   6.0%  objc_autorelease
+   5.8%  AutoreleasePoolPage::releaseUntil(objc_object**)
+   5.7%  objc_loadWeakRetained
+   5.1%  weak_entry_for_referent
+   4.1%  -[NSCountableTextRange isEqualToTextRange:]
+   3.3%  _platform_memmove
+   3.3%  objc_opt_isKindOfClass
+   3.0%  -[__NSCFString isEqualToString:]
+   2.9%  locker_mixin<lockdebug::lock_mixin<objc_lock_base_t>>::unlockWith(lockdebug::lock_mixin<objc_lock_base_t>&)
+
+## tp-A-paste1024: main-thread busy samples = 25103 (1 ms each)
+   0.0%  Neon edit path: TreeSitterClient.didChangeContent
+   0.0%    LanguageLayer.parse(with:affecting:resolveSublayers:)
+   0.0%      tree-sitter ts_parser_parse (Parser.parse)
+   0.0%        ts_parser__select_children (GLR merge)
+   0.0%          ts_subtree_compare
+   0.0%        ts_lexer_goto
+   0.0%        ts_parser__lex (lexing incl. scanner)
+   0.0%        ts_parser__external_scanner_scan
+   0.0%        SwiftTreeSitter read callback (readFunction)
+   0.0%        ts_parser__reduce (incl. select_children)
+   0.0%        ts_parser__condense_stack
+   0.0%        ts_parser__breakdown_*
+   0.0%        ts_parser__balance_subtree
+   0.0%      ParseState.changedSet (ts_tree_get_changed_ranges)
+   0.0%      old ParseState/Tree release (ts_tree_delete)
+   0.0%  resolveSublayers (any caller)
+   0.0%    encorporateRanges
+   0.0%    injection query (executeShallowQuery/injections)
+  87.7%  Neon validation / styling (TextSystemStyler, Token validator)
+   1.1%    token query execution (highlights query, ts_query_cursor)
+  86.3%    TextKit setRenderingAttributes / apply styles
+   0.0%  TextKit 2 layout (NSTextLayoutManager ensureLayout etc.)
+   0.7%  MacDownKit code frames (NeonSyntaxHighlighter/HighlightingStorageGate/EditorTextView) inclusive
+   1.7%  malloc/free (any)
+top self frames:
+   7.2%  objc_msgSend
+   6.5%  AutoreleasePoolPage::add(objc_object*)
+   6.5%  locker_mixin<lockdebug::lock_mixin<objc_lock_base_t>>::lockWith(lockdebug::lock_mixin<objc_lock_base_t>&)
+   6.1%  objc_loadWeakRetained
+   6.0%  objc_autorelease
+   5.8%  AutoreleasePoolPage::releaseUntil(objc_object**)
+   5.1%  weak_entry_for_referent
+   4.1%  -[NSCountableTextRange isEqualToTextRange:]
+   3.3%  objc_opt_isKindOfClass
+   3.3%  _platform_memmove
+   2.9%  -[__NSCFString isEqualToString:]
+   2.8%  AutoreleasePoolPage::kill()
+
+## tp-si-e3-paste1024: main-thread busy samples = 1369 (1 ms each)
+   0.0%  Neon edit path: TreeSitterClient.didChangeContent
+   0.0%    LanguageLayer.parse(with:affecting:resolveSublayers:)
+   0.0%      tree-sitter ts_parser_parse (Parser.parse)
+   0.0%        ts_parser__select_children (GLR merge)
+   0.0%          ts_subtree_compare
+   0.0%        ts_lexer_goto
+   0.0%        ts_parser__lex (lexing incl. scanner)
+   0.0%        ts_parser__external_scanner_scan
+   0.0%        SwiftTreeSitter read callback (readFunction)
+   0.0%        ts_parser__reduce (incl. select_children)
+   0.0%        ts_parser__condense_stack
+   0.0%        ts_parser__breakdown_*
+   0.0%        ts_parser__balance_subtree
+   0.0%      ParseState.changedSet (ts_tree_get_changed_ranges)
+   0.0%      old ParseState/Tree release (ts_tree_delete)
+   0.0%  resolveSublayers (any caller)
+   0.0%    encorporateRanges
+   0.0%    injection query (executeShallowQuery/injections)
+  98.8%  Neon validation / styling (TextSystemStyler, Token validator)
+  20.4%    token query execution (highlights query, ts_query_cursor)
+  74.2%    TextKit setRenderingAttributes / apply styles
+   0.0%  TextKit 2 layout (NSTextLayoutManager ensureLayout etc.)
+  12.4%  MacDownKit code frames (NeonSyntaxHighlighter/HighlightingStorageGate/EditorTextView) inclusive
+   6.8%  malloc/free (any)
+top self frames:
+   7.6%  objc_msgSend
+   4.0%  __CFStringHash
+   3.6%  _platform_memmove
+   3.0%  blockForLocation
+   2.1%  __CF_IS_OBJC
+   2.1%  _xzm_xzone_malloc_tiny
+   1.9%  -[__NSDictionaryM objectForKey:]
+   1.8%  ts_tree_cursor_child_iterator_next
+   1.8%  __CFStringEqual
+   1.8%  _xzm_free
+   1.6%  ts_tree_cursor_parent_node
+   1.5%  hashProbe
+
