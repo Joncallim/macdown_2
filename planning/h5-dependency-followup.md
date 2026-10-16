@@ -1,8 +1,15 @@
-# H5 dependency follow-up plan (reproduced 2026-10-16; no patch adopted)
+# H5 dependency follow-up plan (defects reproduced in scratch; no fix adopted)
 
-Register row H5 / issue #203. This is a plan only. Nothing here has been
-done, and no speed-up is claimed. The size-based fallback that shipped with
-this plan is a containment measure. It does not fix either problem below.
+Register row H5 / issue #203. The size-based fallback that shipped with this
+plan (PR #479) is a containment measure. It does not fix either problem below.
+
+**Status (2026-10-16).** Both problems were *reproduced in scratch* (sections
+"Reproduction results"); the proposed fixes were *tried only in scratch copies*
+(a 6-line change in tree-sitter's `lexer.c` for A, a short experiment in
+SwiftTreeSitterLayer for B). **No fix is adopted:** nothing is patched in this
+repository, no fork exists, nothing was sent upstream. The plan sections below
+are the original plan; the "Reproduction results" section records what was
+actually run and what is still untested.
 
 Pinned revisions when this plan was written:
 
@@ -98,8 +105,9 @@ the size-fallback cut-off too, using the measured numbers. Windowed parsing
 
 ## Reproduction results (2026-10-16)
 
-Scratch reproductions only. Nothing was patched in this repository, no fork was
-adopted, and nothing was sent upstream. Sources, results and diffs:
+Scratch reproductions only (experiments on copies of the pinned sources; nothing
+is patched in this repository, no fork is adopted, nothing was sent upstream).
+Sources, results and diffs:
 `planning/downstream/evidence/h5-dependency-repro/`. tree-sitter
 `da6fe9beb4f7f67beb75914ca8e0d48ae48d6406` (v0.25.10, resolved by SwiftTreeSitter
 `cbe31cb3`); vendored `TreeSitterMarkdown` grammar; Release/`-O2`, M3 Pro.
@@ -123,16 +131,16 @@ parse, so almost nothing is reused.
 With SwiftTreeSitterLayer alone (no Neon), a 48 KB document, in a scratch copy
 that records the result of `ts_parser_set_included_ranges`:
 - Replacing 600 units mid-document: 15 zero-length ranges remain, one old range
-  spans the whole replaced region, and the call returned **false** (1,271
-  ranges rejected). The inline tree differs from a fresh parse (16 ranges only in
+  spans the whole replaced region, and the call returned **false** (the rejected list had 1,271 ranges,
+  one overlap: `[24598, 25215)` then `[24599, 24626)`). The inline tree differs from a fresh parse (16 ranges only in
   the fresh one, 1 only in the edited one, 3 extra highlight captures).
 - Deleting a block, and type-then-delete in one turn: also rejected (38
   zero-length ranges; range lists differ, 1255 vs 1216); highlights happened to
   match in this fixture.
 - **Correction:** the ordinary one-character typing edit is also rejected.
-  Typing can move an inline node's start (24599 to 24597), and
-  `encorporateRanges` drops an old range only when its start equals a new
-  range's start, so an overlapping old range survives. Any old range that
+  Typing can move an inline node's start (the old range `[24600, 24627)` overlaps the new `[24597, 24627)` in the saved
+  output), and `encorporateRanges` drops an old range only when its start equals
+  a new range's start, so an overlapping old range survives. Any old range that
   overlaps a new one with a different start triggers the rejection; zero-length
   ranges are one way to get there. Highlights matched only by luck.
 - An experimental B1 (drop empty ranges and old ranges overlapping a new one)
@@ -156,3 +164,31 @@ Not done: the patches have not been run against Neon or `NeonReplacementEditTest
    SwiftTreeSitter test suites, flip the `NeonReplacementEditTests` known issues,
    then `HighlightBudgetBenchmarkTests` and `KeystrokeStallBenchmarkTests` in Release.
 2. Only then revisit the 8,192-unit cut-off and the off-main-thread question.
+
+### How to re-run, and what the saved output does and does not show
+- **A:** `A/run_A.sh <tree-sitter checkout at TS_REVISION> MacDown2/Packages/TreeSitterMarkdown <workdir>`
+  (needs only a C compiler). It builds stock, counter-instrumented and
+  binary-search variants from the same sources. Example from the repository
+  root, after a package resolve:
+  `planning/downstream/evidence/h5-dependency-repro/A/run_A.sh MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter MacDown2/Packages/TreeSitterMarkdown /tmp/repoA`.
+  Re-run on 2026-10-16 (second run): stock p50 reparse 139 / 177 / 512 / 1,194 ms at N = 10 / 1,000 / 10,000 /
+  30,000; binary search 141–157 ms at every N; goto iterations 1,364,897 (N=10)
+  to 1,256,776,080 (N=10,000) over about 248k calls (`A/instr_counts_rerun.txt`
+  and the first run in `A/results_A.txt`; the earlier "1.4 million / 1.26 billion"
+  were these figures rounded). Timings vary by a few percent between runs.
+- **B:** `B/run_B.sh <SwiftTreeSitter checkout at SWIFTTREESITTER_REVISION> MacDown2/Packages/TreeSitterMarkdown <workdir>`
+  (builds a SwiftPM package; needs network the first time to resolve
+  tree-sitter). Saved reruns: `B/rerun_stock.txt` (every scenario `rejected=1`;
+  zero-length ranges 0 / 15 / 38 / 38) and `B/rerun_B1.txt` (every scenario
+  `rejected=0`, no zero-length ranges, no highlight difference); identical to the
+  original `B/results_B_release.txt` verdict rows.
+- **Not reproducible from the saved material, and why:** the `sample` profile
+  (about 97 % in `ts_lexer_goto`) is saved as text from one run
+  (`A/sample_N100000_noinline.txt`) but is not scripted; the "incremental reparse
+  costs as much as a full parse" side finding comes from the same harness
+  columns (`full_*` vs `edit_*`) and was not examined further.
+- **Grammar and dependency versions:** tree-sitter `da6fe9be...` (v0.25.10,
+  `A/../TS_REVISION`), SwiftTreeSitter `cbe31cb3...` (`B/SWIFTTREESITTER_REVISION`),
+  vendored `Packages/TreeSitterMarkdown` of this repository at the commit that
+  contains this file. The B fixture is the 48 KB document in `B/main.swift`
+  (a copy of `StallFixtures`); the A text is synthetic.

@@ -1,0 +1,116 @@
+
+=== A_control_typing (resolve in invalidated set) ===
+inline ranges before: 1255
+edit {24598, 0} -> 1 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=0 [] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=2 rejected=0
+inline ranges after resolve (tree): count=1255 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1255; non-empty ranges only in edited=0 only in fresh=0
+  only-in-fresh sample: []
+  only-in-edited sample: []
+inline tree sexp identical: true (len 103922 vs 103922)
+highlight captures: edited=5521 fresh=5521 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW A_control_typing wholeDoc=false rejected=0 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== B_replace600 (resolve in invalidated set) ===
+inline ranges before: 1255
+edit {24598, 600} -> 601 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=15 ["[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=2 rejected=0
+inline ranges after resolve (tree): count=1255 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1255; non-empty ranges only in edited=0 only in fresh=0
+  only-in-fresh sample: []
+  only-in-edited sample: []
+inline tree sexp identical: true (len 103922 vs 103922)
+highlight captures: edited=5522 fresh=5522 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW B_replace600 wholeDoc=false rejected=0 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== C_deleteBlock (resolve in invalidated set) ===
+inline ranges before: 1255
+edit {1000, 1500} -> 0 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=38 ["[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=2 rejected=0
+inline ranges after resolve (tree): count=1216 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1216; non-empty ranges only in edited=0 only in fresh=0
+  only-in-fresh sample: []
+  only-in-edited sample: []
+inline tree sexp identical: true (len 28836 vs 28836)
+highlight captures: edited=3212 fresh=3212 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW C_deleteBlock wholeDoc=false rejected=0 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== D_type_then_delete_one_turn (resolve in invalidated set) ===
+inline ranges before: 1255
+edit {24598, 0} -> 1 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=0 [] overlaps=0
+edit {1000, 1500} -> 0 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=38 ["[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=3 rejected=0
+inline ranges after resolve (tree): count=1216 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1216; non-empty ranges only in edited=0 only in fresh=0
+  only-in-fresh sample: []
+  only-in-edited sample: []
+inline tree sexp identical: true (len 28836 vs 28836)
+highlight captures: edited=3211 fresh=3211 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW D_type_then_delete_one_turn wholeDoc=false rejected=0 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== A_control_typing (resolve in whole document) ===
+inline ranges before: 1255
+edit {24598, 0} -> 1 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=0 [] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=2 rejected=0
+inline ranges after resolve (tree): count=1255 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1255; non-empty ranges only in edited=0 only in fresh=0
+  only-in-fresh sample: []
+  only-in-edited sample: []
+inline tree sexp identical: true (len 103922 vs 103922)
+highlight captures: edited=5521 fresh=5521 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW A_control_typing wholeDoc=true rejected=0 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== B_replace600 (resolve in whole document) ===
+inline ranges before: 1255
+edit {24598, 600} -> 601 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=15 ["[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=2 rejected=0
+inline ranges after resolve (tree): count=1255 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1255; non-empty ranges only in edited=0 only in fresh=0
+  only-in-fresh sample: []
+  only-in-edited sample: []
+inline tree sexp identical: true (len 103922 vs 103922)
+highlight captures: edited=5522 fresh=5522 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW B_replace600 wholeDoc=true rejected=0 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== C_deleteBlock (resolve in whole document) ===
+inline ranges before: 1255
+edit {1000, 1500} -> 0 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=38 ["[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=2 rejected=0
+inline ranges after resolve (tree): count=1216 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1216; non-empty ranges only in edited=0 only in fresh=0
+  only-in-fresh sample: []
+  only-in-edited sample: []
+inline tree sexp identical: true (len 28836 vs 28836)
+highlight captures: edited=3212 fresh=3212 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW C_deleteBlock wholeDoc=true rejected=0 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== D_type_then_delete_one_turn (resolve in whole document) ===
+inline ranges before: 1255
+edit {24598, 0} -> 1 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=0 [] overlaps=0
+edit {1000, 1500} -> 0 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=38 ["[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=3 rejected=0
+inline ranges after resolve (tree): count=1216 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1216; non-empty ranges only in edited=0 only in fresh=0
+  only-in-fresh sample: []
+  only-in-edited sample: []
+inline tree sexp identical: true (len 28836 vs 28836)
+highlight captures: edited=3211 fresh=3211 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW D_type_then_delete_one_turn wholeDoc=true rejected=0 zeroAfter=0 overlapsAfter=0 hlDiff=0
