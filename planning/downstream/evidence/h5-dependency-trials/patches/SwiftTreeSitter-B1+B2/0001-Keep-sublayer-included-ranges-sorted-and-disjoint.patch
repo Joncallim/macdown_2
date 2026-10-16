@@ -1,0 +1,209 @@
+From 2f3b6b68d0d148dbb79784e277a36a7bef6c8096 Mon Sep 17 00:00:00 2001
+From: Jonathan Lim <joncallim@gmail.com>
+Date: Fri, 16 Oct 2026 08:30:31 +0800
+Subject: [PATCH 1/2] Keep sublayer included ranges sorted and disjoint
+
+encorporateRanges replaced an existing included range only when a new
+range had the same start. After an edit, an existing range can be
+collapsed to zero length or shifted so that it overlaps a newly resolved
+range with a different start (typing at the start of an injection is
+enough). The combined list then overlaps, ts_parser_set_included_ranges
+rejects it, and the sublayer silently keeps its previous ranges.
+
+Merge the ranges instead: a new range replaces every existing range it
+overlaps or shares a start with, empty ranges are dropped, and the result
+is sorted and disjoint. This is a sort-and-merge pass, O(n log n), rather
+than the previous O(existing * new) removeAll loop.
+---
+ .../SwiftTreeSitterLayer/LanguageLayer.swift  | 61 ++++++++++++--
+ .../LanguageLayerTests.swift                  | 82 ++++++++++++++++++-
+ 2 files changed, 135 insertions(+), 8 deletions(-)
+
+diff --git a/Sources/SwiftTreeSitterLayer/LanguageLayer.swift b/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
+index 2e81a23..64c0cea 100644
+--- a/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
++++ b/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
+@@ -335,19 +335,13 @@ extension LanguageLayer {
+ 			preconditionFailure("Cannot encorporateRanges into a layer that doesn't have any already defined")
+ 		}
+ 
+-		var allRanges = includedRanges
+ 		var invalidation = IndexSet()
+ 
+ 		for newTSRange in tsRanges {
+-			allRanges.removeAll(where: { newTSRange.bytes.lowerBound == $0.bytes.lowerBound })
+-
+-			allRanges.append(newTSRange)
+-
+ 			invalidation.insert(integersIn: Range(newTSRange.bytes.range)!)
+ 		}
+ 
+-		// included ranges must be sorted and the above algorithm does not guarantee that
+-		self.parser.includedRanges = allRanges.sorted()
++		self.parser.includedRanges = Self.mergeIncludedRanges(includedRanges, with: tsRanges)
+ 
+ 		let set = parse(with: content)
+ 
+@@ -356,6 +350,59 @@ extension LanguageLayer {
+ 		return invalidation
+ 	}
+ 
++	/// Combine a layer's existing included ranges with newly-resolved ones.
++	///
++	/// A new range replaces every existing range that it overlaps or shares a start with. Edits can collapse existing ranges to zero length, and those are dropped. tree-sitter rejects range lists that are unsorted or overlapping, so the result is sorted and disjoint. It is never empty, because an empty list means the whole document.
++	static func mergeIncludedRanges(_ existing: [TSRange], with new: [TSRange]) -> [TSRange] {
++		let replacedStarts = Set(new.map { $0.bytes.lowerBound })
++		var added = [TSRange]()
++
++		// coalesce any overlap between the new ranges themselves
++		for range in new.filter({ $0.bytes.isEmpty == false }).sorted(by: { $0.bytes.lowerBound < $1.bytes.lowerBound }) {
++			if let last = added.last, range.bytes.lowerBound < last.bytes.upperBound {
++				if range.bytes.upperBound > last.bytes.upperBound {
++					added[added.count - 1] = TSRange(points: last.points.lowerBound..<range.points.upperBound, bytes: last.bytes.lowerBound..<range.bytes.upperBound)
++				}
++			} else {
++				added.append(range)
++			}
++		}
++
++		var merged = [TSRange]()
++		var index = 0
++
++		for range in existing.sorted(by: { $0.bytes.lowerBound < $1.bytes.lowerBound }) {
++			while index < added.count && added[index].bytes.upperBound <= range.bytes.lowerBound {
++				merged.append(added[index])
++				index += 1
++			}
++
++			if range.bytes.isEmpty || replacedStarts.contains(range.bytes.lowerBound) {
++				continue
++			}
++
++			if index < added.count && added[index].bytes.lowerBound < range.bytes.upperBound {
++				continue
++			}
++
++			if let last = merged.last, range.bytes.lowerBound < last.bytes.upperBound {
++				continue
++			}
++
++			merged.append(range)
++		}
++
++		merged.append(contentsOf: added[index...])
++
++		if merged.isEmpty {
++			let start = (existing.first ?? new.first).map { ($0.points.lowerBound, $0.bytes.lowerBound) } ?? (Point.zero, 0)
++
++			return [TSRange(points: start.0..<start.0, bytes: start.1..<start.1)]
++		}
++
++		return merged
++	}
++
+ 	/// Recursively resolve any language injections within the set.
+ 	///
+ 	/// This process is manual to offer the greatest control to clients.
+diff --git a/Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift b/Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift
+index c3af9a5..7c4cccb 100644
+--- a/Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift
++++ b/Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift
+@@ -2,7 +2,7 @@ import XCTest
+ import Testing
+ 
+ import SwiftTreeSitter
+-import SwiftTreeSitterLayer
++@testable import SwiftTreeSitterLayer
+ import TestTreeSitterSwift
+ 
+ extension Point {
+@@ -314,6 +314,86 @@ let a = "var a = 1"
+ 			XCTAssertEqual(error as? LanguageLayerError, LanguageLayerError.queryUnavailable("Swift", .highlights))
+ 		}
+ 	}
++
++	private func assertInjectionsMatchFreshParse(text: String, editRange: Range<Int>, replacement: String, file: StaticString = #filePath, line: UInt = #line) throws {
++		let config = LanguageLayer.Configuration(languageProvider: { _ in Self.swiftConfig })
++
++		func point(_ string: String, _ location: Int) -> Point {
++			let prefix = Array(string.utf16.prefix(location))
++			let row = prefix.filter({ $0 == 10 }).count
++			let lineStart = prefix.lastIndex(of: 10).map({ $0 + 1 }) ?? 0
++
++			return Point(row, (prefix.count - lineStart) * 2)
++		}
++
++		let layer = try LanguageLayer(languageConfig: Self.selfInjectingSwiftConfig, configuration: config)
++		layer.replaceContent(with: text)
++
++		let newText = (text as NSString).replacingCharacters(in: NSRange(editRange), with: replacement)
++		let newEnd = editRange.lowerBound + replacement.utf16.count
++		let edit = InputEdit(
++			startByte: editRange.lowerBound * 2,
++			oldEndByte: editRange.upperBound * 2,
++			newEndByte: newEnd * 2,
++			startPoint: point(text, editRange.lowerBound),
++			oldEndPoint: point(text, editRange.upperBound),
++			newEndPoint: point(newText, newEnd)
++		)
++
++		let content = LanguageLayer.Content(string: newText)
++		let fullSet = IndexSet(integersIn: 0..<newText.utf16.count)
++
++		_ = layer.didChangeContent(content, using: edit, resolveSublayers: false)
++		_ = try layer.resolveSublayers(with: content, in: fullSet)
++
++		let fresh = try LanguageLayer(languageConfig: Self.selfInjectingSwiftConfig, configuration: config)
++		fresh.replaceContent(with: newText)
++
++		let ranges = layer.snapshot()?.sublayerSnapshots.first?.rootSnapshot.tree.includedRanges
++		let freshRanges = fresh.snapshot()?.sublayerSnapshots.first?.rootSnapshot.tree.includedRanges
++
++		XCTAssertEqual(ranges, freshRanges, file: file, line: line)
++		XCTAssertEqual(
++			try layer.highlights(in: fullSet, provider: content.textProvider),
++			try fresh.highlights(in: fullSet, provider: content.textProvider),
++			file: file,
++			line: line
++		)
++	}
++
++	func testInsertionAtStartOfInjection() throws {
++		let text = """
++let a = "var a = 1"
++let b = "var b = 1"
++"""
++
++		// the new injection starts before the edited one, so the two overlap
++		try assertInjectionsMatchFreshParse(text: text, editRange: 9..<9, replacement: "let ")
++	}
++
++	func testReplacementSpanningInjections() throws {
++		let text = """
++let a = "var a = 1"
++let b = "var b = 1"
++let c = "var c = 1"
++"""
++
++		// the edit contains the whole second injection, which collapses to zero length
++		try assertInjectionsMatchFreshParse(text: text, editRange: 12..<39, replacement: " x = 2\"\nlet b = \"var y = 3\"")
++	}
++
++	func testMergeIncludedRanges() {
++		func range(_ bytes: Range<UInt32>) -> TSRange {
++			TSRange(points: Point(0, Int(bytes.lowerBound))..<Point(0, Int(bytes.upperBound)), bytes: bytes)
++		}
++
++		let existing = [range(0..<4), range(6..<6), range(8..<12), range(14..<20), range(20..<24)]
++		let new = [range(10..<16), range(9..<11), range(30..<30)]
++
++		XCTAssertEqual(LanguageLayer.mergeIncludedRanges(existing, with: new), [range(0..<4), range(9..<16), range(20..<24)])
++		XCTAssertEqual(LanguageLayer.mergeIncludedRanges([range(5..<5)], with: [range(5..<5)]), [range(5..<5)])
++		XCTAssertEqual(LanguageLayer.mergeIncludedRanges([], with: []), [range(0..<0)])
++	}
+ }
+ 
+ #endif
+-- 
+2.55.0
+

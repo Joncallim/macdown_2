@@ -1,0 +1,121 @@
+From dcdd9465c9f7715af9907f673a9218a7d4aca878 Mon Sep 17 00:00:00 2001
+From: Jonathan Lim <joncallim@gmail.com>
+Date: Fri, 16 Oct 2026 08:32:51 +0800
+Subject: [PATCH 2/2] Report included ranges rejected by tree-sitter
+
+ts_parser_set_included_ranges returns false, and leaves the parser's
+ranges unchanged, when the ranges overlap or are out of order. The
+Parser.includedRanges setter discarded that result, so a layer whose
+merged ranges were invalid kept parsing with its previous ranges and
+nothing reported it.
+
+Add Parser.setIncludedRanges(_:), which returns the result. The
+includedRanges setter keeps its behaviour. LanguageLayer now throws
+LanguageLayerError.includedRangesRejected when a sublayer's ranges are
+rejected, from init and from resolveSublayers, leaving the layer in its
+previous, consistent state. This is the same in debug and release builds:
+it does not assert, because a rejection depends on the document and on
+client edits, and callers such as resolveSublayers already handle errors.
+---
+ Sources/SwiftTreeSitter/Parser.swift          | 21 ++++++++++++-------
+ .../SwiftTreeSitterLayer/LanguageLayer.swift  | 10 +++++++--
+ Tests/SwiftTreeSitterTests/ParserTests.swift  | 12 +++++++++++
+ 3 files changed, 34 insertions(+), 9 deletions(-)
+
+diff --git a/Sources/SwiftTreeSitter/Parser.swift b/Sources/SwiftTreeSitter/Parser.swift
+index 04e5b93..78db2af 100644
+--- a/Sources/SwiftTreeSitter/Parser.swift
++++ b/Sources/SwiftTreeSitter/Parser.swift
+@@ -66,17 +66,24 @@ extension Parser {
+ 			return tsRangeBuffer.map({ TSRange(internalRange: $0) })
+ 		}
+ 		set {
+-			let ranges = newValue.map({ $0.internalRange })
++			_ = setIncludedRanges(newValue)
++		}
++	}
+ 
+-			ranges.withUnsafeBytes { bufferPtr in
+-				let count = newValue.count
++	/// Set the ranges of text that the parser should include when parsing.
++	///
++	/// - Returns: `false` if the ranges were rejected because they overlap or are not in ascending order. The parser keeps its previous ranges in that case.
++	public func setIncludedRanges(_ newRanges: [TSRange]) -> Bool {
++		let ranges = newRanges.map({ $0.internalRange })
+ 
+-				guard let ptr = bufferPtr.baseAddress?.bindMemory(to: TreeSitter.TSRange.self, capacity: count) else {
+-					preconditionFailure("unable to convert pointer")
+-				}
++		return ranges.withUnsafeBytes { bufferPtr in
++			let count = newRanges.count
+ 
+-				ts_parser_set_included_ranges(internalParser, ptr, UInt32(count))
++			guard let ptr = bufferPtr.baseAddress?.bindMemory(to: TreeSitter.TSRange.self, capacity: count) else {
++				preconditionFailure("unable to convert pointer")
+ 			}
++
++			return ts_parser_set_included_ranges(internalParser, ptr, UInt32(count))
+ 		}
+ 	}
+ 
+diff --git a/Sources/SwiftTreeSitterLayer/LanguageLayer.swift b/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
+index 64c0cea..9272812 100644
+--- a/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
++++ b/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
+@@ -5,6 +5,7 @@ import SwiftTreeSitter
+ public enum LanguageLayerError: Error, Hashable {
+ 	case noRootNode
+ 	case queryUnavailable(String, Query.Definition)
++	case includedRangesRejected(String)
+ }
+ 
+ public final class LanguageLayer {
+@@ -102,7 +103,9 @@ public final class LanguageLayer {
+ 		try parser.setLanguage(languageConfig.language)
+ 
+ 		if rangeRestricted {
+-			parser.includedRanges = ranges
++			guard parser.setIncludedRanges(ranges) else {
++				throw LanguageLayerError.includedRangesRejected(languageConfig.name)
++			}
+ 		}
+ 	}
+ 
+@@ -341,7 +344,10 @@ extension LanguageLayer {
+ 			invalidation.insert(integersIn: Range(newTSRange.bytes.range)!)
+ 		}
+ 
+-		self.parser.includedRanges = Self.mergeIncludedRanges(includedRanges, with: tsRanges)
++		// if tree-sitter rejects them, the parser keeps its current ranges, so report that instead of reparsing
++		guard parser.setIncludedRanges(Self.mergeIncludedRanges(includedRanges, with: tsRanges)) else {
++			throw LanguageLayerError.includedRangesRejected(languageName)
++		}
+ 
+ 		let set = parse(with: content)
+ 
+diff --git a/Tests/SwiftTreeSitterTests/ParserTests.swift b/Tests/SwiftTreeSitterTests/ParserTests.swift
+index 6c94b8c..1f1e81f 100644
+--- a/Tests/SwiftTreeSitterTests/ParserTests.swift
++++ b/Tests/SwiftTreeSitterTests/ParserTests.swift
+@@ -14,6 +14,18 @@ final class ParserTests: XCTestCase {
+ 		XCTAssertEqual(parser.includedRanges, [range])
+ 	}
+ 
++	func testSetIncludedRangesRejectsOverlappingRanges() {
++		let parser = Parser()
++
++		let range = TSRange(points: Point(row: 0, column: 0)..<Point(row: 0, column: 10), bytes: 0..<10)
++		let overlapping = TSRange(points: Point(row: 0, column: 5)..<Point(row: 0, column: 20), bytes: 5..<20)
++
++		XCTAssertTrue(parser.setIncludedRanges([range]))
++		XCTAssertFalse(parser.setIncludedRanges([range, overlapping]))
++		XCTAssertFalse(parser.setIncludedRanges([overlapping, range]))
++		XCTAssertEqual(parser.includedRanges, [range])
++	}
++
+ 	func testSetTimeout() {
+ 		let parser = Parser()
+ 
+-- 
+2.55.0
+

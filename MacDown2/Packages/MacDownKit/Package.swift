@@ -1,5 +1,22 @@
 // swift-tools-version: 6.2
+import Foundation
 import PackageDescription
+
+// DEP-TRIAL ONLY (branch dep-trial, never merged): H5 dependency-fix trials.
+// When MACDOWN_DEP_TRIAL_ROOT names a directory holding local `SwiftTreeSitter`
+// and `tree-sitter` source copies, they replace the URL dependencies (the root
+// path dependency also overrides Neon's transitive SwiftTreeSitter). Unset, the
+// manifest and Package.resolved behave exactly as on integration-final.
+// See planning/downstream/evidence/h5-dependency-trials/README.md.
+let depTrialRoot = ProcessInfo.processInfo.environment["MACDOWN_DEP_TRIAL_ROOT"]
+let treeSitterDependencies: [Package.Dependency] = depTrialRoot.map { root in
+    [
+        .package(path: root + "/SwiftTreeSitter"),
+        .package(path: root + "/tree-sitter"),
+    ]
+} ?? [
+    .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
+]
 
 let package = Package(
     name: "MacDownKit",
@@ -31,8 +48,7 @@ let package = Package(
         .library(name: "GraphvizRendering", targets: ["GraphvizRendering"]),
         .library(name: "TextSearch", targets: ["TextSearch"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
+    dependencies: treeSitterDependencies + [
         .package(url: "https://github.com/ChimeHQ/Neon", revision: "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-json", from: "0.24.8"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-html", from: "0.23.2"),

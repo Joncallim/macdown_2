@@ -1,0 +1,12 @@
+--- /Users/jonathanlim/GitHub/macdown_2-deptrial/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/KeystrokeStallSupport.swift	2026-10-16 08:24:21
++++ /private/tmp/claude-501/-Users-jonathanlim-Documents-GitHub-macdown-2-slice7a/81130c89-23c4-46ec-ae6e-698c5cb9de53/scratchpad/dep-trial/stage2/pkg/AB/MacDownKit/Tests/HighlightingTests/KeystrokeStallSupport.swift	2026-10-16 11:37:41
+@@ -315,7 +315,8 @@
+             try? await Task.sleep(for: cadence)
+         }
+         let baseline = highlighter.styledTokenCount
+-        await waitUntilQuiet(quietPeriod: settle, timeout: .seconds(900), requireActivityAfter: baseline)
++        _ = baseline // DEP-TRIAL SCRATCH: the alternating edits return the count to baseline, so requiring activity above it always waited the full 900 s
++        await waitUntilQuiet(quietPeriod: settle, timeout: .seconds(900))
+         let end = DispatchTime.now().uptimeNanoseconds
+         monitor.stop()
+ 

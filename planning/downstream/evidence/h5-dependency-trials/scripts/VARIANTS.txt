@@ -1,0 +1,4 @@
+stock: SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 
+A: SwiftTreeSitter pinned cbe31cb3601aa29c1f64b6e4328733511126d6d5 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 
+B: SwiftTreeSitter b-combined dcdd9465c9f7715af9907f673a9218a7d4aca878 tree-sitter pinned da6fe9beb4f7f67beb75914ca8e0d48ae48d6406 
+AB: SwiftTreeSitter b-combined dcdd9465c9f7715af9907f673a9218a7d4aca878 tree-sitter a-lexer-goto-bsearch 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 
