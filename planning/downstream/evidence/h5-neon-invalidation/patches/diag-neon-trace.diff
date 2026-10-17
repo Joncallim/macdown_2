@@ -1,0 +1,97 @@
+diff --git a/Sources/Neon/TextViewHighlighter.swift b/Sources/Neon/TextViewHighlighter.swift
+index 5be05ea..653093a 100644
+--- a/Sources/Neon/TextViewHighlighter.swift
++++ b/Sources/Neon/TextViewHighlighter.swift
+@@ -120,6 +120,7 @@ public final class TextViewHighlighter {
+ 
+ 		storageDelegate.didChangeContent = { [buffer, client, styler] range, delta in
+ 			let adjustedRange = NSRange(location: range.location, length: range.length - delta)
++			if c1Trace { print("C1T didChangeContent \(adjustedRange) delta=\(delta)") }
+ 
+ 			// invalidations buffered by earlier changes must follow this one, or they will style the wrong text
+ 			// DIAG ONLY: C1_STOCK_BUFFER=1 restores the stock behaviour
+diff --git a/Sources/Neon/TokenSystemValidator.swift b/Sources/Neon/TokenSystemValidator.swift
+index 6ec8930..f31588c 100644
+--- a/Sources/Neon/TokenSystemValidator.swift
++++ b/Sources/Neon/TokenSystemValidator.swift
+@@ -29,8 +29,10 @@ final class TokenSystemValidator<Interface: TextSystemInterface> {
+ 		guard range.version == currentVersion else { return .stale }
+ 
+ 		guard let application = tokenProvider.sync(range.value) else {
++			if c1Trace { print("C1T validate.sync \(range.value) -> nil (async)") }
+ 			return nil
+ 		}
++		if c1Trace { print("C1T validate.sync \(range.value) tokens=\(application.tokens.count) appRange=\(String(describing: application.range))") }
+ 
+ 		applyStyles(for: application)
+ 
+@@ -42,6 +44,7 @@ final class TokenSystemValidator<Interface: TextSystemInterface> {
+ 
+ 		// https://github.com/apple/swift/pull/71143
+ 		let application = await tokenProvider.async(isolation: MainActor.shared, range.value)
++		if c1Trace { print("C1T validate.async \(range.value) tokens=\(application.tokens.count) versionOK=\(range.version == currentVersion)") }
+ 
+ 		applyStyles(for: application)
+ 
+diff --git a/Sources/RangeState/RangeInvalidationBuffer.swift b/Sources/RangeState/RangeInvalidationBuffer.swift
+index 2c92d24..07261fd 100644
+--- a/Sources/RangeState/RangeInvalidationBuffer.swift
++++ b/Sources/RangeState/RangeInvalidationBuffer.swift
+@@ -1,5 +1,9 @@
+ import Foundation
+ 
++// DIAG ONLY
++public let c1Trace = ProcessInfo.processInfo.environment["C1_TRACE"] == "1"
++public func c1Ranges(_ s: IndexSet) -> String { s.rangeView.map { "\($0.lowerBound)..<\($0.upperBound)" }.joined(separator: ",") }
++
+ public final class RangeInvalidationBuffer {
+ 	public typealias Handler = (RangeTarget) -> Void
+ 
+@@ -30,6 +34,7 @@ extension RangeInvalidationBuffer {
+ 		case .idle:
+ 			preconditionFailure()
+ 		case let .buffering(set, 1):
++			if c1Trace { print("C1T flush \(set)") }
+ 			invalidationHandler(set)
+ 			self.state = .idle
+ 		case let .buffering(set, count):
+@@ -41,9 +46,11 @@ extension RangeInvalidationBuffer {
+ 	public func invalidate(_ target: RangeTarget) {
+ 		switch state {
+ 		case .idle:
++			if c1Trace { print("C1T invalidate(idle) \(target)") }
+ 			invalidationHandler(target)
+ 		case let .buffering(existing, count):
+ 			precondition(count > 0)
++			if c1Trace { print("C1T invalidate(buffered count=\(count)) \(target)") }
+ 
+ 			self.state = .buffering(existing.union(target), count)
+ 		}
+@@ -64,6 +71,7 @@ extension RangeInvalidationBuffer {
+ 		// the length is only used by `.all`
+ 		let set = Self.transform(target.indexSet(with: 0), range: range, delta: delta)
+ 
++		if c1Trace { print("C1T contentChanged \(range) delta=\(delta) \(target) -> \(c1Ranges(set))") }
+ 		self.state = .buffering(.set(set), count)
+ 	}
+ 
+diff --git a/Sources/TreeSitterClient/TreeSitterClient.swift b/Sources/TreeSitterClient/TreeSitterClient.swift
+index faf4d17..cebc89c 100644
+--- a/Sources/TreeSitterClient/TreeSitterClient.swift
++++ b/Sources/TreeSitterClient/TreeSitterClient.swift
+@@ -186,6 +186,7 @@ extension TreeSitterClient {
+ 
+ 	private func didChange(_ mutation: RangeMutation, completion: @escaping () -> Void) {
+ 		let limit = mutation.postApplyLimit
++		if c1Trace { print("C1T client.didChange mutation=\(mutation.range) delta=\(mutation.delta) limit=\(mutation.limit) postApplyLimit=\(limit) contentLength=\(configuration.lengthProvider()) pending=\(rangeProcessor.pendingMutations.count)") }
+ 
+ 		let content = configuration.contentSnapshotProvider(limit)
+ 
+@@ -198,6 +199,7 @@ extension TreeSitterClient {
+ 
+ 	private func handleInvalidation(_ set: IndexSet, sublayers: Bool) {
+ 		let transformedSet = set.apply(rangeProcessor.pendingMutations)
++		if c1Trace { print("C1T client.handleInvalidation sublayers=\(sublayers) set=\(c1Ranges(set)) transformed=\(c1Ranges(transformedSet)) pending=\(rangeProcessor.pendingMutations.count)") }
+ 
+ 		if transformedSet.isEmpty {
+ 			return

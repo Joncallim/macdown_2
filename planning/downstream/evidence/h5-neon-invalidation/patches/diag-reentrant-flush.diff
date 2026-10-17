@@ -1,0 +1,15 @@
+diff --git a/Sources/RangeState/RangeInvalidationBuffer.swift b/Sources/RangeState/RangeInvalidationBuffer.swift
+index 2c92d24..9d4ad20 100644
+--- a/Sources/RangeState/RangeInvalidationBuffer.swift
++++ b/Sources/RangeState/RangeInvalidationBuffer.swift
+@@ -30,8 +30,9 @@ extension RangeInvalidationBuffer {
+ 		case .idle:
+ 			preconditionFailure()
+ 		case let .buffering(set, 1):
+-			invalidationHandler(set)
++			// DIAG: go idle first, so invalidations made by the handler itself are not dropped
+ 			self.state = .idle
++			invalidationHandler(set)
+ 		case let .buffering(set, count):
+ 			precondition(count > 1)
+ 			self.state = .buffering(set, count - 1)

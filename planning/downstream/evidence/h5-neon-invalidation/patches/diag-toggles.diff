@@ -1,0 +1,179 @@
+diff --git a/Sources/Neon/TextViewHighlighter.swift b/Sources/Neon/TextViewHighlighter.swift
+index dbce7d1..5be05ea 100644
+--- a/Sources/Neon/TextViewHighlighter.swift
++++ b/Sources/Neon/TextViewHighlighter.swift
+@@ -121,6 +121,12 @@ public final class TextViewHighlighter {
+ 		storageDelegate.didChangeContent = { [buffer, client, styler] range, delta in
+ 			let adjustedRange = NSRange(location: range.location, length: range.length - delta)
+ 
++			// invalidations buffered by earlier changes must follow this one, or they will style the wrong text
++			// DIAG ONLY: C1_STOCK_BUFFER=1 restores the stock behaviour
++			if ProcessInfo.processInfo.environment["C1_STOCK_BUFFER"] != "1" {
++				buffer.contentChanged(in: adjustedRange, delta: delta)
++			}
++
+ 			client.didChangeContent(in: adjustedRange, delta: delta)
+ 			styler.didChangeContent(in: adjustedRange, delta: delta)
+ 
+diff --git a/Sources/RangeState/RangeInvalidationBuffer.swift b/Sources/RangeState/RangeInvalidationBuffer.swift
+index 2899370..2c92d24 100644
+--- a/Sources/RangeState/RangeInvalidationBuffer.swift
++++ b/Sources/RangeState/RangeInvalidationBuffer.swift
+@@ -48,4 +48,47 @@ extension RangeInvalidationBuffer {
+ 			self.state = .buffering(existing.union(target), count)
+ 		}
+ 	}
++
++	/// Update buffered invalidations to account for a content change.
++	///
++	/// Invalidations that are already buffered describe the content as it was before this change. This must be called for every change made while buffering, before any invalidations that describe the changed content arrive. `range` is the range of content that was replaced, in the coordinates before the change.
++	///
++	/// Unlike `RangeTarget.apply(mutations:)`, this never drops or shrinks the part of a buffered range that survives the change. A range that overlaps the change grows to also cover the replacement text.
++	public func contentChanged(in range: NSRange, delta: Int) {
++		guard case let .buffering(target, count) = state else { return }
++
++		if target == .all {
++			return
++		}
++
++		// the length is only used by `.all`
++		let set = Self.transform(target.indexSet(with: 0), range: range, delta: delta)
++
++		self.state = .buffering(.set(set), count)
++	}
++
++	private static func transform(_ set: IndexSet, range: NSRange, delta: Int) -> IndexSet {
++		// a location inside the replaced range maps to the start (or end) of the replacement text
++		func map(_ location: Int, inside: Int) -> Int {
++			if location <= range.location {
++				return location
++			}
++
++			return location >= range.upperBound ? location + delta : inside
++		}
++
++		let newUpperBound = range.upperBound + delta
++		var result = IndexSet()
++
++		for bufferedRange in set.rangeView {
++			let start = map(bufferedRange.lowerBound, inside: range.location)
++			let end = map(bufferedRange.upperBound, inside: newUpperBound)
++
++			if start < end {
++				result.insert(integersIn: start..<end)
++			}
++		}
++
++		return result
++	}
+ }
+diff --git a/Sources/TreeSitterClient/TreeSitterClient.swift b/Sources/TreeSitterClient/TreeSitterClient.swift
+index 532665a..faf4d17 100644
+--- a/Sources/TreeSitterClient/TreeSitterClient.swift
++++ b/Sources/TreeSitterClient/TreeSitterClient.swift
+@@ -191,7 +191,8 @@ extension TreeSitterClient {
+ 
+ 		layerTree.didChangeContent(content, in: mutation.range, delta: mutation.delta, isolation: MainActor.shared, completion: { invalidated in
+ 			completion()
+-			self.handleInvalidation(invalidated, sublayers: false)
++			// DIAG ONLY (not part of the patch): DIAG_NEON_FIX=1 also invalidates the sublayer validator for the edit's invalidated set
++			self.handleInvalidation(invalidated, sublayers: ProcessInfo.processInfo.environment["DIAG_NEON_FIX"] == "1")
+ 		})
+ 	}
+ 
+diff --git a/Tests/RangeStateTests/RangeInvalidationBufferTests.swift b/Tests/RangeStateTests/RangeInvalidationBufferTests.swift
+new file mode 100644
+index 0000000..4824a41
+--- /dev/null
++++ b/Tests/RangeStateTests/RangeInvalidationBufferTests.swift
+@@ -0,0 +1,90 @@
++import Foundation
++import Testing
++
++import RangeState
++
++struct RangeInvalidationBufferTests {
++	private func flushed(_ buffered: IndexSet, change range: NSRange, delta: Int) -> RangeTarget? {
++		let buffer = RangeInvalidationBuffer()
++		var delivered: RangeTarget?
++
++		buffer.invalidationHandler = { delivered = $0 }
++
++		buffer.beginBuffering()
++		buffer.invalidate(.set(buffered))
++		buffer.contentChanged(in: range, delta: delta)
++		buffer.endBuffering()
++
++		return delivered
++	}
++
++	@Test func changeAfterBufferedRangeLeavesIt() {
++		#expect(flushed(IndexSet(integersIn: 10..<20), change: NSRange(30..<35), delta: -5) == .set(IndexSet(integersIn: 10..<20)))
++		#expect(flushed(IndexSet(integersIn: 10..<20), change: NSRange(20..<20), delta: 3) == .set(IndexSet(integersIn: 10..<20)))
++	}
++
++	@Test func changeBeforeBufferedRangeShiftsIt() {
++		#expect(flushed(IndexSet(integersIn: 100..<110), change: NSRange(10..<10), delta: 5) == .set(IndexSet(integersIn: 105..<115)))
++		#expect(flushed(IndexSet(integersIn: 100..<110), change: NSRange(10..<60), delta: -50) == .set(IndexSet(integersIn: 50..<60)))
++	}
++
++	@Test func deletionOverlappingTheStartKeepsTheSurvivingTail() {
++		// 105..<110 survives, at 90..<95
++		#expect(flushed(IndexSet(integersIn: 100..<110), change: NSRange(90..<105), delta: -15) == .set(IndexSet(integersIn: 90..<95)))
++	}
++
++	@Test func deletionOverlappingTheEndKeepsTheSurvivingHead() {
++		#expect(flushed(IndexSet(integersIn: 100..<110), change: NSRange(105..<115), delta: -10) == .set(IndexSet(integersIn: 100..<105)))
++	}
++
++	@Test func replacementInsideCoversTheReplacementText() {
++		#expect(flushed(IndexSet(integersIn: 100..<110), change: NSRange(102..<104), delta: 3) == .set(IndexSet(integersIn: 100..<113)))
++	}
++
++	@Test func deletingTheWholeRangeDropsIt() {
++		#expect(flushed(IndexSet(integersIn: 100..<110), change: NSRange(90..<120), delta: -30) == .set(IndexSet()))
++	}
++
++	@Test func allStaysAll() {
++		let buffer = RangeInvalidationBuffer()
++		var delivered: RangeTarget?
++
++		buffer.invalidationHandler = { delivered = $0 }
++
++		buffer.beginBuffering()
++		buffer.invalidate(.all)
++		buffer.contentChanged(in: NSRange(0..<10), delta: -10)
++		buffer.endBuffering()
++
++		#expect(delivered == .all)
++	}
++
++	@Test func invalidationsAfterTheChangeAreNotTransformed() {
++		let buffer = RangeInvalidationBuffer()
++		var delivered: RangeTarget?
++
++		buffer.invalidationHandler = { delivered = $0 }
++
++		buffer.beginBuffering()
++		buffer.invalidate(.set(IndexSet(integersIn: 100..<110)))
++		buffer.beginBuffering()
++		buffer.contentChanged(in: NSRange(0..<50), delta: -50)
++		buffer.invalidate(.set(IndexSet(integersIn: 0..<5)))
++		buffer.endBuffering()
++		buffer.endBuffering()
++
++		#expect(delivered == .set(IndexSet(integersIn: 0..<5).union(IndexSet(integersIn: 50..<60))))
++	}
++
++	@Test func changeWhileIdleIsIgnored() {
++		let buffer = RangeInvalidationBuffer()
++		var delivered: [RangeTarget] = []
++
++		buffer.invalidationHandler = { delivered.append($0) }
++
++		buffer.contentChanged(in: NSRange(0..<10), delta: -10)
++		buffer.invalidate(.set(IndexSet(integersIn: 0..<5)))
++
++		#expect(delivered == [.set(IndexSet(integersIn: 0..<5))])
++	}
++}

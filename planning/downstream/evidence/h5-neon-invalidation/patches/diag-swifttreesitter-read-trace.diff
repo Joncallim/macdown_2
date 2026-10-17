@@ -1,0 +1,15 @@
+diff --git a/Sources/SwiftTreeSitter/String+Data.swift b/Sources/SwiftTreeSitter/String+Data.swift
+index 9796c0e..eaf5652 100644
+--- a/Sources/SwiftTreeSitter/String+Data.swift
++++ b/Sources/SwiftTreeSitter/String+Data.swift
+@@ -17,6 +17,10 @@ extension String {
+         let end = min(location + (chunkSize / 2), limit)
+ 
+         if location > end {
++            // DIAG ONLY
++            print("C1T-STS read past limit: location=\(location) limit=\(limit) utf16=\(self.utf16.count) chunk=\(chunkSize)")
++            Thread.callStackSymbols.prefix(30).forEach { print("C1T-STS   \($0)") }
++            if ProcessInfo.processInfo.environment["C1_STS_NO_ASSERT"] == "1" { return nil }
+             assertionFailure("location is greater than end")
+             return nil
+         }

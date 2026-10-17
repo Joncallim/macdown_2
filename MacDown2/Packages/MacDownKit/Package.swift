@@ -17,6 +17,12 @@ let treeSitterDependencies: [Package.Dependency] = depTrialRoot.map { root in
 } ?? [
     .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
 ]
+// Stage C1 (h5-neon-invalidation): if the trial root also holds a `Neon` source
+// copy, it replaces the pinned Neon URL dependency. Without one, Neon stays pinned.
+let neonDependency: Package.Dependency = depTrialRoot
+    .flatMap { FileManager.default.fileExists(atPath: $0 + "/Neon/Package.swift") ? $0 + "/Neon" : nil }
+    .map { .package(path: $0) }
+    ?? .package(url: "https://github.com/ChimeHQ/Neon", revision: "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165")
 
 let package = Package(
     name: "MacDownKit",
@@ -49,7 +55,7 @@ let package = Package(
         .library(name: "TextSearch", targets: ["TextSearch"]),
     ],
     dependencies: treeSitterDependencies + [
-        .package(url: "https://github.com/ChimeHQ/Neon", revision: "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"),
+        neonDependency,
         .package(url: "https://github.com/tree-sitter/tree-sitter-json", from: "0.24.8"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-html", from: "0.23.2"),
         // EPIC-11 Gate 5 grammars. Every grammar is pinned exactly; see

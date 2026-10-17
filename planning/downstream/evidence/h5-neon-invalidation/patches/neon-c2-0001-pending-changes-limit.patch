@@ -1,0 +1,132 @@
+From f1d001d7ad9e914c63efaaeb752747cff0b455da Mon Sep 17 00:00:00 2001
+From: Jonathan Lim <joncallim@gmail.com>
+Date: Sat, 17 Oct 2026 16:05:28 +0800
+Subject: [PATCH] Account for pending changes when clamping a content change
+
+RangeProcessor clamps each change to processedUpperBound and gives the
+change handler that bound as the mutation's limit. While an earlier
+change is still being processed (TreeSitterClient parses changes of
+2,048 units or more in the background), processedUpperBound does not
+include that change's delta yet. A second change made in that window is
+then clamped to a stale bound: its readable limit is short by the pending
+delta, or, when it lies beyond the stale bound, its delta is dropped.
+The parse then reads past its snapshot limit (SwiftTreeSitter asserts
+"location is greater than end" in Debug and treats it as end of input in
+Release), and processedUpperBound no longer matches the content.
+
+Use the processed bound as it will be once the pending changes complete.
+---
+ Sources/RangeState/RangeProcessor.swift       |  8 +-
+ .../RangeProcessorPendingTests.swift          | 78 +++++++++++++++++++
+ 2 files changed, 83 insertions(+), 3 deletions(-)
+ create mode 100644 Tests/RangeStateTests/RangeProcessorPendingTests.swift
+
+diff --git a/Sources/RangeState/RangeProcessor.swift b/Sources/RangeState/RangeProcessor.swift
+index 13411c7..96e7cb5 100644
+--- a/Sources/RangeState/RangeProcessor.swift
++++ b/Sources/RangeState/RangeProcessor.swift
+@@ -193,12 +193,14 @@ extension RangeProcessor {
+ 	///
+ 	/// This function will not cause processing to occur unless the change is within the region already processed.
+ 	public func didChangeContent(in range: NSRange, delta: Int, isolation: isolated (any Actor)) {
+-		if processed(range.location) == false {
++		// Changes that are still being processed have already moved the end of the processed
++		// region. Without them, this change would be clamped to, and read up to, a stale limit.
++		let limit = pendingEventQueue.pendingElements.reduce(processedUpperBound) { $0 + $1.value.delta }
++
++		if limit <= range.location && (range.location > 0 || contentLength > 0) {
+ 			return
+ 		}
+ 
+-		let limit = processedUpperBound
+-
+ 		precondition(limit >= 0)
+ 
+ 		let visibleRange = range.clamped(to: limit)
+diff --git a/Tests/RangeStateTests/RangeProcessorPendingTests.swift b/Tests/RangeStateTests/RangeProcessorPendingTests.swift
+new file mode 100644
+index 0000000..0b51264
+--- /dev/null
++++ b/Tests/RangeStateTests/RangeProcessorPendingTests.swift
+@@ -0,0 +1,78 @@
++import Foundation
++import Testing
++
++import RangeState
++import Rearrange
++
++/// A change made while an earlier one is still being processed must be
++/// expressed against the content as it is after the earlier change.
++struct RangeProcessorPendingTests {
++	private final class DeferredHandler {
++		var mutations = [RangeMutation]()
++		var completions = [() -> Void]()
++
++		func handle(_ mutation: RangeMutation, _ completion: @escaping () -> Void) {
++			mutations.append(mutation)
++			completions.append(completion)
++		}
++
++		func completeAll() {
++			let pending = completions
++			completions.removeAll()
++			pending.forEach { $0() }
++		}
++	}
++
++	@MainActor
++	private func processedProcessor(_ content: StringContent, _ handler: DeferredHandler) -> RangeProcessor {
++		let processor = RangeProcessor(
++			configuration: .init(
++				lengthProvider: { content.currentLength },
++				changeHandler: { handler.handle($0, $1) }
++			)
++		)
++
++		processor.processLocation(content.currentLength - 1, mode: .required, isolation: MainActor.shared)
++		handler.completeAll()
++		handler.mutations.removeAll()
++
++		return processor
++	}
++
++	@MainActor
++	@Test func secondInsertWhileFirstIsPending() {
++		let content = StringContent(string: "0123456789")
++		let handler = DeferredHandler()
++		let processor = processedProcessor(content, handler)
++
++		content.string = "01234x56789"
++		processor.didChangeContent(in: NSRange(5..<5), delta: 1)
++		content.string = "01234xy56789"
++		processor.didChangeContent(in: NSRange(6..<6), delta: 1)
++
++		#expect(handler.mutations.count == 2)
++		// the second change's readable limit must cover the whole current content
++		#expect(handler.mutations.last?.postApplyLimit == 12)
++
++		handler.completeAll()
++		#expect(processor.processedUpperBound == 12)
++	}
++
++	@MainActor
++	@Test func deletingTheLastCharacterWhileAnInsertIsPending() {
++		let content = StringContent(string: "0123456789")
++		let handler = DeferredHandler()
++		let processor = processedProcessor(content, handler)
++
++		content.string = "01234x56789"
++		processor.didChangeContent(in: NSRange(5..<5), delta: 1)
++		content.string = "01234x5678"
++		processor.didChangeContent(in: NSRange(10..<11), delta: -1)
++
++		#expect(handler.mutations.count == 2)
++		#expect(handler.mutations.last == RangeMutation(range: NSRange(10..<11), delta: -1, limit: 11))
++
++		handler.completeAll()
++		#expect(processor.processedUpperBound == 10)
++	}
++}
+-- 
+2.55.0
+
