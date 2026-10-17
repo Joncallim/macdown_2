@@ -15,6 +15,11 @@ import Testing
 ///
 /// `MACDOWN_HIGHLIGHT_BUDGET_FIXTURES` narrows the workloads (comma list of
 /// `HighlightBudgetFixture` raw values).
+///
+/// DEP-TRIAL (stage C2): `MACDOWN_HIGHLIGHT_BUDGET_POLICY=shipped` opens every
+/// document with the shipped size policy instead of the unbounded default
+/// (documents above the cut-off then open in reduced mode, `mode=reduced`), and
+/// `MACDOWN_HIGHLIGHT_BUDGET_EDITS=<n>` overrides the edits per position.
 @MainActor
 @Suite(.serialized, .enabled(if: ProcessInfo.processInfo.environment["MACDOWN_HIGHLIGHT_BUDGET_BENCH"] == "1"))
 struct HighlightBudgetBenchmarkTests {
@@ -30,14 +35,20 @@ struct HighlightBudgetBenchmarkTests {
         return names.split(separator: ",").compactMap { HighlightBudgetFixture(rawValue: String($0)) }
     }()
 
+    nonisolated static let shippedPolicy = ProcessInfo.processInfo.environment["MACDOWN_HIGHLIGHT_BUDGET_POLICY"] == "shipped"
+
     /// Fewer edits where each one is known to take seconds (keeps a run
     /// bounded). Always even: inserts and deletes alternate, so the document
     /// ends where it started.
+
     private static func editCount(utf8Bytes: Int) -> Int {
+        if let count = ProcessInfo.processInfo.environment["MACDOWN_HIGHLIGHT_BUDGET_EDITS"].flatMap(Int.init) {
+            return count + count % 2
+        }
         switch utf8Bytes {
-        case ...(128 * 1024): 16
-        case ...(256 * 1024): 8
-        default: 4
+        case ...(128 * 1024): return 16
+        case ...(256 * 1024): return 8
+        default: return 4
         }
     }
 
@@ -46,15 +57,16 @@ struct HighlightBudgetBenchmarkTests {
         for size in Self.sizes {
             let text = fixture.markdown(utf8Bytes: size)
             let units = (text as NSString).length
-            let label = "fixture=\(fixture) KB=\(size / 1024) utf8=\(text.utf8.count) utf16=\(units) mode=full"
+            let reduced = Self.shippedPolicy && units > HighlightingSizePolicy.markdown.reduceAboveUTF16Units
+            let label = "fixture=\(fixture) KB=\(size / 1024) utf8=\(text.utf8.count) utf16=\(units) mode=\(reduced ? "reduced" : "full")\(Self.shippedPolicy ? " policy=shipped" : "")"
             let quiet = Duration.milliseconds(max(1500, units / 1024 * 10))
             let (editor, open) = await HighlightedEditor.measureOpen(
-                { HighlightedEditor(text: text) },
+                { Self.shippedPolicy ? HighlightedEditor(text: text, sizePolicy: HighlightingSizePolicy.default(for:)) : HighlightedEditor(text: text) },
                 quiet: quiet,
-                expectsHighlighting: true
+                expectsHighlighting: !reduced
             )
             print("H5-BUDGET \(label) phase=open \(open)")
-            #expect(editor.hasInlineStylingNearEnd(), "inline injection must be resolved: \(label)")
+            #expect(reduced || editor.hasInlineStylingNearEnd(), "inline injection must be resolved: \(label)")
             for (name, location) in HighlightBudgetFixture.editLocations(in: text) {
                 let result = await editor.measureEdits(Self.editCount(utf8Bytes: size), at: location, quiet: quiet)
                 print("H5-BUDGET \(label) phase=edit pos=\(name) \(result)")

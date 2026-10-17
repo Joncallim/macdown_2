@@ -1,0 +1,1 @@
+SwiftTreeSitter c2-resolve-set 749058ebc44abbd9cf1f29883deb7da7142756c1 (b-combined dcdd9465 + resolve-set patch); tree-sitter a-lexer-goto-bsearch 091c0d7e; Neon c2-sublayer-resolve 9c533b9aa038c81ef6ac970e47a8274f443ef460

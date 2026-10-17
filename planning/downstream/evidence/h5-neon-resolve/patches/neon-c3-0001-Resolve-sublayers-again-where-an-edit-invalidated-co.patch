@@ -1,0 +1,96 @@
+From 9c533b9aa038c81ef6ac970e47a8274f443ef460 Mon Sep 17 00:00:00 2001
+From: Joncallim <64296013+Joncallim@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 22:57:58 +0800
+Subject: [PATCH 1/2] Resolve sublayers again where an edit invalidated content
+
+TreeSitterClient reported edit invalidations with sublayers: false. The
+sublayer validator only learned about an edit through contentChanged, which
+keeps a valid range whose endpoints lie outside the edit, so after open (valid
+set = whole document) no interior edit ever resolved injections again and the
+sublayers kept stale, edited included ranges.
+
+- Invalidate the sublayer validator for the set the edit invalidated, plus the
+  edit itself with one unit each side (a deletion's invalidated set can be
+  empty), as one contiguous range (one resolve pass, one sublayer reparse).
+- Invalidate it before the invalidation handler, which can query and so
+  validate sublayers synchronously.
+- Tell the validator about the content change before the change is processed:
+  a synchronous parse invalidates it in post-change coordinates, and the later
+  contentChanged shifted that invalidation by the edit's delta.
+- A synchronous resolution that finds the layer tree busy with background work
+  resolved nothing; return false so the validator retries asynchronously
+  instead of recording the range as valid.
+---
+ .../TreeSitterClient/TreeSitterClient.swift   | 28 ++++++++++++++++---
+ 1 file changed, 24 insertions(+), 4 deletions(-)
+
+diff --git a/Sources/TreeSitterClient/TreeSitterClient.swift b/Sources/TreeSitterClient/TreeSitterClient.swift
+index 532665a..080c450 100644
+--- a/Sources/TreeSitterClient/TreeSitterClient.swift
++++ b/Sources/TreeSitterClient/TreeSitterClient.swift
+@@ -146,8 +146,9 @@ public final class TreeSitterClient {
+ 	/// - Parameter range: the range that was affected by the edit
+ 	/// - Parameter delta: the change in length of the content
+ 	public func didChangeContent(in range: NSRange, delta: Int) {
+-		rangeProcessor.didChangeContent(in: range, delta: delta, isolation: MainActor.shared)
++		// before the change is processed: a synchronous parse invalidates the sublayer validator in post-change coordinates
+ 		sublayerValidator.contentChanged(in: range, delta: delta)
++		rangeProcessor.didChangeContent(in: range, delta: delta, isolation: MainActor.shared)
+ 		versionedContent.contentChanged()
+ 	}
+ 
+@@ -191,10 +192,25 @@ extension TreeSitterClient {
+ 
+ 		layerTree.didChangeContent(content, in: mutation.range, delta: mutation.delta, isolation: MainActor.shared, completion: { invalidated in
+ 			completion()
+-			self.handleInvalidation(invalidated, sublayers: false)
++			self.handleInvalidation(Self.sublayerResolutionSet(invalidated, for: mutation), sublayers: true)
+ 		})
+ 	}
+ 
++	/// The content an edit requires sublayers to be resolved again for.
++	///
++	/// An edit can change injections anywhere it invalidated, so that is resolved again. The edit itself is included with one unit on each side, because a deletion's invalidated set can be empty while it collapsed sublayer ranges. The result is one contiguous range: the sublayer validator resolves one contiguous range per pass, and every pass reparses the sublayer.
++	static func sublayerResolutionSet(_ invalidated: IndexSet, for mutation: RangeMutation) -> IndexSet {
++		var set = invalidated
++		let lower = max(0, mutation.range.location - 1)
++		let upper = mutation.range.location + max(0, mutation.range.length + mutation.delta) + 1
++
++		set.insert(integersIn: lower..<upper)
++
++		guard let first = set.first, let last = set.last else { return set }
++
++		return IndexSet(integersIn: first...last)
++	}
++
+ 	private func handleInvalidation(_ set: IndexSet, sublayers: Bool) {
+ 		let transformedSet = set.apply(rangeProcessor.pendingMutations)
+ 
+@@ -202,11 +218,12 @@ extension TreeSitterClient {
+ 			return
+ 		}
+ 
+-		configuration.invalidationHandler(transformedSet)
+-
++		// before the handler, which may query (and so validate sublayers) right away
+ 		if sublayers {
+ 			sublayerValidator.invalidate(.set(transformedSet))
+ 		}
++
++		configuration.invalidationHandler(transformedSet)
+ 	}
+ }
+ 
+@@ -223,6 +240,9 @@ extension TreeSitterClient {
+ 			let invalidatedSet = try self.layerTree.resolveSublayers(with: content, in: set)
+ 
+ 			self.handleInvalidation(invalidatedSet, sublayers: false)
++		} catch BackgroundingLanguageLayerTreeError.unavailable {
++			// the tree is in use by background work (an asynchronous query): nothing was resolved, so the validator must retry asynchronously
++			return false
+ 		} catch {
+ #if canImport(os.log)
+ 			os_log(.fault, log: self.logger, "Failed resolve sublayers", String(describing: error))
+-- 
+2.55.0
+

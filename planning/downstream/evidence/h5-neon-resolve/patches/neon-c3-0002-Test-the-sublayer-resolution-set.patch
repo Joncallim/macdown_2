@@ -1,0 +1,48 @@
+From a0d372f0f0259a4e4709f6510100733bf31db5f6 Mon Sep 17 00:00:00 2001
+From: Joncallim <64296013+Joncallim@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 23:01:12 +0800
+Subject: [PATCH 2/2] Test the sublayer resolution set
+
+---
+ .../SublayerResolutionSetTests.swift          | 29 +++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+ create mode 100644 Tests/TreeSitterClientTests/SublayerResolutionSetTests.swift
+
+diff --git a/Tests/TreeSitterClientTests/SublayerResolutionSetTests.swift b/Tests/TreeSitterClientTests/SublayerResolutionSetTests.swift
+new file mode 100644
+index 0000000..f226c01
+--- /dev/null
++++ b/Tests/TreeSitterClientTests/SublayerResolutionSetTests.swift
+@@ -0,0 +1,29 @@
++import Foundation
++import Testing
++
++import Rearrange
++@testable import TreeSitterClient
++
++struct SublayerResolutionSetTests {
++	@MainActor
++	@Test func includesTheEditAndIsContiguous() {
++		let invalidated = IndexSet(integersIn: 100..<120).union(IndexSet(integersIn: 121..<140))
++		let set = TreeSitterClient.sublayerResolutionSet(invalidated, for: RangeMutation(range: NSRange(location: 110, length: 0), delta: 5))
++
++		#expect(set == IndexSet(integersIn: 100..<140))
++	}
++
++	@MainActor
++	@Test func aDeletionWithNothingInvalidatedStillResolvesAroundIt() {
++		let set = TreeSitterClient.sublayerResolutionSet(IndexSet(), for: RangeMutation(range: NSRange(location: 50, length: 20), delta: -20))
++
++		#expect(set == IndexSet(integersIn: 49..<51))
++	}
++
++	@MainActor
++	@Test func anEditAtTheStart() {
++		let set = TreeSitterClient.sublayerResolutionSet(IndexSet(), for: RangeMutation(range: NSRange(location: 0, length: 0), delta: 3))
++
++		#expect(set == IndexSet(integersIn: 0..<4))
++	}
++}
+-- 
+2.55.0
+

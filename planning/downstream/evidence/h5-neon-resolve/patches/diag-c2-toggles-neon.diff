@@ -1,0 +1,205 @@
+diff --git a/Sources/RangeState/RangeInvalidationBuffer.swift b/Sources/RangeState/RangeInvalidationBuffer.swift
+index 2c92d24..4818d96 100644
+--- a/Sources/RangeState/RangeInvalidationBuffer.swift
++++ b/Sources/RangeState/RangeInvalidationBuffer.swift
+@@ -30,8 +30,24 @@ extension RangeInvalidationBuffer {
+ 		case .idle:
+ 			preconditionFailure()
+ 		case let .buffering(set, 1):
+-			invalidationHandler(set)
+-			self.state = .idle
++			// C2-DIAG: NEON_FLUSH=stock keeps the stock order (idle only after the handler)
++			if c2DiagFlush == "stock" {
++				invalidationHandler(set)
++				self.state = .idle
++			} else if c2DiagFlush == "drain" {
++				// keep buffering while the handler runs, then hand over what it invalidated, until nothing is left
++				var pending = set
++				while true {
++					self.state = .buffering(.set(IndexSet()), 1)
++					invalidationHandler(pending)
++					guard case let .buffering(next, 1) = state, next != .set(IndexSet()) else { break }
++					pending = next
++				}
++				self.state = .idle
++			} else {
++				self.state = .idle
++				invalidationHandler(set)
++			}
+ 		case let .buffering(set, count):
+ 			precondition(count > 1)
+ 			self.state = .buffering(set, count - 1)
+@@ -92,3 +108,6 @@ extension RangeInvalidationBuffer {
+ 		return result
+ 	}
+ }
++
++// C2-DIAG ONLY
++private let c2DiagFlush = ProcessInfo.processInfo.environment["NEON_FLUSH"] ?? "idle-first"
+diff --git a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+index 81bd2b8..cfcaf09 100644
+--- a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
++++ b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+@@ -145,3 +145,9 @@ extension BackgroundingLanguageLayerTree {
+ 		}
+ 	}
+ }
++
++extension BackgroundingLanguageLayerTree {
++	var c2DiagSublayerRanges: [String: [Range<Int>]] {
++		(try? backgroundProcessor.accessValueSynchronously() { layer in layer?.c2DiagSublayerRanges ?? [:] }) ?? [:]
++	}
++}
+diff --git a/Sources/TreeSitterClient/TreeSitterClient.swift b/Sources/TreeSitterClient/TreeSitterClient.swift
+index 532665a..034f2da 100644
+--- a/Sources/TreeSitterClient/TreeSitterClient.swift
++++ b/Sources/TreeSitterClient/TreeSitterClient.swift
+@@ -146,9 +146,22 @@ public final class TreeSitterClient {
+ 	/// - Parameter range: the range that was affected by the edit
+ 	/// - Parameter delta: the change in length of the content
+ 	public func didChangeContent(in range: NSRange, delta: Int) {
++		// C2-DIAG: the validator must hear about the change before a synchronous parse invalidates it in post-change coordinates (NEON_CC_ORDER=stock: after)
++		if C2Diag.stockChangeOrder == false {
++			sublayerValidator.contentChanged(in: range, delta: delta)
++		}
+ 		rangeProcessor.didChangeContent(in: range, delta: delta, isolation: MainActor.shared)
+-		sublayerValidator.contentChanged(in: range, delta: delta)
++		if C2Diag.stockChangeOrder {
++			sublayerValidator.contentChanged(in: range, delta: delta)
++		}
+ 		versionedContent.contentChanged()
++
++		// C2-DIAG alternative "edited": invalidate only the edited range (post-change coordinates, at least one unit each side)
++		if C2Diag.resolve == "edited" {
++			let lower = max(0, range.location - 1)
++			let upper = range.location + max(0, range.length + delta) + 1
++			sublayerValidator.invalidate(.set(IndexSet(integersIn: lower..<upper)))
++		}
+ 	}
+ 
+ 	/// Inform the client that calls to `languageConfiguration` may change.
+@@ -191,7 +204,34 @@ extension TreeSitterClient {
+ 
+ 		layerTree.didChangeContent(content, in: mutation.range, delta: mutation.delta, isolation: MainActor.shared, completion: { invalidated in
+ 			completion()
+-			self.handleInvalidation(invalidated, sublayers: false)
++			if C2Diag.trace { print("NEON-TRACE didChange mutation=\(mutation.range) delta=\(mutation.delta) invalidated=\(invalidated.rangeView.count) ranges \(invalidated.rangeView.prefix(4).map { "\($0.lowerBound)..<\($0.upperBound)" }) total=\(invalidated.count)") }
++			// C2-DIAG: NEON_RESOLVE=off (stock) | changed (default: the patch) | edited | all (whole document)
++			switch C2Diag.resolve {
++			case "off", "edited":
++				self.handleInvalidation(invalidated, sublayers: false)
++			case "all":
++				self.sublayerValidator.invalidate(.all)
++				self.handleInvalidation(invalidated, sublayers: false)
++			case "span":
++				// changed+point, as one contiguous range: the sublayer validator resolves one contiguous range per pass, and each pass reparses the sublayer
++				var set = invalidated
++				let lower = max(0, mutation.range.location - 1)
++				let upper = mutation.range.location + max(0, mutation.range.length + mutation.delta) + 1
++				set.insert(integersIn: lower..<upper)
++				if let first = set.first, let last = set.last {
++					set.insert(integersIn: first...last)
++				}
++				self.handleInvalidation(set, sublayers: true)
++			case "changed+point":
++				// also the edit itself, at least one unit on each side (a deletion's invalidated set can be empty)
++				var set = invalidated
++				let lower = max(0, mutation.range.location - 1)
++				let upper = mutation.range.location + max(0, mutation.range.length + mutation.delta) + 1
++				set.insert(integersIn: lower..<upper)
++				self.handleInvalidation(set, sublayers: true)
++			default:
++				self.handleInvalidation(invalidated, sublayers: true)
++			}
+ 		})
+ 	}
+ 
+@@ -202,9 +242,14 @@ extension TreeSitterClient {
+ 			return
+ 		}
+ 
++		// C2-DIAG: NEON_SUBLAYER_ORDER=after restores the stock order (handler first)
++		if sublayers && C2Diag.orderAfter == false {
++			sublayerValidator.invalidate(.set(transformedSet))
++		}
++
+ 		configuration.invalidationHandler(transformedSet)
+ 
+-		if sublayers {
++		if sublayers && C2Diag.orderAfter {
+ 			sublayerValidator.invalidate(.set(transformedSet))
+ 		}
+ 	}
+@@ -213,8 +258,10 @@ extension TreeSitterClient {
+ extension TreeSitterClient {
+ 	private func resolveSublayers(in range: NSRange) -> Bool {
+ 		guard self.canAttemptSynchronousAccess(in: .range(range)) else {
++			if C2Diag.trace { print("NEON-TRACE resolve sync unavailable \(range)") }
+ 			return false
+ 		}
++		if C2Diag.trace { print("NEON-TRACE resolve sync \(range)") }
+ 
+ 		let set = IndexSet(integersIn: range)
+ 		let content = self.maximumProcessedContent
+@@ -223,8 +270,13 @@ extension TreeSitterClient {
+ 			let invalidatedSet = try self.layerTree.resolveSublayers(with: content, in: set)
+ 
+ 			self.handleInvalidation(invalidatedSet, sublayers: false)
++		} catch BackgroundingLanguageLayerTreeError.unavailable where C2Diag.stockUnavailable == false {
++			// C2-DIAG: the tree is busy in the background (an async query); this is not a resolution, so let the validator retry asynchronously
++			if C2Diag.trace { print("NEON-TRACE resolve sync tree unavailable \(range)") }
++			return false
+ 		} catch {
+ #if canImport(os.log)
++			if C2Diag.trace { print("NEON-TRACE resolve FAILED \(error)") }
+ 			os_log(.fault, log: self.logger, "Failed resolve sublayers", String(describing: error))
+ #else
+ 			print("Failed resolve sublayers", error)
+@@ -235,6 +287,7 @@ extension TreeSitterClient {
+ 	}
+ 
+ 	private func resolveSublayers(in range: NSRange) async {
++		if C2Diag.trace { print("NEON-TRACE resolve async \(range)") }
+ 		let set = IndexSet(integersIn: range)
+ 		let content = self.maximumProcessedContentSnapshot
+ 
+@@ -244,6 +297,7 @@ extension TreeSitterClient {
+ 			self.handleInvalidation(invalidatedSet, sublayers: false)
+ 		} catch {
+ #if canImport(os.log)
++			if C2Diag.trace { print("NEON-TRACE resolve FAILED \(error)") }
+ 			os_log(.fault, log: self.logger, "Failed resolve sublayers", String(describing: error))
+ #else
+ 			print("Failed resolve sublayers", error)
+@@ -333,7 +387,8 @@ extension TreeSitterClient {
+ 	}
+ 
+ 	private func validateSublayers(in set: IndexSet) {
+-		sublayerValidator.validate(.set(set), isolation: MainActor.shared)
++		let action = sublayerValidator.validate(.set(set), isolation: MainActor.shared)
++		if C2Diag.trace { print("NEON-TRACE validateSublayers \(set.rangeView.count) ranges first=\(set.rangeView.first.map { "\($0.lowerBound)..<\($0.upperBound)" } ?? "-") action=\(action)") }
+ 	}
+ 
+ 	private func executeQuery(_ clientQuery: ClientQuery) async throws -> some Sequence<QueryMatch> {
+@@ -386,3 +441,21 @@ extension TreeSitterClient {
+ 		try await highlightsProvider.async(isolation: MainActor.shared, .init(range: range, textProvider: provider, mode: mode))
+ 	}
+ }
++
++
++// C2-DIAG ONLY (not part of any patch)
++enum C2Diag {
++	static let resolve = ProcessInfo.processInfo.environment["NEON_RESOLVE"] ?? "changed"
++	static let orderAfter = ProcessInfo.processInfo.environment["NEON_SUBLAYER_ORDER"] == "after"
++	static let trace = ProcessInfo.processInfo.environment["NEON_TRACE"] == "1"
++	static let stockUnavailable = ProcessInfo.processInfo.environment["NEON_UNAVAILABLE"] == "stock"
++	static let stockChangeOrder = ProcessInfo.processInfo.environment["NEON_CC_ORDER"] == "stock"
++}
++
++// C2-DIAG ONLY
++extension TreeSitterClient {
++	public var c2DiagSublayerRanges: [String: [Range<Int>]] {
++		layerTree.c2DiagSublayerRanges
++	}
++}
++

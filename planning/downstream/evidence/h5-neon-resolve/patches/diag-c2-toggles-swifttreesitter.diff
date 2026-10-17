@@ -1,0 +1,143 @@
+diff -ru /private/tmp/claude-501/-Users-jonathanlim-Documents-GitHub-macdown-2-slice7a/81130c89-23c4-46ec-ae6e-698c5cb9de53/scratchpad/dep-trial/stageC1/deps/c1/SwiftTreeSitter/Sources/SwiftTreeSitterLayer/LanguageLayer.swift /private/tmp/claude-501/-Users-jonathanlim-Documents-GitHub-macdown-2-slice7a/81130c89-23c4-46ec-ae6e-698c5cb9de53/scratchpad/dep-trial/stageC2/deps/c2/SwiftTreeSitter/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
+--- /private/tmp/claude-501/-Users-jonathanlim-Documents-GitHub-macdown-2-slice7a/81130c89-23c4-46ec-ae6e-698c5cb9de53/scratchpad/dep-trial/stageC1/deps/c1/SwiftTreeSitter/Sources/SwiftTreeSitterLayer/LanguageLayer.swift	2026-10-17 11:14:06
++++ /private/tmp/claude-501/-Users-jonathanlim-Documents-GitHub-macdown-2-slice7a/81130c89-23c4-46ec-ae6e-698c5cb9de53/scratchpad/dep-trial/stageC2/deps/c2/SwiftTreeSitter/Sources/SwiftTreeSitterLayer/LanguageLayer.swift	2026-10-17 22:36:01
+@@ -224,6 +224,7 @@
+ 	/// - Parameter edit: Describes how the content has changed
+ 	/// - Parameter resolveSublayers: If false, this will defer sublayer resolution.
+ 	public func didChangeContent(_ content: LanguageLayer.Content, using edit: InputEdit, resolveSublayers: Bool = true) -> IndexSet {
++		if c2DiagTrace { print("STS-TRACE edit layer=\(languageName) start=\(edit.startByte/2) oldEnd=\(edit.oldEndByte/2) newEnd=\(edit.newEndByte/2)") }
+ 		// includedRangeSet becomes invalid here
+ 		applyEdit(edit)
+ 
+@@ -333,22 +334,65 @@
+ 		return layer.parse(with: content, affecting: affectedSet, resolveSublayers: true)
+ 	}
+ 
+-	private func encorporateRanges(_ tsRanges: [TSRange], content: Content) throws -> IndexSet {
+-		guard let includedRanges = state.tree?.includedRanges else {
++	private func encorporateRanges(_ tsRanges: [TSRange], resolvedSet: IndexSet? = nil, content: Content) throws -> IndexSet {
++		guard var includedRanges = state.tree?.includedRanges else {
+ 			preconditionFailure("Cannot encorporateRanges into a layer that doesn't have any already defined")
+ 		}
+ 
+ 		var invalidation = IndexSet()
+ 
++		// C2-DIAG (STS_DROP_STALE=1): every existing range that intersects the resolved set was queried again, so one that was not found again no longer exists
++		if let resolvedSet {
++			includedRanges.removeAll { range in
++				guard let r = Range(range.bytes.range) else { return false }
++				// a range an edit collapsed to zero length inside the set goes too (STS_KEEP_EMPTY=1 keeps it)
++				if r.isEmpty {
++					return c2DiagKeepEmpty == false && resolvedSet.contains(r.lowerBound)
++				}
++				guard resolvedSet.intersects(integersIn: r) else { return false }
++				if tsRanges.contains(where: { $0.bytes == range.bytes }) { return false }
++				invalidation.insert(integersIn: r)
++				return true
++			}
++
++			if tsRanges.isEmpty && invalidation.isEmpty && includedRanges.count == state.tree?.includedRanges.count {
++				return invalidation
++			}
++		}
++
+ 		for newTSRange in tsRanges {
+ 			invalidation.insert(integersIn: Range(newTSRange.bytes.range)!)
+ 		}
+ 
++		let merged = Self.mergeIncludedRanges(includedRanges, with: tsRanges)
++
++		// C2-DIAG (STS_SKIP_SAME=1): the ranges did not change, so the parse done for the edit already holds
++		if c2DiagSkipSame, let current = state.tree?.includedRanges, current.map(\.bytes) == merged.map(\.bytes) {
++			return IndexSet()
++		}
++
++		if c2DiagTrace { print("STS-TRACE encorporate layer=\(languageName) new=\(tsRanges.count) existing=\(state.tree?.includedRanges.count ?? -1) kept=\(includedRanges.count) merged=\(merged.count) firstNew=\(tsRanges.first.map { "\($0.bytes.lowerBound/2)..<\($0.bytes.upperBound/2)" } ?? "-")") }
+ 		// if tree-sitter rejects them, the parser keeps its current ranges, so report that instead of reparsing
+-		guard parser.setIncludedRanges(Self.mergeIncludedRanges(includedRanges, with: tsRanges)) else {
++		guard parser.setIncludedRanges(merged) else {
++			if c2DiagTrace { print("STS-TRACE REJECTED layer=\(languageName)") }
+ 			throw LanguageLayerError.includedRangesRejected(languageName)
+ 		}
+ 
++		// C2-DIAG (STS_FRESH_REPARSE=1): parse with the new ranges without reusing the old tree
++		if c2DiagFreshReparse {
++			let oldState = state
++			let newState = parser.parse(state: ParseState(), readHandler: content.readHandler)
++			self.state = newState
++			invalidation.formUnion(oldState.changedSet(for: newState))
++			for range in includedRanges {
++				if let r = Range(range.bytes.range) { invalidation.insert(integersIn: r) }
++			}
++			for layer in sublayers.values {
++				invalidation.formUnion(layer.parse(with: content))
++			}
++			return invalidation
++		}
++
+ 		let set = parse(with: content)
+ 
+ 		invalidation.formUnion(set)
+@@ -419,6 +463,19 @@
+ 			return IndexSet()
+ 		}
+ 
++		// C2-DIAG (STS_EXPAND=1): an existing sublayer range the set touches is resolved as a whole, so a range it still needs outside the set is found again
++		var set = set
++		if c2DiagExpand {
++			for sublayer in sublayers.values {
++				for range in sublayer.state.tree?.includedRanges ?? [] {
++					guard let r = Range(range.bytes.range), r.isEmpty == false, set.intersects(integersIn: r) else { continue }
++					set.insert(integersIn: r)
++				}
++			}
++		}
++
++		if c2DiagTrace { print("STS-TRACE resolve layer=\(languageName) set=\(set.rangeView.map { "\($0.lowerBound)..<\($0.upperBound)" }.prefix(6)) count=\(set.rangeView.count)") }
++
+ 		// injections must be shallow
+ 		let injections = try executeShallowQuery(.injections, in: set).injections(with: content.textProvider)
+ 		let groupedInjections = Dictionary(grouping: injections, by: { $0.name })
+@@ -437,11 +494,18 @@
+ 				continue
+ 			}
+ 
+-			let set = try sublayer.encorporateRanges(ranges, content: content)
++			let set = try sublayer.encorporateRanges(ranges, resolvedSet: c2DiagDropStale ? set : nil, content: content)
+ 
+ 			invalidations.formUnion(set)
+ 		}
+ 
++		// C2-DIAG (STS_DROP_STALE=1): a sublayer with no injections left in the set loses its ranges there
++		if c2DiagDropStale {
++			for (name, sublayer) in sublayers where groupedInjections[name] == nil && sublayer.state.tree != nil {
++				invalidations.formUnion(try sublayer.encorporateRanges([], resolvedSet: set, content: content))
++			}
++		}
++
+ 		return invalidations
+ 	}
+ 
+@@ -452,5 +516,22 @@
+ 	/// - Returns: The set of content indices that have been invalidated as part of the resolution.
+ 	public func resolveSublayers(with content: LanguageLayer.Content, in range: NSRange) throws -> IndexSet {
+ 		try resolveSublayers(with: content, in: IndexSet(integersIn: range))
++	}
++}
++
++// C2-DIAG ONLY
++private let c2DiagDropStale = ProcessInfo.processInfo.environment["STS_DROP_STALE"] == "1"
++private let c2DiagSkipSame = ProcessInfo.processInfo.environment["STS_SKIP_SAME"] == "1"
++private let c2DiagFreshReparse = ProcessInfo.processInfo.environment["STS_FRESH_REPARSE"] == "1"
++private let c2DiagExpand = ProcessInfo.processInfo.environment["STS_EXPAND"] == "1"
++private let c2DiagTrace = ProcessInfo.processInfo.environment["STS_TRACE"] == "1"
++private let c2DiagKeepEmpty = ProcessInfo.processInfo.environment["STS_KEEP_EMPTY"] == "1"
++
++// C2-DIAG ONLY: included ranges of every sublayer (UTF-16 units)
++extension LanguageLayer {
++	public var c2DiagSublayerRanges: [String: [Range<Int>]] {
++		sublayers.mapValues { layer in
++			(layer.state.tree?.includedRanges ?? []).compactMap { Range($0.bytes.range) }
++		}
+ 	}
+ }

@@ -1,0 +1,47 @@
+# build c2 debug 6s
+◇ Test run started.
+✘ Test run with 34 tests in 1 suite failed after 248.461 seconds with 20 issues.
+# exit=1 end=2026-10-17T13:55:42Z
+H5-RES case=replaceInsideParagraph differingUnits=0 edits=[24621+10='`x` and *y* and']
+H5-RES case=replaceAcrossBoundary differingUnits=0 edits=[24660+19=' **joined** ']
+H5-RES case=replace600 differingUnits=0 edits=[24621+600='replacement with `code` and *em* ']
+H5-RES case=replaceSelectionSameTextPlusY differingUnits=0 edits=[24667+600='- list item one with `inline`\n- list item two\n\n> a quote with **bold**\n\n```\nfenced code line\n```\n\n# Heading with `code`\n\nSome *emphasis*, **strong** text and a [link](https
+H5-RES case=replaceSelectionMarkupRemoved differingUnits=0 edits=[24667+600='- list item one with xinlinex\n- list item two\n\n> a quote with xxboldxx\n\nxxx\nfenced code line\nxxx\n\n# Heading with xcodex\n\nSome xemphasisx, xxstrongxx text and a xlinkx(https
+H5-RES case=deleteInsideParagraph differingUnits=0 edits=[24621+5='']
+H5-RES case=deleteAcrossBoundary differingUnits=0 edits=[24580+21='']
+H5-RES case=insertInsideParagraph differingUnits=0 edits=[24621+0='**new** `c` ']
+H5-RES case=insertSplitParagraph differingUnits=0 edits=[24621+0='\n\n# New *heading*\n\n']
+H5-RES case=deleteEmphasis differingUnits=0 edits=[24598+10='']
+H5-RES case=deleteLink differingUnits=0 edits=[24632+27='']
+H5-RES case=deleteCodeSpan differingUnits=0 edits=[24585+6='']
+H5-RES case=deleteFencedBlock differingUnits=0 edits=[24739+25='']
+H5-RES case=deleteParagraph differingUnits=2 afterInvalidateAll=differs first=24591 last=24592 edited='c959795,f' fresh='c795da2,fb' near=' Heading with `code`\n\n- list item one with `inline`\n- list i' edits=[24593+74='']
+H5-RES case=joinParagraphAndList differingUnits=0 edits=[24665+17='']
+H5-RES case=joinHeadingAndParagraph differingUnits=0 edits=[24591+6='']
+H5-RES case=openFence differingUnits=375 afterInvalidateAll=fresh first=24938 last=49120 edited='c959795,f' fresh='c333333,f' near='uote with **bold**\n\n```\nfenced code line\n```\n\n# Heading with' edits=[24593+0='```\n']
+H5-RES case=removeOpeningFence differingUnits=7898 afterInvalidateAll=differs first=26525 last=49324 edited='c959795,f' fresh='c2c2c2c' near='```\n\n# Heading with `code`\n\nSome *emphasis*, **strong** text' edits=[24739+10='']
+H5-RES case=residualWholeBlockDeletion differingUnits=28 afterInvalidateAll=differs first=362 last=389 edited='ca71d5d,fb' fresh='' near=' quote with **bold**\n\n```\nfenced code line\n```\n\n# Heading wi' edits=[390+585='']
+H5-RES case=residualTypingInLastFence differingUnits=3 afterInvalidateAll=fresh first=49346 last=49348 edited='c959795,f' fresh='c333333,f' near='trong** tailde line\n```\n\n' edits=[49322+0=' **strong** tail']
+H5-RES case=largePasteThenSameTurn differingUnits=2806 afterInvalidateAll=differs first=48995 last=51914 edited='c959795,f' fresh='' near='uote with **bold**\n\n`d code line\n```\n\n# Heading with `code`\n' edits=[24621+0='Pasted *em* and `code` with **strong*
+H5-RES case=largeDeleteThenTurns differingUnits=0 edits=[24621+3000=''; 24621+0='**b** ' | 441+0='*i* ' | 45486+4='`k`']
+H5-RES case=largeReplacePlainThenTurns differingUnits=0 edits=[24621+2500='plain words plain words plain words plain words plain words plain words plain words plain words plain words plain words plain words plain words plain words plain words plain words plain
+H5-RES case=largePasteFenceThenTurns differingUnits=25302 afterInvalidateAll=differs first=24596 last=51583 edited='c959795,f' fresh='' near='ing with `code`\n\n``y`\ncode *not em*\ncode *not em*\ncode *not ' edits=[24593+0='```\ncode *not em*\ncode *not em*\n
+H5-RES case=fortyEditsOneTurn differingUnits=0 edits=[636+0='*'; 24622+0='x'; 48885+0='`'; 636+0=' '; 24623+1=''; 48886+0='x'; 636+0='`'; 24624+0=' '; 48887+0='*'; 636+1=''; 24623+0='`'; 48886+0=' '; 636+0='*'; 24624+0='x'; 48887+1=''; 636+0=' '; 24625+0='*'; 
+H5-RES case=tenTurnsNoWait differingUnits=0 edits=[1026+0='**'; 1028+0='b'; 1029+0='**'; 1031+2=''; 1031+0='\n\n' | 2391+0='**'; 2393+0='b'; 2394+0='**'; 2396+2=''; 2396+0='\n\n' | 3756+0='**'; 3758+0='b'; 3759+0='**'; 3761+2=''; 3761+0='\n\n' | 5121+0='**'; 5
+H5-RES case=scrollEditInsideWindow worstWindowUnits=0 
+H5-RES case=scrollEditInGap worstWindowUnits=660 step4@22000+6000: 660 (first=22067 edited='markup.italic+markup.raw+none' fresh='markup.raw+none'); whole@0+49339: 660 (first=22067 edited='markup.italic+markup.raw+none' fresh='markup.raw+none')
+H5-RES case=scrollEditStraddlingBoundary worstWindowUnits=715 whole@0+48970: 715 (first=19009 edited='markup.bold+markup.raw+none' fresh='markup.raw+none')
+H5-RES case=scrollWhileEditing worstWindowUnits=495 step7@25000+6000: 110 (first=25137 edited='markup.italic+markup.raw+none' fresh='markup.raw+none'); whole@0+49289: 495 (first=22600 edited='markup.italic+markup.raw+none' fresh='markup.raw+none')
+H5-RES case=scrollLargeEditOutside worstWindowUnits=0 
+H5-RES case=client-deleteParagraph worstWindowUnits=2 whole@0+49261: 2 (first=24591 edited='markup.heading+markup.raw' fresh='markup.heading')
+H5-RES case=client-tvhOrder-deleteParagraph worstWindowUnits=2 whole@0+49261: 2 (first=24591 edited='markup.heading+markup.raw' fresh='markup.heading')
+H5-RES case=client-wholeBlockDeletion worstWindowUnits=28 whole@0+48750: 28 (first=362 edited='markup.bold' fresh='')
+H5-RES case=client-tvhOrder-wholeBlockDeletion worstWindowUnits=28 whole@0+48750: 28 (first=362 edited='markup.bold' fresh='')
+H5-RES case=client-typingInLastFence worstWindowUnits=0 
+H5-RES case=client-tvhOrder-typingInLastFence worstWindowUnits=0 
+H5-RES case=client-insertSplitParagraph worstWindowUnits=20 whole@0+49354: 20 (first=24598 edited='' fresh='markup.italic')
+H5-RES case=client-tvhOrder-insertSplitParagraph worstWindowUnits=20 whole@0+49354: 20 (first=24598 edited='' fresh='markup.italic')
+H5-RES case=client-openFence worstWindowUnits=3080 whole@0+49339: 3080 (first=24797 edited='markup.italic+markup.raw+none' fresh='markup.raw+none')
+H5-RES case=client-tvhOrder-openFence worstWindowUnits=3080 whole@0+49339: 3080 (first=24797 edited='markup.italic+markup.raw+none' fresh='markup.raw+none')
+H5-RES case=client-removeOpeningFence worstWindowUnits=3135 whole@0+49325: 3135 (first=24783 edited='markup.italic+markup.raw+none' fresh='markup.raw+none')
+H5-RES case=client-tvhOrder-removeOpeningFence worstWindowUnits=3080 whole@0+49325: 3080 (first=24783 edited='markup.italic+markup.raw+none' fresh='markup.raw+none')

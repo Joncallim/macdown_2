@@ -1,0 +1,29 @@
+From aab6c71308ee53b3d2961b9953fe7dbf98460d4a Mon Sep 17 00:00:00 2001
+From: Joncallim <64296013+Joncallim@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 23:00:25 +0800
+Subject: [PATCH 2/3] Compare non-empty included ranges in the fresh-parse
+ assertion
+
+---
+ Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift b/Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift
+index 26c92d5..ca87c73 100644
+--- a/Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift
++++ b/Tests/SwiftTreeSitterLayerTests/LanguageLayerTests.swift
+@@ -351,8 +351,9 @@ let a = "var a = 1"
+ 		let fresh = try LanguageLayer(languageConfig: Self.selfInjectingSwiftConfig, configuration: config)
+ 		fresh.replaceContent(with: newText)
+ 
+-		let ranges = layer.snapshot()?.sublayerSnapshots.first?.rootSnapshot.tree.includedRanges
+-		let freshRanges = fresh.snapshot()?.sublayerSnapshots.first?.rootSnapshot.tree.includedRanges
++		// a sublayer that lost all its ranges keeps a zero-length placeholder; a fresh parse has no sublayer
++		let ranges = layer.snapshot()?.sublayerSnapshots.first?.rootSnapshot.tree.includedRanges.filter { $0.bytes.isEmpty == false } ?? []
++		let freshRanges = fresh.snapshot()?.sublayerSnapshots.first?.rootSnapshot.tree.includedRanges.filter { $0.bytes.isEmpty == false } ?? []
+ 
+ 		XCTAssertEqual(ranges, freshRanges, file: file, line: line)
+ 		XCTAssertEqual(
+-- 
+2.55.0
+
