@@ -22,7 +22,7 @@ Each keystroke triggers a re-read so the colours stay right.
 ## What we decided
 - **A size limit.** Above **8,192** characters (technically UTF-16 code units) the colouring is turned off for that document; it comes back automatically once the document is back under about 6,144 and you pause for 2 seconds. The gap between the two numbers stops it flickering on and off near the limit.
 - **Why not simply optimise?** We investigated. One small parser change makes one part flatter, and a one-line idea in the parser cut one big cost by about 3x in an experiment, but none of the ideas brings large documents under the 50 ms goal, because every keystroke still re-reads the whole formatting layer. The real fix is a larger design change (reading paragraph by paragraph), which depends on other projects and has not been built.
-- **We tested the limit's behaviour, not just the idea.** Typing across the limit, pasting across it, undo and redo, switching tabs and closing a document leave your text intact. One known small cost remains: if you paste a very large block within a few milliseconds of opening or editing, the old colouring work still finishes once, about a quarter of a second at worst in tests (about 25 ms extra in the measured case), and then does nothing.
+- **We tested the limit's behaviour, not just the idea.** Typing across the limit, pasting across it, undo and redo, switching tabs and closing a document leave your text intact. One known small cost remains: if you paste a very large block within a few milliseconds of opening or editing, the old colouring work still finishes once and then does nothing; in the measured case that cost about 25 ms extra (on a release build).
 
 ## Trade-offs, honestly
 | Choice | Gain | Cost |
