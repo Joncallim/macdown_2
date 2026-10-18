@@ -184,6 +184,41 @@
       "version": "2022-06 import"
     },
     {
+      "bom-ref": "prismjs-textual",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/PrismJS/prism"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Prism.js bundled by Textual",
+      "pedigree": {
+        "notes": "Textual concatenates the cdnjs Prism 1.29.0 default distribution, 57 npm language-component files, newline separators and its MIT-licensed generated header/token-flattening helpers. The default includes file-highlight; four default grammars are also present among the appended files. No MostlyText modification."
+      },
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm-resource"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:npm/prismjs@1.29.0",
+      "type": "library",
+      "version": "1.29.0"
+    },
+    {
       "bom-ref": "rearrange",
       "externalReferences": [
         {
@@ -1157,6 +1192,7 @@
         "mermaid",
         "neon",
         "nvim-treesitter-markdown-queries",
+        "prismjs-textual",
         "rearrange",
         "swift-cmark",
         "swift-concurrency-extras",
@@ -1204,7 +1240,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:1edc9b08-a6f2-554a-a165-edeb4ebca570",
+  "serialNumber": "urn:uuid:6159c59a-5ed8-5920-b20e-d26b37b494ac",
   "specVersion": "1.5",
   "version": 1
 }
