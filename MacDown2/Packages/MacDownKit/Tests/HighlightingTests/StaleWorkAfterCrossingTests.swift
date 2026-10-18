@@ -107,7 +107,9 @@ struct StaleWorkAfterCrossingTests {
         #expect(highlighter.state.isReduced, "redo re-crossed before the idle delay: nothing was restored")
         system.undoManager.undo()
         #expect(highlighter.state.isReduced, "below the restore threshold, but not yet idle")
-        _ = await drain(.seconds(1))
+        for _ in 0 ..< 300 where highlighter.state.mode != .full {
+            _ = await drain(.milliseconds(50))
+        }
         #expect(highlighter.state.mode == .full, "idle below the restore threshold restores")
         highlighter.tearDown()
     }

@@ -130,8 +130,7 @@ struct HighlightingSizeFallbackTests {
         editor.highlighter.textSystem.undoManager.undo()
         #expect(editor.textView.string == original)
         #expect(editor.mode == .reducedForTestPolicy, "no rebuild in the middle of editing")
-        await editor.settle(.milliseconds(600))
-        #expect(editor.mode == .full)
+        #expect(await editor.waitUntil { editor.mode == .full }, "restored after the idle delay")
         #expect(editor.neonIsAttached)
 
         editor.highlighter.textSystem.undoManager.redo()
@@ -161,8 +160,7 @@ struct HighlightingSizeFallbackTests {
             editor.typeOrDelete(at: 50, insert: index.isMultiple(of: 2))
             #expect(editor.mode == .reducedForTestPolicy)
         }
-        await editor.settle(.milliseconds(600))
-        #expect(editor.mode == .full)
+        #expect(await editor.waitUntil { editor.mode == .full }, "restored after the idle delay")
         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
         let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
