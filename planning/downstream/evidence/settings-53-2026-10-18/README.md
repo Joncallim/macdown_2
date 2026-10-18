@@ -1,5 +1,7 @@
 # Settings compatibility and legacy-key reconciliation
 
+Later correction: the [19 October protected-write contract](../../SETTINGS_WRITE_PROTECTION_2026-10-19.md) admits and fixes the ordinary-setter overwrite cases below. This page retains the original decode-only slice and baseline observations; it is not the current write policy.
+
 ## Owner outcome
 
 The settings decoder now distinguishes an absent status-bar preference from an

@@ -2,9 +2,9 @@
 import Foundation
 import Testing
 
-/// #53 SETTINGS-COMPAT: the pre-E22 editor blob (no `showsStatusBar`) must keep every valid user value.
-/// These tests cover compatible reads and the first unreadable Data backup. Protected writes and retention of
-/// later unreadable generations remain required by #53; the backup tests do not establish full migration safety.
+/// #53 SETTINGS-COMPAT: old readable values remain compatible, while unreadable primary values
+/// remain in place across ordinary writes. The first backup is retained for compatibility;
+/// migration/conversion and explicit recovery acceptance remain separate work.
 @MainActor
 struct SettingsCompatibilityTests {
     private static let editorKey = "appSettings.editor"
@@ -96,8 +96,9 @@ struct SettingsCompatibilityTests {
             store.editor = EditorSettings(indentationWidth: 3)
 
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == original)
-            #expect(store.editor.indentationWidth == 3)
-            #expect(store.unreadableDomains.isEmpty)
+            #expect(defaults.data(forKey: Self.editorKey) == original)
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
         }
     }
 
@@ -216,8 +217,9 @@ struct SettingsCompatibilityTests {
             #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
 
             store.editor = EditorSettings(indentationWidth: 5)
-            #expect(defaults.data(forKey: Self.editorKey) != invalid)
-            #expect(store.editor.indentationWidth == 5)
+            #expect(defaults.data(forKey: Self.editorKey) == invalid)
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
         }
     }
@@ -256,11 +258,13 @@ struct SettingsCompatibilityTests {
             var store = store
             let first = Data("not json".utf8)
             defaults.set(first, forKey: Self.editorKey)
-            store.editor = EditorSettings(indentationWidth: 2) // preserves `first`, writes valid data
-            defaults.set(Data("also not json".utf8), forKey: Self.editorKey) // a second unreadable generation
+            store.editor = EditorSettings(indentationWidth: 2) // preserves `first` without replacing the primary
+            let second = Data("also not json".utf8)
+            defaults.set(second, forKey: Self.editorKey) // a second unreadable generation
             store.editor = EditorSettings(indentationWidth: 3)
 
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == first, "never overwritten once kept")
+            #expect(defaults.data(forKey: Self.editorKey) == second, "the second generation remains at the primary")
 
             // Repeated reads are stable and never write.
             let written = defaults.data(forKey: Self.editorKey)

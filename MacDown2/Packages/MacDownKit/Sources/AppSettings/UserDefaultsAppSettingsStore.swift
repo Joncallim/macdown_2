@@ -46,7 +46,8 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
     /// schema-less blobs keep every valid value; see `EditorSettings.init(from:)`). Data that cannot be understood
     /// (malformed bytes, a wrong type, an out-of-range value, a newer `schemaVersion`) falls back to the default
     /// for the running session only: the raw bytes stay in `UserDefaults`, are reported by `unreadableDomains`, and
-    /// are copied to a one-time preserved key before any later `save` could replace them (#53).
+    /// are copied to the existing one-time preserved key when a later save is refused (#53).
+    /// A backup never authorizes replacement of an unreadable primary value.
     private func load<T: AppSettingsDomain>(_ key: Key) -> T {
         guard let data = defaults.data(forKey: key.rawValue), let value = Self.decode(T.self, from: data)
         else { return T.defaultValue }
@@ -55,13 +56,20 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
 
     private func save(_ value: some Encodable, key: Key) {
         guard let data = try? JSONEncoder().encode(value) else { return }
-        preserveUnreadableBytes(for: key, ifDifferentFrom: data)
+        // Recheck at the write boundary: another store or a newer build may have replaced
+        // the value since this session loaded it. Preserve every present value we cannot read.
+        if let existing = defaults.object(forKey: key.rawValue) {
+            guard let current = existing as? Data, key.decodes(current) else {
+                preserveUnreadableBytes(for: key, ifDifferentFrom: data)
+                return
+            }
+        }
         defaults.set(data, forKey: key.rawValue)
     }
 
     /// The highest settings schema this build understands. The historical schema has no version key (named
-    /// "schema-less"); a blob that declares a larger `schemaVersion` is rejected on read. The current save path
-    /// retains only the first unreadable Data backup; protected writes and later-generation retention remain #53 work.
+    /// "schema-less"); a blob that declares a larger `schemaVersion` is rejected on read and protected from
+    /// ordinary writes. The first unreadable Data backup is retained for compatibility; the primary is also preserved.
     nonisolated static let supportedSchemaVersion = 1
 
     fileprivate nonisolated static func decode<T: Decodable>(_: T.Type, from data: Data) -> T? {
@@ -97,10 +105,12 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
             && Double(version) == numericValue
     }
 
-    /// Domains whose stored bytes exist but cannot be read by this build; empty when everything is absent or valid.
+    /// Domains whose stored values exist but cannot be read by this build. Ordinary writes to
+    /// these domains are refused; other domains remain writable. Includes non-Data values.
     public var unreadableDomains: [String] {
         Key.allCases.compactMap { key in
-            guard let data = defaults.data(forKey: key.rawValue) else { return nil }
+            guard let value = defaults.object(forKey: key.rawValue) else { return nil }
+            guard let data = value as? Data else { return key.rawValue }
             return key.decodes(data) ? nil : key.rawValue
         }
     }
