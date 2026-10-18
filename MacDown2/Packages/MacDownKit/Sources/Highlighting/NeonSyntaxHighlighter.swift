@@ -58,6 +58,12 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     let gate = HighlightingStorageGate()
     let policyProvider: (String?) -> HighlightingSizePolicy?
     var restoreTask: Task<Void, Never>?
+    /// After a restore from reduced mode, Neon's first pass of rendering attributes can land without TextKit
+    /// repainting (seen on the native app: attributes present, text still plain until the next edit). Until this
+    /// uptime (ns) each pass of styling is followed by one coalesced repaint request.
+    var repaintDeadline: UInt64 = 0
+    var repaintScheduled = false
+    var repaintCount = 0
 
     public private(set) var state: HighlightingState {
         didSet {
@@ -163,6 +169,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
                     return [:]
                 }
                 styledTokenCount &+= 1
+                requestRepaintIfNeeded()
                 let style = currentTheme.style(for: token.name)
                 var attrs: [NSAttributedString.Key: Any] = [
                     .foregroundColor: (style?.color ?? currentTheme.chrome.foreground).nsColor,
