@@ -145,13 +145,15 @@ struct TextFilterFixtureCleanupSafetyTests {
             try await TextFilterFixtures
                 .withOwnedTemporaryDirectory(cleanupTimeout: .milliseconds(25)) { directory, owner in
                     observedDirectory = directory
-                    try await Task.sleep(for: setupDelay)
+                    if setupDelay > .zero {
+                        try await Task.sleep(for: setupDelay)
+                    }
                     try await owner.registerCleanup(
                         cancel: { probe.blockFor(200_000) },
                         join: { .completed(nil) }
                     )
-                    // The cleanup budget starts when the body finishes. Directory creation, registration and
-                    // arbitrary fixture work happen before cleanup and must not consume its 150 ms bound.
+                    // Keep a separate cleanup interval for diagnostics, including cancellation dispatch.
+                    // The zero-delay case also retains the original whole-call 150 ms assertion below.
                     cleanupStarted = .now
                 }
             Issue.record("expected cleanup watchdog to include cancellation dispatch")
@@ -165,9 +167,18 @@ struct TextFilterFixtureCleanupSafetyTests {
         }
 
         let started = try #require(cleanupStarted)
+        let finished = ContinuousClock.now
+        let setupElapsed = fixtureStarted.duration(to: started)
+        let cleanupElapsed = started.duration(to: finished)
+        if setupDelay == .zero {
+            #expect(
+                fixtureStarted.duration(to: finished) < .milliseconds(150),
+                "whole fixture call: setup \(setupElapsed), cleanup \(cleanupElapsed)"
+            )
+        }
         #expect(
-            started.duration(to: .now) < .milliseconds(150),
-            "fixture setup took \(fixtureStarted.duration(to: started)); cleanup includes cancellation dispatch"
+            cleanupElapsed < .milliseconds(150),
+            "fixture setup took \(setupElapsed); cleanup includes cancellation dispatch"
         )
         let directory = try #require(observedDirectory)
         #expect(FileManager.default.fileExists(atPath: directory.path))
