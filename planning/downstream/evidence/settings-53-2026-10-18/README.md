@@ -133,5 +133,7 @@ WebKit proof. Owner acceptance and all external-state holds remain pending.
 
 Raw evidence:
 `/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/`.
-Final independent review and exact-head validation will be recorded alongside
-this document before the checkpoint is handed off.
+The [exact-head validation](VALIDATION.md), [machine record](validation.json)
+and [independent review](INDEPENDENT_REVIEW.md) distinguish the tested candidate
+from this subsequent evidence-only checkpoint. The settings checks and unsigned
+Release app/CLI builds passed; the release and performance gates remain open.
