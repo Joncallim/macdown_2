@@ -221,7 +221,9 @@ struct HTMLPreviewNavigationIdentityTests {
             NSURLErrorFailingURLErrorKey: URL(string: "macdown-preview://document/")!,
         ])
     }
+}
 
+extension HTMLPreviewNavigationIdentityTests {
     @MainActor
     private final class Fixture {
         let coordinator = HTMLPreviewView.Coordinator(reloadDelay: .zero)

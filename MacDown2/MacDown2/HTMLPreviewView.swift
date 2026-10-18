@@ -29,6 +29,12 @@ import WebKit
 ///   SwiftUI updates never restart WebKit. A failed main-document load
 ///   re-arms the gate so the same generation can be retried.
 struct HTMLPreviewView: NSViewRepresentable {
+    private struct PendingNavigation {
+        let navigation: WKNavigation
+        let webViewID: ObjectIdentifier
+        let generation: UInt
+    }
+
     let document: FileCore.FileDocument
 
     func makeCoordinator() -> Coordinator {
@@ -49,12 +55,6 @@ struct HTMLPreviewView: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
-        private struct PendingNavigation {
-            let navigation: WKNavigation
-            let webViewID: ObjectIdentifier
-            let generation: UInt
-        }
-
         private let reloadDelay: Duration
         private let handler = PreviewSchemeHandler()
         private(set) var gate = HTMLPreviewReloadGate()
