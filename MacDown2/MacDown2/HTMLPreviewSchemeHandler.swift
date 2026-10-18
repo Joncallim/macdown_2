@@ -103,8 +103,10 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
         let hardened = PreviewSecurity.hardenedHTMLDocument(from: request.source)
         serve(
             Data(hardened.utf8),
-            policy: request.policy,
-            contentType: HTMLPreviewContentType.mainDocument,
+            headers: HTMLPreviewResponseHeaders.headers(
+                for: request.policy,
+                contentType: HTMLPreviewContentType.mainDocument
+            ),
             url: url,
             task: task,
             attempt: attempt
@@ -150,19 +152,23 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
         } else {
             responseData = data
         }
-        serve(responseData, policy: request.policy, contentType: contentType, url: url, task: task, attempt: attempt)
+        serve(
+            responseData,
+            headers: HTMLPreviewResponseHeaders.headers(for: request.policy, contentType: contentType),
+            url: url,
+            task: task,
+            attempt: attempt
+        )
     }
 
     /// Finishes `task` with `data` and the hardening response headers.
     private func serve(
         _ data: Data,
-        policy: HTMLPreviewPolicy,
-        contentType: String,
+        headers: [String: String],
         url: URL,
         task: WKURLSchemeTask,
         attempt: DeliveryAttempt
     ) {
-        let headers = HTMLPreviewResponseHeaders.headers(for: policy, contentType: contentType)
         guard let response = HTTPURLResponse(
             url: url,
             statusCode: 200,

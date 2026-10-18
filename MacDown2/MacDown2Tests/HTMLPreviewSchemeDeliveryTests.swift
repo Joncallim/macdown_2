@@ -138,7 +138,8 @@ struct HTMLPreviewSchemeDeliveryTests {
         let response = try #require(task.response as? HTTPURLResponse)
         #expect(response.value(forHTTPHeaderField: "Content-Type") == HTMLPreviewContentType.mainDocument)
         #expect(response.value(forHTTPHeaderField: "Content-Security-Policy") != nil)
-        #expect(String(decoding: task.bytes, as: UTF8.self).contains("delivery-control"))
+        let html = try #require(String(bytes: task.bytes, encoding: .utf8))
+        #expect(html.contains("delivery-control"))
     }
 }
 
