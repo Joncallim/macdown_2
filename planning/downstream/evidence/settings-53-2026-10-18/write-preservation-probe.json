@@ -1,0 +1,27 @@
+{
+  "baseline_head": "d3cc8883a08df02a9a98165b1833ca950948dc5d",
+  "source_hashes": {
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/AppSettings.swift": "59c95555d1cf8e6d58d202fe6eb78e84143c326fde340f0b0db68321df156efc",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/AppSettingsModel.swift": "3bb0580bc146c5e970f5d8b35bff719c566083c540ac2cf53c54275e4c7f6c26",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/AppSettingsStoring.swift": "a5a770629108d473489f620e9d56b2c50219819ff9c51a9785d13f01013b20ab",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/EditorSettings.swift": "7c5f984a4f33156ba9434358652333b18e4e56ddb070e03ed1363e5bb4ff3b0f",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/FontDescriptor.swift": "06e26b5e00605800b6e0318740d0422d71b530a8a12aa1ffc61dea293895f3a9",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/FormatSettings.swift": "d5706a1f22d9ccafb5fe8ea09d89e17abca6b48b25b8a6388dc9aece520a3039",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/GeneralSettings.swift": "513e9369045c6047049b40cb574aab8cd609d028f66ee6c933d230f677b8de35",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/LegacyPreferencesDetector.swift": "902d36cd1630280fa9f2e1fa4cd9d68ea760ab80534681f9d169a80b4279ad28",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/MarkdownSettings.swift": "8b1275770c727ed0dd26d6a8c236ed4555b593f8e1c011ba003e870b8370034f",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/PreviewExportSettings.swift": "e585f7f362a794b967f86915d7459788e486ab1cd06e1434a31e34310ff0b58d",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/UserDefaultsAppSettingsStore.swift": "741672f6b5ea47ebda30467ac7d7b991b4e6a8b6e1714a98d6817af05f14ddc6"
+  },
+  "observations": {
+    "firstFutureBackupRetained": true,
+    "firstFutureReported": true,
+    "loadPreservesPrimaryBytes": true,
+    "nonDataObjectReportedAsUnreadable": false,
+    "nonDataObjectRetainedAfterSave": false,
+    "ordinarySaveReplacesFuturePrimary": true,
+    "scope": "synthetic isolated fixture; observations, not migration completion",
+    "secondFutureGenerationRetainedAfterSave": false
+  },
+  "classification": "Observed unresolved requirements; exit 0 means probe executed, not that preservation passed."
+}

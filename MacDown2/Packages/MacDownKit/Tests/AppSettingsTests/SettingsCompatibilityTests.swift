@@ -2,8 +2,9 @@
 import Foundation
 import Testing
 
-/// #53 SETTINGS-COMPAT: the pre-E22 editor blob (no `showsStatusBar`) must keep every valid user value, and anything
-/// this build cannot read must be retained verbatim and reported, never replaced by defaults.
+/// #53 SETTINGS-COMPAT: the pre-E22 editor blob (no `showsStatusBar`) must keep every valid user value.
+/// These tests cover compatible reads and the first unreadable Data backup. Protected writes and retention of
+/// later unreadable generations remain required by #53; the backup tests do not establish full migration safety.
 @MainActor
 struct SettingsCompatibilityTests {
     private static let editorKey = "appSettings.editor"
@@ -14,7 +15,7 @@ struct SettingsCompatibilityTests {
             Issue.record("no suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suite) }
+        defer { defaults.removePersistentDomain(forName: suite) }
         try body(defaults, UserDefaultsAppSettingsStore(defaults: defaults))
     }
 
@@ -59,10 +60,26 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func aPresentFalseStatusBarStaysFalse() {
+    @Test(arguments: [false, true])
+    func aPresentBooleanStatusBarKeepsItsValue(value: Bool) {
         isolated { defaults, store in
-            defaults.set(editorJSON(statusBar: "false"), forKey: Self.editorKey)
-            #expect(!store.editor.showsStatusBar)
+            let original = editorJSON(statusBar: String(value))
+            defaults.set(original, forKey: Self.editorKey)
+            #expect(store.editor.showsStatusBar == value)
+            #expect(store.unreadableDomains.isEmpty)
+            #expect(defaults.data(forKey: Self.editorKey) == original)
+        }
+    }
+
+    @Test(arguments: ["null", "0", "\"false\"", "[]", "{}"])
+    func aPresentMalformedStatusBarIsUnreadableNotAMissingField(value: String) {
+        isolated { defaults, store in
+            let invalid = editorJSON(statusBar: value)
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default, "malformed input uses only the session fallback")
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading cannot rewrite malformed data")
         }
     }
 
@@ -144,7 +161,7 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func aNewerSchemaVersionIsKeptAndNotRewrittenByAnOlderBuild() {
+    @Test func aNewerSchemaVersionIsBackedUpBeforeAnOrdinarySaveReplacesIt() {
         isolated { defaults, store in
             var store = store
             let future = editorJSON(extra: "\"schemaVersion\":2,\"futureOnlyField\":\"keep me\"")
@@ -234,7 +251,7 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func thePreservedCopyIsTheFirstUnreadableBlobAndRepeatedLaunchesAreIdempotent() {
+    @Test func theFirstUnreadableBlobIsKeptAndRepeatedReadsDoNotWrite() {
         isolated { defaults, store in
             var store = store
             let first = Data("not json".utf8)

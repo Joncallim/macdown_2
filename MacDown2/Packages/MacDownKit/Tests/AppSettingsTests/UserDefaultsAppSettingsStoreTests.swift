@@ -14,7 +14,7 @@ struct UserDefaultsAppSettingsStoreTests {
             Issue.record("Could not create test UserDefaults suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         try body(UserDefaultsAppSettingsStore(defaults: defaults))
     }
 
@@ -34,7 +34,7 @@ struct UserDefaultsAppSettingsStoreTests {
             Issue.record("Could not create test UserDefaults suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
 
         var store = UserDefaultsAppSettingsStore(defaults: defaults)
         store.editor = EditorSettings(indentationWidth: 2, assistsEnabled: false)
@@ -59,7 +59,7 @@ struct UserDefaultsAppSettingsStoreTests {
             Issue.record("Could not create test UserDefaults suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         defaults.set(Data([0xDE, 0xAD, 0xBE, 0xEF]), forKey: "appSettings.editor")
 
         let store = UserDefaultsAppSettingsStore(defaults: defaults)
@@ -72,7 +72,7 @@ struct UserDefaultsAppSettingsStoreTests {
             Issue.record("Could not create test UserDefaults suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         // Valid JSON, but not the shape EditorSettings expects.
         let unrelatedShape = try JSONEncoder().encode(["not": "editor settings"])
         defaults.set(unrelatedShape, forKey: "appSettings.editor")
@@ -87,7 +87,7 @@ struct UserDefaultsAppSettingsStoreTests {
             Issue.record("Could not create test UserDefaults suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         defaults.set("not JSON data at all", forKey: "appSettings.formats")
 
         let store = UserDefaultsAppSettingsStore(defaults: defaults)

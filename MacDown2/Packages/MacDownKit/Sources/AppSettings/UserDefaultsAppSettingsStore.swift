@@ -60,8 +60,8 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
     }
 
     /// The highest settings schema this build understands. The historical schema has no version key (named
-    /// "schema-less"); a blob that declares a larger `schemaVersion` was written by a newer build and must not be
-    /// rewritten by this one.
+    /// "schema-less"); a blob that declares a larger `schemaVersion` is rejected on read. The current save path
+    /// retains only the first unreadable Data backup; protected writes and later-generation retention remain #53 work.
     nonisolated static let supportedSchemaVersion = 1
 
     fileprivate nonisolated static func decode<T: Decodable>(_: T.Type, from data: Data) -> T? {
