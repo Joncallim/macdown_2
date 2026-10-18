@@ -30,6 +30,7 @@ STUBS = {
     "sw_vers": 'echo 26.0',
     "xcodegen": "true",
     "spctl": "true",
+    "syspolicy_check": 'echo "syspolicy_check $*" >> "$CALLS"; exit "${SYSPOLICY_STATUS:-0}"',
     "shasum": 'shift 2; for f in "$@"; do echo "0000  $f"; done',
     "defaults": 'case "$3" in CFBundleShortVersionString) echo 0.1.0;; CFBundleVersion) echo 7;; *) echo com.example.App;; esac',
     "codesign": 'case "$*" in *-d*) printf "Authority=Developer ID Application: Test Owner (TEAMID1234)\\nTimestamp=now\\nflags=0x10000(runtime)\\n" >&2;; esac; true',
@@ -154,6 +155,17 @@ class ReleaseScriptModeTests(unittest.TestCase):
         self.assertTrue((self.out / "MacDown2-0.1.0-7.dmg").exists())
         sums = (self.out / "evidence/SHA256SUMS").read_text()
         self.assertIn("macdown2.zip", sums.split("# not distributed")[0])
+        self.assertIn("syspolicy_check distribution ", self.calls.read_text())
+
+    def test_distribution_check_failure_stops_before_final_hashes(self) -> None:
+        for mode in ("--dry-run", "--release-candidate"):
+            with self.subTest(mode=mode):
+                shutil.rmtree(self.out, ignore_errors=True)
+                result = self.run_script(mode, SYSPOLICY_STATUS="70")
+                self.assertEqual(result.returncode, 70, result.stdout + result.stderr)
+                self.assertIn("syspolicy_check distribution ", self.calls.read_text())
+                self.assertFalse((self.out / "evidence/SHA256SUMS").exists())
+                self.assertNotIn("Done (", result.stdout)
 
 
 if __name__ == "__main__":
