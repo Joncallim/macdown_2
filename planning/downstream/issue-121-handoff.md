@@ -14,12 +14,22 @@ historical assumptions below. The constrained reader stage A and explicit MIME
 headers already exist. A bounded coordinator fix now binds returned navigation,
 view and saved generation, and distinguishes queued attempts from process
 recovery. It does not supply the complete render identity or immutable resource
-context specified below. Root confusion and post-stop delivery have retained
-reproductions; all remaining stages and native release gates stay open.
+context specified below. The later [delivery correction](issue-121-delivery-implementation.md)
+revokes scheme-task callbacks on stop, request replacement and disposal, with
+[exact-candidate evidence](evidence/preview-delivery-121-2026-10-18/README.md).
+Root confusion still reproduces. Immutable-root integration is blocked on the
+app's explicit directory-grant owner, retained scope and contained document-base
+mapping; a copied URL does not satisfy that contract. Worker/payload settlement,
+quotas and native release gates remain open.
 
 ## Reconciliation and trust boundary
 
-HTMLPreviewSchemeHandler.swift, HTMLPreviewView.swift and ExportResourceResolver.swift remain unchanged from the original audit. PreviewSchemeHandler has a mutable request, fixed document authority and MainActor Data(contentsOf:) after a separate path approval. Generation-only reload state and early scope release must change together with the reader.
+The historical audit covered HTMLPreviewSchemeHandler.swift, HTMLPreviewView.swift
+and ExportResourceResolver.swift. Preview now has the bounded callback fixes
+above, but its handler still has a mutable request, fixed document authority and
+MainActor Data(contentsOf:) after a separate path approval. Complete render
+identity and scope ownership must change together with the reader. The delivery
+registry revokes consumers; it does not prove that blocking I/O or payloads drained.
 
 Keep content JavaScript disabled, response-header Content Security Policy authoritative, meta policy defense-in-depth, and no remote resource/popup/download bridge. An authorized directory permits reading its current ordinary contents; this is not a sandbox against a same-user process deliberately placing secrets/hard links in that directory or changing allowed file bytes. Byte-count limits are not proof of decoded browser-media memory bounds.
 

@@ -2,6 +2,16 @@
 
 ## Outcome and scope
 
+**2026-10-18 implementation reconciliation:** #121 now has bounded navigation
+ownership and [stop-aware delivery evidence](evidence/preview-delivery-121-2026-10-18/README.md).
+The delayed-A/root-B failure remains reproduced. Complete immutable-root integration
+is blocked on an explicit app directory-grant owner, scope lifetime and contained
+document-base mapping; see the [delivery implementation boundary](issue-121-delivery-implementation.md).
+The existing constrained-reader probe is historical stage-A evidence on its named
+host, not completion of the minimum-OS/native/resource-lifetime gates below. These
+later bounded results do not close #121 or retroactively convert the historical
+review's NOT_RUN entries into full passes.
+
 All 13 downstream issue hand-offs were reviewed again. Nine were revised in place: #17, #18, #53, #113, #115, #116, #117, #118 and #121. Four retain their existing design: #79, #88, #119 and #120, with narrow interpretation clarifications below. Their relevant current-master source delta was inspected rather than treating old descriptions as current implementation.
 
 The initial four review passes covered baseline/compatibility, API semantics, adversarial behavior and dependency/evidence structure. The continuation added two focused passes on prerequisite enforcement and physical resource lifetime. All six are self-review lenses, NOT independent reviewers or a second provider's approval. There are 28 recorded correction groups. No Swift/AppKit/WebKit/Quick Look/VoiceOver, signing or migration execution occurred.

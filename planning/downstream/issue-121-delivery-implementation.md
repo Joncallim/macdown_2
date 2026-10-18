@@ -79,3 +79,8 @@ No performance rerun is justified by a callback-only change. Full immutable load
 identity, contained-reader integration, off-main execution, quotas, native hostile
 content, real scope balancing and minimum-macOS-26.0 evidence remain open. The
 existing #53, #203, compliance, Pinyin coverage and owner-review gates also remain.
+
+The [validated checkpoint](evidence/preview-delivery-121-2026-10-18/README.md)
+records candidate `7efb510c59ac75905a3c3b8fa1472d114ed81f2a`, the retained baseline
+and lint failures, passing bounded checks, independent review, and the still-failing
+root-confusion observation. It does not satisfy the blocked immutable-root portion.
