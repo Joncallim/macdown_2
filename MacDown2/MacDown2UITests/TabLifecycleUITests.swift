@@ -1,11 +1,12 @@
 import XCTest
 
+@MainActor
 final class TabLifecycleUITests: XCTestCase {
     private var app: XCUIApplication!
     private var sessionDir: URL!
     private var fixturesDir: URL!
 
-    override func setUp() {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
 
@@ -31,7 +32,7 @@ final class TabLifecycleUITests: XCTestCase {
         ]
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         app.terminate()
         try? FileManager.default.removeItem(at: sessionDir)
         try? FileManager.default.removeItem(at: fixturesDir)

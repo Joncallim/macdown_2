@@ -6,7 +6,7 @@ final class ExternalFileChangesUITests: XCTestCase {
     private var sessionDirectory: URL!
     private var fixtureURL: URL!
 
-    override func setUp() {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         sessionDirectory = FileManager.default.temporaryDirectory
@@ -24,7 +24,7 @@ final class ExternalFileChangesUITests: XCTestCase {
         ]
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         app.terminate()
         try? FileManager.default.removeItem(at: sessionDirectory)
     }
@@ -174,7 +174,7 @@ final class ExternalFileChangesUITests: XCTestCase {
         let replacement = fixtureURL.deletingLastPathComponent()
             .appendingPathComponent("replacement-\(UUID().uuidString).md")
         try? text.write(to: replacement, atomically: true, encoding: .utf8)
-        try? FileManager.default.replaceItemAt(fixtureURL, withItemAt: replacement)
+        _ = try? FileManager.default.replaceItemAt(fixtureURL, withItemAt: replacement)
     }
 
     private func waitForText(in textView: XCUIElement, equalTo expected: String) -> Bool {
