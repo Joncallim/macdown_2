@@ -149,17 +149,34 @@ struct HighlightingSizeFallbackTests {
         #expect(editor.highlighter.generation == 0, "never rebuilt")
     }
 
+    /// The restore must wait for a full idle delay after the LAST edit. On a loaded runner a 100 ms sleep can last
+    /// longer than the 200 ms test delay, in which case an idle period genuinely elapsed and restoring is correct
+    /// (hosted
+    /// run 39140426985 saw exactly that: four "restored too early" failures). So "still reduced" is asserted only while
+    /// less than the idle delay can have passed since the last edit, measured from a timestamp taken BEFORE that edit
+    /// (the delay starts inside the edit, so the true elapsed time is never more than the measured one).
     @Test func shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle() async {
         let editor = Fixtures.editor(units: cutoff + 500)
+        let idle = Fixtures.policy.restoreIdleDelay
+        let clock = ContinuousClock()
         let toDelete = editor.length - Fixtures.policy.restoreAtOrBelowUTF16Units
+        var lastEditStarted = clock.now
         editor.paste("", over: NSRange(location: 100, length: toDelete))
         #expect(editor.mode == .reducedForTestPolicy)
+        var checksWhileNotIdle = 0
         // Keep typing: each edit postpones the restore.
         for index in 0 ..< 4 {
             await editor.settle(.milliseconds(100))
+            if clock.now - lastEditStarted < idle {
+                checksWhileNotIdle += 1
+                #expect(editor.mode == .reducedForTestPolicy, "restored before an idle delay had elapsed")
+            }
+            lastEditStarted = clock.now
             editor.typeOrDelete(at: 50, insert: index.isMultiple(of: 2))
-            #expect(editor.mode == .reducedForTestPolicy)
+            #expect(editor.mode == .reducedForTestPolicy, "an edit just happened")
         }
+        // If the runner was so slow that no check ran while not idle, the test proved nothing: say so.
+        #expect(checksWhileNotIdle >= 1, "every pause exceeded the idle delay; the early-restore check never ran")
         #expect(await editor.waitUntil { editor.mode == .full }, "restored after the idle delay")
         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
         let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
