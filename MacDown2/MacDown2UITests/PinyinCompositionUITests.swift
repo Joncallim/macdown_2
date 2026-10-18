@@ -82,7 +82,9 @@ final class PinyinCompositionUITests: XCTestCase {
         app.launch()
         app.activate()
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
-        let textView = app.textViews.firstMatch
+        // The input method's own composition panel can also appear as a text view; the editor is the one inside a
+        // scroll view.
+        let textView = app.scrollViews.textViews.firstMatch
         XCTAssertTrue(textView.waitForExistence(timeout: 5))
         textView.click()
         app.typeKey(.downArrow, modifierFlags: .command)
@@ -104,8 +106,25 @@ final class PinyinCompositionUITests: XCTestCase {
 
     /// Types pinyin and commits the first candidate with space.
     private func compose(_ pinyin: String, in textView: XCUIElement) {
-        textView.typeText(pinyin)
-        textView.typeText(" ")
+        typeSlowly(pinyin, in: textView)
+        chooseFirstCandidate()
+    }
+
+    /// While an input method has a composition panel open, XCUIElement.typeText on the editor can report "no keyboard
+    /// focus" and element-level checks treat the panel as an interrupting element; app-level key events avoid that.
+    private func chooseFirstCandidate() {
+        app.typeKey(" ", modifierFlags: [])
+    }
+
+    private func pressEscape() {
+        app.typeKey(.escape, modifierFlags: [])
+    }
+
+    /// The pinyin letters are typed in one call (the input method composes them), then the composition is driven
+    /// with app-level key events.
+    private func typeSlowly(_ letters: String, in textView: XCUIElement) {
+        textView.typeText(letters)
+        Thread.sleep(forTimeInterval: 0.5)
     }
 
     func testPinyinCompositionCommitsAChineseCandidate() throws {
@@ -117,8 +136,8 @@ final class PinyinCompositionUITests: XCTestCase {
 
     func testEscapeCancelsAnOpenCompositionWithoutLeavingPreeditText() throws {
         let textView = try launchAndFocusEditor()
-        textView.typeText("nihao")
-        textView.typeKey(.escape, modifierFlags: [])
+        typeSlowly("nihao", in: textView)
+        pressEscape()
         XCTAssertTrue(wait(textView) { $0 == "start\n" }, "value: \(value(of: textView))")
     }
 
@@ -154,8 +173,8 @@ final class PinyinCompositionUITests: XCTestCase {
         let textView = try launchAndFocusEditor(text: text)
         XCTAssertTrue(wait(textView) { $0 == text }, "the document must open exactly as written")
 
-        textView.typeText("nihaoma") // 7 pre-edit letters: 8,197 units while composing
-        textView.typeText(" ") // commit
+        typeSlowly("nihaoma", in: textView) // 7 pre-edit letters: 8,197 units while composing
+        chooseFirstCandidate() // commit
         // The whole document, not just its start and the new phrase: the original text followed by the candidate.
         XCTAssertTrue(
             wait(textView) { $0 == text + "你好吗" },
@@ -195,8 +214,8 @@ final class PinyinCompositionUITests: XCTestCase {
         text = String(text.prefix(8189)) + "\n"
         XCTAssertEqual(text.utf16.count, 8190)
         let textView = try launchAndFocusEditor(text: text)
-        textView.typeText("nihaoma") // crosses the cut-off while composing
-        textView.typeKey(.escape, modifierFlags: [])
+        typeSlowly("nihaoma", in: textView) // crosses the cut-off while composing
+        pressEscape()
         XCTAssertTrue(
             wait(textView) { $0 == text },
             "cancel must leave exactly the original; got \(value(of: textView).suffix(40))"
