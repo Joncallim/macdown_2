@@ -61,6 +61,7 @@ extension NeonSyntaxHighlighter {
     func discardHighlighter() -> Bool {
         gate.downstream = nil
         guard highlighter != nil else { return false }
+        repaintDeadline = 0
         generation &+= 1
         highlighter = nil
         return true
@@ -140,6 +141,8 @@ extension NeonSyntaxHighlighter {
 
     func repaintRenderingAttributes() {
         let textView = textSystem.textView
+        // Never touch the storage during an IME composition; the next styling pass in the window tries again.
+        guard !textView.hasMarkedText() else { return }
         // An attribute-only edit notification makes TextKit redraw the range. (`invalidateRenderingAttributes` would
         // discard the attributes Neon just applied.) No characters change, so Neon ignores it, nothing is undoable
         // and the document is not marked as edited.

@@ -56,7 +56,6 @@ struct HighlightingRestoreRepaintTests {
         editor.textView.insertText(small, replacementRange: NSRange(location: 0, length: editor.length))
         editor.textView.breakUndoCoalescing()
         let text = editor.textView.string
-        let canUndo = editor.system.undoManager.canUndo
         await editor.settle(.milliseconds(400)) // restore not yet due: still reduced
         let edits = editor.highlighter.gate.characterEditCount
 
@@ -64,8 +63,12 @@ struct HighlightingRestoreRepaintTests {
         #expect(editor.mode == .full)
         #expect(editor.highlighter.repaintCount >= 1)
         #expect(editor.textView.string == text)
-        #expect(editor.system.undoManager.canUndo == canUndo)
         #expect(editor.highlighter.gate.characterEditCount == edits, "the repaint is not a character edit")
+        // The repaint registered no undo step of its own: one undo takes the text back past the paste.
+        editor.system.undoManager.undo()
+        #expect(editor.textView.string != text, "one undo must revert the paste, not an attribute edit")
+        editor.system.undoManager.redo()
+        #expect(editor.textView.string == text)
     }
 
     @Test func noRepaintIsRequestedOutsideTheRestoreWindow() async {
@@ -74,5 +77,36 @@ struct HighlightingRestoreRepaintTests {
         editor.insert("typing", at: 10)
         await editor.settle(.seconds(1))
         #expect(editor.highlighter.repaintCount == 0, "ordinary typing must not pay for a repaint")
+    }
+
+    @Test func repaintsStopWhenTheWindowEndsAndDoNotTouchAComposition() async {
+        let editor = await reducedEditor()
+        let window = hosted(editor)
+        defer { window.orderOut(nil) }
+        editor.textView.insertText(small, replacementRange: NSRange(location: 0, length: editor.length))
+        await editor.settle(.seconds(3))
+        #expect(editor.mode == .full)
+        let count = editor.highlighter.repaintCount
+        #expect(count >= 1)
+
+        // Window over: further styling passes do not repaint.
+        #expect(editor.highlighter.repaintDeadline <= DispatchTime.now().uptimeNanoseconds)
+        editor.highlighter.invalidateAll()
+        await editor.settle(.seconds(1))
+        #expect(editor.highlighter.repaintCount == count)
+
+        // During a composition a repaint is refused.
+        editor.textView.setSelectedRange(NSRange(location: 0, length: 0))
+        editor.textView.setMarkedText("かな", selectedRange: NSRange(location: 2, length: 0), replacementRange: NSRange(
+            location: NSNotFound, length: 0
+        ))
+        editor.highlighter.repaintRenderingAttributes()
+        #expect(editor.highlighter.repaintCount == count, "no storage edit while text is marked")
+        editor.textView.unmarkText()
+
+        // A discard clears the window.
+        editor.highlighter.repaintDeadline = DispatchTime.now().uptimeNanoseconds + 5_000_000_000
+        editor.highlighter.setLanguage(nil)
+        #expect(editor.highlighter.repaintDeadline == 0)
     }
 }
