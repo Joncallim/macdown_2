@@ -1,0 +1,119 @@
+# MostlyText open-issue acceptance register
+
+## Owner summary
+
+MostlyText has 22 open issues. The integration candidate is locally preserved on
+`fix/ci-timing-contracts`; it is not approved for merging or release. The immediate
+work corrected timing-test boundaries without changing the highlighting cutoff,
+cleanup deadline or dependency pins, then removed Swift warnings exposed by the
+Release build. Editors retain the existing reduced-highlighting behavior and the
+previously integrated repaint correction. No new product capability is claimed.
+
+This register connects every open issue to its remaining outcome and next bounded
+step. It is an intake and execution map, **not** a completed closure audit. The
+[criteria snapshot](downstream/open-issue-criteria-2026-10-18.json) preserves all
+285 issue-body checkbox entries, source checkbox states, issue/comment dates and
+content hashes. Prose requirements and comments remain binding; unchecked boxes
+are not evidence of absent code, and checked boxes are not evidence of final
+verification. Raw issue bodies and all comments are retained with the local logs.
+
+Source inspected: `f9f9926ff07d7e8550fa703f329d7e0f943d16a2`, based on clean
+integration `60f779fc0f7324cd5dd3b7b503030e9c22d7d44f`. Master remains
+`4aa46bfa6b91bf1c1d218b9b1f67480312f66396`; dependency experiments remain isolated
+on `dep-trial` at `29e08843325bd744fb2cd5ea5abccf96dc22fb57` (the later handoff-only
+commit acknowledges transfer of the integration worktree). The new local
+changes have no hosted CI result. See the [timing investigation](downstream/evidence/ci-timing-2026-10-18/README.md)
+and its validation record for exact-head outcomes and unresolved failures.
+
+## Evidence rules
+
+- **Source:** implementation or a gap inspected in this candidate. This alone
+  does not prove the user journey.
+- **Local:** command, environment, exact commit and outcome recorded together.
+  Mutation failures are negative controls, not passing validation.
+- **Hosted:** GitHub's actual tested checkout, including its synthetic merge
+  commit, is recorded. Local passes do not overwrite hosted failures.
+- **Native/manual:** the real window/input method/artifact and exercised path are
+  named. Building a UI test does not execute it. The Simplified Pinyin evidence
+  is Debug-only and does not establish automated CJK coverage.
+- **Historical:** older observations remain useful but are not relabelled as
+  proof for this candidate. Independent review and owner acceptance stay distinct
+  from an author's tests or source inspection.
+
+## Every open issue
+
+| Issue | Current evidence and remaining outcome | Next bounded step |
+| --- | --- | --- |
+| [#17 Localization](https://github.com/Joncallim/macdown_2/issues/17) | Package-localized file-operation errors use the module bundle in inspected source. Final resource audit, French/Japanese native review, plural/layout checks and string freeze remain unverified. | Follow the E16 handoff after private candidate 1; retain a small current-source string/resource inventory before changing catalogs. |
+| [#18 Distribution and migration](https://github.com/Joncallim/macdown_2/issues/18) | Release scripts exist, but the inspected project still uses development identity/version and CLI `macdown2`. Final migration, updater, install/update rehearsal and exact signed artifacts remain open. | Rebaseline application-side architecture against final settings/themes and frozen MostlyText identity. Prepare locally; signing, notarisation and publication are explicitly outside current authorization. |
+| [#53 Preferences and Markdown options](https://github.com/Joncallim/macdown_2/issues/53) | Inert parse options have been removed and compatible settings decoding has tests. Legacy detection remains detect-only; complete mapping/import, theme equivalents, precedence and idempotence are not proved. | Inventory each legacy preference against the final settings surface; implement only the agreed compatibility slice before migration writers. Keep open. |
+| [#79 Diagram appearance](https://github.com/Joncallim/macdown_2/issues/79) | Integration uses a neutral-light presentation. PRs #476/#477 offer theme-dependent alternatives; D2, print/PDF contrast and the cross-engine policy still need reconciliation. | Recommend retaining the neutral representation until the owner accepts an explicit policy compatible with E23 and #79. Compare alternatives without merging conflicting behavior. |
+| [#88 Native UI coverage](https://github.com/Joncallim/macdown_2/issues/88) | Historical native passes and the bounded Simplified Pinyin manual record exist. Final E22/E23 critical flows, other input methods, candidate mouse interaction and long composition during restore are not proved. The current test build also reports UI-test actor-isolation warnings. | Freeze the actual final software candidate, then execute the finite critical UI matrix in an explicitly available desktop session. |
+| [#112 Editor essentials](https://github.com/Joncallim/macdown_2/issues/112) | Much of E22 and subsequent hardening is implemented. Its performance, settings, recovery, native interaction and audit acceptance is not complete merely because feature code landed. | Reconcile each E22 criterion with #183 and the dependency-specific records; repair one reproducible gap at a time with negative controls. |
+| [#113 Themes, Quick Look and Finder](https://github.com/Joncallim/macdown_2/issues/113) | Two bundled Tomorrow themes exist; the inspected XcodeGen spec has no Quick Look target. The full theme set, safe custom themes, shared static presentation and Finder integration remain product work. | Rebaseline the post-E22 architecture using frozen identity inputs and the safe resource/anchor contracts; satisfy Definition of Ready before broad implementation. |
+| [#115 Debt gate](https://github.com/Joncallim/macdown_2/issues/115) | Umbrella release acceptance remains open. Older package/app/UI passes are historical, not a substitute for all owning issues or exact-artifact proof. | Follow software stabilization → private candidate 1 → final localization → candidate 2 and artifact-sensitive reruns. No administrative closure on CI alone. |
+| [#116 Math correctness/accessibility](https://github.com/Joncallim/macdown_2/issues/116) | Scanner/contribution components exist. Complete syntax/escaping, diagnostics, equation-level navigation, accessible equations and native visual/performance/parity proof remain. | Follow the math handoff: discriminating syntax cases and adapter probe before integrating presentation behavior. |
+| [#117 Contributions, anchors and palette](https://github.com/Joncallim/macdown_2/issues/117) | Generic representations exist, preview admission still rejects HTML, and TOC output is plain text. Shared anchors, clickable destinations, capability policy, palette consistency and explicit export targeting require complete evidence. | Execute shared anchor/parser capability probes; update the accepted contract before changing preview/export consumers. |
+| [#118 Export safety and fidelity](https://github.com/Joncallim/macdown_2/issues/118) | Export infrastructure exists, but current-source coverage is not a complete closure audit. F06/F13 output-authority cases, resources, parity, real PDF print behavior, budgets, cancellation and recovery remain required. | Reconcile the export handoff against source, then prove one opened-resource/output-publication boundary with hostile schedules before broad refactoring. |
+| [#119 External-file evidence](https://github.com/Joncallim/macdown_2/issues/119) | Existing automated coverage does not supply the full native external-change matrix or Release watcher/digest/latency measurements. | Run the documented Release manual/performance matrix with independent byte reads, selection/scroll observations and watcher/wakeup evidence on the chosen candidate. |
+| [#120 Open/Save interaction](https://github.com/Joncallim/macdown_2/issues/120) | Source has saving state and a destination-aware close-sheet label. End-to-end Save As progress, changing backing-file state and large-file Open latency remain unverified. | Exercise native Save As/close paths and measure Open before deciding whether another code fix is required. |
+| [#121 HTML preview authority](https://github.com/Joncallim/macdown_2/issues/121) | Safe local-resource opening stage A exists with historical mutation evidence. The app scheme handler still has mutable request state and a no-op stop path; caller lifetime, bounded I/O and WebKit proof remain. | Reconcile stages B–D with the accepted handoff; start with immutable per-load context and a deterministic stale-request regression. The warning cleanup does not resolve this issue. |
+| [#148 Licensing/provenance](https://github.com/Joncallim/macdown_2/issues/148) | Clean committed-source compliance passes. Release preflight still reports eight unresolved requirements; no exact signed artifact has been checked. | Prepare the Mermaid/D2/Graphviz provenance and source packages locally, plus the two owner decisions below. Request specific authorization before source-only publication. |
+| [#155 Test hangs](https://github.com/Joncallim/macdown_2/issues/155) | Later discussion and #421 identify AppKit window animations exhausting dispatch workers in a reproduced schedule. This is stronger than the stale issue title, but does not explain every WebKit hang. | Audit subsequently added test windows, then run a bounded app/window soak with thread samples on failure. The current app-target run passed but its window-close recovery test took 103.099 seconds; two samples recorded 3.7–4.5 GB footprints and SwiftUI/AttributeGraph work. This is not a proved recurrence of the old worker-exhaustion cause. |
+| [#158 Identity/cutover](https://github.com/Joncallim/macdown_2/issues/158) | MostlyText name, bundle prefix, CLI name, brand assets and MIT choice are frozen. Runtime migration and final repository/public-copy cutover are separate pending work. | Consume frozen inputs in E17/E23. Keep the full-history repository mirror late, after #115; do not rename or transfer the backlog early. |
+| [#159 Fixture ownership](https://github.com/Joncallim/macdown_2/issues/159) | Integration contains typed readiness and bounded fixture ownership. New tests correct cleanup measurement and retain the 150 ms bound. Hosted overruns have no established causal explanation. | Independently review the local timing correction, obtain authorized hosted validation, and reconcile PR #473 against integration before closure. |
+| [#173 Native navigation](https://github.com/Joncallim/macdown_2/issues/173) | Native activation already exists; the integration work adds lifecycle/currentness protections. PR #474 is an alternative with overlap, not an automatic missing feature. | Verify actual visible reveal below the viewport, tab activation and stale asynchronous intent on the native app; compare alternatives before adopting one. |
+| [#183 Merged-code audit](https://github.com/Joncallim/macdown_2/issues/183) | Many original findings have subsequent fixes, while `CLOSURE_REGISTER.md` still records partial safety families and native/fault-injection gaps. Old source findings must not be reported as current without rechecking. | Build criterion-to-source/test/native mappings for F01–F23 and later review additions; take the first still-reproducible bounded defect, preserving exact scalar and lifetime invariants. |
+| [#203 Large Markdown latency](https://github.com/Joncallim/macdown_2/issues/203) | The 8,192 UTF-16 fallback contains known stalls by reducing highlighting. It does not satisfy the original fully highlighted 1 MB budget. Dependency experiments remain isolated and unadopted. | Keep the cutoff/pins. Continue the measured grammar/dependency investigation only under its reviewed contract; verify edits and correctness before any adoption. Keep open. |
+| [#459 Highlighting correctness](https://github.com/Joncallim/macdown_2/issues/459) | Debug abort/edit-geometry defects and some corrections are documented. Disabling assertions in Release is not proof of correctness; mounted lifecycle/stale-token and Unicode evidence remains incomplete. | Reconcile the proposed architecture in PR #462 and the dependency experiment with current integration; reproduce the remaining schedule on real Debug and Release editors before changing dependencies. |
+
+## Sequence and concrete review gates
+
+1. **Finish this integration checkpoint.** Independently review local commits,
+   diagnose the observed window-close stall and test-build warnings, then obtain authorization to
+   push the reviewed branch for fresh hosted CI. PR #480 stays draft/unmerged.
+2. **Complete remaining E22 and safety work in small slices.** Prefer #121's
+   already-documented request-lifetime slice and discriminating #183 regressions;
+   do not treat the architecture-readiness graph as implementation evidence.
+   Rebaseline the relevant handoff before any changed cross-module dependency.
+3. **Complete dependent product work.** Settings compatibility precedes migration
+   writers; the theme and shared resource/anchor contracts precede E23 consumers.
+   Implement E17 application behavior before software stabilization. Keep native
+   evidence tasks alongside the code they assess.
+4. **Follow the adopted two-candidate sequence.**
+   [RELEASE_SEQUENCE.md](RELEASE_SEQUENCE.md) supersedes older single-candidate
+   sequencing in issue prose and old status paragraphs. It does not waive their
+   acceptance requirements. #115 remains open through final localization and
+   final-artifact compliance/reruns; repository cutover and public promotion are
+   later, separate authorizations.
+
+The eight release-preflight failures are: D2 anonymous source location; D2 Go and
+embedded-WASM license/source inventory; Mermaid bundled npm provenance; the
+SwiftUIMath font-set owner decision; Tomorrow Light naming/provenance decision;
+Viz/Graphviz anonymous source location; exact Graphviz 16.0.0/Viz 3.30.0 source,
+build instructions and hashes; and Graphviz-linked library confirmation.
+The generated, ignored `MacDown2/MacDown2/Info.plist` makes the working-directory
+compliance scan report an unregistered distributed file. The clean `git archive`
+source scan passes. This distinction is recorded rather than deleting or
+registering a generated artifact to silence the check.
+
+Recommended owner choices are concrete: retain neutral diagram presentation
+until a reviewed cross-engine/print policy is accepted; preserve the 8,192 cutoff
+and current lock while dependency correctness is unresolved; retain all currently
+licensed fonts until the font-set decision is explicit; and reconcile the
+Tomorrow Light name with the recorded asset provenance rather than assuming a
+name grants provenance. These are recommendations, not adopted policy changes.
+
+## Branches and evidence to preserve
+
+PRs #473/#474/#476/#477 overlap or conflict with integration and need deliberate
+comparison. PR #475's change is already represented in integration history.
+PR #472 is superseded evidence, but any external closure waits until integration
+is accepted. PR #462 remains proposed architecture. The unmerged Pinyin UI branch
+`4cc7a2622bab65213932e7164577562dbeaaae6a` is preserved; manual Pinyin evidence
+has narrower coverage than automated input-method proof.
+
+No issue was closed, no PR was changed, and no branch was pushed by this checkpoint.
+No signing, notarisation, credential work, source/binary publication, upstream
+submission, worktree deletion or repository cutover is authorized here. The owner
+review and independent review of the new local corrections remain pending.

@@ -79,10 +79,11 @@ swift test --no-parallel --force-resolved-versions
 swift test -c release -Xswiftc -enable-testing --no-parallel --force-resolved-versions --filter 'Performance|MarkdownTreeReuse'
 ```
 
-Final validation must record the exact local commit and all outcomes. The plan is one full package run, three
-serial Release performance runs with a stop on failure, and unsigned Release app/CLI builds using the locked
-dependencies. Those results are recorded separately after the local candidate is committed; this document does
-not predeclare them successful. No hosted rerun or push is authorized by this evidence record.
+The completed serial validation is recorded in [VALIDATION.md](VALIDATION.md), with exact code head
+`f9f9926ff07d7e8550fa703f329d7e0f943d16a2`, raw-log hashes and remaining warnings/stall observations.
+It includes one full package run, three Release performance runs, unsigned app/CLI builds and non-UI app-target
+tests. Successful local exit codes do not replace the failed hosted evidence. No hosted rerun or push is
+authorized by this evidence record.
 
 The earlier 63.4 ms Release outlier is consistent with the recorded load investigation, but its cause is unproven.
 Manual Simplified Pinyin coverage remains the Debug-only scope documented in `../pinyin-native-manual/`;

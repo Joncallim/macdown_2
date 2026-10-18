@@ -1,0 +1,2016 @@
+{
+  "recorded_utc": "2026-10-18T17:11:08.765316+00:00",
+  "repository": "Joncallim/macdown_2",
+  "code_candidate": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+  "scope": "Complete open-issue inventory and lossless body-checkbox intake; not a criterion-by-criterion closure audit. Prose requirements and comments remain binding. Source checkbox state is not verification.",
+  "issue_count": 22,
+  "issues": [
+    {
+      "number": 17,
+      "title": "[EPIC-16] Localization: String Catalogs + Transifex migration",
+      "url": "https://github.com/Joncallim/macdown_2/issues/17",
+      "updated_at": "2026-09-30T01:06:50Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "81180a3d4bbf1f141b29e2be251bf82716c08bd2eed61ccd8802e1c29ae2d4cb",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Final product identity is consistently represented in shipped app strings before translation sign-off.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "String audit finds no unintended hard-coded user-facing UI strings.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Pluralised strings are correct in at least three materially different plural-rule languages.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Complete app including first-run/onboarding can be exercised in at least one shipped non-English locale without release-blocking clipping/truncation/untranslated critical UI.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Math/diagram/error/recovery states use the normal localisation pipeline.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Pseudo-localisation exposes no unresolved release-blocking layout failures.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Translation workflow is understandable without agent/chat context.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E17 can identify the exact string-freeze baseline and knows new in-app strings require localisation re-verification.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/17#issuecomment-5900122808",
+          "updated_at": "2026-09-29T22:14:25Z",
+          "body_sha256": "739d008896edfb98521eb639ecde7bcfdda5ed215602545cc6c5205bf9548a7b"
+        }
+      ]
+    },
+    {
+      "number": 18,
+      "title": "[EPIC-17] Distribution & release: migration, Sparkle 2, signing, CLI, macOS 1.0 checklist",
+      "url": "https://github.com/Joncallim/macdown_2/issues/18",
+      "updated_at": "2026-09-30T01:13:14Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "697c41f282722315219b1447b406f4338cf0c719da83ed7c3bc723ae3ddfccf2",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "#148 passes for the exact signed/notarised candidate before public release authorisation/promotion.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Required notices, SBOM, source packages/locations and the owner-approved product-licence outcome are present and verified in the distribution.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "About/licence UI and any new product-licence copy land before final #17 localisation; the final package check does not quietly add untranslated UI.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Frozen public identity is consistently applied to release assets/infrastructure.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Clean macOS 26 install/launch passes signing/notarisation/Gatekeeper.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Stateful development/beta installation migrates without losing authoritative settings/session/recent-root/recovery state.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Identity/state migration is repeatable/idempotent enough that relaunch/retry does not duplicate or silently discard valid state.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Two consecutive release-candidate builds update through Sparkle with EdDSA verification while preserving representative user state.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final CLI opens a file and accepts piped Markdown.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "First-run/sample flow is the E15/E16-approved localised experience.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "No unlocalised in-app release UI is introduced after E16 string freeze.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Public capability/parity claims do not overclaim unverified features/performance.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Exact release candidate has no unresolved P0/P1 and re-verifies applicable release evidence.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "README/release/migration instructions are understandable without agent/chat context.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "macOS 1.0 publishes with a working update channel.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#148 LC-01–LC-10 pass against the exact final release artifact; #115 records only the earlier preflight-readiness state and links forward to this final verification.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 is closed before production RC authorisation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#53 is closed; complete legacy preference disposition/import is tested.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E23 custom-theme/selections and other final authoritative user state participate in the stateful migration rehearsal.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115's native behavioral evidence uses its exact private verification candidate; after final #17, the exact signed/notarised RC reruns all artifact-/localisation-sensitive manual/UI/VoiceOver/export/Quick Look evidence before promotion.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/18#issuecomment-5861932371",
+          "updated_at": "2026-09-28T01:55:50Z",
+          "body_sha256": "eac27273112912084eea7a3f98b3d5a680b13c67fabaf9cf6bf8a75b638c2d7b"
+        }
+      ]
+    },
+    {
+      "number": 53,
+      "title": "Pre-1.0: legacy MacDown preference migration + MarkdownParseOptions cleanup",
+      "url": "https://github.com/Joncallim/macdown_2/issues/53",
+      "updated_at": "2026-09-30T01:08:23Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "79b7546819b5d1b340e71f598597824649e9d5d62843d61e290219d98c5e62c0",
+      "body_checklist": [],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/53#issuecomment-5755244372",
+          "updated_at": "2026-09-21T04:06:33Z",
+          "body_sha256": "50b8403c147b0edf544817b07a2eabd768510a0ed0a6a8c4cbf6d0d70df09f5b"
+        }
+      ]
+    },
+    {
+      "number": 79,
+      "title": "Pre-1.0: make Mermaid/D2/Graphviz rendering theme-coherent",
+      "url": "https://github.com/Joncallim/macdown_2/issues/79",
+      "updated_at": "2026-09-21T04:09:53Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "e4e9ce1537b9e3527992ce68aaa8ffa64a6fb02650defb59c8f05f5f6df4cde1",
+      "body_checklist": [],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/79#issuecomment-5755244598",
+          "updated_at": "2026-09-21T04:06:35Z",
+          "body_sha256": "037033a3d46beff447132304a78036adb273105b0e4f487db1e236a1b148c927"
+        }
+      ]
+    },
+    {
+      "number": 88,
+      "title": "Pre-1.0: triage and execute the remaining MacDown2UITests gaps",
+      "url": "https://github.com/Joncallim/macdown_2/issues/88",
+      "updated_at": "2026-09-30T01:12:19Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "c608b9ead96a0177422434fb7c18a28c0c0f271dfe451e98e0433ddb62fa94bb",
+      "body_checklist": [],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/88#issuecomment-5740165706",
+          "updated_at": "2026-09-19T07:17:55Z",
+          "body_sha256": "07bca12b128fbb1c720e5c8d170759cd1d6ddb841eed81a8db47e839b2a800f2"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/88#issuecomment-5755244839",
+          "updated_at": "2026-09-21T04:06:37Z",
+          "body_sha256": "6823b4770a6ad6f5bf46fecb99be54beef48a33e0b1aa147f4a0a429053b6aee"
+        }
+      ]
+    },
+    {
+      "number": 112,
+      "title": "[EPIC-22] Editor essentials: power-text workflows before macOS 1.0",
+      "url": "https://github.com/Joncallim/macdown_2/issues/112",
+      "updated_at": "2026-09-30T07:44:05Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "2fb822d6362a9e38030b11c9e1b2109cc7c9d32ad50e311ecb310dd311bbb9e8",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Line-number gutter/status bar work across plain text and every registered source format without whole-document layout.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Existing “Show invisible characters” preference is no longer inert and works while remaining on TextKit 2.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Go to Line/Column is correct for LF/CRLF/CR and Unicode.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Multi-cursor works for typing, paste, delete, indentation, occurrence selection and core transformations with coherent undo.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Markdown E10 assists remain correct with multiple selections and never leak into non-Markdown.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Current-document find/replace supports literal+regex, case, whole-word, history, match counts and select-all-matches.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Cmd-P Quick Open fuzzy-opens from active root without per-keystroke traversal.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "File > Open Recent includes recent files as well as recent folders.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Folder search streams cancellable results with filters/binary/symlink safety and explicit truncation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Replace in Folder previews writes and cannot silently overwrite a changed file.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Core text transforms are format-neutral, one-undo-step and line-ending preserving.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Supported source formats receive basic comment/indent/pairing through LanguageEditingProfile with no LSP.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Syntax override controls highlighting/edit mechanics without falsifying FileCore format/preview semantics.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Explicit reopen/save encoding supports a useful macOS encoding set with lossless checks; strict auto-detection stays strict.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "LF/CRLF/CR/Mixed is visible and explicit conversion is undoable; no implicit normalisation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Named scoped snippets support selection, clipboard and final-caret variables including multi-cursor insertion.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Existing Markdown preview/outline/math/diagrams/export/external-file/recovery behavior remains green.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Large-file and 100k-path performance budgets are measured, not assumed.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "New UI is localised and post-E22 E16 delta/pseudo-localisation is green.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "At the E22 handoff, no E22-owned release-relevant P0/P1 remains. E17 architecture may proceed in parallel, but public release authorization still waits for the downstream gates.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Release-mode E05 highlight/full-path performance debt is measured and reconciled; Debug documentation ceilings are not cited as the release pass.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Current-line semantics are deliberately implemented and feed E23's theme model.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E10's whole-Markdown-file assist limitation is closed: Markdown-specific assists do not mutate fenced-code/front-matter content inappropriately.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "`.tex` / `.latex` source recognition, highlighting/fallback, editing mechanics and no-preview routing are implemented and tested.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#53's inert `MarkdownParseOptions` model debt is eliminated.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#117 palette-command drift risk is closed for the post-E22 command set.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E22's block-directive/product decision gives #118 a deliberate Export-parity contract.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "The E05/E11/#53 items above are marked closed in #115 before E22 is considered release-complete.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/112#issuecomment-5893599412",
+          "updated_at": "2026-09-29T15:43:57Z",
+          "body_sha256": "b57940a23cc2ba25bcf605b90308b21af615d64301cf7866139d8396594a448e"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/112#issuecomment-5901214325",
+          "updated_at": "2026-09-29T23:46:35Z",
+          "body_sha256": "6fe0af7ba488f8422b655bcddf1ec13c808c8f35084c4cd6a33abd3a51dddb05"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/112#issuecomment-5904215507",
+          "updated_at": "2026-09-30T04:44:57Z",
+          "body_sha256": "619b598482fa5ad65ca26387c775446f4422d4f7552d1c785a804bfa206450b6"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/112#issuecomment-5906582141",
+          "updated_at": "2026-09-30T07:44:05Z",
+          "body_sha256": "a4e311ec928b09f9b016f15912e968a7265b0d2210c3585496d009586a87d6a7"
+        }
+      ]
+    },
+    {
+      "number": 113,
+      "title": "[EPIC-23] Mac integration & personalisation: themes, Quick Look, Finder polish before macOS 1.0",
+      "url": "https://github.com/Joncallim/macdown_2/issues/113",
+      "updated_at": "2026-09-30T01:11:11Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "565b4d02aa4ad373840e5270fc39500a0432caa9ad8aaf7d93b33da7afe11222",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "One semantic theme palette is authoritative across editor, E22 chrome, native preview and export colour derivation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "At least 8 deliberate bundled themes ship, >=4 light and >=4 dark, with provenance/licensing recorded.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Bundled themes pass defined contrast/readability checks for core roles.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Light/dark theme selections persist independently and follow system appearance without reparsing source.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Custom themes are versioned declarative data, import/export safely, write atomically, and cannot execute CSS/JS/code.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Corrupt/deleted custom themes cannot prevent launch and fall back to the correct bundled appearance.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Mermaid/D2/Graphviz theme behaviour is deliberately wired or deliberately neutral; no unreadable theme/renderer combinations remain.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "A dedicated Quick Look target is packaged and registered for Markdown only.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Quick Look uses a shared Markdown/derived-content composition seam rather than a second parser/render implementation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final Quick Look HTML contains no authored executable JavaScript/raw active HTML.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Quick Look makes no automatic remote resource requests.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Quick Look does not assume access to the previewed file's parent directory via `baseURL`.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "GFM structure renders correctly in Quick Look.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Math, Mermaid, D2 and Graphviz produce static derived output within budget and fall back to authored source independently on failure/timeout.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "One broken/slow diagram cannot blank or fail the whole preview.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Quick Look handles supported encoding/BOM/EOL/Unicode cases consistently enough with FileCore's declared support.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Quick Look completion fires exactly once on every tested path; no hang/blank race.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Real Finder/Quick Look execution is obtained on a suitable macOS 26 environment before release; build-only evidence is not a pass.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Ordinary and technical Quick Look performance budgets are measured in Release.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Markdown document handler rank is corrected/audited; app does not claim Owner for public Markdown without justification.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Clean-install Open With + Quick Look registration works using the final public identity.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Custom themes and selections are added to E17 authoritative state migration.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "New strings pass the final post-E22/E23 E16 localisation/pseudo-localisation delta.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "At the E23 handoff, no E23-owned release-relevant P0/P1 remains; E17 architecture may proceed in parallel, while release authorization waits for #115 and final E16.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final production app icon has replaced the placeholder before E23 closes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#79 is closed for Mermaid/D2/Graphviz.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Diagram timeout/output/memory limits are empirically calibrated in Release and regression-tested.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Current-line/gutter/status/invisibles semantic theme roles are coherent across E22/E23.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Renderer sandbox/no-network containment is re-proven after E23's architecture changes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E23's static presentation/Quick Look path reuses #117's final heading-anchor and contribution-capability contracts.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Every E23-owned item in #115 is closed before E23 is considered release-complete.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/113#issuecomment-5755910829",
+          "updated_at": "2026-09-21T05:40:14Z",
+          "body_sha256": "86fa2fc29542536be56ca32ffb9e23479a738273ac0a8a14fe315f9e533987f8"
+        }
+      ]
+    },
+    {
+      "number": 115,
+      "title": "Pre-1.0 gate: eliminate all carried-forward debt from closed epics",
+      "url": "https://github.com/Joncallim/macdown_2/issues/115",
+      "updated_at": "2026-09-30T01:12:06Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "30f2c17f841de0526751085b33e43cfa206e552d59013fadce5442a8d7d06db1",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "#148 preflight readiness passes before #115 closes: provenance/rights decisions, required notice/source/SBOM machinery and in-app licence surfaces needed before final localisation are implemented and testable. Final exact-artifact LC-01–LC-10 verification occurs after final #17 under #18.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "The release-evidence manifest includes all ten LC IDs and links to their implementation PRs, immutable verification records and artifact hashes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#18 consumes the same gate; a green application build or a completed Notion checklist does not bypass it.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#53 — legacy preference migration + inert Markdown options",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#79 — diagram renderer theming",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#88 — UI-test execution/fragility",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#116 — residual EPIC-19 math correctness/accessibility debt",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#117 — EPIC-14 contribution/TOC/palette residuals",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#118 — EPIC-12 export residual security/parity/evidence debt",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#119 — EPIC-18 external-file manual/performance evidence debt",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#120 — #57 Open/Save UI/latency carry-forwards",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#121 — E11 HTML preview request/root and resource-read races",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E05 Release highlight/full-path performance debt closes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E05 current-line/theme role debt closes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E11 LaTeX/TeX recognition/highlighting debt closes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E12 PDF pagination genuinely executes successfully.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E12 real UI HTML/PDF export journey passes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E12 implementation architecture has an as-built reconciliation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#118 closes completely.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#53 closes completely.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Settings live-apply journey passes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E14 command-palette/text-filter GUI journey passes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#117 closes completely.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final production app icon replaces placeholder.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final live VoiceOver/visual/keyboard pass succeeds.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#119 closes completely: full external-file manual/UI/performance matrix, including conflict-close UI.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#120 closes completely: Save As progress, close-label race, Open-panel latency disposition.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#121 closes completely: HTML preview request/root isolation and race-resistant resource reads.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E19 residual math issue closes completely.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#79 closes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Diagram renderer limits are calibrated and regression-tested.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#88 closes with genuine critical UI execution.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "WaveDrom 1.0 disposition is recorded as rejected, not deferred.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Every #115/#183 fix that changes user-facing strings/resources is present in the catalogs and the repository is ready for the **final post-#115 E16 freeze**. That final E16 run is a downstream gate, not a #115 closure prerequisite.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Release-evidence ledger contains no unverified, blocked, accepted-with-residual-debt, or equivalent state for a release-required capability.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Zero open release-relevant P0/P1/P2; any P3 is cosmetic only and explicitly owner-accepted.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Every still-applicable manual/Release/XCUITest row from every closed epic has a concrete pass or named stronger superseding evidence on the exact #115 private verification candidate; rows sensitive to localisation/packaging/artifact identity are explicitly handed to #18 for final-RC rerun.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#183 merged-code audit has no unresolved directly-owned release finding and every delegated closure is linked to its owning issue.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Fresh whole-repository orthogonal review covers the areas PR #51 explicitly read less deeply (FileTree app layer, CLI, smaller Preview/JSONSupport paths) plus all E22/E23/#116–#121 changes; every finding is resolved or classified under this gate.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "The fresh review above is run again against the **post-E23/post-fix verification baseline**; the current pre-E23 #183 passes do not by themselves satisfy this final review row.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "One exact private #115 verification candidate is used consistently for this gate's software/UI/manual evidence; #18 records which artifact-sensitive evidence is rerun on the final post-#17 signed/notarised RC.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#148 preflight readiness is complete on the #115 candidate, and #115 records that final exact-artifact LC-01–LC-10 verification remains a post-#17 E17/public-promotion gate.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/115#issuecomment-5755312567",
+          "updated_at": "2026-09-21T04:17:00Z",
+          "body_sha256": "26394a47b9b12c9402a807edfeb5e9dd9d36f19676a8e1786bdce1b68245f565"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/115#issuecomment-5755910483",
+          "updated_at": "2026-09-21T05:40:11Z",
+          "body_sha256": "2c84ffaf3152fbe1cb1053d1337eb19c8f33a841245b1925122f646b343cbc5f"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/115#issuecomment-5845682486",
+          "updated_at": "2026-09-26T10:59:32Z",
+          "body_sha256": "5654eea8f3dd716cbf06e42032b1bd8f5802799cd049a6b13004a1fe939b3c38"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/115#issuecomment-5847495439",
+          "updated_at": "2026-09-26T15:31:28Z",
+          "body_sha256": "4ab4946c409996e82e3535cdffbb04b1b42af690e1ba1922a344242638e03073"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/115#issuecomment-5893602295",
+          "updated_at": "2026-09-29T15:44:07Z",
+          "body_sha256": "a73f67f10690b987469c8f0031ce2739369be34f133573160696178ab12170ca"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/115#issuecomment-5901214925",
+          "updated_at": "2026-09-29T23:46:38Z",
+          "body_sha256": "79582d5d92ebc41db6f4c17dddad8df3abb14a5a2b07b68f6c18f565ea573c4c"
+        }
+      ]
+    },
+    {
+      "number": 116,
+      "title": "Pre-1.0: close residual EPIC-19 math correctness and accessibility debt",
+      "url": "https://github.com/Joncallim/macdown_2/issues/116",
+      "updated_at": "2026-09-30T01:09:22Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "b6ef9c7f221792e28ae48aaeb98a420dac6e3888382a90bd8e3ed8ce0c8cd8a0",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Malformed math produces a useful structured/source-anchored diagnostic and recovers automatically.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Rendered math has a meaningful accessible representation in Preview.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Escaped-dollar behavior is correct in Preview and agrees with Export on the parity corpus.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Currency/non-math dollar prose follows a deliberate shared delimiter grammar rather than Textual-only regex behavior.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Rendered equations carry equation-level source identity/navigation where the final Preview seam permits it; no old block-only residual remains unexplained.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Existing code/inline-code/fence protections remain green.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Source remains readable Markdown and first-party behavior is offline.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Real final-app visual verification of the post-#62 fixes is recorded.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Existing math performance regression tests remain green.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "No open E19 residual remains in RELEASE_EVIDENCE.md.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 can mark E19 debt closed.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": []
+    },
+    {
+      "number": 117,
+      "title": "Pre-1.0: close EPIC-14 contribution, TOC and palette residuals",
+      "url": "https://github.com/Joncallim/macdown_2/issues/117",
+      "updated_at": "2026-09-21T04:15:52Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "f9387b9adbbc38530d7baf2eb2006ef5356384e0b827fb2e6391c2fb2d084a11",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Contribution representation/destination capabilities are explicit; generic `.html` no longer has an ambiguous Preview contract.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "TOC entries navigate in Export and in-app Preview with one deterministic heading-anchor policy.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Hand-authored safe same-document anchors do not get incorrectly sent to external `NSWorkspace` handling.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Extra export parse is measured; either eliminated if material or recorded as empirically negligible.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Palette command eligibility cannot silently drift after E22; canonical registry or consistency evidence exists.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Export targeting no longer carries E14's unresolved ambient-key-window follow-up.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Existing contribution source-preservation, overlap/budget, offline and diagnostics tests remain green.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 marks all E14 architecture residuals resolved/proved.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": []
+    },
+    {
+      "number": 118,
+      "title": "Pre-1.0: close EPIC-12 export residual security, parity and evidence debt",
+      "url": "https://github.com/Joncallim/macdown_2/issues/118",
+      "updated_at": "2026-09-30T01:08:15Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "b987360920fce09c8441d1838cec4b1896ce62181f041932684ad0b0895e2b50",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Current cmark/Preview parity corpus passes or every deliberate difference is explicitly documented/tested.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Block-directive behavior/claim is reconciled with E22/#53.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Real PDF pagination torture test executes successfully on suitable macOS 26.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Real app UI HTML/PDF export journey passes on the exact RC.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final Export resource budgets are measured/frozen/regression-tested.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Concurrent symlink/path replacement cannot make local resource export escape the approved root.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Managed asset-directory crash/orphan recovery is proven not to delete unknown user files.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E12 as-built architecture reconciliation from PR #114 is merged.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "PDF export has complete-operation progress and a measured/correct cancellation policy; unavoidable main-thread print behavior is explicitly bounded/proved.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final self-contained artifact size is bounded/measured after embedding.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Mode switches cannot create unbounded stale E12-managed asset directories; cleanup/retention policy is safe and tested.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 contains no remaining E12 residual/unverified item.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/118#issuecomment-5893586870",
+          "updated_at": "2026-09-29T15:46:29Z",
+          "body_sha256": "978c905c807c6b3919abf937ebaaa037ee595e78d9453beff9ae5dcafda55ff5"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/118#issuecomment-5900117408",
+          "updated_at": "2026-09-29T22:14:09Z",
+          "body_sha256": "805aec52ea8f236e7b20b32f93af7475f65b4e5ceb5b2d8b17c5cbbdf891e1b4"
+        }
+      ]
+    },
+    {
+      "number": 119,
+      "title": "Pre-1.0: close EPIC-18 external-file manual and performance evidence debt",
+      "url": "https://github.com/Joncallim/macdown_2/issues/119",
+      "updated_at": "2026-09-30T01:08:18Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "beaf3f0b3ac75ab2a878a8423c9099b6fe91e95003e65ec2c263cd95cf6cdd15",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Full manual matrix above passes on the exact Release candidate.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Relevant external-file XCUITests genuinely execute; no environment waiver remains.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Required 1 MB/10 MB digest/snapshot and event-latency measurements are recorded.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "No periodic idle polling/wakeup regression is observed.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Disk read/digest work remains off the main actor.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Rapid external-write storms remain bounded.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Reload/conflict paths preserve/clamp selection/scroll/session state correctly.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "`planning/RELEASE_EVIDENCE.md` E18 row is updated from historical residual-debt status to a final pass.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 marks E18 debt closed.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": []
+    },
+    {
+      "number": 120,
+      "title": "Pre-1.0: close #57 Open/Save UI and latency carry-forwards",
+      "url": "https://github.com/Joncallim/macdown_2/issues/120",
+      "updated_at": "2026-09-30T01:08:20Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "816c6573fb34fb61c6fb49b74d70faac92e44441bbfe167b20d7558d925f9900",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Save As progress covers the complete logical/durability-critical operation across identity swap.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Close UI label/action cannot contradict the current backing-file state.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Open-panel time-to-visible is remeasured on current Release; safe prewarming is implemented if materially beneficial, otherwise the measured system cost is recorded as an explicit PROVED disposition.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Relevant cancel/failure/concurrent-window tests are added.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final interactive-Mac dogfood confirms Saving…, save failure, deleted/moved backing, Save As and Open… behavior.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 has no remaining #57/Save/Open carry-forward.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": []
+    },
+    {
+      "number": 121,
+      "title": "Pre-1.0: close E11 HTML preview request/root and resource-read races",
+      "url": "https://github.com/Joncallim/macdown_2/issues/121",
+      "updated_at": "2026-09-30T01:07:49Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "06225e725c3ab440c839c1968ce52f6359059d1b89468bb86cf74dde0671aee5",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "A stale WebKit task can never resolve through another document/revision's resource root.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Validation/read races cannot serve bytes outside the approved root.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Symlink replacement adversarial tests prove the opened object, not only the pre-open path, is contained.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "CSP/navigation/download/popup/no-network corpus remains green after the refactor.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Resource reads are bounded/off-main and stopped/stale tasks cannot receive callbacks or use another request's root.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Main/subresource responses carry deliberate MIME/encoding metadata; non-UTF-8 and unknown-type behavior is tested in real WebKit.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Success/failure callbacks are matched to the exact originating WKNavigation/request generation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Security-scoped access is balanced on load/supersede/disposal.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final Release-app HTML preview is dogfooded with real local resources and hostile cases.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 contains no remaining E11 HTML-preview security/race carry-forward.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/121#issuecomment-5893590353",
+          "updated_at": "2026-09-29T15:43:27Z",
+          "body_sha256": "62e6335b7c52f353fc7a424eb6cd9b95223bc86db5f764962f294c1d3042ddb3"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/121#issuecomment-5900126675",
+          "updated_at": "2026-09-29T22:14:42Z",
+          "body_sha256": "6657acf93b563284e385a3356f34427b4cf941b2e236277d720b7a912484951c"
+        }
+      ]
+    },
+    {
+      "number": 148,
+      "title": "Pre-1.0: licensing, provenance and exact-artifact compliance gate",
+      "url": "https://github.com/Joncallim/macdown_2/issues/148",
+      "updated_at": "2026-09-30T01:13:17Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "418d565e7df1680ca816f51357c73c931ba3958dd2c5123800b5f42d28bfd71f",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Generate a complete THIRD_PARTY_NOTICES/licence bundle from the exact distribution inventory: direct/transitive runtime dependencies, vendored code, JS/WASM, generated parsers/queries, themes/assets and embedded app/CLI/extension/helper content.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Preserve required copyright, licence and NOTICE texts; links/package names do not substitute for required distributed text.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Include and inspect the bundle in the final signed/notarised app/materials, not merely master or a Debug build.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Cross-check coverage against LC-07 and expose it through LC-08.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Identify exact Graphviz/wrapper versions and source corresponding to the bundled binary. The original audit referenced @viz-js/viz 3.30.0; it is not a mandate to retain that version forever.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Verify applicable obligations at those revisions; preserve Graphviz EPL-2.0 and wrapper texts where applicable and correct incomplete attribution.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Produce required corresponding source, local patches and build/provenance material; publish through LC-09 and reference the location in shipped notices.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Record hashes linking source packages and distributed components.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Identify exact upstream source for the shipped browser build. The original audit referenced @terrastruct/d2 0.1.33 and modified d2-browser.js; inspect all current modifications rather than assume one line.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Retain applicable MPL-2.0 licence/notice text and publish version-matched required source plus every local patch through LC-09.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Verify correspondence to distributed bytes and discoverability of the source location in shipped app/materials.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Identify upstream repository and exact revision for parser/scanner/query files; verify the licence at that revision.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Place required texts with the vendored package and in the release notice inventory.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Record generated-source provenance and content-hash mapping. Unresolved provenance blocks distribution of that component; never invent an upstream match.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": true,
+          "text": "Replace a moving branch dependency, if still present, with a reviewed exact revision or verified release pinned to its commit. No unrelated upgrade. — Done in #165 (`7ca43ae`): the manifest must stay `branch: \"main\"` (Neon requires it), so the committed, CI-enforced `Package.resolved` fixes SwiftTreeSitter at `cbe31cb3601aa29c1f64b6e4328733511126d6d5`; no pin changed.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Verify lockfiles/clean resolution and record the immutable revision in the SBOM; release builds must not silently change it. — **Lock/SBOM reconciliation is complete:** #170 (`3456087`) independently verified the six previously pending components against the committed lock, upstream revisions and captured licence texts, regenerated the SBOM, and set `lockfile_enforced: true`. All 22 current pins match the inventory, and ordinary Compliance now fails on a missing, unknown, removed or mismatched pin. **Still open:** E17's Mac release-candidate build must use the same locked-resolution path after `xcodegen generate` (the pin step plus Xcode's resolved-file enforcement); `release/macos/sign-notarize-dmg.sh` does not yet do that.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Verify or re-source shipped Tomorrow Light/Dark values against a canonical permitted upstream revision, including attribution/licence requirements.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Bind values/local adaptations to provenance, coordinating with E23 without losing intentional compatibility or importing unapproved assets.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Generate a machine-readable SBOM and distribution inventory for the exact candidate, including runtime content outside the Swift package graph.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Reject unknown/unregistered distributed components, missing required texts/source packages/locations, and inventory/resolution/artifact mismatches.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Negative fixtures for an unregistered component, deleted notice, wrong digest, stale source mapping and unavailable required source location must fail the intended check.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Keep generation deterministic and free of credentials/private documents. Ordinary CI green does not prove this release check executed.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Present the generated local notice corpus in a readable native surface without hand-maintained copies or a network requirement to read shipped notices.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Localise surrounding UI and preserve original licence texts before final #17. Preflight keyboard/accessibility/resource loading must be adequate for #115 readiness; final packaged-resource verification is repeated on the post-#17 exact artifact before promotion.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Prepare versioned source packages, patches, texts and release/component hash mapping for mostlytext.app/opensource or an explicitly approved equally durable location.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Define retention/stable redirects; verify anonymous retrieval and correspondence to shipped references. Owning a domain does not prove availability.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Publish only approved/required compliance material; protect credentials, signing/update keys and private artifacts. Coordinate real hosting/publication with the authorised release process.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Keep `LICENSE` as MIT. As part of the #158 cutover, update only its descriptive header wording from \"MacDown 2\" to MostlyText. Keep every existing copyright line, including the original MacDown authors and later contributors. The MIT decision authorises this wording edit; the licence terms don't change.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Tag the last pre-rename commit as a historical MacDown 2 lineage marker, with attribution.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Make the About box and licences screen (LC-08), the DMG, README and mostlytext.app state MIT with the MacDown lineage and attribution. No EULA, and no claim of proprietary terms.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Confirm that first-party MIT sits correctly alongside the third-party licences actually shipped (LC-01 to LC-07). Those components keep their own terms through notices and source availability.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "The focused software/IP legal review in the source record existed for the withdrawn proprietary boundary, so it is not a 1.0 requirement. Owner or counsel sign-off stays available for any ambiguous third-party obligation. No legal clearance is claimed.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "LC-01–LC-10 each have complete, current, inspectable evidence.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 consumes the recorded preflight-readiness state; #18 consumes final #148 closure and cannot bypass exact-artifact verification.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "All ten Notion release records link to this issue and their LC identifier; a Notion checkbox is not GitHub evidence.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "The promoted artifact matches the compliance inventory and verified artifact, without an unreviewed rebuild/re-sign.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5861487361",
+          "updated_at": "2026-09-28T00:59:33Z",
+          "body_sha256": "cb8dd7c2a824d765925cef1dbb0763087d410122a352333374db187cde09d2e6"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5861773121",
+          "updated_at": "2026-09-28T01:35:33Z",
+          "body_sha256": "3225bd6fca11a11e57a0c974fb6cab0b7f9c48eebcc7ab2a8a5a12ff3544ae87"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5866375864",
+          "updated_at": "2026-09-28T08:33:26Z",
+          "body_sha256": "b8de00a6ba92b38f82585a304766b40db21b6ca0f8edf123c7f4893b458e043e"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5867001043",
+          "updated_at": "2026-09-28T09:17:09Z",
+          "body_sha256": "8ee70500b13e35a832f8f87d89d77bb54dbee5bf304ddea9c87314b8b36c0436"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5868785863",
+          "updated_at": "2026-09-28T11:16:54Z",
+          "body_sha256": "a63bc70123af4fb31ddc1e6455148b6aad611254b7a7d2bd3c924d28498f91b2"
+        }
+      ]
+    },
+    {
+      "number": 155,
+      "title": "Local WebKit-dependent test hangs after extended sessions; root cause unresolved",
+      "url": "https://github.com/Joncallim/macdown_2/issues/155",
+      "updated_at": "2026-10-11T15:12:25Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "9ba9050a8f07a6ed2fe7d14119b939850395fa562729665f4dcc4ff5cd4ab9b6",
+      "body_checklist": [],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/155#issuecomment-5856398799",
+          "updated_at": "2026-09-27T13:45:53Z",
+          "body_sha256": "924affe3776771b67f6a469310725edba4fb8692eb281b1f0a93fe7be22e492d"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/155#issuecomment-5860909496",
+          "updated_at": "2026-09-27T23:41:27Z",
+          "body_sha256": "629c15f9e4d71697d5d63957316dd261736f2b16ab6a648bcc5273587d1b9f13"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/155#issuecomment-5861199947",
+          "updated_at": "2026-09-28T00:21:07Z",
+          "body_sha256": "32a26b3625114b8e1487b050d85cf532574d305977cb9e471652e666eeb52e4e"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/155#issuecomment-5861351941",
+          "updated_at": "2026-09-28T00:41:34Z",
+          "body_sha256": "713115a396c60450d1a1197d09f810dc1f7c5d88dfa07f456e61f28a48de9443"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/155#issuecomment-5861722560",
+          "updated_at": "2026-09-28T01:29:00Z",
+          "body_sha256": "a4480d689fc3c4bb0df040da85ee68088f6a585631fb89c00b69c036487c84f0"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/155#issuecomment-5887020570",
+          "updated_at": "2026-09-29T09:00:15Z",
+          "body_sha256": "9c75d9fb543d85447c40d5e0a26f8def1d1aed8c6047999f116e758978fba147"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/155#issuecomment-6107207688",
+          "updated_at": "2026-10-11T08:38:28Z",
+          "body_sha256": "cd7a8bc6e50561a33c3f47e05ca8b0d43b0cf010fc824b70afe6a3444f3ab565"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/155#issuecomment-6110450326",
+          "updated_at": "2026-10-11T15:12:25Z",
+          "body_sha256": "f5ca328605424e2e97681f861df228c2a2541a1497d8ed23bcb14c291bfd1781"
+        }
+      ]
+    },
+    {
+      "number": 158,
+      "title": "Pre-1.0 MostlyText identity: frozen product inputs and final repository cutover",
+      "url": "https://github.com/Joncallim/macdown_2/issues/158",
+      "updated_at": "2026-09-30T01:13:11Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "41fbfda1ab31dc56c509b3da28e9130d278e11b69a2cf709d2e513c644deac3e",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Product/display name: **MostlyText**.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Canonical capitalisation: **MostlyText**.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Canonical public website/domain and project links.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Final GitHub repository name and canonical repository URL.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Public CLI name, if it changes from the development name.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Bundle/update identifier strategy handed to E17.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Quick Look extension identifier strategy handed to E23.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Public custom-theme file naming/UTI strategy, if applicable.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Document/icon naming conventions.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Rename the GitHub repository from the development name to the approved MostlyText repository name.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Update repository description/about text.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Update README title, opening copy, badges and screenshots/placeholders.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Update canonical repository links in maintained documentation, templates, release/planning docs and automation where required.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Update issue/PR templates and contributor-facing text where the old public product name remains.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Add the final MostlyText logo/wordmark assets to a canonical tracked location.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Add an appropriate GitHub/social-preview asset.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Verify clone/fetch/remotes, CI workflows, badges, automation and external links survive the repository rename or are updated deliberately.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Do not rewrite Git history merely to remove historical MacDown references.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Primary MostlyText wordmark.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Primary ligature/mark.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Monochrome production variants required by the app/repository.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Approved small-size/microglyph assets needed downstream by E23.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Source-of-truth/export guidance sufficient for future contributors to reproduce correct assets.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "A short brand README identifying which files are canonical and which are derived exports.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "README/about copy states the lineage clearly and concisely.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Existing copyright/licence/provenance notices remain accurate.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Historical attribution is not removed.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "No claim implies the project was created wholly independently where that would be inaccurate.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "This issue does not authorise changing `LICENSE` or resolving #148 LC-10 by itself.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Production app icon.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Markdown/document icon.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Finder/Open With presentation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Quick Look extension naming/identifiers.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Theme-file public naming where applicable.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Appearance/branding visible in final screenshots and release evidence.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Bundle identifier transition/migration.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Application Support/defaults/session/recovery namespace migration.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Sparkle/update-channel identity.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "CLI compatibility/migration where required.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Development/beta install → MostlyText state-preservation rehearsal.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Redirect/update behaviour for old repository/public URLs where needed.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "A fresh GitHub visitor sees **MostlyText** consistently in repository name, README, description and primary visual assets.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Repository-wide search finds no unexplained current/public **MacDown 2** identity references.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Every retained MacDown/MacDown 2 reference is intentionally historical, lineage-related, migration-related, or internal.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "CI and required repository automation still execute after the repository/public-link transition.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Canonical brand assets build/render correctly and are available to E23.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "No licence/provenance attribution was accidentally removed.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E23 has stable identity inputs and no longer needs to make branding decisions.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "E17 has an explicit list of migration-sensitive identifiers/namespaces it must transition and verify.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/158#issuecomment-5861004490",
+          "updated_at": "2026-09-27T23:56:10Z",
+          "body_sha256": "126e80b34e777bbcfb8ac40e522b21e40b5b7370e7f67da59b9d08645aca72b6"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/158#issuecomment-5861045126",
+          "updated_at": "2026-09-28T00:02:23Z",
+          "body_sha256": "78629d8ac5518b8337fee78fadecb933764f8547d71430df2c82e7a2aab02cae"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/158#issuecomment-5861771287",
+          "updated_at": "2026-09-28T01:35:19Z",
+          "body_sha256": "dbcc8a68569ec356508545427626b5dc1412d170f920e28ebb0aa95e6be9abc0"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/158#issuecomment-5901185475",
+          "updated_at": "2026-09-29T23:43:50Z",
+          "body_sha256": "265ced13b16379823abd435f65b8aa100c842cfd105203f27d3d432634fcc998"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/158#issuecomment-5902012392",
+          "updated_at": "2026-09-30T01:03:48Z",
+          "body_sha256": "8e9107dcb34f89deb57aadd5370841e591d75b4825264efcc550f61b8d92d54d"
+        }
+      ]
+    },
+    {
+      "number": 159,
+      "title": "TextFilter lifecycle tests can crash on readiness timeout; fixture ownership/readiness needs hardening",
+      "url": "https://github.com/Joncallim/macdown_2/issues/159",
+      "updated_at": "2026-10-11T09:07:14Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "67d9a60de419bb42e32c6bf8e52db49209ec85bf11c0b0049225418e5a5e36a4",
+      "body_checklist": [],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/159#issuecomment-5886994305",
+          "updated_at": "2026-09-29T08:58:28Z",
+          "body_sha256": "7488ab505e616b11f40f9f0b3ebf7bf3b91ac6941810d1d718586f6194dccf03"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/159#issuecomment-6073829276",
+          "updated_at": "2026-10-09T03:44:19Z",
+          "body_sha256": "069ec1e9d5c932f031994b350ff28be57335e2f08ff5c949d7f8342d75e3b7e9"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/159#issuecomment-6107426279",
+          "updated_at": "2026-10-11T09:07:14Z",
+          "body_sha256": "3e3eba9b3e544a476085611b36f4d03982b2dfaca808dcc480084d0a9e6842bd"
+        }
+      ]
+    },
+    {
+      "number": 173,
+      "title": "Already-open document navigation: reproduce native activation/reveal and make reveal lifecycle-safe",
+      "url": "https://github.com/Joncallim/macdown_2/issues/173",
+      "updated_at": "2026-09-29T23:46:07Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "7af893c265f7f4f0e10eaf6376a7f1c9fad11f14f54018b4727b080688c8b147",
+      "body_checklist": [],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/173#issuecomment-5886965610",
+          "updated_at": "2026-09-29T09:01:22Z",
+          "body_sha256": "e08c7b28a6b340e831fdb541459356a8c78417551be149436368590a8a5f9d11"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/173#issuecomment-5893595344",
+          "updated_at": "2026-09-29T15:43:44Z",
+          "body_sha256": "d3f60bf9f2ba197e3b2844bcf114aa5914fc9af76cfa29bcb4660cc99e345268"
+        }
+      ]
+    },
+    {
+      "number": 183,
+      "title": "Pre-1.0 merged-code audit: persistence, editing, lifecycle and resource authority",
+      "url": "https://github.com/Joncallim/macdown_2/issues/183",
+      "updated_at": "2026-10-09T00:07:53Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "5f9a7dfcd291831eb45d942f6d93315d9b5c8a06ce46a937280c0376c523b11b",
+      "body_checklist": [
+        {
+          "source_checked": true,
+          "text": "Eight review passes reconciled against unchanged master; pass 6 reconciled all 21 older open issues/release sequencing, pass 7 returned to fresh production-code defect review, and pass 8 reconciled F21–F23 plus extended F01/F02/F14/F19 without duplicating owners.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Every directly owned F/R item has a FIXED or PROVED disposition with exact source SHA, deterministic regression, failing-before/passing-after evidence where applicable, final PR and required native proof.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Delegated F06/F13/F07 evidence links to #118; R02 to #121; L01 to #17; existing #155/#159/#163/#173/#174 closure remains in those records.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Focused and complete package + serial app-target suites, strict lint/format, locked dependencies and Release build pass after implementation.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Required AppKit/WebKit/filesystem/UI journeys pass on an appropriate macOS 26 environment.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "#115 consumes this issue without treating an isolated probe, architecture comment or unrelated green CI as release evidence.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "No silent source normalization, weakened external-writer protection, broadened filesystem/network authority or speculative cross-module abstraction is introduced to make a test pass.",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/183#issuecomment-5893557906",
+          "updated_at": "2026-09-29T15:41:31Z",
+          "body_sha256": "24c1bfaca612c07be7de9c3266a8f533ec9a2fb9bc4216f0bed841504075bb67"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/183#issuecomment-5894665019",
+          "updated_at": "2026-09-29T16:48:51Z",
+          "body_sha256": "875b4af9bffea209c3e94e031a02f6341de74b63207c8ab5a1d185e96539b129"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/183#issuecomment-5900111870",
+          "updated_at": "2026-09-29T22:13:52Z",
+          "body_sha256": "a9cf8e3cb0b10a15bee8dfb9b1ef48a8a84b36c4e68700984051e5e897fd6f6b"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/183#issuecomment-5901194552",
+          "updated_at": "2026-09-29T23:44:42Z",
+          "body_sha256": "d851efbfd699aaccc5342b8e8a6b2f15ee1827d20c86e96adde27d0b656f2793"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/183#issuecomment-5902133030",
+          "updated_at": "2026-09-30T01:15:37Z",
+          "body_sha256": "e38b3917935bfbee8a566a236eeb9bbb24dfd0a2ccc9d9ea5c5d448f7e8eb684"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/183#issuecomment-5904190634",
+          "updated_at": "2026-09-30T04:42:35Z",
+          "body_sha256": "2b440e6bbdc35137292e46388a2fbbf2e7dcb8c44d827b6e97c7b757d5c5b078"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/183#issuecomment-5906581693",
+          "updated_at": "2026-09-30T07:44:03Z",
+          "body_sha256": "3a934aa285718203b3144946efa2ec7f7ff99756078089bc65674bbf3b7d0c55"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/183#issuecomment-6071520755",
+          "updated_at": "2026-10-09T00:07:53Z",
+          "body_sha256": "4fb0c1ea37a963de3b81279fd15f47b0cf8cbfb0453b7a584cfe058b62cdc76f"
+        }
+      ]
+    },
+    {
+      "number": 203,
+      "title": "Markdown incremental reparse is O(n): E05 50 ms keystroke budget not met for 1 MB documents",
+      "url": "https://github.com/Joncallim/macdown_2/issues/203",
+      "updated_at": "2026-10-11T09:35:45Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "85f3e087360fffd5f0ef447e3929178de9bde870ca045712e39933bf7fb89185",
+      "body_checklist": [],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/203#issuecomment-6074268347",
+          "updated_at": "2026-10-09T04:28:15Z",
+          "body_sha256": "2003280229828af6b729ae7b9b043fbfefc2bc9e801b77aa30b24e312f7d7670"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/203#issuecomment-6095846699",
+          "updated_at": "2026-10-10T08:51:09Z",
+          "body_sha256": "41d39566c4b38cba3e063c7576f939d74a3c7af933dfbfe4314bc442939dd6e9"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/203#issuecomment-6107642908",
+          "updated_at": "2026-10-11T09:35:45Z",
+          "body_sha256": "edc005e5b2d0c745475905e4cbcfe9481a940c8133adbbb44988e23717c78474"
+        }
+      ]
+    },
+    {
+      "number": 459,
+      "title": "fix(P2): investigate SwiftTreeSitter Debug abort and harden syntax-highlight edit geometry",
+      "url": "https://github.com/Joncallim/macdown_2/issues/459",
+      "updated_at": "2026-10-12T19:54:02Z",
+      "issue_state": "OPEN",
+      "closure": "not approved",
+      "body_sha256": "e8cd2c0c3b2f0a75edab14d28cfd9f2ef4a2f31c87bf2c207a568953d7ec0b12",
+      "body_checklist": [
+        {
+          "source_checked": false,
+          "text": "Deterministic failing-before regression in a **real mounted editor/highlighter**, with controlled interleaving rather than timed sleeps; include rapid whole-document replace/shrink/grow while background parse and embedded-language resolution are outstanding.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Establish the true triggering `byteOffset` / `limit` / text length and classify expected end-of-input vs genuine stale range. No Debug abort; no malformed-range crash in a native Release build.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Correct confirmed UTF-16 point/byte geometry and add assertions for `InputEdit` start/old-end/new-end points (single-line, newline relocation, Unicode, empty text, full replacement); update incorrect `LocationTransformerTests` expectations.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Exercise one-phase style version checks across an `await`; stale completion must never restyle a newer document. Test ordering or fix only when reproduced.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Exercise lifecycle paths: external reload, conflict resolution, failed-close retry, Finder move, repeated Replace All, undo/redo, IME composition, switching syntax mode, closing tabs/windows while parse work is pending. No data loss; no stale syntax paint; no stale callback referencing a destroyed text system.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Run relevant `HighlightingTests`, `EditorCoreTests`, `MacDown2Tests` and existing whole-app integration tests in Debug; then native Release stress/dogfood. Capture tested commit SHA, exact commands and results. Rerun convergence evidence on the final merged head if source changes.",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "Re-measure any `#203` effects separately in Release; record accepted remaining limitations at [#115](https://github.com/Joncallim/macdown_2/issues/115).",
+          "verification": "not individually reconciled in this intake"
+        },
+        {
+          "source_checked": false,
+          "text": "If a dependency update/fork is required, pin the exact revision, update the lock/compliance inventory and get provenance/compatibility review under [#148](https://github.com/Joncallim/macdown_2/issues/148).",
+          "verification": "not individually reconciled in this intake"
+        }
+      ],
+      "body_is_complete_contract": false,
+      "comments": [
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/459#issuecomment-6131110393",
+          "updated_at": "2026-10-12T19:25:39Z",
+          "body_sha256": "a60fa207f8ba7571847bfd8bbbab7bd9a38ea69da63d9750b2554a3e80cbeef6"
+        },
+        {
+          "url": "https://github.com/Joncallim/macdown_2/issues/459#issuecomment-6131554465",
+          "updated_at": "2026-10-12T19:54:02Z",
+          "body_sha256": "534e46ca665f24148d427c024b8b31783cb7aa6d5b95acb7f7357644b26dca01"
+        }
+      ]
+    }
+  ]
+}
