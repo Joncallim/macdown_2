@@ -3,9 +3,14 @@
 ## Owner summary
 
 The editor's production behavior is unchanged. These test corrections distinguish a legitimate return of syntax
-colors after an idle pause from premature restoration, and measure the cleanup watchdog from the end of fixture
-setup. The 200 ms test idle delay, 25 ms watchdog, 150 ms cleanup bound, production 8,192 UTF-16 cutoff, and
-dependency pins are unchanged. This work does not establish why the hosted runner exceeded the cleanup bound.
+colors after an idle pause from premature restoration, and retain the original whole-call cleanup assertion
+while measuring setup and cleanup separately. The 200 ms test idle delay, 25 ms watchdog, 150 ms cleanup bound,
+production 8,192 UTF-16 cutoff, and dependency pins are unchanged. This work does not establish why the hosted
+runner exceeded the cleanup bound.
+
+The [follow-up review](FOLLOWUP.md) records the final local code, the reproduced window-fixture repair and
+a new failed Release performance gate. It also corrects the initial cleanup-only measurement described in
+the earlier checkpoint. The candidate is not integration-approved.
 
 The base is `60f779fc0f7324cd5dd3b7b503030e9c22d7d44f`, containing PRs #488–#491. Its latest hosted result is
 **failed**, not passed. Owner review and new hosted evidence remain required before integration readiness.
@@ -51,19 +56,21 @@ mode present immediately before it. The qualifying-pause guard and final rendere
 A temporary production mutation restoring after 30 ms instead of the policy delay failed the corrected test's
 early-restoration assertion in both cases. The mutation was restored byte for byte afterward.
 
-### Cleanup budget excludes setup
+### Preserve the whole-call bound and diagnose cleanup separately
 
-The old stopwatch started before temporary-directory creation and fixture registration, even though the watchdog
-starts after the fixture body returns. The corrected stopwatch starts at the end of that body, before cancellation
-dispatch. It retains the 150 ms bound and adds a case with 200 ms of deliberate fixture work. Failure messages
-report setup duration separately so a future hosted failure can distinguish the two intervals.
+The initial local change in `90402ea5` moved the stopwatch to the end of the fixture body. That preserved the
+number 150 ms but dropped the original zero-delay call-to-result guarantee. Fresh author review identified
+this weakening; `98582785` restores that original assertion and reports setup and cleanup intervals separately.
+A deliberate 200 ms setup case additionally checks the cleanup interval, including cancellation dispatch.
 
-This fixes the measurement boundary; it does not prove that setup caused the hosted overruns. Scheduling delays
-within cleanup can still fail the unchanged bound and must still be investigated.
+A temporary 200 ms pre-body delay now fails the whole-call assertion at 235.71525 ms even though cleanup takes
+29.53475 ms. A separate earlier mutation moved blocking cancellation outside the watchdog: both cases failed
+at approximately 206/204 ms against 150 ms. All mutations were restored byte for byte. The 25 ms watchdog,
+150 ms bound and production timeout code remain unchanged.
 
-A temporary mutation moved blocking cancellation outside the watchdog. Both corrected cases failed, including
-cleanup measurements of 206.27 and 204.02 ms against the unchanged 150 ms bound. The mutation was restored
-byte for byte afterward.
+Neither phase was timed in the hosted logs, so setup and scheduler hypotheses remain unproved. The added
+measurement supports diagnosis; it does not establish a fix for the hosted cleanup failures. See the
+[follow-up](FOLLOWUP.md) for the exact contract and negative-control records.
 
 ## Validation and remaining gates
 
@@ -79,11 +86,12 @@ swift test --no-parallel --force-resolved-versions
 swift test -c release -Xswiftc -enable-testing --no-parallel --force-resolved-versions --filter 'Performance|MarkdownTreeReuse'
 ```
 
-The completed serial validation is recorded in [VALIDATION.md](VALIDATION.md), with exact code head
+The earlier serial validation is recorded in [VALIDATION.md](VALIDATION.md), with exact code head
 `f9f9926ff07d7e8550fa703f329d7e0f943d16a2`, raw-log hashes and remaining warnings/stall observations.
 It includes one full package run, three Release performance runs, unsigned app/CLI builds and non-UI app-target
-tests. Successful local exit codes do not replace the failed hosted evidence. No hosted rerun or push is
-authorized by this evidence record.
+tests. Later exact-head results and the failed Release performance series are in [FOLLOWUP.md](FOLLOWUP.md).
+Successful local exit codes do not replace the failed hosted evidence. No hosted rerun or push is authorized
+by this evidence record.
 
 The earlier 63.4 ms Release outlier is consistent with the recorded load investigation, but its cause is unproven.
 Manual Simplified Pinyin coverage remains the Debug-only scope documented in `../pinyin-native-manual/`;

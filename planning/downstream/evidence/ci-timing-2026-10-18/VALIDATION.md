@@ -1,6 +1,10 @@
-# Combined candidate validation, 18 October 2026
+# Historical validation of f9f9926f, 18 October 2026
 
 ## Owner summary
+
+This is the earlier `f9f9926f` checkpoint. [FOLLOWUP.md](FOLLOWUP.md) records the
+subsequent reproduced fixture fix, compiler corrections and new failed Release
+performance gate. These older passes do not replace the later failure.
 
 The local candidate passed the package suite, three serial Release performance
 runs, unsigned Release app/CLI builds and non-UI app-target tests. This does not
@@ -82,10 +86,12 @@ rewrite this as an unexplained flake or hide it behind the successful exit code.
 ## Test-build warning gate
 
 The build-for-testing log contains 277 actor-isolation warning occurrences across
-12 UI-test files, an unused `try?` result in `ExternalFileChangesUITests.swift`,
+six UI-test files, an unused `try?` result in `ExternalFileChangesUITests.swift`,
 24 dependency-scan warnings, a cmark umbrella-header warning and 15 AppIntents
 metadata-tool messages. Counts are diagnostic occurrences, not distinct defects.
-The full messages are saved in `final-f9f9926f/test-build-warnings.json`.
+The full messages are saved in `final-f9f9926f/test-build-warnings.json`. The
+original version incorrectly counted 12 files by including unrelated compilation
+lines; only six files contain these warning locations.
 
 Inspected UI tests are `@MainActor` XCTest classes with synchronous `setUp` and
 `tearDown` overrides using actor-isolated properties. Fix those lifecycle
