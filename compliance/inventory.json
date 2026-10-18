@@ -633,9 +633,7 @@
         "LC-01",
         "LC-07"
       ],
-      "open_items": [
-        "Product decision, not a licensing gap: SwiftUIMath copies its whole font bundle, so all 12 fonts ship whether or not MostlyText ever selects them. The notices cover all 12, and the artifact check requires all 12 to be present with these digests. Whether to keep them all or trim unused fonts (which needs a patched or forked dependency) is for E19 and the owner to decide. Until that decision is recorded, this item stays open."
-      ],
+      "open_items": [],
       "runtime_resources": [
         {
           "name": "Asana-Math.otf",
@@ -698,7 +696,7 @@
           "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/xits-math.otf"
         }
       ],
-      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence). runtime_resources records the 12 font files by upstream digest; they are not in this repository."
+      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence). runtime_resources records the 12 font files by upstream digest; they are not in this repository. The recorded owner decision is to keep all 12 for 1.0 (https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5868785863, corroborated by comment 5867001043). This resolves the font-set decision only: all 12 runtime resource digests, licence texts and the final-artifact check remain required."
     },
     {
       "id": "textual",

@@ -22,6 +22,12 @@ app's explicit directory-grant owner, retained scope and contained document-base
 mapping; a copied URL does not satisfy that contract. Worker/payload settlement,
 quotas and native release gates remain open.
 
+The [directory-grant proposal](issue-121-directory-grant-proposal.md) records the
+subsequent source trace and independent review. It specifies window-local grant
+attachments, retained scope ownership and descriptor-relative child acquisition,
+but remains blocked on the file-only asset workflow and intended OS-access
+configuration. No production grant integration is accepted by that proposal.
+
 ## Reconciliation and trust boundary
 
 The historical audit covered HTMLPreviewSchemeHandler.swift, HTMLPreviewView.swift

@@ -119,11 +119,14 @@ remain open; no resource-authority or full native release claim follows.
    final-artifact compliance/reruns; repository cutover and public promotion are
    later, separate authorizations.
 
-The eight release-preflight failures are: D2 anonymous source location; D2 Go and
-embedded-WASM license/source inventory; Mermaid bundled npm provenance; the
-SwiftUIMath font-set inventory reconciliation; Tomorrow Light naming/provenance decision;
+The seven current release-preflight failures are: D2 anonymous source location;
+D2 Go and embedded-WASM license/source inventory; Mermaid bundled npm provenance;
+Tomorrow Light naming/provenance decision;
 Viz/Graphviz anonymous source location; exact Graphviz 16.0.0/Viz 3.30.0 source,
 build instructions and hashes; and Graphviz-linked library confirmation.
+The [2026-10-18 font reconciliation](../compliance/evidence/swiftui-math-fonts-2026-10-18/README.md)
+records the existing KEEP-all-12 decision and retains all resource and licence
+checks. Historical eight-failure evidence remains unchanged.
 The generated, ignored `MacDown2/MacDown2/Info.plist` makes the working-directory
 compliance scan report an unregistered distributed file. The clean `git archive`
 source scan passes. This distinction is recorded rather than deleting or
@@ -134,9 +137,10 @@ until a reviewed cross-engine/print policy is accepted; preserve the 8,192 cutof
 and current lock while dependency correctness is unresolved; retain all currently
 licensed fonts, following the KEEP decision already recorded in
 [#148 comment 5868785863](https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5868785863)
-and `compliance/RELEASE_PREPARATION.md`; and reconcile the
+and now reconciled in `compliance/inventory.json`; and reconcile the
 Tomorrow Light name with the recorded asset provenance rather than assuming a
-name grants provenance. These are recommendations, not adopted policy changes.
+name grants provenance. The font choice was already recorded; the other
+recommendations do not adopt new policy.
 
 ## Branches and evidence to preserve
 
