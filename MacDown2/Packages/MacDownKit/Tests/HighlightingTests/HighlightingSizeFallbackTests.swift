@@ -149,13 +149,10 @@ struct HighlightingSizeFallbackTests {
         #expect(editor.highlighter.generation == 0, "never rebuilt")
     }
 
-    /// The restore must wait for a full idle delay after the LAST edit. On a loaded runner a 100 ms sleep can last
-    /// longer than the 200 ms test delay, in which case an idle period genuinely elapsed and restoring is correct
-    /// (hosted
-    /// run 39140426985 saw exactly that: four "restored too early" failures). So "still reduced" is asserted only while
-    /// less than the idle delay can have passed since the last edit, measured from a timestamp taken BEFORE that edit
-    /// (the delay starts inside the edit, so the true elapsed time is never more than the measured one).
-    @Test func shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle() async {
+    /// A short pause cannot restore a reduced editor. A real idle period may restore it, after which small edits
+    /// keep full highlighting. Measure from before each edit so the measured interval bounds the timer's age.
+    @Test(arguments: [false, true])
+    func shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause: Bool) async {
         let editor = Fixtures.editor(units: cutoff + 500)
         let idle = Fixtures.policy.restoreIdleDelay
         let clock = ContinuousClock()
@@ -164,16 +161,20 @@ struct HighlightingSizeFallbackTests {
         editor.paste("", over: NSRange(location: 100, length: toDelete))
         #expect(editor.mode == .reducedForTestPolicy)
         var checksWhileNotIdle = 0
+        var wasReducedAfterLastEdit = true
         // Keep typing: each edit postpones the restore.
         for index in 0 ..< 4 {
-            await editor.settle(.milliseconds(100))
-            if clock.now - lastEditStarted < idle {
+            // The third pause follows a deletion to the restore threshold. The second is above it.
+            await editor.settle(.milliseconds(includesIdlePause && index == 2 ? 300 : 100))
+            if wasReducedAfterLastEdit, clock.now - lastEditStarted < idle {
                 checksWhileNotIdle += 1
                 #expect(editor.mode == .reducedForTestPolicy, "restored before an idle delay had elapsed")
             }
+            let modeBeforeEdit = editor.mode
             lastEditStarted = clock.now
             editor.typeOrDelete(at: 50, insert: index.isMultiple(of: 2))
-            #expect(editor.mode == .reducedForTestPolicy, "an edit just happened")
+            #expect(editor.mode == modeBeforeEdit, "a small edit neither restores nor reduces highlighting")
+            wasReducedAfterLastEdit = editor.mode == .reducedForTestPolicy
         }
         // If the runner was so slow that no check ran while not idle, the test proved nothing: say so.
         #expect(checksWhileNotIdle >= 1, "every pause exceeded the idle delay; the early-restore check never ran")

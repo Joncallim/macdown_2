@@ -88,9 +88,8 @@ extension HighlightedEditor {
         try? await Task.sleep(for: duration)
     }
 
-    /// Polls `condition` every 50 ms for up to `timeout`. Used instead of a fixed sleep wherever a timer-driven
-    /// transition (restore after idle) must have happened: a fixed sleep is shorter than the transition on a loaded
-    /// hosted runner and made `shrinkingBelowTheRestoreThreshold...` fail there while passing locally.
+    /// Polls for an eventual transition without assuming the scheduler resumes it within a fixed sleep.
+    /// Tests of the minimum idle delay must separately assert that restoration cannot happen too early.
     func waitUntil(_ timeout: Duration = .seconds(15), _ condition: () -> Bool) async -> Bool {
         let clock = ContinuousClock()
         let deadline = clock.now + timeout

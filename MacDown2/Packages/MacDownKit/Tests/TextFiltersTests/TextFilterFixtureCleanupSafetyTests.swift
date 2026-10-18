@@ -134,19 +134,25 @@ struct TextFilterFixtureCleanupSafetyTests {
         #expect(FileManager.default.fileExists(atPath: directory.path))
     }
 
-    @Test func cleanupDeadlineIncludesBlockingCancellationDispatch() async throws {
+    @Test(arguments: [Duration.zero, .milliseconds(200)])
+    func cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay: Duration) async throws {
         let probe = BlockingCancellationProbe()
         var observedDirectory: URL?
-        let started = ContinuousClock.now
+        let fixtureStarted = ContinuousClock.now
+        var cleanupStarted: ContinuousClock.Instant?
 
         do {
             try await TextFilterFixtures
                 .withOwnedTemporaryDirectory(cleanupTimeout: .milliseconds(25)) { directory, owner in
                     observedDirectory = directory
+                    try await Task.sleep(for: setupDelay)
                     try await owner.registerCleanup(
                         cancel: { probe.blockFor(200_000) },
                         join: { .completed(nil) }
                     )
+                    // The cleanup budget starts when the body finishes. Directory creation, registration and
+                    // arbitrary fixture work happen before cleanup and must not consume its 150 ms bound.
+                    cleanupStarted = .now
                 }
             Issue.record("expected cleanup watchdog to include cancellation dispatch")
         } catch let error as TextFilterFixtures.FixtureCleanupError {
@@ -158,7 +164,11 @@ struct TextFilterFixtureCleanupSafetyTests {
             #expect(timeout == .milliseconds(25))
         }
 
-        #expect(started.duration(to: .now) < .milliseconds(150))
+        let started = try #require(cleanupStarted)
+        #expect(
+            started.duration(to: .now) < .milliseconds(150),
+            "fixture setup took \(fixtureStarted.duration(to: started)); cleanup includes cancellation dispatch"
+        )
         let directory = try #require(observedDirectory)
         #expect(FileManager.default.fileExists(atPath: directory.path))
         let deadline = ContinuousClock.now.advanced(by: .seconds(1))
