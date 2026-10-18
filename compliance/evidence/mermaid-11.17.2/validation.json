@@ -1,0 +1,231 @@
+{
+  "candidate_head": "0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b",
+  "source_directory": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b",
+  "source_archive_sha256": "2266c28062c7a0a609823c4b5040e838eec9b92dba6b271f1966f80230b736e8",
+  "python": "Python 3.15.0",
+  "initial_validation_record": "initial-validation-1350ff78.json",
+  "process_substitution_permission": "sandbox escalation for controlled test fixtures; no actual signing or notarisation",
+  "commands": [
+    {
+      "name": "full-compliance-tests",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "compliance/tests"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b",
+      "started_utc": "2026-10-18T18:47:24.458639+00:00",
+      "expected_exit_code": 0,
+      "log": "final-full-compliance-tests.log",
+      "ended_utc": "2026-10-18T18:47:36.593541+00:00",
+      "duration_seconds": 12.134351374814287,
+      "exit_code": 0
+    },
+    {
+      "name": "source-compliance",
+      "argv": [
+        "python3",
+        "compliance/tools/compliance.py",
+        "check"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b",
+      "started_utc": "2026-10-18T18:47:36.594059+00:00",
+      "expected_exit_code": 0,
+      "log": "final-source-compliance.log",
+      "ended_utc": "2026-10-18T18:47:36.792598+00:00",
+      "duration_seconds": 0.198554249946028,
+      "exit_code": 0
+    },
+    {
+      "name": "release-preflight",
+      "argv": [
+        "python3",
+        "compliance/tools/compliance.py",
+        "check",
+        "--release"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b",
+      "started_utc": "2026-10-18T18:47:36.792864+00:00",
+      "expected_exit_code": 1,
+      "log": "final-release-preflight.log",
+      "ended_utc": "2026-10-18T18:47:36.992276+00:00",
+      "duration_seconds": 0.19944087485782802,
+      "exit_code": 1
+    },
+    {
+      "name": "offline-replay",
+      "argv": [
+        "python3",
+        "compliance/tools/audit_mermaid_bundle.py",
+        "--evidence-dir",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18",
+        "--shipped-bundle",
+        "MacDown2/Packages/MacDownKit/Sources/DiagramRendering/Resources/mermaid.min.js",
+        "--output",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/final-validated-replay.json"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b",
+      "started_utc": "2026-10-18T18:47:36.992613+00:00",
+      "expected_exit_code": 0,
+      "log": "final-offline-replay.log",
+      "ended_utc": "2026-10-18T18:47:39.000153+00:00",
+      "duration_seconds": 2.0075672501698136,
+      "exit_code": 0
+    },
+    {
+      "name": "replay-byte-comparison",
+      "argv": [
+        "cmp",
+        "compliance/evidence/mermaid-11.17.2/module-notice-map.json",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/final-validated-replay.json"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b",
+      "started_utc": "2026-10-18T18:47:39.000497+00:00",
+      "expected_exit_code": 0,
+      "log": "final-replay-byte-comparison.log",
+      "ended_utc": "2026-10-18T18:47:39.006612+00:00",
+      "duration_seconds": 0.006140375044196844,
+      "exit_code": 0
+    },
+    {
+      "name": "committed-diff-check",
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "40b25974",
+        "0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T18:47:39.006873+00:00",
+      "expected_exit_code": 0,
+      "log": "final-committed-diff-check.log",
+      "ended_utc": "2026-10-18T18:47:39.022908+00:00",
+      "duration_seconds": 0.01605725008994341,
+      "exit_code": 0
+    },
+    {
+      "name": "production-files-unchanged",
+      "argv": [
+        "git",
+        "diff",
+        "--exit-code",
+        "40b25974",
+        "0ede2f3ad4daf55d4bb1edfe34161cddb57a5d2b",
+        "--",
+        "MacDown2",
+        "compliance/inventory.json",
+        "compliance/generated",
+        "compliance/licenses"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T18:47:39.023248+00:00",
+      "expected_exit_code": 0,
+      "log": "final-production-files-unchanged.log",
+      "ended_utc": "2026-10-18T18:47:39.029277+00:00",
+      "duration_seconds": 0.006046082824468613,
+      "exit_code": 0
+    }
+  ],
+  "status": "local audit validation passed; release gate remains failed",
+  "release_gate_passed": false,
+  "release_failure_count": 8,
+  "full_test_count": 81,
+  "source_map_test_count": 15,
+  "initial_attempts": {
+    "candidate_head": "1350ff78050dcb80d600e8f2d9fa5b4b8dcc4dd9",
+    "source_directory": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-1350ff78050dcb80d600e8f2d9fa5b4b8dcc4dd9",
+    "source_archive_sha256": "2f21cf6c730d476ec036fb6283e3d9b3a5f3b8bbc5d3091ecc1a0f5966c6f786",
+    "python": "Python 3.15.0",
+    "commands": [
+      {
+        "name": "full-compliance-tests",
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "compliance/tests"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-1350ff78050dcb80d600e8f2d9fa5b4b8dcc4dd9",
+        "started_utc": "2026-10-18T18:44:50.298644+00:00",
+        "expected_exit_code": 0,
+        "log": "full-compliance-tests.log",
+        "ended_utc": "2026-10-18T18:44:51.474790+00:00",
+        "duration_seconds": 1.1756563340313733,
+        "exit_code": 1
+      },
+      {
+        "name": "full-compliance-tests-allowed-process-substitution",
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "compliance/tests"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18/validated-source-1350ff78050dcb80d600e8f2d9fa5b4b8dcc4dd9",
+        "started_utc": "2026-10-18T18:45:43.120060+00:00",
+        "expected_exit_code": 0,
+        "log": "full-compliance-tests-allowed-process-substitution.log",
+        "ended_utc": "2026-10-18T18:45:56.362787+00:00",
+        "duration_seconds": 13.242127042030916,
+        "exit_code": 1
+      }
+    ],
+    "diagnosed_initial_failure": {
+      "command": "full-compliance-tests",
+      "reason": "sandbox denied /dev/fd/62 at shell process-substitution redirection before fixture preflight",
+      "evidence": "release-fixture-diagnostic.log",
+      "followup": "same full suite with sandbox escalation; Apple tools remain stubbed",
+      "source_changed": false
+    },
+    "second_failure_diagnosis": {
+      "reason": "existing release-script fixture omitted syspolicy_check; host tool inspected fake app and returned 70",
+      "affected_cases": [
+        "test_dry_run_records_failed_licence_gate_and_log_as_unverified_and_continues",
+        "test_release_candidate_passes_when_every_gate_passes"
+      ],
+      "real_signing_or_notarisation": false,
+      "correction": "test-only syspolicy_check stub and injected failure preserving both modes strict stop behavior",
+      "production_release_script_changed": false,
+      "requires_final_validation_at_new_commit": true
+    }
+  },
+  "independent_review_scope": "source, evidence and fixture fix; reviewer ran no tests",
+  "raw_evidence_directory": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18",
+  "final_evidence_commit": "resolve through the Git commit containing this file; code/tool/test tree identities below must match the validated commit",
+  "preserved_performance_failures": {
+    "parser_ms": 484.814584,
+    "parser_limit_ms": 400,
+    "editing_assist_ms": 56.881709,
+    "editing_assist_limit_ms": 50
+  },
+  "validated_git_objects": {
+    "MacDown2": "929fe5add3fc84a6038ad0f8bf7e14a211fca2f5",
+    "compliance/tools": "cc92902a28697fab38d0ac6fd11c0d711e5a2e44",
+    "compliance/tests": "70e3846cda77214101148a12e28d0ff814ff4916",
+    "compliance/inventory.json": "474ac420b91c0af74559eab786c52a7f6e0989b0",
+    "compliance/generated": "f55ebcf6a142ba587f131f44a727aaa52b60d63c",
+    "compliance/licenses": "4f8d68da267c13f42ffcf8b7bf2cf66b407d967f",
+    "release": "ae40d6c70893933aba0cf2528d738a099dfe2c73",
+    "MacDown2/Packages/MacDownKit/Package.resolved": "50007bb47a9c09c551c10b7503d860545acada20"
+  },
+  "reviewed_files": {
+    "compliance/tools/audit_mermaid_bundle.py": "066bc7f8d56595af646816b8638f5c499e27c61516b5e0df6d203288859fc75d",
+    "compliance/tools/source_map_evidence.py": "e9838fdcbdc49427bac259045030407119ef7ef68daddae95f82ad8eab179e9e",
+    "compliance/tests/test_release_script.py": "a12ee89a25901be5ce4bec4099083f15741df3c9903a025000b97492c4a8bd69",
+    "compliance/evidence/mermaid-11.17.2/module-notice-map.json": "6183e8177380457abbe5522f173ac844da1a4ae6609408c7d5de727a306609cb"
+  },
+  "review_reports": {
+    "independent-review-final.md": "4d03fc8f028b7aef09bffa3f1a1379fcb96c10f21023ba3f42e5e57883e550e6",
+    "independent-review-findings.md": "a24d8ae0aefddd0edd74a657d93db5a68bb773dc005b8676b8e4c5775d4ef0a1",
+    "fixture-independent-review.md": "bb8bcdcc6cfedd88771c3471c8c8a780128517e5147cae452f2947e6ae18b816"
+  },
+  "raw_evidence_manifest_sha256": "66c4876a5bf559b42553ea6608302b440b236c23fbf4919e85061988a83c6403"
+}

@@ -134,4 +134,6 @@ Independent review verified the raw archive/source/text links and identified
 two verifier defects plus an overly broad version-attribution claim. Those were
 corrected before the checkpoint: duplicate coordinates fail, queries are bounded,
 and the candidate-version claim is explicitly narrower. Final review and check
-results are recorded in the checkpoint validation record.
+results are recorded in [VALIDATION.md](VALIDATION.md) and its machine-readable
+[command/evidence record](validation.json). The full-suite fixture correction
+and both initial failure causes are retained there.
