@@ -232,19 +232,19 @@ struct HTMLPreviewView: NSViewRepresentable {
         /// main document URL may fail the gate: a subframe failure must never
         /// clear a still-pending main load.
         private func handleLoadFailure(_ error: Error) {
+            guard Self.isMainDocumentLoadFailure(error), let generation = pendingLoadGeneration else { return }
+            pendingLoadGeneration = nil
+            gate.loadFailed(generation: generation)
+        }
+
+        static func isMainDocumentLoadFailure(_ error: Error) -> Bool {
             let nsError = error as NSError
             // -999 (NSURLErrorCancelled, incl. policy cancels) and 102
             // (WebKitErrorFrameLoadInterruptedByPolicyChange, supersede) are
             // not failures of the pending load.
-            guard nsError.code != NSURLErrorCancelled, nsError.code != 102 else { return }
-            guard let failingURLString = nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String,
-                  failingURLString == Self.mainDocumentURLString
-            else {
-                return
-            }
-            guard let generation = pendingLoadGeneration else { return }
-            pendingLoadGeneration = nil
-            gate.loadFailed(generation: generation)
+            guard nsError.code != NSURLErrorCancelled, nsError.code != 102 else { return false }
+            guard let failingURL = nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL else { return false }
+            return failingURL.absoluteString == mainDocumentURLString
         }
 
         // MARK: WKUIDelegate
