@@ -98,8 +98,8 @@ used as correctness proof. Cases cover late success and both failure delegates,
 retry after a real failure, nil/unknown/wrong-view callbacks, disposal reentrancy,
 queued-newer and same-generation retry admission, recovery after a queued revision
 is cancelled by an edit, process-reload identity/budget, nil load/reload, and old
-recovery callbacks after a newer load starts. Ordinary fixtures keep the default
-150 ms delay. The fixture loads only local blank HTML without a navigation
+recovery callbacks after a newer load starts. Production construction and the
+native render control keep the default 150 ms delay. The fixture loads only local blank HTML without a navigation
 delegate to obtain valid WebKit tokens; all tested callbacks are explicitly
 injected. No product preferences or user documents are needed. Direct
 WKNavigation initialization was rejected after a retained deallocation crash;

@@ -6,6 +6,17 @@ A late resource request must belong to the saved document revision that created 
 
 Reviewed baseline: `b95fe439672dbcad4e5c9d04f7f353ffc85ff26b`, 2026-09-26. Original design remains in #125 history. Follow [README](README.md) and [readiness review](READINESS_REVIEW.md). No E22 source, active branch, save/recovery authority or editor model is changed here.
 
+## 2026-10-18 bounded reconciliation
+
+The [navigation implementation](issue-121-navigation-implementation.md) and
+[exact-candidate evidence](evidence/preview-121-2026-10-18/README.md) reconcile the
+historical assumptions below. The constrained reader stage A and explicit MIME
+headers already exist. A bounded coordinator fix now binds returned navigation,
+view and saved generation, and distinguishes queued attempts from process
+recovery. It does not supply the complete render identity or immutable resource
+context specified below. Root confusion and post-stop delivery have retained
+reproductions; all remaining stages and native release gates stay open.
+
 ## Reconciliation and trust boundary
 
 HTMLPreviewSchemeHandler.swift, HTMLPreviewView.swift and ExportResourceResolver.swift remain unchanged from the original audit. PreviewSchemeHandler has a mutable request, fixed document authority and MainActor Data(contentsOf:) after a separate path approval. Generation-only reload state and early scope release must change together with the reader.
