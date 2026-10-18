@@ -11,9 +11,11 @@ Six UI suites and two status-view test suites now use their required main actor.
 
 **This candidate is not ready for integration approval.** Its second planned
 Release performance run failed a 400 ms parser ceiling at **484.814584 ms**.
-That failure remains open. Hosted cleanup failures, the original highlighting
-run mismatch, runtime diagnostics, independent review, native interaction and
-release acceptance also remain separate gates. No threshold, production pin,
+That failure remains open. A later bounded diagnostic also failed the 50 ms
+editing-assist ceiling at 56.881709 ms. Separate source review found no concrete
+regression, with explicit coverage limits. Hosted cleanup failures, the original
+highlighting run mismatch, runtime diagnostics, native interaction and owner/
+release acceptance remain separate gates. No threshold, production pin,
 test assertion or 8,192 UTF-16 highlighting cutoff was relaxed.
 
 These changes improve test ownership and the reliability of verification. They
@@ -142,6 +144,13 @@ candidate run. Source was restored exactly. No repeated search for a green
 performance series occurred. #203 remains open, including its much stricter
 fully highlighted product budget.
 
+The subsequent [independent review and fixed context experiment](INDEPENDENT_REVIEW.md)
+retain exact `e16be9f7` provenance. Isolated and full-selection parser samples
+were 162.661291 and 163.004292 ms, but the full selection failed the unchanged
+editing-assist 50 ms ceiling at 56.881709 ms. The declared stop condition ended
+the experiment before the remaining two invocations. Neither overrun is explained
+by these successful parser samples; the performance gate stays failed.
+
 The fresh test build reproduces 24 dependency-scan warnings. The evaluated
 manifest and Xcode's printed graph already contain the named direct/transitive
 edges, so stale records alone do not explain them. AppIntents metadata messages
@@ -159,8 +168,11 @@ is claimed.
 ## Review and proposed external change
 
 The inherited checkpoint and full hosted logs have been reviewed, and the new
-local corrections have author review and negative controls. **Separate review
-of these new commits and the owner's acceptance remain pending.** PR #480 is
+local corrections have author review and negative controls. **Separate source
+review through `e16be9f7` found no concrete regression; the owner's acceptance
+remains pending.** The [review](INDEPENDENT_REVIEW.md) also records a pre-existing
+timing-boundary coverage gap, unexecuted native UI paths and synthetic WebKit
+coverage. It is not performance or release approval. PR #480 is
 still draft/open at `60f779fc`, with base `4aa46bfa`; no hosted result covers this
 candidate. The original rendered-run mismatch remains unexplained and its
 equality assertion remains enabled. Manual Simplified Pinyin proof remains

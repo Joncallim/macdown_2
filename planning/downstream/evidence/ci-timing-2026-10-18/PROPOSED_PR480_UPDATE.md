@@ -1,7 +1,9 @@
 # Proposed PR #480 evidence update — not posted
 
 This is a reviewable addendum for the existing draft integration PR, contingent
-on separate review and explicit authorization. It does not replace that PR's
+on owner acceptance and explicit authorization. Separate source review through
+`e16be9f7` found no concrete regression, with coverage limits recorded in
+[INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md). It does not replace that PR's
 broader integration description or approve merging. The current remote head is
 `60f779fc0f7324cd5dd3b7b503030e9c22d7d44f`; the base is
 `4aa46bfa6b91bf1c1d218b9b1f67480312f66396`.
@@ -44,10 +46,14 @@ measurement before treating performance acceptance as complete.
 
 This is not a green release candidate. A planned Release performance run failed
 the direct Markdown parser ceiling at 484.814584 ms against 400 ms; subsequent
-instrumented samples do not explain or replace it. Hosted cleanup overruns and
+instrumented samples do not explain or replace it. A later fixed diagnostic
+selection also failed the editing-assist ceiling at 56.881709 ms against 50 ms
+and stopped as planned. Hosted cleanup overruns and
 the original highlighting run mismatch remain unexplained. AppKit/SwiftUI runtime
-diagnostics and Xcode dependency-scan warnings remain. Native UI execution,
-independent/owner review and eight release-compliance requirements are pending.
+diagnostics and Xcode dependency-scan warnings remain. Independent source review
+found no concrete regression, but identified a pre-existing idle-boundary sampling
+gap. Native UI execution, owner review and eight release-compliance requirements
+are pending.
 #53 and #203 remain open. The large-file fallback is containment, not proof of
 the fully highlighted product performance target.
 

@@ -6,7 +6,9 @@ MostlyText has 22 open issues. The integration candidate is locally preserved on
 `fix/ci-timing-contracts`; it is not approved for merging or release. The immediate
 work corrected timing assertions, restored the original whole-call cleanup bound,
 retired a leaking benchmark window and corrected actor isolation in test suites.
-The final code still has a failed Release parser performance gate. The
+The final code still has failed Release parser and editing-assist performance
+measurements. Separate source review found no concrete regression, with explicit
+coverage limits; owner acceptance remains pending. The
 highlighting cutoff and production dependency pins remain unchanged. Editors
 retain the existing reduced-highlighting behavior and the previously integrated
 repaint correction. No new product capability is claimed.
@@ -26,7 +28,9 @@ on `dep-trial` at `29e08843325bd744fb2cd5ea5abccf96dc22fb57` (the later handoff-
 commit acknowledges transfer of the integration worktree). The new local
 changes have no hosted CI result. See the [timing investigation](downstream/evidence/ci-timing-2026-10-18/README.md)
 and the [follow-up validation](downstream/evidence/ci-timing-2026-10-18/FOLLOWUP.md)
-for exact-head outcomes and unresolved failures.
+for exact-head outcomes and unresolved failures. The later
+[independent review and fixed diagnostic](downstream/evidence/ci-timing-2026-10-18/INDEPENDENT_REVIEW.md)
+cover documentation checkpoint `e16be9f7`, whose code matches `0b85e6f0`.
 
 ## Evidence rules
 
@@ -61,10 +65,10 @@ for exact-head outcomes and unresolved failures.
 | [#119 External-file evidence](https://github.com/Joncallim/macdown_2/issues/119) | Existing automated coverage does not supply the full native external-change matrix or Release watcher/digest/latency measurements. | Run the documented Release manual/performance matrix with independent byte reads, selection/scroll observations and watcher/wakeup evidence on the chosen candidate. |
 | [#120 Open/Save interaction](https://github.com/Joncallim/macdown_2/issues/120) | Source has saving state and a destination-aware close-sheet label. End-to-end Save As progress, changing backing-file state and large-file Open latency remain unverified. | Exercise native Save As/close paths and measure Open before deciding whether another code fix is required. |
 | [#121 HTML preview authority](https://github.com/Joncallim/macdown_2/issues/121) | Safe local-resource opening stage A exists with historical mutation evidence. The app scheme handler still has mutable request state and a no-op stop path; caller lifetime, bounded I/O and WebKit proof remain. | Reconcile stages B–D with the accepted handoff; start with immutable per-load context and a deterministic stale-request regression. The warning cleanup does not resolve this issue. |
-| [#148 Licensing/provenance](https://github.com/Joncallim/macdown_2/issues/148) | Clean committed-source compliance passes. Release preflight still reports eight unresolved requirements; no exact signed artifact has been checked. | Prepare the Mermaid/D2/Graphviz provenance and source packages locally, plus the two owner decisions below. Request specific authorization before source-only publication. |
+| [#148 Licensing/provenance](https://github.com/Joncallim/macdown_2/issues/148) | Clean committed-source compliance passes. Release preflight still reports eight unresolved requirements; no exact signed artifact has been checked. The font KEEP decision is already recorded; inventory/artifact reconciliation remains. | Next independent preparation: establish Mermaid's exact embedded direct/transitive packages from the generated artifact/source map, building on the existing release-lock audit, then capture required notices. Keep D2/Graphviz preparation and Tomorrow Light's E23 decision separate. Specific authorization is required before source-only publication. |
 | [#155 Test hangs](https://github.com/Joncallim/macdown_2/issues/155) | Later discussion and #421 identify AppKit window animations exhausting dispatch workers in a reproduced schedule. This is stronger than the stale issue title, but does not explain every WebKit hang. | The later 103.099-second close delay has a reproduced contributor: the cache benchmark retained its real window and background work. A teardown regression fails without retirement; the final full-run close case takes 0.601 seconds. Investigate the remaining AppKit/SwiftUI update warnings and audit other fixture windows before a bounded native soak. This does not close every hang criterion. |
 | [#158 Identity/cutover](https://github.com/Joncallim/macdown_2/issues/158) | MostlyText name, bundle prefix, CLI name, brand assets and MIT choice are frozen. Runtime migration and final repository/public-copy cutover are separate pending work. | Consume frozen inputs in E17/E23. Keep the full-history repository mirror late, after #115; do not rename or transfer the backlog early. |
-| [#159 Fixture ownership](https://github.com/Joncallim/macdown_2/issues/159) | Integration contains typed readiness and bounded fixture ownership. The initial cleanup-only measurement was too narrow. Final tests restore the original 150 ms whole-call assertion for the zero-delay case, add separate phase diagnostics and fail a slow-setup negative control. Hosted overruns still have no established causal explanation. | Independently review the local timing correction, obtain authorized hosted validation, and reconcile PR #473 against integration before closure. |
+| [#159 Fixture ownership](https://github.com/Joncallim/macdown_2/issues/159) | Integration contains typed readiness and bounded fixture ownership. The initial cleanup-only measurement was too narrow. Final tests restore the original 150 ms whole-call assertion for the zero-delay case, add separate phase diagnostics and fail a slow-setup negative control. Separate source review found no regression. Hosted overruns still have no established causal explanation. | Obtain owner acceptance and authorized hosted validation, and reconcile PR #473 against integration before closure. |
 | [#173 Native navigation](https://github.com/Joncallim/macdown_2/issues/173) | Native activation already exists; the integration work adds lifecycle/currentness protections. PR #474 is an alternative with overlap, not an automatic missing feature. | Verify actual visible reveal below the viewport, tab activation and stale asynchronous intent on the native app; compare alternatives before adopting one. |
 | [#183 Merged-code audit](https://github.com/Joncallim/macdown_2/issues/183) | Many original findings have subsequent fixes, while `CLOSURE_REGISTER.md` still records partial safety families and native/fault-injection gaps. Old source findings must not be reported as current without rechecking. | Build criterion-to-source/test/native mappings for F01–F23 and later review additions; take the first still-reproducible bounded defect, preserving exact scalar and lifetime invariants. |
 | [#203 Large Markdown latency](https://github.com/Joncallim/macdown_2/issues/203) | The 8,192 UTF-16 fallback contains known stalls by reducing highlighting. It does not satisfy the original fully highlighted 1 MB budget. Dependency experiments remain isolated and unadopted. The second final planned Release series run failed the direct 1 MB parser ceiling at 484.814584 ms versus 400 ms; its cause remains unestablished. | Keep the cutoff/pins. Continue the measured grammar/dependency investigation only under its reviewed contract; verify edits and correctness before any adoption. Keep open. |
@@ -72,9 +76,11 @@ for exact-head outcomes and unresolved failures.
 
 ## Sequence and concrete review gates
 
-1. **Finish this integration checkpoint.** Independently review local commits,
-   assess the reproduced fixture fix and corrected deadline, investigate the failed
-   Release parser ceiling and remaining runtime/build-tool diagnostics, then obtain
+1. **Finish this integration checkpoint.** Separate source review through
+   `e16be9f7` found no concrete regression. Preserve the failed Release parser
+   ceiling and subsequent 56.881709 ms editing-assist result against 50 ms; the
+   fixed context experiment stopped on that new failure without proving a cause.
+   Address remaining runtime/build-tool diagnostics and owner acceptance, then obtain
    authorization to push the reviewed branch for fresh hosted CI. The exact proposed
    external change is a fast-forward of remote `integration-final` from `60f779fc`
    to the accepted local tip; it has not been performed. PR #480 stays draft/unmerged.
@@ -95,7 +101,7 @@ for exact-head outcomes and unresolved failures.
 
 The eight release-preflight failures are: D2 anonymous source location; D2 Go and
 embedded-WASM license/source inventory; Mermaid bundled npm provenance; the
-SwiftUIMath font-set owner decision; Tomorrow Light naming/provenance decision;
+SwiftUIMath font-set inventory reconciliation; Tomorrow Light naming/provenance decision;
 Viz/Graphviz anonymous source location; exact Graphviz 16.0.0/Viz 3.30.0 source,
 build instructions and hashes; and Graphviz-linked library confirmation.
 The generated, ignored `MacDown2/MacDown2/Info.plist` makes the working-directory
@@ -106,7 +112,9 @@ registering a generated artifact to silence the check.
 Recommended owner choices are concrete: retain neutral diagram presentation
 until a reviewed cross-engine/print policy is accepted; preserve the 8,192 cutoff
 and current lock while dependency correctness is unresolved; retain all currently
-licensed fonts until the font-set decision is explicit; and reconcile the
+licensed fonts, following the KEEP decision already recorded in
+[#148 comment 5868785863](https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5868785863)
+and `compliance/RELEASE_PREPARATION.md`; and reconcile the
 Tomorrow Light name with the recorded asset provenance rather than assuming a
 name grants provenance. These are recommendations, not adopted policy changes.
 
@@ -122,4 +130,5 @@ has narrower coverage than automated input-method proof.
 No issue was closed, no PR was changed, and no branch was pushed by this checkpoint.
 No signing, notarisation, credential work, source/binary publication, upstream
 submission, worktree deletion or repository cutover is authorized here. The owner
-review and independent review of the new local corrections remain pending.
+review remains pending. Separate source review of the local corrections through
+`e16be9f7` is complete; it does not replace the failed performance or release gates.

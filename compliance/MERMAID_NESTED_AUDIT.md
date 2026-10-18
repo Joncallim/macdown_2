@@ -34,9 +34,13 @@ authorized fetcher. The npm registry metadata URL
 that fetcher. Thus the local bundle hash and release lock are proven, while
 the generated source-map/module-content linkage remains explicitly open.
 
-## Declared nested inputs requiring lockfile resolution
+## Recorded release-lock inputs
 
-| Package | Declared range | Exact bundled version | License text |
+These are the earlier audit's release-lock resolutions, not yet proof of
+inclusion in the generated bundle. The workspace parser entry still needs its
+exact release-package identity.
+
+| Package | Declared range | Release-lock resolution | License text |
 |---|---|---|---|
 | `@braintree/sanitize-url` | `^7.1.2` | `7.1.2` | pending source package |
 | `@iconify/utils` | `^3.0.2` | `3.0.2` | pending source package |
@@ -64,15 +68,17 @@ the generated source-map/module-content linkage remains explicitly open.
 
 1. Verify the official Mermaid v11.17.2 release source at commit `dcb694d`
    and retain its lockfile without modifying the vendored runtime file.
-2. Resolve the 20 names above from that lockfile, including transitive
-   packages actually included in the generated `dist/mermaid.min.js`.
+2. Reconcile the 21 declared inputs above with the generated artifact/source map,
+   including the workspace parser's exact release identity and transitive
+   packages actually included in `dist/mermaid.min.js`.
 3. For every resolved package, record package name, exact version, source
    revision/tarball hash, SPDX/licence expression, and the verbatim official
    licence/notice file in `compliance/licenses/`.
 4. Recompute the vendored bundle hash and record the lockfile/source evidence
    alongside the inventory entry. A mismatch stops the audit.
 
-Exact nested versions are now established from the official lockfile. The
-required verbatim license texts and proof of which resolved packages are
-actually embedded remain open; no source package or notice was fabricated by
-this tranche.
+The registry-package resolutions above are recorded from the official lockfile.
+The workspace parser identity, required verbatim license texts and proof of
+which resolved packages are actually embedded remain open; no source package or
+notice was fabricated by this tranche. The 2026-10-18 review clarified these
+limits without changing the runtime bundle, inventory status or dependency pins.
