@@ -21,7 +21,7 @@ field was changed:
 | --- | --- | --- |
 | `d2` — source-location verification | Planned source URL; anonymous retrieval not verified | Existing `ARCHIVE_PLAN.md` identifies the upstream package and archive evidence still required. Do not publish or mark verified here. |
 | `d2` — `LC-03` | Go revision/module provenance open | Identify the D2 Go revision/modules, licences, upstream package and one-line patch. |
-| `mermaid` — nested-bundle item | Exact bundled dependency versions/licences unresolved | Resolve the v11.17.2 release lockfile and add required licence texts. |
+| `mermaid` — nested-bundle item | Complete nested attribution and distributed texts unresolved | The [generated-bundle audit](evidence/mermaid-11.17.2/README.md) now links the exact artifact, parser and mapped modules to captured licence texts. Resolve the remaining prebundle attributions/candidate-version limits before installing the complete inventory/notices/SBOM. |
 | `swiftui-math-fonts` — product-decision item | Open in checker, but owner decision is recorded externally as KEEP all 12 for 1.0 in issue #148 comment 5868785863 | Retain the 12 notices/digests and reconcile the checker bookkeeping; this ledger does not waive the artifact check. |
 | `theme-tomorrow-light` — E23 item | Naming/source decision | Existing provenance says the palette is GitHub-derived, not Tomorrow-derived; E23 must decide whether to rename or re-source it. |
 | `viz-js` — source-location verification | Planned source URL; anonymous retrieval not verified | Existing `ARCHIVE_PLAN.md` identifies the exact Graphviz/viz-js material and digest evidence still required. |
@@ -42,8 +42,10 @@ safe preparation steps are source/archive assembly and digest review only:
 
 1. identify the exact D2 Go source revision and module licences;
 2. identify the Graphviz/viz-js source and any linked-library obligations;
-3. resolve Mermaid’s bundled dependency versions from its release lockfile;
-4. obtain owner decisions for the font set and Tomorrow Light naming.
+3. complete Mermaid's remaining prebundle attribution and notice gaps from the
+   generated-artifact evidence, rather than equating lock resolution with inclusion;
+4. reconcile the recorded font KEEP decision in inventory/artifact evidence and
+   obtain the E23 Tomorrow Light naming decision.
 
 Only after an owner-authorized source-only publication may the URLs and
 `source_offer.status` values be updated and the release candidate checked.

@@ -1,6 +1,32 @@
 # Mermaid 11.17.2 nested-bundle audit
 
-Audit date: 2026-10-14. This is provenance evidence, not legal clearance.
+## Current owner summary — 2026-10-18
+
+The missing generated-artifact linkage is now available: the official npm archive
+contains a bundle byte-identical to the shipped file and its source map. A bounded
+offline audit traces mapped code through the embedded parser and captures exact
+package licence texts. It exposes attribution work hidden by the old list of
+21 direct dependency ranges, including two Lodash versions and React-derived
+code inside KaTeX.
+
+**Nested notice closure remains incomplete.** Seventy-two package/version records
+have versioned source-map or identical parser-chunk linkage; two more are exact
+content matches against named candidate archives whose original prebundle
+resolution is not proved by the automated verifier. The audit also retains
+3,980 parser positions with no inner mapping and concrete nested-attribution gaps.
+No runtime file, dependency pin, inventory verification status or shipped notice
+was changed.
+
+See the [current evidence and reproduction guide](evidence/mermaid-11.17.2/README.md)
+and [module/notice mapping](evidence/mermaid-11.17.2/module-notice-map.json).
+The checker still reports the same eight release blockers. This is provenance
+evidence, not legal clearance or issue closure.
+
+## Historical precursor — 2026-10-14
+
+The remainder records the earlier fetcher's limitations and release-lock intake.
+Its generated-artifact access gap is superseded by the 2026-10-18 evidence above;
+its lock entries alone remain insufficient to prove inclusion.
 
 ## Verified local evidence
 
@@ -64,7 +90,7 @@ exact release-package identity.
 | `ts-dedent` | `^2.2.0` | `2.2.0` | pending source package |
 | `uuid` | `^11.1.0 \|\| ^12 \|\| ^13 \|\| ^14.0.0` | `14.0.0` | pending source package |
 
-## Smallest reproducible completion step
+## Original completion plan and remaining boundary
 
 1. Verify the official Mermaid v11.17.2 release source at commit `dcb694d`
    and retain its lockfile without modifying the vendored runtime file.
@@ -77,8 +103,8 @@ exact release-package identity.
 4. Recompute the vendored bundle hash and record the lockfile/source evidence
    alongside the inventory entry. A mismatch stops the audit.
 
-The registry-package resolutions above are recorded from the official lockfile.
-The workspace parser identity, required verbatim license texts and proof of
-which resolved packages are actually embedded remain open; no source package or
-notice was fabricated by this tranche. The 2026-10-18 review clarified these
-limits without changing the runtime bundle, inventory status or dependency pins.
+The registry-package resolutions above were recorded from the official lockfile.
+The new audit proves the workspace parser's published identity and records
+generated mappings and package licence texts. It does not complete the deeper
+prebundle attributions or installation of a complete notice inventory. No source
+package or notice was fabricated, and the runtime bundle and pins remain unchanged.
