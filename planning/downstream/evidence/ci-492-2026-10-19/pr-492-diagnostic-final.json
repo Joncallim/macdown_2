@@ -1,0 +1,15 @@
+{
+  "source": "3236a61ecb784e7015debb0aa514640a811f0770",
+  "patchSHA256": "8c2fe3ffa8134632722d3db24af36aeb397d3e311c67ba4731de17ce3e0ad834",
+  "command": [
+    "swift",
+    "test",
+    "--no-parallel",
+    "--force-resolved-versions",
+    "--filter",
+    "shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle|cleanupDeadlineIncludesBlockingCancellationDispatch"
+  ],
+  "started": "2026-10-18T23:44:29.479545+00:00",
+  "exitCode": 0,
+  "finished": "2026-10-18T23:44:51.747812+00:00"
+}

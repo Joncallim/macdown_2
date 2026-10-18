@@ -1,0 +1,23 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Compiling RevisionProbeTests StaleRevisionTests.swift
+[4/6] Emitting module RevisionProbeTests
+[5/8] Emitting module NeonRevisionProbePackageTests
+[6/8] Compiling NeonRevisionProbePackageTests runner.swift
+[6/8] Write Objects.LinkFileList
+[7/8] Linking NeonRevisionProbePackageTests
+Build complete! (2.75s)
+Test Suite 'All tests' started at 2026-10-19 07:40:53.411.
+Test Suite 'All tests' passed at 2026-10-19 07:40:53.419.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.009) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test anEditWhileTokensArePendingMustPreventStaleStyleApplication() started.
+REVISION_PROBE request=0 current=1 applied=1 validation=success({0, 10})
+✘ Test anEditWhileTokensArePendingMustPreventStaleStyleApplication() recorded an issue at StaleRevisionTests.swift:35:5: Expectation failed: (interface.applications → [Neon.TokenApplication(tokens: [<"old-revision": {0, 10}>], range: nil, action: Neon.TokenApplication.Action.replace)]).isEmpty → false
+✘ Test anEditWhileTokensArePendingMustPreventStaleStyleApplication() recorded an issue at StaleRevisionTests.swift:36:5: Expectation failed: (result → .success({0, 10})) == .stale
+✘ Test anEditWhileTokensArePendingMustPreventStaleStyleApplication() failed after 0.001 seconds with 2 issues.
+✘ Test run with 1 test in 0 suites failed after 0.001 seconds with 2 issues.

@@ -30,6 +30,20 @@ struct TextFilterFixtureCleanupSafetyTests {
     private final class BlockingCancellationProbe: @unchecked Sendable {
         private let lock = NSLock()
         private var finished = false
+        private var phases: [(TextFilterFixtures.CleanupPhase, ContinuousClock.Instant)] = []
+
+        func record(_ phase: TextFilterFixtures.CleanupPhase) {
+            let instant = ContinuousClock.now
+            lock.lock()
+            phases.append((phase, instant))
+            lock.unlock()
+        }
+
+        func timeline(from start: ContinuousClock.Instant) -> String {
+            lock.lock()
+            defer { lock.unlock() }
+            return phases.map { "\($0.0.rawValue)=\(start.duration(to: $0.1))" }.joined(separator: ", ")
+        }
 
         var isFinished: Bool {
             lock.lock()
@@ -140,10 +154,13 @@ struct TextFilterFixtureCleanupSafetyTests {
         var observedDirectory: URL?
         let fixtureStarted = ContinuousClock.now
         var cleanupStarted: ContinuousClock.Instant?
+        let observeCleanup: @Sendable (TextFilterFixtures.CleanupPhase) -> Void = { probe.record($0) }
 
         do {
             try await TextFilterFixtures
-                .withOwnedTemporaryDirectory(cleanupTimeout: .milliseconds(25)) { directory, owner in
+                .withOwnedTemporaryDirectory(
+                    cleanupTimeout: .milliseconds(25), cleanupObserver: observeCleanup
+                ) { directory, owner in
                     observedDirectory = directory
                     if setupDelay > .zero {
                         try await Task.sleep(for: setupDelay)
@@ -170,18 +187,24 @@ struct TextFilterFixtureCleanupSafetyTests {
         let finished = ContinuousClock.now
         let setupElapsed = fixtureStarted.duration(to: started)
         let cleanupElapsed = started.duration(to: finished)
+        let timeline = probe.timeline(from: started)
+        print("CLEANUP_TIMELINE setup=\(setupElapsed), cleanup=\(cleanupElapsed), \(timeline)")
         if setupDelay == .zero {
             #expect(
                 fixtureStarted.duration(to: finished) < .milliseconds(150),
-                "whole fixture call: setup \(setupElapsed), cleanup \(cleanupElapsed)"
+                "whole fixture call: setup \(setupElapsed), cleanup \(cleanupElapsed); \(timeline)"
             )
         }
         #expect(
             cleanupElapsed < .milliseconds(150),
-            "fixture setup took \(setupElapsed); cleanup includes cancellation dispatch"
+            "fixture setup took \(setupElapsed); cleanup includes cancellation dispatch; \(timeline)"
         )
         let directory = try #require(observedDirectory)
         #expect(FileManager.default.fileExists(atPath: directory.path))
+        try await finishBlockingCancellation(probe, directory: directory)
+    }
+
+    private func finishBlockingCancellation(_ probe: BlockingCancellationProbe, directory: URL) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(1))
         while !probe.isFinished, ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(10))

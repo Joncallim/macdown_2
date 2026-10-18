@@ -1,0 +1,15 @@
+{
+  "source": "3236a61ecb784e7015debb0aa514640a811f0770",
+  "patchSHA256": "2c2ea242b66a6aebd64679a9a464e0b5ccb11cc9879a59236fd5e39653995964",
+  "command": [
+    "swift",
+    "test",
+    "--no-parallel",
+    "--force-resolved-versions",
+    "--filter",
+    "HighlightingSizeFallbackTests|TextFilterFixtureCleanupSafetyTests"
+  ],
+  "started": "2026-10-18T23:42:06.650889+00:00",
+  "exitCode": 0,
+  "finished": "2026-10-18T23:42:42.024477+00:00"
+}

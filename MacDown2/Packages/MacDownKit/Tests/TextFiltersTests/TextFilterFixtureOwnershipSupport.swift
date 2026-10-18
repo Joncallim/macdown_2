@@ -515,6 +515,7 @@ extension TextFilterFixtures {
     /// removed, preserving the fixture for late process I/O and callbacks.
     static func withOwnedTemporaryDirectory<T: Sendable>(
         cleanupTimeout: Duration = .seconds(5),
+        cleanupObserver: (@Sendable (CleanupPhase) -> Void)? = nil,
         _ operation: (URL, TaskOwner) async throws -> T
     ) async throws -> T {
         let directory = try makeTemporaryDirectory()
@@ -527,15 +528,20 @@ extension TextFilterFixtures {
             bodyOutcome = .failure(error)
         }
 
+        cleanupObserver?(.cancellationRequested)
         let cancellationAndJoinTask = Task.detached {
+            cleanupObserver?(.cancellationTaskStarted)
             let joinTask = await owner.cancelAllAndCreateJoinTask()
+            cleanupObserver?(.cancellationReturned)
             return await withTaskCancellationHandler(operation: {
                 await joinTask.value
             }, onCancel: {
                 joinTask.cancel()
             })
         }
-        let cleanupResult = await waitForCleanup(cancellationAndJoinTask, timeout: cleanupTimeout)
+        let cleanupResult = await waitForCleanup(
+            cancellationAndJoinTask, timeout: cleanupTimeout, observer: cleanupObserver
+        )
         switch cleanupResult {
         case let .completed(report):
             if !report.unresolved.isEmpty {
@@ -592,20 +598,35 @@ extension TextFilterFixtures {
 }
 
 extension TextFilterFixtures {
+    enum CleanupPhase: String, Sendable {
+        case cancellationRequested
+        case cancellationTaskStarted
+        case cancellationReturned
+        case watchdogTaskStarted
+        case watchdogSleepReturned
+        case timeoutGateCompleted
+        case gateWaitReturned
+    }
+
     private static func waitForCleanup(
         _ joinTask: Task<FixtureCleanupReport, Never>,
-        timeout: Duration
+        timeout: Duration,
+        observer: (@Sendable (CleanupPhase) -> Void)?
     ) async -> CleanupWaitResult {
         let gate = CleanupGate()
         let completionObserver = Task.detached {
             await gate.complete(.completed(joinTask.value))
         }
         let watchdog = Task.detached {
+            observer?(.watchdogTaskStarted)
             try? await Task.sleep(for: timeout)
+            observer?(.watchdogSleepReturned)
             guard !Task.isCancelled else { return }
             await gate.complete(.timedOut)
+            observer?(.timeoutGateCompleted)
         }
         let result = await gate.wait()
+        observer?(.gateWaitReturned)
         watchdog.cancel()
         completionObserver.cancel()
         if case .timedOut = result {

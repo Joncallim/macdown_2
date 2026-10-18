@@ -162,6 +162,7 @@ struct HighlightingSizeFallbackTests {
         #expect(editor.mode == .reducedForTestPolicy)
         var checksWhileNotIdle = 0
         var wasReducedAfterLastEdit = true
+        var timeline: [String] = []
         // Keep typing: each edit postpones the restore.
         for index in 0 ..< 4 {
             // The third pause follows a deletion to the restore threshold. The second is above it.
@@ -170,6 +171,11 @@ struct HighlightingSizeFallbackTests {
                 checksWhileNotIdle += 1
                 #expect(editor.mode == .reducedForTestPolicy, "restored before an idle delay had elapsed")
             }
+            timeline.append(
+                "pause \(index): elapsed=\(clock.now - lastEditStarted), mode=\(editor.mode), "
+                    + "revision=\(editor.system.contentRevision), generation=\(editor.highlighter.generation), "
+                    + "tokens=\(editor.highlighter.styledTokenCount)"
+            )
             let modeBeforeEdit = editor.mode
             lastEditStarted = clock.now
             editor.typeOrDelete(at: 50, insert: index.isMultiple(of: 2))
@@ -182,7 +188,33 @@ struct HighlightingSizeFallbackTests {
         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
         let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
-        #expect(editor.renderedRuns() == fresh.renderedRuns())
+        let expectedRuns = fresh.renderedRuns()
+        let matches = editor.renderedRuns() == expectedRuns
+        #expect(editor.renderedRuns() == expectedRuns, "\(timeline.joined(separator: "; "))")
+        if !matches {
+            // Preserve the failed assertion before observing whether delayed work or an explicit
+            // revalidation changes the result. These bounded probes never convert failure to success.
+            await editor.settle(.seconds(2))
+            reportRestoreStyles("after2s", editor: editor, fresh: fresh, initialReference: expectedRuns)
+            editor.highlighter.invalidateAll()
+            await editor.settle(.seconds(2))
+            reportRestoreStyles("afterInvalidation", editor: editor, fresh: fresh, initialReference: expectedRuns)
+            editor.highlighter.setLanguage(nil)
+            editor.highlighter.setLanguage("markdown")
+            await editor.settle(.seconds(2))
+            reportRestoreStyles("afterRebuild", editor: editor, fresh: fresh, initialReference: expectedRuns)
+        }
+    }
+
+    private func reportRestoreStyles(
+        _ stage: String, editor: HighlightedEditor, fresh: HighlightedEditor, initialReference: [RenderedRun]
+    ) {
+        let currentReference = fresh.renderedRuns()
+        let observed = editor.renderedRuns()
+        print(
+            "RESTORE_STYLE_PROBE \(stage): referenceUnchanged=\(currentReference == initialReference), "
+                + "matchesInitial=\(observed == initialReference), matchesCurrent=\(observed == currentReference)"
+        )
     }
 
     /// Below the cut-off the fallback is invisible: typing and deleting a block

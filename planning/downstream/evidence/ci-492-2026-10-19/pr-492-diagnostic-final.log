@@ -1,0 +1,35 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[2/4] Write swift-version--58304C5D6DBC2206.txt
+[4/8] Emitting module TextFiltersTests
+[5/8] Compiling TextFiltersTests TextFilterFixtureCleanupSafetyTests.swift
+[6/8] Emitting module HighlightingTests
+[7/8] Compiling HighlightingTests HighlightingSizeFallbackTests.swift
+[7/9] Write Objects.LinkFileList
+[8/9] Linking MacDownKitPackageTests
+Build complete! (11.07s)
+Test Suite 'Selected tests' started at 2026-10-19 07:44:46.990.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-19 07:44:47.001.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-19 07:44:47.001.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-19 07:44:47.001.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.010) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite HighlightingSizeFallbackTests started.
+◇ Test shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:) started.
+◇ Test case passing 1 argument includesIdlePause → false to shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:) started.
+◇ Test case passing 1 argument includesIdlePause → true to shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:) started.
+✔ Test shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:) with 2 test cases passed after 3.960 seconds.
+✔ Suite HighlightingSizeFallbackTests passed after 3.960 seconds.
+◇ Suite "TextFilter fixture cleanup safety" started.
+◇ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+◇ Test case passing 1 argument setupDelay → 0.0 seconds to cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+CLEANUP_TIMELINE setup=0.00044325 seconds, cleanup=0.03176225 seconds, cancellationRequested=1.791e-06 seconds, cancellationTaskStarted=3.4e-05 seconds, watchdogTaskStarted=8.4125e-05 seconds, watchdogSleepReturned=0.031586875 seconds, timeoutGateCompleted=0.031596666 seconds, gateWaitReturned=0.031601375 seconds
+◇ Test case passing 1 argument setupDelay → 0.2 seconds to cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+CLEANUP_TIMELINE setup=0.212036209 seconds, cleanup=0.028977 seconds, cancellationRequested=2.208e-06 seconds, cancellationTaskStarted=1.7333e-05 seconds, watchdogTaskStarted=2.6125e-05 seconds, watchdogSleepReturned=0.028917125 seconds, timeoutGateCompleted=0.028928041 seconds, gateWaitReturned=0.028933291 seconds
+✔ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) with 2 test cases passed after 0.641 seconds.
+✔ Suite "TextFilter fixture cleanup safety" passed after 0.641 seconds.
+✔ Test run with 2 tests in 2 suites passed after 4.603 seconds.

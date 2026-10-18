@@ -1,0 +1,14 @@
+{
+  "source": "3236a61ecb784e7015debb0aa514640a811f0770",
+  "command": [
+    "swift",
+    "test",
+    "--no-parallel",
+    "--force-resolved-versions",
+    "--filter",
+    "shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle|cleanupDeadlineIncludesBlockingCancellationDispatch"
+  ],
+  "started": "2026-10-18T23:36:07.551804+00:00",
+  "exitCode": 0,
+  "finished": "2026-10-18T23:36:33.803885+00:00"
+}

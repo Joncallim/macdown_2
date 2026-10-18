@@ -1,0 +1,21 @@
+{
+  "productionHead": "3236a61ecb784e7015debb0aa514640a811f0770",
+  "neonRevision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+  "rearrangeRevision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+  "purpose": "Isolated exact validator/source subset: prove or reject stale asynchronous styling across one content revision; does not establish hosted mismatch cause. No production checkout/pin edited.",
+  "sourceHashes": {
+    "Sources/Neon/TextSystemInterface.swift": "20c6b1a610d9142930bf9d20a009fccb05a0af2b43b54e36b49fc8258cd50c14",
+    "Sources/Neon/Token.swift": "c996f81d81f6c0259a0fbd247b89a5fc2f8dd140a2270af2bbb950c590c0be93",
+    "Sources/Neon/TokenSystemValidator.swift": "4cad113e7ed4a84fb198a2aa412152ca69a37f38bc435e2d27ac5e43a342fa6a",
+    "Sources/RangeState/AwaitableQueue.swift": "08b5aab2af7f5a04db83b0fd60158ccb6bc49c6805a822dfebcba983dcb3cb27",
+    "Sources/RangeState/HybridSyncAsyncValueProvider.swift": "713ec76e95805dc9f3e711c0be4621dd49d8d9da3cee70a4cdeebfbb3b5693d0",
+    "Sources/RangeState/HybridValueProvider+RangeProcessor.swift": "24c21e0b87c7a5dc8d9adee27e39f1d97e8c3ac62585c41bc3605bd71fa2ece0",
+    "Sources/RangeState/RangeInvalidationBuffer.swift": "40181c9e88b80c11a378697c16bd30aa491483b8dbba92c7bb8d132c8340d131",
+    "Sources/RangeState/RangeProcessor.swift": "2978c75e9bdced88071b0807bba3c33c47907514bf695f42f38516d697d6733f",
+    "Sources/RangeState/RangeTarget.swift": "01ee59af8a8040ecbdb84ad21767e9e4794c23d1240cf47948864b0dea39e1e4",
+    "Sources/RangeState/RangeValidator.swift": "1a8c6f2e9b4cf1761171b9a8b3c886dc9198f92865a70889938b1fdc693688b9",
+    "Sources/RangeState/SinglePhaseRangeValidator.swift": "59efa248f3498846ce55b4c5248cbbea108f5ab91acb7318f966132f90dc41a0",
+    "Sources/RangeState/ThreePhaseRangeValidator.swift": "4dcbff84e8d5ae08e1a073b912cd6d58cd04ef2cea3b82eab7ed2f702ca36604",
+    "Sources/RangeState/Versioned.swift": "1e333e166cd89e8ff31c3b402e12fcb923e84a9a19e36fade5160c2a9676cca4"
+  }
+}

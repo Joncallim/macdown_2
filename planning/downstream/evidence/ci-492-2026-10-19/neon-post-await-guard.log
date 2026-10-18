@@ -1,0 +1,19 @@
+[0/1] Planning build
+Building for debugging...
+[0/3] Write sources
+[1/3] Write swift-version--58304C5D6DBC2206.txt
+[3/5] Emitting module Neon
+[4/5] Compiling Neon TokenSystemValidator.swift
+[4/6] Write Objects.LinkFileList
+[5/6] Linking NeonRevisionProbePackageTests
+Build complete! (1.58s)
+Test Suite 'All tests' started at 2026-10-19 07:41:39.619.
+Test Suite 'All tests' passed at 2026-10-19 07:41:39.626.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test anEditWhileTokensArePendingMustPreventStaleStyleApplication() started.
+REVISION_PROBE request=0 current=1 applied=0 validation=stale
+✔ Test anEditWhileTokensArePendingMustPreventStaleStyleApplication() passed after 0.001 seconds.
+✔ Test run with 1 test in 0 suites passed after 0.001 seconds.
