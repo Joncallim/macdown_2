@@ -67,7 +67,9 @@ struct HighlightingSizeFallbackLifecycleTests {
         #expect(system.text == large)
 
         system.setText(Fixtures.markdown(units: 2000))
-        try? await Task.sleep(for: .milliseconds(500))
+        for _ in 0 ..< 300 where highlighter.state.mode != .full {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
         #expect(highlighter.state.mode == .full)
         highlighter.tearDown()
     }

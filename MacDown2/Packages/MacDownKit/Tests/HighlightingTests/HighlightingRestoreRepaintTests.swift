@@ -42,7 +42,8 @@ struct HighlightingRestoreRepaintTests {
         #expect(editor.highlighter.repaintCount == 0)
 
         editor.textView.insertText(small, replacementRange: NSRange(location: 0, length: editor.length))
-        await editor.settle(.seconds(3)) // idle delay (200 ms in the test policy) plus time to style
+        // Idle delay (200 ms in the test policy), then styling and one repaint.
+        #expect(await editor.waitUntil { editor.mode == .full && editor.highlighter.repaintCount >= 1 })
 
         #expect(editor.mode == .full)
         #expect(!editor.isPlain)
@@ -59,7 +60,7 @@ struct HighlightingRestoreRepaintTests {
         await editor.settle(.milliseconds(400)) // restore not yet due: still reduced
         let edits = editor.highlighter.gate.characterEditCount
 
-        await editor.settle(.seconds(3))
+        #expect(await editor.waitUntil { editor.mode == .full && editor.highlighter.repaintCount >= 1 })
         #expect(editor.mode == .full)
         #expect(editor.highlighter.repaintCount >= 1)
         #expect(editor.textView.string == text)
@@ -84,8 +85,8 @@ struct HighlightingRestoreRepaintTests {
         let window = hosted(editor)
         defer { window.orderOut(nil) }
         editor.textView.insertText(small, replacementRange: NSRange(location: 0, length: editor.length))
-        await editor.settle(.seconds(3))
-        #expect(editor.mode == .full)
+        #expect(await editor.waitUntil { editor.mode == .full && editor.highlighter.repaintCount >= 1 })
+        await editor.settle(.seconds(2.5)) // let the 2 s repaint window close
         let count = editor.highlighter.repaintCount
         #expect(count >= 1)
 

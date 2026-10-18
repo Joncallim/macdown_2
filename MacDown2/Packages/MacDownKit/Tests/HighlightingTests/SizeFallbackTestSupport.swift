@@ -88,6 +88,21 @@ extension HighlightedEditor {
         try? await Task.sleep(for: duration)
     }
 
+    /// Polls `condition` every 50 ms for up to `timeout`. Used instead of a fixed sleep wherever a timer-driven
+    /// transition (restore after idle) must have happened: a fixed sleep is shorter than the transition on a loaded
+    /// hosted runner and made `shrinkingBelowTheRestoreThreshold...` fail there while passing locally.
+    func waitUntil(_ timeout: Duration = .seconds(15), _ condition: () -> Bool) async -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now + timeout
+        while clock.now < deadline {
+            if condition() {
+                return true
+            }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return condition()
+    }
+
     /// Replaces `range` as a paste does, then closes the undo group.
     func paste(_ text: String, over range: NSRange) {
         textView.insertText(text, replacementRange: range)
