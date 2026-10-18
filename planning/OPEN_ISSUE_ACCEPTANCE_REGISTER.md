@@ -52,6 +52,21 @@ negative controls and a simple real WebKit render support that bounded fix.
 Mutable resource-root confusion and post-stop delivery were also reproduced and
 remain open; no resource-authority or full native release claim follows.
 
+The [combined overnight checkpoint](downstream/OVERNIGHT_CHECKPOINT_2026-10-18.md)
+and [one-shot validation record](downstream/evidence/overnight-consolidation-2026-10-18/README.md)
+cover clean `400d475caaae130cdce1f6de4c6904027e700827`, including stop-aware
+resource delivery, settings validation and licence packaging. Serial package and
+app-target non-performance gates, Debug/Release app and CLI builds, and ordinary
+source/artifact compliance pass. Two existing Neon known issues, two disabled
+interactive PDF tests, persistent build/runtime diagnostics and seven release
+compliance findings remain explicit. Independent review of the complete overnight
+diff found no new material interaction defect. This consolidation reran no
+performance suites, supplied no native UI/CJK acceptance and changed no remote
+state; earlier performance and hosted failures remain binding. The minimum next
+owner decisions concern the file-only asset workflow and shipping OS-access
+configuration. The later documentation commit preserves exact source equivalence
+to this tested head; it does not replace the recorded build provenance.
+
 ## Evidence rules
 
 - **Source:** implementation or a gap inspected in this candidate. This alone

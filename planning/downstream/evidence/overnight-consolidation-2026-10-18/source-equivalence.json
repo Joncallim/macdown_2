@@ -1,0 +1,81 @@
+{
+  "tested_head": "400d475caaae130cdce1f6de4c6904027e700827",
+  "scope": "The consolidation changes only the owner checkpoint, acceptance register and its evidence directory. All tracked top-level entries other than planning must retain these exact Git objects. Product, tests, build configuration, dependencies and compliance implementation/inventory are unchanged. Final commit identity and clean verification are recorded after commit in raw final-checkpoint/provenance.json.",
+  "unchanged_git_objects": {
+    ".gitattributes": {
+      "mode": "100644",
+      "kind": "blob",
+      "object": "f99b16dae77f174d481e45f43a018ed18edd5398"
+    },
+    ".github": {
+      "mode": "040000",
+      "kind": "tree",
+      "object": "6e038e5b2cef2f20a3b0ac9f47dd2f764095a5f6"
+    },
+    ".gitignore": {
+      "mode": "100644",
+      "kind": "blob",
+      "object": "2322c8ccd86d58541403f5768dba13913370bbe4"
+    },
+    ".swiftformat": {
+      "mode": "100644",
+      "kind": "blob",
+      "object": "91d460c33bef1ee6aa7d1ad9edffa4fcbfb616a6"
+    },
+    ".swiftlint.yml": {
+      "mode": "100644",
+      "kind": "blob",
+      "object": "9934ea20faefce67e2b929f859cbfcbdecc48425"
+    },
+    ".tx": {
+      "mode": "040000",
+      "kind": "tree",
+      "object": "e58ac831ded59f026ab542745d885b1e75cf3de7"
+    },
+    "AGENTS.md": {
+      "mode": "100644",
+      "kind": "blob",
+      "object": "75b758b86838138167194b6187a896afcb43ac05"
+    },
+    "LICENSE": {
+      "mode": "100644",
+      "kind": "blob",
+      "object": "2ef10d4a3331498c5b5d2ebb49e71813543ad503"
+    },
+    "MacDown2": {
+      "mode": "040000",
+      "kind": "tree",
+      "object": "b69f5a9f2cc3c9a6d620087f7069b900c5b57398"
+    },
+    "README.md": {
+      "mode": "100644",
+      "kind": "blob",
+      "object": "c45b76abc5cb086c4a7776a85d586724256c72b6"
+    },
+    "compliance": {
+      "mode": "040000",
+      "kind": "tree",
+      "object": "8b14a777d9cefea315dbdf2c33f7163b1efbc65a"
+    },
+    "design": {
+      "mode": "040000",
+      "kind": "tree",
+      "object": "2c53b0e4908af76326eb62dd1ece334fd5f32466"
+    },
+    "release": {
+      "mode": "040000",
+      "kind": "tree",
+      "object": "ae40d6c70893933aba0cf2528d738a099dfe2c73"
+    },
+    "website": {
+      "mode": "040000",
+      "kind": "tree",
+      "object": "067e016c0002d2fe8826e158f1d5e43bd0e331e5"
+    }
+  },
+  "permitted_change_paths": [
+    "planning/OPEN_ISSUE_ACCEPTANCE_REGISTER.md",
+    "planning/downstream/OVERNIGHT_CHECKPOINT_2026-10-18.md",
+    "planning/downstream/evidence/overnight-consolidation-2026-10-18/"
+  ]
+}

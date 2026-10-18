@@ -1,0 +1,913 @@
+{
+  "head": "400d475caaae130cdce1f6de4c6904027e700827",
+  "base": "60f779fc0f7324cd5dd3b7b503030e9c22d7d44f",
+  "tree": "28f78670ce5ff43e06c3e7cf36aaacb2f9d8e763",
+  "commands": [
+    {
+      "name": "environment-os",
+      "argv": [
+        "sw_vers"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:02:26.708466+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:26.726445+00:00",
+      "seconds": 0.017476582899689674,
+      "log_sha256": "e369ac71ae1ffdf3230a664aee3f2258f8786b9262a715c677cd1ab59d0b615b",
+      "load_after": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "environment-xcode",
+      "argv": [
+        "xcodebuild",
+        "-version"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:02:26.778641+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:27.031540+00:00",
+      "seconds": 0.2528870408423245,
+      "log_sha256": "18730ed2ae28a2c9cf0c2d5db549033a4f07089331391a7133b7b32187454fa9",
+      "load_after": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "environment-swift",
+      "argv": [
+        "swift",
+        "--version"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:02:27.087520+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:27.495344+00:00",
+      "seconds": 0.40782750002108514,
+      "log_sha256": "5fa4b669e41b23b9ad0760253d062493487f93cf5d8ad8c44f0d4fd635137499",
+      "load_after": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "swiftformat",
+      "argv": [
+        "swiftformat",
+        "--lint",
+        "MacDown2"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:02:27.549641+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:27.765861+00:00",
+      "seconds": 0.21620829100720584,
+      "log_sha256": "48c790cbfeff3884bcb0611eaa977c60176d7255258913883b97403a3e55e564",
+      "load_after": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "swiftlint",
+      "argv": [
+        "swiftlint",
+        "lint",
+        "--strict",
+        "MacDown2"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:02:27.817660+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:28.240706+00:00",
+      "seconds": 0.4230460829567164,
+      "log_sha256": "8218e47709f4e38db61cacfcd73311324d657dd0a87d2b89499dc4541d808912",
+      "load_after": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "source-compliance",
+      "argv": [
+        "python3",
+        "compliance/tools/compliance.py",
+        "check"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/source-400d475caaae130cdce1f6de4c6904027e700827",
+      "started_utc": "2026-10-18T21:02:28.298129+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:28.509280+00:00",
+      "seconds": 0.2111457500141114,
+      "log_sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7",
+      "load_after": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "release-preflight",
+      "argv": [
+        "python3",
+        "compliance/tools/compliance.py",
+        "check",
+        "--release"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/source-400d475caaae130cdce1f6de4c6904027e700827",
+      "started_utc": "2026-10-18T21:02:28.568229+00:00",
+      "expected_exit": 1,
+      "load_before": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "exit_code": 1,
+      "ended_utc": "2026-10-18T21:02:28.766984+00:00",
+      "seconds": 0.19873987510800362,
+      "log_sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522",
+      "load_after": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "compliance-tests",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "compliance/tests"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/source-400d475caaae130cdce1f6de4c6904027e700827",
+      "started_utc": "2026-10-18T21:02:28.824436+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.56689453125,
+        3.84619140625,
+        4.22021484375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:43.808545+00:00",
+      "seconds": 14.984039000002667,
+      "log_sha256": "b708dde474d6e3e8f0681bc234985aed4556254e1ed02bf964af9db13fd0e577",
+      "load_after": [
+        4.78271484375,
+        4.11181640625,
+        4.30859375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "legacy-map",
+      "argv": [
+        "python3",
+        "planning/downstream/tools/check_legacy_preference_map.py"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:02:43.865548+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        4.78271484375,
+        4.11181640625,
+        4.30859375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:43.921420+00:00",
+      "seconds": 0.05586212477646768,
+      "log_sha256": "147f93cb21dac9fdcd98fa670d1f505a294848296f91e69e993535a7c6df6678",
+      "load_after": [
+        4.78271484375,
+        4.11181640625,
+        4.30859375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "legacy-map-tests",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "planning/downstream/tools",
+        "-p",
+        "test_legacy_preference_map.py"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:02:43.975201+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        4.78271484375,
+        4.11181640625,
+        4.30859375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:44.046489+00:00",
+      "seconds": 0.07127812504768372,
+      "log_sha256": "395f4ba177429a162b2f04a7e5dd660a39233158ce91c848b5b64fb547fbd0ed",
+      "load_after": [
+        4.78271484375,
+        4.11181640625,
+        4.30859375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "package-build",
+      "argv": [
+        "swift",
+        "build",
+        "--force-resolved-versions"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+      "started_utc": "2026-10-18T21:02:44.106037+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        4.78271484375,
+        4.11181640625,
+        4.30859375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:02:58.396688+00:00",
+      "seconds": 14.29056612495333,
+      "log_sha256": "18ac4ba7d6f024a25ea8b3720078ae03432663a30daec1a63dac73a4f37dd562",
+      "load_after": [
+        6.75830078125,
+        4.61865234375,
+        4.48779296875
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "package-nonperformance-tests",
+      "argv": [
+        "swift",
+        "test",
+        "--no-parallel",
+        "--force-resolved-versions",
+        "--skip",
+        "Performance|Benchmark|worstCaseScanStaysWithinAPerKeystrokeBudget|aHundredSecondaryCaretsStayWithinAReasonableDrawBudget"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+      "started_utc": "2026-10-18T21:02:58.462396+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        6.75830078125,
+        4.61865234375,
+        4.48779296875
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:06:37.496664+00:00",
+      "seconds": 219.03332487493753,
+      "log_sha256": "abb3a36376cdbf8553586dc13ccafd3da62a9b34fbf125d802cfc65e22322ea0",
+      "load_after": [
+        3.619140625,
+        4.0302734375,
+        4.26611328125
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "package-test-list",
+      "argv": [
+        "swift",
+        "test",
+        "--force-resolved-versions",
+        "list",
+        "--skip-build"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+      "started_utc": "2026-10-18T21:06:37.572926+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.619140625,
+        4.0302734375,
+        4.26611328125
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:06:39.233933+00:00",
+      "seconds": 1.6609952920116484,
+      "log_sha256": "6a49aabea3afee6673d6ba077a7c3c1439ca493a5213a6638292785c6aba37f3",
+      "load_after": [
+        3.619140625,
+        4.0302734375,
+        4.26611328125
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "xcodegen",
+      "argv": [
+        "xcodegen",
+        "generate"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2",
+      "started_utc": "2026-10-18T21:06:39.287480+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.619140625,
+        4.0302734375,
+        4.26611328125
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:06:39.349350+00:00",
+      "seconds": 0.061872290913015604,
+      "log_sha256": "58aa2a3119b37b0a5af3e23bf3029d9ae18ed71807d26d2f10974839c4481fd0",
+      "load_after": [
+        3.619140625,
+        4.0302734375,
+        4.26611328125
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "pin-xcode",
+      "argv": [
+        "MacDown2/scripts/pin-xcode-package-versions.sh"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:06:39.410213+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.619140625,
+        4.0302734375,
+        4.26611328125
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:06:39.429589+00:00",
+      "seconds": 0.019348083063960075,
+      "log_sha256": "b2be8d12c3194b89502a2b9bcdb39f066f3ffdf67f4945db582b64bf30595151",
+      "load_after": [
+        3.619140625,
+        4.0302734375,
+        4.26611328125
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "debug-app",
+      "argv": [
+        "xcodebuild",
+        "-derivedDataPath",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData",
+        "-xcconfig",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/FirstPartyWarnings.xcconfig",
+        "-clonedSourcePackagesDirPath",
+        "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "-scheme",
+        "MacDown2",
+        "-configuration",
+        "Debug",
+        "build"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:06:39.487260+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        3.619140625,
+        4.0302734375,
+        4.26611328125
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:07:46.593417+00:00",
+      "seconds": 67.10647712508217,
+      "log_sha256": "59fd15b557601c306c8f2a93a311fe6ac870a23852c093be351bf2a45a673d9b",
+      "load_after": [
+        15.88427734375,
+        7.06103515625,
+        5.35205078125
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "debug-cli",
+      "argv": [
+        "xcodebuild",
+        "-derivedDataPath",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData",
+        "-xcconfig",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/FirstPartyWarnings.xcconfig",
+        "-clonedSourcePackagesDirPath",
+        "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "-scheme",
+        "macdown2",
+        "-configuration",
+        "Debug",
+        "build"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:07:46.701773+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        15.88427734375,
+        7.06103515625,
+        5.35205078125
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:07:51.744742+00:00",
+      "seconds": 5.042946834117174,
+      "log_sha256": "f7d6546213a0e42e830264e4e94099b7300d6b67ad088967b723d7321c16e774",
+      "load_after": [
+        15.33251953125,
+        7.0927734375,
+        5.373046875
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "release-app",
+      "argv": [
+        "xcodebuild",
+        "-derivedDataPath",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData",
+        "-xcconfig",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/FirstPartyWarnings.xcconfig",
+        "-clonedSourcePackagesDirPath",
+        "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "-scheme",
+        "MacDown2",
+        "-configuration",
+        "Release",
+        "build"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:07:51.816919+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        15.33251953125,
+        7.0927734375,
+        5.373046875
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:09:08.387807+00:00",
+      "seconds": 76.57120933313854,
+      "log_sha256": "ae350ce06d4829e7f9c24a7d69c308609b8794182ea1c054f7ac7d6ef9ef523b",
+      "load_after": [
+        14.6923828125,
+        9.58642578125,
+        6.5234375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "release-cli",
+      "argv": [
+        "xcodebuild",
+        "-derivedDataPath",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData",
+        "-xcconfig",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/FirstPartyWarnings.xcconfig",
+        "-clonedSourcePackagesDirPath",
+        "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "-scheme",
+        "macdown2",
+        "-configuration",
+        "Release",
+        "build"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:09:08.469084+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        14.6923828125,
+        9.58642578125,
+        6.5234375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:09:21.826240+00:00",
+      "seconds": 13.357141791842878,
+      "log_sha256": "efb25a317eeadfe7e20e3fdd517144e8082ff746f0f85928a258e16e95e687d8",
+      "load_after": [
+        16.958984375,
+        10.21533203125,
+        6.7802734375
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "build-for-testing",
+      "argv": [
+        "xcodebuild",
+        "-derivedDataPath",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData",
+        "-xcconfig",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/FirstPartyWarnings.xcconfig",
+        "-clonedSourcePackagesDirPath",
+        "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "-scheme",
+        "MacDown2",
+        "-configuration",
+        "Debug",
+        "-enableCodeCoverage",
+        "NO",
+        "build-for-testing"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:09:21.902493+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        16.958984375,
+        10.21533203125,
+        6.7802734375
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:10:07.980776+00:00",
+      "seconds": 46.07819620799273,
+      "log_sha256": "28b21cbfdc523e89e21df4cf7e030daf07555caf7fd8fa02170985aa6d47f610",
+      "load_after": [
+        16.3076171875,
+        11.0166015625,
+        7.2666015625
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "app-test-enumeration",
+      "argv": [
+        "xcodebuild",
+        "-derivedDataPath",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData",
+        "-xcconfig",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/FirstPartyWarnings.xcconfig",
+        "-clonedSourcePackagesDirPath",
+        "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "-scheme",
+        "MacDown2",
+        "-configuration",
+        "Debug",
+        "-enableCodeCoverage",
+        "NO",
+        "-parallel-testing-enabled",
+        "NO",
+        "-only-testing:MacDown2Tests",
+        "-skip-testing:MacDown2Tests/WholeAppTabScalePerformanceTests/materializingTwentyTabsCompletesWithinBudget()",
+        "-skip-testing:MacDown2Tests/WholeAppTabScalePerformanceTests/switchingAcrossTwentyAlreadyOpenTabsIsCheapRelativeToFirstOpen()",
+        "-enumerate-tests",
+        "-test-enumeration-style",
+        "flat",
+        "-test-enumeration-format",
+        "json",
+        "-test-enumeration-output-path",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/app-test-enumeration.json",
+        "test-without-building"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:10:08.078580+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        16.3076171875,
+        11.0166015625,
+        7.2666015625
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:10:36.860308+00:00",
+      "seconds": 28.78165683406405,
+      "log_sha256": "d725b533e6c374c5c6c9b8bd86f8a97e119f8913acd730f60f2b44cb10d2bc39",
+      "load_after": [
+        11.87744140625,
+        10.40234375,
+        7.1533203125
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "artifact-compliance",
+      "argv": [
+        "python3",
+        "compliance/tools/compliance.py",
+        "check",
+        "--artifact",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData/Build/Products/Release/MacDown2.app"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/source-400d475caaae130cdce1f6de4c6904027e700827",
+      "started_utc": "2026-10-18T21:10:36.968196+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        11.87744140625,
+        10.40234375,
+        7.1533203125
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:10:37.301122+00:00",
+      "seconds": 0.3329067090526223,
+      "log_sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7",
+      "load_after": [
+        11.08642578125,
+        10.2626953125,
+        7.123046875
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "artifact-release-preflight",
+      "argv": [
+        "python3",
+        "compliance/tools/compliance.py",
+        "check",
+        "--release",
+        "--artifact",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData/Build/Products/Release/MacDown2.app"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/source-400d475caaae130cdce1f6de4c6904027e700827",
+      "started_utc": "2026-10-18T21:10:37.353192+00:00",
+      "expected_exit": 1,
+      "load_before": [
+        11.08642578125,
+        10.2626953125,
+        7.123046875
+      ],
+      "exit_code": 1,
+      "ended_utc": "2026-10-18T21:10:37.600738+00:00",
+      "seconds": 0.2475482919253409,
+      "log_sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522",
+      "load_after": [
+        11.08642578125,
+        10.2626953125,
+        7.123046875
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "pins-match",
+      "argv": [
+        "MacDown2/scripts/pin-xcode-package-versions.sh",
+        "--check"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:10:37.653072+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        11.08642578125,
+        10.2626953125,
+        7.123046875
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:10:37.665968+00:00",
+      "seconds": 0.012891416903585196,
+      "log_sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c",
+      "load_after": [
+        11.08642578125,
+        10.2626953125,
+        7.123046875
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "unchanged-production-pins",
+      "argv": [
+        "git",
+        "diff",
+        "--exit-code",
+        "60f779fc0f7324cd5dd3b7b503030e9c22d7d44f",
+        "400d475caaae130cdce1f6de4c6904027e700827",
+        "--",
+        "MacDown2/Packages/MacDownKit/Package.resolved"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:10:37.716042+00:00",
+      "expected_exit": 0,
+      "load_before": [
+        11.08642578125,
+        10.2626953125,
+        7.123046875
+      ],
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:10:37.724572+00:00",
+      "seconds": 0.00851541617885232,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "load_after": [
+        11.08642578125,
+        10.2626953125,
+        7.123046875
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    },
+    {
+      "name": "app-nonperformance-tests",
+      "argv": [
+        "xcodebuild",
+        "-derivedDataPath",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData",
+        "-xcconfig",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/FirstPartyWarnings.xcconfig",
+        "-clonedSourcePackagesDirPath",
+        "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "-scheme",
+        "MacDown2",
+        "-configuration",
+        "Debug",
+        "-enableCodeCoverage",
+        "NO",
+        "-parallel-testing-enabled",
+        "NO",
+        "-only-testing:MacDown2Tests",
+        "-skip-testing:MacDown2Tests/WholeAppTabScalePerformanceTests/materializingTwentyTabsCompletesWithinBudget()",
+        "-skip-testing:MacDown2Tests/WholeAppTabScalePerformanceTests/switchingAcrossTwentyAlreadyOpenTabsIsCheapRelativeToFirstOpen()",
+        "-resultBundlePath",
+        "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/app-nonperformance-tests.xcresult",
+        "test-without-building"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T21:13:18.297181+00:00",
+      "load_before": [
+        3.20458984375,
+        7.05859375,
+        6.33349609375
+      ],
+      "head_before": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_before": "",
+      "expected_exit": 0,
+      "exit_code": 0,
+      "ended_utc": "2026-10-18T21:14:37.524051+00:00",
+      "seconds": 79.20405837497674,
+      "log_sha256": "057895e789b23159384b839157ae208d0b4791f562cad273cedcc7b0ec01166e",
+      "load_after": [
+        8.1611328125,
+        8.2177734375,
+        6.86767578125
+      ],
+      "head_after": "400d475caaae130cdce1f6de4c6904027e700827",
+      "status_after": ""
+    }
+  ],
+  "package_skip_regex": "Performance|Benchmark|worstCaseScanStaysWithinAPerKeystrokeBudget|aHundredSecondaryCaretsStayWithinAReasonableDrawBudget",
+  "app_skips": [
+    "MacDown2Tests/WholeAppTabScalePerformanceTests/materializingTwentyTabsCompletesWithinBudget()",
+    "MacDown2Tests/WholeAppTabScalePerformanceTests/switchingAcrossTwentyAlreadyOpenTabsIsCheapRelativeToFirstOpen()"
+  ],
+  "performance_execution_authorized": false,
+  "native_ui_execution": false,
+  "distribution_signing": false,
+  "selection_rationale": [
+    "Exclude named Performance/Benchmark tests and two separately named timing budgets.",
+    "Retain node-count-only MarkdownTreeReuseTests despite inclusion in the historical performance command.",
+    "Retain functional cleanup deadlines, boundedness and asynchronous timeout contracts.",
+    "Retain the functional benchmark-window teardown test; exclude only its two timed benchmarks.",
+    "Compile app and UI tests, then execute non-performance MacDown2Tests only, matching the CI target boundary."
+  ],
+  "source_archive_sha256": "5f892f970b888af53f69aff8cb2aa6fc8b6530d2a94e1b4f3626a30a0d0b0cc2",
+  "app_test_argv": [
+    "xcodebuild",
+    "-derivedDataPath",
+    "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData",
+    "-xcconfig",
+    "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/FirstPartyWarnings.xcconfig",
+    "-clonedSourcePackagesDirPath",
+    "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+    "-project",
+    "MacDown2/MacDown2.xcodeproj",
+    "-destination",
+    "platform=macOS",
+    "-onlyUsePackageVersionsFromResolvedFile",
+    "CODE_SIGNING_ALLOWED=NO",
+    "CODE_SIGNING_REQUIRED=NO",
+    "-scheme",
+    "MacDown2",
+    "-configuration",
+    "Debug",
+    "-enableCodeCoverage",
+    "NO",
+    "-parallel-testing-enabled",
+    "NO",
+    "-only-testing:MacDown2Tests",
+    "-skip-testing:MacDown2Tests/WholeAppTabScalePerformanceTests/materializingTwentyTabsCompletesWithinBudget()",
+    "-skip-testing:MacDown2Tests/WholeAppTabScalePerformanceTests/switchingAcrossTwentyAlreadyOpenTabsIsCheapRelativeToFirstOpen()",
+    "-resultBundlePath",
+    "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/app-nonperformance-tests.xcresult",
+    "test-without-building"
+  ],
+  "release_artifact": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData/Build/Products/Release/MacDown2.app",
+  "phase_one_completed_utc": "2026-10-18T21:10:37.757816+00:00",
+  "next": "Interpret all retained results without retrying any gate.",
+  "completed_utc": "2026-10-18T21:14:37.582829+00:00"
+}

@@ -1,0 +1,25 @@
+{
+  "enumerated_enabled": 415,
+  "actual_cases": 415,
+  "results": {
+    "Passed": 413,
+    "Skipped": 2
+  },
+  "missing_from_result": [],
+  "additional_result_cases": [],
+  "skipped": [
+    "PDFExportAdapterTests/exportingALongDocumentProducesARealMultiPagePDF()",
+    "PDFExportAdapterTests/exportedPDFReplacesAnyExistingFileAtomically()"
+  ],
+  "retained_teardown": [
+    {
+      "duration": "0.18s",
+      "durationInSeconds": 0.18120193481445312,
+      "name": "teardownRetiresTheWindowAndItsBackgroundWork()",
+      "nodeIdentifier": "WholeAppTabScalePerformanceTests/teardownRetiresTheWindowAndItsBackgroundWork()",
+      "nodeIdentifierURL": "test://com.apple.xcode/MacDown2/MacDown2Tests/WholeAppTabScalePerformanceTests/teardownRetiresTheWindowAndItsBackgroundWork()",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    }
+  ]
+}
