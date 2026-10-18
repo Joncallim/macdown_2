@@ -1,0 +1,5 @@
+Running SwiftFormat...
+(lint mode - no files will be changed.)
+Reading config file at /Users/jonathanlim/GitHub/macdown_2-integ/.swiftformat
+SwiftFormat completed in 0.21s.
+0/939 files require formatting, 8 files skipped.

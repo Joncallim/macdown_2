@@ -38,19 +38,27 @@ artifact requirements remain. Notices and SBOM regenerate byte-identically.
 The unsigned local artifact check is not the final signed-artifact check, and
 this reconciliation is not evidence that any source offer is publicly reachable.
 
-The retained unsigned Release app additionally **fails three artifact checks**:
-it lacks the byte-identical repository `LICENSE` and generated notices, and ships
-an unregistered `textual_Textual.bundle/Contents/Resources/prism-bundle.js`.
-Those same failures occur against the baseline and reconciled inventory. The
-source-only seven-item ledger is not the full artifact ledger; release checking
-with this artifact reports ten findings. All 12 font digests are present, which
-does not waive the missing notices or any other distribution obligation.
+The earlier retained Release app built from `7efb510c` failed three additional
+artifact checks: missing repository `LICENSE`, missing generated notices and
+unregistered Textual `prism-bundle.js`. Its unchanged historical record reports
+ten release findings. The [new packaging and Prism audit](evidence/prism-textual-1.29.0/README.md)
+resolves those three failures on a fresh app built from clean commit
+`ceecea9c4a8297db6aa24e3afa9163406e4a10e5`.
 
-The script bytes match the clean, locked Textual checkout. Its bundler declares
-Prism 1.29.0, but that observation is not a complete embedded-code/licence audit.
-Review the bundled source and obligations before adding its inventory/notices;
-do not simply allowlist the digest. Bundling `LICENSE` and generated notices is
-already specified in `LICENCES_UI.md`, whose app integration remains incomplete.
+The new app's exact `Contents/Resources/LICENSE` and
+`Contents/Resources/THIRD_PARTY_NOTICES.md` match the committed originals. The
+audit accounts for every byte of the already-shipped Textual Prism bundle using
+the published Prism 1.29.0 distribution/components and Textual's header/helper;
+both original MIT texts are included in generated notices. All 12 font digests
+remain present. Ordinary source and artifact compliance pass; both release
+checks still fail on the seven entries above. No existing finding was waived.
+
+This is unsigned distribution evidence: the linker emitted an ad hoc signature,
+with no team identity or sealed resources. The build's AppIntents metadata
+warning remains recorded. The `LICENCES_UI.md` packaging prerequisite is now
+implemented, but its About/Help window, localisation, accessibility and final
+signed-artifact checks remain open. No native UI or performance rerun is claimed
+for this resource-only change.
 
 ## Corresponding-source preparation boundary
 

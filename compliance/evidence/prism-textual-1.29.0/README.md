@@ -2,9 +2,9 @@
 
 ## Owner outcome and scope
 
-The unsigned app should contain the repository MIT licence and current generated
-third-party notices, and its already-shipped Prism resource should have exact
-provenance and attribution. This bounded change adds two build-resource references
+The unsigned Release app now contains the repository MIT licence and current
+generated third-party notices, and its already-shipped Prism resource has complete
+byte-level provenance and preserved original attribution. This bounded change adds two build-resource references
 and one audited resource component. It changes no renderer code, dependency,
 editor behavior, folder permission or entitlement.
 
@@ -69,7 +69,8 @@ Independent read-only review accounted for all shipped bytes, identified the
 default-bundle/plugin and annotated-tag distinctions, and accepted this bounded
 packaging/inventory approach. It requires exact main-app resource paths in the
 final artifact evidence, since the generic checker accepts known bytes anywhere.
-Candidate and artifact review follow implementation.
+The pre-commit candidate review found no material issue. The final artifact review
+is recorded separately in [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md).
 
 ## Validation and stop conditions
 
@@ -92,3 +93,74 @@ open. No push, merge, signing, publication, issue closure or release is authoriz
 
 Raw evidence:
 `/Users/jonathanlim/GitHub/_cleanup-archive/prism-packaging-148-09e223bf-2026-10-18/`.
+
+## Exact committed candidate and observed result
+
+One finite validation pass ran on clean commit
+`ceecea9c4a8297db6aa24e3afa9163406e4a10e5`, tree
+`525887fedfb8bea2ffb1a7fa73978aae9353a482`, on CORTANA. Its source archive has
+SHA-256 `ebdd2108342ff5d85ca850d5baffc4476ab5c20fbfbc241b541c69dbc1639df9`.
+Commands, timestamps, log hashes and clean status after every command are in
+[validation.json](validation.json). Later evidence/documentation commits do not
+relabel that build as having run on a different head.
+
+| Check | Observed result |
+| --- | --- |
+| Strict SwiftLint and SwiftFormat | Pass |
+| Clean archived source compliance and existing compliance regressions | Pass |
+| Generated notices and software bill of materials (SBOM) | Regenerate byte-identically |
+| XcodeGen resource entries and locked dependency copies | Pass; both files are in the app Copy Bundle Resources phase |
+| Serial Release app build, distribution signing disabled | Pass; 20:46:11–20:48:18 UTC on 2026-10-18 |
+| Ordinary compliance against that actual app | Pass, including both exact main-app licence resource paths |
+| Source and artifact release preflight | Both fail with the same seven unchanged findings; exit 1 retained |
+| Runtime source, dependency pins, compliance checker and tests against baseline | Unchanged |
+
+The build used macOS 26.5.1 (25F80), Xcode 26.6 (17F113), Swift 6.3.3 and
+XcodeGen 2.46.0. Both architecture-specific app Swift compiler invocations used
+Release optimization and `-warnings-as-errors`; this is not a warning-free build
+claim. Xcode reported both a choice between matching arm64/x86_64 destinations
+and skipped AppIntents metadata extraction. Those diagnostics and exact tool
+outputs are retained in [build-inspection.json](build-inspection.json).
+The resulting executable is universal x86_64/arm64. Its existing Release
+configuration retains testability; this build does not exercise test targets.
+
+The app is at `DerivedData/Build/Products/Release/MacDown2.app` under the raw
+evidence directory. [artifact-files.json](artifact-files.json) records every one
+of its 167 regular files and hashes; no symlinks were present. Key resources:
+
+| App-relative path | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `Contents/Resources/LICENSE` | 1,368 | `d6469c902a56daa3dd8f075486621f2e061d511d398d4a87f7e6dc84cb9f0d78` |
+| `Contents/Resources/THIRD_PARTY_NOTICES.md` | 158,472 | `2e0f032cf971b0b5b9befae297e026941ecb241023b5f338ad081a9f6b1d8867` |
+| `Contents/Resources/textual_Textual.bundle/Contents/Resources/prism-bundle.js` | 138,163 | `22b70192dc9d73377b5b8fe2c85655c7e3218afd37b65db638b4e168c4bacbf5` |
+
+All 12 required math-font resource hashes match. Both dependency checkout pools
+match all 22 production pins and are clean; see
+[checkout-provenance.json](checkout-provenance.json). No experiment was adopted.
+
+No signing command ran. The linker generated an ad hoc signature without a team
+identity or sealed resources; `Info.plist` is not bound. This is unsigned evidence
+for distribution purposes, not a signed release candidate. No performance, CLI,
+app-test or native UI rerun was performed for this resource-only change. Earlier
+failed measurements and hosted failures are preserved; they are not superseded
+by a successful app build. The existing three-failure artifact record is also
+unchanged: this is a newly built, corrected artifact, not a relabelled old result.
+
+The reader can inspect the archived validation and audit scripts, captured
+download metadata, file manifests and small check logs alongside this record.
+`evidence-manifest.json` identifies retained raw files, including the full build
+log, original npm archive and source archive. Static provenance does not prove
+Prism runtime/network behavior, reproduced CDN minification or satisfaction of
+other components' outstanding obligations.
+
+The next step is owner review of this bounded correction while continuing the
+seven remaining attribution/source/naming gates. The licence screen remains
+unimplemented; #121's file-only asset workflow and OS-access decision remain
+pending. #53, #203, native release coverage and owner acceptance remain open.
+
+Before sealing, master remained clean at `4aa46bfa` and the dependency experiment
+remained clean at `29e08843`. Process inspection found no heavy build or Claude
+process rooted in the integration worktree. The two sleeping Claude CLI sessions
+were rooted in the GitHub parent directory and the separate archived slice7a
+checkout; neither was interrupted. The process/worktree snapshot is retained in
+the raw evidence. All changes remain local; no remote state was changed.
