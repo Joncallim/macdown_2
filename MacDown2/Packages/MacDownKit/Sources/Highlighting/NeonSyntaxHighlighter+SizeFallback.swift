@@ -61,6 +61,7 @@ extension NeonSyntaxHighlighter {
     func discardHighlighter() -> Bool {
         gate.downstream = nil
         guard highlighter != nil else { return false }
+        repaintDeadline = 0
         generation &+= 1
         highlighter = nil
         return true
@@ -117,10 +118,42 @@ extension NeonSyntaxHighlighter {
             scheduleRestore(after: retryDelay)
             return
         }
+        // Native finding: after this restore Neon's first pass of rendering attributes was applied but TextKit did
+        // not repaint until the next edit. Ask for a repaint after each pass of styling for a short while.
+        repaintDeadline = DispatchTime.now().uptimeNanoseconds + 2_000_000_000
         configure(languageID: languageID)
     }
 
     // MARK: - Presentation
+
+    /// Asks TextKit to repaint the rendering attributes once the current pass of styling has finished.
+    func requestRepaintIfNeeded() {
+        guard !repaintScheduled, DispatchTime.now().uptimeNanoseconds < repaintDeadline else { return }
+        repaintScheduled = true
+        let scheduledGeneration = generation
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            repaintScheduled = false
+            guard generation == scheduledGeneration, highlighter != nil else { return }
+            repaintRenderingAttributes()
+        }
+    }
+
+    func repaintRenderingAttributes() {
+        let textView = textSystem.textView
+        // Never touch the storage during an IME composition; the next styling pass in the window tries again.
+        guard !textView.hasMarkedText() else { return }
+        // An attribute-only edit notification makes TextKit redraw the range. (`invalidateRenderingAttributes` would
+        // discard the attributes Neon just applied.) No characters change, so Neon ignores it, nothing is undoable
+        // and the document is not marked as edited.
+        if let storage = textView.textStorage, storage.length > 0 {
+            storage.beginEditing()
+            storage.edited(.editedAttributes, range: NSRange(location: 0, length: storage.length), changeInLength: 0)
+            storage.endEditing()
+        }
+        textView.needsDisplay = true
+        repaintCount &+= 1
+    }
 
     /// Removes the rendering attributes the highlighter sets (colour, font,
     /// underline) across the document, leaving any marked (IME) text alone.
