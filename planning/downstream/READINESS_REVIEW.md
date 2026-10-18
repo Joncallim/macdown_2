@@ -6,7 +6,11 @@
 ownership and [stop-aware delivery evidence](evidence/preview-delivery-121-2026-10-18/README.md).
 The delayed-A/root-B failure remains reproduced. Complete immutable-root integration
 is blocked on an explicit app directory-grant owner, scope lifetime and contained
-document-base mapping; see the [delivery implementation boundary](issue-121-delivery-implementation.md).
+document-base mapping; see the [delivery implementation boundary](issue-121-delivery-implementation.md)
+and the independently reviewed [directory-grant proposal](issue-121-directory-grant-proposal.md).
+That proposal now identifies the concrete remaining decisions: the file-only
+asset workflow and intended OS-access configuration. It is not authorization to
+infer a directory grant from a selected file or to remove existing sibling assets.
 The existing constrained-reader probe is historical stage-A evidence on its named
 host, not completion of the minimum-OS/native/resource-lifetime gates below. These
 later bounded results do not close #121 or retroactively convert the historical

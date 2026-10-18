@@ -38,6 +38,20 @@ artifact requirements remain. Notices and SBOM regenerate byte-identically.
 The unsigned local artifact check is not the final signed-artifact check, and
 this reconciliation is not evidence that any source offer is publicly reachable.
 
+The retained unsigned Release app additionally **fails three artifact checks**:
+it lacks the byte-identical repository `LICENSE` and generated notices, and ships
+an unregistered `textual_Textual.bundle/Contents/Resources/prism-bundle.js`.
+Those same failures occur against the baseline and reconciled inventory. The
+source-only seven-item ledger is not the full artifact ledger; release checking
+with this artifact reports ten findings. All 12 font digests are present, which
+does not waive the missing notices or any other distribution obligation.
+
+The script bytes match the clean, locked Textual checkout. Its bundler declares
+Prism 1.29.0, but that observation is not a complete embedded-code/licence audit.
+Review the bundled source and obligations before adding its inventory/notices;
+do not simply allowlist the digest. Bundling `LICENSE` and generated notices is
+already specified in `LICENCES_UI.md`, whose app integration remains incomplete.
+
 ## Corresponding-source preparation boundary
 
 `ARCHIVE_PLAN.md` is the authoritative preparation plan. The repository has

@@ -179,4 +179,3 @@ Status: product/authority contract unresolved, not an approval denial. Preserve
 the local callback/navigation corrections and the root-confusion failure. Do not
 integrate the proposed permission model until those decisions and their narrow
 implementation contract are accepted.
-
