@@ -233,12 +233,14 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
 
     /// Maps a UTF-16 offset to a tree-sitter `Point`.
     ///
-    /// `row` = number of `\n` before the offset; `column` = UTF-16 code-unit
-    /// distance back to the previous `\n` (or string start).
+    /// `row` = number of `\n` before the offset; `column` = byte distance
+    /// back to the previous `\n` (or string start). The pinned parser reads
+    /// UTF-16, so each code unit contributes two bytes, including surrogates.
+    /// Neon converts edit offsets to bytes but forwards these Points unchanged.
     ///
     /// Uses a lazily-built line-offset table with binary search for O(log n)
     /// per-call performance instead of O(n) substring scanning. The table is
-    /// only rebuilt when the document length changes, and the rebuild uses a
+    /// rebuilt when the editor revision or document length changes, using a
     /// single character-set scan rather than repeated substring searches.
     static func locationTransformer(
         for textView: NSTextView,
@@ -263,7 +265,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
             }
 
             guard let offsets = lineOffsets, !offsets.isEmpty else {
-                return Point(row: 0, column: clamped)
+                return Point(row: 0, column: clamped * 2)
             }
 
             // Binary search for the row containing `clamped`.
@@ -277,7 +279,7 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
                 }
             }
             let row = high
-            let column = clamped - offsets[row]
+            let column = (clamped - offsets[row]) * 2
             return Point(row: row, column: column)
         }
     }

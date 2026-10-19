@@ -1,0 +1,55 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[2/4] Write swift-version--58304C5D6DBC2206.txt
+[4/6] Compiling Highlighting NeonSyntaxHighlighter.swift
+[5/6] Emitting module Highlighting
+[6/9] Emitting module HighlightingTests
+[7/9] Compiling HighlightingTests LocationTransformerTests.swift
+[8/9] Compiling HighlightingTests LocationTransformerByteGeometryTests.swift
+[8/10] Write Objects.LinkFileList
+[9/10] Linking MacDownKitPackageTests
+Build complete! (12.61s)
+Test Suite 'Selected tests' started at 2026-10-19 23:29:51.526.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-19 23:29:51.535.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-19 23:29:51.535.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-19 23:29:51.535.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.008) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite LocationTransformerByteGeometryTests started.
+◇ Test mountedAdapterUsesTheParsersByteColumns(source:) started.
+◇ Test case passing 1 argument source → "[1]" to mountedAdapterUsesTheParsersByteColumns(source:) started.
+◇ Test case passing 1 argument source → "["漢字😀é",1]" to mountedAdapterUsesTheParsersByteColumns(source:) started.
+✔ Test mountedAdapterUsesTheParsersByteColumns(source:) with 2 test cases passed after 0.355 seconds.
+◇ Test hostCoordinatesMatchFreshParserNodes(source:) started.
+◇ Test case passing 1 argument source → "{"message":"hello","count":3}" to hostCoordinatesMatchFreshParserNodes(source:) started.
+◇ Test case passing 1 argument source → "{
+	"message":"漢字😀é",
+	"count":3
+}" to hostCoordinatesMatchFreshParserNodes(source:) started.
+◇ Test case passing 1 argument source → "{\r
+	"message":"😀漢字é","count":3\r
+}\r
+" to hostCoordinatesMatchFreshParserNodes(source:) started.
+✔ Test hostCoordinatesMatchFreshParserNodes(source:) with 3 test cases passed after 0.007 seconds.
+✔ Suite LocationTransformerByteGeometryTests passed after 0.363 seconds.
+◇ Suite "NeonSyntaxHighlighter.locationTransformer" started.
+◇ Test emptyDocumentReturnsRowZero() started.
+✔ Test emptyDocumentReturnsRowZero() passed after 0.001 seconds.
+◇ Test singleLineNoNewline() started.
+✔ Test singleLineNoNewline() passed after 0.001 seconds.
+◇ Test secondLineAfterOneNewline() started.
+✔ Test secondLineAfterOneNewline() passed after 0.001 seconds.
+◇ Test trailingNewlineOpensEmptyLastLine() started.
+✔ Test trailingNewlineOpensEmptyLastLine() passed after 0.001 seconds.
+◇ Test multipleConsecutiveNewlines() started.
+✔ Test multipleConsecutiveNewlines() passed after 0.001 seconds.
+◇ Test offsetPastEndClampsToLastLine() started.
+✔ Test offsetPastEndClampsToLastLine() passed after 0.001 seconds.
+◇ Test rebuildsAfterDocumentLengthChanges() started.
+✔ Test rebuildsAfterDocumentLengthChanges() passed after 0.001 seconds.
+✔ Suite "NeonSyntaxHighlighter.locationTransformer" passed after 0.002 seconds.
+✔ Test run with 9 tests in 2 suites passed after 0.366 seconds.
