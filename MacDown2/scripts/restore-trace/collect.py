@@ -538,6 +538,30 @@ def github_pull_request_identity() -> dict[str, str] | None:
     }
 
 
+def checkout_origin(checkout: Path, repository_root: Path) -> str:
+    """Follow SwiftPM's local bare-repository origin, confined to this workspace."""
+    current = checkout
+    visited: set[Path] = set()
+    for _ in range(4):
+        remote = git(current, "remote", "get-url", "origin")
+        if remote.startswith(("https://", "ssh://", "git@")):
+            return remote
+        candidate = Path(remote)
+        if not candidate.is_absolute():
+            candidate = current / candidate
+        candidate = candidate.resolve()
+        if (
+            candidate in visited
+            or not is_within(candidate, repository_root.resolve())
+            or not candidate.is_dir()
+            or git(candidate, "rev-parse", "--is-bare-repository") != "true"
+        ):
+            raise DiagnosticFailure(f"Unexpected SwiftPM local origin for {checkout.name}")
+        visited.add(candidate)
+        current = candidate
+    raise DiagnosticFailure(f"SwiftPM origin chain is too deep for {checkout.name}")
+
+
 def audit_checkouts(package_dir: Path, pins: list[dict[str, Any]]) -> list[dict[str, str]]:
     checkout_root = package_dir / "MacDownKit" / ".build" / "checkouts"
     if not checkout_root.is_dir():
@@ -546,7 +570,7 @@ def audit_checkouts(package_dir: Path, pins: list[dict[str, Any]]) -> list[dict[
     checkouts: dict[str, Path] = {}
     for candidate in checkout_root.iterdir():
         if candidate.is_dir() and (candidate / ".git").exists():
-            remote = git(candidate, "remote", "get-url", "origin", check=False)
+            remote = checkout_origin(candidate, checkout_root.parent / "repositories")
             if remote:
                 checkouts[normalized_remote(remote)] = candidate
 
@@ -620,7 +644,7 @@ def audit_checkouts_allowing_neon_patch(
                 for candidate in checkout_root.iterdir()
                 if candidate.is_dir()
                 and (candidate / ".git").exists()
-                and normalized_remote(git(candidate, "remote", "get-url", "origin", check=False))
+                and normalized_remote(checkout_origin(candidate, checkout_root.parent / "repositories"))
                 == normalized_remote(location)
             ),
             None,
