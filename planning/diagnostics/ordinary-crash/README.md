@@ -38,7 +38,14 @@ app/CLI/build/test steps keep their ordinary success prerequisites.
 ## Process and report ownership
 
 A passive poll every 100 ms observes the exact live child and only test helpers
-whose executable and exact newly built bundle argument match. Parent birth
+whose executable and exact newly built bundle argument match. XCTest uses the
+bundle directory; SwiftPM 6.2 passes the inner Mach-O file to
+`swiftpm-testing-helper --test-bundle-path` ([SwiftPM 6.2 source](https://github.com/swiftlang/swift-package-manager/blob/3cf1cb66ebde00dab737dcebad96218e2017530d/Sources/Commands/SwiftTestCommand.swift#L874-L905)).
+The collector recognizes that exact
+flag/value (separate or `=` syntax) and the exact bundle form, records the binding
+kind, and rejects unrelated or ambiguous arguments. A verified Swift Testing
+helper is required for target-runtime coverage; launcher-only or XCTest-only
+observation cannot pass diagnostic integrity. Parent birth
 identity is checked at admission. Darwin's process birth seconds/microseconds and
 executable path are read with libproc; argv is tied to a second identity snapshot
 and never exported. Legitimate launcher exec and already-proven helper reparenting
@@ -122,8 +129,25 @@ retained binary SHA-256 is
 `c74d63d900aca2d56062889be52af82410b14644db1ab580146e0b0bdc7dc563`.
 This verifies local collector behavior only, not actual SwiftPM-helper capture.
 
-The diagnostic needs final independent source/result review before push, then one
-complete exact-head hosted result. Use an attributable stack for a focused
+The first hosted run, [39240230462](https://github.com/Joncallim/macdown_2/actions/runs/39240230462),
+passed all ordinary CI gates on diagnostic head `7aa0f1c6`, but its artifact
+recorded only the launcher and brief XCTest process. It did not prove observation
+of the later Swift Testing helper; its original integrity flag was too broad.
+The initial argument matcher accepted the bundle directory but omitted SwiftPM's
+inner-Mach-O argument. The corrected matcher and explicit target-runtime coverage
+gate address that diagnostic defect. The original green run and its coverage gap
+remain evidence; neither establishes a product correction.
+
+A once-only local observation of the existing `ad79f277` Debug build used the
+unchanged restore test with `--skip-build` and a named filter. On local Swift 6.3.3,
+the corrected collector observed both XCTest and `swiftpm-testing-helper`, bound
+the latter through the exact inner-Mach-O flag, and sealed its executable and test
+image without errors. Original command exit was zero; source and pins remained
+clean. This is helper-recognition evidence, not full-suite revalidation or hosted
+Swift 6.2 coverage.
+
+The helper-coverage correction needs final independent source/result review before
+push and one exact-head validation. Use an attributable stack for a focused
 reproduction and reviewed correction if justified; do not rerun unchanged until
 green or attribute a crash to the last printed test.
 

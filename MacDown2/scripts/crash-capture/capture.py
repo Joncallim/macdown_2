@@ -171,6 +171,7 @@ class Owned:
     images: dict[str, Image] = field(default_factory=dict)
     bundle_image: Image | None = None
     last_seen_us: int = 0
+    argument_binding: str | None = None
 
     def observe(self, current: Process):
         if (current.pid, current.birth_us) != (self.process.pid, self.process.birth_us):
@@ -181,6 +182,36 @@ class Owned:
             path = Path(current.executable)
             self.images[current.executable] = Image(path, file_stamp(path))
         self.last_seen_us = time.time_ns() // 1000
+
+
+def test_argument_binding(executable: str, arguments: list[str], bundle: Path) -> str | None:
+    test_image = bundle / "Contents/MacOS/MacDownKitPackageTests"
+    if executable == str(test_image):
+        return "direct_test_image"
+    if Path(executable).name == "swiftpm-testing-helper":
+        # SwiftPM gives this helper the Mach-O path inside the XCTest bundle.
+        # Bind the exact flag/value pair; an unrelated positional path is not proof.
+        if arguments and arguments[-1] == "--test-bundle-path":
+            return None
+        values = [arg.partition("=")[2] for arg in arguments if arg.startswith("--test-bundle-path=")]
+        values.extend(arguments[index + 1] for index, arg in enumerate(arguments[:-1]) if arg == "--test-bundle-path")
+        if len(values) != 1:
+            return None
+        if values[0] == str(test_image):
+            return "swift_testing_macho_flag"
+        if values[0] == str(bundle):
+            return "swift_testing_bundle_flag"
+        return None
+    return "xctest_bundle_argument" if Path(executable).name == "xctest" and str(bundle) in arguments else None
+
+
+def coverage(processes: list[dict]) -> dict:
+    helpers = [process for process in processes if process["role"] == "test_helper"]
+    xctest = any(process.get("argument_binding") == "xctest_bundle_argument" for process in helpers)
+    swift_testing = any(process.get("argument_binding") in {"swift_testing_macho_flag", "swift_testing_bundle_flag"}
+                        and any(image["name"] == "swiftpm-testing-helper" for image in process["executable_images"])
+                        for process in helpers)
+    return {"xctest_observed": xctest, "swift_testing_helper_observed": swift_testing}
 
 
 class Observer:
@@ -239,15 +270,15 @@ class Observer:
                     self.errors["admission_identity_changed"] += 1
                     continue
                 arguments = shlex.split(command)
-                values = [arg.partition("=")[2] if "=" in arg else arg for arg in arguments]
-                if str(bundle) not in values and current.executable != str(bundle / "Contents/MacOS/MacDownKitPackageTests"):
+                binding = test_argument_binding(current.executable, arguments, bundle)
+                if binding is None:
                     continue
                 if len(self.owned) >= MAX_PROCESSES:
                     self.errors["process_bound"] += 1
                     continue
                 test_image = bundle / "Contents/MacOS/MacDownKitPackageTests"
                 known = Owned(current, "test_helper", (parent.pid, parent.birth_us),
-                              bundle_image=Image(test_image, file_stamp(test_image)))
+                              bundle_image=Image(test_image, file_stamp(test_image)), argument_binding=binding)
                 known.observe(current)
                 self.owned[pid] = known
         except Exception as error:
@@ -531,6 +562,7 @@ def processes_export(observer):
         state = observer.api.final_state(owned.process)
         results.append({"pid": owned.process.pid, "birth_us": owned.process.birth_us,
                         "admitted_parent": owned.admitted_parent, "role": owned.role,
+                        "argument_binding": owned.argument_binding,
                         "last_seen_us": owned.last_seen_us,
                         "executable_images": [image_export(i) for i in owned.images.values()],
                         "test_image": image_export(owned.bundle_image) if owned.bundle_image else None,
@@ -575,6 +607,7 @@ def observed_command(command, cwd, bundle_provider, directories, report_wait=30)
                                  if code != 0 and remaining > 0 else
                                  {"outcome": "post_exit_deadline" if code != 0 else "not_needed", "reports": []})
             result["processes"] = processes_export(observer)
+            result["coverage"] = coverage(result["processes"])
             result["observer_errors"].update(observer.errors)
     except Exception as error:
         result["capture_error_type"] = type(error).__name__
@@ -641,6 +674,7 @@ def main():
         valid = record["source_after"]["passed"] and record["source_after"]["head"] == record["source_before"]["head"]
         processes = record["command"]["processes"]
         valid = valid and bool(processes) and not record["command"]["observer_errors"] and "capture_error_type" not in record["command"]
+        valid = valid and record["command"].get("coverage", {}).get("swift_testing_helper_observed", False)
         valid = valid and all(p["final_state"] in {"absent", "pid_reused"} for p in processes)
         valid = valid and all(not image["error"] for p in processes for image in p["executable_images"])
         valid = valid and all(p["test_image"] is None or not p["test_image"]["error"] for p in processes)

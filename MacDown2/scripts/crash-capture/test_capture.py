@@ -279,6 +279,42 @@ sys.exit(code)
             with patch.object(api, 'identity', side_effect=unavailable):
                 self.assertEqual(api.final_state(self.proc), expected)
 
+    def test_helper_requires_exact_macho_flag_and_rejects_wrong_or_ambiguous_arguments(self):
+        helper = str(self.exe)
+        target = str(self.test_image)
+        self.assertTrue(module.test_argument_binding(helper, [helper, '--test-bundle-path', target], self.bundle))
+        self.assertTrue(module.test_argument_binding(helper, [helper, '--test-bundle-path=' + target], self.bundle))
+        self.assertEqual(module.test_argument_binding(helper, [helper, '--test-bundle-path', str(self.bundle)], self.bundle), 'swift_testing_bundle_flag')
+        for args in ([helper, target],
+                     [helper, '--test-bundle-path', '/unrelated/MacDownKitPackageTests'],
+                     [helper, '--test-bundle-path', target, '--test-bundle-path', target],
+                     [helper, '--test-bundle-path', target, '--test-bundle-path']):
+            self.assertFalse(module.test_argument_binding(helper, args, self.bundle))
+        self.assertTrue(module.test_argument_binding('/usr/bin/xctest', ['xctest', str(self.bundle)], self.bundle))
+        self.assertFalse(module.test_argument_binding('/usr/bin/xctest', ['xctest', target], self.bundle))
+
+    def test_launcher_and_xctest_do_not_prove_swift_testing_helper_coverage(self):
+        root = {'role': 'launcher', 'executable_images': [{'name': 'swift-package'}]}
+        xctest = {'role': 'test_helper', 'argument_binding': 'xctest_bundle_argument', 'executable_images': [{'name': 'xctest'}]}
+        helper = {'role': 'test_helper', 'argument_binding': 'swift_testing_macho_flag', 'executable_images': [{'name': 'swiftpm-testing-helper'}]}
+        self.assertFalse(module.coverage([root])['swift_testing_helper_observed'])
+        self.assertEqual(module.coverage([root, xctest]), {'xctest_observed': True, 'swift_testing_helper_observed': False})
+        self.assertTrue(module.coverage([root, xctest, helper])['swift_testing_helper_observed'])
+
+    def test_integrity_requires_target_runtime_and_preserves_passing_command(self):
+        for runtime, expected in ((None, 'unavailable'), ('xctest', 'unavailable'), ('swiftpm-testing-helper', 'passed')):
+            with self.subTest(runtime=runtime):
+                process = {'role': 'launcher' if runtime is None else 'test_helper', 'final_state': 'absent',
+                           'argument_binding': {'xctest': 'xctest_bundle_argument', 'swiftpm-testing-helper': 'swift_testing_macho_flag'}.get(runtime),
+                           'executable_images': [{'name': runtime or 'swift', 'error': None}], 'test_image': {'error': None}}
+                record = {'shell_exit_code': 0, 'processes': [process], 'observer_errors': {}, 'coverage': module.coverage([process])}
+                output = self.root.parent / (self.root.name + str(runtime))
+                with patch.object(sys, 'argv', ['capture', '--repo', str(self.root), '--output', str(output)]), patch.object(module, 'attest', return_value={'passed': True, 'head': 'same'}), patch.object(module, 'observed_command', return_value=record), patch.dict(os.environ, {}, clear=True):
+                    self.assertEqual(module.main(), 0)
+                result = json.loads((output / 'run.json').read_text())
+                self.assertEqual(result['diagnostic_integrity'], expected)
+                (output / 'run.json').unlink(); output.rmdir()
+
     def test_binary_hashing_and_process_images_are_bounded(self):
         self.assertEqual(module.file_sha(self.exe, time.monotonic() + 1), module.sha(self.exe.read_bytes()))
         with self.assertRaises(module.Rejected): module.file_sha(self.exe, time.monotonic() - 1)
@@ -311,7 +347,7 @@ class ObserverLifecycleTests(unittest.TestCase):
             observer.poll(Child())
             identities[100] = module.Process(100, os.getpid(), 1000, str(exec_image))
             identities[200] = module.Process(200, 100, 2000, str(helper))
-            commands[200] = (100, str(helper) + ' --test-bundle-path ' + str(bundle))
+            commands[200] = (100, str(helper) + ' --test-bundle-path ' + str(image))
             observer.poll(Child())
             self.assertEqual(len(observer.owned[100].images), 2)
             self.assertIn(200, observer.owned)
