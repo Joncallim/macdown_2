@@ -1,12 +1,12 @@
 {
-  "originHash" : "fa0530350d1123a35592c557412945e8150d42f0d90049eb43762d1846dadeb9",
+  "originHash" : "6a4d91bce20ea39da1e21691b395d3ae0075ee45858a1f1343437d8ed6059c56",
   "pins" : [
     {
       "identity" : "neon",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Joncallim/Neon",
       "state" : {
-        "revision" : "defe569104080cc768c7d0c616876758f255d34a"
+        "revision" : "10df9b9dbba252b43edd0243c47143a3272bd408"
       }
     },
     {

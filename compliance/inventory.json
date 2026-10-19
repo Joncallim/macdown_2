@@ -323,9 +323,9 @@
       "id": "neon",
       "name": "Neon",
       "kind": "swiftpm",
-      "version": "defe569",
+      "version": "10df9b9",
       "upstream": "https://github.com/Joncallim/Neon",
-      "revision": "defe569104080cc768c7d0c616876758f255d34a",
+      "revision": "10df9b9dbba252b43edd0243c47143a3272bd408",
       "resolution": "exact",
       "licence": "BSD-3-Clause",
       "copyright": [
@@ -336,7 +336,7 @@
           "path": "compliance/licenses/neon--LICENSE.txt",
           "sha256": "d11b5eea8e9ae2f6dd06545633e8daf0dfcbc7dbb911a20d1504c905e5808775",
           "upstream": "https://github.com/Joncallim/Neon",
-          "upstream_revision": "defe569104080cc768c7d0c616876758f255d34a",
+          "upstream_revision": "10df9b9dbba252b43edd0243c47143a3272bd408",
           "upstream_path": "LICENSE"
         }
       ],
@@ -346,7 +346,7 @@
         "LC-07"
       ],
       "manifest_requirement": {
-        "revision": "defe569104080cc768c7d0c616876758f255d34a"
+        "revision": "10df9b9dbba252b43edd0243c47143a3272bd408"
       }
     },
     {
