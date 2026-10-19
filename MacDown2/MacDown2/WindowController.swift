@@ -52,6 +52,19 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private var lastObservedLanguageID: String?
     /// When the workspace index was last re-walked (`refreshWorkspaceIndex`).
     var lastWorkspaceIndexRefresh: Date?
+    var lastWorkspaceIndexRefreshRoot: URL?
+    /// Root-request identity prevents an older A → B → A completion from
+    /// claiming freshness for the latest request that happens to use the same URL.
+    var workspaceRootRequestGeneration: UInt = 0
+    /// A refresh may use the current tree root only after the current explicit
+    /// root request has applied it. After that point, accepted renames may
+    /// remap the actual root without starting a new request.
+    var workspaceTreeRootAppliedGeneration: UInt?
+    /// Identifies which overlapping index rebuild may publish completion.
+    var workspaceIndexBuildGeneration: UInt = 0
+    var lastWorkspaceIndexRefreshGeneration: UInt?
+    var pendingFolderSearchRoot: URL?
+    var pendingFolderSearchRootGeneration: UInt?
 
     init(
         model: WorkspaceModel,
@@ -59,7 +72,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         themeController: ThemeController,
         grammarRegistry: GrammarRegistry,
         fileTreePreferences: FileTreePreferences,
-        recoveryExecutor: any RecoveryActionExecuting = DefaultRecoveryActionExecutor()
+        recoveryExecutor: any RecoveryActionExecuting = DefaultRecoveryActionExecutor(),
+        workspaceFileIndex: WorkspaceFileIndex = WorkspaceFileIndex()
     ) {
         self.model = model
         self.coordinator = coordinator
@@ -76,7 +90,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         jsonAnalysisStore = JSONAnalysisStore(debounce: .milliseconds(100))
         outlineController = OutlineController()
         fileTreeModel = Self.makeFileTreeModel(preferences: fileTreePreferences)
-        workspaceFileIndex = WorkspaceFileIndex()
+        self.workspaceFileIndex = workspaceFileIndex
         folderSearchModel = FolderSearchModel(index: workspaceFileIndex)
         externalFileController = Self.makeExternalFileController(
             model: model,
@@ -239,6 +253,14 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_: Notification) {
         isClosed = true
+        workspaceRootRequestGeneration &+= 1
+        workspaceTreeRootAppliedGeneration = nil
+        workspaceIndexBuildGeneration &+= 1
+        lastWorkspaceIndexRefresh = nil
+        lastWorkspaceIndexRefreshRoot = nil
+        lastWorkspaceIndexRefreshGeneration = nil
+        pendingFolderSearchRoot = nil
+        pendingFolderSearchRootGeneration = nil
         observationTask?.cancel()
         externalFileController.dispose()
         editorStore.evictAll()

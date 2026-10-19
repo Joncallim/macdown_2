@@ -10,4 +10,12 @@ The final serial locked-dependency encoding/core tests passed, without compiler 
 
 Execution disconnected during the first test launch; it left an empty log and no result. A process check found no surviving compiler/test process before validation resumed. No interrupted command is counted as passed. Raw evidence is retained under `/Users/jonathanlim/GitHub/_cleanup-archive/load-save-91e62f8f-2026-10-19`, with recorded hashes.
 
-This is deterministic concurrency and correctness evidence. It does not establish end-to-end document-open latency, remove repeated reads, or finish the workspace-index/save-conflict slices. Actual combined Release performance, hosted CI, native paths and owner review remain open. See the [bounded contract](../../LOAD_SAVE_RESPONSIVENESS_2026-10-19.md).
+## Latest workspace-index validation
+
+The current index validation is [workspace-index-failure-freshness-validation.md](workspace-index-failure-freshness-validation.md). It includes the later forced-refresh failure correction and supersedes the earlier 13-test `workspace-index-validation.md` snapshot and the 14-test `workspace-index-review-corrections-validation.md` snapshot for current index behavior. Those historical reports, hashes and logs are preserved unchanged.
+
+## Encoding and save-conflict evidence
+
+The encoding-open source record is [encoding-reviewed-final.json](encoding-reviewed-final.json), with its test evidence and logs described above and in [workspace-index-review-corrections-validation.md](workspace-index-review-corrections-validation.md). The save-conflict validation and its limits are in [save-conflict-validation.md](save-conflict-validation.md).
+
+Independent source review of the current combined diff is still pending. These deterministic focused tests do not establish end-to-end document-open latency or replace actual combined Release performance, hosted CI, native/manual paths, or owner acceptance. See the [bounded contract](../../LOAD_SAVE_RESPONSIVENESS_2026-10-19.md).

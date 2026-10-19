@@ -54,8 +54,11 @@ extension TabStore {
             return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
         }
         do {
-            let loaded = try await Task.detached(priority: .userInitiated) {
-                try document.load()
+            let (loaded, needsAutomaticDetection) = try await Task.detached(priority: .userInitiated) {
+                let loaded = try document.load()
+                let needsAutomaticDetection = encoding == nil
+                    && loaded.text.unicodeScalars.contains("\u{0}")
+                return (loaded, needsAutomaticDetection)
             }.value
             // The await above lets another intent open/activate this file.
             // Reuse that tab rather than publishing a duplicate completion.
@@ -65,7 +68,7 @@ extension TabStore {
             // BOM-less UTF-16 is "valid UTF-8" — full of NUL bytes. Text with a
             // NUL whose bytes unmistakably are UTF-16 is reopened as such rather
             // than shown (and saved back) as garbage.
-            if encoding == nil, loaded.text.unicodeScalars.contains("\u{0}"),
+            if needsAutomaticDetection,
                let detected = await automaticallyDetectedEncoding(at: url) {
                 return await openFileInTab(url, encoding: detected, requestGeneration: requestGeneration)
             }

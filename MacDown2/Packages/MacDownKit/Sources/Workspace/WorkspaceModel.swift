@@ -79,6 +79,10 @@ public final class WorkspaceModel {
     /// The tab store that owns all open tabs.
     public let tabStore: TabStore
     let documentWriter = DocumentWriter()
+    /// Test seam after the detached conflict read completes, including a failed read.
+    var afterSaveConflictRead: (@Sendable () -> Void)?
+    /// Test seam for a newer outcome after conflict recovery persistence but before error publication.
+    var afterSaveConflictRecoveryPersistence: (@MainActor () async -> Void)?
     var nextSaveGeneration: UInt = 0
     var latestSaveGenerationByDocumentID: [String: UInt] = [:]
     /// A Save As owns the old document lane until its publication has either
