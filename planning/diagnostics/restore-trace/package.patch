@@ -67,8 +67,9 @@ diff --git a/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift 
 new file mode 100644
 --- /dev/null
 +++ b/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,23 @@
 +import Neon
++@testable import Highlighting
 +
 +@MainActor
 +func restoreTraceState(_ editor: HighlightedEditor, stage: String, fields: [String: String] = [:]) {
