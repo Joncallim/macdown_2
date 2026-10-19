@@ -132,13 +132,14 @@ def run_command(
             )
             record["pid"] = process.pid
             owner_identity = snapshot_process_identity(process.pid)
+            record["owner_identity"] = owner_identity
             if helper_test_bundle is not None and owner_identity is None:
                 raise DiagnosticFailure("Could not snapshot the owned swift test process identity")
             try:
                 deadline = time.monotonic() + COMMAND_TIMEOUT_SECONDS
                 while process.poll() is None and time.monotonic() < deadline:
                     if helper_test_bundle is not None:
-                        inspect_owned_helpers(process.pid, owner_identity, helper_test_bundle, owned_helpers, helper_errors)
+                        inspect_owned_helpers(process, owner_identity, helper_test_bundle, owned_helpers, helper_errors)
                     try:
                         process.wait(timeout=HELPER_POLL_SECONDS if helper_test_bundle else 1)
                     except subprocess.TimeoutExpired:
@@ -165,7 +166,7 @@ def run_command(
         record["ended_at"] = utc_now()
         if helper_test_bundle is not None:
             if process is not None and process.poll() is None:
-                inspect_owned_helpers(process.pid, owner_identity, helper_test_bundle, owned_helpers, helper_errors)
+                inspect_owned_helpers(process, owner_identity, helper_test_bundle, owned_helpers, helper_errors)
             if owned_helpers:
                 helper_cleanup = record.setdefault("owned_helper_cleanup", {})
                 helper_cleanup["post_command_cleanup"] = terminate_verified_helpers(owned_helpers)
@@ -243,19 +244,24 @@ def contains_exact_bundle_argument(command: str, bundle: Path) -> bool:
 
 
 def snapshot_process_identity(pid: int) -> dict[str, str] | None:
-    for row_pid, _, started, command in process_rows():
+    for row_pid, parent, started, command in process_rows():
         if row_pid == pid:
-            return {"started": started, "command_sha256": hashlib.sha256(command.encode()).hexdigest()}
+            return {"started": started, "parent_pid": str(parent), "command_sha256": hashlib.sha256(command.encode()).hexdigest()}
     return None
 
 
 def inspect_owned_helpers(
-    owner_pid: int,
+    owner_process: subprocess.Popen[Any],
     owner_identity: dict[str, str] | None,
     bundle: Path,
     owned: dict[int, dict[str, str]],
     errors: list[dict[str, str]],
 ) -> None:
+    # A live, unreaped Popen child cannot have its PID recycled. Swift may exec
+    # its test driver in that same process, legitimately changing its command.
+    if owner_process.poll() is not None:
+        return
+    owner_pid = owner_process.pid
     try:
         rows = process_rows()
     except Exception as error:
@@ -266,10 +272,14 @@ def inspect_owned_helpers(
         return
     if (
         owner[2] != owner_identity["started"]
-        or hashlib.sha256(owner[3].encode()).hexdigest() != owner_identity["command_sha256"]
+        or owner[1] != os.getpid()
+        or owner_identity["parent_pid"] != str(os.getpid())
     ):
         errors.append({"kind": "owned_command_identity_mismatch", "detail": f"pid={owner_pid}; helper scan refused"})
         return
+    command_hash = hashlib.sha256(owner[3].encode()).hexdigest()
+    if command_hash != owner_identity["command_sha256"]:
+        owner_identity["observed_exec_command_sha256"] = command_hash
     for pid, parent, started, command in rows:
         if parent != owner_pid or "swiftpm-testing-helper" not in command:
             continue

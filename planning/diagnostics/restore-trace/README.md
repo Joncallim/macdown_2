@@ -77,3 +77,32 @@ or a release candidate. The 8,192 UTF-16 fallback and production pins remain in
 place. PR #480 remains draft/unmerged; issues #53 and #203 remain open. Manual
 Pinyin evidence retains its documented coverage limits; automated XCUITest did
 not establish CJK coverage. Owner review and all release gates remain required.
+
+## Local diagnostic validation
+
+The original parameterized restore test ran once with the reviewed passive patches
+at diagnostic source `d5114f66551e78ed5b7c87bf37a990870cfaf23e`. Both cases passed;
+the two exact rendered-style oracles matched their fresh references. Their traces
+contained 149 and 187 events, no dropped events and no unfinished observed work.
+They do not assert quiescence and did not reproduce the historical hosted failure.
+Independent inspection found only synthetic fixture metadata in the traces/logs.
+
+The collection attempt itself remains recorded as failed: Swift's launcher changed
+its command during `exec`, causing the runner to refuse helper admission. The test
+exit code was 0, and source/lock/all 22 pin/post-patch hash checks passed. A later
+read-only process inspection confirmed the test process and helpers were gone.
+The runner correction preserves live child/start/parent identity across `exec` and
+keeps exact helper birth/command/bundle checks before signals. A separate synthetic
+exec-plus-detached-helper probe verified tracking, cleanup and exit; wrong-bundle,
+non-child and changed-owner-start controls were refused. The product test was not
+repeated to replace the retained collection outcome.
+
+Two earlier setup failures were also retained: origin URL lookup initially missed
+SwiftPM's local bare-repository indirection, and the new test support file initially
+lacked its test-only import. Both stopped before tests executed, were corrected,
+and received independent review. These are diagnostic setup failures, not evidence
+about the product regression.
+
+The hosted diagnostic is still required. It runs the full package suite on a
+separate VM after ordinary CI and must retain its original result even if the trace
+is incomplete or the style oracle fails.
