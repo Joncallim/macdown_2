@@ -1,0 +1,165 @@
+diff --git a/MacDownKit/Package.swift b/MacDownKit/Package.swift
+--- a/MacDownKit/Package.swift
++++ b/MacDownKit/Package.swift
+@@ -193,7 +193,7 @@
+         .testTarget(name: "WorkspaceTests", dependencies: ["Workspace"]),
+         .testTarget(name: "FileTreeTests", dependencies: ["FileTree"]),
+         .testTarget(name: "EditorCoreTests", dependencies: ["EditorCore", "JSONSupport"]),
+-        .testTarget(name: "HighlightingTests", dependencies: ["Highlighting"]),
++        .testTarget(name: "HighlightingTests", dependencies: ["Highlighting", .product(name: "Neon", package: "Neon")]),
+         .testTarget(name: "MarkdownEngineTests", dependencies: ["MarkdownEngine"]),
+         .testTarget(name: "PreviewTests", dependencies: ["Preview"]),
+         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
+diff --git a/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift b/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+--- a/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
++++ b/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+@@ -1,5 +1,6 @@
+ import AppKit
+ @testable import Highlighting
++import Neon
+ import Testing
+ 
+ /// Register row H5: the bounded size-based highlighting fallback — cut-off,
+@@ -154,6 +155,12 @@
+     @Test(arguments: [false, true])
+     func shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause: Bool) async {
+         let editor = Fixtures.editor(units: cutoff + 500)
++        let session = RestoreHostedTrace.begin(
++            view: editor.textView,
++            label: "restore-idle-\(includesIdlePause)",
++            reader: restoreTraceRendering
++        )
++        defer { RestoreHostedTrace.finish(session) }
+         let toDelete = editor.length - Fixtures.policy.restoreAtOrBelowUTF16Units
+         let clock = ContinuousClock()
+         var lastEditStarted = clock.now
+@@ -168,28 +175,50 @@
+                     + "revision=\(editor.system.contentRevision), generation=\(editor.highlighter.generation), "
+                     + "tokens=\(editor.highlighter.styledTokenCount)"
+             )
++            restoreTraceState(
++                editor,
++                stage: "pause",
++                fields: ["editIndex": String(index), "elapsed": String(describing: clock.now - lastEditStarted)]
++            )
+             let modeBeforeEdit = editor.mode
+             editor.typeOrDelete(at: 50, insert: index.isMultiple(of: 2))
+             lastEditStarted = clock.now
+             #expect(editor.mode == modeBeforeEdit, "a small edit neither restores nor reduces highlighting")
++            restoreTraceState(editor, stage: "edited", fields: ["editIndex": String(index)])
+         }
+         #expect(await editor.waitUntil { editor.mode == .full }, "restored after the idle delay")
+         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+-        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
++        let fresh = RestoreHostedTrace.withRegistration(session, role: "fresh") {
++            HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
++        }
+         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+         let expectedRuns = fresh.renderedRuns()
+         let matches = editor.renderedRuns() == expectedRuns
+         #expect(editor.renderedRuns() == expectedRuns, "\(timeline.joined(separator: "; "))")
++        restoreTraceRuns(
++            editor,
++            stage: "oracle",
++            observed: editor.renderedRuns(),
++            reference: expectedRuns,
++            initialReference: expectedRuns,
++            originalMatches: matches
++        )
+         if !matches {
+             // Preserve the failed assertion before observing whether delayed work or an explicit
+             // revalidation changes the result. These bounded probes never convert failure to success.
+             await editor.settle(.seconds(2))
+             reportRestoreStyles("after2s", editor: editor, fresh: fresh, initialReference: expectedRuns)
++            restoreTraceState(editor, stage: "invalidate.call.begin")
+             editor.highlighter.invalidateAll()
++            restoreTraceState(editor, stage: "invalidate.call.returned")
+             await editor.settle(.seconds(2))
+             reportRestoreStyles("afterInvalidation", editor: editor, fresh: fresh, initialReference: expectedRuns)
++            restoreTraceState(editor, stage: "discard.call.begin")
+             editor.highlighter.setLanguage(nil)
++            restoreTraceState(editor, stage: "discard.call.returned")
++            restoreTraceState(editor, stage: "rebuild.call.begin")
+             editor.highlighter.setLanguage("markdown")
++            restoreTraceState(editor, stage: "rebuild.call.returned")
+             await editor.settle(.seconds(2))
+             reportRestoreStyles("afterRebuild", editor: editor, fresh: fresh, initialReference: expectedRuns)
+         }
+@@ -210,6 +239,13 @@
+     ) {
+         let currentReference = fresh.renderedRuns()
+         let observed = editor.renderedRuns()
++        restoreTraceRuns(
++            editor,
++            stage: stage,
++            observed: observed,
++            reference: currentReference,
++            initialReference: initialReference
++        )
+         print(
+             "RESTORE_STYLE_PROBE \(stage): referenceUnchanged=\(currentReference == initialReference), "
+                 + "matchesInitial=\(observed == initialReference), matchesCurrent=\(observed == currentReference)"
+diff --git a/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift b/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift
+new file mode 100644
+--- /dev/null
++++ b/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift
+@@ -0,0 +1,59 @@
++import AppKit
++@testable import Highlighting
++import Neon
++
++@MainActor
++func restoreTraceState(_ editor: HighlightedEditor, stage: String, fields: [String: String] = [:]) {
++    var fields = fields
++    fields["stage"] = stage
++    fields["mode"] = String(describing: editor.mode)
++    fields["contentRevision"] = String(editor.system.contentRevision)
++    fields["generation"] = String(editor.highlighter.generation)
++    fields["styledTokenCount"] = String(editor.highlighter.styledTokenCount)
++    RestoreHostedTrace.record(view: editor.textView, event: "fixture.state", fields: fields)
++}
++
++@MainActor
++func restoreTraceRuns(
++    _ editor: HighlightedEditor, stage: String, observed: [RenderedRun], reference: [RenderedRun],
++    initialReference: [RenderedRun], originalMatches: Bool? = nil
++) {
++    restoreTraceState(editor, stage: stage)
++    let observedText = observed.map(\.description).joined(separator: "|")
++    let referenceText = reference.map(\.description).joined(separator: "|")
++    let initialText = initialReference.map(\.description).joined(separator: "|")
++    RestoreHostedTrace.record(view: editor.textView, event: "fixture.runs", fields: [
++        "stage": stage, "matches": String(observed == reference),
++        "originalComparisonMatches": originalMatches.map(String.init) ?? "notPrimary",
++        "readOrder": "afterPrimaryAssertion", "referenceUnchanged": String(reference == initialReference),
++        "observed": observedText, "reference": referenceText,
++        "observedSHA256": RestoreHostedTrace.digest(observedText),
++        "referenceSHA256": RestoreHostedTrace.digest(referenceText),
++        "initialReferenceSHA256": RestoreHostedTrace.digest(initialText),
++    ])
++}
++
++/// Reads only existing TextKit 2 rendering attributes. It neither forces layout
++/// nor invokes the highlighter's attribute provider, and is not a pixel oracle.
++@MainActor
++func restoreTraceRendering(_ view: NSTextView) -> [String: String] {
++    guard let layout = view.textLayoutManager, let content = layout.textContentManager else {
++        return ["renderingAvailable": "false"]
++    }
++    let origin = content.documentRange.location
++    var runs: [RenderedRun] = []
++    layout.enumerateRenderingAttributes(from: origin, reverse: false) { _, attributes, range in
++        let location = content.offset(from: origin, to: range.location)
++        let length = content.offset(from: range.location, to: range.endLocation)
++        let signature = RenderedRun.signature(of: attributes)
++        guard !signature.isEmpty, length > 0 else { return true }
++        if let last = runs.last, last.signature == signature, NSMaxRange(last.range) == location {
++            runs[runs.count - 1].range.length += length
++        } else {
++            runs.append(RenderedRun(range: NSRange(location: location, length: length), signature: signature))
++        }
++        return true
++    }
++    let value = runs.map(\.description).joined(separator: "|")
++    return ["renderingAvailable": "true", "renderedRuns": value, "renderedSHA256": RestoreHostedTrace.digest(value)]
++}

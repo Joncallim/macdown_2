@@ -573,9 +573,11 @@ def processes_export(observer):
     return results
 
 
-def observed_command(command, cwd, bundle_provider, directories, report_wait=30):
-    # No pipes, environment overrides, session/group changes, debugger, handlers,
-    # signals, product timeout, retries, or sleeps inside the tested process.
+def observed_command(command, cwd, bundle_provider, directories, report_wait=30, *, env=None, stdout=None):
+    # No debugger, session/group changes, handlers, signals, product timeout,
+    # retries or sleeps inside the tested process. The isolated trace caller may
+    # supply its explicit fixture-output environment and an open regular log file;
+    # ordinary capture retains inherited environment/output by default.
     setup_errors = Counter()
     try:
         before = candidate_stamps(directories, PROCESS_NAMES | {Path(command[0]).name}, errors=setup_errors)
@@ -588,7 +590,7 @@ def observed_command(command, cwd, bundle_provider, directories, report_wait=30)
         observer = None
         setup_errors[type(error).__name__] += 1
     started_us = time.time_ns() // 1000
-    child = subprocess.Popen(command, cwd=cwd)
+    child = subprocess.Popen(command, cwd=cwd, env=env, stdout=stdout, stderr=subprocess.STDOUT if stdout is not None else None)
     while child.poll() is None:
         if observer is not None:
             observer.poll(child)

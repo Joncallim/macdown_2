@@ -1,0 +1,843 @@
+diff --git a/Sources/Neon/RestoreHostedTrace.swift b/Sources/Neon/RestoreHostedTrace.swift
+new file mode 100644
+--- /dev/null
++++ b/Sources/Neon/RestoreHostedTrace.swift
+@@ -0,0 +1,98 @@
++import AppKit
++import CryptoKit
++import Foundation
++import RangeState
++
++/// Public facade used only by the copied synthetic test fixture.
++@MainActor
++public enum RestoreHostedTrace {
++    private static var pendingRegistration: (String, String)?
++    private static var readers: [String: @MainActor (NSTextView) -> [String: String]] = [:]
++    private static var viewSessions: [String: String] = [:]
++
++    public static func begin(view: NSTextView, label: String, reader: @escaping @MainActor (NSTextView) -> [String: String]) -> String? {
++        guard ProcessInfo.processInfo.environment["MOSTLYTEXT_RESTORE_TRACE_DIR"] != nil else { return nil }
++        let session = PassiveRestoreTrace.shared.start(view: identity(view), label: label)
++        readers[session] = reader
++        viewSessions[identity(view)] = session
++        return session
++    }
++
++    public static func withRegistration<T>(_ session: String?, role: String, body: () -> T) -> T {
++        guard let session else { return body() }
++        precondition(pendingRegistration == nil)
++        pendingRegistration = (session, role)
++        defer { pendingRegistration = nil }
++        return body()
++    }
++
++    static func registerPending(view: NSTextView) {
++        guard let (session, role) = pendingRegistration else { return }
++        PassiveRestoreTrace.shared.register(view: identity(view), session: session, role: role)
++        viewSessions[identity(view)] = session
++        pendingRegistration = nil
++    }
++
++    public static func identity(_ object: AnyObject) -> String { String(describing: ObjectIdentifier(object)) }
++
++    public static func state(_ view: NSTextView) -> [String: String] {
++        guard PassiveRestoreTrace.shared.contains(identity(view)) else { return [:] }
++        return ["view": identity(view), "length": String(view.string.utf16.count),
++                "textSHA256": SHA256.hash(data: Data(view.string.utf8)).map { String(format: "%02x", $0) }.joined(),
++                "storageVersion": String(view.textStorage?.hashValue ?? 0)]
++    }
++
++    public static func record(view: NSTextView, event: String, fields: @autoclosure () -> [String: String] = [:]) {
++        let key = identity(view)
++        guard PassiveRestoreTrace.shared.contains(key) else { return }
++        var fields = fields()
++        fields.merge(state(view)) { _, new in new }
++        PassiveRestoreTrace.shared.record(key, event, fields)
++    }
++
++    public static func digest(_ value: String) -> String {
++        SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
++    }
++
++    static func attributeSignature(_ attributes: [NSAttributedString.Key: Any]) -> String {
++        var parts: [String] = []
++        if let color = (attributes[.foregroundColor] as? NSColor)?.usingColorSpace(.sRGB) {
++            parts.append(String(format: "c%02x%02x%02x", Int(color.redComponent * 255),
++                                Int(color.greenComponent * 255), Int(color.blueComponent * 255)))
++        }
++        if let font = attributes[.font] as? NSFont {
++            let traits = font.fontDescriptor.symbolicTraits
++            parts.append("f\(traits.contains(.bold) ? "b" : "")\(traits.contains(.italic) ? "i" : "")")
++        }
++        if attributes[.underlineStyle] != nil { parts.append("u") }
++        return parts.joined(separator: ",")
++    }
++
++    /// The macOS 26 test target supplies a read-only attribute reader. Keeping
++    /// it there preserves the pinned dependency's original deployment target.
++    static func rendering(_ view: NSTextView, event: String, queryID: Int) {
++        guard let session = viewSessions[identity(view)], let reader = readers[session] else { return }
++        var fields = reader(view)
++        fields["queryID"] = String(queryID)
++        record(view: view, event: event, fields: fields)
++    }
++
++    static func application(_ value: TokenApplication) -> [String: String] {
++        let tokens = value.tokens.map { "\($0.name):\(NSStringFromRange($0.range))" }.joined(separator: "|")
++        return ["action": String(describing: value.action), "clearRange": value.range.map(NSStringFromRange) ?? "nil",
++                "tokenCount": String(value.tokens.count), "tokens": tokens, "tokensSHA256": digest(tokens)]
++    }
++
++    static func namedRanges(_ value: String, range: NSRange, version: String) -> [String: String] {
++        ["range": NSStringFromRange(range), "clientVersion": version,
++         "namedRanges": value, "namedRangesSHA256": digest(value)]
++    }
++
++    public static func finish(_ session: String?) {
++        guard let session, let directory = ProcessInfo.processInfo.environment["MOSTLYTEXT_RESTORE_TRACE_DIR"] else { return }
++        readers.removeValue(forKey: session)
++        viewSessions = viewSessions.filter { $0.value != session }
++        do { try PassiveRestoreTrace.shared.finish(session, directory: directory) }
++        catch { print("RESTORE_TRACE_WRITE_FAILED: \(String(reflecting: type(of: error)))") }
++    }
++}
+diff --git a/Sources/Neon/TextSystemStyler.swift b/Sources/Neon/TextSystemStyler.swift
+--- a/Sources/Neon/TextSystemStyler.swift
++++ b/Sources/Neon/TextSystemStyler.swift
+@@ -12,6 +12,7 @@
+ @MainActor
+ @preconcurrency
+ public final class TextSystemStyler<Interface: TextSystemInterface> {
++    let restoreTraceID = UUID().uuidString
+ 	private let textSystem: Interface
+ 	private let tokenProvider: TokenProvider
+ 	private let validator: SinglePhaseRangeValidator<Interface.Content>
+@@ -51,11 +52,23 @@
+ 		validator.contentChanged(in: range, delta: delta)
+ 	}
+ 
++    private func trace(_ event: String, target: RangeTarget, action: String = "") {
++        guard let interface = textSystem as? TextViewSystemInterface else { return }
++        RestoreHostedTrace.record(view: interface.textView, event: event, fields: [
++            "target": String(describing: target), "action": action, "styler": restoreTraceID,
++            "version": String(describing: textSystem.content.currentVersion)
++        ])
++    }
++
+ 	public func invalidate(_ target: RangeTarget) {
++        trace("styler.invalidate.begin", target: target)
+ 		validator.invalidate(target)
++        trace("styler.invalidate.returned", target: target)
+ 	}
+ 
+ 	public func validate(_ target: RangeTarget = .all) {
+-		validator.validate(target)
++        trace("styler.validate.begin", target: target)
++        let action = validator.validate(target)
++        trace("styler.validate.returned", target: target, action: String(describing: action))
+ 	}
+ }
+diff --git a/Sources/Neon/TextViewHighlighter.swift b/Sources/Neon/TextViewHighlighter.swift
+--- a/Sources/Neon/TextViewHighlighter.swift
++++ b/Sources/Neon/TextViewHighlighter.swift
+@@ -80,6 +80,8 @@
+ 		textView: TextView,
+ 		configuration: Configuration
+ 	) throws {
++        let callbackContext = UUID().uuidString
++        RestoreHostedTrace.registerPending(view: textView)
+ 		self.textView = textView
+ 		self.configuration = configuration
+ 		self.interface = TextViewSystemInterface(textView: textView, attributeProvider: configuration.attributeProvider)
+@@ -90,10 +92,14 @@
+ 				contentProvider: { [interface] in interface.languageLayerContent(with: $0) },
+ 				contentSnapshopProvider: { [interface] in interface.languageLayerContentSnapshot(with: $0) },
+ 				lengthProvider: { [interface] in interface.content.currentLength },
+-				invalidationHandler: { [buffer] in buffer.invalidate(.set($0)) },
++				invalidationHandler: { [buffer, interface, callbackContext] in
++                    RestoreHostedTrace.record(view: interface.textView, event: "buffer.invalidate", fields: ["callbackContext": callbackContext, "ranges": PassiveRestoreTrace.ranges($0)])
++                    buffer.invalidate(.set($0)) },
+ 				locationTransformer: configuration.locationTransformer
+ 			)
+ 		)
++
++        PassiveRestoreTrace.shared.bind(view: RestoreHostedTrace.identity(textView), client: client.restoreTraceID, tree: client.restoreTraceTreeID, callbackContext: callbackContext)
+ 
+ 		// this level of indirection is necessary so when the TextProvider is accessed it always uses the current version of the content
+ 		let tokenProvider = client.tokenProvider(with: { [interface] in
+@@ -104,21 +110,25 @@
+ 			textSystem: interface,
+ 			tokenProvider: tokenProvider
+ 		)
+-
+-		buffer.invalidationHandler = { [styler] in
++        PassiveRestoreTrace.shared.record(client.restoreTraceID, "styler.bind", ["styler": styler.restoreTraceID])
++
++		buffer.invalidationHandler = { [styler, interface, callbackContext] in
++            RestoreHostedTrace.record(view: interface.textView, event: "buffer.flush", fields: ["callbackContext": callbackContext, "target": String(describing: $0)])
+ 			styler.invalidate($0)
+ 
+ 			styler.validate()
+ 		}
+ 
+-		storageDelegate.willChangeContent = { [buffer, client] range, _ in
++		storageDelegate.willChangeContent = { [buffer, client, interface, callbackContext] range, _ in
++            RestoreHostedTrace.record(view: interface.textView, event: "storage.will", fields: ["callbackContext": callbackContext, "range": NSStringFromRange(range)])
+ 			// a change happening, start buffering invalidations
+ 			buffer.beginBuffering()
+ 
+ 			client.willChangeContent(in: range)
+ 		}
+ 
+-		storageDelegate.didChangeContent = { [buffer, client, styler] range, delta in
++		storageDelegate.didChangeContent = { [buffer, client, styler, interface, callbackContext] range, delta in
++            RestoreHostedTrace.record(view: interface.textView, event: "storage.did", fields: ["callbackContext": callbackContext, "range": NSStringFromRange(range), "delta": String(delta)])
+ 			let adjustedRange = NSRange(location: range.location, length: range.length - delta)
+ 
+ 			client.didChangeContent(in: adjustedRange, delta: delta)
+@@ -126,6 +136,7 @@
+ 
+ 			// At this point in mutation processing, it is unsafe to apply style changes. Ideally, we'd have a hook so we can know when it is ok. But, no such system exists for stock TextKit 1/2. So, instead we just let the runloop turn. This is *probably* safe, if the text does not change again, but can also result in flicker.
+ 			DispatchQueue.main.async {
++                RestoreHostedTrace.record(view: interface.textView, event: "buffer.end", fields: ["callbackContext": callbackContext])
+ 				buffer.endBuffering()
+ 			}
+ 
+diff --git a/Sources/Neon/TextViewSystemInterface.swift b/Sources/Neon/TextViewSystemInterface.swift
+--- a/Sources/Neon/TextViewSystemInterface.swift
++++ b/Sources/Neon/TextViewSystemInterface.swift
+@@ -173,10 +173,18 @@
+ 		guard
+ 			let textRange = NSTextRange(clampedRange, provider: contentManager)
+ 		else {
++            PassiveRestoreTrace.shared.recordQuery("paint.set.rejected", fields: [
++                "requestedRange": NSStringFromRange(range), "clampedRange": NSStringFromRange(clampedRange),
++                "attributes": RestoreHostedTrace.attributeSignature(attrs), "contentLength": String(length)
++            ])
+ 			return
+ 		}
+ 
+ 		textLayoutManager.setRenderingAttributes(attrs, for: textRange)
++        PassiveRestoreTrace.shared.recordQuery("paint.set.returned", fields: [
++            "requestedRange": NSStringFromRange(range), "clampedRange": NSStringFromRange(clampedRange),
++            "attributes": RestoreHostedTrace.attributeSignature(attrs), "contentLength": String(length)
++        ])
+ 	}
+ 
+ 	public func applyStyles(for application: TokenApplication) {
+diff --git a/Sources/Neon/TokenSystemValidator.swift b/Sources/Neon/TokenSystemValidator.swift
+--- a/Sources/Neon/TokenSystemValidator.swift
++++ b/Sources/Neon/TokenSystemValidator.swift
+@@ -25,25 +25,71 @@
+ 		textSystem.content.currentVersion
+ 	}
+ 
+-	private func validate(_ range: Validator.ContentRange) -> Validation? {
+-		guard range.version == currentVersion else { return .stale }
++    private func trace(_ event: String, _ fields: @autoclosure () -> [String: String] = [:]) {
++        guard let interface = textSystem as? TextViewSystemInterface else { return }
++        guard PassiveRestoreTrace.shared.contains(RestoreHostedTrace.identity(interface.textView)) else { return }
++        var fields = fields()
++        fields["currentVersion"] = String(describing: currentVersion)
++        RestoreHostedTrace.record(view: interface.textView, event: event, fields: fields)
++    }
++    private func queryID() -> Int {
++        guard let interface = textSystem as? TextViewSystemInterface else { return 0 }
++        return PassiveRestoreTrace.shared.nextQuery(view: RestoreHostedTrace.identity(interface.textView))
++    }
++    private func validate(_ range: Validator.ContentRange) -> Validation? {
++		guard range.version == currentVersion else {
++            trace("query.stale", ["admittedVersion": String(describing: range.version)])
++            return .stale
++        }
+ 
+-		guard let application = tokenProvider.sync(range.value) else {
++        let id = queryID()
++        trace("query.begin", ["path": "sync", "queryID": String(id), "range": NSStringFromRange(range.value), "admittedVersion": String(describing: range.version)])
++        defer { trace("query.end", ["queryID": String(id), "path": "sync"]) }
++        guard let application = RestoreTraceContext.$queryID.withValue(id, operation: { tokenProvider.sync(range.value) }) else {
++            trace("query.sync.unavailable", ["queryID": String(id)])
+ 			return nil
+ 		}
+ 
+-		applyStyles(for: application)
++        trace("query.application", RestoreHostedTrace.application(application).merging(["queryID": String(id), "admittedVersion": String(describing: range.version)]) { _, new in new })
++        if let interface = textSystem as? TextViewSystemInterface {
++            RestoreHostedTrace.rendering(interface.textView, event: "paint.before", queryID: id)
++        }
++        trace("paint.begin", ["queryID": String(id), "admittedVersion": String(describing: range.version)])
++        RestoreTraceContext.$queryID.withValue(id) { applyStyles(for: application) }
++        trace("paint.end", ["queryID": String(id), "admittedVersion": String(describing: range.version)])
++        if let interface = textSystem as? TextViewSystemInterface {
++            RestoreHostedTrace.rendering(interface.textView, event: "paint.after", queryID: id)
++        }
++        trace("query.applied", ["queryID": String(id)])
+ 
+ 		return .success(range.value)
+ 	}
+ 
+ 	private func validate(_ range: Validator.ContentRange) async -> Validation {
+-		guard range.version == currentVersion else { return .stale }
++		guard range.version == currentVersion else {
++            trace("query.stale", ["admittedVersion": String(describing: range.version)])
++            return .stale
++        }
+ 
+ 		// https://github.com/apple/swift/pull/71143
+-		let application = await tokenProvider.async(isolation: MainActor.shared, range.value)
++        let id = queryID()
++        trace("query.begin", ["path": "async", "queryID": String(id), "range": NSStringFromRange(range.value), "admittedVersion": String(describing: range.version)])
++        defer { trace("query.end", ["queryID": String(id), "path": "async"]) }
++        let application = await RestoreTraceContext.$queryID.withValue(id) {
++            await tokenProvider.async(isolation: MainActor.shared, range.value)
++        }
+ 
+-		applyStyles(for: application)
++        trace("query.application", RestoreHostedTrace.application(application).merging(["queryID": String(id), "admittedVersion": String(describing: range.version)]) { _, new in new })
++        if let interface = textSystem as? TextViewSystemInterface {
++            RestoreHostedTrace.rendering(interface.textView, event: "paint.before", queryID: id)
++        }
++        trace("paint.begin", ["queryID": String(id), "admittedVersion": String(describing: range.version)])
++        RestoreTraceContext.$queryID.withValue(id) { applyStyles(for: application) }
++        trace("paint.end", ["queryID": String(id), "admittedVersion": String(describing: range.version)])
++        if let interface = textSystem as? TextViewSystemInterface {
++            RestoreHostedTrace.rendering(interface.textView, event: "paint.after", queryID: id)
++        }
++        trace("query.applied", ["queryID": String(id)])
+ 
+ 		return .success(range.value)
+ 	}
+diff --git a/Sources/Neon/TreeSitterClient+Neon.swift b/Sources/Neon/TreeSitterClient+Neon.swift
+--- a/Sources/Neon/TreeSitterClient+Neon.swift
++++ b/Sources/Neon/TreeSitterClient+Neon.swift
+@@ -32,25 +32,37 @@
+ 	@preconcurrency
+ 	public func tokenProvider(with provider: @escaping TextProvider, nameMap: [String : String] = [:]) -> TokenProvider {
+ 		TokenProvider(
+-			syncValue: { [highlightsProvider] range in
++			syncValue: { [highlightsProvider, restoreTraceID, self] range in
++                PassiveRestoreTrace.shared.linkQuery(RestoreTraceContext.queryID, client: restoreTraceID)
+ 				do {
+ 					let params = TreeSitterClient.ClientQueryParams(range: range, textProvider: provider)
+ 					guard let namedRanges = try highlightsProvider.sync(params) else {
+ 						return nil
+ 					}
+ 
+-					return TokenApplication(namedRanges: namedRanges, nameMap: nameMap, range: range)
++                    PassiveRestoreTrace.shared.recordQuery("query.namedRanges", fields: RestoreHostedTrace.namedRanges(
++                        namedRanges.map { "\($0.name):\(NSStringFromRange($0.range))" }.joined(separator: "|"),
++                        range: range, version: self.restoreTraceVersion
++                    ))
++                    return TokenApplication(namedRanges: namedRanges, nameMap: nameMap, range: range)
+ 				} catch {
++                    PassiveRestoreTrace.shared.record(restoreTraceID, "query.error", ["errorType": String(reflecting: type(of: error))])
+ 					return .noChange
+ 				}
+ 			},
+-			mainActorAsyncValue: { [highlightsProvider] range in
++			mainActorAsyncValue: { [highlightsProvider, restoreTraceID, self] range in
++                PassiveRestoreTrace.shared.linkQuery(RestoreTraceContext.queryID, client: restoreTraceID)
+ 				do {
+ 					let params = TreeSitterClient.ClientQueryParams(range: range, textProvider: provider)
+ 					let namedRanges = try await highlightsProvider.async(isolation: MainActor.shared, params)
+ 
+-					return TokenApplication(namedRanges: namedRanges, nameMap: nameMap, range: range)
++                    PassiveRestoreTrace.shared.recordQuery("query.namedRanges", fields: RestoreHostedTrace.namedRanges(
++                        namedRanges.map { "\($0.name):\(NSStringFromRange($0.range))" }.joined(separator: "|"),
++                        range: range, version: self.restoreTraceVersion
++                    ))
++                    return TokenApplication(namedRanges: namedRanges, nameMap: nameMap, range: range)
+ 				} catch {
++                    PassiveRestoreTrace.shared.record(restoreTraceID, "query.error", ["errorType": String(reflecting: type(of: error))])
+ 					return .noChange
+ 				}
+ 			}
+@@ -61,11 +73,13 @@
+ #if os(macOS) || os(iOS) || os(visionOS)
+ extension TextViewSystemInterface {
+ 	func languageLayerContent(with limit: Int) -> LanguageLayer.Content {
+-		LanguageLayer.Content(string: textStorage.string, limit: limit)
++        RestoreHostedTrace.record(view: textView, event: "content.live", fields: ["limit": String(limit)])
++		return LanguageLayer.Content(string: textStorage.string, limit: limit)
+ 	}
+ 
+ 	func languageLayerContentSnapshot(with limit: Int) -> LanguageLayer.ContentSnapshot {
+-		LanguageLayer.ContentSnapshot(string: textStorage.string, limit: limit)
++        RestoreHostedTrace.record(view: textView, event: "content.snapshot", fields: ["limit": String(limit)])
++		return LanguageLayer.ContentSnapshot(string: textStorage.string, limit: limit)
+ 	}
+ }
+ 
+diff --git a/Sources/RangeState/PassiveRestoreTrace.swift b/Sources/RangeState/PassiveRestoreTrace.swift
+new file mode 100644
+--- /dev/null
++++ b/Sources/RangeState/PassiveRestoreTrace.swift
+@@ -0,0 +1,172 @@
++import Foundation
++
++/// Diagnostic-only bounded recorder. Identifiers are registered explicitly by
++/// synthetic fixtures; unrelated editors and document contents are not recorded.
++public final class PassiveRestoreTrace: @unchecked Sendable {
++    public static let shared = PassiveRestoreTrace()
++    private final class Session {
++        let label: String
++        init(label: String) { self.label = label }
++        var pending: Set<String> = []
++        var rows: [[String: String]] = []
++        var bytes = 0
++        var dropped = 0
++    }
++    private let lock = NSLock()
++    private var sessions: [String: Session] = [:]
++    private var owners: [String: String] = [:]
++    private var roles: [String: String] = [:]
++    private var queryClients: [Int: String] = [:]
++    private var sequence = 0
++    private var querySequence = 0
++    private var generations: [String: Int] = [:]
++
++    public func start(view: String, label: String) -> String {
++        lock.lock(); defer { lock.unlock() }
++        let id = UUID().uuidString
++        sessions[id] = Session(label: label)
++        owners[view] = id
++        roles[view] = "edited"
++        append(id, event: "session.start", fields: ["view": view, "label": label])
++        return id
++    }
++
++    public func register(view: String, session: String, role: String) {
++        lock.lock(); defer { lock.unlock() }
++        guard sessions[session] != nil else { return }
++        owners[view] = session
++        roles[view] = role
++        append(session, event: "view.register", fields: ["view": view, "role": role])
++    }
++
++    public func bind(view: String, client: String, tree: String, callbackContext: String) {
++        lock.lock(); defer { lock.unlock() }
++        guard let owner = owners[view] else { return }
++        generations[view, default: 0] += 1
++        for key in [client, tree] { owners[key] = owner; roles[key] = roles[view] }
++        append(owner, event: "client.bind", fields: ["view": view, "client": client, "tree": tree, "callbackContext": callbackContext, "generation": String(generations[view] ?? 0),
++                                                   "role": roles[view] ?? "unknown"])
++    }
++
++    public static func ranges(_ set: IndexSet) -> String {
++        set.rangeView.map { "\($0.lowerBound)..<\($0.upperBound)" }.joined(separator: "|")
++    }
++
++    public func contains(_ key: String) -> Bool {
++        lock.lock(); defer { lock.unlock() }
++        return owners[key] != nil
++    }
++
++    public func nextQuery(view: String) -> Int {
++        lock.lock(); defer { lock.unlock() }
++        guard owners[view] != nil else { return 0 }
++        querySequence += 1
++        return querySequence
++    }
++
++    public func linkQuery(_ id: Int, client: String) {
++        guard id != 0 else { return }
++        lock.lock(); defer { lock.unlock() }
++        guard owners[client] != nil else { return }
++        guard queryClients.count < 32768 else { return }
++        queryClients[id] = client
++    }
++
++    public func record(_ key: String, _ event: String, _ fields: [String: String] = [:]) {
++        lock.lock(); defer { lock.unlock() }
++        guard let owner = owners[key] else { return }
++        var fields = fields
++        fields["identity"] = key
++        fields["role"] = roles[key] ?? "unknown"
++        if fields["queryID"] == nil, RestoreTraceContext.queryID != 0 {
++            fields["queryID"] = String(RestoreTraceContext.queryID)
++        }
++        if let id = fields["queryID"].flatMap(Int.init), let client = queryClients[id] {
++            fields["queryClient"] = client
++        }
++        append(owner, event: event, fields: fields)
++    }
++
++    public func recordQuery(_ event: String, fields: @autoclosure () -> [String: String]) {
++        let id = RestoreTraceContext.queryID
++        guard id != 0 else { return }
++        lock.lock()
++        let client = queryClients[id]
++        lock.unlock()
++        guard let client else { return }
++        record(client, event, fields().merging(["queryID": String(id)]) { _, new in new })
++    }
++
++    private func append(_ id: String, event: String, fields: [String: String]) {
++        guard let session = sessions[id] else { return }
++        if let operation = fields["operationID"] {
++            if event == "operation.submit" { session.pending.insert(operation) }
++            if event == "operation.complete" { session.pending.remove(operation) }
++        }
++        if let query = fields["queryID"], query != "0" {
++            if event == "query.begin" { session.pending.insert("query-" + query) }
++            if event == "query.end" { session.pending.remove("query-" + query) }
++        }
++        var row = fields
++        sequence += 1
++        row["sequence"] = String(sequence)
++        row["uptime"] = String(DispatchTime.now().uptimeNanoseconds)
++        row["event"] = event
++        let bytes = row.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count }
++        if session.rows.count < 32768 && session.bytes + bytes <= 16 * 1024 * 1024 {
++            session.rows.append(row)
++            session.bytes += bytes
++        } else {
++            session.dropped += 1
++        }
++    }
++
++    /// Snapshot and unregister before serializing. This marks a collection
++    /// boundary; it does not claim that the editor's asynchronous work drained.
++    public func finish(_ id: String, directory: String) throws {
++        lock.lock()
++        append(id, event: "session.finish", fields: [:])
++        let session = sessions.removeValue(forKey: id)
++        let keys = Set(owners.filter { $0.value == id }.map(\.key))
++        owners = owners.filter { $0.value != id }
++        generations = generations.filter { !keys.contains($0.key) }
++        roles = roles.filter { !keys.contains($0.key) }
++        queryClients = queryClients.filter { !keys.contains($0.value) }
++        lock.unlock()
++        guard let session else { return }
++        let body: [String: Any] = ["schema": 2, "processID": ProcessInfo.processInfo.processIdentifier, "session": id, "label": session.label,
++                                  "droppedEvents": session.dropped, "payloadBytes": session.bytes,
++                                  "collectionEnded": true, "pendingObservedWork": session.pending.sorted(),
++                                  "quiescenceAsserted": false, "events": session.rows]
++        let data = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
++        let url = URL(fileURLWithPath: directory).appendingPathComponent(session.label + "-" + id + ".json")
++        try data.write(to: url, options: [.atomic])
++    }
++}
++
++/// Propagates diagnostic correlation through existing calls and tasks. No new
++/// task, suspension, cancellation or scheduling barrier is introduced.
++public enum RestoreTraceContext {
++    @TaskLocal public static var queryID = 0
++}
++
++/// Immutable metadata only. Existing queue operations keep their original scheduling.
++public struct PassiveRestoreOperation: Sendable {
++    private let key: String
++    private let fields: [String: String]
++    public init(key: String, kind: String, fields: @autoclosure () -> [String: String] = [:]) {
++        self.key = key
++        if PassiveRestoreTrace.shared.contains(key) {
++            var fields = fields()
++            fields["operationID"] = UUID().uuidString
++            fields["kind"] = kind
++            fields["queryID"] = String(RestoreTraceContext.queryID)
++            self.fields = fields
++            event("operation.submit")
++        } else { self.fields = [:] }
++    }
++    public func event(_ event: String, _ extra: [String: String] = [:]) {
++        guard !fields.isEmpty else { return }
++        PassiveRestoreTrace.shared.record(key, event, fields.merging(extra) { _, new in new })
++    }
++}
+diff --git a/Sources/TreeSitterClient/BackgroundProcessor.swift b/Sources/TreeSitterClient/BackgroundProcessor.swift
+--- a/Sources/TreeSitterClient/BackgroundProcessor.swift
++++ b/Sources/TreeSitterClient/BackgroundProcessor.swift
+@@ -1,4 +1,5 @@
+ import Dispatch
++import RangeState
+ 
+ final class BackgroundProcessor<Value> {
+ 	enum AccessMode {
+@@ -33,12 +34,16 @@
+ 	}
+ 
+ 	public func accessValueSynchronously<T>(
++		trace: PassiveRestoreOperation? = nil,
+ 		operation: (Value?) throws -> T
+ 	) throws -> T {
++        defer { trace?.event("operation.complete") }
+ 		if hasPendingWork {
++            trace?.event("operation.unavailable")
+ 			return try operation(nil)
+ 		}
+ 		
++		trace?.event("operation.enqueue", ["path": "sync", "pendingCount": String(pendingCount)])
+ 		let opResult = try queue.sync {
+ 			try operation(value)
+ 		}
+@@ -51,10 +56,12 @@
+ 	public func accessValue<T>(
+ 		isolation: isolated (any Actor),
+ 		preferSynchronous: Bool,
++        trace: PassiveRestoreOperation? = nil,
+ 		operation: @escaping @Sendable (Value) throws -> sending T,
+ 		completion: @escaping (sending Result<T, Error>) -> Void
+ 	) {
+ 		if preferSynchronous && hasPendingWork == false {
++            trace?.event("operation.enqueue", ["path": "syncPreferred", "pendingCount": String(pendingCount)])
+ 			// this is necessary because queue.sync does not return a sending value. However, because operation's return is sending, this must be safe.
+ 			nonisolated(unsafe) let result = Result {
+ 				try queue.sync {
+@@ -62,12 +69,15 @@
+ 				}
+ 			}
+ 			
++            trace?.event("operation.callback.begin")
+ 			completion(result)
++            trace?.event("operation.complete")
+ 
+ 			return
+ 		}
+ 		
+ 		beginBackgroundWork()
++        trace?.event("operation.taskScheduled", ["pendingCount": String(pendingCount)])
+ 		
+ 		nonisolated(unsafe) let unsafeValue = value
+ 		
+@@ -75,6 +85,7 @@
+ 			_ = isolation
+ 			
+ 			let result = await withCheckedContinuation { continuation in
++				trace?.event("operation.enqueue", ["path": "async"])
+ 				queue.async {
+ 					// this should not be necessary https://github.com/swiftlang/swift/issues/88233
+ 					nonisolated(unsafe) let result = Result { try operation(unsafeValue) }
+@@ -85,12 +96,15 @@
+ 			
+ 			endBackgroundWork()
+ 			
++            trace?.event("operation.callback.begin")
+ 			completion(result)
++            trace?.event("operation.complete")
+ 		}
+ 	}
+ 
+ 	public func accessValue<T>(
+ 		isolation: isolated (any Actor),
++		trace: PassiveRestoreOperation? = nil,
+ 		operation: @escaping @Sendable (Value) throws -> sending T
+ 	) async throws -> T {
+ 		// older compilers believe this is unsafe
+@@ -101,7 +115,7 @@
+ #endif
+ 
+ 		return try await withCheckedThrowingContinuation(isolation: isolation) { continuation in
+-			localSelf.accessValue(isolation: isolation, preferSynchronous: false, operation: operation, completion: { result in
++			localSelf.accessValue(isolation: isolation, preferSynchronous: false, trace: trace, operation: operation, completion: { result in
+ 				continuation.resume(with: result)
+ 			})
+ 		}
+diff --git a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+--- a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
++++ b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+@@ -1,4 +1,5 @@
+ import Foundation
++import RangeState
+ 
+ import SwiftTreeSitter
+ import SwiftTreeSitterLayer
+@@ -9,6 +10,7 @@
+ }
+ 
+ final class BackgroundingLanguageLayerTree {
++    let restoreTraceID = UUID().uuidString
+ 	public static let synchronousLengthThreshold = 2048
+ 	public static let synchronousDocumentSize = 2048*512
+ 
+@@ -67,11 +69,17 @@
+ 
+ 		let oldEndPoint = pendingOldPoint ?? transformer(range.max) ?? .zero
+ 		let edit = InputEdit(range: range, delta: delta, oldEndPoint: oldEndPoint, transformer: transformer)
++        let trace = PassiveRestoreOperation(key: restoreTraceID, kind: "parser.edit", fields: ["range": NSStringFromRange(range), "delta": String(delta), "inputEdit": String(describing: edit)])
+ 
+ 		backgroundProcessor.accessValue(
+ 			isolation: isolation,
+ 			preferSynchronous: sync,
+-			operation: { $0.didChangeContent(snapshot.content, using: edit, resolveSublayers: false) },
++            trace: trace,
++            operation: { layer in
++                trace.event("operation.begin")
++                defer { trace.event("operation.end") }
++                return layer.didChangeContent(snapshot.content, using: edit, resolveSublayers: false)
++            },
+ 			completion: { result in
+ 				do {
+ 					completion(try result.get())
+@@ -99,7 +107,10 @@
+ 
+ extension BackgroundingLanguageLayerTree {
+ 	public func executeQuery(_ queryDef: Query.Definition, in set: IndexSet) throws -> LanguageTreeQueryCursor {
+-		return try backgroundProcessor.accessValueSynchronously() { layer in
++        let trace = PassiveRestoreOperation(key: restoreTraceID, kind: "query.sync", fields: ["ranges": PassiveRestoreTrace.ranges(set)])
++        return try backgroundProcessor.accessValueSynchronously(trace: trace) { layer in
++            trace.event("operation.begin")
++            defer { trace.event("operation.end") }
+ 			guard let layer else {
+ 				throw BackgroundingLanguageLayerTreeError.unavailable
+ 			}
+@@ -109,7 +120,10 @@
+ 	}
+ 
+ 	public func executeQuery(_ queryDef: Query.Definition, in set: IndexSet, isolation: isolated (any Actor)) async throws -> [QueryMatch] {
+-		let snapshot = try await backgroundProcessor.accessValue(isolation: isolation) { layer in
++        let trace = PassiveRestoreOperation(key: restoreTraceID, kind: "query.snapshot", fields: ["ranges": PassiveRestoreTrace.ranges(set)])
++        let snapshot = try await backgroundProcessor.accessValue(isolation: isolation, trace: trace) { layer in
++            trace.event("operation.begin")
++            defer { trace.event("operation.end") }
+ 			guard let snapshot = layer.snapshot(in: set) else {
+ 				throw BackgroundingLanguageLayerTreeError.unableToSnapshot
+ 			}
+@@ -130,7 +144,10 @@
+ 
+ extension BackgroundingLanguageLayerTree {
+ 	public func resolveSublayers(with content: LanguageLayer.Content, in set: IndexSet) throws -> IndexSet {
+-		return try backgroundProcessor.accessValueSynchronously() { layer in
++        let trace = PassiveRestoreOperation(key: restoreTraceID, kind: "sublayers.sync", fields: ["ranges": PassiveRestoreTrace.ranges(set)])
++        return try backgroundProcessor.accessValueSynchronously(trace: trace) { layer in
++            trace.event("operation.begin")
++            defer { trace.event("operation.end") }
+ 			guard let layer else {
+ 				throw BackgroundingLanguageLayerTreeError.unavailable
+ 			}
+@@ -140,8 +157,11 @@
+ 	}
+ 
+ 	public func resolveSublayers(with snapshot: LanguageLayer.ContentSnapshot, in set: IndexSet, isolation: isolated (any Actor)) async throws -> IndexSet {
+-		try await backgroundProcessor.accessValue(isolation: isolation) { layer in
+-			try layer.resolveSublayers(with: snapshot.content, in: set)
++        let trace = PassiveRestoreOperation(key: restoreTraceID, kind: "sublayers.async", fields: ["ranges": PassiveRestoreTrace.ranges(set)])
++        return try await backgroundProcessor.accessValue(isolation: isolation, trace: trace) { layer in
++            trace.event("operation.begin")
++            defer { trace.event("operation.end") }
++            return try layer.resolveSublayers(with: snapshot.content, in: set)
+ 		}
+ 	}
+ }
+diff --git a/Sources/TreeSitterClient/TreeSitterClient.swift b/Sources/TreeSitterClient/TreeSitterClient.swift
+--- a/Sources/TreeSitterClient/TreeSitterClient.swift
++++ b/Sources/TreeSitterClient/TreeSitterClient.swift
+@@ -22,6 +22,17 @@
+ @MainActor
+ @preconcurrency
+ public final class TreeSitterClient {
++    public let restoreTraceID = UUID().uuidString
++    public var restoreTraceTreeID: String { layerTree.restoreTraceID }
++    public var restoreTraceVersion: String { String(describing: versionedContent.currentVersion) }
++    private func trace(_ event: String, _ fields: @autoclosure () -> [String: String] = [:]) {
++        guard PassiveRestoreTrace.shared.contains(restoreTraceID) else { return }
++        var fields = fields()
++        fields["clientVersion"] = String(describing: versionedContent.currentVersion)
++        fields["pendingChanges"] = String(rangeProcessor.hasPendingChanges)
++        PassiveRestoreTrace.shared.record(restoreTraceID, event, fields)
++    }
++
+ 	public typealias TextProvider = SwiftTreeSitter.Predicate.TextProvider
+ 	/// Produces synchronously-accessible content that covers the range of `0..<Argument`.
+ 	public typealias ContentProvider = (Int) -> LanguageLayer.Content
+@@ -149,6 +160,7 @@
+ 		rangeProcessor.didChangeContent(in: range, delta: delta, isolation: MainActor.shared)
+ 		sublayerValidator.contentChanged(in: range, delta: delta)
+ 		versionedContent.contentChanged()
++        trace("client.contentChanged", ["range": NSStringFromRange(range), "delta": String(delta)])
+ 	}
+ 
+ 	/// Inform the client that calls to `languageConfiguration` may change.
+@@ -197,6 +209,7 @@
+ 
+ 	private func handleInvalidation(_ set: IndexSet, sublayers: Bool) {
+ 		let transformedSet = set.apply(rangeProcessor.pendingMutations)
++        trace("client.invalidation", ["input": PassiveRestoreTrace.ranges(set), "transformed": PassiveRestoreTrace.ranges(transformedSet), "sublayers": String(sublayers)])
+ 
+ 		if transformedSet.isEmpty {
+ 			return
+@@ -212,7 +225,10 @@
+ 
+ extension TreeSitterClient {
+ 	private func resolveSublayers(in range: NSRange) -> Bool {
++        trace("sublayers.sync.request", ["range": NSStringFromRange(range)])
++        defer { trace("sublayers.sync.return") }
+ 		guard self.canAttemptSynchronousAccess(in: .range(range)) else {
++			trace("sublayers.sync.unavailable")
+ 			return false
+ 		}
+ 
+@@ -224,6 +240,7 @@
+ 
+ 			self.handleInvalidation(invalidatedSet, sublayers: false)
+ 		} catch {
++            trace("sublayers.error", ["errorType": String(reflecting: type(of: error))])
+ #if canImport(os.log)
+ 			os_log(.fault, log: self.logger, "Failed resolve sublayers", String(describing: error))
+ #else
+@@ -235,6 +252,8 @@
+ 	}
+ 
+ 	private func resolveSublayers(in range: NSRange) async {
++        trace("sublayers.async.request", ["range": NSStringFromRange(range)])
++        defer { trace("sublayers.async.return") }
+ 		let set = IndexSet(integersIn: range)
+ 		let content = self.maximumProcessedContentSnapshot
+ 
+@@ -243,6 +262,7 @@
+ 
+ 			self.handleInvalidation(invalidatedSet, sublayers: false)
+ 		} catch {
++            trace("sublayers.error", ["errorType": String(reflecting: type(of: error))])
+ #if canImport(os.log)
+ 			os_log(.fault, log: self.logger, "Failed resolve sublayers", String(describing: error))
+ #else
+@@ -257,19 +277,25 @@
+ 			rangeProcessor: rangeProcessor,
+ 			inputTransformer: { ($0.value.max, .optional) },
+ 			syncValue: { versioned in
++                self.trace("validation.sync.begin", ["version": String(describing: versioned.version), "range": NSStringFromRange(versioned.value)])
+ 				guard versioned.version == self.versionedContent.currentVersion else {
++					self.trace("validation.stale", ["version": String(describing: versioned.version)])
+ 					return .stale
+ 				}
+ 
+ 				guard self.resolveSublayers(in: versioned.value) else {
++                    self.trace("validation.sync.unavailable")
+ 					return nil
+ 				}
+ 
++				self.trace("validation.success", ["range": NSStringFromRange(versioned.value), "version": String(describing: versioned.version)])
+ 				return .success(versioned.value)
+ 
+ 			},
+ 			asyncValue: { versioned in
++                self.trace("validation.async.begin", ["version": String(describing: versioned.version), "range": NSStringFromRange(versioned.value)])
+ 				guard versioned.version == self.versionedContent.currentVersion else {
++					self.trace("validation.stale", ["version": String(describing: versioned.version)])
+ 					return .stale
+ 				}
+ 
+@@ -277,9 +303,11 @@
+ 
+ 				// have to check on both sides of the await
+ 				guard versioned.version == self.versionedContent.currentVersion else {
++					self.trace("validation.stale", ["version": String(describing: versioned.version)])
+ 					return .stale
+ 				}
+ 
++				self.trace("validation.success", ["range": NSStringFromRange(versioned.value), "version": String(describing: versioned.version)])
+ 				return .success(versioned.value)
+ 			}
+ 		)
+@@ -333,7 +361,9 @@
+ 	}
+ 
+ 	private func validateSublayers(in set: IndexSet) {
+-		sublayerValidator.validate(.set(set), isolation: MainActor.shared)
++		trace("validation.request", ["ranges": PassiveRestoreTrace.ranges(set)])
++        let action = sublayerValidator.validate(.set(set), isolation: MainActor.shared)
++        trace("validation.action", ["action": String(describing: action)])
+ 	}
+ 
+ 	private func executeQuery(_ clientQuery: ClientQuery) async throws -> some Sequence<QueryMatch> {
