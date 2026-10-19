@@ -157,7 +157,7 @@
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/ChimeHQ/Neon"
+          "url": "https://github.com/Joncallim/Neon"
         }
       ],
       "licenses": [
@@ -180,9 +180,9 @@
           "value": "exact"
         }
       ],
-      "purl": "pkg:github/chimehq/neon@484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+      "purl": "pkg:github/joncallim/neon@defe569104080cc768c7d0c616876758f255d34a",
       "type": "library",
-      "version": "484d6fb"
+      "version": "defe569"
     },
     {
       "bom-ref": "nvim-treesitter-markdown-queries",
@@ -1273,7 +1273,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:91dd6a16-4de0-5b46-903d-8a4f176a2d08",
+  "serialNumber": "urn:uuid:969060e3-7a24-5039-907d-970d4945506c",
   "specVersion": "1.5",
   "version": 1
 }
