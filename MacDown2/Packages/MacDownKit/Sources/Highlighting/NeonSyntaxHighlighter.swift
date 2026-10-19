@@ -58,6 +58,8 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
     let gate = HighlightingStorageGate()
     let policyProvider: (String?) -> HighlightingSizePolicy?
     var restoreTask: Task<Void, Never>?
+    /// Internal clock seam for deterministic idle-restore tests. Production uses Task.sleep.
+    var restoreSleep: (@MainActor (Duration) async throws -> Void)?
     /// After a restore from reduced mode, Neon's first pass of rendering attributes can land without TextKit
     /// repainting (seen on the native app: attributes present, text still plain until the next edit). Until this
     /// uptime (ns) each pass of styling is followed by one coalesced repaint request.
