@@ -1,0 +1,9 @@
+Executable=/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData/Build/Products/Release/MacDown2.app/Contents/MacOS/MacDown2
+Identifier=MacDown2
+Format=app bundle with Mach-O thin (arm64)
+CodeDirectory v=20400 size=494913 flags=0x20002(adhoc,linker-signed) hashes=15463+0 location=embedded
+Signature=adhoc
+Info.plist=not bound
+TeamIdentifier=not set
+Sealed Resources=none
+Internal requirements=none

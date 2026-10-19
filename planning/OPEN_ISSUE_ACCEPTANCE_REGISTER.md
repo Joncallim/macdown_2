@@ -46,6 +46,28 @@ only the first unreadable Data generation was backed up, and non-Data values wer
 not reported. The later [protected-write correction](downstream/SETTINGS_WRITE_PROTECTION_2026-10-19.md)
 addresses those ordinary-write losses. Neither slice completes migration or waives #53's criteria.
 
+The subsequent [#121 callback correction](downstream/evidence/preview-121-2026-10-18/README.md)
+starts from `a4c48bc7`. It binds callbacks to their navigation/view and separates
+queued attempts from process recovery. Retained baseline and review regressions,
+negative controls and a simple real WebKit render support that bounded fix.
+Mutable resource-root confusion and post-stop delivery were also reproduced and
+remain open; no resource-authority or full native release claim follows.
+
+The [combined overnight checkpoint](downstream/OVERNIGHT_CHECKPOINT_2026-10-18.md)
+and [one-shot validation record](downstream/evidence/overnight-consolidation-2026-10-18/README.md)
+cover clean `400d475caaae130cdce1f6de4c6904027e700827`, including stop-aware
+resource delivery, settings validation and licence packaging. Serial package and
+app-target non-performance gates, Debug/Release app and CLI builds, and ordinary
+source/artifact compliance pass. Two existing Neon known issues, two disabled
+interactive PDF tests, persistent build/runtime diagnostics and seven release
+compliance findings remain explicit. Independent review of the complete overnight
+diff found no new material interaction defect. This consolidation reran no
+performance suites, supplied no native UI/CJK acceptance and changed no remote
+state; earlier performance and hosted failures remain binding. The minimum next
+owner decisions concern the file-only asset workflow and shipping OS-access
+configuration. The later documentation commit preserves exact source equivalence
+to this tested head; it does not replace the recorded build provenance.
+
 ## Evidence rules
 
 - **Source:** implementation or a gap inspected in this candidate. This alone
@@ -78,8 +100,8 @@ addresses those ordinary-write losses. Neither slice completes migration or waiv
 | [#118 Export safety and fidelity](https://github.com/Joncallim/macdown_2/issues/118) | Export infrastructure exists, but current-source coverage is not a complete closure audit. F06/F13 output-authority cases, resources, parity, real PDF print behavior, budgets, cancellation and recovery remain required. | Reconcile the export handoff against source, then prove one opened-resource/output-publication boundary with hostile schedules before broad refactoring. |
 | [#119 External-file evidence](https://github.com/Joncallim/macdown_2/issues/119) | Existing automated coverage does not supply the full native external-change matrix or Release watcher/digest/latency measurements. | Run the documented Release manual/performance matrix with independent byte reads, selection/scroll observations and watcher/wakeup evidence on the chosen candidate. |
 | [#120 Open/Save interaction](https://github.com/Joncallim/macdown_2/issues/120) | Source has saving state and a destination-aware close-sheet label. End-to-end Save As progress, changing backing-file state and large-file Open latency remain unverified. | Exercise native Save As/close paths and measure Open before deciding whether another code fix is required. |
-| [#121 HTML preview authority](https://github.com/Joncallim/macdown_2/issues/121) | Safe local-resource opening stage A exists with historical mutation evidence. The app scheme handler still has mutable request state and a no-op stop path; caller lifetime, bounded I/O and WebKit proof remain. | Reconcile stages B–D with the accepted handoff; start with immutable per-load context and a deterministic stale-request regression. The warning cleanup does not resolve this issue. |
-| [#148 Licensing/provenance](https://github.com/Joncallim/macdown_2/issues/148) | Mermaid's shipped bytes now match the official archive/map, with exact parser links, 72 versioned-map/parser records, two content-matched candidate versions and 74 captured package texts. Deeper prebundle attributions and 3,980 unmapped parser positions remain unresolved. Inventory/notices/SBOM remain unchanged; the eight release-preflight requirements and exact signed-artifact check remain open. The font KEEP decision is already recorded. | Trace the concrete KaTeX/React, Cytoscape borrowed-code and Rough.js prebundle attributions, resolve candidate-version limits, then install the complete inventory/texts/notices/SBOM together. Keep D2/Graphviz preparation and Tomorrow Light's E23 decision separate. Specific authorization is required before source-only publication. |
+| [#121 HTML preview authority](https://github.com/Joncallim/macdown_2/issues/121) | Safe local-resource opening stage A and MIME handling exist. Exact navigation/view callback ownership and stop-aware delivery have local regression evidence on 7efb510c. Delayed A still reads root B in the retained reproduction. The independently reviewed directory-grant proposal remains blocked on the file-only asset workflow and intended OS-access configuration. | Resolve that permission/compatibility boundary before immutable contexts and contained child-directory acquisition. Retain worker/payload, off-main I/O, Save As, scope cleanup and full native hostile-corpus requirements. Neither the callback correction nor the proposal completes this issue. |
+| [#148 Licensing/provenance](https://github.com/Joncallim/macdown_2/issues/148) | Mermaid's shipped bytes match the official archive/map, but deeper prebundle attributions and 3,980 unmapped parser positions remain unresolved. The KEEP-all-12 font decision is reconciled. A complete byte audit now accounts for Textual's Prism payload and preserves both MIT texts. Clean candidate `ceecea9c` packages LICENSE/generated notices and passes ordinary unsigned artifact compliance; the earlier three-failure artifact record is retained. All 12 font digests remain present, and seven release findings remain. | Complete the remaining attribution audits and already-planned licence UI. Preserve all seven release findings, final signed-artifact verification and owner acceptance. Keep D2/Graphviz preparation and Tomorrow Light's E23 decision separate. Source-only publication still requires specific authorization. |
 | [#155 Test hangs](https://github.com/Joncallim/macdown_2/issues/155) | Later discussion and #421 identify AppKit window animations exhausting dispatch workers in a reproduced schedule. This is stronger than the stale issue title, but does not explain every WebKit hang. | The later 103.099-second close delay has a reproduced contributor: the cache benchmark retained its real window and background work. A teardown regression fails without retirement; the final full-run close case takes 0.601 seconds. Investigate the remaining AppKit/SwiftUI update warnings and audit other fixture windows before a bounded native soak. This does not close every hang criterion. |
 | [#158 Identity/cutover](https://github.com/Joncallim/macdown_2/issues/158) | MostlyText name, bundle prefix, CLI name, brand assets and MIT choice are frozen. Runtime migration and final repository/public-copy cutover are separate pending work. | Consume frozen inputs in E17/E23. Keep the full-history repository mirror late, after #115; do not rename or transfer the backlog early. |
 | [#159 Fixture ownership](https://github.com/Joncallim/macdown_2/issues/159) | Integration contains typed readiness and bounded fixture ownership. The initial cleanup-only measurement was too narrow. Final tests restore the original 150 ms whole-call assertion for the zero-delay case, add separate phase diagnostics and fail a slow-setup negative control. Separate source review found no regression. Hosted overruns still have no established causal explanation. | Obtain owner acceptance and authorized hosted validation, and reconcile PR #473 against integration before closure. |
@@ -113,11 +135,24 @@ addresses those ordinary-write losses. Neither slice completes migration or waiv
    final-artifact compliance/reruns; repository cutover and public promotion are
    later, separate authorizations.
 
-The eight release-preflight failures are: D2 anonymous source location; D2 Go and
-embedded-WASM license/source inventory; Mermaid bundled npm provenance; the
-SwiftUIMath font-set inventory reconciliation; Tomorrow Light naming/provenance decision;
+The seven current release-preflight failures are: D2 anonymous source location;
+D2 Go and embedded-WASM license/source inventory; Mermaid bundled npm provenance;
+Tomorrow Light naming/provenance decision;
 Viz/Graphviz anonymous source location; exact Graphviz 16.0.0/Viz 3.30.0 source,
 build instructions and hashes; and Graphviz-linked library confirmation.
+The [2026-10-18 font reconciliation](../compliance/evidence/swiftui-math-fonts-2026-10-18/README.md)
+records the existing KEEP-all-12 decision and retains all resource and licence
+checks. Historical eight-failure evidence remains unchanged.
+The earlier retained unsigned Release app from `7efb510c` had three additional
+artifact failures: missing `LICENSE`, missing generated notices and unregistered
+Textual `prism-bundle.js`. Its ten-finding record remains unchanged. The
+[Prism audit and packaging correction](../compliance/evidence/prism-textual-1.29.0/README.md)
+accounts for the exact bundled bytes and verifies both licence files at their
+main-app resource paths in a fresh Release build of clean `ceecea9c`. Ordinary
+artifact compliance now passes; source and artifact release checks still report
+the same seven findings. This app has only the linker's ad hoc signature and no
+sealed resources; it supplies no signed-release, native licence-UI or performance
+acceptance evidence.
 The generated, ignored `MacDown2/MacDown2/Info.plist` makes the working-directory
 compliance scan report an unregistered distributed file. The clean `git archive`
 source scan passes. This distinction is recorded rather than deleting or
@@ -128,9 +163,10 @@ until a reviewed cross-engine/print policy is accepted; preserve the 8,192 cutof
 and current lock while dependency correctness is unresolved; retain all currently
 licensed fonts, following the KEEP decision already recorded in
 [#148 comment 5868785863](https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5868785863)
-and `compliance/RELEASE_PREPARATION.md`; and reconcile the
+and now reconciled in `compliance/inventory.json`; and reconcile the
 Tomorrow Light name with the recorded asset provenance rather than assuming a
-name grants provenance. These are recommendations, not adopted policy changes.
+name grants provenance. The font choice was already recorded; the other
+recommendations do not adopt new policy.
 
 ## Branches and evidence to preserve
 

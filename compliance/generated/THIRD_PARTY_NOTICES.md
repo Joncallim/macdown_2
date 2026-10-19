@@ -24,6 +24,7 @@ This file is generated from `compliance/inventory.json` by
 | Mermaid | 11.17.2 | MIT |
 | Neon | 484d6fb | BSD-3-Clause |
 | nvim-treesitter Markdown highlight queries (via tree-sitter-markdown) | 2022-06 import | Apache-2.0 |
+| Prism.js bundled by Textual | 1.29.0 | MIT |
 | Rearrange | 2.1.1 | BSD-3-Clause |
 | swift-cmark (cmark-gfm) | 0.8.0 | BSD-2-Clause AND MIT |
 | swift-concurrency-extras | 1.4.1 | MIT |
@@ -1402,6 +1403,70 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+```
+
+---
+
+## Prism.js bundled by Textual
+
+- Version: 1.29.0
+- Upstream: https://github.com/PrismJS/prism
+- Revision: `59e5a3471377057de1f401ba38337aca27b80e03`
+- Licence: MIT
+- Copyright (c) 2012 Lea Verou
+- Copyright (c) 2024 Guille Gonzalez (Textual header and helpers)
+- Local modifications: Textual concatenates the cdnjs Prism 1.29.0 default distribution, 57 npm language-component files, newline separators and its MIT-licensed generated header/token-flattening helpers. The default includes file-highlight; four default grammars are also present among the appended files. No MostlyText modification.
+
+### prismjs--LICENSE.txt
+
+```text
+MIT LICENSE
+
+Copyright (c) 2012 Lea Verou
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+### textual--LICENSE.txt
+
+```text
+MIT License
+
+Copyright (c) 2024 Guille Gonzalez
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ---

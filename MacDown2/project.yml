@@ -17,6 +17,12 @@ targets:
     platform: macOS
     sources:
     - MacDown2
+    - path: ../LICENSE
+      type: file
+      buildPhase: resources
+    - path: ../compliance/generated/THIRD_PARTY_NOTICES.md
+      type: file
+      buildPhase: resources
     dependencies:
     - package: MacDownKit
       product: FileCore

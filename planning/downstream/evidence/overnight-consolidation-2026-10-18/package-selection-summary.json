@@ -1,0 +1,93 @@
+{
+  "head": "400d475caaae130cdce1f6de4c6904027e700827",
+  "skip_regex": "Performance|Benchmark|worstCaseScanStaysWithinAPerKeystrokeBudget|aHundredSecondaryCaretsStayWithinAReasonableDrawBudget",
+  "excluded_test_ids": [
+    "EditorCoreTests.EditingAssistPerformanceTests/handledAssistOn1MB()",
+    "EditorCoreTests.EditingAssistPerformanceTests/incrementalOverheadVsBaseline()",
+    "EditorCoreTests.EditingAssistPerformanceTests/newlineOnHugePlainLineStaysLocal()",
+    "EditorCoreTests.EditingAssistPerformanceTests/noOpDecisionOn1MB()",
+    "EditorCoreTests.EditingAssistPerformanceTests/smartHomeOnHugeWhitespaceLineStaysLocal()",
+    "EditorCoreTests.EditorPerformanceTests/gutterCaretUpdateStaysWithinBudget()",
+    "EditorCoreTests.EditorPerformanceTests/keystroke()",
+    "EditorCoreTests.EditorPerformanceTests/keystrokeLineIndexIncremental()",
+    "EditorCoreTests.EditorPerformanceTests/open10MBLazy()",
+    "EditorCoreTests.EditorPerformanceTests/open1MB()",
+    "EditorCoreTests.EditorSecondaryCaretTests/aHundredSecondaryCaretsStayWithinAReasonableDrawBudget()",
+    "EditorCoreTests.FencedRegionClassifierTests/worstCaseScanStaysWithinAPerKeystrokeBudget()",
+    "ExportServiceTests.InlineSentinelIndexPerformanceTests/aSentinelFollowedByAnExtendingScalarIsFoundWithoutConsumingTheScalar(_:)",
+    "ExportServiceTests.InlineSentinelIndexPerformanceTests/aSentinelThatIsOnlyAPrefixOfAnotherIsNotMistakenForIt()",
+    "ExportServiceTests.InlineSentinelIndexPerformanceTests/manyInlineSentinelsAreMatchedByLookupNotByScanningEverySpec()",
+    "FileTreeTests.tenThousandEntryListingArrangementAndFlatteningBenchmark()",
+    "HighlightingTests.HighlightBudgetBenchmarkTests/editorPath(fixture:)",
+    "HighlightingTests.HighlightFallbackBenchmarkTests/pasteAcrossTheCutoff(kilobytes:)",
+    "HighlightingTests.HighlightFallbackBenchmarkTests/pasteWithoutTheFallback(kilobytes:)",
+    "HighlightingTests.HighlightFallbackBenchmarkTests/reducedModeOpenAndEdit(fixture:)",
+    "HighlightingTests.HighlightFallbackBenchmarkTests/typingAcrossTheCutoff(fixture:)",
+    "HighlightingTests.HighlightPerformanceTests/fullHighlight1MB()",
+    "HighlightingTests.HighlightPerformanceTests/incrementalKeystroke1MB()",
+    "HighlightingTests.HighlightPerformanceTests/incrementalReparseReusesTheOldTreeForAReusableGrammar()",
+    "HighlightingTests.HighlightPerformanceTests/mainThreadParseBudgetDocumented()",
+    "HighlightingTests.KeystrokeStallBenchmarkTests/keystrokeStall(utf8Bytes:)",
+    "JSONSupportTests.JSONOutlinePerformanceTests/buildsOutlineFor10000NodesUnderBudget()",
+    "JSONSupportTests.JSONOutlinePerformanceTests/formats100KBUnderBudget()",
+    "JSONSupportTests.JSONOutlinePerformanceTests/parses100KBWellUnderBudget()",
+    "MarkdownEngineTests.ParseEnginePerformanceTests/parse10MB()",
+    "MarkdownEngineTests.ParseEnginePerformanceTests/parse1MB()",
+    "MarkdownEngineTests.ParseEnginePerformanceTests/parsePathological()",
+    "MathRenderingTests.MathRenderingPerformanceTests/renderingASingleEquationCompletesWithinBudget()",
+    "MathRenderingTests.MathRenderingPerformanceTests/renderingOneHundredEquationsCompletesWithinBudget()",
+    "OutlineUITests.OutlineIdentityMapPerformanceTests/manyCollapsedItemsOverManyIdenticalHeadingsRemapQuickly()",
+    "OutlineUITests.OutlineIdentityMapPerformanceTests/theFastPathAgreesWithTheReferenceOnRandomDocuments()",
+    "TextSearchTests.WorkspaceFileIndexPerformanceTests/queryStaysUnderThirtyMillisecondsAtOneHundredThousandPaths()",
+    "TextSearchTests.WorkspaceFileIndexPerformanceTests/rebuildStaysInBuildingStateWhileTheWalkIsInFlight()"
+  ],
+  "runtime_summary": [
+    "\u279c Suite InlineResolutionReconciliationTests skipped.",
+    "\u2501 Test run with 2547 tests in 331 suites passed after 213.694 seconds with 2 known issues."
+  ],
+  "known_issues": [
+    "\u2501 Test typingThenDeletingABlockInOneTurnMatchesAFreshHighlighter() recorded a known issue at NeonReplacementEditTests.swift:72:13",
+    "\u2501 Test replacingASelectionContainingInlineRangesMatchesAFreshHighlighter() recorded a known issue at NeonReplacementEditTests.swift:86:13"
+  ],
+  "unexpected_failure_lines": [],
+  "functional_selection": {
+    "shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle": [
+      "HighlightingTests.HighlightingSizeFallbackTests/shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:)"
+    ],
+    "cleanupDeadlineIncludesBlockingCancellationDispatch": [
+      "TextFiltersTests.TextFilterFixtureCleanupSafetyTests/cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:)"
+    ],
+    "markdownBlockGrammarReusesNoSection": [
+      "HighlightingTests.MarkdownTreeReuseTests/markdownBlockGrammarReusesNoSectionEvenForAnEditAtTheEnd()",
+      "HighlightingTests.MarkdownTreeReuseTests/markdownBlockGrammarReusesNoSectionForAnEditAtTheStart()"
+    ]
+  },
+  "late_discovered_measurement_suite": "InlineResolutionReconciliationTests was disabled by its existing environment condition; actual log confirms skipped.",
+  "settings_compatibility_selection": [
+    "AppSettingsTests.SettingsCompatibilityTests/aCurrentOrAbsentSchemaVersionIsReadable()",
+    "AppSettingsTests.SettingsCompatibilityTests/aLargeButSupportedPersistedFontSizeIsKept()",
+    "AppSettingsTests.SettingsCompatibilityTests/aMissingOldMandatoryFieldIsUnreadableAndTheRawBytesSurviveASave()",
+    "AppSettingsTests.SettingsCompatibilityTests/aNewerSchemaVersionIsBackedUpBeforeAnOrdinarySaveReplacesIt()",
+    "AppSettingsTests.SettingsCompatibilityTests/aPersistedFontSizeBeyondTheSupportedBoundIsUnreadableAndPreserved(size:)",
+    "AppSettingsTests.SettingsCompatibilityTests/aPreE22BlobKeepsEveryUserValueAndDefaultsOnlyTheMissingField()",
+    "AppSettingsTests.SettingsCompatibilityTests/aPresentBooleanStatusBarKeepsItsValue(value:)",
+    "AppSettingsTests.SettingsCompatibilityTests/aPresentMalformedStatusBarIsUnreadableNotAMissingField(value:)",
+    "AppSettingsTests.SettingsCompatibilityTests/anInvalidDeclaredSchemaVersionIsUnreadableAndPreserved(version:)",
+    "AppSettingsTests.SettingsCompatibilityTests/anInvalidOrOutOfRangeIndentationIsUnreadableNotSilentlyClamped(width:)",
+    "AppSettingsTests.SettingsCompatibilityTests/anInvalidPersistedFontSizeIsUnreadableAndPreserved(size:)",
+    "AppSettingsTests.SettingsCompatibilityTests/anUnparseableFutureSchemaPayloadIsUnreadableAndPreserved()",
+    "AppSettingsTests.SettingsCompatibilityTests/corruptBytesAreRetainedAndReported()",
+    "AppSettingsTests.SettingsCompatibilityTests/nonFiniteFontSizesAreRejectedByTheDecodingBoundary(value:)",
+    "AppSettingsTests.SettingsCompatibilityTests/schemaVersionUsesTheFoundationParsedNumericValue(version:)",
+    "AppSettingsTests.SettingsCompatibilityTests/theFirstUnreadableBlobIsKeptAndRepeatedReadsDoNotWrite()",
+    "AppSettingsTests.SettingsCompatibilityTests/validCurrentDataRoundTripsWithoutPreservingAnything()"
+  ],
+  "list_metadata_lines": [
+    "[0/1] Planning build"
+  ],
+  "full_selection_local_path": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/package-selection.json",
+  "full_selection_sha256": "6961498f7d9f5ae2560703c94e6832c1912d33738bf87c409472957a363b9474",
+  "included_test_id_count": 2547,
+  "excluded_test_id_count": 38,
+  "listed_test_id_count": 2585
+}

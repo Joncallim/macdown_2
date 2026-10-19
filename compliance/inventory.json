@@ -507,6 +507,51 @@
       "evidence": "Locked at cbe31cb3601aa29c1f64b6e4328733511126d6d5 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; declared as branch main, so the lock is what fixes the revision; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
     },
     {
+      "id": "prismjs-textual",
+      "name": "Prism.js bundled by Textual",
+      "kind": "swiftpm-resource",
+      "version": "1.29.0",
+      "upstream": "https://github.com/PrismJS/prism",
+      "npm": "prismjs@1.29.0",
+      "revision": "59e5a3471377057de1f401ba38337aca27b80e03",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2012 Lea Verou",
+        "Copyright (c) 2024 Guille Gonzalez (Textual header and helpers)"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/prismjs--LICENSE.txt",
+          "sha256": "2b947f0901a7ffcf08a89957da9783c0e9c6e72cb6ce8e959f501ab5409e4d2b",
+          "upstream": "https://github.com/PrismJS/prism",
+          "upstream_revision": "59e5a3471377057de1f401ba38337aca27b80e03",
+          "upstream_path": "LICENSE"
+        },
+        {
+          "path": "compliance/licenses/textual--LICENSE.txt",
+          "sha256": "9c9191ada6888f3da1a888b6c74dae46e98787b1150c734e3b1e5ec5bbf73b09",
+          "upstream": "https://github.com/gonzalezreal/textual",
+          "upstream_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "modifications": "Textual concatenates the cdnjs Prism 1.29.0 default distribution, 57 npm language-component files, newline separators and its MIT-licensed generated header/token-flattening helpers. The default includes file-highlight; four default grammars are also present among the appended files. No MostlyText modification.",
+      "runtime_resources": [
+        {
+          "name": "prism-bundle.js",
+          "sha256": "22b70192dc9d73377b5b8fe2c85655c7e3218afd37b65db638b4e168c4bacbf5",
+          "source": "textual 0.5.0 at 01b51875a5406eefc95f52a058cb059e7bc94dc4, Sources/Textual/Internal/Highlighter/Prism/prism-bundle.js"
+        }
+      ],
+      "notes": "All 138163 bytes are accounted for in compliance/evidence/prism-textual-1.29.0/bundle-audit.json. Actual app bytes equal the locked Textual resource. CDN default bytes and all appended npm component bytes match; Textual helper equals its source heredoc. This is exact distribution provenance, not reproduced minification or native runtime/network proof. No build-only npm dependencies or merely referenced plugins are treated as shipped."
+    },
+    {
       "id": "swiftui-math",
       "name": "SwiftUIMath",
       "kind": "swiftpm",
@@ -633,9 +678,7 @@
         "LC-01",
         "LC-07"
       ],
-      "open_items": [
-        "Product decision, not a licensing gap: SwiftUIMath copies its whole font bundle, so all 12 fonts ship whether or not MostlyText ever selects them. The notices cover all 12, and the artifact check requires all 12 to be present with these digests. Whether to keep them all or trim unused fonts (which needs a patched or forked dependency) is for E19 and the owner to decide. Until that decision is recorded, this item stays open."
-      ],
+      "open_items": [],
       "runtime_resources": [
         {
           "name": "Asana-Math.otf",
@@ -698,7 +741,7 @@
           "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/xits-math.otf"
         }
       ],
-      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence). runtime_resources records the 12 font files by upstream digest; they are not in this repository."
+      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence). runtime_resources records the 12 font files by upstream digest; they are not in this repository. The recorded owner decision is to keep all 12 for 1.0 (https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5868785863, corroborated by comment 5867001043). This resolves the font-set decision only: all 12 runtime resource digests, licence texts and the final-artifact check remain required."
     },
     {
       "id": "textual",

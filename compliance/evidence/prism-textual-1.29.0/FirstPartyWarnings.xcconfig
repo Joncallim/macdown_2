@@ -1,0 +1,6 @@
+// Validation-only policy for app-owned targets. Existing package build policies remain unchanged.
+OTHER_SWIFT_FLAGS = $(inherited) $(ASTRA_WARNING_FLAGS_$(TARGET_NAME))
+ASTRA_WARNING_FLAGS_MacDown2 = -warnings-as-errors
+ASTRA_WARNING_FLAGS_MacDown2Tests = -warnings-as-errors
+ASTRA_WARNING_FLAGS_MacDown2UITests = -warnings-as-errors
+ASTRA_WARNING_FLAGS_macdown2 = -warnings-as-errors
