@@ -195,7 +195,10 @@ let package = Package(
         .testTarget(name: "EditorCoreTests", dependencies: ["EditorCore", "JSONSupport"]),
         .testTarget(name: "HighlightingTests", dependencies: ["Highlighting"]),
         .testTarget(name: "MarkdownEngineTests", dependencies: ["MarkdownEngine"]),
-        .testTarget(name: "PreviewTests", dependencies: ["Preview"]),
+        .testTarget(
+            name: "PreviewTests",
+            dependencies: ["Preview", .product(name: "Textual", package: "textual")]
+        ),
         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
         .testTarget(name: "JSONSupportTests", dependencies: ["JSONSupport"]),
         .testTarget(name: "ExportServiceTests", dependencies: ["ExportService"]),
