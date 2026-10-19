@@ -32,6 +32,12 @@ hooks. The resolution retains those diagnostics and the reviewed correction;
 all ten timing Swift files match the committed
 [evidence manifest](evidence/ci-timing-2026-10-19/source-sha256.txt).
 
+Independent assembly review also found that the earlier CI routing change was
+not included by the timing-only cherry-pick. The exact reviewed two-line change
+from `6d504f62` is carried into CI and Compliance: pull requests targeting
+`integration-final` run the existing checks. Jobs, assertions, push triggers and
+path filters remain unchanged.
+
 Existing branches, worktrees and dependency experiments are preserved. The
 production package lock remains SHA-256
 `9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977`.
