@@ -11,6 +11,7 @@
     "paths": [
       "MacDown2/**/*.swift",
       "MacDown2/**/*.xcstrings",
+      "MacDown2/MacDown2/Info.plist",
       "MacDown2/MacDown2/Assets.xcassets/**",
       "MacDown2/Packages/MacDownKit/Sources/*/Resources/harness.html",
       "MacDown2/Packages/MacDownKit/Sources/*/Resources/render.js",
@@ -123,6 +124,37 @@
           "path": "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/d2-browser.js"
         }
       ]
+    },
+    {
+      "id": "expat",
+      "name": "Expat (embedded in Viz.js WebAssembly)",
+      "kind": "embedded",
+      "version": "2.8.4",
+      "upstream": "https://github.com/libexpat/libexpat",
+      "revision": "12cf0b1f25f026a022fe728ad8f7e3d017285b80",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark Cooper",
+        "Copyright (c) 2001-2025 Expat maintainers"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/expat--COPYING.txt",
+          "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
+          "upstream": "https://github.com/libexpat/libexpat",
+          "upstream_revision": "12cf0b1f25f026a022fe728ad8f7e3d017285b80",
+          "upstream_path": "expat/COPYING"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "notes": "The Viz.js 3.30.0 Dockerfile statically builds Expat 2.8.4 and links -lexpat. The npm backend publisher provenance names the same gzip archive digest independently downloaded here. COPYING is byte-identical to that archive. See compliance/evidence/viz-js-3.30.0/ for correspondence checks and limits; no independent rebuild is claimed."
     },
     {
       "id": "libyaml",
@@ -1803,15 +1835,21 @@
       "licence_texts": [
         {
           "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/VIZJS-LICENSE.txt",
-          "sha256": "b9a0b3fcb35b2b675f3a199c31eb19edd1dec3aa08687be4fb0d317e865e35cd"
+          "sha256": "f1fb91bf7cbcb42b2af56949e4fa909e1979d5b57c2826cabacdb4b631457720",
+          "upstream": "https://github.com/mdaines/viz-js",
+          "upstream_revision": "99da545270e6e7b127a5c7ba65974b8a604a6358",
+          "upstream_path": "LICENSE"
         },
         {
           "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/GRAPHVIZ-EPL-LICENSE.txt",
-          "sha256": "6e1f002892b81cbe0647019b150c8a056efc1add565671a4f8af629b6cd2cc7b"
+          "sha256": "0becf16567beb77fa252b7664631dd177c8f9a1889e48995b45379c7130e5303",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "COPYING"
         },
         {
           "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/NOTICE.txt",
-          "sha256": "3bc3f8a7d7d089aad4fbc5b1486e9c00df4446f3f0c70bda8eceac7340fbe96f"
+          "sha256": "d463e0d074d10cd5cb61034729d11790c7cce11120763d538678ae97e2a06466"
         }
       ],
       "owns": [
@@ -1829,7 +1867,7 @@
       "npm_file_sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
       "modifications": null,
       "provenance": "verified",
-      "evidence": "SHA-256 equals dist/viz-global.js in the npm tarball @viz-js/viz@3.30.0 (2026-09-28). The bundle reports Graphviz 16.0.0.",
+      "evidence": "2026-10-19: shipped bundle equals the integrity-checked npm tarball; npm gitHead, release tag, wrapper sources and backend publisher provenance agree on revision 99da545270e6e7b127a5c7ba65974b8a604a6358. Graphviz and Expat archive digests match the bundled backend build record. See compliance/evidence/viz-js-3.30.0/. This is not an independent rebuild or signature verification.",
       "lc": [
         "LC-01",
         "LC-02",
@@ -1841,6 +1879,13 @@
           "version": "16.0.0",
           "licence": "EPL-2.0",
           "upstream": "https://gitlab.com/graphviz/graphviz"
+        },
+        {
+          "name": "Expat",
+          "version": "2.8.4",
+          "licence": "MIT",
+          "upstream": "https://github.com/libexpat/libexpat",
+          "inventory_id": "expat"
         }
       ],
       "source_offer": {
@@ -1850,8 +1895,8 @@
         "status": "planned"
       },
       "open_items": [
-        "LC-02: pin the exact Graphviz 16.0.0 source archive and the viz-js 3.30.0 build scripts, record their hashes and publish them through LC-09.",
-        "Confirm whether the Graphviz WebAssembly build links other libraries (for example expat) that need their own notices."
+        "LC-02: exact Graphviz 16.0.0, Viz.js 3.30.0 and Expat 2.8.4 source/build inputs are hashed in compliance/evidence/viz-js-3.30.0; assemble and review the complete corresponding-source offer, then publish it through LC-09.",
+        "Expat 2.8.4 linkage and its MIT notice are recorded. Complete the remaining embedded Graphviz and Emscripten runtime attribution audit; the direct linker list alone is not a complete linked-code inventory."
       ],
       "runtime_resources": [
         {
@@ -1859,7 +1904,13 @@
           "sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
           "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/viz-global.js"
         }
-      ]
+      ],
+      "revision": "99da545270e6e7b127a5c7ba65974b8a604a6358",
+      "source_inputs": {
+        "record": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+        "downloads": "compliance/evidence/viz-js-3.30.0/downloads.json",
+        "scope": "Exact downloaded upstream source and publisher build metadata; public source offer and exhaustive linked-code attribution remain unverified."
+      }
     },
     {
       "id": "yams",

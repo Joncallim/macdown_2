@@ -1,0 +1,74 @@
+{
+  "archives": {
+    "expat-2.8.4.tar.gz": {
+      "bytes": 825689,
+      "sha256": "b8ece2437692dad44d851c4532723390a5a330990007706be9c8d2b90d294f36"
+    },
+    "graphviz-16.0.0.tar.gz": {
+      "bytes": 26847233,
+      "sha256": "36a1de1aaf5a2023b14f95170a5f8f0b12522d1c305b517fc261966597050749"
+    },
+    "viz-3.30.0.tgz": {
+      "bytes": 1903630,
+      "sha256": "4f52d4bd062b38b9ca66de0a4888633c912b745f1f00b9b224c77a1c7d9f1c92"
+    },
+    "viz-source-99da545.tar.gz": {
+      "bytes": 108597,
+      "sha256": "27d1aed976e66e56dee2ad9491415c8d3e2a2132d8c7a1372220f17321bf766c"
+    }
+  },
+  "backend_publisher_dependencies": [
+    {
+      "digest": {
+        "sha256": "4e332f7343b6f66320bf72f7ecc01a3d9f3866721a13b0e5c7b96505d6ab148a"
+      },
+      "uri": "pkg:docker/emscripten/emsdk@5.0.7?platform=linux%2Famd64"
+    },
+    {
+      "digest": {
+        "sha256": "b8ece2437692dad44d851c4532723390a5a330990007706be9c8d2b90d294f36"
+      },
+      "uri": "https://github.com/libexpat/libexpat/releases/download/R_2_8_4/expat-2.8.4.tar.gz"
+    },
+    {
+      "digest": {
+        "sha256": "36a1de1aaf5a2023b14f95170a5f8f0b12522d1c305b517fc261966597050749"
+      },
+      "uri": "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.0.0/graphviz-16.0.0.tar.gz"
+    }
+  ],
+  "backend_publisher_provenance_sha256": "e0ae3025607c145c0e928be0b7d52e1b33e426da80615cef5772c7b5d9a261d1",
+  "backend_sha256": "d2d18f488ffbf12fd3ae68d3899d6911051b9bfc3b4240eebe9883ca17d58903",
+  "build_source_sha256": {
+    ".github/workflows/viz-build.yml": "6dd0a9f6807867768109f2e77ba0227dfc75fa7198b9de1adf3b82b86f5fea29",
+    ".github/workflows/viz-publish.yml": "d2955767fdba4f23e996f5cb9d43fd8897bd52eac5d140f9bb13bdd57cc149f8",
+    "LICENSE": "f1fb91bf7cbcb42b2af56949e4fa909e1979d5b57c2826cabacdb4b631457720",
+    "package-lock.json": "7be731a17bc7de9ce8a69577d8516e3138e77c8e16e3f3babca1e4e37b9671f8",
+    "packages/viz/Makefile": "8db407ec8020e3688715328d9aaec48a4cdd8f40d591da571ab10c707b6ecd2d",
+    "packages/viz/backend/Dockerfile": "65478ae2711a2837955d7b6d15d274a1a2769871ddecc3d9e465ff124a1bf76c",
+    "packages/viz/backend/pre.js": "3f32afc091724733008e0dd5dd58f0da51fdbc74e2a129a6efb39d90f5dcc510",
+    "packages/viz/backend/viz.c": "98a136782d13a293f2ecea4f5f7e0dbf7f5ee34ccc7c5d1da6cb07cfad7d1492",
+    "packages/viz/package.json": "6e9a40dff52aeee1eabc5c79ca015b230bf574fa53a6bca6d93ad4cc30de7011",
+    "packages/viz/rollup.config.js": "26f2f45e03d2cfbf80a5fd6a10557927665ec1cbc33b7a1698f813a0b6788363"
+  },
+  "expat_copying_sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
+  "expat_revision": "12cf0b1f25f026a022fe728ad8f7e3d017285b80",
+  "graphviz_copying_sha256": "0becf16567beb77fa252b7664631dd177c8f9a1889e48995b45379c7130e5303",
+  "graphviz_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+  "limits": [
+    "Publisher provenance was cross-checked, not signature-verified.",
+    "No independent rebuild or exhaustive linked-code licence audit.",
+    "No public corresponding-source offer or signed-app verification."
+  ],
+  "npm_sha512_integrity_matches": true,
+  "shipped_bundle_sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
+  "status": "passed",
+  "viz_revision": "99da545270e6e7b127a5c7ba65974b8a604a6358",
+  "wrapper_source_files_match": [
+    "src/errors.js",
+    "src/index.js",
+    "src/viz.js",
+    "src/wrapper.js",
+    "types/index.d.ts"
+  ]
+}

@@ -28,8 +28,8 @@ source-offer `status` field changed. See the
 | `mermaid` — nested-bundle item | Complete nested attribution and distributed texts unresolved | The [generated-bundle audit](evidence/mermaid-11.17.2/README.md) now links the exact artifact, parser and mapped modules to captured licence texts. Resolve the remaining prebundle attributions/candidate-version limits before installing the complete inventory/notices/SBOM. |
 | `theme-tomorrow-light` — E23 item | Naming/source decision | Existing provenance says the palette is GitHub-derived, not Tomorrow-derived; E23 must decide whether to rename or re-source it. |
 | `viz-js` — source-location verification | Planned source URL; anonymous retrieval not verified | Existing `ARCHIVE_PLAN.md` identifies the exact Graphviz/viz-js material and digest evidence still required. |
-| `viz-js` — `LC-02` | Graphviz/viz-js source package and build-script pinning open | Pin exact Graphviz 16.0.0 and viz-js 3.30.0 source/build material and hashes. |
-| `viz-js` — linked-library review | Linked-library obligations open | Confirm whether the WebAssembly build links libraries such as expat and add notices if required. |
+| `viz-js` — `LC-02` | Complete corresponding-source offer still open | [Exact Graphviz 16.0.0, Viz.js 3.30.0 and Expat 2.8.4 inputs](evidence/viz-js-3.30.0/README.md) are downloaded and hashed against the npm backend's publisher build record. Complete package assembly/review and LC-09 publication remain. |
+| `viz-js` — linked-library review | Remaining embedded-code/runtime attribution open | Expat 2.8.4 is explicitly linked and its MIT text is added. The direct linker list does not complete the Graphviz/Emscripten runtime attribution audit. |
 
 The checker reports these seven exact entries. SwiftUIMath's product-decision
 entry is resolved using the recorded KEEP decision in issue #148 comments
@@ -45,20 +45,26 @@ ten release findings. The [new packaging and Prism audit](evidence/prism-textual
 resolves those three failures on a fresh app built from clean commit
 `ceecea9c4a8297db6aa24e3afa9163406e4a10e5`.
 
-The new app's exact `Contents/Resources/LICENSE` and
-`Contents/Resources/THIRD_PARTY_NOTICES.md` match the committed originals. The
+That historical `ceecea9c` app's exact `Contents/Resources/LICENSE` and
+`Contents/Resources/THIRD_PARTY_NOTICES.md` matched that commit's originals. The
 audit accounts for every byte of the already-shipped Textual Prism bundle using
 the published Prism 1.29.0 distribution/components and Textual's header/helper;
 both original MIT texts are included in generated notices. All 12 font digests
 remain present. Ordinary source and artifact compliance pass; both release
 checks still fail on the seven entries above. No existing finding was waived.
 
-This is unsigned distribution evidence: the linker emitted an ad hoc signature,
+That is unsigned distribution evidence: the linker emitted an ad hoc signature,
 with no team identity or sealed resources. The build's AppIntents metadata
 warning remains recorded. The `LICENCES_UI.md` packaging prerequisite is now
 implemented, but its About/Help window, localisation, accessibility and final
 signed-artifact checks remain open. No native UI or performance rerun is claimed
 for this resource-only change.
+
+The 2026-10-19 [Graphviz/Expat correction](evidence/viz-js-3.30.0/README.md)
+changes the notice bytes again. The historical artifact pass above does not
+cover these new notices. Source checks pass with seven strict release findings;
+the new notices still require inspection in a rebuilt app, and the final signed
+artifact remains a separate gate.
 
 ## Corresponding-source preparation boundary
 

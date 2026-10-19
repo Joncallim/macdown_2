@@ -51,6 +51,12 @@ information; that step is expected to fail until the release candidate
 exists. The strict version runs in the signing script's
 `--release-candidate` mode, against the built app.
 
+`xcodegen generate` creates `MacDown2/MacDown2/Info.plist` from the app
+properties in `MacDown2/project.yml`. That exact path is registered as
+first-party metadata because Xcode processes it into the app. It is not
+excluded as undistributed content. Other property-list files still need
+inventory ownership; Git ignore rules do not exempt them from the check.
+
 ## What the check rejects
 
 | Rule | Tree check | `--release` |

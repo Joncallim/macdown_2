@@ -47,6 +47,38 @@
       "version": "0.1.33"
     },
     {
+      "bom-ref": "expat",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/libexpat/libexpat"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Expat (embedded in Viz.js WebAssembly)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/libexpat/libexpat@12cf0b1f25f026a022fe728ad8f7e3d017285b80",
+      "type": "library",
+      "version": "2.8.4"
+    },
+    {
       "bom-ref": "libyaml",
       "externalReferences": [
         {
@@ -1188,6 +1220,7 @@
     {
       "dependsOn": [
         "d2",
+        "expat",
         "libyaml",
         "mermaid",
         "neon",
@@ -1240,7 +1273,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:6159c59a-5ed8-5920-b20e-d26b37b494ac",
+  "serialNumber": "urn:uuid:91dd6a16-4de0-5b46-903d-8a4f176a2d08",
   "specVersion": "1.5",
   "version": 1
 }
