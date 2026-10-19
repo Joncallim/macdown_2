@@ -14,7 +14,7 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master, integration-final]
+    branches: [master, integration-final, review/combined-release-2026-10-19]
   workflow_dispatch: {}
 
 permissions:

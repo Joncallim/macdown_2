@@ -9,7 +9,7 @@ size, timing assertions, or release gates.
 
 ## Scope and method
 
-The ordinary CI jobs run first. A separate hosted macOS VM then exports the actual
+The ordinary build-and-test job runs first. A separate hosted macOS VM then exports the actual
 checked-out commit's `MacDown2/Packages` tree into a new temporary directory and
 applies the two patches here. It resolves and audits all 22 locked dependencies
 before applying the Neon patch to that temporary dependency checkout. The normal
