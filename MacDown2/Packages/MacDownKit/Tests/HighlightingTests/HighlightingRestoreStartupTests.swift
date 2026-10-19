@@ -25,6 +25,7 @@ struct HighlightingRestoreStartupTests {
               let restore = editor.highlighter.restoreTask
         else {
             Issue.record("idle restore did not register a controlled waiter")
+            await sleeper.terminateAndDrain(editor.highlighter.restoreTask.map { [$0] } ?? [])
             return
         }
         #expect(sleeper.advance(by: SizeFallbackFixtures.policy.restoreIdleDelay) == [id])
@@ -36,6 +37,7 @@ struct HighlightingRestoreStartupTests {
         let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: SizeFallbackFixtures.markdownOnly)
         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
         #expect(editor.renderedRuns() == fresh.renderedRuns())
+        await sleeper.terminateAndDrain([restore])
     }
 
     @Test func editingImmediatelyWhenIdleRestoreBecomesFullMatchesAFreshHighlighter() async {
@@ -55,6 +57,7 @@ struct HighlightingRestoreStartupTests {
               let restore = editor.highlighter.restoreTask
         else {
             Issue.record("idle restore did not register a controlled waiter")
+            await sleeper.terminateAndDrain(editor.highlighter.restoreTask.map { [$0] } ?? [])
             return
         }
 
@@ -67,5 +70,6 @@ struct HighlightingRestoreStartupTests {
         let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: SizeFallbackFixtures.markdownOnly)
         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
         #expect(editor.renderedRuns() == fresh.renderedRuns())
+        await sleeper.terminateAndDrain([restore])
     }
 }
