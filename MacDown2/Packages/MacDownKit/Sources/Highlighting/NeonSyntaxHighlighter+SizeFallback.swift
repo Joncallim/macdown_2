@@ -101,8 +101,13 @@ extension NeonSyntaxHighlighter {
     }
 
     private func scheduleRestore(after delay: Duration) {
+        let restoreSleep = restoreSleep
         restoreTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: delay)
+            if let restoreSleep {
+                try? await restoreSleep(delay)
+            } else {
+                try? await Task.sleep(for: delay)
+            }
             guard !Task.isCancelled, let self else { return }
             restoreTask = nil
             restoreIfStillEligible(retryDelay: delay)

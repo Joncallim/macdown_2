@@ -154,36 +154,25 @@ struct HighlightingSizeFallbackTests {
     @Test(arguments: [false, true])
     func shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause: Bool) async {
         let editor = Fixtures.editor(units: cutoff + 500)
-        let idle = Fixtures.policy.restoreIdleDelay
-        let clock = ContinuousClock()
         let toDelete = editor.length - Fixtures.policy.restoreAtOrBelowUTF16Units
+        let clock = ContinuousClock()
         var lastEditStarted = clock.now
+        var timeline: [String] = []
         editor.paste("", over: NSRange(location: 100, length: toDelete))
         #expect(editor.mode == .reducedForTestPolicy)
-        var checksWhileNotIdle = 0
-        var wasReducedAfterLastEdit = true
-        var timeline: [String] = []
-        // Keep typing: each edit postpones the restore.
         for index in 0 ..< 4 {
             // The third pause follows a deletion to the restore threshold. The second is above it.
             await editor.settle(.milliseconds(includesIdlePause && index == 2 ? 300 : 100))
-            if wasReducedAfterLastEdit, clock.now - lastEditStarted < idle {
-                checksWhileNotIdle += 1
-                #expect(editor.mode == .reducedForTestPolicy, "restored before an idle delay had elapsed")
-            }
             timeline.append(
                 "pause \(index): elapsed=\(clock.now - lastEditStarted), mode=\(editor.mode), "
                     + "revision=\(editor.system.contentRevision), generation=\(editor.highlighter.generation), "
                     + "tokens=\(editor.highlighter.styledTokenCount)"
             )
             let modeBeforeEdit = editor.mode
-            lastEditStarted = clock.now
             editor.typeOrDelete(at: 50, insert: index.isMultiple(of: 2))
+            lastEditStarted = clock.now
             #expect(editor.mode == modeBeforeEdit, "a small edit neither restores nor reduces highlighting")
-            wasReducedAfterLastEdit = editor.mode == .reducedForTestPolicy
         }
-        // If the runner was so slow that no check ran while not idle, the test proved nothing: say so.
-        #expect(checksWhileNotIdle >= 1, "every pause exceeded the idle delay; the early-restore check never ran")
         #expect(await editor.waitUntil { editor.mode == .full }, "restored after the idle delay")
         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
         let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
@@ -204,6 +193,16 @@ struct HighlightingSizeFallbackTests {
             await editor.settle(.seconds(2))
             reportRestoreStyles("afterRebuild", editor: editor, fresh: fresh, initialReference: expectedRuns)
         }
+    }
+
+    @Test(arguments: [false, true])
+    func controlledIdleClockRejectsEarlyRestoreAndJoinsDueWaiters(includesIdlePause: Bool) async {
+        let editor = Fixtures.editor(units: cutoff + 500)
+        let sleeper = ManualRestoreSleeper()
+        let sequence = RestoreIdleEditSequence(editor: editor, sleeper: sleeper)
+        await sequence.run(includesIdlePause: includesIdlePause)
+        #expect(editor.mode == .full, "the final eligible restore completed")
+        #expect(sleeper.registeredIDs.count == sleeper.completedIDs.count)
     }
 
     private func reportRestoreStyles(
@@ -233,5 +232,163 @@ struct HighlightingSizeFallbackTests {
         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
         #expect(editor.renderedRuns() == fresh.renderedRuns())
         #expect(editor.highlighter.gate.forwardedCharacterEditCount == editor.highlighter.gate.characterEditCount)
+    }
+}
+
+extension HighlightingSizeFallbackTests {
+    @Test func markedTextRetryReceivesAFullNewIdleDelay() async {
+        let editor = Fixtures.editor(units: cutoff + 500)
+        let sleeper = ManualRestoreSleeper()
+        editor.highlighter.restoreSleep = sleeper.sleepClosure
+        editor.textView.setSelectedRange(NSRange(location: 100, length: 2002))
+        editor.textView.setMarkedText(
+            "かな",
+            selectedRange: NSRange(location: 2, length: 0),
+            replacementRange: NSRange(location: 100, length: 2002)
+        )
+        guard let firstID = await sleeper.waitForAllocation(after: 0),
+              await sleeper.waitForRegistration(firstID)
+        else {
+            Issue.record("IME edit did not schedule an initial restore waiter")
+            await sleeper.terminateAndDrain([editor.highlighter.restoreTask].compactMap(\.self))
+            return
+        }
+        let firstTask = editor.highlighter.restoreTask
+        #expect(editor.textView.hasMarkedText(), "the controlled restore runs during active marked text")
+        #expect(editor.length == Fixtures.policy.restoreAtOrBelowUTF16Units)
+        #expect(editor.mode == .reducedForTestPolicy)
+        let due = sleeper.advance(by: Fixtures.policy.restoreIdleDelay)
+        #expect(due.contains(firstID))
+        if let firstTask {
+            await firstTask.value
+        }
+        guard let retryID = await sleeper.waitForAllocation(after: 1),
+              await sleeper.waitForRegistration(retryID)
+        else {
+            Issue.record("marked-text retry waiter did not register")
+            await sleeper.terminateAndDrain([editor.highlighter.restoreTask].compactMap(\.self))
+            return
+        }
+        #expect(sleeper.deadline(for: retryID) == sleeper.now + Fixtures.policy.restoreIdleDelay)
+        #expect(editor.mode == .reducedForTestPolicy)
+        let retryTask = editor.highlighter.restoreTask
+        editor.highlighter.tearDown()
+        _ = sleeper.release(retryID)
+        if let retryTask {
+            await retryTask.value
+        }
+        await sleeper.terminateAndDrain([firstTask, retryTask].compactMap(\.self))
+    }
+
+    @Test func languageChangeCancelsRestoreWaitAndOldWaitMayCompleteNormally() async {
+        let editor = Fixtures.editor(units: cutoff + 500)
+        let sleeper = ManualRestoreSleeper()
+        editor.highlighter.restoreSleep = sleeper.sleepClosure
+        editor.paste("", over: NSRange(location: 100, length: editor.length - 4500))
+        guard let id = await sleeper.waitForAllocation(after: 0),
+              await sleeper.waitForRegistration(id)
+        else {
+            Issue.record("language-change restore waiter did not register")
+            await sleeper.terminateAndDrain([editor.highlighter.restoreTask].compactMap(\.self))
+            return
+        }
+        let task = editor.highlighter.restoreTask
+        editor.highlighter.setLanguage(nil)
+        #expect(await sleeper.waitForCancellation(id))
+        _ = sleeper.release(id)
+        if let task {
+            await task.value
+        }
+        #expect(editor.highlighter.restoreTask == nil)
+        #expect(editor.highlighter.state.requestedLanguageID == nil)
+        await sleeper.terminateAndDrain([task].compactMap(\.self))
+    }
+
+    @Test func teardownCancelsRestoreWaitAndOldWaitMayCompleteNormally() async {
+        let editor = Fixtures.editor(units: cutoff + 500)
+        let sleeper = ManualRestoreSleeper()
+        editor.highlighter.restoreSleep = sleeper.sleepClosure
+        editor.paste("", over: NSRange(location: 100, length: editor.length - 4500))
+        guard let id = await sleeper.waitForAllocation(after: 0),
+              await sleeper.waitForRegistration(id)
+        else {
+            Issue.record("teardown restore waiter did not register")
+            await sleeper.terminateAndDrain([editor.highlighter.restoreTask].compactMap(\.self))
+            return
+        }
+        let task = editor.highlighter.restoreTask
+        editor.highlighter.tearDown()
+        #expect(await sleeper.waitForCancellation(id))
+        _ = sleeper.release(id)
+        if let task {
+            await task.value
+        }
+        #expect(editor.highlighter.restoreTask == nil)
+        #expect(editor.isPlain, "teardown leaves the reduced presentation plain")
+        await sleeper.terminateAndDrain([task].compactMap(\.self))
+    }
+
+    @Test(arguments: [false, true])
+    func canceledRestoreCannotClearOrRestoreOverItsReplacement(holdRegistration: Bool) async {
+        let editor = SizeFallbackFixtures.editor(units: cutoff + 500)
+        let sleeper = ManualRestoreSleeper()
+        if holdRegistration {
+            sleeper.holdNextRegistration()
+        }
+        editor.highlighter.restoreSleep = sleeper.sleepClosure
+        editor.paste("", over: NSRange(location: 100, length: editor.length - 4500))
+        let firstID = await sleeper.waitForAllocation(after: 0)
+        let obsoleteTask = editor.highlighter.restoreTask
+        if !holdRegistration, let firstID {
+            #expect(await sleeper.waitForRegistration(firstID))
+        }
+        editor.typeOrDelete(at: 50, insert: false)
+        let replacementTask = editor.highlighter.restoreTask
+        let ownedTasks = [obsoleteTask, replacementTask].compactMap(\.self)
+
+        guard let firstID,
+              await sleeper.waitForCancellation(firstID),
+              !holdRegistration || sleeper.releaseRegistration(firstID),
+              await sleeper.waitForRegistration(firstID),
+              let replacementID = await sleeper.waitForAllocation(after: 1),
+              await sleeper.waitForRegistration(replacementID)
+        else {
+            Issue.record("both canceled and replacement restore waits must register before the deadlock guard")
+            await sleeper.terminateAndDrain(ownedTasks)
+            return
+        }
+        #expect(firstID != replacementID, "replacement identity is captured from its allocation acknowledgment")
+        #expect(sleeper.registeredIDs.contains(replacementID))
+
+        _ = sleeper.release(firstID)
+        if let obsoleteTask {
+            await obsoleteTask.value
+        }
+        #expect(editor.mode == .reducedForTestPolicy)
+        #expect(editor.highlighter.restoreTask != nil)
+        let released = sleeper.advance(by: SizeFallbackFixtures.policy.restoreIdleDelay)
+        #expect(released.contains(replacementID))
+        if let replacementTask {
+            await replacementTask.value
+        }
+        #expect(sleeper.completedIDs.contains(replacementID))
+        #expect(editor.mode == .full)
+        await sleeper.terminateAndDrain(ownedTasks)
+    }
+
+    @Test func terminatingBeforeRestoreAllocationReleasesPendingRegistrationHolds() async {
+        let editor = Fixtures.editor(units: cutoff + 500)
+        let sleeper = ManualRestoreSleeper()
+        sleeper.holdNextRegistration()
+        editor.highlighter.restoreSleep = sleeper.sleepClosure
+        editor.paste("", over: NSRange(location: 100, length: editor.length - 4500))
+        let task = editor.highlighter.restoreTask
+        // No suspension has let the MainActor restore task allocate its wait.
+        #expect(sleeper.allocatedIDs.isEmpty)
+        await sleeper.terminateAndDrain([task].compactMap(\.self))
+        #expect(sleeper.allocatedIDs.count == 1)
+        #expect(sleeper.registeredIDs == sleeper.completedIDs)
+        #expect(editor.mode == .reducedForTestPolicy)
+        editor.highlighter.tearDown()
     }
 }

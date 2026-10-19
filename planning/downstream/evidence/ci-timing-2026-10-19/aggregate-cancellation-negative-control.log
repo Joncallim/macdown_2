@@ -1,0 +1,35 @@
+START_UTC=2026-10-19T06:32:22.019507+00:00
+COMMAND=swift test --force-resolved-versions --no-parallel --filter cleanupTimeoutCancelsTheInnerAggregateJoinAndItsObserverCanFinish
+CWD=/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit
+TIMEOUT_SECONDS=600
+
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[2/4] Write swift-version--58304C5D6DBC2206.txt
+[4/8] Emitting module Highlighting
+[5/8] Compiling Highlighting NeonSyntaxHighlighter+SizeFallback.swift
+[6/9] Emitting module TextFiltersTests
+[7/9] Compiling TextFiltersTests TextFilterFixtureOwnershipSupport.swift
+[7/9] Write Objects.LinkFileList
+[8/9] Linking MacDownKitPackageTests
+Build complete! (9.05s)
+Test Suite 'Selected tests' started at 2026-10-19 14:32:33.263.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-19 14:32:33.270.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-19 14:32:33.270.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-19 14:32:33.270.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "TextFilter fixture cleanup safety" started.
+◇ Test cleanupTimeoutCancelsTheInnerAggregateJoinAndItsObserverCanFinish() started.
+✘ Test cleanupTimeoutCancelsTheInnerAggregateJoinAndItsObserverCanFinish() recorded an issue at TextFilterFixtureCleanupSafetyTests.swift:194:9: Expectation failed: await probe.waitForCancellation()
+↳ timeout must cancel the actual aggregate child join
+✘ Test cleanupTimeoutCancelsTheInnerAggregateJoinAndItsObserverCanFinish() failed after 5.040 seconds with 1 issue.
+✘ Suite "TextFilter fixture cleanup safety" failed after 5.041 seconds with 1 issue.
+✘ Test run with 1 test in 1 suite failed after 5.041 seconds with 1 issue.
+
+END_UTC=2026-10-19T06:32:38.424793+00:00
+EXIT=1
