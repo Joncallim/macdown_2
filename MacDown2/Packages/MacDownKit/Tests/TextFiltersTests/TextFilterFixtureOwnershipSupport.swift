@@ -758,11 +758,12 @@ extension TextFilterFixtures {
             cleanupRecords.append(FixtureCleanupRecord(cancel: cancel, join: join))
         }
 
-        /// Closes registration and cancels every owned resource synchronously
-        /// before starting any asynchronous joins. The returned unstructured
-        /// task joins all resources concurrently, so one resource waiting for
-        /// another to observe cancellation cannot block that other resource's
-        /// cancellation.
+        /// Closes registration and shares one task covering cancellation and
+        /// joining. Potentially blocking cancellation callbacks run serially
+        /// off the cooperative executor, so they cannot occupy the worker
+        /// needed by the cleanup watchdog. Every cancellation finishes before
+        /// the task starts concurrent joins; obtaining its handle does not
+        /// mean cancellation has finished.
         func cancelAllAndCreateJoinTask() -> Task<FixtureCleanupReport, Never> {
             if let joinTask {
                 return joinTask
@@ -771,12 +772,17 @@ extension TextFilterFixtures {
             let records = cleanupRecords
             cleanupRecords.removeAll()
 
-            for record in records {
-                record.cancel()
-            }
-
             let joinTask = Task.detached {
-                await withTaskGroup(of: FixtureCleanupJoinResult.self, returning: FixtureCleanupReport.self) { group in
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    DispatchQueue.global().async {
+                        for record in records {
+                            record.cancel()
+                        }
+                        continuation.resume()
+                    }
+                }
+                return await withTaskGroup(of: FixtureCleanupJoinResult.self,
+                                           returning: FixtureCleanupReport.self) { group in
                     for record in records {
                         group.addTask {
                             await record.join()
@@ -865,7 +871,7 @@ extension TextFilterFixtures {
         let cancellationAndJoinTask = Task.detached {
             cleanupObserver?(.cancellationTaskStarted)
             let joinTask = await owner.cancelAllAndCreateJoinTask()
-            cleanupObserver?(.cancellationReturned)
+            cleanupObserver?(.cleanupTaskAcquired)
             return await withTaskCancellationHandler(operation: {
                 await joinTask.value
             }, onCancel: {
@@ -935,7 +941,7 @@ extension TextFilterFixtures {
     enum CleanupPhase: String, Sendable {
         case cancellationRequested
         case cancellationTaskStarted
-        case cancellationReturned
+        case cleanupTaskAcquired
         case watchdogTaskStarted
         case watchdogSleepReturned
         case timeoutGateCompleted

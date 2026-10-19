@@ -9,6 +9,7 @@ struct TextFilterBlockingCleanupDeadlineTests {
     func cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay: Duration) async throws {
         let probe = BlockingCancellationProbe()
         var observedDirectory: URL?
+        var observedOwner: TextFilterFixtures.TaskOwner?
         let fixtureStarted = ContinuousClock.now
         var cleanupStarted: ContinuousClock.Instant?
         let observeCleanup: @Sendable (TextFilterFixtures.CleanupPhase) -> Void = { probe.record($0) }
@@ -19,6 +20,7 @@ struct TextFilterBlockingCleanupDeadlineTests {
                     cleanupTimeout: .milliseconds(25), cleanupObserver: observeCleanup
                 ) { directory, owner in
                     observedDirectory = directory
+                    observedOwner = owner
                     if setupDelay > .zero {
                         try await Task.sleep(for: setupDelay)
                     }
@@ -46,20 +48,22 @@ struct TextFilterBlockingCleanupDeadlineTests {
             cleanupStarted: cleanupStarted,
             probe: probe
         )
-        if let directory = observedDirectory {
+        if let directory = observedDirectory, let owner = observedOwner {
             #expect(FileManager.default.fileExists(atPath: directory.path))
-            try await finishBlockingCancellation(probe, directory: directory)
+            try await finishBlockingCancellation(owner, directory: directory)
         } else {
-            Issue.record("blocking-cancellation fixture directory was not recorded")
+            Issue.record("blocking-cancellation fixture directory or owner was not recorded")
         }
     }
 
-    private func finishBlockingCancellation(_ probe: BlockingCancellationProbe, directory: URL) async throws {
-        let joinTask = Task.detached {
-            probe.waitForFinished(timeout: .now() + .seconds(2))
+    private func finishBlockingCancellation(_ owner: TextFilterFixtures.TaskOwner, directory: URL) async throws {
+        let aggregate = await owner.cancelAllAndCreateJoinTask()
+        let report = await aggregate.value
+        guard report.failures.isEmpty, report.unresolved.isEmpty else {
+            Issue.record("blocking-cancellation cleanup remained unresolved; preserving its directory")
+            return
         }
-        #expect(await joinTask.value, "blocking cancellation callback completed before fixture removal")
-        try? FileManager.default.removeItem(at: directory)
+        try FileManager.default.removeItem(at: directory)
     }
 
     private func assertCleanupBounds(
