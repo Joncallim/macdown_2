@@ -1,0 +1,92 @@
+diff --git a/MacDownKit/Package.swift b/MacDownKit/Package.swift
+--- a/MacDownKit/Package.swift
++++ b/MacDownKit/Package.swift
+@@ -193,7 +193,7 @@
+         .testTarget(name: "WorkspaceTests", dependencies: ["Workspace"]),
+         .testTarget(name: "FileTreeTests", dependencies: ["FileTree"]),
+         .testTarget(name: "EditorCoreTests", dependencies: ["EditorCore", "JSONSupport"]),
+-        .testTarget(name: "HighlightingTests", dependencies: ["Highlighting"]),
++        .testTarget(name: "HighlightingTests", dependencies: ["Highlighting", .product(name: "Neon", package: "Neon")]),
+         .testTarget(name: "MarkdownEngineTests", dependencies: ["MarkdownEngine"]),
+         .testTarget(name: "PreviewTests", dependencies: ["Preview"]),
+         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
+diff --git a/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift b/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+--- a/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
++++ b/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+@@ -1,6 +1,7 @@
+ import AppKit
+ @testable import Highlighting
+ import Testing
++import Neon
+ 
+ /// Register row H5: the bounded size-based highlighting fallback — cut-off,
+ /// interception of the crossing edit before Neon, teardown, hysteresis.
+@@ -154,6 +155,8 @@
+     @Test(arguments: [false, true])
+     func shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause: Bool) async {
+         let editor = Fixtures.editor(units: cutoff + 500)
++        let session = RestoreHostedTrace.begin(view: editor.textView, label: "restore-idle-\(includesIdlePause)")
++        defer { RestoreHostedTrace.finish(session) }
+         let toDelete = editor.length - Fixtures.policy.restoreAtOrBelowUTF16Units
+         let clock = ContinuousClock()
+         var lastEditStarted = clock.now
+@@ -168,18 +171,23 @@
+                     + "revision=\(editor.system.contentRevision), generation=\(editor.highlighter.generation), "
+                     + "tokens=\(editor.highlighter.styledTokenCount)"
+             )
++            restoreTraceState(editor, stage: "pause", fields: ["editIndex": String(index), "elapsed": String(describing: clock.now - lastEditStarted)])
+             let modeBeforeEdit = editor.mode
+             editor.typeOrDelete(at: 50, insert: index.isMultiple(of: 2))
+             lastEditStarted = clock.now
+             #expect(editor.mode == modeBeforeEdit, "a small edit neither restores nor reduces highlighting")
++            restoreTraceState(editor, stage: "edited", fields: ["editIndex": String(index)])
+         }
+         #expect(await editor.waitUntil { editor.mode == .full }, "restored after the idle delay")
+         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+-        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
++        let fresh = RestoreHostedTrace.withRegistration(session, role: "fresh") {
++            HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
++        }
+         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+         let expectedRuns = fresh.renderedRuns()
+         let matches = editor.renderedRuns() == expectedRuns
+         #expect(editor.renderedRuns() == expectedRuns, "\(timeline.joined(separator: "; "))")
++        restoreTraceRuns(editor, stage: "oracle", observed: editor.renderedRuns(), reference: expectedRuns)
+         if !matches {
+             // Preserve the failed assertion before observing whether delayed work or an explicit
+             // revalidation changes the result. These bounded probes never convert failure to success.
+@@ -210,6 +218,7 @@
+     ) {
+         let currentReference = fresh.renderedRuns()
+         let observed = editor.renderedRuns()
++        restoreTraceRuns(editor, stage: stage, observed: observed, reference: currentReference)
+         print(
+             "RESTORE_STYLE_PROBE \(stage): referenceUnchanged=\(currentReference == initialReference), "
+                 + "matchesInitial=\(observed == initialReference), matchesCurrent=\(observed == currentReference)"
+diff --git a/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift b/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift
+new file mode 100644
+--- /dev/null
++++ b/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift
+@@ -0,0 +1,22 @@
++import Neon
++
++@MainActor
++func restoreTraceState(_ editor: HighlightedEditor, stage: String, fields: [String: String] = [:]) {
++    var fields = fields
++    fields["stage"] = stage
++    fields["mode"] = String(describing: editor.mode)
++    fields["contentRevision"] = String(editor.system.contentRevision)
++    fields["generation"] = String(editor.highlighter.generation)
++    fields["styledTokenCount"] = String(editor.highlighter.styledTokenCount)
++    RestoreHostedTrace.record(view: editor.textView, event: "fixture.state", fields: fields)
++}
++
++@MainActor
++func restoreTraceRuns(_ editor: HighlightedEditor, stage: String, observed: [RenderedRun], reference: [RenderedRun]) {
++    restoreTraceState(editor, stage: stage)
++    RestoreHostedTrace.record(view: editor.textView, event: "fixture.runs", fields: [
++        "stage": stage, "matches": String(observed == reference),
++        "observed": observed.map(\.description).joined(separator: "|"),
++        "reference": reference.map(\.description).joined(separator: "|")
++    ])
++}

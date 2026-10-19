@@ -5,8 +5,8 @@ on:
     branches: [master]
     paths: ['MacDown2/**', '.github/workflows/ci.yml']
   pull_request:
-    branches: [master, integration-final]
-    paths: ['MacDown2/**', '.github/workflows/ci.yml']
+    branches: [master, integration-final, review/combined-release-2026-10-19]
+    paths: ['MacDown2/**', '.github/workflows/ci.yml', 'planning/diagnostics/restore-trace/**']
   workflow_dispatch: {}  # allow manual re-runs from the Actions tab / gh CLI
 
 concurrency:
@@ -133,3 +133,39 @@ jobs:
         run: |
           MacDown2/scripts/pin-xcode-package-versions.sh --check
           git diff --exit-code -- MacDown2/Packages/MacDownKit/Package.resolved
+
+  restore-trace:
+    # This isolated, patched dependency copy is diagnostic-only. Keep the normal
+    # build-and-test job authoritative and run the trace only on its dedicated PR branch.
+    needs: build-and-test
+    if: ${{ always() && !cancelled() && startsWith(github.head_ref, 'diagnostic/restore-hosted-trace-') }}
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode*.app | grep "26" | head -1 || true)
+          if [ -z "$XCODE" ]; then XCODE=$(ls -d /Applications/Xcode*.app | head -1); fi
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+      - name: Select Python 3.12 for safe archive extraction
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Collect isolated restore trace
+        run: |
+          mkdir -p "$RUNNER_TEMP/restore-trace"
+          python3 MacDown2/scripts/restore-trace/collect.py \
+            --repo "$GITHUB_WORKSPACE" \
+            --workspace "$RUNNER_TEMP/restore-trace/workspace" \
+            --output "$RUNNER_TEMP/restore-trace/output"
+      - name: Upload restore-trace evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: restore-trace-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/restore-trace/output
+          if-no-files-found: warn
+          retention-days: 14
