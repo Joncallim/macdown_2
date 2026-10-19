@@ -1,0 +1,28 @@
+[
+  {
+    "purpose": "Mutation control: restore the old retry-generation reset, retaining detached detection",
+    "command": [
+      "swift",
+      "test",
+      "--no-parallel",
+      "--force-resolved-versions",
+      "--filter",
+      "automaticEncodingRetryKeepsTheOriginalOpenIntent"
+    ],
+    "exitCode": 1,
+    "sourceSHA256": "463f74f73b91399a2a8b02a86ce1f69b6200cf21e3f8252c74f3b2c7de711aaa"
+  },
+  {
+    "purpose": "Reviewed encoding implementation including nil-detection failed-decode admission",
+    "command": [
+      "swift",
+      "test",
+      "--no-parallel",
+      "--force-resolved-versions",
+      "--filter",
+      "TabStoreEncodingOpenTests|TabStoreCoreTests"
+    ],
+    "exitCode": 0,
+    "sourceSHA256": "338b959125a75afdc378e751c90221397d38453eee1ac701739e7f47d1387e3d"
+  }
+]

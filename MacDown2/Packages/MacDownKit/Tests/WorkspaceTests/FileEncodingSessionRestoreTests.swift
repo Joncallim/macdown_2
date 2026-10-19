@@ -93,7 +93,7 @@ struct FileEncodingSessionRestoreTests {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: recoveryDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: recoveryDirectory) }
-        let buffer = try RecoveryBuffer(recoveryDirectory: recoveryDirectory)
+        let buffer = RecoveryBuffer(recoveryDirectory: recoveryDirectory)
 
         let store = TabStore(recoveryBuffer: buffer)
         let documentID = UUID().uuidString

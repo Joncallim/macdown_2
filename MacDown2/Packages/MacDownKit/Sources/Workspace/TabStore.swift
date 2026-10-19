@@ -155,7 +155,9 @@ public final class TabStore {
     var saveTask: Task<Void, Never>?
     var lastPublishedSession: WorkspaceSession?
     var hasRestoredSession = false
-    private var openRequestGeneration: UInt = 0
+    var openRequestGeneration: UInt = 0
+    /// Test seam inside the detached detection operation; production leaves this unset.
+    var beforeAutomaticEncodingDetection: (@Sendable () -> Void)?
     /// Test seam for an edit arriving after a rename's managed epoch is
     /// prepared but before the batch captures a replacement snapshot.
     var onRenameReplacementPrepared: (@MainActor (FileDocument) async -> Void)?
@@ -200,84 +202,6 @@ public final class TabStore {
         tabs.append(tab)
         activeTabID = tab.id
         persist()
-    }
-
-    /// Opens a file into a tab. If a tab for the same standardized file URL
-    /// already exists, that tab is activated and no new tab is created.
-    /// Returns the resulting tab, or the real reason the file could not be
-    /// loaded — never fabricated, so a permission error is not misreported
-    /// as "file not found."
-    /// The tab already showing `standardized`, made active when this open request
-    /// is still the newest one.
-    private func activateOpenTab(for standardized: URL, requestGeneration: UInt) -> WorkspaceTab? {
-        guard let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) else {
-            return nil
-        }
-        if requestGeneration == openRequestGeneration {
-            activeTabID = existing.id
-        }
-        persist()
-        return existing
-    }
-
-    @discardableResult
-    public func openFileInTab(
-        _ url: URL,
-        encoding: FileEncodingMetadata? = nil
-    ) async -> Result<WorkspaceTab, FileStoreError> {
-        let url = url.resolvingFinalSymlink()
-        let standardized = url.standardizedFileURL
-        openRequestGeneration &+= 1
-        let requestGeneration = openRequestGeneration
-
-        if let existing = activateOpenTab(for: standardized, requestGeneration: requestGeneration) {
-            return .success(existing)
-        }
-
-        let document: FileDocument
-        do {
-            document = try await FileDocument.create(
-                fileURL: url,
-                encoding: encoding ?? .utf8Default,
-                recoveryBuffer: recoveryBuffer
-            )
-        } catch {
-            return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
-        }
-        do {
-            let loaded = try await Task.detached(priority: .userInitiated) {
-                try document.load()
-            }.value
-            // The await above lets another intent open/activate this file.
-            // Reuse that tab rather than publishing a duplicate completion.
-            if let existing = activateOpenTab(for: standardized, requestGeneration: requestGeneration) {
-                return .success(existing)
-            }
-            // BOM-less UTF-16 is "valid UTF-8" — full of NUL bytes. Text with a
-            // NUL whose bytes unmistakably are UTF-16 is reopened as such rather
-            // than shown (and saved back) as garbage.
-            if encoding == nil, loaded.text.unicodeScalars.contains("\u{0}"),
-               let detected = FileStore().conservativelyDetectedEncoding(at: url) {
-                return await openFileInTab(url, encoding: detected)
-            }
-            let tab = WorkspaceTab(document: loaded)
-            tabs.append(tab)
-            if requestGeneration == openRequestGeneration {
-                activeTabID = tab.id
-            }
-            persist()
-            return .success(tab)
-        } catch {
-            let failure = (error as? FileStoreError) ?? .readFailed(underlying: error)
-            // Neither BOM-marked nor valid UTF-8. Retry once if the bytes
-            // themselves identify the encoding (BOM-less UTF-16); anything
-            // ambiguous stays a failure that offers an explicit choice.
-            if encoding == nil, failure.isUndecodableText,
-               let detected = FileStore().conservativelyDetectedEncoding(at: url) {
-                return await openFileInTab(url, encoding: detected)
-            }
-            return .failure(failure)
-        }
     }
 
     // MARK: - Document write-back
