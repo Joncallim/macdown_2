@@ -1,5 +1,10 @@
 # Capture an ordinary package-test crash without changing the tests
 
+This branch carries the separate [zero-tolerance diagnostic variant](../cleanup-zero-tolerance/README.md).
+Its package tree deliberately includes the one reviewed test-support sleep-policy
+change described there. The original crash-only heads and evidence below remain
+preserved; their production-tree attestation is not reused for this variant.
+
 The combined MostlyText candidate can still leave inline styles different after
 restoring full highlighting. Its separate passive trace did not reproduce that
 failure. Ordinary CI on diagnostic head `8e6c7108ccc572c75c9aea54d1afa5d3a5127f89`
@@ -10,7 +15,7 @@ It makes no product or dependency change and is not a release candidate.
 
 ## Source and ordinary execution
 
-The production Packages tree is frozen to candidate
+For the original crash-only diagnostic, the production Packages tree is frozen to candidate
 `ad79f2773f2cbaf8bb78bdb796b1d11b411be79b`, package-tree object
 `54fa64b226ee4cfbf35ee3edc9fce09c12e58b75`. The lock SHA-256 is
 `9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977`.

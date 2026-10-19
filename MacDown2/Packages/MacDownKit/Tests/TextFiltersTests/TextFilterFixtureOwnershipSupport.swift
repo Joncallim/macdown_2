@@ -846,7 +846,7 @@ extension TextFilterFixtures {
         cleanupObserver: (@Sendable (CleanupPhase) -> Void)? = nil,
         cleanupNow: @Sendable () -> ContinuousClock.Instant = { .now },
         cleanupSleepUntil: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void = { deadline in
-            try await ContinuousClock().sleep(until: deadline)
+            try await ContinuousClock().sleep(until: deadline, tolerance: .zero)
         },
         _ operation: (URL, TaskOwner) async throws -> T
     ) async throws -> T {

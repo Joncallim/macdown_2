@@ -20,7 +20,10 @@ import sys
 import time
 import uuid
 
-BASE_PACKAGE_TREE = "54fa64b226ee4cfbf35ee3edc9fce09c12e58b75"
+# Isolated zero-tolerance experiment: exactly one test-support sleep policy change
+# from production package tree 54fa64b226ee4cfbf35ee3edc9fce09c12e58b75.
+# This attests the reviewed diagnostic tree; production remains unchanged.
+BASE_PACKAGE_TREE = "e690fa0cf0655c2a26889b53ca467feda05ee82c"
 LOCK_SHA = "9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977"
 TEST_COMMAND = ["swift", "test", "--no-parallel", "--force-resolved-versions"]
 PROCESS_NAMES = {"swift", "swift-test", "swiftpm-testing-helper", "xctest", "MacDownKitPackageTests"}
