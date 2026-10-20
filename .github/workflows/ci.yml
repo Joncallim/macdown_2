@@ -55,7 +55,13 @@ jobs:
           # Homebrew refuse to install; untap defensively.
           brew untap aws/tap 2>/dev/null || true
           brew install xcodegen
+      - name: Select Python for the fork-pinned diagnostic
+        if: ${{ startsWith(github.ref_name, 'diagnostic/neon-current-trace-') }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Package build + tests
+        if: ${{ !startsWith(github.ref_name, 'diagnostic/neon-current-trace-') }}
         working-directory: MacDown2/Packages/MacDownKit
         # --force-resolved-versions builds exactly the revisions in the
         # committed Package.resolved and fails if it is missing, stale or
@@ -68,6 +74,31 @@ jobs:
           # tests exceed their bounded coordination timeouts on CI. Keep the
           # full suite and its assertions intact, but serialize execution.
           swift test --no-parallel --force-resolved-versions
+      - name: Trace the current candidate in one serial package suite
+        if: ${{ startsWith(github.ref_name, 'diagnostic/neon-current-trace-') }}
+        id: current-neon-diagnostic
+        run: |
+          python3 -B MacDown2/scripts/neon-current-trace/collect.py \
+            --repo "$GITHUB_WORKSPACE" \
+            --workspace "$RUNNER_TEMP/neon-current-trace-source" \
+            --output "$RUNNER_TEMP/neon-current-trace-evidence"
+      - name: Upload current-candidate diagnostic evidence
+        if: ${{ always() && startsWith(github.ref_name, 'diagnostic/neon-current-trace-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-current-trace-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/neon-current-trace-evidence
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Verify diagnostic provenance separately from test status
+        if: ${{ always() && startsWith(github.ref_name, 'diagnostic/neon-current-trace-') && steps.current-neon-diagnostic.outcome != 'skipped' }}
+        run: |
+          python3 - "$RUNNER_TEMP/neon-current-trace-evidence/run.json" <<'PYCODE'
+          import json, pathlib, sys
+          record = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          if record.get('diagnostic_integrity') != 'passed':
+              raise SystemExit('Diagnostic provenance is unavailable; the original test result remains separate.')
+          PYCODE
       - name: Generate Xcode project
         working-directory: MacDown2
         run: xcodegen generate

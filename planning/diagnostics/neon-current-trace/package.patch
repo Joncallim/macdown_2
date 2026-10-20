@@ -1,0 +1,341 @@
+diff --git a/MacDownKit/Package.swift b/MacDownKit/Package.swift
+index 74b3d257..92cd36ba 100644
+--- a/MacDownKit/Package.swift
++++ b/MacDownKit/Package.swift
+@@ -193,7 +193,7 @@ let package = Package(
+         .testTarget(name: "WorkspaceTests", dependencies: ["Workspace"]),
+         .testTarget(name: "FileTreeTests", dependencies: ["FileTree"]),
+         .testTarget(name: "EditorCoreTests", dependencies: ["EditorCore", "JSONSupport"]),
+-        .testTarget(name: "HighlightingTests", dependencies: ["Highlighting"]),
++        .testTarget(name: "HighlightingTests", dependencies: ["Highlighting", .product(name: "Neon", package: "Neon")]),
+         .testTarget(name: "MarkdownEngineTests", dependencies: ["MarkdownEngine"]),
+         .testTarget(name: "PreviewTests", dependencies: ["Preview"]),
+         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
+diff --git a/MacDownKit/Tests/HighlightingTests/HighlightingRestoreStartupTests.swift b/MacDownKit/Tests/HighlightingTests/HighlightingRestoreStartupTests.swift
+index 087e55bf..fbc07c3d 100644
+--- a/MacDownKit/Tests/HighlightingTests/HighlightingRestoreStartupTests.swift
++++ b/MacDownKit/Tests/HighlightingTests/HighlightingRestoreStartupTests.swift
+@@ -1,5 +1,6 @@
+ import AppKit
+ @testable import Highlighting
++import Neon
+ import Testing
+ 
+ /// Covers edits arriving after a reduced editor attaches Neon but before its initial styling pass.
+@@ -8,6 +9,10 @@ import Testing
+ struct HighlightingRestoreStartupTests {
+     @Test func severalEditsAtRestoreStartupMatchAFreshHighlighter() async {
+         let editor = SizeFallbackFixtures.editor(units: SizeFallbackFixtures.policy.reduceAboveUTF16Units + 500)
++        let session = RestoreHostedTrace.begin(
++            view: editor.textView, label: "startup-several-edits", reader: restoreTraceRendering
++        )
++        defer { RestoreHostedTrace.finish(session) }
+         let sleeper = ManualRestoreSleeper()
+         editor.highlighter.restoreSleep = sleeper.sleepClosure
+         var styledAtTransition: Int?
+@@ -33,15 +38,29 @@ struct HighlightingRestoreStartupTests {
+         #expect(styledAtTransition == 0)
+         #expect(editor.mode == .full)
+         #expect(editor.highlighter.gate.forwardedCharacterEditCount == 3)
++        restoreTraceState(editor, stage: "restored")
+         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+-        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: SizeFallbackFixtures.markdownOnly)
++        let fresh = RestoreHostedTrace.withRegistration(session, role: "fresh") {
++            HighlightedEditor(text: editor.textView.string, sizePolicy: SizeFallbackFixtures.markdownOnly)
++        }
+         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+-        #expect(editor.renderedRuns() == fresh.renderedRuns())
++        let observedRuns = editor.renderedRuns()
++        let expectedRuns = fresh.renderedRuns()
++        #expect(observedRuns == expectedRuns)
++        restoreTraceRuns(
++            editor, stage: "oracle", observed: observedRuns,
++            reference: expectedRuns, initialReference: expectedRuns,
++            originalMatches: observedRuns == expectedRuns
++        )
+         await sleeper.terminateAndDrain([restore])
+     }
+ 
+     @Test func editingImmediatelyWhenIdleRestoreBecomesFullMatchesAFreshHighlighter() async {
+         let editor = SizeFallbackFixtures.editor(units: SizeFallbackFixtures.policy.reduceAboveUTF16Units + 500)
++        let session = RestoreHostedTrace.begin(
++            view: editor.textView, label: "startup-single-edit", reader: restoreTraceRendering
++        )
++        defer { RestoreHostedTrace.finish(session) }
+         let sleeper = ManualRestoreSleeper()
+         editor.highlighter.restoreSleep = sleeper.sleepClosure
+         var styledAtTransition: Int?
+@@ -66,10 +85,20 @@ struct HighlightingRestoreStartupTests {
+         #expect(styledAtTransition == 0)
+         #expect(editor.mode == .full)
+         #expect(editor.highlighter.gate.forwardedCharacterEditCount == 1)
++        restoreTraceState(editor, stage: "restored")
+         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+-        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: SizeFallbackFixtures.markdownOnly)
++        let fresh = RestoreHostedTrace.withRegistration(session, role: "fresh") {
++            HighlightedEditor(text: editor.textView.string, sizePolicy: SizeFallbackFixtures.markdownOnly)
++        }
+         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+-        #expect(editor.renderedRuns() == fresh.renderedRuns())
++        let observedRuns = editor.renderedRuns()
++        let expectedRuns = fresh.renderedRuns()
++        #expect(observedRuns == expectedRuns)
++        restoreTraceRuns(
++            editor, stage: "oracle", observed: observedRuns,
++            reference: expectedRuns, initialReference: expectedRuns,
++            originalMatches: observedRuns == expectedRuns
++        )
+         await sleeper.terminateAndDrain([restore])
+     }
+ }
+diff --git a/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift b/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+index 2de930e3..d7618e15 100644
+--- a/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
++++ b/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+@@ -1,5 +1,6 @@
+ import AppKit
+ @testable import Highlighting
++import Neon
+ import Testing
+ 
+ /// Register row H5: the bounded size-based highlighting fallback — cut-off,
+@@ -154,6 +155,12 @@ struct HighlightingSizeFallbackTests {
+     @Test(arguments: [false, true])
+     func shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause: Bool) async {
+         let editor = Fixtures.editor(units: cutoff + 500)
++        let session = RestoreHostedTrace.begin(
++            view: editor.textView,
++            label: "restore-idle-\(includesIdlePause)",
++            reader: restoreTraceRendering
++        )
++        defer { RestoreHostedTrace.finish(session) }
+         let toDelete = editor.length - Fixtures.policy.restoreAtOrBelowUTF16Units
+         let clock = ContinuousClock()
+         var lastEditStarted = clock.now
+@@ -168,28 +175,50 @@ struct HighlightingSizeFallbackTests {
+                     + "revision=\(editor.system.contentRevision), generation=\(editor.highlighter.generation), "
+                     + "tokens=\(editor.highlighter.styledTokenCount)"
+             )
++            restoreTraceState(
++                editor,
++                stage: "pause",
++                fields: ["editIndex": String(index), "elapsed": String(describing: clock.now - lastEditStarted)]
++            )
+             let modeBeforeEdit = editor.mode
+             editor.typeOrDelete(at: 50, insert: index.isMultiple(of: 2))
+             lastEditStarted = clock.now
+             #expect(editor.mode == modeBeforeEdit, "a small edit neither restores nor reduces highlighting")
++            restoreTraceState(editor, stage: "edited", fields: ["editIndex": String(index)])
+         }
+         #expect(await editor.waitUntil { editor.mode == .full }, "restored after the idle delay")
+         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+-        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
++        let fresh = RestoreHostedTrace.withRegistration(session, role: "fresh") {
++            HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
++        }
+         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+         let expectedRuns = fresh.renderedRuns()
+         let matches = editor.renderedRuns() == expectedRuns
+         #expect(editor.renderedRuns() == expectedRuns, "\(timeline.joined(separator: "; "))")
++        restoreTraceRuns(
++            editor,
++            stage: "oracle",
++            observed: editor.renderedRuns(),
++            reference: expectedRuns,
++            initialReference: expectedRuns,
++            originalMatches: matches
++        )
+         if !matches {
+             // Preserve the failed assertion before observing whether delayed work or an explicit
+             // revalidation changes the result. These bounded probes never convert failure to success.
+             await editor.settle(.seconds(2))
+             reportRestoreStyles("after2s", editor: editor, fresh: fresh, initialReference: expectedRuns)
++            restoreTraceState(editor, stage: "invalidate.call.begin")
+             editor.highlighter.invalidateAll()
++            restoreTraceState(editor, stage: "invalidate.call.returned")
+             await editor.settle(.seconds(2))
+             reportRestoreStyles("afterInvalidation", editor: editor, fresh: fresh, initialReference: expectedRuns)
++            restoreTraceState(editor, stage: "discard.call.begin")
+             editor.highlighter.setLanguage(nil)
++            restoreTraceState(editor, stage: "discard.call.returned")
++            restoreTraceState(editor, stage: "rebuild.call.begin")
+             editor.highlighter.setLanguage("markdown")
++            restoreTraceState(editor, stage: "rebuild.call.returned")
+             await editor.settle(.seconds(2))
+             reportRestoreStyles("afterRebuild", editor: editor, fresh: fresh, initialReference: expectedRuns)
+         }
+@@ -210,6 +239,13 @@ struct HighlightingSizeFallbackTests {
+     ) {
+         let currentReference = fresh.renderedRuns()
+         let observed = editor.renderedRuns()
++        restoreTraceRuns(
++            editor,
++            stage: stage,
++            observed: observed,
++            reference: currentReference,
++            initialReference: initialReference
++        )
+         print(
+             "RESTORE_STYLE_PROBE \(stage): referenceUnchanged=\(currentReference == initialReference), "
+                 + "matchesInitial=\(observed == initialReference), matchesCurrent=\(observed == currentReference)"
+diff --git a/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift b/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift
+new file mode 100644
+index 00000000..1b906b0c
+--- /dev/null
++++ b/MacDownKit/Tests/HighlightingTests/RestoreHostedTraceSupport.swift
+@@ -0,0 +1,59 @@
++import AppKit
++@testable import Highlighting
++import Neon
++
++@MainActor
++func restoreTraceState(_ editor: HighlightedEditor, stage: String, fields: [String: String] = [:]) {
++    var fields = fields
++    fields["stage"] = stage
++    fields["mode"] = String(describing: editor.mode)
++    fields["contentRevision"] = String(editor.system.contentRevision)
++    fields["generation"] = String(editor.highlighter.generation)
++    fields["styledTokenCount"] = String(editor.highlighter.styledTokenCount)
++    RestoreHostedTrace.record(view: editor.textView, event: "fixture.state", fields: fields)
++}
++
++@MainActor
++func restoreTraceRuns(
++    _ editor: HighlightedEditor, stage: String, observed: [RenderedRun], reference: [RenderedRun],
++    initialReference: [RenderedRun], originalMatches: Bool? = nil
++) {
++    restoreTraceState(editor, stage: stage)
++    let observedText = observed.map(\.description).joined(separator: "|")
++    let referenceText = reference.map(\.description).joined(separator: "|")
++    let initialText = initialReference.map(\.description).joined(separator: "|")
++    RestoreHostedTrace.record(view: editor.textView, event: "fixture.runs", fields: [
++        "stage": stage, "matches": String(observed == reference),
++        "originalComparisonMatches": originalMatches.map(String.init) ?? "notPrimary",
++        "readOrder": "afterPrimaryAssertion", "referenceUnchanged": String(reference == initialReference),
++        "observed": observedText, "reference": referenceText,
++        "observedSHA256": RestoreHostedTrace.digest(observedText),
++        "referenceSHA256": RestoreHostedTrace.digest(referenceText),
++        "initialReferenceSHA256": RestoreHostedTrace.digest(initialText),
++    ])
++}
++
++/// Reads only existing TextKit 2 rendering attributes. It neither forces layout
++/// nor invokes the highlighter's attribute provider, and is not a pixel oracle.
++@MainActor
++func restoreTraceRendering(_ view: NSTextView) -> [String: String] {
++    guard let layout = view.textLayoutManager, let content = layout.textContentManager else {
++        return ["renderingAvailable": "false"]
++    }
++    let origin = content.documentRange.location
++    var runs: [RenderedRun] = []
++    layout.enumerateRenderingAttributes(from: origin, reverse: false) { _, attributes, range in
++        let location = content.offset(from: origin, to: range.location)
++        let length = content.offset(from: range.location, to: range.endLocation)
++        let signature = RenderedRun.signature(of: attributes)
++        guard !signature.isEmpty, length > 0 else { return true }
++        if let last = runs.last, last.signature == signature, NSMaxRange(last.range) == location {
++            runs[runs.count - 1].range.length += length
++        } else {
++            runs.append(RenderedRun(range: NSRange(location: location, length: length), signature: signature))
++        }
++        return true
++    }
++    let value = runs.map(\.description).joined(separator: "|")
++    return ["renderingAvailable": "true", "renderedRuns": value, "renderedSHA256": RestoreHostedTrace.digest(value)]
++}
+diff --git a/MacDownKit/Tests/TextFiltersTests/TextFilterBlockingCleanupDeadlineTests.swift b/MacDownKit/Tests/TextFiltersTests/TextFilterBlockingCleanupDeadlineTests.swift
+index f4d6df6d..a3285146 100644
+--- a/MacDownKit/Tests/TextFiltersTests/TextFilterBlockingCleanupDeadlineTests.swift
++++ b/MacDownKit/Tests/TextFiltersTests/TextFilterBlockingCleanupDeadlineTests.swift
+@@ -3,11 +3,36 @@ import Foundation
+ import Testing
+ @testable import TextFilters
+ 
++/// Observes Dispatch timer delivery without competing with the Swift cleanup gate.
++private final class NativeCleanupTimerProbe: @unchecked Sendable {
++    private let timer: DispatchSourceTimer
++
++    init(probe: BlockingCancellationProbe) {
++        timer = DispatchSource.makeTimerSource(
++            queue: DispatchQueue(label: "mostlytext.cleanup.timer-observer", qos: .userInitiated)
++        )
++        timer.setEventHandler { probe.record(.nativeTimerFired) }
++        timer.schedule(deadline: .distantFuture)
++        timer.resume()
++    }
++
++    func arm(probe: BlockingCancellationProbe) {
++        timer.schedule(deadline: .now() + .milliseconds(25), leeway: .nanoseconds(0))
++        probe.record(.nativeTimerArmed)
++    }
++
++    func cancel() {
++        timer.cancel()
++    }
++}
++
+ @Suite("TextFilter blocking cleanup deadline")
+ struct TextFilterBlockingCleanupDeadlineTests {
+     @Test(arguments: [Duration.zero, .milliseconds(200)])
+     func cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay: Duration) async throws {
+         let probe = BlockingCancellationProbe()
++        let nativeTimer = NativeCleanupTimerProbe(probe: probe)
++        defer { nativeTimer.cancel() }
+         var observedDirectory: URL?
+         var observedOwner: TextFilterFixtures.TaskOwner?
+         let fixtureStarted = ContinuousClock.now
+@@ -17,7 +42,12 @@ struct TextFilterBlockingCleanupDeadlineTests {
+         do {
+             try await TextFilterFixtures
+                 .withOwnedTemporaryDirectory(
+-                    cleanupTimeout: .milliseconds(25), cleanupObserver: observeCleanup
++                    cleanupTimeout: .milliseconds(25), cleanupObserver: observeCleanup,
++                    cleanupNow: {
++                        let now = ContinuousClock.now
++                        nativeTimer.arm(probe: probe)
++                        return now
++                    }
+                 ) { directory, owner in
+                     observedDirectory = directory
+                     observedOwner = owner
+@@ -25,7 +55,11 @@ struct TextFilterBlockingCleanupDeadlineTests {
+                         try await Task.sleep(for: setupDelay)
+                     }
+                     try await owner.registerCleanup(
+-                        cancel: { probe.blockFor(200_000) },
++                        cancel: {
++                            probe.record(.cancellationCallbackStarted)
++                            probe.blockFor(200_000)
++                            probe.record(.cancellationCallbackReturned)
++                        },
+                         join: { .completed(nil) }
+                     )
+                     // Keep a separate cleanup interval for diagnostics, including cancellation dispatch.
+@@ -54,6 +88,9 @@ struct TextFilterBlockingCleanupDeadlineTests {
+         } else {
+             Issue.record("blocking-cancellation fixture directory or owner was not recorded")
+         }
++        if let cleanupStarted {
++            print("CLEANUP_INDEPENDENT_TIMER_TIMELINE \(probe.timeline(from: cleanupStarted))")
++        }
+     }
+ 
+     private func finishBlockingCancellation(_ owner: TextFilterFixtures.TaskOwner, directory: URL) async throws {
+diff --git a/MacDownKit/Tests/TextFiltersTests/TextFilterFixtureOwnershipSupport.swift b/MacDownKit/Tests/TextFiltersTests/TextFilterFixtureOwnershipSupport.swift
+index 0a2a51d8..e549f1d5 100644
+--- a/MacDownKit/Tests/TextFiltersTests/TextFilterFixtureOwnershipSupport.swift
++++ b/MacDownKit/Tests/TextFiltersTests/TextFilterFixtureOwnershipSupport.swift
+@@ -941,9 +941,13 @@ extension TextFilterFixtures {
+     enum CleanupPhase: String, Sendable {
+         case cancellationRequested
+         case cancellationTaskStarted
++        case cancellationCallbackStarted
++        case cancellationCallbackReturned
+         case cleanupTaskAcquired
+         case watchdogTaskStarted
+         case watchdogSleepReturned
++        case nativeTimerArmed
++        case nativeTimerFired
+         case timeoutGateCompleted
+         case gateWaitReturned
+     }
