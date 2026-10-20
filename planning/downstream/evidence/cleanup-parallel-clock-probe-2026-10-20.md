@@ -48,6 +48,37 @@ the two observed cases had cleanup intervals 29.447208 and 28.974667 ms.
 Their workers returned at 25.330625 and 26.581 ms; Dispatch timers at
 29.316042 and 28.822167 ms; Swift watchdogs at 29.329 and 28.844542 ms.
 Both final probe records were complete. This validates observation and joins,
-not the hosted failure's cause. A hosted full-suite diagnostic is needed
-because it puts the three clocks in the same loaded invocation. No issue is
-closed by this test-only change.
+not the hosted failure's cause. The following hosted full-suite diagnostic
+puts the three clocks in the same loaded invocation. No issue is closed by
+this test-only change.
+
+## First hosted diagnostic result
+
+The single manually dispatched [CI run 39393814790](https://github.com/Joncallim/macdown_2/actions/runs/39393814790)
+tested exact probe head `782bb0391a6736a7a5acb5930a0521902d193e30`.
+The locked full package step, strict lint, Debug and Release app/CLI builds,
+test-bundle build, and 427 non-UI app tests passed. The package run retained
+two known Neon replacement-edit issues. The complete job log is preserved at
+`/tmp/mostlytext-clockprobe-39393814790-job.log` with SHA-256
+`fc350eee716b35bccfc8df346ce8d29b36fdb84013521d23f49c220982937d47`.
+Native UI tests were compiled but not run.
+
+The zero-setup fixture returned from cleanup at 29.314 ms. Its Dispatch timer
+fired at 29.065 ms and Swift watchdog returned at 29.083 ms, but the worker
+that started at 0.072 ms returned from a requested 25 ms `usleep` at
+153.953 ms, after cleanup had already completed. This is direct same-call
+evidence that an independent sleeping thread can resume more than 125 ms
+later than both timer callbacks; it did not delay the cleanup gate in this
+invocation. In the 200 ms setup case, the worker, Dispatch timer and Swift
+watchdog all returned near 67.8–67.9 ms, and cleanup returned at 68.068 ms.
+Both probe records were complete. See the log's `CLEANUP_TIMELINE` and
+`CLOCK_PROBE_FINAL` lines around 8905–8909.
+
+These observations establish scheduling variation under hosted load, not a
+single timer API defect. They do not reconstruct the earlier combined-head
+failure where the Swift watchdog returned at 156.358 ms; no parallel clocks
+were present in that run. The combined head `7ff3ca9` retains its red CI
+evidence, and this diagnostic-only branch is not a replacement candidate.
+The 25 ms deadline and both 150 ms assertions remain unchanged. A causal
+repair and exact combined-head acceptance remain open before issue #159 can
+close or the combined candidate can advance.
