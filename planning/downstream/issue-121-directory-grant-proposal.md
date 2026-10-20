@@ -11,10 +11,10 @@ owner until they finish.
 This is a reviewed **proposal, not an accepted production integration**. Opening
 a single file currently lets preview infer its parent and load sibling assets.
 The accepted #121 contract forbids inferring directory authority from a file
-grant. Preserving that behavior while meeting the contract requires a deliberate
-permission and user-experience decision. The existing Open Parent Folder alert
-does not itself prove an operating-system directory grant. No folder permissions,
-entitlements, editor behavior or production code change in this reconciliation.
+grant. The owner chose an explicit **“Allow preview resources”** action with a
+folder chooser for a file opened on its own. The existing Open Parent Folder
+alert does not itself prove an operating-system directory grant. This decision
+does not grant access automatically or change the current editor behavior.
 
 ## Baseline and inspected facts
 
@@ -53,6 +53,41 @@ the eventual shipping app's sandbox configuration. Likewise
 `startAccessingSecurityScopedResource() == false` alone is neither directory
 permission nor a universal denial: a valid route may not require a dynamic
 scope. Record the authority route separately from the start/stop obligation.
+The release signing script accepts an optional `ENTITLEMENTS` file and defaults
+to none. Confirm the actual signed candidate's entitlements before claiming
+operating-system permission behavior; the folder-selection action remains an
+app-level authority boundary even when that candidate is unsandboxed.
+
+## Resolved file-only workflow (owner choice, 2026-10-20)
+
+When a Markdown file is opened without an attached directory grant, render its
+saved source but deny sibling image, style, font and media reads. Show **“Allow
+preview resources”** beside the preview's resource-unavailable state. Activating
+it presents a directory-only `NSOpenPanel` tied to that document's window.
+Cancellation or panel failure leaves the preview ungranted and the source
+available. Selecting a folder creates a new window-local grant attachment from
+the panel result; it never upgrades the file URL or its inferred parent in
+place. Rebuild the saved preview with a fresh load identity only after that
+attachment has been acquired and checked. The chosen folder must contain the
+document's intended parent directory under the contained-child contract;
+otherwise explain the mismatch and leave resources denied. A selected folder
+does not permit paths outside the document's own directory, including siblings
+elsewhere under the chosen root.
+
+The action is available again after a declined selection, changed root or
+reopen without a valid retained grant. Save As to a different directory revokes
+the old preview attachment before another read can start and requires a new
+explicit grant unless a separately valid folder attachment already covers the
+new document parent. A same-directory Save As still creates a new render
+identity. A grant is attached to this window and document lifetime; closing
+the window ends new admission, while already admitted reads retain their scope
+until they drain. The action and failure copy need localised text, keyboard
+access and VoiceOver labels. No document bytes leave the machine.
+
+This resolves the product workflow, not the remaining engineering gates:
+confirm the signed app's sandbox/entitlement configuration, implement the
+panel-origin backing and child derivation without a pathname fallback, then
+verify real scope lifetime, hostile resource reads and native UI behavior.
 
 ## Proposed interfaces and dependency direction
 
@@ -170,12 +205,13 @@ and scope drain, and identified the lexical-identity fallback and root rename/
 disappearance paths above. No production permission changes or test execution
 were performed during that review.
 
-Remaining decisions: establish the intended OS-access configuration and choose
-the visible file-only asset workflow (for example an explicit folder-selection
-action, if approved). A reviewed contained-child technical spike can be separated
-from that decision, but cannot be presented as complete preview isolation.
+Remaining decision: establish the intended OS-access configuration of the
+signed candidate. The owner resolved the visible file-only workflow above. The
+contained-child technical spike can be developed independently, but cannot be
+presented as complete preview isolation.
 
-Status: product/authority contract unresolved, not an approval denial. Preserve
-the local callback/navigation corrections and the root-confusion failure. Do not
-integrate the proposed permission model until those decisions and their narrow
-implementation contract are accepted.
+Status: the file-only product workflow is resolved; final OS-access configuration
+and the production permission model remain unverified. Preserve the local
+callback/navigation corrections and the root-confusion failure. Do not claim
+complete preview isolation until the signed configuration, grant integration
+and native acceptance evidence pass.
