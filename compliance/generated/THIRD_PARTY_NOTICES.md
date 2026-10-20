@@ -23,7 +23,7 @@ This file is generated from `compliance/inventory.json` by
 | libyaml (vendored inside Yams as CYaml) | 0.2.5 (Yams import 2021-03, plus Yams' 2024 nesting-depth fix) | MIT |
 | Math fonts bundled by SwiftUIMath | 0.1.0 | OFL-1.1 AND LicenseRef-GUST-Font-License AND MIT |
 | Mermaid | 11.17.2 | MIT |
-| Neon | 484d6fb | BSD-3-Clause |
+| Neon | dabf50c | BSD-3-Clause |
 | nvim-treesitter Markdown highlight queries (via tree-sitter-markdown) | 2022-06 import | Apache-2.0 |
 | Prism.js bundled by Textual | 1.29.0 | MIT |
 | Rearrange | 2.1.1 | BSD-3-Clause |
@@ -1188,9 +1188,9 @@ SOFTWARE.
 
 ## Neon
 
-- Version: 484d6fb
-- Upstream: https://github.com/ChimeHQ/Neon
-- Revision: `484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165`
+- Version: dabf50c
+- Upstream: https://github.com/Joncallim/Neon
+- Revision: `dabf50c947148c49acd0d321dfe8f3805d10b3da`
 - Licence: BSD-3-Clause
 - Copyright (c) 2022, Chime
 

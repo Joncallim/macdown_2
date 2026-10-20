@@ -3,6 +3,7 @@ import Darwin
 import EditorCore
 import Foundation
 @testable import Highlighting
+import Testing
 import Themes
 
 /// Measures how long the main thread is unavailable, from a background thread.
@@ -301,6 +302,9 @@ extension HighlightedEditor {
         let monitor = MainThreadStallMonitor()
         monitor.start()
         try? await Task.sleep(for: .milliseconds(100))
+        // Styling may complete during a synchronous edit. Comparing only with
+        // the post-typing count would mistake that completed work for a hang.
+        let baseline = highlighter.styledTokenCount
 
         var windowStarts: [UInt64] = []
         var callWall: [Double] = []
@@ -314,8 +318,8 @@ extension HighlightedEditor {
             callCPU.append(currentThreadCPUMilliseconds() - cpuStart)
             try? await Task.sleep(for: cadence)
         }
-        let baseline = highlighter.styledTokenCount
-        await waitUntilQuiet(quietPeriod: settle, timeout: .seconds(900), requireActivityAfter: baseline)
+        let settled = await waitUntilQuiet(quietPeriod: settle, timeout: .seconds(900), requireActivityAfter: baseline)
+        #expect(settled, "keystroke benchmark did not observe settled highlighting")
         let end = DispatchTime.now().uptimeNanoseconds
         monitor.stop()
 
