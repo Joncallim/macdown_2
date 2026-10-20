@@ -37,6 +37,41 @@ On 2026-10-19, against the renderer in candidate `ad79f2773f2cbaf8bb78bdb796b1d1
   verbatim and checked against their archives. The ordinary inventory gate
   protects their digests and generated notice/SBOM consistency.
 
+## Nested Graphviz attributions (2026-10-20)
+
+The same verified Graphviz 16.0.0 source archive contains a separate
+`lib/rbtree/LICENSE` that was absent from MostlyText's notices. The Viz.js
+Dockerfile links `-lgvplugin_neato_layout`; that plugin's `Makefile.am` links
+`librbtree_C.la` and `libneatogen_C.la`; `lib/neatogen/overlap.c` calls
+`RBTreeCreate`, `RBTreeInsert` and `RBTreeDestroy`; and the tree library's
+`Makefile.am` builds `red_black_tree.c`. These files and their digests are
+checked in [source-audit.json](source-audit.json). The exact 1,048-byte
+[`lib/rbtree/LICENSE`](https://gitlab.com/graphviz/graphviz/-/blob/06fff22d8e1a2aead6de0042e5e5ec2f7749be29/lib/rbtree/LICENSE)
+is distributed as `compliance/licenses/graphviz-rbtree--LICENSE.txt` and in
+the generated notices. It names Emin Martinian in a non-endorsement condition
+but contains no explicit copyright line or stated SPDX identifier, so the
+inventory uses a custom `LicenseRef-Graphviz-RBTree` and preserves the text
+verbatim.
+
+This establishes a source-build linkage path, not an independently reproduced
+WebAssembly binary or proof that every library object survived linker removal.
+
+The same source-chain review found two more notices in the Graphviz archive.
+`lib/common/ellipse.c` credits Luc Maisonobe's derived ellipse code under a
+separate three-clause notice alongside Graphviz's EPL-2.0; Viz.js links
+`libgvc`, which links `libcommon`, whose source list includes that file.
+`lib/neatogen/randomkit.c` and `.h` carry BSD-style and MIT notices for the
+Mersenne Twister and Random kit routines; the Neato plugin links `libneatogen`,
+whose source list includes `randomkit.c`. The exact opening comment blocks
+are checked against the upstream archive and distributed verbatim in the
+generated notices. [source-audit.json](source-audit.json) records source and
+notice digests. These paths likewise establish conservative source-build
+attribution, not exact linker retention in the published WebAssembly.
+
+The Graphviz and Emscripten runtime audit remains open, including
+classification of generated Bison parser skeletons and their stated special
+exception. No renderer byte, dependency pin, or source-offer status changed.
+
 ## Retained inputs and repeatable check
 
 [downloads.json](downloads.json) records the original URLs, byte sizes and

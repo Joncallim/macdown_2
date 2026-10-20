@@ -79,6 +79,99 @@
       "version": "2.8.4"
     },
     {
+      "bom-ref": "graphviz-ellipse-maisonobe",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://gitlab.com/graphviz/graphviz"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause AND EPL-2.0"
+        }
+      ],
+      "name": "Luc Maisonobe-derived ellipse routine (via Graphviz/Viz.js)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "Graphviz 16.0.0 source snapshot"
+    },
+    {
+      "bom-ref": "graphviz-randomkit",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://gitlab.com/graphviz/graphviz"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause AND MIT"
+        }
+      ],
+      "name": "Random kit routines (via Graphviz/Viz.js)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "Random kit 1.3 in Graphviz 16.0.0"
+    },
+    {
+      "bom-ref": "graphviz-rbtree",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://gitlab.com/graphviz/graphviz"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "LicenseRef-Graphviz-RBTree"
+        }
+      ],
+      "name": "Graphviz red-black tree library (via Viz.js)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "Graphviz 16.0.0 source snapshot"
+    },
+    {
       "bom-ref": "katex-react-helpers",
       "externalReferences": [
         {
@@ -1252,6 +1345,9 @@
       "dependsOn": [
         "d2",
         "expat",
+        "graphviz-ellipse-maisonobe",
+        "graphviz-randomkit",
+        "graphviz-rbtree",
         "katex-react-helpers",
         "libyaml",
         "mermaid",
@@ -1305,7 +1401,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:79402d49-5f83-5330-9ea0-93c04df40177",
+  "serialNumber": "urn:uuid:cb3c9d30-a035-5eac-aefc-63e218f47600",
   "specVersion": "1.5",
   "version": 1
 }
