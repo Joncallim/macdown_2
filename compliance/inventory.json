@@ -320,6 +320,34 @@
       ]
     },
     {
+      "id": "katex-react-helpers",
+      "name": "React-derived KaTeX utility helpers (via Mermaid)",
+      "kind": "attribution",
+      "version": "KaTeX 0.16.47",
+      "upstream": "https://github.com/KaTeX/KaTeX",
+      "resolution": "exact",
+      "licence": "Apache-2.0",
+      "copyright": [
+        "Copyright 2013-2014 Facebook, Inc."
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/react-katex--APACHE-2.0.txt",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "upstream": "https://github.com/facebook/react",
+          "upstream_revision": "95d82cacd6e9cc6a2fe6366d79510cc9133886cb",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/katex-react-attribution/mapping.json",
+      "notes": "Conservative attribution for the hyphenate and escape helpers that KaTeX 0.16.47 explicitly credits to Facebook React under Apache 2. The verified Mermaid source map reaches both helper lines. React v0.11.0 is a matching Apache-era reference for the full licence text, not a proven exact original adaptation revision. The remaining Mermaid nested-attribution item stays open."
+    },
+    {
       "id": "neon",
       "name": "Neon",
       "kind": "swiftpm",

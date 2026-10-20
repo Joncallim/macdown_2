@@ -79,6 +79,37 @@
       "version": "2.8.4"
     },
     {
+      "bom-ref": "katex-react-helpers",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/KaTeX/KaTeX"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "name": "React-derived KaTeX utility helpers (via Mermaid)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "attribution"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "KaTeX 0.16.47"
+    },
+    {
       "bom-ref": "libyaml",
       "externalReferences": [
         {
@@ -1221,6 +1252,7 @@
       "dependsOn": [
         "d2",
         "expat",
+        "katex-react-helpers",
         "libyaml",
         "mermaid",
         "neon",
@@ -1273,7 +1305,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:478548e4-6187-5704-9bbf-f5f0d5111a2e",
+  "serialNumber": "urn:uuid:79402d49-5f83-5330-9ea0-93c04df40177",
   "specVersion": "1.5",
   "version": 1
 }
