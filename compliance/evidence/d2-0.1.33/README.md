@@ -10,7 +10,8 @@ version, Go checksum and captured root licence-text hash in
 [`source-graph.json`](source-graph.json). This is useful source-availability and
 attribution preparation, not a completed release gate: the package publisher's
 binary was not independently rebuilt, nested/embedded texts have not been
-fully reviewed, the complete source offer has not been assembled or published,
+fully reviewed, a local source-review bundle has been prepared but not approved
+as the complete corresponding-source offer or published,
 and the final app has not been checked. No inventory `open_items` or
 `source_offer.status` is changed.
 
@@ -97,8 +98,54 @@ still has the same seven pre-existing findings.
 ## Remaining LC-03 work
 
 Review module and nested-code licence obligations, include the required
-texts in the inventory and generated notices, assemble a complete immutable
-source package plus local patch, and obtain independent provenance review.
+texts in the inventory and generated notices, promote the local review bundle
+to a complete immutable source package, and obtain independent provenance review.
 Source-only public publication and anonymous retrieval belong to the later
 owner-authorized LC-09 phase. Keep #148 open until preflight and final
 exact-artifact criteria are met.
+
+## Local source-review bundle verification — 20 October 2026
+
+The previously prepared local bundle at
+`/Users/jonathanlim/GitHub/_cleanup-archive/d2-source-148-2026-10-20/d2-source-review-bundle.tar.gz`
+has SHA-256 `07de46d856b3e7bbc1d455651fe7045be73083e1d072530e8a1cca99a7b65c02`.
+It contains the publisher npm archive, the publisher-reported upstream source
+archive, the one-line browser export patch, 16 versioned Go module source ZIPs,
+their captured root licence files, D2's licence and notice, and a 37-file
+manifest. The reviewed manifest is copied verbatim to
+[`offer-manifest.json`](offer-manifest.json), SHA-256
+`fc5b58190024eb529cf76394b6b2b23c4208348ace64a2c2ad07120cabfbdec3`.
+The 16 module ZIPs also matched the preserved Go module cache byte-for-byte;
+each cache `.ziphash` matched its recorded `go_sum`.
+
+Run from the repository root:
+
+```sh
+python3 compliance/tools/verify_d2_offer.py \
+  /Users/jonathanlim/GitHub/_cleanup-archive/d2-source-148-2026-10-20/d2-source-review-bundle.tar.gz
+python3 -m unittest compliance.tests.test_d2_offer
+```
+
+The verifier passed: it rejects unsafe or duplicate archive members, checks
+the archive's exact member set and bytes against the committed manifest, ties
+the npm and upstream archives to the source graph, checks that the documented
+export replacement reproduces the shipped browser bytes, and compares all 16
+module identities and root licence texts to the source graph. Four negative
+controls passed (duplicate member, traversal path, changed reviewed manifest,
+and corrupt member hash). This proves local package consistency, not that the
+published WebAssembly was independently rebuilt from the reported sources.
+The full compliance suite passed 86 tests; `compliance.py check` and
+`git diff --check` passed. The first full-suite launch in the restricted
+sandbox failed ten release-script cases before their assertions because Bash
+could not open `/dev/fd/62`; the unchanged suite then passed outside that
+nested sandbox. Its log is `/tmp/mostlytext-d2-offer-full-tests.log`, SHA-256
+`f7f05b65c4be5383c6ded2381b7653d8f9c91651aff853652d271da7b333ef4e`.
+
+The FreeType-Go module offers a FreeType License or GPL choice; its separate
+test-data font licence is present in the source ZIP but the test data is not
+identified as a compiled package by the recorded Go graph. The distribution
+choice and any additional embedded-code notice duties still need independent
+review before adding shipped notice texts or calling this a complete offer.
+The archive is local only. `source_offer.status` remains `planned`, the strict
+release check retains its D2 findings, and no website object or binary was
+published.
