@@ -6,6 +6,7 @@ import Testing
 final class BlockingCancellationProbe: @unchecked Sendable {
     private let lock = NSLock()
     private let finishedGroup = DispatchGroup()
+    private let parallelClockGroup = DispatchGroup()
     private var phases: [(TextFilterFixtures.CleanupPhase, ContinuousClock.Instant)] = []
 
     init() {
@@ -23,6 +24,36 @@ final class BlockingCancellationProbe: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return phases.map { "\($0.0.rawValue)=\(start.duration(to: $0.1))" }.joined(separator: ", ")
+    }
+
+    func makeParallelTimer() -> DispatchSourceTimer {
+        let timer = DispatchSource.makeTimerSource(
+            queue: DispatchQueue(label: "mostlytext.fixture.clock-probe", qos: .userInitiated)
+        )
+        timer.setEventHandler {
+            self.record(.dispatchTimerFired)
+            self.parallelClockGroup.leave()
+        }
+        timer.resume()
+        return timer
+    }
+
+    func startParallelClocks(timer: DispatchSourceTimer) {
+        parallelClockGroup.enter()
+        parallelClockGroup.enter()
+        timer.schedule(deadline: .now() + .milliseconds(25), leeway: .nanoseconds(0))
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.record(.workerSleepStarted)
+            usleep(25000)
+            self.record(.workerSleepReturned)
+            self.parallelClockGroup.leave()
+        }
+    }
+
+    func reportParallelClocks(from start: ContinuousClock.Instant?) {
+        guard let start else { return }
+        let complete = parallelClockGroup.wait(timeout: .now() + .seconds(1)) == .success
+        print("CLOCK_PROBE_FINAL complete=\(complete), \(timeline(from: start))")
     }
 
     func blockFor(_ duration: useconds_t) {
@@ -942,6 +973,9 @@ extension TextFilterFixtures {
         case cancellationRequested
         case cancellationTaskStarted
         case cleanupTaskAcquired
+        case dispatchTimerFired
+        case workerSleepStarted
+        case workerSleepReturned
         case watchdogTaskStarted
         case watchdogSleepReturned
         case timeoutGateCompleted

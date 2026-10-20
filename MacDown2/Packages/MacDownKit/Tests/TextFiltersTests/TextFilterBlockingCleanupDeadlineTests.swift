@@ -13,6 +13,11 @@ struct TextFilterBlockingCleanupDeadlineTests {
         let fixtureStarted = ContinuousClock.now
         var cleanupStarted: ContinuousClock.Instant?
         let observeCleanup: @Sendable (TextFilterFixtures.CleanupPhase) -> Void = { probe.record($0) }
+        // Compare three wake paths in the same failing fixture invocation.
+        // The timer and sleeping worker only observe; the Swift watchdog still
+        // owns the result and all original bounds remain unchanged.
+        let timer = probe.makeParallelTimer()
+        defer { timer.cancel() }
 
         do {
             try await TextFilterFixtures
@@ -31,6 +36,7 @@ struct TextFilterBlockingCleanupDeadlineTests {
                     // Keep a separate cleanup interval for diagnostics, including cancellation dispatch.
                     // The zero-delay case also retains the original whole-call 150 ms assertion below.
                     cleanupStarted = .now
+                    probe.startParallelClocks(timer: timer)
                 }
             Issue.record("expected cleanup watchdog to include cancellation dispatch")
         } catch let error as TextFilterFixtures.FixtureCleanupError {
@@ -54,6 +60,7 @@ struct TextFilterBlockingCleanupDeadlineTests {
         } else {
             Issue.record("blocking-cancellation fixture directory or owner was not recorded")
         }
+        probe.reportParallelClocks(from: cleanupStarted)
     }
 
     private func finishBlockingCancellation(_ owner: TextFilterFixtures.TaskOwner, directory: URL) async throws {
