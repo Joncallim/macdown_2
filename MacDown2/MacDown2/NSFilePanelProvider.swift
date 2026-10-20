@@ -27,8 +27,9 @@ struct PreviewResourceFolderSelection {
         return Self(requestedDocumentURL: documentURL, selectedFolderURL: folderURL, selectedInfo: selectedInfo)
     }
 
-    #if DEBUG
-        /// The focused grant tests exercise the real capture/open comparison without presenting a native sheet.
+    #if DEBUG || RELEASE_PREVIEW_PROBE
+        /// Focused grant tests and the opt-in Release probe exercise capture/open without a native sheet.
+        /// The probe condition is never set for the distributable app.
         static func fixture(documentURL: URL, folderURL: URL) -> Self? {
             capture(documentURL: documentURL, folderURL: folderURL)
         }

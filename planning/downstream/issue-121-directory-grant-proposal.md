@@ -418,3 +418,34 @@ format support and copy/export fidelity therefore remain activation gates, as
 do native adversarial tests, signed permissions, Release performance and the
 full combined-candidate validation. No issue closure or release claim follows
 from this checkpoint.
+
+### Mounted and optimized local validation
+
+The next CORTANA candidate mounted the new Markdown host with the app's real
+Textual preview, a test-only receipt for an isolated temporary image folder,
+and no native panel. It observed the same authored image admitted again after
+a new document generation. A separate real WebKit fixture loaded two saved
+HTML revisions through distinct immutable authorities and child web views.
+Both passed in unsigned Debug and testable Release builds on macOS 26.5.1.
+These fixtures establish native routing and generation replacement; they do
+not yet cover adversarial subresource cancellation, network tripwires,
+signed scope access or a visible production chooser.
+
+An opt-in `-O` Release probe constructed three retained loads from a 4 MiB
+HTML source each, then verified a fourth was rejected by the global HTML copy
+budget. On that one test-host run, creation took about 98 ms and its process
+high-water resident size rose from 196,132,864 to 281,264,128 bytes (about
+81 MiB). The number is a workload observation, not a performance threshold or
+an app-wide memory bound. It excludes WebKit child-process memory and does
+not represent a signed production build. The testable Release target required
+`ENABLE_TESTABILITY=YES`; `RELEASE_PREVIEW_PROBE` exposed only the existing
+temporary-folder fixture for that isolated run. Neither flag is part of a
+distributable configuration.
+
+The pinned Textual formatter calls each attachment's synchronous `pngData()`
+and embeds its result as base64 when it copies or exports HTML. Its API has no
+cumulative export budget or owner for bytes retained after this call. The
+secured attachment currently returns `nil`, so that formatter substitutes
+the image's alt text. The owner selected preservation of folder-granted images
+in copied and exported HTML. A reviewed, bounded Textual dependency change is
+therefore an activation gate; the native display tests above do not settle it.
