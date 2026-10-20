@@ -449,3 +449,35 @@ secured attachment currently returns `nil`, so that formatter substitutes
 the image's alt text. The owner selected preservation of folder-granted images
 in copied and exported HTML. A reviewed, bounded Textual dependency change is
 therefore an activation gate; the native display tests above do not settle it.
+
+### Isolated Textual copy/export candidate
+
+A local Textual checkout at `../textual-preview121-candidate` starts from the
+production-pinned `01b51875a5406eefc95f52a058cb059e7bc94dc4` and ends at
+`d3ddabb1da37681083cdc3da706f96cf2fb6a3c6`. It has **not** changed the
+MostlyText dependency URL, resolved revision, compliance inventory or app
+renderer. Its encoder stops PNG output at a caller cap. HTML formatting shares
+16 MiB per-image and 32 MiB aggregate encoded-image limits across nested
+content. A shared 256 MiB ledger charges eight bytes per admitted PNG byte for
+overlapping image-derived copies and holds those reservations through Textual's
+clipboard and item-provider handoff. Over-budget images use their descriptions
+in exported HTML. Existing custom attachments without preventive encoders keep
+small-image compatibility through a post-encoding size check; this legacy path
+does **not** bound their temporary encoder allocation.
+
+The existing HTML formatter cases and focused boundary, repeated-abort,
+list/table, concurrent-ledger, near-integer-limit and item-provider snapshot
+regressions pass in the isolated checkout. Independent source review found no
+remaining concrete callback-lifetime or ledger defect for that local
+checkpoint. The eightfold charge is an accounting allowance, not a measured
+memory ceiling. Ordinary text, allocator capacity, legacy encoder temporaries
+and recipient/framework retention after handoff remain outside that ledger.
+
+Before any production pin, the secured MostlyText attachment must implement
+the new bounded method using its admitted decoded raster and live generation,
+and the app must be tested against the exact local dependency candidate.
+Native copy/export parity, signed folder permission behavior, multiple-window
+Release memory, full combined-candidate validation and the visible chooser
+remain pending. Promoting this separate dependency also needs a reviewed
+immutable hosted revision and deliberate lockfile/compliance changes; no fork,
+push or pin change has occurred at this checkpoint.
