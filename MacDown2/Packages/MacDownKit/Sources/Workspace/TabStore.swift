@@ -93,6 +93,22 @@ public enum DeletedDocumentOutcome: Sendable, Equatable {
     case needsPrompt(UUID)
 }
 
+/// The identity of the document currently exposed by one tab store. The tab UUID matters even when two tabs
+/// happen to refer to the same file and recovery lifetime: a preview grant never follows a tab switch.
+public struct ActiveDocumentIdentity: Equatable, Sendable {
+    public let tabID: UUID
+    public let documentID: String
+    public let recoveryEpoch: UUID
+    public let fileURL: URL?
+
+    init(tab: WorkspaceTab) {
+        tabID = tab.id
+        documentID = tab.document.id
+        recoveryEpoch = tab.document.recoveryEpoch
+        fileURL = tab.document.fileURL
+    }
+}
+
 /// In-app tab state: ordered tabs, active tab, dirty-close prompts, and session
 /// persistence.
 ///
@@ -103,10 +119,27 @@ public enum DeletedDocumentOutcome: Sendable, Equatable {
 public final class TabStore {
     /// All open tabs, ordered left-to-right. Pinned tabs always precede
     /// unpinned tabs.
-    public internal(set) var tabs: [WorkspaceTab]
+    public internal(set) var tabs: [WorkspaceTab] {
+        willSet {
+            precondition(!isNotifyingActiveIdentityChange, "Active identity callback cannot mutate TabStore")
+            notifyBeforeActiveIdentityChange(from: activeIdentity(in: tabs, selectedBy: activeTabID),
+                                             to: activeIdentity(in: newValue, selectedBy: activeTabID))
+        }
+    }
 
     /// The tab currently shown in the content area.
-    public internal(set) var activeTabID: UUID?
+    public internal(set) var activeTabID: UUID? {
+        willSet {
+            precondition(!isNotifyingActiveIdentityChange, "Active identity callback cannot mutate TabStore")
+            notifyBeforeActiveIdentityChange(from: activeIdentity(in: tabs, selectedBy: activeTabID),
+                                             to: activeIdentity(in: tabs, selectedBy: newValue))
+        }
+    }
+
+    @ObservationIgnored private var activeIdentityWillChange: (@MainActor (
+        ActiveDocumentIdentity?, ActiveDocumentIdentity?
+    ) -> Void)?
+    @ObservationIgnored private var isNotifyingActiveIdentityChange = false
 
     /// Non-nil while the dirty-close alert should be shown for this tab.
     public internal(set) var pendingCloseTabID: UUID?
@@ -186,6 +219,29 @@ public final class TabStore {
 
     public func setRenameSessionPublisher(_ publisher: @escaping @MainActor () async -> Bool) {
         renameSessionPublisher = publisher
+    }
+
+    /// Called synchronously before a changed active document or tab identity becomes observable. The callback
+    /// must not mutate this tab store or suspend; preview owners use it to revoke old admission immediately.
+    public func setActiveIdentityWillChange(
+        _ callback: (@MainActor (ActiveDocumentIdentity?, ActiveDocumentIdentity?) -> Void)?
+    ) {
+        precondition(callback == nil || activeIdentityWillChange == nil, "Active identity observer already installed")
+        activeIdentityWillChange = callback
+    }
+
+    private func activeIdentity(in tabs: [WorkspaceTab], selectedBy tabID: UUID?) -> ActiveDocumentIdentity? {
+        guard let tabID, let tab = tabs.first(where: { $0.id == tabID }) else { return nil }
+        return ActiveDocumentIdentity(tab: tab)
+    }
+
+    private func notifyBeforeActiveIdentityChange(
+        from old: ActiveDocumentIdentity?, to new: ActiveDocumentIdentity?
+    ) {
+        guard old != new, let activeIdentityWillChange else { return }
+        isNotifyingActiveIdentityChange = true
+        defer { isNotifyingActiveIdentityChange = false }
+        activeIdentityWillChange(old, new)
     }
 
     // MARK: - Lifecycle intents

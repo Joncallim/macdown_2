@@ -128,11 +128,16 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         window.tabbingMode = .preferred
 
         super.init(window: window)
+        installPreviewIdentityInvalidation()
         makeSessionsForActiveTab()
         externalFileController.attach(owner: self)
         installFolderSearchHooks()
         installSaveAsGuard()
         window.delegate = self
+        startWindowObservations()
+    }
+
+    private func startWindowObservations() {
         fileTreeModel.startObservingPreferences()
         updateTitleAndEditedState()
         startObservingActiveDocument()
@@ -258,6 +263,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     func windowWillClose(_: Notification) {
         isClosed = true
         previewResourceState.close()
+        model.tabStore.setActiveIdentityWillChange(nil)
+        model.setFolderAssociationWillChange(nil)
+        fileTreeModel.setRootAccessWillChange(nil)
         workspaceRootRequestGeneration &+= 1
         workspaceTreeRootAppliedGeneration = nil
         workspaceIndexBuildGeneration &+= 1
@@ -354,5 +362,16 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // write whichever document is active *now* to the name the user
         // chose for that one.
         await model.saveAs(to: url, expecting: document)
+    }
+}
+
+private extension WindowController {
+    func installPreviewIdentityInvalidation() {
+        let invalidate: @MainActor () -> Void = { [weak state = previewResourceState] in
+            state?.invalidateForIdentityChange()
+        }
+        model.tabStore.setActiveIdentityWillChange { _, _ in invalidate() }
+        model.setFolderAssociationWillChange(invalidate)
+        fileTreeModel.setRootAccessWillChange(invalidate)
     }
 }

@@ -282,3 +282,107 @@ decode, raster allocation and any PNG export or copying need a reviewed bound
 before it is installed. Likewise HTML delivery must retain/account its payload
 until WebKit callbacks finish. Neither consumer is connected to the scaffold;
 the folder chooser remains hidden.
+
+### Proposed synchronous publication contract for review
+
+The audit found the following publication routes. They all mutate `TabStore`
+state before an observing SwiftUI view or controller poll is guaranteed to run.
+
+| Route | Publication mutation |
+| --- | --- |
+| Save As, regular save, conflict reconciliation, recovery retry | `WorkspaceModel` calls `tabStore.updateDocument(inTab:)`; Save As may then await session publication. |
+| In-app rename/move and rollback | `TabStore+FileURL` assigns replacement documents directly, including preservation and reverse-migration paths. |
+| External move/reload/conflict recovery | `ExternalFileController` and its continuations call `updateActiveDocument`. |
+| Open, new, restored or activated document | `TabStore` appends/replaces `tabs` and/or changes `activeTabID`. |
+| Close, deletion and close queue | `TabStore` removes a tab or replaces its document, then selects another active tab. |
+
+Reviewed document contract: `TabStore` exposes one synchronous
+`@MainActor` pre-publication callback for a change in its **active tab
+identity**: tab UUID, document ID, recovery epoch and exact document file URL
+(or no active tab). Its `tabs` and `activeTabID` mutation boundaries compare
+the current and incoming active identities and invoke the callback before
+storing the first differing value. The callback receives old/new identities
+for audit but cannot suspend, mutate `TabStore` or defer revocation. A native
+window registers one callback that unconditionally invalidates its pending folder choice,
+revokes both consumer load tokens, and revokes its grant synchronously. Normal
+text edits and tab reordering with unchanged active identity do not revoke.
+Repeated notifications during a two-property transition are harmless and
+cannot reinstall authority. Renderer grants are never shared across tabs,
+including tabs that happen to point to the same file and recovery epoch.
+
+This central property-boundary design covers direct internal assignments as
+well as public methods; it does not rely on each Save As or rename caller
+remembering to notify the controller. Before implementation, confirm Swift 6
+`@Observable` preserves `willSet` ordering for indexed array mutations and
+document replacement, and add package tests for every table row. An observer
+failure must not be swallowed or delayed; no `Task` hop may precede token
+revocation. Installation should occur before a window exposes its preview,
+and disposal should remove the callback after the window closes.
+
+The folder association and opened root scope are separate inputs to the
+directory-grant contract. `WorkspaceModel.setFolderRoot` and `remapFolderRoot`
+may change the association before `WindowController.setFileTreeRoot` starts.
+`FileTreeModel` can also replace the scope at the same lexical URL, and its
+watcher `.vanished` path tears down the scope without changing `folderURL`.
+The reviewed root contract must invalidate authority synchronously before
+the model publishes a changed association and before the file-tree owner tears
+down or replaces its root scope, including accepted rename/remap. On a watcher
+`.vanished` event the callback precedes even the terminal availability update;
+on accepted root rename it precedes the first root/scope mutation. A callback
+on `folderURL` alone is insufficient. A synchronous observation interface at
+those file-tree mutation boundaries, or an independently proven separation
+from the explicit grant, requires its own ordered tests before live wiring.
+No transition mints a new grant. This is an engineering contract rather than
+a new user permission decision.
+
+### Consumer activation plan after the publication boundary
+
+The synchronous document/root callbacks are now implemented locally and have
+focused package tests for ordered publication plus an app test that holds both
+consumer tokens and observes their revocation while the old document identity
+is still current. This is a prerequisite, not permission to expose the folder
+chooser. The next candidate must carry the same immutable load identity into
+both consumers:
+
+1. **Textual Markdown images.** Install the deny-by-default custom attachment
+   loader for image and custom-emoji references on a subtree keyed by document
+   tab/recovery lifetime, saved source generation, grant revision and fresh
+   load ID. The pinned Textual `WithAttachments` task keys only on attributed
+   text and can publish after cancellation; replacing the entire subtree and
+   checking token liveness before attachment creation and in its visible body
+   are required. Same-text Save As, A → B → A, close and a held late completion
+   must not attach old bytes to the new subtree. Remote, absolute, `data:` and
+   ungranted references must never reach Textual's default URL loader.
+2. **Decoded and copied image memory.** The 16 MiB input cap is not a decoded
+   image cap. Inspect image dimensions and frame count without eager decode,
+   reject unsupported/oversized work before creating a native image, reserve
+   an explicit decoded-output budget for the load and retain it with the
+   attachment body. Bound actual raster dimensions and compare the created
+   image's row bytes/height with the reservation before publication. Textual's
+   `pngData()` export creates another allocation: compute it only with an
+   additional bounded reservation and retain that reservation with the copy,
+   or make the unsupported outcome explicit in the preview/export contract.
+   Test highly compressible huge dimensions, multi-frame sources, repeated
+   attachments, copy/export and cancellation. Release measurements must
+   calibrate any numerical decoded limits; the existing 16/64 MiB input
+   admission limits stay fixed.
+3. **HTML/WebKit.** Replace each accepted saved render's WKWebView child,
+   configuration and handler with a context-bound instance and random exact
+   authority. Route every subresource through the shared admitted reader,
+   removing the mutable request and `Data(contentsOf:)` reopen. Hold each
+   `PreviewResourcePayload` through response construction and the final
+   WebKit callback; reserve separate capacity before UTF-8 hardening or any
+   physical Data copy. Stop/replacement revokes delivery first while admitted
+   workers and retained buffers drain under their original ledger. Check the
+   operation token after every potentially reentrant callback, preserve MIME
+   and header behavior, and test delayed A completion, stop during delivery,
+   duplicate finish, main-source failure, and hostile navigation. WebKit's
+   internal copies and decoded media are measured separately; app-owned byte
+   counters do not claim to bound that process's heap.
+
+Only after all three steps pass focused race/containment tests should the
+“Allow preview resources” folder chooser become visible. Then run native
+permission and hostile-content tests under the intended signed configuration,
+followed by serial Release performance and full required validation on the
+exact combined candidate head. The current boundary test used an unsigned
+Debug build and establishes none of those later gates.

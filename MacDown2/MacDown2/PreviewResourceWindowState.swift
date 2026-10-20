@@ -46,6 +46,8 @@ final class PreviewResourceWindowState {
     private var contexts: [Consumer: PreviewResourceLoad] = [:]
     private var pendingSelection: SelectionOrigin?
     private(set) var isClosed = false
+    /// Test observation after synchronous revocation, still inside the publisher's pre-change callback.
+    @ObservationIgnored var afterIdentityInvalidation: (@MainActor () -> Void)?
 
     isolated deinit {
         // WindowController calls `close()` deterministically; this also protects a future owner that is released
@@ -124,6 +126,14 @@ final class PreviewResourceWindowState {
         guard let document, attachment.matches(document) else { revokeCurrent(); return }
     }
 
+    /// The tab store calls this before publishing a different active tab or document identity. It is unconditional:
+    /// two tabs can have the same document ID, epoch and URL but cannot share one window's preview authority.
+    func invalidateForIdentityChange() {
+        guard !isClosed else { return }
+        revokeCurrent()
+        afterIdentityInvalidation?()
+    }
+
     func close() {
         guard !isClosed else { return }
         isClosed = true
@@ -131,12 +141,15 @@ final class PreviewResourceWindowState {
     }
 
     private func revokeCurrent() {
+        let hadAuthority = pendingSelection != nil || attachment != nil || !contexts.isEmpty
         pendingSelection = nil
         for consumer in Array(contexts.keys) {
             retire(consumer)
         }
         attachment?.backing.revoke()
         attachment = nil
-        revision = UUID()
+        if hadAuthority {
+            revision = UUID()
+        }
     }
 }
