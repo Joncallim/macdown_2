@@ -1,5 +1,6 @@
 import Foundation
 import LocalResourceAccess
+import Preview
 
 enum PreviewResourceAdmissionError: Error, Equatable {
     case limitExceeded
@@ -12,6 +13,7 @@ enum PreviewResourceAdmissionError: Error, Equatable {
 final class PreviewResourceLoad: @unchecked Sendable {
     let id = UUID()
     let grant: PreviewDirectoryGrantBacking
+    let imageDecodeBudget = PreviewImageDecodeBudget()
     private let lock = NSLock()
     private var revoked = false
 

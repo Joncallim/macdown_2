@@ -14,6 +14,8 @@ struct BlockView: View {
     let block: PreviewBlock
     let theme: PreviewTheme
     let linkResolver: PreviewLinkResolver
+    let resourceImageLoader: PreviewResourceImageLoader?
+    let resourceLoadID: UUID?
     @Environment(\.previewOpenDocument) private var openDocument
     let definitionIndex: PreviewLinkDefinitionIndex
     let mermaidFenceView: ((String) -> AnyView)?
@@ -76,35 +78,49 @@ struct BlockView: View {
                 // `![plot](images/plot.png)`) during parsing. `linkResolver`
                 // carries the same document base URL used to resolve clicked
                 // links, so both paths agree on what "relative" means.
-                StructuredText(
-                    renderedSource,
-                    parser: PreviewMarkupParser(baseURL: linkResolver.baseURL, syntaxExtensions: [.math])
-                )
-                .tint(theme.linkColor.swiftUIColor)
-                .environment(
-                    \.openURL,
-                    OpenURLAction { url in
-                        let resolved = linkResolver.resolve(url)
-                        switch PreviewLinkResolver.action(for: resolved, currentDocument: linkResolver.baseURL) {
-                        case .open: NSWorkspace.shared.open(resolved)
-                        case let .openInApp(document):
-                            // Through MostlyText when the host provides it; otherwise the
-                            // default handler for a text document.
-                            if let openDocument {
-                                openDocument(document)
-                            } else {
-                                NSWorkspace.shared.open(document)
+                secureOrLegacyText
+                    .tint(theme.linkColor.swiftUIColor)
+                    .environment(
+                        \.openURL,
+                        OpenURLAction { url in
+                            let resolved = linkResolver.resolve(url)
+                            switch PreviewLinkResolver.action(for: resolved, currentDocument: linkResolver.baseURL) {
+                            case .open: NSWorkspace.shared.open(resolved)
+                            case let .openInApp(document):
+                                // Through MostlyText when the host provides it; otherwise the
+                                // default handler for a text document.
+                                if let openDocument {
+                                    openDocument(document)
+                                } else {
+                                    NSWorkspace.shared.open(document)
+                                }
+                            case .reveal: NSWorkspace.shared.activateFileViewerSelecting([resolved])
+                            case .ignore: break
                             }
-                        case .reveal: NSWorkspace.shared.activateFileViewerSelecting([resolved])
-                        case .ignore: break
+                            return .handled
                         }
-                        return .handled
-                    }
-                )
+                    )
             }
         }
         .foregroundStyle(theme.foreground.swiftUIColor)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var secureOrLegacyText: some View {
+        let text = StructuredText(
+            renderedSource,
+            parser: PreviewMarkupParser(baseURL: linkResolver.baseURL, syntaxExtensions: [.math])
+        )
+        if let resourceImageLoader {
+            // Textual keys its attachment task only by attributed text and can publish after cancellation.
+            // A new resource identity must therefore replace its complete state subtree.
+            text.id(resourceLoadID)
+                .textual.imageAttachmentLoader(resourceImageLoader)
+                .textual.emojiAttachmentLoader(resourceImageLoader)
+        } else {
+            text
+        }
     }
 }
 

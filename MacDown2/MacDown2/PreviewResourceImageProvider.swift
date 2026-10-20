@@ -18,6 +18,6 @@ enum PreviewResourceImageProvider {
             let payload = try await PreviewResourceAdmission.shared.read(reference, in: context)
             guard !context.isRevoked, !Task.isCancelled else { throw PreviewResourceAdmissionError.revoked }
             return PreviewImageBytes(data: payload.snapshot.bytes, reservation: payload)
-        }, isLive: { !context.isRevoked })
+        }, isLive: { !context.isRevoked }, decodeBudget: context.imageDecodeBudget)
     }
 }

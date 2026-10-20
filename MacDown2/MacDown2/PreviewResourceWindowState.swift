@@ -115,6 +115,12 @@ final class PreviewResourceWindowState {
         Task { await PreviewResourceAdmission.shared.retire(context) }
     }
 
+    /// An old SwiftUI subtree may disappear after its replacement has installed a newer load.
+    func retire(_ consumer: Consumer, matching context: PreviewResourceLoad) {
+        guard contexts[consumer] === context else { return }
+        retire(consumer)
+    }
+
     /// The controller and view lifecycle call this at document identity changes. A matching edit keeps the folder
     /// authority, while its renderer creates a new per-revision load token.
     func reconcile(with document: FileCore.FileDocument?) {
