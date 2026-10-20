@@ -102,7 +102,7 @@
       "npm_file_sha256": "9898965444a940cdbedda3b039f717e96a86ffe9b3170bf30f8fea94ffb66e8a",
       "modifications": "Trailing `export{lw as D2}` replaced with `window.D2=lw;` (one statement; every other byte identical). Documented in NOTICE.txt.",
       "provenance": "verified",
-      "evidence": "Byte comparison with dist/browser/index.js in the npm tarball @terrastruct/d2@0.1.33 (2026-09-28): 8,194,848-byte common prefix, 2-byte common suffix, difference is exactly the export statement.",
+      "evidence": "The integrity-checked @terrastruct/d2@0.1.33 npm archive matches the shipped browser file except for the documented export replacement. npm gitHead names source commit 581c91096b62d644fb5168313142c836b7e68e74; the js/wasm source-build graph and 16 external Go module licence-text hashes are recorded in compliance/evidence/d2-0.1.33/. This is publisher provenance and source-graph evidence, not an independent rebuild or completed source offer.",
       "lc": [
         "LC-01",
         "LC-03",
