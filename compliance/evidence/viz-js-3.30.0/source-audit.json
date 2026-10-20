@@ -57,10 +57,19 @@
   "graphviz_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
   "limits": [
     "Publisher provenance was cross-checked, not signature-verified.",
+    "Source build files establish a path to the red-black tree library, not its exact contribution to the published WebAssembly.",
     "No independent rebuild or exhaustive linked-code licence audit.",
     "No public corresponding-source offer or signed-app verification."
   ],
   "npm_sha512_integrity_matches": true,
+  "rbtree_source_linkage": {
+    "neatogen_makefile_sha256": "6072a13484e32dc4175b2d1e262a1405a8fcc44b063a9a301c6bd594b82efad6",
+    "overlap_source_sha256": "ba7ac4db3d5a76afbf17a2227e4ccdeb286aa6ea784a260ae322bc00d21cf216",
+    "plugin_makefile_sha256": "ad591a1033c706feccf0c45e9ba1d94683908487826d7e6d0c9497fb4ee39f61",
+    "rbtree_license_sha256": "fcb423209a3a3909f41e629a4973eab3995ceb93136dd72485fb12ad3de29dfc",
+    "rbtree_makefile_sha256": "18ddf3373fb52f89f72a66002e619f8c6aee0b215d3f4c5c93ad3a2ef283aaba",
+    "rbtree_source_sha256": "f0966287fbca1567bce8671d870b8e7bcf80c19ff42e48ae0394b9e092c9c95c"
+  },
   "shipped_bundle_sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
   "status": "passed",
   "viz_revision": "99da545270e6e7b127a5c7ba65974b8a604a6358",

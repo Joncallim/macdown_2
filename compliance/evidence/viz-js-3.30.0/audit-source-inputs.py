@@ -85,6 +85,7 @@ def audit(inputs, repo):
         require(member(source, prefix + "LICENSE") == (resource / "VIZJS-LICENSE.txt").read_bytes(), "Viz.js licence mismatch")
         dockerfile = member(source, prefix + "packages/viz/backend/Dockerfile").decode()
         require("-lexpat" in dockerfile and "R_2_8_4/expat-2.8.4.tar.gz" in dockerfile, "Expat link input missing")
+        require("-lgvplugin_neato_layout" in dockerfile, "Neato plugin link input missing")
 
     with tarfile.open(inputs / "expat-2.8.4.tar.gz") as source:
         expat_license = member(source, "expat-2.8.4/COPYING")
@@ -92,6 +93,24 @@ def audit(inputs, repo):
     with tarfile.open(inputs / "graphviz-16.0.0.tar.gz") as source:
         graphviz_license = member(source, "graphviz-16.0.0/COPYING")
         require(graphviz_license == (resource / "GRAPHVIZ-EPL-LICENSE.txt").read_bytes(), "Graphviz licence mismatch")
+        graphviz_prefix = "graphviz-16.0.0/"
+        plugin_make = member(source, graphviz_prefix + "plugin/neato_layout/Makefile.am")
+        neatogen_make = member(source, graphviz_prefix + "lib/neatogen/Makefile.am")
+        overlap = member(source, graphviz_prefix + "lib/neatogen/overlap.c")
+        rbtree_make = member(source, graphviz_prefix + "lib/rbtree/Makefile.am")
+        rbtree_source = member(source, graphviz_prefix + "lib/rbtree/red_black_tree.c")
+        rbtree_license = member(source, graphviz_prefix + "lib/rbtree/LICENSE")
+        require(b"lib/rbtree/librbtree_C.la" in plugin_make
+                and b"lib/neatogen/libneatogen_C.la" in plugin_make,
+                "Neato plugin no longer links the tree and layout libraries")
+        require(b"overlap.c" in neatogen_make and b"RBTreeCreate" in overlap
+                and b"RBTreeInsert" in overlap and b"RBTreeDestroy" in overlap,
+                "Neato overlap source no longer uses red-black tree code")
+        require(b"librbtree_C_la_SOURCES = red_black_tree.c" in rbtree_make
+                and b"RBTreeCreate" in rbtree_source,
+                "Red-black tree source build path changed")
+        require(rbtree_license == (repo / "compliance/licenses/graphviz-rbtree--LICENSE.txt").read_bytes(),
+                "Graphviz red-black tree licence mismatch")
 
     return {
         "status": "passed",
@@ -108,7 +127,15 @@ def audit(inputs, repo):
         "build_source_sha256": source_files,
         "expat_copying_sha256": digest(expat_license),
         "graphviz_copying_sha256": digest(graphviz_license),
-        "limits": ["Publisher provenance was cross-checked, not signature-verified.", "No independent rebuild or exhaustive linked-code licence audit.", "No public corresponding-source offer or signed-app verification."],
+        "rbtree_source_linkage": {
+            "plugin_makefile_sha256": digest(plugin_make),
+            "neatogen_makefile_sha256": digest(neatogen_make),
+            "overlap_source_sha256": digest(overlap),
+            "rbtree_makefile_sha256": digest(rbtree_make),
+            "rbtree_source_sha256": digest(rbtree_source),
+            "rbtree_license_sha256": digest(rbtree_license),
+        },
+        "limits": ["Publisher provenance was cross-checked, not signature-verified.", "Source build files establish a path to the red-black tree library, not its exact contribution to the published WebAssembly.", "No independent rebuild or exhaustive linked-code licence audit.", "No public corresponding-source offer or signed-app verification."],
     }
 
 

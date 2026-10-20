@@ -79,6 +79,37 @@
       "version": "2.8.4"
     },
     {
+      "bom-ref": "graphviz-rbtree",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://gitlab.com/graphviz/graphviz"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "LicenseRef-Graphviz-RBTree"
+        }
+      ],
+      "name": "Graphviz red-black tree library (via Viz.js)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "Graphviz 16.0.0 source snapshot"
+    },
+    {
       "bom-ref": "katex-react-helpers",
       "externalReferences": [
         {
@@ -1252,6 +1283,7 @@
       "dependsOn": [
         "d2",
         "expat",
+        "graphviz-rbtree",
         "katex-react-helpers",
         "libyaml",
         "mermaid",
@@ -1305,7 +1337,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:79402d49-5f83-5330-9ea0-93c04df40177",
+  "serialNumber": "urn:uuid:c2afe38e-87f8-5c98-b94a-521aaa4c3ec4",
   "specVersion": "1.5",
   "version": 1
 }

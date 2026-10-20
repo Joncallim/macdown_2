@@ -20,6 +20,7 @@ This file is generated from `compliance/inventory.json` by
 | Editor theme “Tomorrow Dark” (colour values) | n/a | MIT |
 | Editor theme “Tomorrow Light” (colour values) | n/a | MIT |
 | Expat (embedded in Viz.js WebAssembly) | 2.8.4 | MIT |
+| Graphviz red-black tree library (via Viz.js) | Graphviz 16.0.0 source snapshot | LicenseRef-Graphviz-RBTree |
 | libyaml (vendored inside Yams as CYaml) | 0.2.5 (Yams import 2021-03, plus Yams' 2024 nesting-depth fix) | MIT |
 | Math fonts bundled by SwiftUIMath | 0.1.0 | OFL-1.1 AND LicenseRef-GUST-Font-License AND MIT |
 | Mermaid | 11.17.2 | MIT |
@@ -615,6 +616,39 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+---
+
+## Graphviz red-black tree library (via Viz.js)
+
+- Version: Graphviz 16.0.0 source snapshot
+- Upstream: https://gitlab.com/graphviz/graphviz
+- Revision: `06fff22d8e1a2aead6de0042e5e5ec2f7749be29`
+- Licence: LicenseRef-Graphviz-RBTree
+- No explicit copyright line in upstream Graphviz lib/rbtree/LICENSE
+
+### graphviz-rbtree--LICENSE.txt
+
+```text
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that neither the name of Emin
+Martinian nor the names of any contributors are be used to endorse or
+promote products derived from this software without specific prior
+written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
 ---

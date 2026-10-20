@@ -157,6 +157,37 @@
       "notes": "The Viz.js 3.30.0 Dockerfile statically builds Expat 2.8.4 and links -lexpat. The npm backend publisher provenance names the same gzip archive digest independently downloaded here. COPYING is byte-identical to that archive. See compliance/evidence/viz-js-3.30.0/ for correspondence checks and limits; no independent rebuild is claimed."
     },
     {
+      "id": "graphviz-rbtree",
+      "name": "Graphviz red-black tree library (via Viz.js)",
+      "kind": "embedded",
+      "version": "Graphviz 16.0.0 source snapshot",
+      "upstream": "https://gitlab.com/graphviz/graphviz",
+      "revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+      "resolution": "exact",
+      "licence": "LicenseRef-Graphviz-RBTree",
+      "copyright": [
+        "No explicit copyright line in upstream Graphviz lib/rbtree/LICENSE"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/graphviz-rbtree--LICENSE.txt",
+          "sha256": "fcb423209a3a3909f41e629a4973eab3995ceb93136dd72485fb12ad3de29dfc",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/rbtree/LICENSE"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+      "notes": "The Graphviz 16.0.0 Neato plugin source build links librbtree_C.la, and its overlap source calls the tree functions. Viz.js links the Neato plugin. This is source build linkage, not an independent proof of the exact published WebAssembly code. The upstream text is preserved verbatim under a custom LicenseRef because it has no stated SPDX identifier or explicit copyright line. The broader Graphviz/Emscripten audit remains open."
+    },
+    {
       "id": "libyaml",
       "name": "libyaml (vendored inside Yams as CYaml)",
       "kind": "embedded",
@@ -1914,6 +1945,13 @@
           "licence": "MIT",
           "upstream": "https://github.com/libexpat/libexpat",
           "inventory_id": "expat"
+        },
+        {
+          "name": "Graphviz red-black tree library",
+          "version": "Graphviz 16.0.0 source snapshot",
+          "licence": "LicenseRef-Graphviz-RBTree",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "inventory_id": "graphviz-rbtree"
         }
       ],
       "source_offer": {
@@ -1924,7 +1962,7 @@
       },
       "open_items": [
         "LC-02: exact Graphviz 16.0.0, Viz.js 3.30.0 and Expat 2.8.4 source/build inputs are hashed in compliance/evidence/viz-js-3.30.0; assemble and review the complete corresponding-source offer, then publish it through LC-09.",
-        "Expat 2.8.4 linkage and its MIT notice are recorded. Complete the remaining embedded Graphviz and Emscripten runtime attribution audit; the direct linker list alone is not a complete linked-code inventory."
+        "Expat 2.8.4 and Graphviz's red-black tree source linkage and notices are recorded. Complete the remaining embedded Graphviz and Emscripten runtime attribution audit; the source linker chain alone is not a complete linked-code inventory."
       ],
       "runtime_resources": [
         {
