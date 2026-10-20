@@ -129,11 +129,13 @@ python3 -m unittest compliance.tests.test_d2_offer
 The verifier passed: it rejects unsafe or duplicate archive members, checks
 the archive's exact member set and bytes against the committed manifest, ties
 the npm and upstream archives to the source graph, checks that the documented
-export replacement reproduces the shipped browser bytes, and compares all 16
-module identities and root licence texts to the source graph. Four negative
-controls passed (duplicate member, traversal path, changed reviewed manifest,
-and corrupt member hash). This proves local package consistency, not that the
-published WebAssembly was independently rebuilt from the reported sources.
+export replacement reproduces the shipped browser bytes, applies the archived
+one-hunk patch to the published file, and compares all 16 module identities,
+ZIP paths, and root licence texts to the source graph. Five negative controls
+passed (duplicate member, traversal path, changed reviewed manifest, corrupt
+member hash, and a patch that does not reproduce the shipped file). This proves
+local package consistency, not that the published WebAssembly was independently
+rebuilt from the reported sources.
 The full compliance suite passed 86 tests; `compliance.py check` and
 `git diff --check` passed. The first full-suite launch in the restricted
 sandbox failed ten release-script cases before their assertions because Bash
@@ -146,6 +148,13 @@ test-data font licence is present in the source ZIP but the test data is not
 identified as a compiled package by the recorded Go graph. The distribution
 choice and any additional embedded-code notice duties still need independent
 review before adding shipped notice texts or calling this a complete offer.
+In particular, the pinned Chroma SVG formatter embeds a Liberation Mono WOFF
+font with SIL Open Font License text and Reserved Font Names. Its full encoded
+font string matches the publisher's `d2.wasm` at byte offset 14,657,061;
+`Liberation Mono` appears at offset 11,658,002. The applicable notice and
+Reserved Font Name treatment need separate review; this evidence is not a
+licence clearance. See [the pinned font source](https://github.com/alecthomas/chroma/blob/v2.14.0/formatters/svg/font_liberation_mono.go)
+and [formatter registration](https://github.com/alecthomas/chroma/blob/v2.14.0/formatters/api.go).
 The archive is local only. `source_offer.status` remains `planned`, the strict
 release check retains its D2 findings, and no website object or binary was
 published.

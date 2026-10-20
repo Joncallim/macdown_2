@@ -52,6 +52,19 @@ class D2OfferVerifierTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "manifest size/hash mismatch"):
             self.verify_members([("manifest.json", manifest), ("payload", b"abc")])
 
+    def test_browser_patch_must_apply_to_the_published_file(self):
+        published = b"first\nold export\nlast\n"
+        shipped = b"first\nnew export\nlast\n"
+        patch = (b"--- a/dist/browser/index.js\n+++ b/dist/browser/index.js\n"
+                 b"@@ -1,3 +1,3 @@\n first\n-old export\n+new export\n last\n")
+        verify_d2_offer.verify_browser_patch(patch, published, shipped)
+        with self.assertRaisesRegex(ValueError, "does not match one published location"):
+            verify_d2_offer.verify_browser_patch(patch.replace(b" first\n", b" wrong\n"),
+                                                 published, shipped)
+        with self.assertRaisesRegex(ValueError, "does not reproduce the shipped file"):
+            verify_d2_offer.verify_browser_patch(patch.replace(b"+new export", b"+wrong export"),
+                                                 published, shipped)
+
 
 if __name__ == "__main__":
     unittest.main()
