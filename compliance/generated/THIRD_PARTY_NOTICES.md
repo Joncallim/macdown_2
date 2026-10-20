@@ -22,11 +22,13 @@ This file is generated from `compliance/inventory.json` by
 | Expat (embedded in Viz.js WebAssembly) | 2.8.4 | MIT |
 | Graphviz red-black tree library (via Viz.js) | Graphviz 16.0.0 source snapshot | LicenseRef-Graphviz-RBTree |
 | libyaml (vendored inside Yams as CYaml) | 0.2.5 (Yams import 2021-03, plus Yams' 2024 nesting-depth fix) | MIT |
+| Luc Maisonobe-derived ellipse routine (via Graphviz/Viz.js) | Graphviz 16.0.0 source snapshot | BSD-3-Clause AND EPL-2.0 |
 | Math fonts bundled by SwiftUIMath | 0.1.0 | OFL-1.1 AND LicenseRef-GUST-Font-License AND MIT |
 | Mermaid | 11.17.2 | MIT |
 | Neon | dabf50c | BSD-3-Clause |
 | nvim-treesitter Markdown highlight queries (via tree-sitter-markdown) | 2022-06 import | Apache-2.0 |
 | Prism.js bundled by Textual | 1.29.0 | MIT |
+| Random kit routines (via Graphviz/Viz.js) | Random kit 1.3 in Graphviz 16.0.0 | BSD-3-Clause AND MIT |
 | React-derived KaTeX utility helpers (via Mermaid) | KaTeX 0.16.47 | Apache-2.0 |
 | Rearrange | 2.1.1 | BSD-3-Clause |
 | swift-cmark (cmark-gfm) | 0.8.0 | BSD-2-Clause AND MIT |
@@ -685,6 +687,59 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+---
+
+## Luc Maisonobe-derived ellipse routine (via Graphviz/Viz.js)
+
+- Version: Graphviz 16.0.0 source snapshot
+- Upstream: https://gitlab.com/graphviz/graphviz
+- Revision: `06fff22d8e1a2aead6de0042e5e5ec2f7749be29`
+- Licence: BSD-3-Clause AND EPL-2.0
+- Copyright (c) 2003-2004, Luc Maisonobe
+- Copyright (c) 2012 AT&T Intellectual Property
+
+### graphviz-ellipse--LUC-MAISONOBE.txt
+
+```text
+/* This code is derived from the Java implementation by Luc Maisonobe */
+/* Copyright (c) 2003-2004, Luc Maisonobe
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with
+ * or without modification, are permitted provided that
+ * the following conditions are met:
+ *
+ *    Redistributions of source code must retain the
+ *    above copyright notice, this list of conditions and
+ *    the following disclaimer.
+ *    Redistributions in binary form must reproduce the
+ *    above copyright notice, this list of conditions and
+ *    the following disclaimer in the documentation
+ *    and/or other materials provided with the
+ *    distribution.
+ *    Neither the names of spaceroots.org, spaceroots.com
+ *    nor the names of their contributors may be used to
+ *    endorse or promote products derived from this
+ *    software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+ * THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+ * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+ * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 ```
 
 ---
@@ -1540,6 +1595,110 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+---
+
+## Random kit routines (via Graphviz/Viz.js)
+
+- Version: Random kit 1.3 in Graphviz 16.0.0
+- Upstream: https://gitlab.com/graphviz/graphviz
+- Revision: `06fff22d8e1a2aead6de0042e5e5ec2f7749be29`
+- Licence: BSD-3-Clause AND MIT
+- Copyright (c) 2003-2005, Jean-Sebastien Roy
+- Copyright (C) 1997-2002, Makoto Matsumoto and Takuji Nishimura
+
+### graphviz-randomkit--SOURCE-NOTICE.txt
+
+```text
+/*
+ * Copyright (c) 2003-2005, Jean-Sebastien Roy (js@jeannot.org)
+ *
+ * The rk_random and rk_seed functions algorithms and the original design of
+ * the Mersenne Twister RNG:
+ *
+ *   Copyright (C) 1997 - 2002, Makoto Matsumoto and Takuji Nishimura,
+ *   All rights reserved.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *   1. Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ *
+ *   2. Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ *
+ *   3. The names of its contributors may not be used to endorse or promote
+ *   products derived from this software without specific prior written
+ *   permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ *   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ *   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ *   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * Original algorithm for the implementation of rk_interval function from
+ * Richard J. Wagner's implementation of the Mersenne Twister RNG, optimised by
+ * Magnus Jonsson.
+ *
+ * Constants used in the rk_double implementation by Isaku Wada.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+```
+
+### graphviz-randomkit--HEADER-NOTICE.txt
+
+```text
+/*
+ * Copyright (c) 2003-2005, Jean-Sebastien Roy (js@jeannot.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 ```
 
 ---

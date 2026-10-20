@@ -34,6 +34,14 @@ def member(archive, path):
     return archive.extractfile(entry).read()
 
 
+def notice_blocks(source, marker, count=1):
+    start = source.index(marker)
+    end = start
+    for _ in range(count):
+        end = source.index(b"*/", end) + 2
+    return source[start:end] + b"\n"
+
+
 def audit(inputs, repo):
     archives = {}
     for name, expected in ARCHIVES.items():
@@ -112,6 +120,27 @@ def audit(inputs, repo):
         require(rbtree_license == (repo / "compliance/licenses/graphviz-rbtree--LICENSE.txt").read_bytes(),
                 "Graphviz red-black tree licence mismatch")
 
+        common_make = member(source, graphviz_prefix + "lib/common/Makefile.am")
+        gvc_make = member(source, graphviz_prefix + "lib/gvc/Makefile.am")
+        ellipse = member(source, graphviz_prefix + "lib/common/ellipse.c")
+        randomkit_source = member(source, graphviz_prefix + "lib/neatogen/randomkit.c")
+        randomkit_header = member(source, graphviz_prefix + "lib/neatogen/randomkit.h")
+        require("-lgvc" in dockerfile and b"lib/common/libcommon_C.la" in gvc_make
+                and b"ellipse.c" in common_make,
+                "Graphviz common ellipse source build path changed")
+        require(b"randomkit.c" in neatogen_make and b"lib/neatogen/libneatogen_C.la" in plugin_make,
+                "Graphviz Neato Random kit source build path changed")
+        ellipse_notice = notice_blocks(ellipse, b"/* This code is derived", count=2)
+        randomkit_source_notice = notice_blocks(randomkit_source, b"/*\n * Copyright (c) 2003-2005")
+        randomkit_header_notice = notice_blocks(randomkit_header, b"/*\n * Copyright (c) 2003-2005")
+        for notice, path in (
+            (ellipse_notice, "graphviz-ellipse--LUC-MAISONOBE.txt"),
+            (randomkit_source_notice, "graphviz-randomkit--SOURCE-NOTICE.txt"),
+            (randomkit_header_notice, "graphviz-randomkit--HEADER-NOTICE.txt"),
+        ):
+            require(notice == (repo / "compliance/licenses" / path).read_bytes(),
+                    f"Graphviz nested source notice mismatch: {path}")
+
     return {
         "status": "passed",
         "archives": archives,
@@ -134,6 +163,16 @@ def audit(inputs, repo):
             "rbtree_makefile_sha256": digest(rbtree_make),
             "rbtree_source_sha256": digest(rbtree_source),
             "rbtree_license_sha256": digest(rbtree_license),
+        },
+        "other_nested_source_linkage": {
+            "common_makefile_sha256": digest(common_make),
+            "gvc_makefile_sha256": digest(gvc_make),
+            "ellipse_source_sha256": digest(ellipse),
+            "ellipse_notice_sha256": digest(ellipse_notice),
+            "randomkit_source_sha256": digest(randomkit_source),
+            "randomkit_header_sha256": digest(randomkit_header),
+            "randomkit_source_notice_sha256": digest(randomkit_source_notice),
+            "randomkit_header_notice_sha256": digest(randomkit_header_notice),
         },
         "limits": ["Publisher provenance was cross-checked, not signature-verified.", "Source build files establish a path to the red-black tree library, not its exact contribution to the published WebAssembly.", "No independent rebuild or exhaustive linked-code licence audit.", "No public corresponding-source offer or signed-app verification."],
     }

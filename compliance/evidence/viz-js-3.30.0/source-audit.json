@@ -62,6 +62,16 @@
     "No public corresponding-source offer or signed-app verification."
   ],
   "npm_sha512_integrity_matches": true,
+  "other_nested_source_linkage": {
+    "common_makefile_sha256": "88c0cf3d14f85a2c17f2f69af3ae1b7ce8ea288d792efbfef8b778606a51859a",
+    "ellipse_notice_sha256": "354cf0b3bc6b4bc4b0db8b446aaa3f82777f64debfd3cc12bdd3ffbb1db97c3a",
+    "ellipse_source_sha256": "b17d0b7670a4e046b345ac283772f32ae483b928956e95064f82248e4fd21aa7",
+    "gvc_makefile_sha256": "1fbfe3b7cb5a171947334ba7be97a4fbe26c353829f1cdf8c60ed4dbb302fb38",
+    "randomkit_header_notice_sha256": "1be5b0283ded0074ee5c213b0b011a05cfc472fbd4e87518977f7131b972b347",
+    "randomkit_header_sha256": "2e014ee4903ab1c6270a5f27c678ddcb357ebd0c49635f9a7ebcdb2edb661d4e",
+    "randomkit_source_notice_sha256": "d153c538b26c67cf85a430d30df672154daec3e17be7d92e52dba2887e8d6097",
+    "randomkit_source_sha256": "f92ca7f67b6f1a972fc5b95581772b1df8482608fbbb40e1d0cbe6e616ee1dc3"
+  },
   "rbtree_source_linkage": {
     "neatogen_makefile_sha256": "6072a13484e32dc4175b2d1e262a1405a8fcc44b063a9a301c6bd594b82efad6",
     "overlap_source_sha256": "ba7ac4db3d5a76afbf17a2227e4ccdeb286aa6ea784a260ae322bc00d21cf216",

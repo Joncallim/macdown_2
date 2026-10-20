@@ -37,7 +37,7 @@ On 2026-10-19, against the renderer in candidate `ad79f2773f2cbaf8bb78bdb796b1d1
   verbatim and checked against their archives. The ordinary inventory gate
   protects their digests and generated notice/SBOM consistency.
 
-## Red-black tree attribution follow-up (2026-10-20)
+## Nested Graphviz attributions (2026-10-20)
 
 The same verified Graphviz 16.0.0 source archive contains a separate
 `lib/rbtree/LICENSE` that was absent from MostlyText's notices. The Viz.js
@@ -55,8 +55,22 @@ verbatim.
 
 This establishes a source-build linkage path, not an independently reproduced
 WebAssembly binary or proof that every library object survived linker removal.
-The separate Graphviz and Emscripten runtime audit remains open. No renderer
-byte, dependency pin, or source-offer status changed.
+
+The same source-chain review found two more notices in the Graphviz archive.
+`lib/common/ellipse.c` credits Luc Maisonobe's derived ellipse code under a
+separate three-clause notice alongside Graphviz's EPL-2.0; Viz.js links
+`libgvc`, which links `libcommon`, whose source list includes that file.
+`lib/neatogen/randomkit.c` and `.h` carry BSD-style and MIT notices for the
+Mersenne Twister and Random kit routines; the Neato plugin links `libneatogen`,
+whose source list includes `randomkit.c`. The exact opening comment blocks
+are checked against the upstream archive and distributed verbatim in the
+generated notices. [source-audit.json](source-audit.json) records source and
+notice digests. These paths likewise establish conservative source-build
+attribution, not exact linker retention in the published WebAssembly.
+
+The Graphviz and Emscripten runtime audit remains open, including
+classification of generated Bison parser skeletons and their stated special
+exception. No renderer byte, dependency pin, or source-offer status changed.
 
 ## Retained inputs and repeatable check
 

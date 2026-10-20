@@ -47,10 +47,11 @@ upstream revisions are in the SBOM for anyone who wants the source.
 
 The [Graphviz input audit](evidence/viz-js-3.30.0/README.md) retains the exact
 Graphviz and Viz.js archives/build records plus Expat 2.8.4, which the
-WebAssembly build explicitly links. It also identifies the separately licensed
-Graphviz red-black tree source on the Neato plugin link path. Include Expat's
-MIT text and that tree's verbatim licence text in the reviewed Graphviz
-package; both sources are in the retained archives. The archive digests match
+WebAssembly build explicitly links. It also identifies separately licensed
+Graphviz red-black tree, Luc Maisonobe-derived ellipse and Random kit sources
+on the renderer's source-build paths. Include Expat's MIT text and these
+verbatim nested notices in the reviewed Graphviz package; the sources are in
+the retained archives. The archive digests match
 the npm backend's publisher provenance; no independent rebuild or complete
 runtime attribution audit is claimed. This preparation has not published a
 source offer.
