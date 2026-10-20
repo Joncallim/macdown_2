@@ -41,6 +41,9 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch diagnostic ancestry for source attestation
+        if: ${{ startsWith(github.ref_name, 'diagnostic/neon-current-trace-') }}
+        run: git fetch --no-tags --unshallow origin "$GITHUB_REF_NAME"
       # Select Xcode 26 FIRST so every subsequent step (swift build/test,
       # xcodegen, xcodebuild) uses the same Swift 6.2+ toolchain.
       - name: Select Xcode 26
