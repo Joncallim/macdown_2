@@ -254,3 +254,31 @@ unverified. Preserve the local
 callback/navigation corrections and the root-confusion failure. Do not claim
 complete preview isolation until the signed configuration, grant integration
 and native acceptance evidence pass.
+
+## Integration gate found during window-owner review
+
+The window-local grant owner can revoke its current load tokens synchronously,
+but its present `WindowController.updateTitleAndEditedState` reconciliation is
+only an eventual observation. `WorkspaceModel+Saving` publishes a Save As
+replacement through `tabStore.updateDocument` before awaiting session
+publication or returning to the controller. Direct `TabStore` file-URL remap
+and file-tree rename routes also change document identity. A controller hook
+after Save As or a timer cannot guarantee the required revocation before a
+new identity becomes visible to preview consumers.
+
+Before installing a live grant, review a synchronous, pre-publication identity
+change notification at the Workspace/TabStore mutation boundary (or another
+design with the same ordering). It must cover Save As, rename/remap, recovery
+replacement and close, and must not let an old document's folder authority
+follow a new document or URL. This is a cross-module interface decision; the
+window-owner scaffold does not choose or implement it. Add ordered tests that
+hold an old resource request while each mutation publishes a new identity.
+
+The pinned Textual attachment task keys only on attributed text and can publish
+a canceled completion. Its preview subtree must be replaced per immutable load
+identity and final publication must reject a revoked token. The inert custom
+image loader currently retains the admitted byte reservation, but native image
+decode, raster allocation and any PNG export or copying need a reviewed bound
+before it is installed. Likewise HTML delivery must retain/account its payload
+until WebKit callbacks finish. Neither consumer is connected to the scaffold;
+the folder chooser remains hidden.

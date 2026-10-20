@@ -32,6 +32,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     /// `fileTreeModel.root` exclusively through `setFolderRoot(_:accessURL:)`
     /// below, never mutated directly by any other call site.
     let workspaceFileIndex: WorkspaceFileIndex
+    /// Window-local preview authority. Every renderer load receives its own revocable token.
+    let previewResourceState = PreviewResourceWindowState()
     /// Test seam: runs just before a root switch awaits the new root's tree and index rebuild.
     var beforeRootRebuild: (@MainActor () async -> Void)?
     /// Folder-wide search sidebar state (EPIC-22 §6.16, Slice 7b), one per
@@ -116,6 +118,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             externalFileController: externalFileController
         )
         .environment(\.windowCoordinator, coordinator)
+        .environment(\.previewResourceWindowState, previewResourceState)
         let hostingController = NSHostingController(rootView: shell)
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
@@ -214,6 +217,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func updateTitleAndEditedState() {
         let document = model.activeDocument
+        previewResourceState.reconcile(with: document)
         let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
         let isDirty = document?.state == .dirty || document?.state == .conflict
         let title = isDirty ? "● \(baseTitle)" : baseTitle
@@ -253,6 +257,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_: Notification) {
         isClosed = true
+        previewResourceState.close()
         workspaceRootRequestGeneration &+= 1
         workspaceTreeRootAppliedGeneration = nil
         workspaceIndexBuildGeneration &+= 1
