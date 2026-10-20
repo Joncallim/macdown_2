@@ -47,6 +47,37 @@
       "version": "0.1.33"
     },
     {
+      "bom-ref": "d2-liberation-mono",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/alecthomas/chroma"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "OFL-1.1"
+        }
+      ],
+      "name": "Liberation Mono WOFF (embedded in D2 WebAssembly via Chroma)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "bundled in Chroma v2.14.0"
+    },
+    {
       "bom-ref": "expat",
       "externalReferences": [
         {
@@ -1344,6 +1375,7 @@
     {
       "dependsOn": [
         "d2",
+        "d2-liberation-mono",
         "expat",
         "graphviz-ellipse-maisonobe",
         "graphviz-randomkit",
@@ -1401,7 +1433,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:cb3c9d30-a035-5eac-aefc-63e218f47600",
+  "serialNumber": "urn:uuid:30e56a78-bf8c-51b4-a267-50d4b4f66322",
   "specVersion": "1.5",
   "version": 1
 }
