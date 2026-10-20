@@ -70,11 +70,19 @@ private struct PreviewImageResources: Sendable {
     let decoded: PreviewImageDecodeBudget.Reservation
 }
 
-/// Accounts for app-owned decoded image output retained by one Textual load. The input-byte ledger is separate.
+/// Accounts for app-owned decoded image output retained across all Textual loads. The input-byte ledger is separate.
 /// ImageIO and SwiftUI may allocate temporary/internal copies, which require Release memory measurements.
 public final class PreviewImageDecodeBudget: @unchecked Sendable {
     public static let imageLimit = 32 * 1024 * 1024
     public static let loadLimit = 64 * 1024 * 1024
+    public static let globalLimit = 128 * 1024 * 1024
+
+    private final class Ledger: @unchecked Sendable {
+        let lock = NSLock()
+        var globallyHeld = 0
+    }
+
+    private static let ledger = Ledger()
 
     final class Reservation: @unchecked Sendable {
         private let budget: PreviewImageDecodeBudget
@@ -88,20 +96,25 @@ public final class PreviewImageDecodeBudget: @unchecked Sendable {
         deinit { budget.release(bytes) }
     }
 
-    private let lock = NSLock()
     private var held = 0
 
     public init() {}
 
     var reservedBytes: Int {
-        lock.withLock { held }
+        Self.ledger.lock.withLock { held }
+    }
+
+    static var globallyReservedBytes: Int {
+        ledger.lock.withLock { ledger.globallyHeld }
     }
 
     func reserve(_ bytes: Int) throws -> Reservation {
-        let accepted = lock.withLock { () -> Bool in
+        let accepted = Self.ledger.lock.withLock { () -> Bool in
             guard bytes > 0, bytes <= Self.imageLimit,
-                  held <= Self.loadLimit - bytes else { return false }
+                  held <= Self.loadLimit - bytes,
+                  Self.ledger.globallyHeld <= Self.globalLimit - bytes else { return false }
             held += bytes
+            Self.ledger.globallyHeld += bytes
             return true
         }
         guard accepted else { throw PreviewImageLoadError.decodedLimitExceeded }
@@ -109,7 +122,10 @@ public final class PreviewImageDecodeBudget: @unchecked Sendable {
     }
 
     private func release(_ bytes: Int) {
-        lock.withLock { held -= bytes }
+        Self.ledger.lock.withLock {
+            held -= bytes
+            Self.ledger.globallyHeld -= bytes
+        }
     }
 }
 

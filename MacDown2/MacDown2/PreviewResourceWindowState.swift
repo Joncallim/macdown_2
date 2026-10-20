@@ -46,6 +46,7 @@ final class PreviewResourceWindowState {
     private var contexts: [Consumer: PreviewResourceLoad] = [:]
     private var pendingSelection: SelectionOrigin?
     private(set) var isClosed = false
+    @ObservationIgnored private var currentPreviewDocument: (@MainActor () -> (UUID?, FileCore.FileDocument?))?
     /// Test observation after synchronous revocation, still inside the publisher's pre-change callback.
     @ObservationIgnored var afterIdentityInvalidation: (@MainActor () -> Void)?
 
@@ -107,6 +108,36 @@ final class PreviewResourceWindowState {
         let context = PreviewResourceLoad(grant: attachment.backing)
         contexts[consumer] = context
         return context
+    }
+
+    func setCurrentPreviewDocument(_ resolver: (@MainActor () -> (UUID?, FileCore.FileDocument?))?) {
+        currentPreviewDocument = resolver
+    }
+
+    /// Check the live window model, not a SwiftUI task's captured View value, before replacing the current token.
+    func beginPreviewLoad(
+        for document: FileCore.FileDocument, tabID: UUID,
+        sourceGeneration: UInt, grantRevision: UUID, consumer: Consumer
+    ) -> PreviewResourceLoad? {
+        guard isCurrentPreview(
+            document, tabID: tabID, sourceGeneration: sourceGeneration, grantRevision: grantRevision
+        ) else { return nil }
+        return beginLoad(for: document, consumer: consumer)
+    }
+
+    func isCurrentPreview(
+        _ document: FileCore.FileDocument, tabID: UUID,
+        sourceGeneration: UInt, grantRevision: UUID
+    ) -> Bool {
+        guard !isClosed, revision == grantRevision,
+              let (liveTabID, liveDocument) = currentPreviewDocument?(),
+              liveTabID == tabID, let liveDocument,
+              liveDocument.id == document.id,
+              liveDocument.recoveryEpoch == document.recoveryEpoch,
+              liveDocument.fileURL == document.fileURL,
+              liveDocument.mutationGeneration == sourceGeneration
+        else { return false }
+        return true
     }
 
     func retire(_ consumer: Consumer) {

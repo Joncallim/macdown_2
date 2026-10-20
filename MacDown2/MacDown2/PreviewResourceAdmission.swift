@@ -71,6 +71,11 @@ actor PreviewResourceAdmission {
         let delivered: Int
     }
 
+    struct GlobalStatus: Equatable {
+        let reserved: Int
+        let retained: Int
+    }
+
     typealias ReadOperation = @Sendable (
         ResourceReference, DirectoryLease, ResourceCancellation
     ) throws -> ResourceSnapshot
@@ -79,6 +84,7 @@ actor PreviewResourceAdmission {
     static let resourceLimit = 16 * 1024 * 1024
     static let loadLimit = 64 * 1024 * 1024
     static let requestLimit = 512
+    static let globalInputLimit = 128 * 1024 * 1024
     private static let globalWorkers = 4
     private static let contextWorkers = 2
     private static let contextQueueLimit = 32
@@ -102,11 +108,20 @@ actor PreviewResourceAdmission {
     }
 
     private let readOperation: ReadOperation
+    private let settlementGate: (@Sendable () async -> Void)?
+    private let inputLimit: Int
     private var loads: [UUID: Load] = [:]
     private var order: [UUID] = []
     private var nextContext = 0
     private var jobs: [UUID: Job] = [:]
     private var activeWorkers = 0
+    private var globallyReserved = 0
+    private var globallyRetained = 0
+    private var settling: [UUID: UUID] = [:]
+
+    func globalStatus() -> GlobalStatus {
+        GlobalStatus(reserved: globallyReserved, retained: globallyRetained)
+    }
 
     func status(for context: PreviewResourceLoad) -> Status? {
         guard let load = loads[context.id] else { return nil }
@@ -116,11 +131,17 @@ actor PreviewResourceAdmission {
         )
     }
 
-    init(readOperation: @escaping ReadOperation = { reference, directory, cancellation in
-        try ContainedResourceReader.read(
-            reference, in: directory, maxBytes: resourceLimit, cancellation: cancellation
-        )
-    }) {
+    init(
+        inputLimit: Int = globalInputLimit,
+        settlementGate: (@Sendable () async -> Void)? = nil,
+        readOperation: @escaping ReadOperation = { reference, directory, cancellation in
+            try ContainedResourceReader.read(
+                reference, in: directory, maxBytes: resourceLimit, cancellation: cancellation
+            )
+        }
+    ) {
+        self.inputLimit = inputLimit
+        self.settlementGate = settlementGate
         self.readOperation = readOperation
     }
 
@@ -151,6 +172,7 @@ actor PreviewResourceAdmission {
         let queued = load.queue
         load.queue.removeAll()
         load.reserved -= queued.count * Self.resourceLimit
+        globallyReserved -= queued.count * Self.resourceLimit
         loads[loadID] = load
         for jobID in queued {
             guard let job = jobs.removeValue(forKey: jobID) else { continue }
@@ -179,13 +201,16 @@ actor PreviewResourceAdmission {
               load.queue.count < Self.contextQueueLimit,
               queuedTotal < Self.globalQueueLimit,
               load.delivered <= Self.loadLimit - Self.resourceLimit,
-              load.reserved <= Self.loadLimit - Self.resourceLimit - load.delivered
+              load.reserved <= Self.loadLimit - Self.resourceLimit - load.delivered,
+              Self.resourceLimit <= inputLimit,
+              globallyReserved <= inputLimit - Self.resourceLimit - globallyRetained
         else {
             job.continuation.resume(throwing: PreviewResourceAdmissionError.limitExceeded)
             return
         }
         load.requests += 1
         load.reserved += Self.resourceLimit
+        globallyReserved += Self.resourceLimit
         load.queue.append(jobID)
         if loads[job.context.id] == nil {
             order.append(job.context.id)
@@ -201,6 +226,7 @@ actor PreviewResourceAdmission {
         guard let queueIndex = load.queue.firstIndex(of: jobID) else { return }
         load.queue.remove(at: queueIndex)
         load.reserved -= Self.resourceLimit
+        globallyReserved -= Self.resourceLimit
         loads[job.context.id] = load
         jobs.removeValue(forKey: jobID)
         job.continuation.resume(throwing: PreviewResourceAdmissionError.cancelled)
@@ -228,21 +254,35 @@ actor PreviewResourceAdmission {
             loads[selected.loadID] = load
             guard let job = jobs[jobID] else { preconditionFailure("queued job vanished") }
             let operation = readOperation
+            let settlementGate = settlementGate
             Task.detached(priority: .utility) {
-                let result = Result { () throws -> ResourceSnapshot in
-                    guard !job.cancellation.isCancelled else { throw PreviewResourceAdmissionError.cancelled }
-                    guard let use = job.context.acquireUse()
-                    else { throw PreviewResourceAdmissionError.revoked }
-                    return try withExtendedLifetime(use) {
-                        try operation(job.reference, use.documentDirectory, job.cancellation)
+                var deliveredPayload: PreviewResourcePayload?
+                do {
+                    let result = Result { () throws -> ResourceSnapshot in
+                        guard !job.cancellation.isCancelled else { throw PreviewResourceAdmissionError.cancelled }
+                        guard let use = job.context.acquireUse()
+                        else { throw PreviewResourceAdmissionError.revoked }
+                        return try withExtendedLifetime(use) {
+                            try operation(job.reference, use.documentDirectory, job.cancellation)
+                        }
                     }
+                    deliveredPayload = await self.complete(jobID: jobID, result: result)
                 }
-                await self.complete(jobID: jobID, result: result)
+                // A fast caller may drop its payload before this worker sheds its own successful Result.
+                // Keep the very same charged wrapper alive through that handoff.
+                withExtendedLifetime(deliveredPayload) {}
+                deliveredPayload = nil
+                await settlementGate?()
+                // The local Result (including a rejected successful snapshot) has left scope. Only now may its
+                // original input reservation be refunded and another blocking read admitted.
+                await self.settled(jobID: jobID)
             }
         }
     }
+}
 
-    private func complete(jobID: UUID, result: Result<ResourceSnapshot, Error>) {
+extension PreviewResourceAdmission {
+    private func complete(jobID: UUID, result: Result<ResourceSnapshot, Error>) -> PreviewResourcePayload? {
         guard let job = jobs.removeValue(forKey: jobID), var load = loads[job.context.id] else {
             preconditionFailure("running job lost its accounting")
         }
@@ -256,12 +296,18 @@ actor PreviewResourceAdmission {
             load.reserved -= Self.resourceLimit
             load.retained += byteCount
             load.delivered += byteCount
+            globallyReserved -= Self.resourceLimit
+            globallyRetained += byteCount
             loads[job.context.id] = load
-            job.continuation.resume(returning: PreviewResourcePayload(
+            let payload = PreviewResourcePayload(
                 snapshot: snapshot, owner: self, loadID: job.context.id
-            ))
+            )
+            job.continuation.resume(returning: payload)
+            prune(loadID: job.context.id)
+            pump()
+            return payload
         default:
-            load.reserved -= Self.resourceLimit
+            settling[jobID] = job.context.id
             loads[job.context.id] = load
             if job.cancellation.isCancelled {
                 job.continuation.resume(throwing: PreviewResourceAdmissionError.cancelled)
@@ -275,19 +321,32 @@ actor PreviewResourceAdmission {
         }
         prune(loadID: job.context.id)
         pump()
+        return nil
+    }
+
+    private func settled(jobID: UUID) {
+        guard let loadID = settling.removeValue(forKey: jobID), var load = loads[loadID] else { return }
+        precondition(load.reserved >= Self.resourceLimit)
+        load.reserved -= Self.resourceLimit
+        globallyReserved -= Self.resourceLimit
+        loads[loadID] = load
+        prune(loadID: loadID)
+        pump()
     }
 
     fileprivate func releasePayload(loadID: UUID, byteCount: Int) {
         guard var load = loads[loadID] else { preconditionFailure("payload lost its ledger") }
         precondition(byteCount <= load.retained)
         load.retained -= byteCount
+        globallyRetained -= byteCount
         loads[loadID] = load
         prune(loadID: loadID)
     }
 
     private func prune(loadID: UUID) {
         guard let load = loads[loadID], load.context.isRevoked,
-              load.active == 0, load.queue.isEmpty, load.retained == 0 else { return }
+              load.active == 0, load.queue.isEmpty, load.retained == 0,
+              load.reserved == 0 else { return }
         loads.removeValue(forKey: loadID)
         if let index = order.firstIndex(of: loadID) {
             order.remove(at: index)

@@ -386,3 +386,35 @@ permission and hostile-content tests under the intended signed configuration,
 followed by serial Release performance and full required validation on the
 exact combined candidate head. The current boundary test used an unsigned
 Debug build and establishes none of those later gates.
+
+### Inactive consumer checkpoint after boundary review
+
+The next local candidate adds an isolated Markdown resource host and a separate,
+immutable HTML/WebKit host. Neither is routed from the live preview or exposes
+the folder chooser. The Markdown host gives Textual a deny-by-default loader
+until a live document/window check yields a fresh token; its rendered subtree
+changes identity when the token arrives. The HTML host replaces its child web
+view and scheme handler for each accepted saved generation. The handler pins a
+random authority and immutable main bytes, counts all request attempts, reads
+folder resources through the admitted reader, and drops stopped or revoked
+callbacks. It handles failed main navigation without treating cancellations or
+subframe failures as a failed document.
+
+App-owned input payloads share a global 128 MiB admission cap; decoded image
+outputs share a separate global 128 MiB reservation cap. HTML hardening reserves
+for its `Character` scan and copies against a global 256 MiB budget. These are
+conservative accounting limits, not measured process-memory ceilings. ImageIO
+may allocate before its output can be checked, and WebKit, SwiftUI and ImageIO
+internal copies and decoded media are outside these ledgers. Release workload
+measurements must validate real memory and usability, including multiple windows.
+
+Focused locked-dependency tests cover the image ledger, cancelled successful
+reads, stale Markdown token installation, hostile HTML references, repeated
+request admission and scheme-task stop/revocation. They use unsigned Debug and
+fake scheme tasks; they do not establish actual WebKit routing, signed folder
+permissions or mounted Textual behavior. Textual PNG copy/export currently
+returns no data for the new attachment to avoid an unreserved copy. Image
+format support and copy/export fidelity therefore remain activation gates, as
+do native adversarial tests, signed permissions, Release performance and the
+full combined-candidate validation. No issue closure or release claim follows
+from this checkpoint.

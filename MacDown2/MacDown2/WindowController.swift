@@ -263,6 +263,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     func windowWillClose(_: Notification) {
         isClosed = true
         previewResourceState.close()
+        previewResourceState.setCurrentPreviewDocument(nil)
         model.tabStore.setActiveIdentityWillChange(nil)
         model.setFolderAssociationWillChange(nil)
         fileTreeModel.setRootAccessWillChange(nil)
@@ -367,6 +368,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
 private extension WindowController {
     func installPreviewIdentityInvalidation() {
+        previewResourceState.setCurrentPreviewDocument { [weak model] in
+            (model?.tabStore.activeTabID, model?.activeDocument)
+        }
         let invalidate: @MainActor () -> Void = { [weak state = previewResourceState] in
             state?.invalidateForIdentityChange()
         }

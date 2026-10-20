@@ -68,6 +68,44 @@ struct PreviewResourceWindowStateTests {
         }
     }
 
+    @Test func delayedOldMarkdownTaskCannotRetireTheNewGeneration() async throws {
+        let folder = try makeFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let document = FileDocument(fileURL: folder.appendingPathComponent("story.md"))
+        let documentURL = try #require(document.fileURL)
+        let selection = try #require(PreviewResourceFolderSelection.fixture(
+            documentURL: documentURL, folderURL: folder
+        ))
+        let owner = PreviewResourceWindowState()
+        let origin = try #require(owner.beginSelection(for: document))
+        try await owner.install(selection, from: origin) { document }
+        let tabID = UUID()
+        var liveDocument = document
+        owner.setCurrentPreviewDocument { (tabID, liveDocument) }
+        let oldRevision = owner.revision
+        let old = try #require(owner.beginPreviewLoad(
+            for: document, tabID: tabID,
+            sourceGeneration: document.mutationGeneration, grantRevision: oldRevision,
+            consumer: .markdown
+        ))
+        liveDocument = document.markClean()
+        let current = try #require(owner.beginPreviewLoad(
+            for: liveDocument, tabID: tabID,
+            sourceGeneration: liveDocument.mutationGeneration, grantRevision: owner.revision,
+            consumer: .markdown
+        ))
+        #expect(old.isRevoked)
+        #expect(owner.beginPreviewLoad(
+            for: document, tabID: tabID,
+            sourceGeneration: document.mutationGeneration, grantRevision: oldRevision,
+            consumer: .markdown
+        ) == nil)
+        #expect(!current.isRevoked)
+        owner.retire(.markdown, matching: old)
+        #expect(!current.isRevoked)
+        owner.close()
+    }
+
     private func makeFolder() throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

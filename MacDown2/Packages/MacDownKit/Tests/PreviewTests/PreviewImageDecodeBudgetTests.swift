@@ -3,7 +3,7 @@ import AppKit
 import SwiftUI
 import Testing
 
-@Suite("Preview image decoded-output admission")
+@Suite("Preview image decoded-output admission", .serialized)
 @MainActor
 struct PreviewImageDecodeBudgetTests {
     @Test func smallImageRetainsItsOutputReservationAndDoesNotOfferAnUnchargedPNGCopy() throws {
@@ -47,5 +47,28 @@ struct PreviewImageDecodeBudgetTests {
             _ = try budget.reserve(PreviewImageDecodeBudget.imageLimit + 1)
         }
         #expect(budget.reservedBytes == 0)
+    }
+
+    @Test func retainedImagesAcrossLoadsShareOneGlobalCap() throws {
+        let first = PreviewImageDecodeBudget()
+        let second = PreviewImageDecodeBudget()
+        let third = PreviewImageDecodeBudget()
+        var firstReservations: [PreviewImageDecodeBudget.Reservation] = try [
+            first.reserve(PreviewImageDecodeBudget.imageLimit),
+            first.reserve(PreviewImageDecodeBudget.imageLimit),
+        ]
+        let secondReservations = try [
+            second.reserve(PreviewImageDecodeBudget.imageLimit),
+            second.reserve(PreviewImageDecodeBudget.imageLimit),
+        ]
+        #expect(PreviewImageDecodeBudget.globallyReservedBytes == PreviewImageDecodeBudget.globalLimit)
+        #expect(throws: PreviewImageLoadError.self) {
+            _ = try third.reserve(1)
+        }
+        firstReservations.removeAll()
+        #expect(PreviewImageDecodeBudget.globallyReservedBytes == PreviewImageDecodeBudget.loadLimit)
+        let resumed = try third.reserve(PreviewImageDecodeBudget.imageLimit)
+        #expect(resumed.bytes == PreviewImageDecodeBudget.imageLimit)
+        #expect(secondReservations.count == 2)
     }
 }

@@ -42,17 +42,30 @@ struct SecuredMarkdownResourceHost<Content: View>: View {
         let currentIdentity = identity
         let current = slot?.identity == currentIdentity ? slot : nil
         let loader = PreviewResourceImageProvider.loader(for: current?.context)
-        content(loader, current?.loadID)
-            .id(currentIdentity)
-            .task(id: currentIdentity) {
-                guard identity == currentIdentity else { return }
-                let context = owner?.beginLoad(for: document, consumer: .markdown)
-                slot = Slot(identity: currentIdentity, loadID: UUID(), context: context)
-            }
-            .onDisappear {
-                if let context = current?.context {
+        ZStack(alignment: .topLeading) {
+            content(loader, current?.loadID)
+                .id(current?.loadID)
+        }
+        .id(currentIdentity)
+        .task(id: currentIdentity) {
+            guard !Task.isCancelled, identity == currentIdentity else { return }
+            let context = owner?.beginPreviewLoad(
+                for: document, tabID: tabID,
+                sourceGeneration: sourceGeneration, grantRevision: currentIdentity.grantRevision,
+                consumer: .markdown
+            )
+            guard !Task.isCancelled, identity == currentIdentity else {
+                if let context {
                     owner?.retire(.markdown, matching: context)
                 }
+                return
             }
+            slot = Slot(identity: currentIdentity, loadID: UUID(), context: context)
+        }
+        .onDisappear {
+            if let context = current?.context {
+                owner?.retire(.markdown, matching: context)
+            }
+        }
     }
 }
