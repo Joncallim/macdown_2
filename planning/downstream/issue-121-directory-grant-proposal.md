@@ -48,15 +48,19 @@ authorize a grant or child lease. Use the strictly compared identity obtained
 from the opened descriptor. A missing identity fails acquisition rather than
 falling back to pathname equality.
 
-The inspected XcodeGen spec has no entitlement declaration. This is not proof of
-the eventual shipping app's sandbox configuration. Likewise
+The inspected XcodeGen spec has no entitlement declaration.
+`planning/MAC_SIGNING_BRIEF.md` §Step 2 and `planning/RELEASE_PATH.md` specify
+Developer ID hardened runtime with **no app sandbox and no entitlements** as
+the intended shipping configuration. The release script accepts an optional
+`ENTITLEMENTS` override for an evidenced exception; it defaults to none.
+These records settle the implementation intent, not the final signed artifact's
+behavior. Likewise
 `startAccessingSecurityScopedResource() == false` alone is neither directory
 permission nor a universal denial: a valid route may not require a dynamic
 scope. Record the authority route separately from the start/stop obligation.
-The release signing script accepts an optional `ENTITLEMENTS` file and defaults
-to none. Confirm the actual signed candidate's entitlements before claiming
-operating-system permission behavior; the folder-selection action remains an
-app-level authority boundary even when that candidate is unsandboxed.
+Confirm the actual signed candidate's entitlements and resource behavior before
+claiming operating-system permission acceptance; the folder-selection action
+remains an app-level authority boundary in the intended unsandboxed build.
 
 ## Resolved file-only workflow (owner choice, 2026-10-20)
 
@@ -84,10 +88,18 @@ the window ends new admission, while already admitted reads retain their scope
 until they drain. The action and failure copy need localised text, keyboard
 access and VoiceOver labels. No document bytes leave the machine.
 
-This resolves the product workflow, not the remaining engineering gates:
-confirm the signed app's sandbox/entitlement configuration, implement the
-panel-origin backing and child derivation without a pathname fallback, then
-verify real scope lifetime, hostile resource reads and native UI behavior.
+This resolves the product workflow and intended signing configuration, not the
+remaining engineering gates: implement the panel-origin backing and child
+derivation without a pathname fallback, then verify actual signed behavior,
+scope lifetime, hostile resource reads and native UI behavior.
+
+The preparatory `NSFilePanelProvider.choosePreviewResourceFolder(near:)` edge
+returns a typed selection receipt with the originally requested document URL.
+It requires a concrete target window for the sheet and does not fall back to a
+different key window after suspension. It does not create a directory lease,
+start a scope, grant access or change live preview behavior. The future caller
+must reject stale document/window epochs, create the retained backing and
+complete the read-path integration before exposing the action.
 
 ## Proposed interfaces and dependency direction
 
@@ -205,13 +217,15 @@ and scope drain, and identified the lexical-identity fallback and root rename/
 disappearance paths above. No production permission changes or test execution
 were performed during that review.
 
-Remaining decision: establish the intended OS-access configuration of the
-signed candidate. The owner resolved the visible file-only workflow above. The
+The intended OS-access configuration is recorded in the signing brief, and the
+owner resolved the visible file-only workflow above. The actual signed
+candidate has not passed that configuration's native permission checks. The
 contained-child technical spike can be developed independently, but cannot be
 presented as complete preview isolation.
 
-Status: the file-only product workflow is resolved; final OS-access configuration
-and the production permission model remain unverified. Preserve the local
+Status: the file-only product workflow and intended OS-access configuration are
+resolved; actual signed behavior and the production permission model remain
+unverified. Preserve the local
 callback/navigation corrections and the root-confusion failure. Do not claim
 complete preview isolation until the signed configuration, grant integration
 and native acceptance evidence pass.
