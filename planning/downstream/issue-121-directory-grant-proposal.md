@@ -108,10 +108,23 @@ the selected URL's scope, opens the root off MainActor, compares its descriptor
 identity with the receipt, and pins the document directory through the root.
 An admitted `Use` retains the backing after revocation; the last use closes the
 descriptors and stops the scope. The backing is not attached to a window or
-renderer yet. It does not implement the global read queue, payload reservations,
-WebKit context or Textual loader, so no chooser or resource grant is exposed to
-the user. Focused tests cover held-use drain, selected-name replacement and
+renderer yet. Focused tests cover held-use drain, selected-name replacement and
 an outside document; they do not replace native or signed-artifact evidence.
+
+`PreviewResourceAdmission` adds an app-wide, unused reader entry point: one
+immutable load token binds a grant, with four running reads globally, two per
+load, 32 queued per load and 128 globally. It reserves 16 MiB before admitting
+each request, limits a load to 64 MiB delivered and 512 admitted requests, and
+retains charged payload bytes independently of worker slots. Retirement cancels
+queued work and bars new workers; blocking work keeps its slot and reservation
+until it returns. A lock makes load revocation atomic with grant-use admission,
+and the use is retained explicitly through the entire contained read. Focused
+tests hold a worker through retirement, hold a payload afterward, and revoke a
+folder while an admitted read is blocked. These establish the tested ownership
+transitions, not WebKit delivery or decoded-media memory bounds. The WebKit
+context, Textual loader, window attachment and chooser remain unimplemented;
+the existing renderers still use their old paths, so this service is not yet a
+user-visible resource grant.
 
 ## Proposed interfaces and dependency direction
 
