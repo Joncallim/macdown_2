@@ -96,10 +96,22 @@ scope lifetime, hostile resource reads and native UI behavior.
 The preparatory `NSFilePanelProvider.choosePreviewResourceFolder(near:)` edge
 returns a typed selection receipt with the originally requested document URL.
 It requires a concrete target window for the sheet and does not fall back to a
-different key window after suspension. It does not create a directory lease,
+different key window after suspension. It records the selected directory's
+device and inode at the panel-return edge; a future backing must compare those
+values to the opened descriptor before admission. It does not create a directory lease,
 start a scope, grant access or change live preview behavior. The future caller
-must reject stale document/window epochs, create the retained backing and
+must reject stale document/window epochs, attach a retained backing and
 complete the read-path integration before exposing the action.
+
+`PreviewDirectoryGrantBacking` now implements the next isolated slice. It starts
+the selected URL's scope, opens the root off MainActor, compares its descriptor
+identity with the receipt, and pins the document directory through the root.
+An admitted `Use` retains the backing after revocation; the last use closes the
+descriptors and stops the scope. The backing is not attached to a window or
+renderer yet. It does not implement the global read queue, payload reservations,
+WebKit context or Textual loader, so no chooser or resource grant is exposed to
+the user. Focused tests cover held-use drain, selected-name replacement and
+an outside document; they do not replace native or signed-artifact evidence.
 
 ## Proposed interfaces and dependency direction
 

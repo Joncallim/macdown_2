@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import FileCore
 import Foundation
 import Workspace
@@ -8,11 +9,30 @@ import Workspace
 struct PreviewResourceFolderSelection {
     let requestedDocumentURL: URL
     let selectedFolderURL: URL
+    let selectedDevice: Int64
+    let selectedInode: UInt64
 
-    fileprivate init(requestedDocumentURL: URL, selectedFolderURL: URL) {
+    private init(requestedDocumentURL: URL, selectedFolderURL: URL, selectedInfo: stat) {
         self.requestedDocumentURL = requestedDocumentURL
         self.selectedFolderURL = selectedFolderURL
+        selectedDevice = Int64(selectedInfo.st_dev)
+        selectedInode = UInt64(selectedInfo.st_ino)
     }
+
+    fileprivate static func capture(documentURL: URL, folderURL: URL) -> Self? {
+        var selectedInfo = stat()
+        guard fstatat(AT_FDCWD, folderURL.path, &selectedInfo, 0) == 0,
+              (selectedInfo.st_mode & S_IFMT) == S_IFDIR
+        else { return nil }
+        return Self(requestedDocumentURL: documentURL, selectedFolderURL: folderURL, selectedInfo: selectedInfo)
+    }
+
+    #if DEBUG
+        /// The focused grant tests exercise the real capture/open comparison without presenting a native sheet.
+        static func fixture(documentURL: URL, folderURL: URL) -> Self? {
+            capture(documentURL: documentURL, folderURL: folderURL)
+        }
+    #endif
 }
 
 /// AppKit implementation of `FilePanelProviding` for the MacDown 2 app target.
@@ -64,10 +84,9 @@ final class NSFilePanelProvider: FilePanelProviding {
             }
         }
         guard let selectedFolderURL else { return nil }
-        return PreviewResourceFolderSelection(
-            requestedDocumentURL: documentURL,
-            selectedFolderURL: selectedFolderURL
-        )
+        // Capture object identity at the selection edge. A later path replacement cannot become the grant merely
+        // because it has the same spelling; the backing compares its opened descriptor to this identity.
+        return PreviewResourceFolderSelection.capture(documentURL: documentURL, folderURL: selectedFolderURL)
     }
 
     func chooseSaveLocation(defaultName: String, format: FileFormat) async -> URL? {
