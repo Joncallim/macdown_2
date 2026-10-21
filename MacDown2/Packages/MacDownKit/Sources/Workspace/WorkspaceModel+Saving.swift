@@ -168,31 +168,38 @@ public extension WorkspaceModel {
             lastError = .noActiveDocument
             return
         }
+        guard let admission = reserveSaveAs(for: document) else { return }
+        defer { finishSaveAs(admission) }
         guard let url = await panel.chooseSaveLocation(
             defaultName: Self.defaultSaveAsName(for: document),
             format: document.format
         )
         else { return }
-        await saveAs(to: url, expecting: document)
+        await saveAs(to: url, expecting: document, admission: admission)
     }
 
     /// Saves `expected` — the document the caller began Save As *for*,
     /// captured before it presented its panel — to an already-chosen
-    /// `url`. The caller having already presented (and dismissed) whatever
-    /// panel it used to obtain it, explicitly against whichever window it
-    /// considers the operation's origin. `Workspace` has no AppKit window type; the caller keeps that context.
-    ///
+    /// `url`. The caller owns the panel and its originating window; Workspace
+    /// receives only the chosen URL and the expected document.
     /// `expected` is what makes that hand-off safe. A panel stays open for
     /// as long as the user takes to answer it, and the active document can
     /// be replaced (an external-change reload) or switched (another tab
     /// activated) meanwhile — a sheet blocks neither. Saving "whatever is
     /// active now" would write a *different* document's contents to the
     /// filename the user chose for `expected`, and rebind that document to
-    /// it. Re-reading `tabStore.activeDocument` here and checking
-    /// `isCurrent` against it cannot express that guard: it compares the
-    /// active document with itself and is always true.
-    func saveAs(to url: URL, expecting expected: FileDocument) async {
+    /// it. Checking `isCurrent` against a re-read active document would
+    /// compare that document with itself and always succeed.
+    func saveAs(to url: URL, expecting expected: FileDocument, admission existing: SaveAsAdmission? = nil) async {
         guard isCurrent(expected) else { return }
+        let ownsAdmission = existing == nil
+        guard let admission = existing ?? reserveSaveAs(for: expected) else { return }
+        defer {
+            if ownsAdmission {
+                finishSaveAs(admission)
+            }
+        }
+        guard ownsSaveAs(admission, for: expected) else { return }
         guard let url = freeDestination(url) else { return }
         // Captured at authorization: publication is conditional on it (#183 F22).
         let baseline: DestinationBaseline?
@@ -203,7 +210,7 @@ public extension WorkspaceModel {
             return
         }
         guard documentLifetimeIsOpen(with: expected) else { return }
-        await publishSaveAs(expected, to: url, destinationBaseline: baseline)
+        await publishSaveAs(expected, to: url, destinationBaseline: baseline, admission: admission)
     }
 
     /// The filename `saveAs()`'s own panel prompt defaults to — exposed so
@@ -221,7 +228,8 @@ public extension WorkspaceModel {
     private func publishSaveAs(
         _ document: FileDocument,
         to url: URL,
-        destinationBaseline: DestinationBaseline?
+        destinationBaseline: DestinationBaseline?,
+        admission: SaveAsAdmission
     ) async {
         let context = beginSave(for: document)
         inFlightSaveAsByDocumentID[document.id] = context.generation
@@ -235,7 +243,7 @@ public extension WorkspaceModel {
         do {
             let saved = try await documentWriter.saveAs(document, to: url, destinationBaseline: destinationBaseline)
             onDocumentWritten?(url)
-            await applySaveAs(saved, from: document, context: context, operation: operation)
+            await applySaveAs(saved, from: document, context: context, progress: (operation, admission))
         } catch {
             guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return }
             lastError = workspaceError(for: error)
@@ -246,7 +254,7 @@ public extension WorkspaceModel {
         _ saved: FileDocument,
         from document: FileDocument,
         context: SaveContext,
-        operation: LogicalSaveOperationID
+        progress: (operation: LogicalSaveOperationID, admission: SaveAsAdmission)
     ) async {
         guard let replacement = saveAsReplacement(saved: saved, source: document, context: context) else { return }
         let oldID = document.id
@@ -259,7 +267,7 @@ public extension WorkspaceModel {
             source: document,
             initialReplacement: replacement,
             context: context,
-            operation: operation
+            progress: progress
         ) else { return }
         if case .migrationPending = recoveryOutcome {
             await onSaveAsDestinationSessionPublished?(document, finalReplacement)
@@ -294,7 +302,7 @@ public extension WorkspaceModel {
         source document: FileDocument,
         initialReplacement replacement: FileDocument,
         context: SaveContext,
-        operation: LogicalSaveOperationID
+        progress: (operation: LogicalSaveOperationID, admission: SaveAsAdmission)
     ) async -> FileDocument? {
         await onSaveAsRecoveryFinalized?()
         guard let reconciled = saveAsReplacement(saved: saved, source: document, context: context) else { return nil }
@@ -311,7 +319,8 @@ public extension WorkspaceModel {
         guard let finalReplacement = saveAsReplacement(saved: saved, source: document, context: context),
               sameSaveAsSnapshot(finalReplacement, reconciled),
               let tabID = owningTabID(of: document) else { return nil }
-        includeSavingLifetime(finalReplacement, in: operation)
+        guard includeSaveAsLifetime(finalReplacement, in: progress.admission) else { return nil }
+        includeSavingLifetime(finalReplacement, in: progress.operation)
         tabStore.updateDocument(inTab: tabID) { _ in finalReplacement }
         guard await publishSaveAsSession() else {
             enqueueSaveAsRetry(

@@ -7,7 +7,7 @@ struct LogicalSaveOperationID: Hashable {
     private let value = UUID()
 }
 
-struct SavingDocumentLifetime: Hashable {
+struct SavingDocumentLifetime: Hashable, Sendable {
     let documentID: String
     let recoveryEpoch: UUID
 

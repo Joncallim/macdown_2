@@ -90,6 +90,10 @@ public final class WorkspaceModel {
     /// that interval are deliberately coalesced instead of writing the old
     /// pathname after Save As has selected a destination.
     var inFlightSaveAsByDocumentID: [String: UInt] = [:]
+    /// Reserve the destination picker before an async command can be fired
+    /// again. This is distinct from the Saving indicator, which begins only
+    /// after a destination has been accepted.
+    var saveAsAdmissions: [SavingDocumentLifetime: UUID] = [:]
     /// Active logical saves retain exact document lifetimes. Save As adds its
     /// destination lifetime before the tab changes identity; overlapping
     /// saves remain independent and the destination picker is not a write.

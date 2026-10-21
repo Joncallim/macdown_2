@@ -118,6 +118,12 @@ struct WorkspaceModelSavingIndicatorTests {
             observedPublication = true
             #expect(model.activeDocument?.id != source.id)
             #expect(model.isSavingActiveDocument, "the destination session is still being published")
+            if let active = model.activeDocument {
+                #expect(
+                    model.reserveSaveAs(for: active) == nil,
+                    "a second picker cannot publish during identity transfer"
+                )
+            }
             return true
         }
 
@@ -125,6 +131,13 @@ struct WorkspaceModelSavingIndicatorTests {
 
         #expect(observedPublication)
         #expect(!model.isSavingActiveDocument)
+        if let active = model.activeDocument {
+            let nextAdmission = model.reserveSaveAs(for: active)
+            #expect(nextAdmission != nil, "the next Save As can begin after the first one completes")
+            if let nextAdmission {
+                model.finishSaveAs(nextAdmission)
+            }
+        }
     }
 
     @Test func saveAsFailureAfterDestinationPublicationStopsProgressAndKeepsRecoveryVisible() async {
@@ -150,6 +163,33 @@ struct WorkspaceModelSavingIndicatorTests {
         } else {
             Issue.record("Expected recovery-required state after failed destination session publication")
         }
+    }
+
+    @Test func anOverlappingSaveAsCannotPublishASecondDestinationForTheSameLifetime() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let sourceURL = directory.appendingPathComponent("source.md")
+        let firstDestination = directory.appendingPathComponent("first.md")
+        let secondDestination = directory.appendingPathComponent("second.md")
+        _ = try FileStore().write("original", to: sourceURL)
+        let recovery = RecoveryBuffer(recoveryDirectory: directory.appendingPathComponent("Recovery"))
+        let source = try FileDocument(fileURL: sourceURL, recoveryBuffer: recovery)
+            .load().updatingText("saved text")
+        let store = TabStore(sessionStore: FakeSessionStore(), recoveryBuffer: recovery)
+        store.newTab(document: source)
+        let model = WorkspaceModel(tabStore: store, stateStore: FakeStateStore())
+
+        model.onSaveAsRecoveryFinalized = {
+            #expect(model.isSavingActiveDocument)
+            model.onSaveAsRecoveryFinalized = nil
+            await model.saveAs(to: secondDestination, expecting: source)
+        }
+        await model.saveAs(to: firstDestination, expecting: source)
+
+        #expect(!FileManager.default.fileExists(atPath: secondDestination.path))
+        #expect(try FileStore().read(from: firstDestination).content == "saved text")
+        #expect(model.activeDocument?.fileURL == firstDestination.standardizedFileURL)
+        #expect(!model.isSavingActiveDocument)
     }
 
     /// Adversarial-review finding: `save(isRetry:destinationPolicy:)` has no

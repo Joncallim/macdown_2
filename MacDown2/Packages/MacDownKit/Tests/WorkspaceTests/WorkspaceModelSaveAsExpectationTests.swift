@@ -18,6 +18,29 @@ import Testing
 @MainActor
 @Suite("WorkspaceModel Save As destination expectation")
 struct WorkspaceModelSaveAsExpectationTests {
+    @Test func destinationPanelOwnsTheSaveAsAdmissionUntilItReturns() async throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        let destination = directory.appendingPathComponent("destination.md")
+        _ = try FileStore().write("draft", to: source)
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load().updatingText("edited"))
+        var model: WorkspaceModel?
+        let panel = InterposingPanelProvider(destination: destination) {
+            guard let model, let active = model.activeDocument else {
+                Issue.record("Save As lost its document while the panel was open")
+                return
+            }
+            #expect(model.reserveSaveAs(for: active) == nil)
+        }
+        model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore(), panel: panel)
+
+        await model?.saveAs()
+
+        #expect(try FileStore().read(from: destination).content == "edited")
+    }
+
     /// The damaging case: the user picks a filename for document A, and B is
     /// active by the time the panel returns. Writing B's contents to the name
     /// chosen for A — and rebinding B to it — must not happen.
