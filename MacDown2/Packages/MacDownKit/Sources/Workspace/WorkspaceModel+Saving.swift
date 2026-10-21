@@ -87,8 +87,8 @@ public extension WorkspaceModel {
         guard inFlightSaveAsByDocumentID[document.id] == nil else { return .handled }
 
         let context = beginSave(for: document)
-        beginSavingIndicator(for: document.id)
-        defer { endSavingIndicator(for: document.id) }
+        let operation = beginSavingIndicator(for: document)
+        defer { endSavingIndicator(operation) }
         do {
             let result = try await documentWriter.save(document, encodingOverride: encodingOverride)
             result.document.fileURL.map { onDocumentWritten?($0) }
@@ -187,9 +187,9 @@ public extension WorkspaceModel {
     ) async {
         let context = beginSave(for: document)
         inFlightSaveAsByDocumentID[document.id] = context.generation
-        beginSavingIndicator(for: document.id)
+        let operation = beginSavingIndicator(for: document)
         defer {
-            endSavingIndicator(for: document.id)
+            endSavingIndicator(operation)
             if inFlightSaveAsByDocumentID[document.id] == context.generation {
                 inFlightSaveAsByDocumentID[document.id] = nil
             }
@@ -197,14 +197,19 @@ public extension WorkspaceModel {
         do {
             let saved = try await documentWriter.saveAs(document, to: url, destinationBaseline: destinationBaseline)
             onDocumentWritten?(url)
-            await applySaveAs(saved, from: document, context: context)
+            await applySaveAs(saved, from: document, context: context, operation: operation)
         } catch {
             guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return }
             lastError = workspaceError(for: error)
         }
     }
 
-    private func applySaveAs(_ saved: FileDocument, from document: FileDocument, context: SaveContext) async {
+    private func applySaveAs(
+        _ saved: FileDocument,
+        from document: FileDocument,
+        context: SaveContext,
+        operation: LogicalSaveOperationID
+    ) async {
         guard let replacement = saveAsReplacement(saved: saved, source: document, context: context) else { return }
         let oldID = document.id
         let recoveryOutcome = await finalizeSaveAsRecovery(replacement, source: document, context: context)
@@ -215,7 +220,8 @@ public extension WorkspaceModel {
             saved,
             source: document,
             initialReplacement: replacement,
-            context: context
+            context: context,
+            operation: operation
         ) else { return }
         if case .migrationPending = recoveryOutcome {
             await onSaveAsDestinationSessionPublished?(document, finalReplacement)
@@ -249,7 +255,8 @@ public extension WorkspaceModel {
         _ saved: FileDocument,
         source document: FileDocument,
         initialReplacement replacement: FileDocument,
-        context: SaveContext
+        context: SaveContext,
+        operation: LogicalSaveOperationID
     ) async -> FileDocument? {
         await onSaveAsRecoveryFinalized?()
         guard let reconciled = saveAsReplacement(saved: saved, source: document, context: context) else { return nil }
@@ -266,6 +273,7 @@ public extension WorkspaceModel {
         guard let finalReplacement = saveAsReplacement(saved: saved, source: document, context: context),
               sameSaveAsSnapshot(finalReplacement, reconciled),
               let tabID = owningTabID(of: document) else { return nil }
+        includeSavingLifetime(finalReplacement, in: operation)
         tabStore.updateDocument(inTab: tabID) { _ in finalReplacement }
         guard await publishSaveAsSession() else {
             enqueueSaveAsRetry(

@@ -212,9 +212,10 @@ final class WindowCoordinator {
     ///   it — used by the command palette (post-review finding #4). `nil`
     ///   (the real menu path) keeps the previous ambient behavior.
     func openFile(relativeTo controller: WindowController? = nil) {
+        let trace = OpenPanelTrace()
         Task { @MainActor in
             let provider = controller.map { NSFilePanelProvider(window: $0.window) } ?? panelProvider
-            guard let url = await provider.chooseFile() else { return }
+            guard let url = await provider.chooseFile(trace: trace) else { return }
             await openDocument(at: url, relativeTo: controller?.window)
         }
     }

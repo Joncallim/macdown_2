@@ -36,25 +36,18 @@ extension WindowController {
         return false
     }
 
-    // #57: a document whose backing file was deleted/moved externally is
-    // still just `.dirty` here (`FileDocumentState` has no distinct case
-    // for that — see `FileBackingState.unavailable`), so it used to reach
-    // this exact same "Save / Cancel / Discard Changes" alert with no
-    // hint that "Save" cannot write in place. Labeling the button "Save
-    // As…" and explaining why up front means the destination panel that
-    // follows is expected, not a second, unexplained dialog.
-    private func makeDirtyCloseAlert(fileName: String, needsDestination: Bool) -> NSAlert {
+    /// The backing file can disappear while the sheet is open. Describe the
+    /// user's intent, not a destination decision made before they click.
+    static func makeDirtyCloseAlert(fileName: String) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = String(localized: "Unsaved Changes")
-        alert.informativeText = needsDestination
-            ? String(
-                localized: """
-                The original file for "\(fileName)" is no longer available. \
-                Save a copy to close, or discard your changes.
-                """
-            )
-            : String(localized: "Do you want to save changes to \"\(fileName)\"?")
-        alert.addButton(withTitle: needsDestination ? String(localized: "Save As…") : String(localized: "Save"))
+        alert.informativeText = String(
+            localized: """
+            Save changes to "\(fileName)"? If the original file is unavailable, \
+            you may be asked to choose a location.
+            """
+        )
+        alert.addButton(withTitle: String(localized: "Save Changes"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         alert.addButton(withTitle: String(localized: "Discard Changes"))
         alert.alertStyle = .warning
@@ -63,8 +56,7 @@ extension WindowController {
 
     private func presentDirtyCloseSheet(for sender: NSWindow, context: CloseSheetContext) {
         let fileName = context.fileURL?.lastPathComponent ?? String(localized: "Untitled")
-        let needsDestination = model.requiresDestinationToSave
-        let alert = makeDirtyCloseAlert(fileName: fileName, needsDestination: needsDestination)
+        let alert = Self.makeDirtyCloseAlert(fileName: fileName)
         alert.beginSheetModal(for: sender) { [weak self] response in
             Task { @MainActor [weak self] in
                 guard let self, coordinator != nil,

@@ -33,4 +33,26 @@ struct CloseSheetContextTests {
 
         #expect(WindowController.presentedContextMatches(presented.withFreshRecoveryLifetime(), context))
     }
+
+    @Test func closePromptRemainsTruthfulIfBackingDisappearsWhileSheetIsOpen() {
+        let alert = WindowController.makeDirtyCloseAlert(fileName: "draft.md")
+
+        #expect(alert.buttons[0].title == "Save Changes")
+        #expect(alert.informativeText.contains("location"))
+        #expect(alert.informativeText.contains("draft.md"))
+    }
+
+    @Test func aDisposedExplicitPanelOriginCancelsInsteadOfGoingModal() {
+        let missingOrigin = NSFilePanelProvider(window: nil)
+        guard case .cancelled = missingOrigin.presentation(keyWindow: nil) else {
+            Issue.record("A disposed explicit origin must cancel its panel request")
+            return
+        }
+
+        let applicationOrigin = NSFilePanelProvider()
+        guard case .modal = applicationOrigin.presentation(keyWindow: nil) else {
+            Issue.record("An application command without a key window may use a modal panel")
+            return
+        }
+    }
 }
