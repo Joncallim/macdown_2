@@ -92,19 +92,48 @@ public struct TOCContribution: Contributing {
     /// — a document's own heading structure is never "invalid" to this
     /// contribution.
     static func markdownList(for headings: [HeadingItem]) -> String {
-        guard !headings.isEmpty else { return "*(No headings found.)*" }
+        list(headings.map { (level: $0.level, content: escaped($0.title)) })
+    }
+
+    /// Serializes only an already-allocated index. The caller must first
+    /// verify those fragments against the emitted HTML; `run` deliberately
+    /// continues to produce the plain list until that end-to-end gate exists.
+    static func linkedMarkdownList(for index: HeadingAnchorIndex) -> String {
+        list(index.headings.map { heading in
+            let destination = encodedFragment(heading.fragment)
+            return (level: heading.level, content: "[\(escaped(heading.title))](#\(destination))")
+        })
+    }
+
+    private static func list(_ entries: [(level: Int, content: String)]) -> String {
+        guard !entries.isEmpty else { return "*(No headings found.)*" }
 
         var lines: [String] = []
         var openLevels: [Int] = []
-        for heading in headings {
-            while let top = openLevels.last, top >= heading.level {
+        for entry in entries {
+            while let top = openLevels.last, top >= entry.level {
                 openLevels.removeLast()
             }
             let indent = String(repeating: "  ", count: openLevels.count)
-            openLevels.append(heading.level)
-            lines.append("\(indent)- \(escaped(heading.title))")
+            openLevels.append(entry.level)
+            lines.append("\(indent)- \(entry.content)")
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// Encode the raw allocated ID once as a URL fragment destination. The
+    /// Markdown renderer subsequently owns HTML attribute escaping.
+    private static func encodedFragment(_ fragment: String) -> String {
+        var result = ""
+        for byte in fragment.utf8 {
+            if (byte >= 0x41 && byte <= 0x5A) || (byte >= 0x61 && byte <= 0x7A)
+                || (byte >= 0x30 && byte <= 0x39) || [0x2D, 0x2E, 0x5F, 0x7E].contains(byte) {
+                result.append(Character(UnicodeScalar(byte)))
+            } else {
+                result += String(format: "%%%02X", byte)
+            }
+        }
+        return result
     }
 
     /// Backslash-escapes CommonMark's ASCII punctuation set. `title` is
