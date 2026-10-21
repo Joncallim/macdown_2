@@ -1,5 +1,5 @@
 {
-  "originHash" : "ea9139b13491f66db3d8639bb3df62f05b501a79e9d91074b0ef81a2c72a9937",
+  "originHash" : "66cf1e68ff9a68c6d0eebd8f74b05d840cd1e9f9cc90543c460b89773f598a87",
   "pins" : [
     {
       "identity" : "neon",
@@ -66,10 +66,9 @@
     {
       "identity" : "textual",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/gonzalezreal/textual",
+      "location" : "https://github.com/Joncallim/textual",
       "state" : {
-        "revision" : "01b51875a5406eefc95f52a058cb059e7bc94dc4",
-        "version" : "0.5.0"
+        "revision" : "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6"
       }
     },
     {

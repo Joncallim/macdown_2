@@ -69,12 +69,12 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-markdown", exact: "0.8.0"),
         .package(url: "https://github.com/swiftlang/swift-cmark", exact: "0.8.0"),
         .package(url: "https://github.com/jpsim/Yams", exact: "6.2.2"),
-        .package(url: "https://github.com/gonzalezreal/textual", exact: "0.5.0"),
+        .package(url: "https://github.com/Joncallim/textual", revision: "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6"),
         // Only a transitive dependency of `textual` (via its own Package.swift)
         // until this pin: `textual` does not re-export `SwiftUIMath` as one of
         // its own products, so `MathRendering` (below) needs this explicit,
         // same-version pin to import it directly (epic-19-implementation.md
-        // §16). Pinned to the exact version `textual` 0.5.0 itself requests
+        // §16). Pinned to the exact version the Textual fork itself requests
         // (`from: "0.1.0"`), so SwiftPM resolves one shared copy, not two.
         .package(url: "https://github.com/gonzalezreal/swiftui-math", exact: "0.1.0"),
     ],
@@ -195,7 +195,10 @@ let package = Package(
         .testTarget(name: "EditorCoreTests", dependencies: ["EditorCore", "JSONSupport"]),
         .testTarget(name: "HighlightingTests", dependencies: ["Highlighting"]),
         .testTarget(name: "MarkdownEngineTests", dependencies: ["MarkdownEngine"]),
-        .testTarget(name: "PreviewTests", dependencies: ["Preview"]),
+        .testTarget(
+            name: "PreviewTests",
+            dependencies: ["Preview", .product(name: "Textual", package: "textual")]
+        ),
         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
         .testTarget(name: "JSONSupportTests", dependencies: ["JSONSupport"]),
         .testTarget(name: "ExportServiceTests", dependencies: ["ExportService"]),

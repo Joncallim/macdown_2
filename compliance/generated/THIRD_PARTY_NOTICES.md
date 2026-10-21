@@ -36,7 +36,7 @@ This file is generated from `compliance/inventory.json` by
 | swift-markdown | 0.8.0 | Apache-2.0 |
 | SwiftTreeSitter | main | BSD-3-Clause |
 | SwiftUIMath | 0.1.0 | MIT |
-| Textual | 0.5.0 | MIT |
+| Textual | d3ddabb | MIT |
 | tree-sitter (runtime) | 0.25.10 | MIT |
 | tree-sitter-bash | 0.25.1 | MIT |
 | tree-sitter-cpp | 0.23.4 | MIT |
@@ -2541,9 +2541,9 @@ SOFTWARE.
 
 ## Textual
 
-- Version: 0.5.0
-- Upstream: https://github.com/gonzalezreal/textual
-- Revision: `01b51875a5406eefc95f52a058cb059e7bc94dc4`
+- Version: d3ddabb
+- Upstream: https://github.com/Joncallim/textual
+- Revision: `d3ddabb1da37681083cdc3da706f96cf2fb6a3c6`
 - Licence: MIT
 - Copyright (c) 2024 Guille Gonzalez
 

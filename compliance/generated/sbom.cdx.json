@@ -603,7 +603,7 @@
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/gonzalezreal/textual"
+          "url": "https://github.com/Joncallim/textual"
         }
       ],
       "licenses": [
@@ -626,9 +626,9 @@
           "value": "exact"
         }
       ],
-      "purl": "pkg:github/gonzalezreal/textual@01b51875a5406eefc95f52a058cb059e7bc94dc4",
+      "purl": "pkg:github/joncallim/textual@d3ddabb1da37681083cdc3da706f96cf2fb6a3c6",
       "type": "library",
-      "version": "0.5.0"
+      "version": "d3ddabb"
     },
     {
       "bom-ref": "theme-tomorrow-dark",
@@ -1401,7 +1401,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:cb3c9d30-a035-5eac-aefc-63e218f47600",
+  "serialNumber": "urn:uuid:35834f35-9797-5e71-91c0-a2d6ab5bb5fb",
   "specVersion": "1.5",
   "version": 1
 }

@@ -10,7 +10,14 @@ enum DirectoryLoadState: Sendable {
 
 @MainActor @Observable
 public final class FileTreeModel {
-    public internal(set) var root: URL?
+    public internal(set) var root: URL? {
+        willSet {
+            if root != newValue {
+                rootAccessWillChange?()
+            }
+        }
+    }
+
     public internal(set) var availability: FolderAvailability = .noRoot
     public internal(set) var rows: [FileTreeRow] = []
     public var selectedURL: URL?
@@ -34,7 +41,15 @@ public final class FileTreeModel {
     var children: [URL: DirectoryLoadState] = [:]
     var watchers: [URL: any DirectoryWatcherHandle] = [:]
     var rescanTasks: [URL: Task<Void, Never>] = [:]
-    var rootAccessScope: FolderAccessScope?
+    var rootAccessScope: FolderAccessScope? {
+        willSet {
+            if rootAccessScope !== newValue {
+                rootAccessWillChange?()
+            }
+        }
+    }
+
+    @ObservationIgnored private var rootAccessWillChange: (@MainActor () -> Void)?
     var generation: UInt = 0
     var reloadTokens: [URL: UInt] = [:]
     var nextReloadToken: UInt = 0
@@ -52,6 +67,17 @@ public final class FileTreeModel {
         self.reader = reader; self.mutator = mutator; self.watcher = watcher
         self.preferences = preferences
         self.supportedExtensions = Set(supportedExtensions.map { $0.lowercased() })
+    }
+
+    /// Runs before a root URL or its scope is replaced or torn down, including a same-path scope replacement.
+    /// The callback must revoke old preview authority synchronously and must not mutate this model.
+    public func setRootAccessWillChange(_ callback: (@MainActor () -> Void)?) {
+        precondition(callback == nil || rootAccessWillChange == nil, "Root access observer already installed")
+        rootAccessWillChange = callback
+    }
+
+    func notifyRootAccessWillChange() {
+        rootAccessWillChange?()
     }
 
     public func setRoot(_ url: URL?, accessURL: URL? = nil) async {
