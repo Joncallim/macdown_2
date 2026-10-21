@@ -16,7 +16,10 @@ extension WindowCoordinator {
     }
 
     func reopenKeyDocument(withEncoding encoding: String.Encoding) {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }),
+              let document = controller.model.activeDocument,
+              document.encoding.encoding != encoding
+        else { return }
         Task { await controller.reopenDocument(withEncoding: encoding) }
     }
 
@@ -28,7 +31,10 @@ extension WindowCoordinator {
     /// The status-bar encoding actions act on the window that owns the bar —
     /// not whichever window happens to be key when the action runs (#183 R01).
     func reopenDocument(in model: WorkspaceModel, withEncoding encoding: String.Encoding) {
-        guard let controller = controllers.first(where: { $0.model === model }) else { return }
+        guard let controller = controllers.first(where: { $0.model === model }),
+              let document = model.activeDocument,
+              document.encoding.encoding != encoding
+        else { return }
         Task { await controller.reopenDocument(withEncoding: encoding) }
     }
 

@@ -130,7 +130,7 @@ extension WindowCoordinator {
                 guard result.isCurrent else { return }
                 let created = result.url
                 controller.fileTreeModel.selectedURL = created
-                controller.fileTreeModel.renamingURL = created
+                controller.fileTreeModel.renamingURL = isDirectory ? created : nil
                 if !isDirectory {
                     controller.fileTreeModel.pendingOpenURL = created
                     // Explicit target: without this, `openDocument`'s own
