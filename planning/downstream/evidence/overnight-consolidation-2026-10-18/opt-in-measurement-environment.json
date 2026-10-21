@@ -1,0 +1,10 @@
+{
+  "utc": "2026-10-18T21:03:40.771476+00:00",
+  "current_tool_environment": {
+    "MACDOWN_INLINE_RECONCILE": null,
+    "MACDOWN_HIGHLIGHT_BUDGET_BENCH": null,
+    "MACDOWN_HIGHLIGHT_FALLBACK_BENCH": null,
+    "MACDOWN_KEYSTROKE_STALL_BENCH": null
+  },
+  "qualification": "The package result log must also show InlineResolutionReconciliationTests skipped by its own condition; this is corroboration from the unchanged tool environment."
+}

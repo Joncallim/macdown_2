@@ -1,0 +1,38 @@
+@testable import MarkdownEngine
+import Testing
+
+struct HeadingAnchorAllocatorTests {
+    @Test func reservesAuthoredIDsAndAllocatesDuplicatesGlobally() {
+        var allocator = HeadingAnchorAllocator(reservedIDs: ["overview", "A", "a-1"])
+        #expect(allocator.allocate(title: "Overview") == "overview-1")
+        #expect(allocator.allocate(title: "A") == "a")
+        #expect(allocator.allocate(title: "A") == "a-2")
+        #expect(allocator.allocate(title: "A-1") == "a-1-1")
+
+        var unreserved = HeadingAnchorAllocator()
+        #expect(unreserved.allocate(title: "A") == "a")
+        #expect(unreserved.allocate(title: "A") == "a-1")
+        #expect(unreserved.allocate(title: "A-1") == "a-1-1")
+    }
+
+    @Test func normalizesUnicodeWithoutLocaleDependentNaming() {
+        var allocator = HeadingAnchorAllocator()
+        #expect(allocator.allocate(title: "  Café   東京  ") == "café-東京")
+        #expect(allocator.allocate(title: "Cafe\u{301} 東京") == "café-東京-1")
+        #expect(allocator.allocate(title: "!!!") == "section")
+        #expect(allocator.allocate(title: "  _ a - B _ ") == "_-a---b-_")
+    }
+
+    @Test func longFragmentsRemainBoundedAndRepeatable() {
+        let title = String(repeating: "漢字", count: 100)
+        var first = HeadingAnchorAllocator()
+        var second = HeadingAnchorAllocator()
+        let initial = first.allocate(title: title)
+        let duplicate = first.allocate(title: title)
+        #expect(initial == second.allocate(title: title))
+        #expect(initial != duplicate)
+        #expect(initial.utf8.count <= 256)
+        #expect(duplicate.utf8.count <= 256)
+        #expect(initial.hasSuffix("-\(String(initial.suffix(12)))"))
+    }
+}

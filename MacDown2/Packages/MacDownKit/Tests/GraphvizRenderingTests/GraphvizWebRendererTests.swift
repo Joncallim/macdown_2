@@ -16,6 +16,21 @@ struct GraphvizWebRendererTests {
         GraphvizFence(source: source, sourceRange: 0 ..< source.count)
     }
 
+    private static func groupBody(
+        className: String,
+        title: String,
+        in svg: String
+    ) throws -> String {
+        let escapedClass = NSRegularExpression.escapedPattern(for: className)
+        let escapedTitle = NSRegularExpression.escapedPattern(for: title)
+        let pattern = "(?s)<g id=\"[^\"]+\" class=\"\(escapedClass)\">.*?<title>\(escapedTitle)</title>.*?</g>"
+        let regex = try NSRegularExpression(pattern: pattern)
+        let range = NSRange(svg.startIndex..., in: svg)
+        let match = try #require(regex.firstMatch(in: svg, range: range))
+        let matchRange = try #require(Range(match.range, in: svg))
+        return String(svg[matchRange])
+    }
+
     @Test func renderProducesRealSVGForValidSource() async throws {
         let renderer = GraphvizWebRenderer()
         let diagram = try await renderer.render(Self.fence("digraph { a -> b; b -> c; }"), context: Self.context)
@@ -27,6 +42,134 @@ struct GraphvizWebRendererTests {
         // carries no pngData field — this assertion keeps that assumption
         // honest.
         #expect(!diagram.svg.contains("foreignObject"))
+        await renderer.shutdown()
+    }
+
+    @Test func renderUsesNeutralLightCanvasRegardlessOfThemeContext() async throws {
+        let renderer = GraphvizWebRenderer()
+        let themedContext = GraphvizRenderContext(
+            foregroundRed: 0x11 / 255.0, foregroundGreen: 0x22 / 255.0, foregroundBlue: 0x33 / 255.0,
+            backgroundRed: 0xEE / 255.0, backgroundGreen: 0xDD / 255.0, backgroundBlue: 0xCC / 255.0
+        )
+        let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: themedContext)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
+        await renderer.shutdown()
+    }
+
+    @Test func sourceLevelGraphvizColorsRemainAuthoritative() async throws {
+        let renderer = GraphvizWebRenderer()
+        let source = "digraph { node [color=\"#ABCDEF\"]; a -> b; }"
+        let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+        #expect(diagram.svg.range(
+            of: ##"<(ellipse|polygon)[^>]*stroke="#ABCDEF"[^>]*>"##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil)
+        await renderer.shutdown()
+    }
+
+    @Test func filledNodesPreserveNativeDefaultsAndAuthoredFillFallback() async throws {
+        let renderer = GraphvizWebRenderer()
+        let light = try await renderer.render(
+            Self.fence("digraph { node [style=filled]; a -> b; }"),
+            context: Self.context
+        )
+        let dark = try await renderer.render(
+            Self.fence("digraph { node [style=filled]; a -> b; }"),
+            context: GraphvizRenderContext(
+                foregroundRed: 0xEE / 255.0, foregroundGreen: 0xDD / 255.0, foregroundBlue: 0xCC / 255.0,
+                backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
+            )
+        )
+        let lightNode = try Self.groupBody(className: "node", title: "a", in: light.svg)
+        let darkNode = try Self.groupBody(className: "node", title: "a", in: dark.svg)
+        #expect(lightNode.range(
+            of: ##"<(ellipse|polygon)[^>]*fill="lightgrey"[^>]*stroke="black""##,
+            options: [.regularExpression]
+        ) != nil)
+        #expect(darkNode.range(
+            of: ##"<(ellipse|polygon)[^>]*fill="lightgrey"[^>]*stroke="black""##,
+            options: [.regularExpression]
+        ) != nil)
+        let authored = try await renderer.render(
+            Self.fence("digraph { node [style=filled, fillcolor=\"#ABCDEF\"]; a -> b; }"),
+            context: Self.context
+        )
+        let authoredNode = try Self.groupBody(className: "node", title: "a", in: authored.svg)
+        #expect(authoredNode.localizedCaseInsensitiveContains("fill=\"#ABCDEF\""))
+        await renderer.shutdown()
+    }
+
+    @Test func graphAndClusterDefaultsUseNeutralLightCanvasAndNativeForeground() async throws {
+        let renderer = GraphvizWebRenderer()
+        let themedContext = GraphvizRenderContext(
+            foregroundRed: 0x11 / 255.0, foregroundGreen: 0x22 / 255.0, foregroundBlue: 0x33 / 255.0,
+            backgroundRed: 0xEE / 255.0, backgroundGreen: 0xDD / 255.0, backgroundBlue: 0xCC / 255.0
+        )
+        let source = "digraph { label=\"Graph label\"; subgraph cluster_one { label=\"Cluster label\"; a -> b; } }"
+        let diagram = try await renderer.render(Self.fence(source), context: themedContext)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("Graph label"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("Cluster label"))
+        let cluster = try Self.groupBody(className: "cluster", title: "cluster_one", in: diagram.svg)
+        let node = try Self.groupBody(className: "node", title: "a", in: diagram.svg)
+        #expect(cluster
+            .range(of: ##"<polygon[^>]*fill="#ffffff"[^>]*stroke="black""##, options: [.regularExpression]) != nil)
+        #expect(node.range(
+            of: ##"<(ellipse|polygon)[^>]*fill="none"[^>]*stroke="black""##,
+            options: [.regularExpression]
+        ) != nil)
+        await renderer.shutdown()
+    }
+
+    @Test func filledClustersContrastAndAuthoredColorKeepsGraphvizFallback() async throws {
+        let renderer = GraphvizWebRenderer()
+        let clustered = try await renderer.render(
+            Self.fence("digraph { subgraph cluster_a { label=\"Group\"; style=filled; a; b; } a -> b; }"),
+            context: GraphvizRenderContext(
+                foregroundRed: 0xCC / 255.0, foregroundGreen: 0xCC / 255.0, foregroundBlue: 0xCC / 255.0,
+                backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
+            )
+        )
+        let cluster = try Self.groupBody(className: "cluster", title: "cluster_a", in: clustered.svg)
+        #expect(cluster
+            .range(of: ##"<polygon[^>]*fill="#ffffff"[^>]*stroke="black""##, options: [.regularExpression]) != nil)
+
+        let authored = try await renderer.render(
+            Self.fence("digraph { node [style=filled, color=red, fontcolor=white]; a -> b; }"),
+            context: Self.context
+        )
+        let authoredNode = try Self.groupBody(className: "node", title: "a", in: authored.svg)
+        #expect(authoredNode.localizedCaseInsensitiveContains("fill=\"red\""))
+        #expect(authoredNode.localizedCaseInsensitiveContains("fill=\"white\""))
+        await renderer.shutdown()
+    }
+
+    @Test func samePooledPageTracksLightDarkLightContexts() async throws {
+        let renderer = GraphvizWebRenderer(poolSize: 1)
+        let light = Self.context
+        let dark = GraphvizRenderContext(
+            foregroundRed: 0xEE / 255.0, foregroundGreen: 0xDD / 255.0, foregroundBlue: 0xCC / 255.0,
+            backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
+        )
+        let lightSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: light).svg
+        let darkSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: dark).svg
+        let lightAgainSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: light).svg
+        #expect(lightSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
+        #expect(darkSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
+        await renderer.shutdown()
+    }
+
+    @Test func nonFiniteAndOutOfRangeComponentsNormalizeSafely() async throws {
+        let renderer = GraphvizWebRenderer()
+        let context = GraphvizRenderContext(
+            foregroundRed: .nan, foregroundGreen: .infinity, foregroundBlue: -.infinity,
+            backgroundRed: 2, backgroundGreen: -1, backgroundBlue: .nan
+        )
+        let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: context)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("stroke=\"black\""))
+        #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
+        #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()
     }
 

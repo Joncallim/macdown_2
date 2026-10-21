@@ -1,0 +1,134 @@
+
+=== A_control_typing (resolve in invalidated set) ===
+inline ranges before: 1255
+edit {24598, 0} -> 1 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=0 [] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=1 rejected=1
+  rejected list: count=1256 zero-length=0 overlaps=1
+    overlap: [24597, 24627) then [24600, 24627)
+inline ranges after resolve (tree): count=1255 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1255; non-empty ranges only in edited=1 only in fresh=1
+  only-in-fresh sample: ["[24597, 24627)"]
+  only-in-edited sample: ["[24600, 24627)"]
+inline tree sexp identical: true (len 103922 vs 103922)
+highlight captures: edited=5521 fresh=5521 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW A_control_typing wholeDoc=false rejected=1 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== B_replace600 (resolve in invalidated set) ===
+inline ranges before: 1255
+edit {24598, 600} -> 601 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=15 ["[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=1 rejected=1
+  rejected list: count=1271 zero-length=15 overlaps=1
+    overlap: [24598, 25215) then [24599, 24626)
+inline ranges after resolve (tree): count=1255 zero-length=15 overlaps=0
+fresh parse inline ranges: count=1255; non-empty ranges only in edited=1 only in fresh=16
+  only-in-fresh sample: ["[24599, 24626)", "[24629, 24642)", "[24646, 24667)", "[24698, 24717)", "[24719, 24791)"]
+  only-in-edited sample: ["[24598, 25215)"]
+inline tree sexp identical: false (len 104090 vs 103922)
+highlight captures: edited=5525 fresh=5522 onlyEdited=3 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW B_replace600 wholeDoc=false rejected=1 zeroAfter=15 overlapsAfter=0 hlDiff=3
+
+=== C_deleteBlock (resolve in invalidated set) ===
+inline ranges before: 1255
+edit {1000, 1500} -> 0 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=38 ["[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=1 rejected=1
+  rejected list: count=1255 zero-length=38 overlaps=1
+    overlap: [982, 1019) then [1000, 1000)
+inline ranges after resolve (tree): count=1255 zero-length=38 overlaps=0
+fresh parse inline ranges: count=1216; non-empty ranges only in edited=2 only in fresh=1
+  only-in-fresh sample: ["[982, 1019)"]
+  only-in-edited sample: ["[1000, 1019)", "[982, 1000)"]
+inline tree sexp identical: true (len 28836 vs 28836)
+highlight captures: edited=3212 fresh=3212 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW C_deleteBlock wholeDoc=false rejected=1 zeroAfter=38 overlapsAfter=0 hlDiff=0
+
+=== D_type_then_delete_one_turn (resolve in invalidated set) ===
+inline ranges before: 1255
+edit {24598, 0} -> 1 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=0 [] overlaps=0
+edit {1000, 1500} -> 0 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=38 ["[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=2 rejected=1
+  rejected list: count=1256 zero-length=38 overlaps=2
+    overlap: [982, 1019) then [1000, 1000)
+    overlap: [23097, 23127) then [23100, 23127)
+inline ranges after resolve (tree): count=1255 zero-length=38 overlaps=0
+fresh parse inline ranges: count=1216; non-empty ranges only in edited=3 only in fresh=2
+  only-in-fresh sample: ["[23097, 23127)", "[982, 1019)"]
+  only-in-edited sample: ["[1000, 1019)", "[23100, 23127)", "[982, 1000)"]
+inline tree sexp identical: true (len 28836 vs 28836)
+highlight captures: edited=3211 fresh=3211 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW D_type_then_delete_one_turn wholeDoc=false rejected=1 zeroAfter=38 overlapsAfter=0 hlDiff=0
+
+=== A_control_typing (resolve in whole document) ===
+inline ranges before: 1255
+edit {24598, 0} -> 1 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=0 [] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=1 rejected=1
+  rejected list: count=1256 zero-length=0 overlaps=1
+    overlap: [24597, 24627) then [24600, 24627)
+inline ranges after resolve (tree): count=1255 zero-length=0 overlaps=0
+fresh parse inline ranges: count=1255; non-empty ranges only in edited=1 only in fresh=1
+  only-in-fresh sample: ["[24597, 24627)"]
+  only-in-edited sample: ["[24600, 24627)"]
+inline tree sexp identical: true (len 103922 vs 103922)
+highlight captures: edited=5521 fresh=5521 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW A_control_typing wholeDoc=true rejected=1 zeroAfter=0 overlapsAfter=0 hlDiff=0
+
+=== B_replace600 (resolve in whole document) ===
+inline ranges before: 1255
+edit {24598, 600} -> 601 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=15 ["[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)", "[24598, 24598)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=1 rejected=1
+  rejected list: count=1271 zero-length=15 overlaps=1
+    overlap: [24598, 25215) then [24599, 24626)
+inline ranges after resolve (tree): count=1255 zero-length=15 overlaps=0
+fresh parse inline ranges: count=1255; non-empty ranges only in edited=1 only in fresh=16
+  only-in-fresh sample: ["[24599, 24626)", "[24629, 24642)", "[24646, 24667)", "[24698, 24717)", "[24719, 24791)"]
+  only-in-edited sample: ["[24598, 25215)"]
+inline tree sexp identical: false (len 104090 vs 103922)
+highlight captures: edited=5525 fresh=5522 onlyEdited=3 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW B_replace600 wholeDoc=true rejected=1 zeroAfter=15 overlapsAfter=0 hlDiff=3
+
+=== C_deleteBlock (resolve in whole document) ===
+inline ranges before: 1255
+edit {1000, 1500} -> 0 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=38 ["[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=1 rejected=1
+  rejected list: count=1255 zero-length=38 overlaps=1
+    overlap: [982, 1019) then [1000, 1000)
+inline ranges after resolve (tree): count=1255 zero-length=38 overlaps=0
+fresh parse inline ranges: count=1216; non-empty ranges only in edited=2 only in fresh=1
+  only-in-fresh sample: ["[982, 1019)"]
+  only-in-edited sample: ["[1000, 1019)", "[982, 1000)"]
+inline tree sexp identical: true (len 28836 vs 28836)
+highlight captures: edited=3212 fresh=3212 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW C_deleteBlock wholeDoc=true rejected=1 zeroAfter=38 overlapsAfter=0 hlDiff=0
+
+=== D_type_then_delete_one_turn (resolve in whole document) ===
+inline ranges before: 1255
+edit {24598, 0} -> 1 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=0 [] overlaps=0
+edit {1000, 1500} -> 0 units; after applyEdit+reparse inline ranges:
+  count=1255 zero-length=38 ["[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)", "[1000, 1000)"] overlaps=0
+ts_parser_set_included_ranges during edit+resolve: accepted=2 rejected=1
+  rejected list: count=1256 zero-length=38 overlaps=2
+    overlap: [982, 1019) then [1000, 1000)
+    overlap: [23097, 23127) then [23100, 23127)
+inline ranges after resolve (tree): count=1255 zero-length=38 overlaps=0
+fresh parse inline ranges: count=1216; non-empty ranges only in edited=3 only in fresh=2
+  only-in-fresh sample: ["[23097, 23127)", "[982, 1019)"]
+  only-in-edited sample: ["[1000, 1019)", "[23100, 23127)", "[982, 1000)"]
+inline tree sexp identical: true (len 28836 vs 28836)
+highlight captures: edited=3211 fresh=3211 onlyEdited=0 onlyFresh=0
+  onlyFresh sample: []
+VERDICT_ROW D_type_then_delete_one_turn wholeDoc=true rejected=1 zeroAfter=38 overlapsAfter=0 hlDiff=0

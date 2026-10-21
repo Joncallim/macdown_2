@@ -1,0 +1,32 @@
+{
+  "enabled_count": 415,
+  "disabled": [
+    "MacDown2Tests/WholeAppTabScalePerformanceTests/materializingTwentyTabsCompletesWithinBudget()",
+    "MacDown2Tests/WholeAppTabScalePerformanceTests/switchingAcrossTwentyAlreadyOpenTabsIsCheapRelativeToFirstOpen()"
+  ],
+  "retained_interaction_tests": [
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/aCancelledQueuedRevisionDoesNotBlockRecoveryOfTheDisplayedPage()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/aFailedPendingRecoveryCanRetryAndItsLateCallbackCannotSettleTheRetry()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/aNilLoadReturnRearmsOnlyThatAttempt()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/aNilPendingRecoveryRearmsWithoutRestoringItsBudget()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/aQueuedNewerRevisionIsNotAssignedToARecoveryOfTheOldPage()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/aQueuedSameGenerationRetryKeepsItsOwnAdmissionDuringProcessTermination()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/aRecoveryCallbackCannotSettleANewerStartedRevision()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/disposalRevokesOwnershipBeforeStoppingWebKit()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/lateFailureCannotRearmANewerLoad(provisional:)",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/lateFinishCannotCompleteANewerLoadOrPreventItsRetry()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/nilUnknownAndWrongViewCallbacksCannotSettleTheCurrentLoad()",
+    "MacDown2Tests/HTMLPreviewNavigationIdentityTests/recoveryHasItsOwnNavigationAndKeepsTheCrashBudget()",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/coordinatorDisposalDuringResponseRevokesDelivery()",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/duplicateStartDoesNotReplaceAnActiveAttempt()",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/nestedReuseCannotLetTheRetiredStackFrameFinishANewerAttempt()",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/ordinaryMainDeliveryPreservesContentTypeAndCSP()",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/replacingOrDisposingTheRequestRevokesItsConsumers(dispose:)",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/stopBeforeAnErrorPreventsFailureDelivery()",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/stopDuringDeliveryIsTerminal(afterData:)",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/stopForAnotherViewOrTaskDoesNotCancelTheLiveAttempt()",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/stoppingOneTaskDoesNotRetireAnotherAdmittedTask()",
+    "MacDown2Tests/HTMLPreviewSchemeDeliveryTests/terminalCallbackReleasesAdmissionBeforeReentrancy(failing:)",
+    "MacDown2Tests/WholeAppTabScalePerformanceTests/teardownRetiresTheWindowAndItsBackgroundWork()"
+  ]
+}

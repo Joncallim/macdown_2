@@ -8,8 +8,10 @@ import Foundation
 @MainActor
 final class KeyedSerialRunner<Key: Hashable> {
     private var tails: [Key: Task<Void, Never>] = [:]
+    var onEnqueue: (() -> Void)?
 
     func run(key: Key, _ operation: @escaping @MainActor () async -> Void) async {
+        onEnqueue?()
         let previous = tails[key]
         let task = Task { @MainActor in
             await previous?.value

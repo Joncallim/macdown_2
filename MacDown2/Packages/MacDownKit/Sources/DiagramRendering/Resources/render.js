@@ -4,7 +4,18 @@
 // disables Mermaid's own `click` interaction directives and sanitizes HTML
 // inside diagram labels — defense in depth alongside the page's own CSP and
 // the containing WKWebView's lack of network access.
-mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    // Mermaid applies init directives and frontmatter config through the
+    // same config sanitizer. Keep the product's neutral-light-v1 palette
+    // authoritative by protecting the supported theme keys there, rather
+    // than rewriting authored source text.
+    secure: [
+        "secure", "securityLevel", "startOnLoad", "maxTextSize",
+        "suppressErrorRendering", "maxEdges", "theme", "themeVariables", "themeCSS"
+    ]
+});
 
 // Real WebKit-composited raster snapshot resolution multiplier for the
 // `png` field below (see the long comment on that field for why this
@@ -41,6 +52,65 @@ function rasterize(svg, width, height) {
     });
 }
 
+function positiveLength(value) {
+    var text = String(value || "").trim();
+    var match = text.match(/^([+]?\d+(?:\.\d*)?|[+]?\.\d+)(?:[eE][+-]?\d+)?(?:px)?$/i);
+    if (!match) return 0;
+    var number = Number(text.replace(/px$/i, ""));
+    return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function svgCanvasDimensions(root) {
+    var viewBox = root.getAttribute("viewBox");
+    var values = viewBox ? viewBox.trim().split(/[\s,]+/).map(Number) : [];
+    var validViewBox = values.length === 4 && values.every(Number.isFinite) && values[2] > 0 && values[3] > 0;
+    if (validViewBox) {
+        return {
+            x: values[0],
+            y: values[1],
+            width: values[2],
+            height: values[3],
+            usesViewBox: true,
+            rectWidth: String(values[2]),
+            rectHeight: String(values[3])
+        };
+    }
+
+    var rectWidth = root.getAttribute("width") || "100%";
+    var rectHeight = root.getAttribute("height") || "100%";
+    return {
+        x: 0,
+        y: 0,
+        width: positiveLength(rectWidth) || 1,
+        height: positiveLength(rectHeight) || 1,
+        usesViewBox: false,
+        rectWidth: rectWidth,
+        rectHeight: rectHeight
+    };
+}
+
+function addOpaqueCanvas(svg) {
+    var parser = new DOMParser();
+    var document = parser.parseFromString(svg, "image/svg+xml");
+    var root = document.documentElement;
+    if (!root || root.nodeName.toLowerCase() !== "svg") return { svg: svg, width: 1, height: 1 };
+
+    var dimensions = svgCanvasDimensions(root);
+    if (!dimensions.usesViewBox) root.removeAttribute("viewBox");
+    var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", String(dimensions.x));
+    rect.setAttribute("y", String(dimensions.y));
+    rect.setAttribute("width", dimensions.rectWidth);
+    rect.setAttribute("height", dimensions.rectHeight);
+    rect.setAttribute("fill", "#FFFFFF");
+    root.insertBefore(rect, root.firstChild);
+    return {
+        svg: new XMLSerializer().serializeToString(root),
+        width: dimensions.width,
+        height: dimensions.height
+    };
+}
+
 // Returns a plain, JSON-serializable object so it bridges cleanly across
 // WKWebView's evaluateJavaScript boundary:
 // { ok: true, svg, png, width, height } on success, { ok: false, message }
@@ -66,21 +136,47 @@ function rasterize(svg, width, height) {
 // uses this raster snapshot instead (mirroring `MathContribution`'s own
 // PNG-based approach), while Export keeps using `svg` untouched, genuinely
 // vector, and unaffected by any of this.
-window.__macdownRenderMermaid = async function (source) {
+window.__macdownRenderMermaid = async function (source, theme) {
     __macdownRenderCounter += 1;
     var id = "macdown-diagram-" + __macdownRenderCounter;
     try {
+        var foreground = theme && theme.foreground ? theme.foreground : "#000000";
+        var background = theme && theme.background ? theme.background : "#FFFFFF";
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: "strict",
+            secure: [
+                "secure", "securityLevel", "startOnLoad", "maxTextSize",
+                "suppressErrorRendering", "maxEdges", "theme", "themeVariables", "themeCSS"
+            ],
+            theme: "base",
+            themeVariables: {
+                background: background,
+                primaryColor: background,
+                primaryTextColor: foreground,
+                primaryBorderColor: foreground,
+                lineColor: foreground,
+                secondaryColor: background,
+                tertiaryColor: background,
+                pie1: "#4E79A7",
+                pie2: "#F28E2B",
+                pie3: "#59A14F",
+                pie4: "#E15759",
+                pie5: "#B07AA1",
+                pie6: "#76B7B2",
+                pie7: "#EDC949",
+                pie8: "#FF9DA7",
+                pie9: "#9C755F",
+                pie10: "#BAB0AC",
+                pie11: "#86BCB6",
+                pie12: "#D37295",
+                textColor: foreground
+            }
+        });
         var result = await mermaid.render(id, source);
-        var svg = result.svg;
-        var width = 0;
-        var height = 0;
-        var viewBoxMatch = svg.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/);
-        if (viewBoxMatch) {
-            width = parseFloat(viewBoxMatch[3]);
-            height = parseFloat(viewBoxMatch[4]);
-        }
-        var png = await rasterize(svg, width || 1, height || 1);
-        return { ok: true, svg: svg, png: png, width: width, height: height };
+        var canvas = addOpaqueCanvas(result.svg);
+        var png = await rasterize(canvas.svg, canvas.width, canvas.height);
+        return { ok: true, svg: canvas.svg, png: png, width: canvas.width, height: canvas.height };
     } catch (error) {
         var message = error && error.message ? error.message : String(error);
         return { ok: false, message: message };
@@ -95,4 +191,14 @@ window.__macdownRenderMermaid = async function (source) {
             stray.parentNode.removeChild(stray);
         }
     }
+};
+
+// The production renderer receives only Mermaid-generated SVG, but keeping
+// this probe beside the production path lets package tests exercise the same
+// real WebKit canvas/rasterization logic with SVG edge cases Mermaid does not
+// normally emit (for example comma-separated viewBox values).
+window.__macdownInspectMermaidSVG = async function (svg) {
+    var canvas = addOpaqueCanvas(svg);
+    var png = await rasterize(canvas.svg, canvas.width, canvas.height);
+    return { svg: canvas.svg, png: png, width: canvas.width, height: canvas.height };
 };

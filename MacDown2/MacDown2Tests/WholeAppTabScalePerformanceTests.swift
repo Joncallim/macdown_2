@@ -9,21 +9,11 @@ import Testing
 import Themes
 import Workspace
 
-/// E15 whole-app performance evidence: a real, non-mocked measurement of the
-/// two operations that are actually expensive when many tabs are open.
-///
-/// `TabStore` itself does no parsing/highlighting/layout -- it is pure state.
-/// The real cost lives in `WindowController`'s per-tab-identity caches
-/// (`EditorTextSystemStore`, `SyntaxHighlightStore`): the *first* visit to a
-/// tab builds a real `EditorTextSystem` (NSTextView/NSTextLayoutManager
-/// graph) and a real `NeonSyntaxHighlighter` (tree-sitter grammar setup);
-/// every later visit is a dictionary hit. So the meaningful evidence is (1)
-/// how long materializing a realistic 20-tab session takes, and (2) that
-/// re-visiting those same 20 tabs (a "switch") is dramatically cheaper,
-/// proving the cache actually avoids re-parsing/re-highlighting rather than
-/// assuming the architecture works as documented.
+/// E15 measures real text-system/highlighter cache construction and subsequent cache hits for 20 identities in
+/// one window controller. It does not measure opening or switching 20 native NSWindow tabs; that requires the
+/// native UI matrix. `TabStore` is pure state, while these caches build real AppKit and tree-sitter objects.
 @MainActor
-@Suite("Whole-app tab-scale performance (E15)")
+@Suite("Window cache materialization performance (E15)")
 struct WholeAppTabScalePerformanceTests {
     private static let tabCount = 20
 
@@ -74,23 +64,30 @@ struct WholeAppTabScalePerformanceTests {
     private struct Fixture {
         let controller: WindowController
         let rootDirectory: URL
+        let preferencesSuite: String
         let tabs: [SyntheticTab]
     }
 
-    private static func makeFixture(tabCount: Int) -> Fixture {
+    private static func makeFixture(tabCount: Int) throws -> Fixture {
+        let preferencesSuite = "com.joncallim.macdown2.tab-scale-test.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: preferencesSuite))
         let rootDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
         let recoveryBuffer = RecoveryBuffer(recoveryDirectory: rootDirectory.appendingPathComponent("Recovery"))
-        let preferences = FileTreePreferences()
+        let preferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
         let coordinator = WindowCoordinator(
+            sessionStore: LaunchSessionStore(session: .empty),
             recoveryBuffer: recoveryBuffer,
-            themeController: ThemeController(),
+            themeController: ThemeController(
+                preferenceStore: UserDefaultsThemePreferenceStore(suiteName: preferencesSuite)
+            ),
             grammarRegistry: GrammarRegistry(),
             fileTreePreferences: preferences,
             recentFolderRoots: RecentFolderRoots(preferences: preferences),
             recentFileDocuments: RecentFileDocuments(preferences: preferences),
-            appSettings: AppSettingsModel()
+            appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),
+            workspaceStateStore: WorkspaceStateStore(defaults: defaults)
         )
         let controller = WindowController(
             model: coordinator.makeWindowModel(),
@@ -112,21 +109,17 @@ struct WholeAppTabScalePerformanceTests {
             controller.model.tabStore.newTab(id: id, document: document)
             return SyntheticTab(identity: id.uuidString, document: document)
         }
-        return Fixture(controller: controller, rootDirectory: rootDirectory, tabs: tabs)
+        return Fixture(
+            controller: controller, rootDirectory: rootDirectory, preferencesSuite: preferencesSuite, tabs: tabs
+        )
     }
 
-    /// Releases the real `EditorTextSystem`/`NeonSyntaxHighlighter` graphs
-    /// `materialize` builds (up to `tabCount` of each — genuine
-    /// `NSTextView`/tree-sitter objects, not lightweight fakes), exactly as
-    /// `WindowController.windowWillClose` does. Left uncollected, they
-    /// stay live for the rest of this process's test run (Swift Testing
-    /// runs every suite in one process) and starve later suites of the
-    /// same real AppKit/tree-sitter resources this test intentionally
-    /// exercises at scale -- this was caught as a real, reproduced failure
-    /// in `PaletteOriginTargetingTests` on CI before this teardown existed.
+    /// Retire the real window through its normal lifecycle. Evicting only the editor/highlighter caches leaves
+    /// its hosted preview, parse sessions and observers alive, doing work during later tests in the same process.
     private static func tearDown(_ fixture: Fixture) {
-        fixture.controller.editorStore.evictAll()
-        fixture.controller.highlightStore.evictAll()
+        fixture.controller.coordinator?.removeController(fixture.controller)
+        fixture.controller.close()
+        UserDefaults.standard.removePersistentDomain(forName: fixture.preferencesSuite)
         try? FileManager.default.removeItem(at: fixture.rootDirectory)
     }
 
@@ -147,8 +140,25 @@ struct WholeAppTabScalePerformanceTests {
         )
     }
 
-    @Test func materializingTwentyTabsCompletesWithinBudget() {
-        let fixture = Self.makeFixture(tabCount: Self.tabCount)
+    @Test func teardownRetiresTheWindowAndItsBackgroundWork() throws {
+        let fixture = try Self.makeFixture(tabCount: 1)
+        let coordinator = try #require(fixture.controller.coordinator)
+        defer {
+            coordinator.removeController(fixture.controller)
+            fixture.controller.close()
+        }
+        _ = fixture.controller.parseStore.session(for: "teardown-probe")
+
+        Self.tearDown(fixture)
+
+        #expect(fixture.controller.isClosed)
+        #expect(fixture.controller.externalFileController.disposed)
+        #expect(!coordinator.controllers.contains { $0 === fixture.controller })
+        #expect(fixture.controller.parseStore.existingSession(for: "teardown-probe") == nil)
+    }
+
+    @Test func materializingTwentyTabsCompletesWithinBudget() throws {
+        let fixture = try Self.makeFixture(tabCount: Self.tabCount)
         defer { Self.tearDown(fixture) }
 
         let duration = ContinuousClock().measure {
@@ -162,8 +172,8 @@ struct WholeAppTabScalePerformanceTests {
         #expect(fixture.controller.editorStore.liveIdentities.count == Self.tabCount)
     }
 
-    @Test func switchingAcrossTwentyAlreadyOpenTabsIsCheapRelativeToFirstOpen() {
-        let fixture = Self.makeFixture(tabCount: Self.tabCount)
+    @Test func switchingAcrossTwentyAlreadyOpenTabsIsCheapRelativeToFirstOpen() throws {
+        let fixture = try Self.makeFixture(tabCount: Self.tabCount)
         defer { Self.tearDown(fixture) }
 
         let firstOpenDuration = ContinuousClock().measure {

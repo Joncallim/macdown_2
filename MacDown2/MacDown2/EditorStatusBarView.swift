@@ -30,6 +30,8 @@ struct EditorStatusBarView: View {
     var lineEnding: LineEndingStatusItem?
     /// The document's syntax mode and its override action; `nil` omits it.
     var syntaxMode: SyntaxModeStatusItem?
+    /// Set while the document's syntax highlighting is reduced for size.
+    var reducedHighlighting: ReducedHighlightingNote?
 
     init(
         source: NSString,
@@ -41,7 +43,8 @@ struct EditorStatusBarView: View {
         onGoToLine: @escaping () -> Void,
         encoding: EncodingStatusItem? = nil,
         lineEnding: LineEndingStatusItem? = nil,
-        syntaxMode: SyntaxModeStatusItem? = nil
+        syntaxMode: SyntaxModeStatusItem? = nil,
+        reducedHighlighting: ReducedHighlightingNote? = nil
     ) {
         self.source = source
         self.metrics = metrics
@@ -53,6 +56,7 @@ struct EditorStatusBarView: View {
         self.encoding = encoding
         self.lineEnding = lineEnding
         self.syntaxMode = syntaxMode
+        self.reducedHighlighting = reducedHighlighting
     }
 
     /// Convenience for callers (and tests) that only have a `String`.
@@ -115,6 +119,10 @@ struct EditorStatusBarView: View {
                 .accessibilityIdentifier("statusBarCount")
 
             Spacer()
+
+            if let reducedHighlighting {
+                ReducedHighlightingNoteView(note: reducedHighlighting)
+            }
 
             if let syntaxMode {
                 SyntaxModeStatusItemView(item: syntaxMode)

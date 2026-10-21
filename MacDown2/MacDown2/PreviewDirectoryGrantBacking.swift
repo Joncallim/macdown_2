@@ -1,0 +1,162 @@
+import Foundation
+import LocalResourceAccess
+
+/// Pins a folder chosen for one document and retains its access scope until every admitted use drains.
+/// A backing cannot be retargeted; a new document/window epoch needs a new selection and backing.
+final class PreviewDirectoryGrantBacking: @unchecked Sendable {
+    private struct OpenedDirectory: Sendable {
+        let root: DirectoryLease
+        let document: DirectoryLease
+    }
+
+    private struct State {
+        var revoked = false
+        var users = 0
+        var closed = false
+    }
+
+    final class Use: @unchecked Sendable {
+        let documentDirectory: DirectoryLease
+        private let backing: PreviewDirectoryGrantBacking
+
+        fileprivate init(backing: PreviewDirectoryGrantBacking) {
+            self.backing = backing
+            documentDirectory = backing.documentDirectory
+        }
+
+        deinit { backing.finishUse() }
+    }
+
+    let documentEpoch: UUID
+    let requestedDocumentURL: URL
+    private let scopeURL: URL
+    private let scopeStarted: Bool
+    private let rootDirectory: DirectoryLease
+    private let documentDirectory: DirectoryLease
+    private let lock = NSLock()
+    private var state = State()
+
+    private init(selection: PreviewResourceFolderSelection, epoch: UUID,
+                 scopeStarted: Bool, opened: OpenedDirectory) {
+        documentEpoch = epoch
+        requestedDocumentURL = selection.requestedDocumentURL
+        scopeURL = selection.selectedFolderURL
+        self.scopeStarted = scopeStarted
+        rootDirectory = opened.root
+        documentDirectory = opened.document
+    }
+
+    /// The panel receipt records the object selected by the user. The opened descriptor must identify that same
+    /// object, and child acquisition must stay beneath it. The worker does filesystem operations off MainActor.
+    @MainActor
+    static func acquire(
+        selection: PreviewResourceFolderSelection,
+        currentDocumentURL: URL,
+        epoch: UUID
+    ) async throws -> PreviewDirectoryGrantBacking {
+        guard selection.requestedDocumentURL == currentDocumentURL else {
+            throw ResourceReadError.changedRoot
+        }
+        let scopeStarted = selection.selectedFolderURL.startAccessingSecurityScopedResource()
+        do {
+            let opened = try await Task.detached(priority: .utility) {
+                try openDocumentDirectory(selection: selection)
+            }.value
+            guard !Task.isCancelled else {
+                close(opened)
+                throw ResourceReadError.cancelled
+            }
+            return PreviewDirectoryGrantBacking(
+                selection: selection, epoch: epoch, scopeStarted: scopeStarted, opened: opened
+            )
+        } catch {
+            if scopeStarted {
+                selection.selectedFolderURL.stopAccessingSecurityScopedResource()
+            }
+            throw error
+        }
+    }
+
+    /// Admission is separate from UI delivery. The caller's worker retains `Use` until real I/O ends; revocation
+    /// prevents new uses immediately and leaves existing descriptors/scope alive until their last use is dropped.
+    func acquireUse() -> Use? {
+        let admitted = lock.withLock { () -> Bool in
+            guard !state.revoked else { return false }
+            state.users += 1
+            return true
+        }
+        return admitted ? Use(backing: self) : nil
+    }
+
+    func revoke() {
+        let shouldClose = lock.withLock { () -> Bool in
+            state.revoked = true
+            guard state.users == 0, !state.closed else { return false }
+            state.closed = true
+            return true
+        }
+        if shouldClose {
+            closeResources()
+        }
+    }
+
+    private func finishUse() {
+        let shouldClose = lock.withLock { () -> Bool in
+            precondition(state.users > 0)
+            state.users -= 1
+            guard state.revoked, state.users == 0, !state.closed else { return false }
+            state.closed = true
+            return true
+        }
+        if shouldClose {
+            closeResources()
+        }
+    }
+
+    private func closeResources() {
+        documentDirectory.close()
+        if documentDirectory !== rootDirectory {
+            rootDirectory.close()
+        }
+        if scopeStarted {
+            let url = scopeURL
+            Task { @MainActor in url.stopAccessingSecurityScopedResource() }
+        }
+    }
+
+    deinit { revoke() }
+
+    private static func close(_ opened: OpenedDirectory) {
+        opened.document.close()
+        if opened.document !== opened.root {
+            opened.root.close()
+        }
+    }
+
+    private static func openDocumentDirectory(
+        selection: PreviewResourceFolderSelection
+    ) throws -> OpenedDirectory {
+        let selectedComponents = selection.selectedFolderURL.resolvingSymlinksInPath()
+            .standardizedFileURL.pathComponents
+        let parentComponents = selection.requestedDocumentURL.deletingLastPathComponent()
+            .resolvingSymlinksInPath().standardizedFileURL.pathComponents
+        guard parentComponents.starts(with: selectedComponents) else { throw ResourceReadError.denied }
+
+        let root = try DirectoryLease(opening: selection.selectedFolderURL)
+        guard root.identity.device == selection.selectedDevice,
+              root.identity.inode == selection.selectedInode
+        else {
+            root.close()
+            throw ResourceReadError.changedRoot
+        }
+        let childComponents = Array(parentComponents.dropFirst(selectedComponents.count))
+        guard !childComponents.isEmpty else { return OpenedDirectory(root: root, document: root) }
+        do {
+            let child = try root.childDirectory(ResourceReference(components: childComponents))
+            return OpenedDirectory(root: root, document: child)
+        } catch {
+            root.close()
+            throw error
+        }
+    }
+}

@@ -6,6 +6,7 @@ import Testing
 /// EPIC-22 Slice 2b — the status bar's word/character-count and
 /// line/column coverage `planning/epic-22-implementation.md` §6.7 commits
 /// to (found missing by hostile review of PR #126).
+@MainActor
 @Suite("EditorStatusBarView")
 struct EditorStatusBarViewTests {
     private func makeView(

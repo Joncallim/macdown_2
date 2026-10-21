@@ -1,0 +1,670 @@
+{
+  "Contents/Info.plist": {
+    "bytes": 5821,
+    "sha256": "a03ec4e22d87070b357e085f5cb25db6b1ce4cfff49369d95e718f9a6472576b"
+  },
+  "Contents/MacOS/MacDown2": {
+    "bytes": 63830328,
+    "sha256": "4a53cfd0a4f977ed8fcaed0c7b0c4675b5cf8537534b7b8e17f444bb6a7a2071"
+  },
+  "Contents/PkgInfo": {
+    "bytes": 8,
+    "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+  },
+  "Contents/Resources/AppIcon.icns": {
+    "bytes": 27208,
+    "sha256": "2f200a82818b36e97db6cdc0e353c4192526997332fc0f6c30f01589b51f131d"
+  },
+  "Contents/Resources/Assets.car": {
+    "bytes": 166504,
+    "sha256": "fba08db695916dfaf00667340e9d1b5e8ef375f7bf6a830b8d07aaa920f022f0"
+  },
+  "Contents/Resources/LICENSE": {
+    "bytes": 1368,
+    "sha256": "d6469c902a56daa3dd8f075486621f2e061d511d398d4a87f7e6dc84cb9f0d78"
+  },
+  "Contents/Resources/MacDownKit_Contributions.bundle/Contents/Info.plist": {
+    "bytes": 1140,
+    "sha256": "ecf9d54e1fdf1095fb3c1d6493f6ec7948bcaf4757d8f64f73ff0672bc3134b3"
+  },
+  "Contents/Resources/MacDownKit_Contributions.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 500,
+    "sha256": "07d69981f61a93ceb63e6bab00f4cf5b6a2b5ee9426c6c32da940583118d6483"
+  },
+  "Contents/Resources/MacDownKit_Contributions.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 494,
+    "sha256": "7f734e50054d0aac7be8079a958602582eb0c70dce1388fd61945a47f2141c0b"
+  },
+  "Contents/Resources/MacDownKit_Contributions.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 514,
+    "sha256": "2360aa8fc23bc472c6f2c32b722640568ff39708b400672d758769ca03384ab1"
+  },
+  "Contents/Resources/MacDownKit_D2Rendering.bundle/Contents/Info.plist": {
+    "bytes": 1136,
+    "sha256": "ce7aa6ae55340b4608ae3681803a966bcfeaf9bbbb9687e3c551c520c77cd966"
+  },
+  "Contents/Resources/MacDownKit_D2Rendering.bundle/Contents/Resources/D2-LICENSE.txt": {
+    "bytes": 16758,
+    "sha256": "97933e571f92c0b21e09a59fe67d7ce9a77d3eac5efe5f341756d5f93d191775"
+  },
+  "Contents/Resources/MacDownKit_D2Rendering.bundle/Contents/Resources/NOTICE.txt": {
+    "bytes": 1569,
+    "sha256": "31d12ea70d767e555cccfee22c18a902176e76edc7e4f54e6cd94e82be63270d"
+  },
+  "Contents/Resources/MacDownKit_D2Rendering.bundle/Contents/Resources/d2-browser.js": {
+    "bytes": 8194863,
+    "sha256": "991a44779c91b74cbdf141228a6ba34592fe9b708fe19c221eba9ef4a7cfe33e"
+  },
+  "Contents/Resources/MacDownKit_D2Rendering.bundle/Contents/Resources/harness.html": {
+    "bytes": 2316,
+    "sha256": "577053a7647d61995f7419940f8d046b88c22211cc52f5bd0f8b51248e8246b5"
+  },
+  "Contents/Resources/MacDownKit_D2Rendering.bundle/Contents/Resources/render.js": {
+    "bytes": 1404,
+    "sha256": "3a4f989b5394c566bcca0aa9a1c28379c4f41eb19cd6c7523f50d8cd04b73de8"
+  },
+  "Contents/Resources/MacDownKit_DiagramRendering.bundle/Contents/Info.plist": {
+    "bytes": 1146,
+    "sha256": "db278062944e889f38b6b7bedf9e15694e390aac97f42cc3a423b1969079ecab"
+  },
+  "Contents/Resources/MacDownKit_DiagramRendering.bundle/Contents/Resources/MERMAID-LICENSE.txt": {
+    "bytes": 1089,
+    "sha256": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80"
+  },
+  "Contents/Resources/MacDownKit_DiagramRendering.bundle/Contents/Resources/harness.html": {
+    "bytes": 375,
+    "sha256": "35660bf00fb175caf42abea10ae34f86b480bcd41ebe101389d0f8097e8a0dad"
+  },
+  "Contents/Resources/MacDownKit_DiagramRendering.bundle/Contents/Resources/mermaid.min.js": {
+    "bytes": 3572661,
+    "sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+  },
+  "Contents/Resources/MacDownKit_DiagramRendering.bundle/Contents/Resources/render.js": {
+    "bytes": 9396,
+    "sha256": "ed16d83e8ffad294b02d12f96835853dbbacd5e212160a83b7ddd92c93fc6966"
+  },
+  "Contents/Resources/MacDownKit_Diagrams.bundle/Contents/Info.plist": {
+    "bytes": 1130,
+    "sha256": "dd5dade0fa265bdcbb30f6a153fafb5376f0de539b8e4dd0f8bd888791f500f8"
+  },
+  "Contents/Resources/MacDownKit_Diagrams.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 1126,
+    "sha256": "b3eaea8a271c121277a33efdd5cb94ca01ba115150dfeb8b1baa276bcb9ceb57"
+  },
+  "Contents/Resources/MacDownKit_Diagrams.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 970,
+    "sha256": "e675be5377fc0e937ac77273b041a94ba981e56e33e3c83cbda64774e6db6702"
+  },
+  "Contents/Resources/MacDownKit_Diagrams.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 1150,
+    "sha256": "8387baa8c4260a69b07a011ec2a455dcfd2b8c4a5ed3733b8f12339a4089a22b"
+  },
+  "Contents/Resources/MacDownKit_DiagramsD2.bundle/Contents/Info.plist": {
+    "bytes": 1134,
+    "sha256": "f8b01dd90f62c819b3298a973233641af6400e381eb9e8a6303d6c1deeaf47d3"
+  },
+  "Contents/Resources/MacDownKit_DiagramsD2.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 1126,
+    "sha256": "b3eaea8a271c121277a33efdd5cb94ca01ba115150dfeb8b1baa276bcb9ceb57"
+  },
+  "Contents/Resources/MacDownKit_DiagramsD2.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 970,
+    "sha256": "e675be5377fc0e937ac77273b041a94ba981e56e33e3c83cbda64774e6db6702"
+  },
+  "Contents/Resources/MacDownKit_DiagramsD2.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 1150,
+    "sha256": "8387baa8c4260a69b07a011ec2a455dcfd2b8c4a5ed3733b8f12339a4089a22b"
+  },
+  "Contents/Resources/MacDownKit_DiagramsGraphviz.bundle/Contents/Info.plist": {
+    "bytes": 1146,
+    "sha256": "686b2c19354d7092a13aab2b5b4f61bc8e6f2abf5b5d235ce5782001c6509a38"
+  },
+  "Contents/Resources/MacDownKit_DiagramsGraphviz.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 1126,
+    "sha256": "b3eaea8a271c121277a33efdd5cb94ca01ba115150dfeb8b1baa276bcb9ceb57"
+  },
+  "Contents/Resources/MacDownKit_DiagramsGraphviz.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 970,
+    "sha256": "e675be5377fc0e937ac77273b041a94ba981e56e33e3c83cbda64774e6db6702"
+  },
+  "Contents/Resources/MacDownKit_DiagramsGraphviz.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 1150,
+    "sha256": "8387baa8c4260a69b07a011ec2a455dcfd2b8c4a5ed3733b8f12339a4089a22b"
+  },
+  "Contents/Resources/MacDownKit_EditorCore.bundle/Contents/Info.plist": {
+    "bytes": 1134,
+    "sha256": "e4342550421d819c26a4977bbd28acd582aea2fd7b01e5cf80fe798056d971b7"
+  },
+  "Contents/Resources/MacDownKit_EditorCore.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 498,
+    "sha256": "a1c08f71cd8ce17c63671b042db6ddf632da1f41e604fd3a57fab1bc34ea0c07"
+  },
+  "Contents/Resources/MacDownKit_EditorCore.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 472,
+    "sha256": "095b8c7552c77206dc0c39357d8553538b0d49f37c6e109f0398ee84256847be"
+  },
+  "Contents/Resources/MacDownKit_EditorCore.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 490,
+    "sha256": "6d9dec0d0360734daf559d2362c4771ef21989e9d9596313ff34ec0f9c0d3906"
+  },
+  "Contents/Resources/MacDownKit_ExportService.bundle/Contents/Info.plist": {
+    "bytes": 1140,
+    "sha256": "a5fda9dd1fa5359eb0e6f4c0d5666d158d192f67a432bda7d80ea23965ad8de2"
+  },
+  "Contents/Resources/MacDownKit_ExportService.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 4180,
+    "sha256": "528f86186ee4f64244e978033278600f3fc5845b41e6ddef45cfa3997f16e46c"
+  },
+  "Contents/Resources/MacDownKit_ExportService.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 3286,
+    "sha256": "7ffa9f7bd9b6331e76432bb8ac0b5619c0161c7f31df79233cb84b3b61287715"
+  },
+  "Contents/Resources/MacDownKit_ExportService.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 4148,
+    "sha256": "78bec44715df22278f1e0a80ef043fa821357621fbffa0d8dc5fb737704b4f24"
+  },
+  "Contents/Resources/MacDownKit_ExportService.bundle/Contents/Resources/structural.css": {
+    "bytes": 6313,
+    "sha256": "668c19314146a74355da813dee3df584c964788e5a5b81f7233884c82ec5c5c3"
+  },
+  "Contents/Resources/MacDownKit_FileTree.bundle/Contents/Info.plist": {
+    "bytes": 1130,
+    "sha256": "ad03698e851772e9071dff60cb2f2e61521acfed4453241a87cbefaeeae9fd14"
+  },
+  "Contents/Resources/MacDownKit_FileTree.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 2454,
+    "sha256": "92f853f3a637610496bb31724de3987b9a0ed6fc3fbcb877a1b4c759d862fb7c"
+  },
+  "Contents/Resources/MacDownKit_FileTree.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 2058,
+    "sha256": "5d458037e62523c731896aa4346ea1e965a721f23a6ba68b03c3874a7ec43fcf"
+  },
+  "Contents/Resources/MacDownKit_FileTree.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 2426,
+    "sha256": "74e4ccf85d8a527f4df63552cc78159f69b38f88409accbbb9c5fe74755183e6"
+  },
+  "Contents/Resources/MacDownKit_GraphvizRendering.bundle/Contents/Info.plist": {
+    "bytes": 1148,
+    "sha256": "6af030ab7f3deefca6fd4a6e87f68d0b2481606724d6d61fb9aa4c285b155460"
+  },
+  "Contents/Resources/MacDownKit_GraphvizRendering.bundle/Contents/Resources/GRAPHVIZ-EPL-LICENSE.txt": {
+    "bytes": 35084,
+    "sha256": "6e1f002892b81cbe0647019b150c8a056efc1add565671a4f8af629b6cd2cc7b"
+  },
+  "Contents/Resources/MacDownKit_GraphvizRendering.bundle/Contents/Resources/NOTICE.txt": {
+    "bytes": 973,
+    "sha256": "3bc3f8a7d7d089aad4fbc5b1486e9c00df4446f3f0c70bda8eceac7340fbe96f"
+  },
+  "Contents/Resources/MacDownKit_GraphvizRendering.bundle/Contents/Resources/VIZJS-LICENSE.txt": {
+    "bytes": 1063,
+    "sha256": "b9a0b3fcb35b2b675f3a199c31eb19edd1dec3aa08687be4fb0d317e865e35cd"
+  },
+  "Contents/Resources/MacDownKit_GraphvizRendering.bundle/Contents/Resources/harness.html": {
+    "bytes": 827,
+    "sha256": "54893cf4b1cd44fbd8491edbe3d5166997570cc8b4ece7f562dd2025764ed8a0"
+  },
+  "Contents/Resources/MacDownKit_GraphvizRendering.bundle/Contents/Resources/render.js": {
+    "bytes": 1884,
+    "sha256": "c524bc0d21a38f011825b84fc350dcec4cfc738e0806e1374b19703a658c1284"
+  },
+  "Contents/Resources/MacDownKit_GraphvizRendering.bundle/Contents/Resources/viz-global.js": {
+    "bytes": 1324675,
+    "sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab"
+  },
+  "Contents/Resources/MacDownKit_JSONSupport.bundle/Contents/Info.plist": {
+    "bytes": 1136,
+    "sha256": "1c97cf2a1a18164d03f26cd0f33b427c46085ccdd481fd4a24aac280127999a4"
+  },
+  "Contents/Resources/MacDownKit_JSONSupport.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 5438,
+    "sha256": "ccc90461895c545df0c08713d378621a67c03d0ebf05da4fe7f2ef3e8269a3ce"
+  },
+  "Contents/Resources/MacDownKit_JSONSupport.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 4380,
+    "sha256": "2b90679735fe4be2da2f2a049a066c9d56a9723ae620d96b102066ae7a1c5372"
+  },
+  "Contents/Resources/MacDownKit_JSONSupport.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 5386,
+    "sha256": "f381f36794cb5a67428a0eedc75d112dd5ab4c5b14bc5f82b8f9457d3adb0160"
+  },
+  "Contents/Resources/MacDownKit_TextFilters.bundle/Contents/Info.plist": {
+    "bytes": 1136,
+    "sha256": "3e7e9c695107019946cae34b9275201f696eec2df3a85ce2edb7838226c985df"
+  },
+  "Contents/Resources/MacDownKit_TextFilters.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 2524,
+    "sha256": "e9e8a5637b8a206e9f95c30d8bbf2e6ea2aa0d4bd3dc4deaf6c588e446d86ff6"
+  },
+  "Contents/Resources/MacDownKit_TextFilters.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 2068,
+    "sha256": "c71555c736fbbd4b820609333002e84df7548ca3c70b0804c47dbe22cbd68fc4"
+  },
+  "Contents/Resources/MacDownKit_TextFilters.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 2496,
+    "sha256": "ff92390a73ab79288102f66c9375949fd9680b7d80a87ad6754ae09954089b3c"
+  },
+  "Contents/Resources/MacDownKit_Themes.bundle/Contents/Info.plist": {
+    "bytes": 1126,
+    "sha256": "7bb8b4726edaeb24f2c83220bcb6d6bee00dfd91a59dd5e80d549215956def78"
+  },
+  "Contents/Resources/MacDownKit_Themes.bundle/Contents/Resources/Tomorrow Dark.json": {
+    "bytes": 2181,
+    "sha256": "0c383c0c91be8258b9a61788ebafdc6bd68f2079f60debd509bc3e80a706836e"
+  },
+  "Contents/Resources/MacDownKit_Themes.bundle/Contents/Resources/Tomorrow Light.json": {
+    "bytes": 2253,
+    "sha256": "87fee559710cc21c85a8fb424a2e62b191f5bc7c80c4abad208f55d5a3165be9"
+  },
+  "Contents/Resources/MacDownKit_Workspace.bundle/Contents/Info.plist": {
+    "bytes": 1132,
+    "sha256": "2b57767ae72572e978e363d1242ace5e5dcf76aded055e7165b3e90b5fc7fa2a"
+  },
+  "Contents/Resources/MacDownKit_Workspace.bundle/Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 4652,
+    "sha256": "abce2bda4bc0f80e8effa78378a0e586eeef3d2a58f46947247797e1f3ff6ce4"
+  },
+  "Contents/Resources/MacDownKit_Workspace.bundle/Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 3524,
+    "sha256": "c3d7f12b38ca24d229e5deed4a78b148576716ce8861ceda6678a49788db4f1e"
+  },
+  "Contents/Resources/MacDownKit_Workspace.bundle/Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 4498,
+    "sha256": "0eb73faa0ae60221fbd8709c49d96fa7103acec109d92417e8835c4b68568fa8"
+  },
+  "Contents/Resources/THIRD_PARTY_NOTICES.md": {
+    "bytes": 158472,
+    "sha256": "2e0f032cf971b0b5b9befae297e026941ecb241023b5f338ad081a9f6b1d8867"
+  },
+  "Contents/Resources/TreeSitterBash_TreeSitterBash.bundle/Contents/Info.plist": {
+    "bytes": 1153,
+    "sha256": "a15e7e72a533b026703080da353affd67463eaf5c6dbf8c60ed42ab0c27a5389"
+  },
+  "Contents/Resources/TreeSitterBash_TreeSitterBash.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 577,
+    "sha256": "b74220d954f485b7626d2b2b61f37b522e12eb1830803e388e57dd797dc99f11"
+  },
+  "Contents/Resources/TreeSitterCPP_TreeSitterCPP.bundle/Contents/Info.plist": {
+    "bytes": 1149,
+    "sha256": "deafe66164c394f8c74ec7c890433f509e844062ba4942a460c0c31543f92db7"
+  },
+  "Contents/Resources/TreeSitterCPP_TreeSitterCPP.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 939,
+    "sha256": "52136576a9a9dacd9e95a8de0f351689bf46140738572ab4e9f24c9278e6b458"
+  },
+  "Contents/Resources/TreeSitterCPP_TreeSitterCPP.bundle/Contents/Resources/queries/injections.scm": {
+    "bytes": 119,
+    "sha256": "0791a308ef7c0a9e40b8415a2e9cee85b528a8bb21697e65c79872e8848dd972"
+  },
+  "Contents/Resources/TreeSitterCPP_TreeSitterCPP.bundle/Contents/Resources/queries/tags.scm": {
+    "bytes": 668,
+    "sha256": "029731ca946e32f919491d9f76c85a50e5deb5ad1934e37fd6849312c0d4a705"
+  },
+  "Contents/Resources/TreeSitterCSS_TreeSitterCSS.bundle/Contents/Info.plist": {
+    "bytes": 1149,
+    "sha256": "0595cdc908c2ffc6ee93a210a68b75041586224ee1a290cff23e5592f3747696"
+  },
+  "Contents/Resources/TreeSitterCSS_TreeSitterCSS.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 1144,
+    "sha256": "f66ed9c20a566a01084ec1dd5b0f72d8b08b221bde43e9fafef645498e90d28f"
+  },
+  "Contents/Resources/TreeSitterHTML_TreeSitterHTML.bundle/Contents/Info.plist": {
+    "bytes": 1153,
+    "sha256": "72424c57fc36727305c163102cd4a11e45609df40576cd744968826b3b5e55b9"
+  },
+  "Contents/Resources/TreeSitterHTML_TreeSitterHTML.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 197,
+    "sha256": "1ebb3811a8cdc054385b847a3aac6fbf7079faefd5b3dfab5bbad256cd5afdcf"
+  },
+  "Contents/Resources/TreeSitterHTML_TreeSitterHTML.bundle/Contents/Resources/queries/injections.scm": {
+    "bytes": 177,
+    "sha256": "6faa29537e952ee444aaa6ac00f72956d13f65616aade74bd665f5ac405f9c32"
+  },
+  "Contents/Resources/TreeSitterJSON_TreeSitterJSON.bundle/Contents/Info.plist": {
+    "bytes": 1153,
+    "sha256": "15bf38aa49c30f5cbdcecd95f2005acadb1b91fbb97f937da2c13a7245b7da6b"
+  },
+  "Contents/Resources/TreeSitterJSON_TreeSitterJSON.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 172,
+    "sha256": "0511524465b56aed122580792254e68b6abbbfde7119f1d02b135acbe278233f"
+  },
+  "Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScriptResources.bundle/Contents/Info.plist": {
+    "bytes": 1192,
+    "sha256": "8046ec9a492151614d922577ce705ba2a11f9b120c10f3ba40941051aa90ca5b"
+  },
+  "Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScriptResources.bundle/Contents/Resources/queries/highlights-jsx.scm": {
+    "bytes": 437,
+    "sha256": "0cad1712acaf40804bc5dc7c8476858752c1f549cdf7d8c63c747317be0f8fa6"
+  },
+  "Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScriptResources.bundle/Contents/Resources/queries/highlights-params.scm": {
+    "bytes": 293,
+    "sha256": "bbe7a58cacfb1c954cb0eab44779fd80421ed59b762b975723447207635de50d"
+  },
+  "Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScriptResources.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 2739,
+    "sha256": "d3630ae6dc9b2b27b230b5f8bb92b05cd491fb12bff353dae62a0a6d780461ee"
+  },
+  "Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScriptResources.bundle/Contents/Resources/queries/injections.scm": {
+    "bytes": 889,
+    "sha256": "bea345407ce1f24bccf2b3c1a128acc14e19301327074285368586e793dcb86d"
+  },
+  "Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScriptResources.bundle/Contents/Resources/queries/locals.scm": {
+    "bytes": 336,
+    "sha256": "c1dd2cfa1400d397fa974208fc9edfe817be4a3c8b42bb99af5c8d193b1bb753"
+  },
+  "Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScriptResources.bundle/Contents/Resources/queries/tags.scm": {
+    "bytes": 2218,
+    "sha256": "6ef988cce5a428a15b5460e3ee96f1478705f965fc6e848a91a18bfa6c6f0212"
+  },
+  "Contents/Resources/TreeSitterMarkdown_TreeSitterMarkdownInlineResources.bundle/Contents/Info.plist": {
+    "bytes": 1196,
+    "sha256": "6a47ddbdf2f11e16f99ca7164487424eb4738e0b644a063d726032e5fc406109"
+  },
+  "Contents/Resources/TreeSitterMarkdown_TreeSitterMarkdownInlineResources.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 695,
+    "sha256": "b1b2604561026c3701aedbf0f594f69aa0571656eed9d62d139980721e9cdfa9"
+  },
+  "Contents/Resources/TreeSitterMarkdown_TreeSitterMarkdownInlineResources.bundle/Contents/Resources/queries/injections.scm": {
+    "bytes": 141,
+    "sha256": "97bf17b9a973db8ee6868f543dd1eabdd81f19b8751a4fcf92db45f74462f4c5"
+  },
+  "Contents/Resources/TreeSitterMarkdown_TreeSitterMarkdownResources.bundle/Contents/Info.plist": {
+    "bytes": 1184,
+    "sha256": "1392997d6c5e85bedfd82bcd47273424d9cf57936567515687250d0de8d7498e"
+  },
+  "Contents/Resources/TreeSitterMarkdown_TreeSitterMarkdownResources.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 652,
+    "sha256": "ea193ee33a84d76d1cf5d84f73f438b2a1f13fc59be79ef457cfbd6b264490e6"
+  },
+  "Contents/Resources/TreeSitterMarkdown_TreeSitterMarkdownResources.bundle/Contents/Resources/queries/injections.scm": {
+    "bytes": 550,
+    "sha256": "64b1a6006b40176d8db986cc41350e4f9b292fd06bfedb0abfcdb1fb989aca3e"
+  },
+  "Contents/Resources/TreeSitterPython_TreeSitterPython.bundle/Contents/Info.plist": {
+    "bytes": 1161,
+    "sha256": "cca8538dbcbcade3dcc92e759e7f5280bb804e0f0e7078c0628bd0a1e7d8792a"
+  },
+  "Contents/Resources/TreeSitterPython_TreeSitterPython.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 1957,
+    "sha256": "a6708f209381618e2b398972c8f1ccd892f0c064eab35a2a3f911c3e22e79a7e"
+  },
+  "Contents/Resources/TreeSitterPython_TreeSitterPython.bundle/Contents/Resources/queries/tags.scm": {
+    "bytes": 350,
+    "sha256": "d0f3e577878167bfabc30e526e497bce58d1699b9bcabf8ab3a50698efb5ca3e"
+  },
+  "Contents/Resources/TreeSitterRuby_TreeSitterRuby.bundle/Contents/Info.plist": {
+    "bytes": 1153,
+    "sha256": "f14f153f7d1ce4cf77c92926b719e2fecc60917b1a7caa26529c3998d41e00db"
+  },
+  "Contents/Resources/TreeSitterRuby_TreeSitterRuby.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 2377,
+    "sha256": "0858de9feece6dcd3408a541f995a34918d587ac2c552096026b0e47e2b332e6"
+  },
+  "Contents/Resources/TreeSitterRuby_TreeSitterRuby.bundle/Contents/Resources/queries/locals.scm": {
+    "bytes": 895,
+    "sha256": "f00178e94b9c2ea672fd4ee2e60ac5d7d90be59c72e86292e22620358ac9dbb0"
+  },
+  "Contents/Resources/TreeSitterRuby_TreeSitterRuby.bundle/Contents/Resources/queries/tags.scm": {
+    "bytes": 1087,
+    "sha256": "ed1e7dc07a95b87aef267e7f9715c6717a70f09efbd7b6f48bbd51c7b7510cf3"
+  },
+  "Contents/Resources/TreeSitterSQL_TreeSitterSQLResources.bundle/Contents/Info.plist": {
+    "bytes": 1164,
+    "sha256": "63b1beca03e66f52b6a2de90790e9a5c66dd11e93f8190b9da5d1364c64e5150"
+  },
+  "Contents/Resources/TreeSitterSQL_TreeSitterSQLResources.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 8088,
+    "sha256": "25b2a7b5e60f04012c28a5cf2a224311bdb213361ba2c6439bd50ea3fafb0c64"
+  },
+  "Contents/Resources/TreeSitterSQL_TreeSitterSQLResources.bundle/Contents/Resources/queries/indents.scm": {
+    "bytes": 324,
+    "sha256": "c90c797ffe6ccee5912eab2c9b8644ba0db0477ed93cbfefa10c574552348b32"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Info.plist": {
+    "bytes": 1157,
+    "sha256": "526ab92c26586f55d5003a16166b0f51ba9e0a932f8bd029943a3535e760934b"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Resources/queries/folds.scm": {
+    "bytes": 978,
+    "sha256": "4f00b0b392dce70a0127b67d1c7858f1074768125f3c1702b22acd036e5c9ba0"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 4929,
+    "sha256": "b0bbeb918904b252e8bd361f4afb4756647232391110a67deecbf7227464aff8"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Resources/queries/indents.scm": {
+    "bytes": 2496,
+    "sha256": "8c025f8b671167e87f371ef230cd68c953361c5a6f735cbb89985f791ffa7da0"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Resources/queries/injections.scm": {
+    "bytes": 216,
+    "sha256": "fd541e467fd2667ed7cfdf604b0f3b3d1ac2632791972840eaedd0b99a581e58"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Resources/queries/locals.scm": {
+    "bytes": 421,
+    "sha256": "430a7d71c30212e1e0e21eb1b3ed71959fb71bf74a6fea27a0efbf491ebda1c7"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Resources/queries/outline.scm": {
+    "bytes": 1017,
+    "sha256": "8646875169da813e8e273deb1e4a84627a11317c07cdad9dd6594279c4b73edd"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Resources/queries/tags.scm": {
+    "bytes": 1214,
+    "sha256": "6d3884e3f785d621128356a23ac81dfc438d9a853b8ee24b8070dc2caaf631ca"
+  },
+  "Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Resources/queries/textobjects.scm": {
+    "bytes": 293,
+    "sha256": "a8086f55963e0c79c91ded41c5dacc8da8ec8753f05b4db3ea70ce56e4281fa4"
+  },
+  "Contents/Resources/TreeSitterTOML_TreeSitterTOML.bundle/Contents/Info.plist": {
+    "bytes": 1153,
+    "sha256": "80f0848e439b00d200770485d4584457a5543e92da97acddf9fe239a140cdff9"
+  },
+  "Contents/Resources/TreeSitterTOML_TreeSitterTOML.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 501,
+    "sha256": "2fb5c61d33a70389312254c9c392e2c5dd6313d958d6e5f8f74cadd5e0811707"
+  },
+  "Contents/Resources/TreeSitterTypeScript_TreeSitterTSX.bundle/Contents/Info.plist": {
+    "bytes": 1163,
+    "sha256": "a1e063fc1e36078b482e87ac3d539a243d4bd354cf9cfa75186f6ddd6605276a"
+  },
+  "Contents/Resources/TreeSitterTypeScript_TreeSitterTSX.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 515,
+    "sha256": "e0c35adb819127bfd4f853fac5419e7d8ba44760246201d04a4a5ce0228a10c5"
+  },
+  "Contents/Resources/TreeSitterTypeScript_TreeSitterTSX.bundle/Contents/Resources/queries/locals.scm": {
+    "bytes": 104,
+    "sha256": "c3680f9b56276fb2ccc9f1d5f4d03dbca5d64bdf3e6d52ce5a4ad342cec162d5"
+  },
+  "Contents/Resources/TreeSitterTypeScript_TreeSitterTSX.bundle/Contents/Resources/queries/tags.scm": {
+    "bytes": 573,
+    "sha256": "b391288bcc71b513a5df7c9bb232d8bc7418d7e274b125aa0aa4bdd6121a0338"
+  },
+  "Contents/Resources/TreeSitterTypeScript_TreeSitterTypeScript.bundle/Contents/Info.plist": {
+    "bytes": 1177,
+    "sha256": "be9a78b133df5340deb571ce1ec1f1a641d61bc55135c01f2ad1275a9785b960"
+  },
+  "Contents/Resources/TreeSitterTypeScript_TreeSitterTypeScript.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 515,
+    "sha256": "e0c35adb819127bfd4f853fac5419e7d8ba44760246201d04a4a5ce0228a10c5"
+  },
+  "Contents/Resources/TreeSitterTypeScript_TreeSitterTypeScript.bundle/Contents/Resources/queries/locals.scm": {
+    "bytes": 104,
+    "sha256": "c3680f9b56276fb2ccc9f1d5f4d03dbca5d64bdf3e6d52ce5a4ad342cec162d5"
+  },
+  "Contents/Resources/TreeSitterTypeScript_TreeSitterTypeScript.bundle/Contents/Resources/queries/tags.scm": {
+    "bytes": 573,
+    "sha256": "b391288bcc71b513a5df7c9bb232d8bc7418d7e274b125aa0aa4bdd6121a0338"
+  },
+  "Contents/Resources/TreeSitterXML_TreeSitterDTD.bundle/Contents/Info.plist": {
+    "bytes": 1149,
+    "sha256": "e8b66e36abb31144fe484156d1041c0fbc427b8be560d118e4f6e4d72f43e533"
+  },
+  "Contents/Resources/TreeSitterXML_TreeSitterDTD.bundle/Contents/Resources/dtd/highlights.scm": {
+    "bytes": 1780,
+    "sha256": "5091ae8e8311c16a1bbdffa0ee8819b55b97b786cca12392a9252a5393206bc9"
+  },
+  "Contents/Resources/TreeSitterXML_TreeSitterXML.bundle/Contents/Info.plist": {
+    "bytes": 1149,
+    "sha256": "7c6b87395b63a50c08e5872912774ab0795ae80afaf9451398dfcb0d3cb15e30"
+  },
+  "Contents/Resources/TreeSitterXML_TreeSitterXML.bundle/Contents/Resources/xml/highlights.scm": {
+    "bytes": 2281,
+    "sha256": "aa4a561c846928c3a4d885acbe690a60689661a45684babe16cf8b7a1509b610"
+  },
+  "Contents/Resources/TreeSitterYAML_TreeSitterYAML.bundle/Contents/Info.plist": {
+    "bytes": 1153,
+    "sha256": "f291b9e222bdfaeb44a2ca43462ce9b8caadbab2c0e306fd5d2c1f9fc7f73d05"
+  },
+  "Contents/Resources/TreeSitterYAML_TreeSitterYAML.bundle/Contents/Resources/queries/highlights.scm": {
+    "bytes": 962,
+    "sha256": "2fbfbbd5ca0928d0a7e09e59f8f2964b14a328a7ee0ce799270d9013dcce49a0"
+  },
+  "Contents/Resources/fr.lproj/Localizable.strings": {
+    "bytes": 15722,
+    "sha256": "e09fa66df5f8e9f09de43336d6efb1486a9a6c024589b8c391983dec8b57c4a4"
+  },
+  "Contents/Resources/fr.lproj/Localizable.stringsdict": {
+    "bytes": 1660,
+    "sha256": "f1f5c7bcbba5cc163ec08256b72e7ffb7174068e72c9bafe83e5cac7b8ea4b2d"
+  },
+  "Contents/Resources/ja.lproj/Localizable.strings": {
+    "bytes": 12328,
+    "sha256": "01bef1edca153ca7379b4e4a9c277605db8b0d6fb55ea9ee405785c7156624e6"
+  },
+  "Contents/Resources/ja.lproj/Localizable.stringsdict": {
+    "bytes": 1306,
+    "sha256": "6bd6aec1f0b3b88d9902e6c4ee4b87258fcf33f097c7c75606b1aca483dddef3"
+  },
+  "Contents/Resources/pl.lproj/Localizable.strings": {
+    "bytes": 15408,
+    "sha256": "ff793f5b7ceda8c2daef2914ded8f96ead565266d933bf11ec0609e63e4d5e44"
+  },
+  "Contents/Resources/pl.lproj/Localizable.stringsdict": {
+    "bytes": 2254,
+    "sha256": "710aea5b1b1d68c575b9a959105e45443a18d716193790adf83be99b2380ad87"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Info.plist": {
+    "bytes": 1140,
+    "sha256": "09b4811d10be80a5a85555e52f8145836febe54729649b72476c09b23dc33598"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Asana-Math.otf": {
+    "bytes": 433528,
+    "sha256": "b0d9e681c08ff1f4dc6ebf085cc962585ec12cdbd25dc6225890b9f8fd12d568"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Asana-Math.plist": {
+    "bytes": 99277,
+    "sha256": "97ebe044f4c5bdc91ff522bdfb0425f1f88013e8b40bdecdbc9ba6c574e141fb"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Euler-Math.otf": {
+    "bytes": 428792,
+    "sha256": "bd07fef1faecea7fa4a89256e4e06ef94b19e23b1785db6e420229fda37c2efb"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Euler-Math.plist": {
+    "bytes": 50321,
+    "sha256": "7b8f745068f1583ea83a18da079bdecb94e2b7c73ba72a0e89f4edbb2c3a9f9e"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/FiraMath-Regular.otf": {
+    "bytes": 179840,
+    "sha256": "2028cbd3dd4d8c0cf1608520eb4759956a83a67931d7b6d8e7c313520186e35b"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/FiraMath-Regular.plist": {
+    "bytes": 74123,
+    "sha256": "b32d6388ee5769b6e68ffcc6f660dc73818ef6686ee846f041c2afd4ba6a0305"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/GUST-FONT-LICENSE.txt": {
+    "bytes": 1456,
+    "sha256": "2bd69affc3da00715116f713f57eab9707e96daf3562ad0215987b15b9c16f73"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Garamond-Math.otf": {
+    "bytes": 823988,
+    "sha256": "c6161377e97084152b948f62abe874cbe27405938956346b54a4c6488a5009f1"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Garamond-Math.plist": {
+    "bytes": 192517,
+    "sha256": "2fe6c519cbf876e42ec601a14ca615e9bf38f51be6b92ef0bba26cf9ee45f780"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/KpMath-Light.otf": {
+    "bytes": 451008,
+    "sha256": "aa6713ae76838a7db9eefe4f503b963dad50df77555ff67a50b72eb832221660"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/KpMath-Light.plist": {
+    "bytes": 153377,
+    "sha256": "aaca68ecef79f005f41568df36ac467ec24a2b6732336ec8c357a156e3f4e114"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/KpMath-Sans.otf": {
+    "bytes": 293084,
+    "sha256": "a9e82575a514f10ceed193d393bf2ea6ac82980ce7eb8c81be085df159a8c253"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/KpMath-Sans.plist": {
+    "bytes": 105024,
+    "sha256": "3db5772fa9fbf71c96ca37eccaf38d8c2d32406c9bda8343d23a3cc0c9de348e"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/LICENSE": {
+    "bytes": 1075,
+    "sha256": "431b2cb82b8a55977323598231f1baa44f32accac1231b4781a9a393d0bc29ed"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/LeteSansMath.otf": {
+    "bytes": 440268,
+    "sha256": "b9242115e4d41b9ccbe179340d4ddaf5598863389a23677eefb87e8950781313"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/LeteSansMath.plist": {
+    "bytes": 131044,
+    "sha256": "b00eeb445c4f525ec53391841d8b6e75c9ede23bbfa77a34c8a720ac8b7bc408"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/LibertinusMath-Regular.otf": {
+    "bytes": 588848,
+    "sha256": "e81bd44acbb7119c8f00128b36fecc5d980e10d2450a226ba52402ccf4da9d32"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/LibertinusMath-Regular.plist": {
+    "bytes": 99401,
+    "sha256": "35701c3b94bea93016a9161d017bacebd0954025644456aa8b47d0145fede503"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/NotoSansMath-Regular.otf": {
+    "bytes": 498408,
+    "sha256": "9dda7e17fa67b7e34083798f56faf5e53ac524456e730ead35c2957e4397ca28"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/NotoSansMath-Regular.plist": {
+    "bytes": 225479,
+    "sha256": "232aced02fe2d81553a1545c551d8d5fe824aae0c8c860f18bb10af3f4145c03"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/OFL.txt": {
+    "bytes": 5104,
+    "sha256": "a96bed88f867f6a5bbe78ced4ca52a3ce6e002475363d86edd9097b2f8206d8d"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/latinmodern-math.otf": {
+    "bytes": 733736,
+    "sha256": "6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/latinmodern-math.plist": {
+    "bytes": 65067,
+    "sha256": "201e6a483783415f335328f2d02b356fe55cd478eb0cd052898236589c8cb946"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/math_table_to_plist.py": {
+    "bytes": 7145,
+    "sha256": "62a8e69ae5230b0420a34e28d9b6a44bd1127127e2d1c6ac0f06566583dafb3e"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/texgyretermes-math.otf": {
+    "bytes": 532404,
+    "sha256": "e5ce42b4fe826b7ea4c0874359decf0b294439355c511a4794107a9924e2cd5a"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/texgyretermes-math.plist": {
+    "bytes": 58011,
+    "sha256": "57ddeac7c51e1342aeb30fb72f6beb4d2f3ee7d51bfb1e07ab9150c06f7ec3c8"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/xits-math.otf": {
+    "bytes": 538696,
+    "sha256": "d76666cb2dc222b4a811db96c41cc1853988b91008ec44a194126b4e010a5c6c"
+  },
+  "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/xits-math.plist": {
+    "bytes": 152248,
+    "sha256": "e64b5302d65885a302b34eb2eb1e14c6a66f4c652fcbcd4893411361baae0363"
+  },
+  "Contents/Resources/textual_Textual.bundle/Contents/Info.plist": {
+    "bytes": 1122,
+    "sha256": "0ab2bac431e7f148e3a8e16611ceb49d95baae4015d8def12957b58175f9f08b"
+  },
+  "Contents/Resources/textual_Textual.bundle/Contents/Resources/prism-bundle.js": {
+    "bytes": 138163,
+    "sha256": "22b70192dc9d73377b5b8fe2c85655c7e3218afd37b65db638b4e168c4bacbf5"
+  }
+}

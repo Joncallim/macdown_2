@@ -1,0 +1,50 @@
+From 091c0d7e6f734168b4a0d1c3e09ec6e60c07ccc8 Mon Sep 17 00:00:00 2001
+From: Jonathan Lim <joncallim@gmail.com>
+Date: Fri, 16 Oct 2026 08:27:53 +0800
+Subject: [PATCH] perf(lib): binary search included ranges in `ts_lexer_goto`
+
+`ts_lexer_goto` scanned the included-range list linearly from the start on
+every seek, so a parse with N included ranges costs O(tokens * N). Parsers
+for injected languages (e.g. markdown_inline, with one range per block) can
+have tens of thousands of ranges. In a synthetic benchmark (256 KB of
+markdown_inline text split into 100,000 ranges) about 97% of reparse time
+was spent in this loop.
+
+The ranges are validated to be sorted and non-overlapping, so their end
+bytes are non-decreasing. Binary search for the first range whose end is
+after the position, then keep the existing forward scan that skips empty
+ranges. The selected range is the same as with the linear scan.
+---
+ lib/src/lexer.c | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/lib/src/lexer.c b/lib/src/lexer.c
+index 94124fd1d..f0db3487f 100644
+--- a/lib/src/lexer.c
++++ b/lib/src/lexer.c
+@@ -143,8 +143,21 @@ static void ts_lexer_goto(Lexer *self, Length position) {
+   self->current_position = position;
+ 
+   // Move to the first valid position at or after the given position.
++  // The included ranges are sorted and disjoint, so their end bytes are
++  // non-decreasing. Binary search for the first range that ends after the
++  // position, then skip forward past any empty ranges.
+   bool found_included_range = false;
+-  for (unsigned i = 0; i < self->included_range_count; i++) {
++  unsigned start_index = 0;
++  unsigned end_index = self->included_range_count;
++  while (start_index < end_index) {
++    unsigned mid_index = start_index + (end_index - start_index) / 2;
++    if (self->included_ranges[mid_index].end_byte > self->current_position.bytes) {
++      end_index = mid_index;
++    } else {
++      start_index = mid_index + 1;
++    }
++  }
++  for (unsigned i = start_index; i < self->included_range_count; i++) {
+     TSRange *included_range = &self->included_ranges[i];
+     if (
+       included_range->end_byte > self->current_position.bytes &&
+-- 
+2.55.0
+

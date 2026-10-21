@@ -79,10 +79,16 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// interpolating it into evaluated script text — so diagram text
     /// containing quotes, backslashes, or newlines can never break out of a
     /// string literal, because there is no string literal to break out of.
-    func render(_ source: String) async throws -> RenderedMermaidDiagram {
+    func render(_ source: String, context: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
         let result = try await webView.callAsyncJavaScript(
-            "return await window.__macdownRenderMermaid(source);",
-            arguments: ["source": source],
+            "return await window.__macdownRenderMermaid(source, theme);",
+            arguments: [
+                "source": source,
+                "theme": [
+                    "foreground": context.foregroundHex,
+                    "background": context.backgroundHex,
+                ],
+            ],
             in: nil,
             contentWorld: .page
         )
@@ -103,6 +109,22 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         let width = (dict["width"] as? NSNumber)?.doubleValue ?? 0
         let height = (dict["height"] as? NSNumber)?.doubleValue ?? 0
         return RenderedMermaidDiagram(svg: svg, pngData: pngData, naturalWidth: width, naturalHeight: height)
+    }
+
+    /// Runs the same real WebKit canvas path as production rendering against
+    /// a supplied SVG. Package tests use this to cover valid SVG dimension
+    /// forms that Mermaid's normal output does not currently generate.
+    func inspectSVGCanvasForTesting(_ svg: String) async throws -> [String: Any] {
+        let result = try await webView.callAsyncJavaScript(
+            "return await window.__macdownInspectMermaidSVG(svg);",
+            arguments: ["svg": svg],
+            in: nil,
+            contentWorld: .page
+        )
+        guard let dict = result as? [String: Any] else {
+            throw MermaidRenderError.rendererUnavailable
+        }
+        return dict
     }
 
     func teardown() {
@@ -155,5 +177,23 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         windowFeatures _: WKWindowFeatures
     ) -> WKWebView? {
         nil
+    }
+}
+
+private extension MermaidRenderContext {
+    var foregroundHex: String {
+        hex(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue)
+    }
+
+    var backgroundHex: String {
+        hex(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
+    }
+
+    func hex(red: Double, green: Double, blue: Double) -> String {
+        let components = [red, green, blue].map { value in
+            let finite = value.isFinite ? value : 0
+            return UInt8((min(max(finite, 0), 1) * 255).rounded())
+        }
+        return String(format: "#%02X%02X%02X", components[0], components[1], components[2])
     }
 }

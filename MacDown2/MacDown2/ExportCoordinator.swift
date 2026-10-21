@@ -248,7 +248,7 @@ struct ExportCoordinator {
         let results = try await registry.run(
             document: parsed, sourceText: document.text, sourceGeneration: document.mutationGeneration
         )
-        return ExportContributionAdapter.adapt(results)
+        return ExportContributionAdapter.adapt(results, destination: isPrintTarget ? .pdfExport : .htmlExport)
     }
 
     // MARK: - Feedback

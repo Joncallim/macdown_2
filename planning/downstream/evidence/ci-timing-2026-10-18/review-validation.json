@@ -1,0 +1,184 @@
+{
+  "recorded_utc": "2026-10-18T18:18:30.650098+00:00",
+  "review": {
+    "reviewer": "/root/independent_candidate_review",
+    "mode": "separate read-only source review",
+    "base": "60f779fc0f7324cd5dd3b7b503030e9c22d7d44f",
+    "head": "e16be9f7a749d9ed0f2fd74829483c26c87051f4",
+    "result": "No concrete regression findings in changed code; not performance/release/owner approval",
+    "report": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/independent-review-report.md",
+    "selected_evidence_hashes_verified_by_reviewer": 8,
+    "coverage_limits": [
+      "Pre-existing idle-restoration boundary sampling could miss a 150 ms restoration against a 200 ms policy.",
+      "UI tests compiled, not executed.",
+      "Preview classifier tests use synthetic errors, not actual WebKit navigation failure."
+    ]
+  },
+  "source_equivalence": {
+    "reviewed_macdown2_tree": "929fe5add3fc84a6038ad0f8bf7e14a211fca2f5",
+    "final_tested_code_head": "0b85e6f09dc3bba82a0da3b15f1583b3263fcb74",
+    "final_tested_macdown2_tree": "929fe5add3fc84a6038ad0f8bf7e14a211fca2f5"
+  },
+  "performance_context_experiment": {
+    "head": "e16be9f7a749d9ed0f2fd74829483c26c87051f4",
+    "original_source_sha256": "08ddacd5ec5fd9d7cfc69e7e4a23905831c4c27bd1da468b4f76691a749159cc",
+    "lock_sha256": "9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977",
+    "started_utc": "2026-10-18T18:12:34.614378+00:00",
+    "runs": [
+      {
+        "id": "A1",
+        "command": [
+          "swift",
+          "test",
+          "-c",
+          "release",
+          "-Xswiftc",
+          "-enable-testing",
+          "--no-parallel",
+          "--force-resolved-versions",
+          "--filter",
+          "HighlightPerformanceTests.incrementalKeystroke1MB"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+        "started_utc": "2026-10-18T18:12:34.646863+00:00",
+        "load_before": "2:12  up 19 days,  1:48, 2 users, load averages: 2.72 4.07 5.88",
+        "exit_code": 0,
+        "elapsed_seconds": 25.737,
+        "finished_utc": "2026-10-18T18:13:00.394019+00:00",
+        "load_after": "2:13  up 19 days,  1:49, 2 users, load averages: 4.16 4.34 5.92",
+        "measurements": [
+          "PERF_CONTEXT wall=0.162661291 seconds threadCPU=0.161126666 processCPU=0.161126 voluntarySwitches=0 involuntarySwitches=11 residentBefore=144179200 residentAfter=216596480 peakRSSRaw=216596480 thermalBefore=0 thermalAfter=0 mainThread=true utf8Bytes=1000009 utf16Units=1000009"
+        ],
+        "issues": [],
+        "test_binary": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/arm64-apple-macosx/release/MacDownKitPackageTests.xctest/Contents/MacOS/MacDownKitPackageTests",
+        "test_binary_sha256": "476bb6a670deae444aebae10e0332f9efb05759fd47b4d2043020e0fa1e56fa1"
+      },
+      {
+        "id": "B1",
+        "command": [
+          "swift",
+          "test",
+          "-c",
+          "release",
+          "-Xswiftc",
+          "-enable-testing",
+          "--no-parallel",
+          "--force-resolved-versions",
+          "--filter",
+          "Performance|MarkdownTreeReuse",
+          "--skip-build"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+        "started_utc": "2026-10-18T18:13:00.457536+00:00",
+        "load_before": "2:13  up 19 days,  1:49, 2 users, load averages: 4.16 4.34 5.92",
+        "exit_code": 1,
+        "elapsed_seconds": 7.529,
+        "finished_utc": "2026-10-18T18:13:07.989833+00:00",
+        "load_after": "2:13  up 19 days,  1:49, 2 users, load averages: 3.90 4.28 5.88",
+        "measurements": [
+          "PERF_CONTEXT wall=0.163004292 seconds threadCPU=0.162883334 processCPU=0.1628829999999999 voluntarySwitches=0 involuntarySwitches=21 residentBefore=179290112 residentAfter=251592704 peakRSSRaw=251592704 thermalBefore=0 thermalAfter=0 mainThread=true utf8Bytes=1000009 utf16Units=1000009"
+        ],
+        "issues": [
+          "\u2718 Test \"handled assist through the adapter on a 1 MB document stays within the keystroke budget\" recorded an issue at EditingAssistPerformanceTests.swift:88:9: Expectation failed: (durationMilliseconds \u2192 56.881709) < (50 \u2192 50.0)"
+        ],
+        "test_binary": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/arm64-apple-macosx/release/MacDownKitPackageTests.xctest/Contents/MacOS/MacDownKitPackageTests",
+        "test_binary_sha256": "476bb6a670deae444aebae10e0332f9efb05759fd47b4d2043020e0fa1e56fa1"
+      }
+    ],
+    "patch_sha256": "bd559a75ceb341155e4fdec560d92f3579dd315509673ed0fcf5ac88ca301426",
+    "stopped_reason": "timeout, missing measurement/compile failure or unrelated test failure",
+    "finished_utc": "2026-10-18T18:13:08.029151+00:00",
+    "source_restored": true,
+    "status_after": "",
+    "head_after": "e16be9f7a749d9ed0f2fd74829483c26c87051f4",
+    "lock_unchanged": true
+  },
+  "experiment_interpretation": {
+    "predeclared_sequence": [
+      "A1 isolated",
+      "B1 full performance selection",
+      "B2 full performance selection",
+      "A2 isolated"
+    ],
+    "executed": [
+      "A1",
+      "B1"
+    ],
+    "not_executed": [
+      "B2",
+      "A2"
+    ],
+    "specific_stop_reason": "B1 unrelated existing editing-assist performance gate failed at 56.881709 ms against 50 ms",
+    "parser_484_814584_ms_overrun_explained": false,
+    "editing_assist_56_881709_ms_overrun_explained": false,
+    "thresholds_changed": false,
+    "instrumented_binary_requires_rebuild_before_restored_source_validation": true
+  },
+  "next_independent_slice": {
+    "issue": 148,
+    "scope": "Mermaid exact generated-bundle inclusion and licence provenance",
+    "existing_audit": "compliance/MERMAID_NESTED_AUDIT.md",
+    "known_gap": "Release-lock versions are recorded; generated artifact/source-map linkage and verbatim nested licence texts remain open.",
+    "runtime_bundle_sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+    "external_mutations_authorized": false,
+    "inventory_status_changed": false
+  },
+  "evidence_files": [
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/diagnose-performance-context.py",
+      "bytes": 7259,
+      "sha256": "09f0d301be140465b2958fa2b3b18fc9beb9e4a3dbc438623d79ba88f2798dbd"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/independent-review-report.md",
+      "bytes": 2562,
+      "sha256": "be0d45c2363c15793415be91d240c190e9f1e677d290d82b42f2c50d4bac7692"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/performance-context-A1.json",
+      "bytes": 1265,
+      "sha256": "1e41a07bb2ec0e153bce8f91112769924cd44a29c3ff23d2f3e9cc4b26ea17a7"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/performance-context-A1.log",
+      "bytes": 2028,
+      "sha256": "756d7cbbb65c3d0a8aa2c4d3feb84f4ffaa948076c2aa46c16e7fc405b11574a"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/performance-context-B1.json",
+      "bytes": 1529,
+      "sha256": "7695837c4592912672856e9d81da3fdcbecc1e3eb39038a88214e0ba499682ca"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/performance-context-B1.log",
+      "bytes": 8460,
+      "sha256": "be6044a02b148d21c7dea977f22d95f3dc9eac5ea5625e32d8438b434984cf97"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/performance-context-instrumentation.patch",
+      "bytes": 3165,
+      "sha256": "bd559a75ceb341155e4fdec560d92f3579dd315509673ed0fcf5ac88ca301426"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/performance-context-original.swift",
+      "bytes": 8386,
+      "sha256": "08ddacd5ec5fd9d7cfc69e7e4a23905831c4c27bd1da468b4f76691a749159cc"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/performance-context-plan.json",
+      "bytes": 1439,
+      "sha256": "0373be266f063a19e493649ac9856daf9798230f6b3009ef5f978d4f9c83b659"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/performance-context-results.json",
+      "bytes": 3708,
+      "sha256": "55451e63f9e46816395a03b49b559a1488ded7b8e130d57b6e6c4ecee94800b2"
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-review-e16be9f7-2026-10-18/ownership-check.json",
+      "bytes": 5091,
+      "sha256": "a4ea1e6c727392341a56d7b580b750bd446bf654798951294fdb4bbe81798992"
+    }
+  ],
+  "external_changes": []
+}

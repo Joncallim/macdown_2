@@ -1,0 +1,16 @@
+--- ts-lib/src/lexer.c	2026-10-16 07:23:36
++++ ts-lib-bsearch/src/lexer.c	2026-10-16 07:24:02
+@@ -144,7 +144,12 @@
+ 
+   // Move to the first valid position at or after the given position.
+   bool found_included_range = false;
+-  for (unsigned i = 0; i < self->included_range_count; i++) {
++  unsigned lo = 0, hi = self->included_range_count;
++  while (lo < hi) { // SCRATCH EXPERIMENT: first range with end_byte > position
++    unsigned mid = lo + (hi - lo) / 2;
++    if (self->included_ranges[mid].end_byte > self->current_position.bytes) hi = mid; else lo = mid + 1;
++  }
++  for (unsigned i = lo; i < self->included_range_count; i++) {
+     TSRange *included_range = &self->included_ranges[i];
+     if (
+       included_range->end_byte > self->current_position.bytes &&

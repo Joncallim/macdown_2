@@ -1,0 +1,1734 @@
+{
+  "candidate": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+  "baseline": "a4c48bc72955db21bdd8546c0e97bff051093216",
+  "phases": [
+    {
+      "head": "1506a04c2c332a016162dbb196abda952c89775c",
+      "tree": "41096ccbae2a4c4a513c92c29d7ad2a390e37d10",
+      "source_archive_sha256": "b7e0006142bce7a4792dba963470515fb5b3b20a8da37fe4b2b4315ebbea62be",
+      "commands": [
+        {
+          "name": "swiftformat",
+          "argv": [
+            "swiftformat",
+            "--lint",
+            "MacDown2"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:36:47.820648+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:36:48.043983+00:00",
+          "seconds": 0.22314495802856982,
+          "log_sha256": "ac58e3884804d006188e6ca59f61f467637d9979e61bb8eb690ed922a797a462",
+          "head_after": "1506a04c2c332a016162dbb196abda952c89775c",
+          "git_status_after": ""
+        },
+        {
+          "name": "swiftlint",
+          "argv": [
+            "swiftlint",
+            "lint",
+            "--strict",
+            "MacDown2"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:36:48.097090+00:00",
+          "expected_exit": 0,
+          "exit_code": 2,
+          "ended_utc": "2026-10-18T19:36:48.620909+00:00",
+          "seconds": 0.5238036250229925,
+          "log_sha256": "cc590c446451c7def55245c52966c020382884dacc0d41ec01a0ab69770a5414",
+          "head_after": "1506a04c2c332a016162dbb196abda952c89775c",
+          "git_status_after": ""
+        }
+      ],
+      "performance_suites_run": false,
+      "native_ui_run": false
+    },
+    {
+      "head": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+      "tree": "f6a145597a881018b222548385ae07d4dee41f55",
+      "source_archive_sha256": "de8e2007d486ea4701fdb850aaaae84dec553d613fdd1aee05b64af230a06700",
+      "commands": [
+        {
+          "name": "swiftformat",
+          "argv": [
+            "swiftformat",
+            "--lint",
+            "MacDown2"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:37:35.352187+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:37:35.561331+00:00",
+          "seconds": 0.2089417080860585,
+          "log_sha256": "72ddd3742ad29bb8b9d92f87c83a8280123e3e390496679504d899347e66769e",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "swiftlint",
+          "argv": [
+            "swiftlint",
+            "lint",
+            "--strict",
+            "MacDown2"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:37:35.611919+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:37:36.048958+00:00",
+          "seconds": 0.4370225409511477,
+          "log_sha256": "42d689cfa4c134aeecc47a1aa8844296c3b2da0d71c6fdd0fb9d6ddfdfecd760",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "preview-reader-debug",
+          "argv": [
+            "swift",
+            "test",
+            "--no-parallel",
+            "--force-resolved-versions",
+            "--filter",
+            "HTMLPreview|ContainedResourceReader"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+          "started_utc": "2026-10-18T19:37:36.101222+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:37:51.489906+00:00",
+          "seconds": 15.388839832972735,
+          "log_sha256": "2beba2b8963aa01cc779ace4bb7f3ac46e949a3ccbcb8a91f9155f94737e6e21",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "preview-reader-release",
+          "argv": [
+            "swift",
+            "test",
+            "-c",
+            "release",
+            "-Xswiftc",
+            "-enable-testing",
+            "--no-parallel",
+            "--force-resolved-versions",
+            "--filter",
+            "HTMLPreview|ContainedResourceReader"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+          "started_utc": "2026-10-18T19:37:51.551984+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:37:54.111634+00:00",
+          "seconds": 2.5596602091100067,
+          "log_sha256": "a71f26cec74339188eb779e0c7565d06cfa6fc1ed388327af51fe5cd63e4a828",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "source-compliance",
+          "argv": [
+            "python3",
+            "compliance/tools/compliance.py",
+            "check"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/validated-source-a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "started_utc": "2026-10-18T19:37:54.174052+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:37:54.416234+00:00",
+          "seconds": 0.24216645793057978,
+          "log_sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "release-preflight",
+          "argv": [
+            "python3",
+            "compliance/tools/compliance.py",
+            "check",
+            "--release"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/validated-source-a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "started_utc": "2026-10-18T19:37:54.473526+00:00",
+          "expected_exit": 1,
+          "exit_code": 1,
+          "ended_utc": "2026-10-18T19:37:54.677845+00:00",
+          "seconds": 0.2043071249499917,
+          "log_sha256": "0d6822d8318b7e53ae435442aa10f8a88d266edcc5906f855a173e8b36081c80",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "xcodegen",
+          "argv": [
+            "xcodegen",
+            "generate"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2",
+          "started_utc": "2026-10-18T19:37:54.734212+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:37:54.801453+00:00",
+          "seconds": 0.0672274581156671,
+          "log_sha256": "58aa2a3119b37b0a5af3e23bf3029d9ae18ed71807d26d2f10974839c4481fd0",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "pin-xcode",
+          "argv": [
+            "MacDown2/scripts/pin-xcode-package-versions.sh"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:37:54.860506+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:37:54.876009+00:00",
+          "seconds": 0.015489541925489902,
+          "log_sha256": "b2be8d12c3194b89502a2b9bcdb39f066f3ffdf67f4945db582b64bf30595151",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "release-app",
+          "argv": [
+            "xcodebuild",
+            "-derivedDataPath",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData",
+            "-xcconfig",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/FirstPartyWarnings.xcconfig",
+            "-clonedSourcePackagesDirPath",
+            "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+            "-project",
+            "MacDown2/MacDown2.xcodeproj",
+            "-scheme",
+            "MacDown2",
+            "-configuration",
+            "Release",
+            "-destination",
+            "platform=macOS",
+            "-onlyUsePackageVersionsFromResolvedFile",
+            "CODE_SIGNING_ALLOWED=NO",
+            "CODE_SIGNING_REQUIRED=NO",
+            "build"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:37:54.929585+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:39:26.655357+00:00",
+          "seconds": 91.72663874994032,
+          "log_sha256": "0f22e7c7a8db02583fe6997699b0f2ad1cc6ebb3b2ee7d776d0650155f6b8cea",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "release-cli",
+          "argv": [
+            "xcodebuild",
+            "-derivedDataPath",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData",
+            "-xcconfig",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/FirstPartyWarnings.xcconfig",
+            "-clonedSourcePackagesDirPath",
+            "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+            "-project",
+            "MacDown2/MacDown2.xcodeproj",
+            "-scheme",
+            "macdown2",
+            "-configuration",
+            "Release",
+            "-destination",
+            "platform=macOS",
+            "-onlyUsePackageVersionsFromResolvedFile",
+            "CODE_SIGNING_ALLOWED=NO",
+            "CODE_SIGNING_REQUIRED=NO",
+            "build"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:39:26.732003+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:39:39.119227+00:00",
+          "seconds": 12.387354917125776,
+          "log_sha256": "ec9acccc4bc026cd92b17b2662436a960629b61e6937095d5fe45d28409225f1",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "app-test-compile",
+          "argv": [
+            "xcodebuild",
+            "-derivedDataPath",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData",
+            "-xcconfig",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/FirstPartyWarnings.xcconfig",
+            "-clonedSourcePackagesDirPath",
+            "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+            "-project",
+            "MacDown2/MacDown2.xcodeproj",
+            "-scheme",
+            "MacDown2",
+            "-configuration",
+            "Release",
+            "-destination",
+            "platform=macOS",
+            "-onlyUsePackageVersionsFromResolvedFile",
+            "-parallel-testing-enabled",
+            "NO",
+            "CODE_SIGNING_ALLOWED=NO",
+            "CODE_SIGNING_REQUIRED=NO",
+            "build-for-testing"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:39:39.185083+00:00",
+          "expected_exit": 0,
+          "exit_code": 65,
+          "ended_utc": "2026-10-18T19:39:45.649475+00:00",
+          "seconds": 6.4644479169510305,
+          "log_sha256": "67009eb676577c0e9fb9f4fca5ce6ec0e8e8f2116a327552b0dc5d6871db9152",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        }
+      ],
+      "performance_suites_run": false,
+      "native_ui_run": false
+    },
+    {
+      "head": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+      "tree": "f6a145597a881018b222548385ae07d4dee41f55",
+      "reason": "Resume after correcting omitted documented -enableCodeCoverage NO flag; .github/workflows/ci.yml explains the observed ___llvm_profile_runtime linker failure. Initial failure retained in candidate-validation.json.",
+      "commands": [
+        {
+          "name": "app-test-compile",
+          "argv": [
+            "xcodebuild",
+            "-derivedDataPath",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData",
+            "-xcconfig",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/FirstPartyWarnings.xcconfig",
+            "-clonedSourcePackagesDirPath",
+            "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+            "-project",
+            "MacDown2/MacDown2.xcodeproj",
+            "-scheme",
+            "MacDown2",
+            "-configuration",
+            "Release",
+            "-destination",
+            "platform=macOS",
+            "-onlyUsePackageVersionsFromResolvedFile",
+            "-enableCodeCoverage",
+            "NO",
+            "-parallel-testing-enabled",
+            "NO",
+            "CODE_SIGNING_ALLOWED=NO",
+            "CODE_SIGNING_REQUIRED=NO",
+            "build-for-testing"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:40:25.773741+00:00",
+          "expected_exit": 0,
+          "exit_code": 65,
+          "ended_utc": "2026-10-18T19:41:43.408856+00:00",
+          "seconds": 77.63530254201032,
+          "log_sha256": "c72bd210af891ca6218638b6d6277737cf6ab73c5a33e83f446219efa43eaa65",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        }
+      ],
+      "performance_suites_run": false,
+      "native_ui_run": false
+    },
+    {
+      "head": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+      "tree": "f6a145597a881018b222548385ae07d4dee41f55",
+      "reason": "Compile Release app tests with testable package modules: existing app tests use @testable import FileCore and the prior Release module lacked -enable-testing. Keep coverage disabled per CI. Prior failures retained in candidate-validation.json and continuation-validation.json.",
+      "commands": [
+        {
+          "name": "app-test-compile",
+          "argv": [
+            "xcodebuild",
+            "-derivedDataPath",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData",
+            "-xcconfig",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/FirstPartyWarnings.xcconfig",
+            "-clonedSourcePackagesDirPath",
+            "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+            "-project",
+            "MacDown2/MacDown2.xcodeproj",
+            "-scheme",
+            "MacDown2",
+            "-configuration",
+            "Release",
+            "-destination",
+            "platform=macOS",
+            "-onlyUsePackageVersionsFromResolvedFile",
+            "-enableCodeCoverage",
+            "NO",
+            "-parallel-testing-enabled",
+            "NO",
+            "CODE_SIGNING_ALLOWED=NO",
+            "CODE_SIGNING_REQUIRED=NO",
+            "ENABLE_TESTABILITY=YES",
+            "build-for-testing"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:42:24.678042+00:00",
+          "expected_exit": 0,
+          "exit_code": 65,
+          "ended_utc": "2026-10-18T19:43:40.070758+00:00",
+          "seconds": 75.39296658313833,
+          "log_sha256": "e50c8048040b6db98ba630f309d5b678e3fb806bcaf8e6d7008170daf6b4bfe6",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        }
+      ],
+      "performance_suites_run": false,
+      "native_ui_run": false
+    },
+    {
+      "head": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+      "tree": "f6a145597a881018b222548385ae07d4dee41f55",
+      "reason": "Use a fresh test-build directory: the prior invocation compiled FileCore with -enable-testing into PackageFrameworks but the compiler still selected the older non-testable Products/Release module. Distinct hashes and compiler commands are retained in testability-module-shadowing.json; preserve both directories. No source or dependency changes.",
+      "commands": [
+        {
+          "name": "app-test-compile",
+          "argv": [
+            "xcodebuild",
+            "-derivedDataPath",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/TestDerivedData",
+            "-xcconfig",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/FirstPartyWarnings.xcconfig",
+            "-clonedSourcePackagesDirPath",
+            "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+            "-project",
+            "MacDown2/MacDown2.xcodeproj",
+            "-scheme",
+            "MacDown2",
+            "-configuration",
+            "Release",
+            "-destination",
+            "platform=macOS",
+            "-onlyUsePackageVersionsFromResolvedFile",
+            "-enableCodeCoverage",
+            "NO",
+            "-parallel-testing-enabled",
+            "NO",
+            "CODE_SIGNING_ALLOWED=NO",
+            "CODE_SIGNING_REQUIRED=NO",
+            "ENABLE_TESTABILITY=YES",
+            "build-for-testing"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:44:27.892814+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:46:31.747865+00:00",
+          "seconds": 123.85558574995957,
+          "log_sha256": "35b4385dc0de8e31a2892ed9b1a59b35f9cf2d4845f0db07c35eb59170290325",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "selected-app-tests",
+          "argv": [
+            "python3",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/run-selected-tests.py",
+            "final-selected-app",
+            "--include-render",
+            "--final-products"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:46:31.837449+00:00",
+          "expected_exit": 0,
+          "exit_code": 1,
+          "ended_utc": "2026-10-18T19:46:39.560058+00:00",
+          "seconds": 7.722669374896213,
+          "log_sha256": "f8ac9bb0725865b7ba740f94171268243aee4260d15adc07d0f64e98ba768c51",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        }
+      ],
+      "performance_suites_run": false,
+      "native_ui_run": false
+    },
+    {
+      "head": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+      "tree": "f6a145597a881018b222548385ae07d4dee41f55",
+      "reason": "Fresh Release app test compilation passed. Standalone linking then exposed profiling-instrumented retained objects without their runtime. Add explicit profiling runtime, preserve failed link, and direct profiling output only into raw evidence. No performance measurement or source change.",
+      "commands": [
+        {
+          "name": "selected-app-tests",
+          "argv": [
+            "python3",
+            "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/run-selected-tests.py",
+            "final-selected-linked-runtime",
+            "--include-render",
+            "--final-products"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:47:47.242041+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:47:54.400620+00:00",
+          "seconds": 7.158117459155619,
+          "log_sha256": "32751881ae1d598bf3307a4a7a94eac77075a0162a4e20a730873213887f2dc0",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "pins-match",
+          "argv": [
+            "MacDown2/scripts/pin-xcode-package-versions.sh",
+            "--check"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:47:54.472124+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:47:54.484555+00:00",
+          "seconds": 0.012397457845509052,
+          "log_sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "lockfile-unchanged",
+          "argv": [
+            "git",
+            "diff",
+            "--exit-code",
+            "a4c48bc7",
+            "HEAD",
+            "--",
+            "MacDown2/Packages/MacDownKit/Package.resolved"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:47:54.542466+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:47:54.551178+00:00",
+          "seconds": 0.008693624986335635,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        },
+        {
+          "name": "diff-check",
+          "argv": [
+            "git",
+            "diff",
+            "--check",
+            "a4c48bc7",
+            "HEAD"
+          ],
+          "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+          "started_utc": "2026-10-18T19:47:54.603911+00:00",
+          "expected_exit": 0,
+          "exit_code": 0,
+          "ended_utc": "2026-10-18T19:47:54.613382+00:00",
+          "seconds": 0.009449333883821964,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "head_after": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+          "git_status_after": ""
+        }
+      ],
+      "performance_suites_run": false,
+      "native_ui_run": false
+    }
+  ],
+  "inspection": {
+    "utc": "2026-10-18T19:48:04.685543+00:00",
+    "head": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+    "tree": "f6a145597a881018b222548385ae07d4dee41f55",
+    "tested_objects": {
+      "MacDown2": "eba6f9781886af31bec9c9cb35a75e5219f03061",
+      "compliance": "1e2ffccdd91b697732a4ac50ebfa35cc3a87b306",
+      ".github/workflows/ci.yml": "1ae031512ae82c83b8d5aa20ec05e2503c3b9e7e",
+      "MacDown2/MacDown2/HTMLPreviewView.swift": "de66c415c58b269fccb5f036077696362d9cad55",
+      "MacDown2/MacDown2/HTMLPreviewSchemeHandler.swift": "a9235c66f23f2f26bce049300c1d3a0816eeceb3",
+      "MacDown2/MacDown2Tests/HTMLPreviewNavigationIdentityTests.swift": "b0393434cf30a66de611e81de5d47781074d5bb8",
+      "MacDown2/Packages/MacDownKit/Package.resolved": "50007bb47a9c09c551c10b7503d860545acada20"
+    },
+    "artifacts": {
+      "MacDown2.app/Contents/MacOS/MacDown2": {
+        "bytes": 6338536,
+        "sha256": "bcfae8f15768c05575d346d0316d9f3ca319e066ccf06d4741cfd8ea2d238c95"
+      },
+      "macdown2": {
+        "bytes": 1997272,
+        "sha256": "3d5afab65b21c87f756a13a99d81612428e457077f7be2247865617e09f5cfdf"
+      },
+      "DerivedData/MacDown2.app/Contents/MacOS/MacDown2": {
+        "bytes": 6338536,
+        "sha256": "bcfae8f15768c05575d346d0316d9f3ca319e066ccf06d4741cfd8ea2d238c95"
+      },
+      "TestDerivedData/MacDown2.app/Contents/MacOS/MacDown2": {
+        "bytes": 6339240,
+        "sha256": "6f96f3a4b75df20fa669a32306912542580f1315b35b38e25a95bfe0daffd1ef"
+      },
+      "TestDerivedData/MacDown2.app/Contents/PlugIns/MacDown2Tests.xctest/Contents/MacOS/MacDown2Tests": {
+        "bytes": 6698528,
+        "sha256": "5fee63bc27f96411ea6bcfe2663d898399435a89b6997d5bf1a2f8f726f63ec0"
+      },
+      "TreeSitterPython.o": {
+        "bytes": 465296,
+        "sha256": "f4d05b2c8b9c03bd3722b0dfd29a9d9b596f99cfe1c19c7f1729fa69a653783d"
+      },
+      "TreeSitterCSS.o": {
+        "bytes": 128376,
+        "sha256": "86859d6d3c1cd1fff6a7eae26045f958ba621e52c470c82d01faa020e7e3bc81"
+      },
+      "DiagramsD2.o": {
+        "bytes": 187400,
+        "sha256": "09574d0dc99ead0507b624dba4750f009300a5c8f5de4aaeed5b1cfd9ab517df"
+      },
+      "CYaml.o": {
+        "bytes": 138120,
+        "sha256": "cb81ca57a319e2fbc5e1b2f5c00eb78848df10fc8c1a257ce2e08eb77ef32597"
+      },
+      "Neon.o": {
+        "bytes": 373550,
+        "sha256": "4585a7b85556fa4eac97281ac7befcf9ef37c1129f390833a182b9e1ea1f2c62"
+      },
+      "TreeSitterYAML.o": {
+        "bytes": 199160,
+        "sha256": "4a66922835c635a20b471b25c3d2a7b6db12613db0b843db3dcc9d027038dc58"
+      },
+      "TreeSitterBash.o": {
+        "bytes": 1401344,
+        "sha256": "61422849bb1675125afbdeea4d7ae1471793a83baba2bd8d00a9d09d7f2ef652"
+      },
+      "AppSettings.o": {
+        "bytes": 410832,
+        "sha256": "d04dfab080f0f35cc30f75b8f24398e7e46a06c549f00f0148e5bc15a7820db6"
+      },
+      "TreeSitterJSON.o": {
+        "bytes": 8560,
+        "sha256": "121b79fe1e061796076fe26a29413f46662ecb9ef33548aeb73893aaa91c8a75"
+      },
+      "TextSearch.o": {
+        "bytes": 618848,
+        "sha256": "a9af4204d402c8ee43b59d6aae6c251febff0b568915c36e2b47380b00ced42d"
+      },
+      "TextFilters.o": {
+        "bytes": 439064,
+        "sha256": "a48d37ded4bdaeb698856339ea66d8ec3bdf9ab6d76bed672f0c31ea1b8be031"
+      },
+      "TreeSitterTypeScript.o": {
+        "bytes": 1426008,
+        "sha256": "d89d94a6e3c1c478388f7515f759faa3e40ae13f81ae5c149c43deceb7b1da11"
+      },
+      "TreeSitterDTD.o": {
+        "bytes": 38376,
+        "sha256": "169549a574d8bfe56bde529ce22295cdaa190a5fa7a6e6fc05663d3c8731ab06"
+      },
+      "SwiftTreeSitterLayer.o": {
+        "bytes": 244968,
+        "sha256": "9085e3f28c691f5776250a0378076404b7e6ac0b393c27d33e3ba3dd792193ce"
+      },
+      "TreeSitterXML.o": {
+        "bytes": 53456,
+        "sha256": "3b4a3cf0d34da9b8249e171a3035606fcce677471da172e651215506a024c1dd"
+      },
+      "TreeSitter.o": {
+        "bytes": 267280,
+        "sha256": "d6eade20e3092eb7c1d3766e473316ce1a7130ded60d8221334e5942615a8e27"
+      },
+      "D2Rendering.o": {
+        "bytes": 68744,
+        "sha256": "dd0af149e57ada366f56d6d786e70c4eb1a0c76f03cfc8042b754e6b57888d77"
+      },
+      "TreeSitterMarkdownInlineResources.o": {
+        "bytes": 26392,
+        "sha256": "67942a42dab86eca4b792048d22120f4491b5e52e72eca0b015c700e078cecdf"
+      },
+      "DiagramRendering.o": {
+        "bytes": 152544,
+        "sha256": "96a88e8e15a11cc8c3a52937f381a639628549c942788bb7a96aef10a1f3750a"
+      },
+      "TreeSitterRuby.o": {
+        "bytes": 2127480,
+        "sha256": "7b7fabc1e517a6bc57480a32db9c044b2821ddaaa7f271c9c08298f7c06e9133"
+      },
+      "Diagrams.o": {
+        "bytes": 197808,
+        "sha256": "639b70b18151acff83e38bf70c72c1c038f0ceb1c49dd69b44228c8df849ab9a"
+      },
+      "TreeSitterMarkdownResources.o": {
+        "bytes": 25880,
+        "sha256": "a9180ca3a6bcbfeffcc1406c7986e55261a553a2847a6a83367bc264eee4dc2f"
+      },
+      "Rearrange.o": {
+        "bytes": 134008,
+        "sha256": "a0809b16282d66dcc858ecb967db9aa0a4c6184f80edcc69e89d0b7a6f083cb3"
+      },
+      "CAtomic.o": {
+        "bytes": 1424,
+        "sha256": "99cf3fa8f53a053628d9b305212670f077d2c82ad8adc80b196938dd8c555d17"
+      },
+      "Themes.o": {
+        "bytes": 367304,
+        "sha256": "006c57c13df2d2ada8a6ffd00f3dae24f3ecf78af342d20ccf278321b5758faa"
+      },
+      "TreeSitterSQL.o": {
+        "bytes": 11080256,
+        "sha256": "a49bea5219aa4968f5ac7e17fb64f15419f5b17b60a47ee5f26ba7019e41089d"
+      },
+      "Workspace.o": {
+        "bytes": 2069304,
+        "sha256": "912a3d9584e2a5c4f3da2578755f2413f23f873a3894df04c762bf5e60f6c4ed"
+      },
+      "DiagramsGraphviz.o": {
+        "bytes": 198864,
+        "sha256": "604121c811c8d829cc4eca81c1838f3bc642775e216510f3385f64efd4b1de75"
+      },
+      "SwiftUIMath.o": {
+        "bytes": 1732888,
+        "sha256": "205ceb45baedb3419e870ed202507beaceb6ef76f90f58fbe59bbab08b4bfe5a"
+      },
+      "TreeSitterJavaScript.o": {
+        "bytes": 423768,
+        "sha256": "d6e73f3ff89d3220a3186671fc1cf470e82629fddbf9675a162e79761b6dfa70"
+      },
+      "TreeSitterMarkdown.o": {
+        "bytes": 404416,
+        "sha256": "473c69c782f8bef2c36239c698e8136ccdf4572678fbaceb48650bf582bf8750"
+      },
+      "FileTree.o": {
+        "bytes": 1251176,
+        "sha256": "4e3ba2a2425eecfe0cc5adf281f8bf377f4a49eb04164518c2bdced21d37c730"
+      },
+      "TreeSitterHTML.o": {
+        "bytes": 24712,
+        "sha256": "a79ed1d95dbb5edda03693ac5b70c657bbd1a1b8d104cade6b3b7cc3c1ba7297"
+      },
+      "SwiftTreeSitter.o": {
+        "bytes": 920184,
+        "sha256": "be763e2431d1fd4eac27635916b535bce1a63cb3ecab3d51d6edf87696f4ecb3"
+      },
+      "GraphvizRendering.o": {
+        "bytes": 76312,
+        "sha256": "f3c3b11429bd0336ceab14c5ee1294f816f16e1dd96ae1ed29e28eab231e2a21"
+      },
+      "TreeSitterJavaScriptResources.o": {
+        "bytes": 26056,
+        "sha256": "57c57da785ed07eb7d6f911334e71d92203335b2d42ec1cd6d03f564653074d4"
+      },
+      "MathRendering.o": {
+        "bytes": 60032,
+        "sha256": "93eeba5a7b17f14651bafc9a7e0cf122eda91f02c0b6082cf5d268814c7db715"
+      },
+      "TreeSitterCPP.o": {
+        "bytes": 3470072,
+        "sha256": "e22251b31c55bf3cd4a73ef927d002371a4727b003e8ae083f75172d107d7c80"
+      },
+      "Highlighting.o": {
+        "bytes": 387912,
+        "sha256": "0d463312db488a15727ac0fa65676cbbcb9e7d788484c2518fb6383b0afcba39"
+      },
+      "EditorCore.o": {
+        "bytes": 2344680,
+        "sha256": "29f418c6674eb9c74d5a778812d89329d9b6dae28a228d422b1e2c71ec1758e5"
+      },
+      "Math.o": {
+        "bytes": 200912,
+        "sha256": "0219555ff74af990bda44fe1a4bbc545c3bd8e94df7ca73e598901cc40afca29"
+      },
+      "DiagramWebKitPool.o": {
+        "bytes": 216040,
+        "sha256": "95fab4dd5f55a0fe29f44148cafdda9f5104c5d75fe53c2e71422770698eb27d"
+      },
+      "TreeSitterSQLResources.o": {
+        "bytes": 25392,
+        "sha256": "807c17e22eefda72e2ad95c8de53c6f56e5cd24eab44fe8cf1147b4ceecca6f4"
+      },
+      "TreeSitterMarkdownInline.o": {
+        "bytes": 399336,
+        "sha256": "56ee66172b8818d79332d01498c2479fcc194e3571f00afb84e7c60c00c1e56e"
+      },
+      "TreeSitterClient.o": {
+        "bytes": 413304,
+        "sha256": "841f4f035704daf7e5120631c5819ac63ad91c942bc11823b1b3e070186bea16"
+      },
+      "TreeSitterTSX.o": {
+        "bytes": 1458752,
+        "sha256": "b112d139dfc149ea9f8d6b5f162eac2a7b52173e39e3f8c67b0cc6e7895564a6"
+      },
+      "OutlineUI.o": {
+        "bytes": 270616,
+        "sha256": "c470ef9067c2df037dd7194856c73a8f40746f17167691dd7c21e4044e156690"
+      },
+      "ExportService.o": {
+        "bytes": 789904,
+        "sha256": "af1ed4c2e5e4189b59d33c9759ac977cf292e0d6f0d108f9f02d66e52429d4bd"
+      },
+      "TreeSitterTOML.o": {
+        "bytes": 29024,
+        "sha256": "1a83303aabf17ab1a873cadc53ddb9f38813ec35583de37bd1bbad1422778d54"
+      },
+      "JSONSupport.o": {
+        "bytes": 365792,
+        "sha256": "6d55c32cd0353bf86b2d3939405ce6719cb457fcdb49e91e00bdd03d1ebdc007"
+      },
+      "cmark-gfm.o": {
+        "bytes": 2160759,
+        "sha256": "5872c74c50206d5ba4d728d7c4c6890bb5a11d8abd4b5a96302a789154d2ebf5"
+      },
+      "Yams.o": {
+        "bytes": 1824080,
+        "sha256": "3a505228f8d6bd7744912a0e8beddb23de3fda6adea92264e378a640a1763499"
+      },
+      "Preview.o": {
+        "bytes": 882104,
+        "sha256": "beec0897fa08a17ca4673c9903d6161c2976a87bb855aa9b7a4c9762134cb741"
+      },
+      "MarkdownEngine.o": {
+        "bytes": 468936,
+        "sha256": "bba8223d6f4815580192d69a307592e1a40abd9de0c58c999512d29d2b9e0a07"
+      },
+      "FileCore.o": {
+        "bytes": 3263936,
+        "sha256": "75f83dca2b8613079477fa3a101ee7064222ed2019115a6cc20cbfc9e5937ebf"
+      },
+      "cmark-gfm-extensions.o": {
+        "bytes": 50622,
+        "sha256": "a27daa13c2ac6dd3027e4b5cdc3120f1fbd2c89aba336884986eb89cc5dad9df"
+      },
+      "Markdown.o": {
+        "bytes": 2621382,
+        "sha256": "4f36ffc5b152a5a12af69b913bde0cb99982be3e3437fd2df069ec6f7823c915"
+      },
+      "Contributions.o": {
+        "bytes": 212232,
+        "sha256": "c417b58b0eabecd2e224569b2c94dc035d78353294f8dfec0e180ba24ca954ce"
+      },
+      "Textual.o": {
+        "bytes": 6696072,
+        "sha256": "14a116699ef417b20ada9215a8a749d97d5b8db42c97a13a28608d2ba0bf27c3"
+      },
+      "RangeState.o": {
+        "bytes": 382672,
+        "sha256": "8e1494821eeecc8d56fcecb4c8fb13f293b117a6cb6160fe76795c3541420158"
+      },
+      "TreeSitterSwift.o": {
+        "bytes": 3822480,
+        "sha256": "403a1a0c5538c00fcfcd5c13d06b3efffd3426c25435b8dbd800e675fbc1faf3"
+      },
+      "ConcurrencyExtras.o": {
+        "bytes": 195584,
+        "sha256": "385c394968d4dbc6736abceb5055ebfbb14b6383db9a240456f48ed356ef9c40"
+      }
+    },
+    "checkouts": [
+      {
+        "kind": "swiftpm",
+        "identity": "neon",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/Neon",
+        "expected_revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+        "head": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "rearrange",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/Rearrange",
+        "expected_revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+        "head": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swift-cmark",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-cmark",
+        "expected_revision": "924936d0427cb25a61169739a7660230bffa6ea6",
+        "head": "924936d0427cb25a61169739a7660230bffa6ea6",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swift-concurrency-extras",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-concurrency-extras",
+        "expected_revision": "5fa253428866f2360c3754e88537f700ed2656b5",
+        "head": "5fa253428866f2360c3754e88537f700ed2656b5",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swift-markdown",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-markdown",
+        "expected_revision": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "head": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swifttreesitter",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/SwiftTreeSitter",
+        "expected_revision": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+        "head": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swiftui-math",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swiftui-math",
+        "expected_revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+        "head": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "textual",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/textual",
+        "expected_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+        "head": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter",
+        "expected_revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+        "head": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-bash",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-bash",
+        "expected_revision": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+        "head": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-cpp",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-cpp",
+        "expected_revision": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "head": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-css",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-css",
+        "expected_revision": "c0d581e32d183a536731ed6c3a72758b27e20411",
+        "head": "c0d581e32d183a536731ed6c3a72758b27e20411",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-html",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-html",
+        "expected_revision": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+        "head": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-json",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-json",
+        "expected_revision": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+        "head": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-python",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-python",
+        "expected_revision": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+        "head": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-ruby",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-ruby",
+        "expected_revision": "71bd32fb7607035768799732addba884a37a6210",
+        "head": "71bd32fb7607035768799732addba884a37a6210",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-swift",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-swift",
+        "expected_revision": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+        "head": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-toml",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-toml",
+        "expected_revision": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+        "head": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-typescript",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-typescript",
+        "expected_revision": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+        "head": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-xml",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-xml",
+        "expected_revision": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+        "head": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-yaml",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-yaml",
+        "expected_revision": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+        "head": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "yams",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/Yams",
+        "expected_revision": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "head": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "neon",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Neon",
+        "expected_revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+        "head": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "rearrange",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Rearrange",
+        "expected_revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+        "head": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swift-cmark",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark",
+        "expected_revision": "924936d0427cb25a61169739a7660230bffa6ea6",
+        "head": "924936d0427cb25a61169739a7660230bffa6ea6",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swift-concurrency-extras",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-concurrency-extras",
+        "expected_revision": "5fa253428866f2360c3754e88537f700ed2656b5",
+        "head": "5fa253428866f2360c3754e88537f700ed2656b5",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swift-markdown",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-markdown",
+        "expected_revision": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "head": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swifttreesitter",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/SwiftTreeSitter",
+        "expected_revision": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+        "head": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swiftui-math",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swiftui-math",
+        "expected_revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+        "head": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "textual",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/textual",
+        "expected_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+        "head": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter",
+        "expected_revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+        "head": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-bash",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-bash",
+        "expected_revision": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+        "head": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-cpp",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-cpp",
+        "expected_revision": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "head": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-css",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-css",
+        "expected_revision": "c0d581e32d183a536731ed6c3a72758b27e20411",
+        "head": "c0d581e32d183a536731ed6c3a72758b27e20411",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-html",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-html",
+        "expected_revision": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+        "head": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-json",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-json",
+        "expected_revision": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+        "head": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-python",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-python",
+        "expected_revision": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+        "head": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-ruby",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-ruby",
+        "expected_revision": "71bd32fb7607035768799732addba884a37a6210",
+        "head": "71bd32fb7607035768799732addba884a37a6210",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-swift",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-swift",
+        "expected_revision": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+        "head": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-toml",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-toml",
+        "expected_revision": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+        "head": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-typescript",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript",
+        "expected_revision": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+        "head": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-xml",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml",
+        "expected_revision": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+        "head": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-yaml",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-yaml",
+        "expected_revision": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+        "head": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "yams",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Yams",
+        "expected_revision": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "head": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "git_status": ""
+      }
+    ],
+    "warnings": [
+      {
+        "log": "candidate-release-app.log",
+        "message": "2026-10-19 03:39:24.834 appintentsmetadataprocessor[83984:50613662] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:04.471 appintentsmetadataprocessor[87370:50634693] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:05.973 appintentsmetadataprocessor[87504:50635386] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:07.342 appintentsmetadataprocessor[87526:50635551] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:10.043 appintentsmetadataprocessor[87567:50635995] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:14.357 appintentsmetadataprocessor[87601:50636438] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:17.352 appintentsmetadataprocessor[87624:50636787] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:19.016 appintentsmetadataprocessor[87665:50637157] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:20.512 appintentsmetadataprocessor[87694:50637422] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:20.557 appintentsmetadataprocessor[87695:50637424] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:20.590 appintentsmetadataprocessor[87697:50637493] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:21.270 appintentsmetadataprocessor[87705:50637663] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:45:25.936 appintentsmetadataprocessor[87760:50638052] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:46:06.856 appintentsmetadataprocessor[87984:50639804] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:46:30.835 appintentsmetadataprocessor[88065:50640410] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "2026-10-19 03:46:31.523 appintentsmetadataprocessor[88076:50640513] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark/Package.swift: warning: DEFINES_MODULE was set, but no umbrella header could be found to generate the module map (in target 'cmark-gfm' from project 'cmark-gfm')"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'TextSearch' is missing a dependency on 'FileCore' because dependency scan of Swift module 'TextSearch' discovered a dependency on 'FileCore'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'MarkdownEngine' is missing a dependency on 'Yams' because dependency scan of Swift module 'MarkdownEngine' discovered a dependency on 'Yams'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'MarkdownEngine' is missing a dependency on 'Markdown' because dependency scan of Swift module 'MarkdownEngine' discovered a dependency on 'Markdown'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'EditorCore' is missing a dependency on 'TextSearch' because dependency scan of Swift module 'EditorCore' discovered a dependency on 'TextSearch'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'EditorCore' is missing a dependency on 'FileCore' because dependency scan of Swift module 'EditorCore' discovered a dependency on 'FileCore'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Contributions' is missing a dependency on 'Markdown' because dependency scan of Swift module 'Contributions' discovered a dependency on 'Markdown'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Contributions' is missing a dependency on 'Yams' because dependency scan of Swift module 'Contributions' discovered a dependency on 'Yams'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Contributions' is missing a dependency on 'MarkdownEngine' because dependency scan of Swift module 'Contributions' discovered a dependency on 'MarkdownEngine'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Math' is missing a dependency on 'Yams' because dependency scan of Swift module 'Math' discovered a dependency on 'Yams'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Math' is missing a dependency on 'Contributions' because dependency scan of Swift module 'Math' discovered a dependency on 'Contributions'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Math' is missing a dependency on 'MarkdownEngine' because dependency scan of Swift module 'Math' discovered a dependency on 'MarkdownEngine'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Math' is missing a dependency on 'Markdown' because dependency scan of Swift module 'Math' discovered a dependency on 'Markdown'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'DiagramsD2' is missing a dependency on 'Markdown' because dependency scan of Swift module 'DiagramsD2' discovered a dependency on 'Markdown'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'DiagramsD2' is missing a dependency on 'Contributions' because dependency scan of Swift module 'DiagramsD2' discovered a dependency on 'Contributions'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'DiagramsD2' is missing a dependency on 'MarkdownEngine' because dependency scan of Swift module 'DiagramsD2' discovered a dependency on 'MarkdownEngine'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'DiagramsD2' is missing a dependency on 'Yams' because dependency scan of Swift module 'DiagramsD2' discovered a dependency on 'Yams'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Diagrams' is missing a dependency on 'Markdown' because dependency scan of Swift module 'Diagrams' discovered a dependency on 'Markdown'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Diagrams' is missing a dependency on 'Contributions' because dependency scan of Swift module 'Diagrams' discovered a dependency on 'Contributions'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Diagrams' is missing a dependency on 'MarkdownEngine' because dependency scan of Swift module 'Diagrams' discovered a dependency on 'MarkdownEngine'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'Diagrams' is missing a dependency on 'Yams' because dependency scan of Swift module 'Diagrams' discovered a dependency on 'Yams'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'DiagramsGraphviz' is missing a dependency on 'Contributions' because dependency scan of Swift module 'DiagramsGraphviz' discovered a dependency on 'Contributions'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'DiagramsGraphviz' is missing a dependency on 'Yams' because dependency scan of Swift module 'DiagramsGraphviz' discovered a dependency on 'Yams'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'DiagramsGraphviz' is missing a dependency on 'MarkdownEngine' because dependency scan of Swift module 'DiagramsGraphviz' discovered a dependency on 'MarkdownEngine'"
+      },
+      {
+        "log": "fresh-tests-app-test-compile.log",
+        "message": "warning: 'DiagramsGraphviz' is missing a dependency on 'Markdown' because dependency scan of Swift module 'DiagramsGraphviz' discovered a dependency on 'Markdown'"
+      }
+    ],
+    "artifact_configuration_note": "Hashes are read after the testable Release build-for-testing continuation in shared DerivedData. App, test bundles and package modules may be rebuilt with ENABLE_TESTABILITY=YES and code coverage disabled; these hashes are not attributed to the earlier plain Release app invocation. The CLI was last explicitly built by candidate-release-cli. Separate TestDerivedData is the clean coverage-disabled, testability-enabled Release test build. Standalone selected tests use retained candidate Release aggregate objects from mixed diagnostic stages, individually hashed in final-selected-linked-runtime.json. They do not require @testable package access and are not attributed to the fresh test build or pristine original app build.",
+    "lock_sha256": "9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977",
+    "selected_tests_source_hashes": {
+      "MacDown2/MacDown2/HTMLPreviewView.swift": "d87418f2921d413930f9f1f67c868b33d174158c527149009009318e248c0bf7",
+      "MacDown2/MacDown2/HTMLPreviewSchemeHandler.swift": "40579014280b46e0b7654dc935d2774ebcfc955a9131e93265b923f461922feb",
+      "MacDown2/MacDown2/HTMLPreviewReloadBudget.swift": "cedb33469e801347b8e905450cddd9c22abff383e8b1382d183f6338b46bdfd8",
+      "MacDown2/MacDown2Tests/HTMLPreviewNavigationIdentityTests.swift": "88b6260ab24de0d697e24a52f9897136e3dbc1ff7933c12cffcec80065501b15",
+      "MacDown2/MacDown2Tests/HTMLPreviewLoadFailureTests.swift": "750fd62fed0e8562df27a2e2f03e987a2ee9636464b97adeedb0a6152fd68ab0",
+      "MacDown2/MacDown2Tests/HTMLPreviewReloadBudgetTests.swift": "f807d639e051418a12dfcd851821feb9a635a9374922c783853151fc8b41cd9a",
+      "MacDown2/MacDown2Tests/HTMLPreviewRenderTests.swift": "14eba2e1b3d378627afc1c873e62eb5d3e6fa534996ebc0e6325d0450b299c28"
+    },
+    "selected_tests_optimized": true,
+    "compiler_command_checks": [
+      {
+        "record": "candidate-release-app.log:MacDown2",
+        "count": 3,
+        "all_optimized": true,
+        "all_warnings_as_errors": true,
+        "command_sha256": [
+          "9e8a966d8ecb09f539a0b141b2dcd3b6343184dbdf8591b7535d88345a439b87",
+          "8793b2ae2b42f980fa16f3ac9d230884c23c2e156a0dd5e908a62af8529198fc",
+          "f710fcdda09f9f6837fca00a315dd893462d513386221df078ec48e1b3d720ef"
+        ]
+      },
+      {
+        "record": "candidate-release-cli.log:macdown2",
+        "count": 6,
+        "all_optimized": true,
+        "all_warnings_as_errors": true,
+        "command_sha256": [
+          "10386e3d716563605376257fafee3098cdbfb5481d22efacb84dc8b820c3e269",
+          "d8ec3e00dbea1c1368f95cc3abe44bdc6d789e9a10b699a791c2457c99ef332b",
+          "8e8a4f5046c7d4036f19476426472548b9724ca575506893faf8ee6120e3c248",
+          "438308b5a2c9567cccc75831c35d1a9c091f173f79cee7a3ab1cdf9740009cf5",
+          "358eb05bea1d6de42ee41a795564439cc2f8780d63115ae31a393b71ee9ddca2",
+          "1130528ef20fb0a64de57af2311ae1658806d9e1d49f4e9e4b83f7bbd3347601"
+        ]
+      },
+      {
+        "record": "fresh-tests-app-test-compile.log:MacDown2",
+        "count": 3,
+        "all_optimized": true,
+        "all_warnings_as_errors": true,
+        "command_sha256": [
+          "0883f2fda4555c931642d4380214eafb5c2c3c39321e26c62356e42b7f9d1a21",
+          "3a5931436c4575e1e91c9554acf2656bb10848384e186a418c14f10afea20ece",
+          "9ba3609af093aaf00665ce6cf8cf72bacaad215d714f1526c9964ce8070da7fc"
+        ]
+      },
+      {
+        "record": "fresh-tests-app-test-compile.log:MacDown2Tests",
+        "count": 3,
+        "all_optimized": true,
+        "all_warnings_as_errors": true,
+        "command_sha256": [
+          "efa46bd4d9172c6e1b6f5d170ba8fb7722eebb96e7d76bf3b70ce946362e0788",
+          "3affe6ee53055acea26067e24ea7b60dc8ae5fbddccd0c7ff332088cb406125a",
+          "acf1698a3c81fe7877d8eaa7e8dcb1f699624562edf7d9ef26904405e025211d"
+        ]
+      },
+      {
+        "record": "fresh-tests-app-test-compile.log:MacDown2UITests",
+        "count": 3,
+        "all_optimized": true,
+        "all_warnings_as_errors": true,
+        "command_sha256": [
+          "9f911d2c4d9d63f60983a0926d35cb3626704e8cb47654fa697636fab2c69f26",
+          "0fadb182d25d20922d5cc3d17257a4de5d8ad6213a5be19b44a3f0fd39ac8eb0",
+          "8b51ad6c42837330a2be8fa8e38d9436dc74472368947ce67d3145ad8064c3af"
+        ]
+      }
+    ]
+  },
+  "selected_runtime": {
+    "head": "a293e39719dc2891abd0354bfaa2c64c130c7185",
+    "source_hashes": {
+      "MacDown2/MacDown2/HTMLPreviewView.swift": "d87418f2921d413930f9f1f67c868b33d174158c527149009009318e248c0bf7",
+      "MacDown2/MacDown2/HTMLPreviewSchemeHandler.swift": "40579014280b46e0b7654dc935d2774ebcfc955a9131e93265b923f461922feb",
+      "MacDown2/MacDown2/HTMLPreviewReloadBudget.swift": "cedb33469e801347b8e905450cddd9c22abff383e8b1382d183f6338b46bdfd8",
+      "MacDown2/MacDown2Tests/HTMLPreviewNavigationIdentityTests.swift": "88b6260ab24de0d697e24a52f9897136e3dbc1ff7933c12cffcec80065501b15",
+      "MacDown2/MacDown2Tests/HTMLPreviewLoadFailureTests.swift": "750fd62fed0e8562df27a2e2f03e987a2ee9636464b97adeedb0a6152fd68ab0",
+      "MacDown2/MacDown2Tests/HTMLPreviewReloadBudgetTests.swift": "f807d639e051418a12dfcd851821feb9a635a9374922c783853151fc8b41cd9a",
+      "MacDown2/MacDown2Tests/HTMLPreviewRenderTests.swift": "14eba2e1b3d378627afc1c873e62eb5d3e6fa534996ebc0e6325d0450b299c28"
+    },
+    "test_source_transformation": "Remove only @testable import MacDown2; compile in same diagnostic module.",
+    "identity_guard_removed_negative_control": false,
+    "real_main_document_render_control": true,
+    "retained_candidate_release_objects_after_diagnostic_continuations": true,
+    "native_webkit_ordering_proof": false,
+    "product_app_launched": false,
+    "commands": [
+      {
+        "step": "build",
+        "argv": [
+          "swiftc",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/swift-overrides.hmap",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-own-target-headers.hmap",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-all-non-framework-target-headers.hmap",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter/lib/include",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-json/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-html/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-yaml/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-toml/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript/bindings/swift/tsx",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript/bindings/swift/typescript",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-python/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-ruby/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-css/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-swift/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-cpp/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-bash/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/bindings/swift",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml/bindings/swift/dtd",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml/bindings/swift/xml",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark/src/include",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark/extensions/include",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-markdown/Sources/CAtomic/include",
+          "-Xcc",
+          "-I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Yams/Sources/CYaml/include",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/include",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources-normal/x86_64",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources/x86_64",
+          "-Xcc",
+          "-I/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitter.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterMarkdownInline.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterMarkdown.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJSON.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterHTML.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterYAML.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTOML.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJavaScript.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTSX.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTypeScript.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterPython.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterRuby.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCSS.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterSwift.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCPP.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterBash.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterSQL.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterDTD.modulemap",
+          "-Xcc",
+          "-fmodule-map-file=/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterXML.modulemap",
+          "-swift-version",
+          "6",
+          "-strict-concurrency=complete",
+          "-warnings-as-errors",
+          "-parse-as-library",
+          "-I",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release",
+          "-F",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/AppSettings.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/CAtomic.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/CYaml.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/ConcurrencyExtras.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Contributions.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/D2Rendering.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/DiagramRendering.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/DiagramWebKitPool.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Diagrams.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/DiagramsD2.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/DiagramsGraphviz.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/EditorCore.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/ExportService.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/FileCore.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/FileTree.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/GraphvizRendering.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Highlighting.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/JSONSupport.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Markdown.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/MarkdownEngine.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Math.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/MathRendering.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Neon.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/OutlineUI.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Preview.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/RangeState.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Rearrange.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/SwiftTreeSitter.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/SwiftTreeSitterLayer.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/SwiftUIMath.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TextFilters.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TextSearch.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Textual.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Themes.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitter.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterBash.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterCPP.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterCSS.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterClient.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterDTD.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterHTML.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterJSON.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterJavaScript.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterJavaScriptResources.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterMarkdown.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterMarkdownInline.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterMarkdownInlineResources.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterMarkdownResources.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterPython.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterRuby.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterSQL.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterSQLResources.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterSwift.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterTOML.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterTSX.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterTypeScript.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterXML.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterYAML.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Workspace.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Yams.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/cmark-gfm-extensions.o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/cmark-gfm.o",
+          "-o",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-tests",
+          "-O",
+          "-target",
+          "arm64-apple-macos26.0",
+          "-profile-generate",
+          "-F",
+          "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+          "-Xlinker",
+          "-rpath",
+          "-Xlinker",
+          "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+          "-plugin-path",
+          "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-source/HTMLPreviewLoadFailureTests.swift",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-source/HTMLPreviewView.swift",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-source/HTMLPreviewNavigationIdentityTests.swift",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-source/HTMLPreviewSchemeHandler.swift",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-source/HTMLPreviewRenderTests.swift",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-source/HTMLPreviewReloadBudgetTests.swift",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-source/HTMLPreviewReloadBudget.swift",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/TestMain.swift"
+        ],
+        "utc": "2026-10-18T19:47:47.359443+00:00",
+        "exit_code": 0,
+        "seconds": 4.393939750036225,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "step": "run",
+        "argv": [
+          "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/final-selected-linked-runtime-tests",
+          "--no-parallel"
+        ],
+        "utc": "2026-10-18T19:47:51.753876+00:00",
+        "exit_code": 0,
+        "seconds": 2.6385029579978436,
+        "log_sha256": "c06401c0960d175461ef8fabad53a42081b07b14a8290decf505653d0741851a"
+      }
+    ],
+    "linked_object_hashes": {
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/AppSettings.o": "d04dfab080f0f35cc30f75b8f24398e7e46a06c549f00f0148e5bc15a7820db6",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/CAtomic.o": "99cf3fa8f53a053628d9b305212670f077d2c82ad8adc80b196938dd8c555d17",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/CYaml.o": "cb81ca57a319e2fbc5e1b2f5c00eb78848df10fc8c1a257ce2e08eb77ef32597",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/ConcurrencyExtras.o": "385c394968d4dbc6736abceb5055ebfbb14b6383db9a240456f48ed356ef9c40",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Contributions.o": "c417b58b0eabecd2e224569b2c94dc035d78353294f8dfec0e180ba24ca954ce",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/D2Rendering.o": "dd0af149e57ada366f56d6d786e70c4eb1a0c76f03cfc8042b754e6b57888d77",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/DiagramRendering.o": "96a88e8e15a11cc8c3a52937f381a639628549c942788bb7a96aef10a1f3750a",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/DiagramWebKitPool.o": "95fab4dd5f55a0fe29f44148cafdda9f5104c5d75fe53c2e71422770698eb27d",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Diagrams.o": "639b70b18151acff83e38bf70c72c1c038f0ceb1c49dd69b44228c8df849ab9a",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/DiagramsD2.o": "09574d0dc99ead0507b624dba4750f009300a5c8f5de4aaeed5b1cfd9ab517df",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/DiagramsGraphviz.o": "604121c811c8d829cc4eca81c1838f3bc642775e216510f3385f64efd4b1de75",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/EditorCore.o": "29f418c6674eb9c74d5a778812d89329d9b6dae28a228d422b1e2c71ec1758e5",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/ExportService.o": "af1ed4c2e5e4189b59d33c9759ac977cf292e0d6f0d108f9f02d66e52429d4bd",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/FileCore.o": "75f83dca2b8613079477fa3a101ee7064222ed2019115a6cc20cbfc9e5937ebf",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/FileTree.o": "4e3ba2a2425eecfe0cc5adf281f8bf377f4a49eb04164518c2bdced21d37c730",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/GraphvizRendering.o": "f3c3b11429bd0336ceab14c5ee1294f816f16e1dd96ae1ed29e28eab231e2a21",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Highlighting.o": "0d463312db488a15727ac0fa65676cbbcb9e7d788484c2518fb6383b0afcba39",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/JSONSupport.o": "6d55c32cd0353bf86b2d3939405ce6719cb457fcdb49e91e00bdd03d1ebdc007",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Markdown.o": "4f36ffc5b152a5a12af69b913bde0cb99982be3e3437fd2df069ec6f7823c915",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/MarkdownEngine.o": "bba8223d6f4815580192d69a307592e1a40abd9de0c58c999512d29d2b9e0a07",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Math.o": "0219555ff74af990bda44fe1a4bbc545c3bd8e94df7ca73e598901cc40afca29",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/MathRendering.o": "93eeba5a7b17f14651bafc9a7e0cf122eda91f02c0b6082cf5d268814c7db715",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Neon.o": "4585a7b85556fa4eac97281ac7befcf9ef37c1129f390833a182b9e1ea1f2c62",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/OutlineUI.o": "c470ef9067c2df037dd7194856c73a8f40746f17167691dd7c21e4044e156690",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Preview.o": "beec0897fa08a17ca4673c9903d6161c2976a87bb855aa9b7a4c9762134cb741",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/RangeState.o": "8e1494821eeecc8d56fcecb4c8fb13f293b117a6cb6160fe76795c3541420158",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Rearrange.o": "a0809b16282d66dcc858ecb967db9aa0a4c6184f80edcc69e89d0b7a6f083cb3",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/SwiftTreeSitter.o": "be763e2431d1fd4eac27635916b535bce1a63cb3ecab3d51d6edf87696f4ecb3",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/SwiftTreeSitterLayer.o": "9085e3f28c691f5776250a0378076404b7e6ac0b393c27d33e3ba3dd792193ce",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/SwiftUIMath.o": "205ceb45baedb3419e870ed202507beaceb6ef76f90f58fbe59bbab08b4bfe5a",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TextFilters.o": "a48d37ded4bdaeb698856339ea66d8ec3bdf9ab6d76bed672f0c31ea1b8be031",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TextSearch.o": "a9af4204d402c8ee43b59d6aae6c251febff0b568915c36e2b47380b00ced42d",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Textual.o": "14a116699ef417b20ada9215a8a749d97d5b8db42c97a13a28608d2ba0bf27c3",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Themes.o": "006c57c13df2d2ada8a6ffd00f3dae24f3ecf78af342d20ccf278321b5758faa",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitter.o": "d6eade20e3092eb7c1d3766e473316ce1a7130ded60d8221334e5942615a8e27",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterBash.o": "61422849bb1675125afbdeea4d7ae1471793a83baba2bd8d00a9d09d7f2ef652",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterCPP.o": "e22251b31c55bf3cd4a73ef927d002371a4727b003e8ae083f75172d107d7c80",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterCSS.o": "86859d6d3c1cd1fff6a7eae26045f958ba621e52c470c82d01faa020e7e3bc81",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterClient.o": "841f4f035704daf7e5120631c5819ac63ad91c942bc11823b1b3e070186bea16",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterDTD.o": "169549a574d8bfe56bde529ce22295cdaa190a5fa7a6e6fc05663d3c8731ab06",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterHTML.o": "a79ed1d95dbb5edda03693ac5b70c657bbd1a1b8d104cade6b3b7cc3c1ba7297",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterJSON.o": "121b79fe1e061796076fe26a29413f46662ecb9ef33548aeb73893aaa91c8a75",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterJavaScript.o": "d6e73f3ff89d3220a3186671fc1cf470e82629fddbf9675a162e79761b6dfa70",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterJavaScriptResources.o": "57c57da785ed07eb7d6f911334e71d92203335b2d42ec1cd6d03f564653074d4",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterMarkdown.o": "473c69c782f8bef2c36239c698e8136ccdf4572678fbaceb48650bf582bf8750",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterMarkdownInline.o": "56ee66172b8818d79332d01498c2479fcc194e3571f00afb84e7c60c00c1e56e",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterMarkdownInlineResources.o": "67942a42dab86eca4b792048d22120f4491b5e52e72eca0b015c700e078cecdf",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterMarkdownResources.o": "a9180ca3a6bcbfeffcc1406c7986e55261a553a2847a6a83367bc264eee4dc2f",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterPython.o": "f4d05b2c8b9c03bd3722b0dfd29a9d9b596f99cfe1c19c7f1729fa69a653783d",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterRuby.o": "7b7fabc1e517a6bc57480a32db9c044b2821ddaaa7f271c9c08298f7c06e9133",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterSQL.o": "a49bea5219aa4968f5ac7e17fb64f15419f5b17b60a47ee5f26ba7019e41089d",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterSQLResources.o": "807c17e22eefda72e2ad95c8de53c6f56e5cd24eab44fe8cf1147b4ceecca6f4",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterSwift.o": "403a1a0c5538c00fcfcd5c13d06b3efffd3426c25435b8dbd800e675fbc1faf3",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterTOML.o": "1a83303aabf17ab1a873cadc53ddb9f38813ec35583de37bd1bbad1422778d54",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterTSX.o": "b112d139dfc149ea9f8d6b5f162eac2a7b52173e39e3f8c67b0cc6e7895564a6",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterTypeScript.o": "d89d94a6e3c1c478388f7515f759faa3e40ae13f81ae5c149c43deceb7b1da11",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterXML.o": "3b4a3cf0d34da9b8249e171a3035606fcce677471da172e651215506a024c1dd",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/TreeSitterYAML.o": "4a66922835c635a20b471b25c3d2a7b6db12613db0b843db3dcc9d027038dc58",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Workspace.o": "912a3d9584e2a5c4f3da2578755f2413f23f873a3894df04c762bf5e60f6c4ed",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/Yams.o": "3a505228f8d6bd7744912a0e8beddb23de3fda6adea92264e378a640a1763499",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/cmark-gfm-extensions.o": "a27daa13c2ac6dd3027e4b5cdc3120f1fbd2c89aba336884986eb89cc5dad9df",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/preview-121-a4c48bc7-2026-10-18/DerivedData/Build/Products/Release/cmark-gfm.o": "5872c74c50206d5ba4d728d7c4c6890bb5a11d8abd4b5a96302a789154d2ebf5"
+    },
+    "profiling_runtime_note": "Retained aggregate objects include coverage instrumentation, so final-products links its runtime explicitly. This is a correctness run, not a performance measurement. LLVM_PROFILE_FILE points only into this evidence directory.",
+    "linked_object_provenance": "Exact candidate source and locked dependencies; retained Release objects may come from different diagnostic compile stages (some testability enabled). Actual bytes are hashed; these are not pristine original-build or fresh TestDerivedData objects."
+  },
+  "environment": {
+    "utc": "2026-10-18T19:39:15.310691+00:00",
+    "sw_vers": "ProductName:\t\tmacOS\nProductVersion:\t\t26.5.1\nBuildVersion:\t\t25F80",
+    "xcodebuild -version": "Xcode 26.6\nBuild version 17F113",
+    "swift --version": "Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)\nTarget: arm64-apple-macosx26.0",
+    "xcrun --show-sdk-path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+    "uname -m": "arm64"
+  },
+  "performance_suites_run": false,
+  "full_app_ui_run": false,
+  "hosted_validation_for_candidate": false,
+  "external_state_changed": false
+}

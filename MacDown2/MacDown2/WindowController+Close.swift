@@ -67,7 +67,7 @@ extension WindowController {
         let alert = makeDirtyCloseAlert(fileName: fileName, needsDestination: needsDestination)
         alert.beginSheetModal(for: sender) { [weak self] response in
             Task { @MainActor [weak self] in
-                guard let self, let coordinator,
+                guard let self, coordinator != nil,
                       let current = model.activeDocument,
                       current.state != .clean
                 else { return }
@@ -121,7 +121,7 @@ extension WindowController {
         alert.addButton(withTitle: String(localized: "Cancel"))
         alert.beginSheetModal(for: window) { [weak self] response in
             Task { @MainActor [weak self] in
-                guard let self, let coordinator,
+                guard let self, coordinator != nil,
                       let current = model.activeDocument,
                       current.state == .conflict
                 else { return }

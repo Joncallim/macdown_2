@@ -202,6 +202,7 @@ struct DocumentEditorSplitView: View {
         .onChange(of: scrollController.targetSourceLine) { _, line in
             guard let line, let sourceMap = parseSession.document?.sourceMap else { return }
             let range = sourceMap.utf16Range(ofLines: line ... line)
+            coordinator?.folderSearchNavigationDidChange()
             editorStore.existingSystem(for: identity)?.scrollToVisible(utf16Range: range)
             scrollController.targetSourceLine = nil
         }
@@ -213,12 +214,14 @@ struct DocumentEditorSplitView: View {
             // where the editor landed — see `ScrollSyncController.jump(toLine:)`
             // for why that round trip is fragile for a jump this large.
             scrollController.jump(toLine: lineRange.lowerBound)
+            coordinator?.folderSearchNavigationDidChange()
             editorStore.existingSystem(for: identity)?.revealSelection(utf16Range: range, flash: true, animated: true)
             outlineController.pendingJumpLineRange = nil
         }
         .onChange(of: outlineController.pendingJSONJumpSourceRange) { _, sourceRange in
             guard let sourceRange else { return }
             let nsRange = NSRange(sourceRange)
+            coordinator?.folderSearchNavigationDidChange()
             editorStore.existingSystem(for: identity)?.revealSelection(utf16Range: nsRange, flash: true, animated: true)
             outlineController.pendingJSONJumpSourceRange = nil
         }

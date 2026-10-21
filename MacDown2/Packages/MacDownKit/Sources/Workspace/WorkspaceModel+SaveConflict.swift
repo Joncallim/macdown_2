@@ -5,16 +5,27 @@ import Foundation
 extension WorkspaceModel {
     func reconcileSaveConflict(
         for document: FileDocument,
+        context: SaveContext,
         isRetry: Bool,
         destinationPolicy: SaveDestinationPolicy,
         encodingOverride: FileEncodingMetadata?
     ) async -> NonPromptingSaveResult {
-        // The owning tab, active or not: the user can switch tabs while the failed write was in flight.
-        guard let tabID = owningTabID(of: document),
-              let current = tabStore.tabs.first(where: { $0.id == tabID })?.document,
-              let url = current.fileURL,
-              let snapshot = try? current.fileStore.readSnapshot(from: url, decoding: current.encoding.decodingPolicy)
-        else {
+        // A failed older write cannot start new recovery after a newer save or a different document lifetime.
+        guard isLatestSave(context), let tabID = owningTabID(of: document),
+              let captured = tabStore.tabs.first(where: { $0.id == tabID })?.document,
+              let url = captured.fileURL
+        else { return .handled }
+        let result = await readConflictSnapshot(captured, at: url)
+        guard isLatestSave(context), owningTabID(of: captured) == tabID,
+              let current = tabStore.tabs.first(where: { $0.id == tabID })?.document
+        else { return .handled }
+        // Local typing (including edit/undo) retains its baseline. Reconcile against that live text, never
+        // replace it with the captured text. An external baseline/encoding/destination change supersedes this read.
+        guard hasSameConflictReadBaseline(current, captured) else { return .handled }
+        guard current.state == captured.state || current.state == .dirty || current.state == .promptingClose else {
+            return .handled
+        }
+        guard case let .success(snapshot) = result else {
             lastError = .unresolvedExternalConflict
             return .handled
         }
@@ -22,6 +33,12 @@ extension WorkspaceModel {
         tabStore.updateDocument(inTab: tabID) { _ in reconciliation.document }
         if reconciliation.document.state == .conflict {
             _ = await reconciliation.document.persistRecovery()
+            await afterSaveConflictRecoveryPersistence?()
+            guard isLatestSave(context), owningTabID(of: reconciliation.document) == tabID,
+                  let latest = tabStore.tabs.first(where: { $0.id == tabID })?.document,
+                  sameSaveAsSnapshot(latest, reconciliation.document),
+                  hasSameConflictReadBaseline(latest, reconciliation.document)
+            else { return .handled }
             lastError = .unresolvedExternalConflict
             return .handled
         }
@@ -63,5 +80,21 @@ extension WorkspaceModel {
             encodingOverride: encodingOverride,
             target: reconciliation.document
         )
+    }
+
+    private func readConflictSnapshot(_ document: FileDocument, at url: URL) async -> Result<FileSnapshot, Error> {
+        let afterRead = afterSaveConflictRead
+        return await Task.detached(priority: .userInitiated) {
+            defer { afterRead?() }
+            return Result { try document.fileStore.readSnapshot(from: url, decoding: document.encoding.decodingPolicy) }
+        }.value
+    }
+
+    /// Baseline-compatible admission permits ordinary local edits while the read is suspended. It does not
+    /// claim to distinguish external histories that return to identical values; publication remains conditional.
+    private func hasSameConflictReadBaseline(_ lhs: FileDocument, _ rhs: FileDocument) -> Bool {
+        lhs.lastKnownRevision == rhs.lastKnownRevision && lhs.restoredBaseSHA256 == rhs.restoredBaseSHA256
+            && lhs.pendingExternalRevision == rhs.pendingExternalRevision && lhs.backingState == rhs.backingState
+            && lhs.encoding == rhs.encoding
     }
 }

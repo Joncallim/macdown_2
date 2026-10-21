@@ -1234,3 +1234,8 @@ issue:**
 5. Export template/layout/resource-root/budget/metadata-policy remain
    fixed by design (§1, §4) — not a gap, a deliberate, documented boundary
    this epic does not reopen.
+
+
+## 19. Saved-data protection reconciliation (19 October 2026)
+
+The bounded [protected-write contract](downstream/SETTINGS_WRITE_PROTECTION_2026-10-19.md) supersedes any earlier implication that an ordinary setting change may overwrite unreadable saved data after retaining only one backup. Every current primary value this build cannot decode remains in place, including future JSON and non-Data objects. Affected model changes are session-only and the Settings window discloses this; absent/readable domains still persist independently. This correction does not implement reset/import consent, expand file authority or close #53.

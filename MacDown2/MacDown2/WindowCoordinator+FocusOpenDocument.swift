@@ -17,19 +17,32 @@ extension WindowCoordinator {
         _ existing: WindowController,
         for url: URL,
         folder: FolderOpenContext,
-        encoding: FileEncodingMetadata?
+        encoding: FileEncodingMetadata?,
+        shouldContinue: (@MainActor () -> Bool)? = nil
     ) async {
-        guard let window = existing.window else { return }
+        guard shouldContinue?() ?? true else { return }
+        guard let coordinator = existing.coordinator,
+              coordinator.controllers.contains(where: { $0 === existing }),
+              !existing.isClosed,
+              let window = existing.window
+        else { return }
         if let root = folder.root, existing.fileTreeModel.root == nil {
             existing.model.setFolderRoot(root)
             await existing.setFileTreeRoot(root, accessURL: folder.accessURL)
+            guard shouldContinue?() ?? true else { return }
         }
+        guard shouldContinue?() ?? true,
+              coordinator.controllers.contains(where: { $0 === existing }),
+              !existing.isClosed,
+              existing.window === window
+        else { return }
         existing.fileTreeModel.selectedURL = folder.selectionURL
         existing.fileTreeModel.renamingURL = folder.renameURL
         window.tabGroup?.selectedWindow = window
         window.makeKeyAndOrderFront(nil)
         recentFileDocuments.record(url)
         if let encoding {
+            guard shouldContinue?() ?? true else { return }
             await existing.reopenDocument(withEncoding: encoding.encoding)
         }
     }

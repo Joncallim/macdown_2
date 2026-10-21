@@ -1,0 +1,324 @@
+{
+  "captured_utc": "2026-10-18T19:15:21.456290+00:00",
+  "root": "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18",
+  "excluded": [
+    "DerivedData (executable hashes in build-inspection.json)",
+    "validated-source-*",
+    "source-*.tar (archive hash in validation record)",
+    "__pycache__",
+    "evidence-manifest.json itself",
+    "final-checkpoint-provenance.json (written after evidence commit)"
+  ],
+  "files": [
+    {
+      "path": "FirstPartyWarnings.xcconfig",
+      "bytes": 386,
+      "sha256": "87047bbba2b8c0b4e375ba4a0152b1262ba14b08019c667b3e63476bf67e25ef"
+    },
+    {
+      "path": "MPPreferences.h",
+      "bytes": 3178,
+      "sha256": "ca14a6761cf05cd8e5beb52bd366cd513c9e3a07544fc18e04d8ac8a41e56394"
+    },
+    {
+      "path": "MPPreferences.m",
+      "bytes": 9090,
+      "sha256": "1724574caba513eec335b1d0b4601a7c5cc8cb044ba3caf7c2e05fb563b30333"
+    },
+    {
+      "path": "PLAN.md",
+      "bytes": 2583,
+      "sha256": "950a4214e59c1e022d05e9c3589a513310fcf9d7bb3d19c5c5630aef9742526f"
+    },
+    {
+      "path": "SettingsWriteProbe.swift",
+      "bytes": 3045,
+      "sha256": "e5a3b285043b620d7b9cd28c781b34e5f823026aa70e04b14fc0916966663132"
+    },
+    {
+      "path": "after-decoder-correction.json",
+      "bytes": 596,
+      "sha256": "b210de63ad3482cb847db0ef67667964cc6123891d345f4189561468fcc29b5a"
+    },
+    {
+      "path": "after-decoder-correction.log",
+      "bytes": 13227,
+      "sha256": "a674690b7bfa418bd6fa6631508e2b25cebb5517bf2f3198c44a2ac1c80a948d"
+    },
+    {
+      "path": "baseline-app-settings/AppSettings.swift",
+      "bytes": 184,
+      "sha256": "59c95555d1cf8e6d58d202fe6eb78e84143c326fde340f0b0db68321df156efc"
+    },
+    {
+      "path": "baseline-app-settings/AppSettingsModel.swift",
+      "bytes": 1513,
+      "sha256": "3bb0580bc146c5e970f5d8b35bff719c566083c540ac2cf53c54275e4c7f6c26"
+    },
+    {
+      "path": "baseline-app-settings/AppSettingsStoring.swift",
+      "bytes": 1433,
+      "sha256": "a5a770629108d473489f620e9d56b2c50219819ff9c51a9785d13f01013b20ab"
+    },
+    {
+      "path": "baseline-app-settings/EditorSettings.swift",
+      "bytes": 4349,
+      "sha256": "7c5f984a4f33156ba9434358652333b18e4e56ddb070e03ed1363e5bb4ff3b0f"
+    },
+    {
+      "path": "baseline-app-settings/FontDescriptor.swift",
+      "bytes": 2026,
+      "sha256": "06e26b5e00605800b6e0318740d0422d71b530a8a12aa1ffc61dea293895f3a9"
+    },
+    {
+      "path": "baseline-app-settings/FormatSettings.swift",
+      "bytes": 737,
+      "sha256": "d5706a1f22d9ccafb5fe8ea09d89e17abca6b48b25b8a6388dc9aece520a3039"
+    },
+    {
+      "path": "baseline-app-settings/GeneralSettings.swift",
+      "bytes": 729,
+      "sha256": "513e9369045c6047049b40cb574aab8cd609d028f66ee6c933d230f677b8de35"
+    },
+    {
+      "path": "baseline-app-settings/LegacyPreferencesDetector.swift",
+      "bytes": 1533,
+      "sha256": "902d36cd1630280fa9f2e1fa4cd9d68ea760ab80534681f9d169a80b4279ad28"
+    },
+    {
+      "path": "baseline-app-settings/MarkdownSettings.swift",
+      "bytes": 562,
+      "sha256": "8b1275770c727ed0dd26d6a8c236ed4555b593f8e1c011ba003e870b8370034f"
+    },
+    {
+      "path": "baseline-app-settings/PreviewExportSettings.swift",
+      "bytes": 1475,
+      "sha256": "e585f7f362a794b967f86915d7459788e486ab1cd06e1434a31e34310ff0b58d"
+    },
+    {
+      "path": "baseline-app-settings/UserDefaultsAppSettingsStore.swift",
+      "bytes": 6333,
+      "sha256": "741672f6b5ea47ebda30467ac7d7b991b4e6a8b6e1714a98d6817af05f14ddc6"
+    },
+    {
+      "path": "baseline-probe-source-hashes.json",
+      "bytes": 1709,
+      "sha256": "27cbca768c9c85d0d86b6832f70eaa3218daa58a805c0232d7366c4cb9717546"
+    },
+    {
+      "path": "baseline-regression-allowed-manifest.json",
+      "bytes": 661,
+      "sha256": "2508f9174e69b46341620ee4361521fec566a411d5855709308fe4c414592dad"
+    },
+    {
+      "path": "baseline-regression-allowed-manifest.log",
+      "bytes": 3248,
+      "sha256": "20b1a973c9007ebbc73febe21e0da1cf33641eef59ee8508c95d9fbf24675012"
+    },
+    {
+      "path": "baseline-regression.json",
+      "bytes": 466,
+      "sha256": "9e790af5a8931bc53494f12ebdcdb5c5394713d19e3cc392f7bc1aef4da8a63f"
+    },
+    {
+      "path": "baseline-regression.log",
+      "bytes": 3362,
+      "sha256": "9b275b1a64975144c103a4b89d76cb98a1c596be17d38ae290cf4cd0d60ba4b3"
+    },
+    {
+      "path": "baseline-regression.patch",
+      "bytes": 1567,
+      "sha256": "6a543685b8281f9c473bae038bb1ab6f6465acf79e6cb6c414301beed21bcb4e"
+    },
+    {
+      "path": "baseline-write-probe-build.json",
+      "bytes": 2247,
+      "sha256": "2d4fb19665c1dcaf5b031b504db710ef853e34cd7fd0cf2e6af8b1eee57a37c9"
+    },
+    {
+      "path": "baseline-write-probe-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "baseline-write-probe.json",
+      "bytes": 584,
+      "sha256": "a43fea297a16c8addb9426ec73d3f6bba7d678dbfa389b1a0db7fc78b99bb59c"
+    },
+    {
+      "path": "baseline-write-probe.log",
+      "bytes": 383,
+      "sha256": "8f912e8e367fe6e4b7be954103d8a1ba4886e2c5c5bc1c8ab1c0365623b7f435"
+    },
+    {
+      "path": "build-inspection.json",
+      "bytes": 46913,
+      "sha256": "12c02ba9f1e73dc471133b298ffd2183a2f8c6763805528df5fee33cd24bbf8c"
+    },
+    {
+      "path": "check-final-checkpoint.py",
+      "bytes": 3397,
+      "sha256": "056f34397453fbd4e1e2e41f6d755932990a38bcb7d1e1ae638e2c67f479a6ba"
+    },
+    {
+      "path": "checkout-provenance.json",
+      "bytes": 16228,
+      "sha256": "15aa86f73e0736e250b7cc7cc15680c1c23008f0ec3cc81885b23218e9a0832c"
+    },
+    {
+      "path": "compile-probe-arguments.json",
+      "bytes": 1729,
+      "sha256": "3d91f5e1d2385218f4ddd75e370fc8741d09407c9953fc6fc1077830d4078c31"
+    },
+    {
+      "path": "during-validation-ownership.json",
+      "bytes": 6172,
+      "sha256": "d8f26cd6bbc567faa77d858406761988d81c9fce084191db172ab20a08178231"
+    },
+    {
+      "path": "environment.json",
+      "bytes": 1103,
+      "sha256": "bf77f11716c2a056abb4b187386f1044fee81aa09e020365dcfe26274e21b641"
+    },
+    {
+      "path": "final-legacy-checker-tests.log",
+      "bytes": 110,
+      "sha256": "1d83585b97486319bb9c2fff2996c7435fd78e26e63e611aae2ad6791d35db6b"
+    },
+    {
+      "path": "final-legacy-coverage.log",
+      "bytes": 423,
+      "sha256": "147f93cb21dac9fdcd98fa670d1f505a294848296f91e69e993535a7c6df6678"
+    },
+    {
+      "path": "final-pin-xcode.log",
+      "bytes": 70,
+      "sha256": "b2be8d12c3194b89502a2b9bcdb39f066f3ffdf67f4945db582b64bf30595151"
+    },
+    {
+      "path": "final-release-app.log",
+      "bytes": 1004755,
+      "sha256": "8f4c3aac651b0a6780e27b2ab281bc6c8cf634373609de292f66c6a48d29f88e"
+    },
+    {
+      "path": "final-release-preflight.log",
+      "bytes": 1925,
+      "sha256": "0d6822d8318b7e53ae435442aa10f8a88d266edcc5906f855a173e8b36081c80"
+    },
+    {
+      "path": "final-settings-debug.log",
+      "bytes": 13065,
+      "sha256": "1535dc538eb981f84e0b2bcbccb9ea2806101d2c888ea9d7e12548bb8af3f5b1"
+    },
+    {
+      "path": "final-settings-release.log",
+      "bytes": 13751,
+      "sha256": "3e6c1d9e7497cd7d7651185f80a46d03d832f21404c85127a5d5f6ec34021841"
+    },
+    {
+      "path": "final-source-compliance.log",
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    {
+      "path": "final-swiftformat.log",
+      "bytes": 222,
+      "sha256": "7498c6ebd78e31e7a928a49257f4dd33b02e9515dd4a2e423fdb34f82b067405"
+    },
+    {
+      "path": "final-swiftlint.log",
+      "bytes": 47536,
+      "sha256": "c21dcbd6b779803445e27e7aa25ae9a935144b4443fe7786a371ca3ee82bc402"
+    },
+    {
+      "path": "final-validation.json",
+      "bytes": 7819,
+      "sha256": "637e8b6c9d1860522e83c919e095167965551e2356df5f351f1e6b1090c336f6"
+    },
+    {
+      "path": "final-xcodegen.log",
+      "bytes": 175,
+      "sha256": "58aa2a3119b37b0a5af3e23bf3029d9ae18ed71807d26d2f10974839c4481fd0"
+    },
+    {
+      "path": "independent-final-evidence-review.md",
+      "bytes": 1027,
+      "sha256": "d207aa1fe6c9ba9843bec2129c253532d894bab01e7a91c16e4d07ceef67f8b2"
+    },
+    {
+      "path": "independent-review.md",
+      "bytes": 1463,
+      "sha256": "2d8592dcb69729e9d6fd1cb99dbf297b19143d8e4e227ce2445139b987718436"
+    },
+    {
+      "path": "independent-validation-review.md",
+      "bytes": 1344,
+      "sha256": "5bd61f64ad4777702675fded8b278d690db7e214c13488145729b2b4cadd9ae0"
+    },
+    {
+      "path": "issue-53-comments.json",
+      "bytes": 4257,
+      "sha256": "632452b7ff3ce4a6be336a8ac596d8dfa42be5501f3a6aea542463699615f352"
+    },
+    {
+      "path": "issue-53.json",
+      "bytes": 5037,
+      "sha256": "3a24840ab0dfade380a4beda41eacd4aa9b3402ffc19ab926ac550cf0aac58fe"
+    },
+    {
+      "path": "pre-validation-ownership.json",
+      "bytes": 629,
+      "sha256": "cdae101a9866a0f5f3e8b660ca54a887c3c2328b4f9314388c98ec9ded534e90"
+    },
+    {
+      "path": "run-command.py",
+      "bytes": 1456,
+      "sha256": "452d3b6c60a5baaeee1ae1cf6122afb2b9202d9afe15b9d48bd281ddcf57432e"
+    },
+    {
+      "path": "scoped-build-validation.json",
+      "bytes": 4725,
+      "sha256": "3ca4540a0da2cab5bac30dc93abdba44c6b06b4c3b28394bfada97d3e29feb58"
+    },
+    {
+      "path": "scoped-diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "scoped-lockfile-unchanged.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "scoped-pins-match.log",
+      "bytes": 66,
+      "sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c"
+    },
+    {
+      "path": "scoped-release-app.log",
+      "bytes": 5528392,
+      "sha256": "51c2f8d6d185023dce1db84cbc82893462342cec0e22d9e918b36dcbcb2f2424"
+    },
+    {
+      "path": "scoped-release-cli.log",
+      "bytes": 88186,
+      "sha256": "ba4333dc5b7fff289e5d248f7d2033231adb8397855b17c750cc1833442e52da"
+    },
+    {
+      "path": "settings-write-probe",
+      "bytes": 325496,
+      "sha256": "0299a317cbd7fe95fac0fd8636f9e088713a7617b872dec4b4b4508c30ca8221"
+    },
+    {
+      "path": "validate-final.py",
+      "bytes": 4342,
+      "sha256": "687cfe456d1fd0569967d2775b303bf465d93491d4ee7e3a2bae4eb3c5912f09"
+    },
+    {
+      "path": "validate-scoped-builds.py",
+      "bytes": 3080,
+      "sha256": "5e5608285cd7d652b912168a252a5a4f6402db8206b4c2a2ac086e270b67c0df"
+    }
+  ]
+}

@@ -10,7 +10,7 @@ final class FirstRunUITests: XCTestCase {
     private var app: XCUIApplication!
     private var sessionDir: URL!
 
-    override func setUp() {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
 
@@ -25,7 +25,7 @@ final class FirstRunUITests: XCTestCase {
         ]
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         app.terminate()
         try? FileManager.default.removeItem(at: sessionDir)
     }

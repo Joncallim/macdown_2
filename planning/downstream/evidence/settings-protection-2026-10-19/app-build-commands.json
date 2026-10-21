@@ -1,0 +1,41 @@
+[
+  {
+    "command": [
+      "xcodegen",
+      "generate"
+    ],
+    "started": "2026-10-18T23:53:08.588315+00:00",
+    "exitCode": 0,
+    "finished": "2026-10-18T23:53:08.707492+00:00"
+  },
+  {
+    "command": [
+      "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/scripts/pin-xcode-package-versions.sh"
+    ],
+    "started": "2026-10-18T23:53:08.708028+00:00",
+    "exitCode": 0,
+    "finished": "2026-10-18T23:53:08.745937+00:00"
+  },
+  {
+    "command": [
+      "xcodebuild",
+      "-project",
+      "MacDown2/MacDown2.xcodeproj",
+      "-scheme",
+      "MacDown2",
+      "-configuration",
+      "Release",
+      "-destination",
+      "platform=macOS",
+      "-onlyUsePackageVersionsFromResolvedFile",
+      "-derivedDataPath",
+      "/Users/jonathanlim/GitHub/_cleanup-archive/settings-protection-a4c48bc7-2026-10-19/DerivedData",
+      "CODE_SIGNING_ALLOWED=NO",
+      "CODE_SIGNING_REQUIRED=NO",
+      "build"
+    ],
+    "started": "2026-10-18T23:53:08.746200+00:00",
+    "exitCode": 0,
+    "finished": "2026-10-18T23:54:49.318898+00:00"
+  }
+]

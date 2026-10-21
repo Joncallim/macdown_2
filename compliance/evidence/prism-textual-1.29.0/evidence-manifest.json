@@ -1,0 +1,234 @@
+{
+  "sealed_utc": "2026-10-18T20:54:48.095495+00:00",
+  "tested_head": "ceecea9c4a8297db6aa24e3afa9163406e4a10e5",
+  "raw_directory": "/Users/jonathanlim/GitHub/_cleanup-archive/prism-packaging-148-09e223bf-2026-10-18",
+  "raw_top_level_files": {
+    "FirstPartyWarnings.xcconfig": {
+      "bytes": 386,
+      "sha256": "87047bbba2b8c0b4e375ba4a0152b1262ba14b08019c667b3e63476bf67e25ef"
+    },
+    "additional-downloads.json": {
+      "bytes": 1336,
+      "sha256": "db7d7153a26b956d8f2a38d1f114d2a9c65e4c5cc03975c5c4754fa354822d46"
+    },
+    "artifact-compliance.log": {
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    "artifact-release-preflight.log": {
+      "bytes": 1460,
+      "sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522"
+    },
+    "audit-bundle.py": {
+      "bytes": 3689,
+      "sha256": "5e6add9d7bb492b6988048475c63643f18d1b5f135d3b5a7ffeac28da6ec15a9"
+    },
+    "build-inspection.json": {
+      "bytes": 3845,
+      "sha256": "89a204680c287878552f2b3d3fe57748bfb87b632db3d2d2d9c6d661e6ebe343"
+    },
+    "bundle-audit.json": {
+      "bytes": 30929,
+      "sha256": "27fb377392739f226e90f966759210450a5e9de6bc01276411c207b8f3271439"
+    },
+    "cdnjs-prism-package.json": {
+      "bytes": 735,
+      "sha256": "6a17271361816e0bb5d37a610b8c6ca1ce86dd986ab81c02abbaab385c3c827e"
+    },
+    "checkout-provenance.json": {
+      "bytes": 11701,
+      "sha256": "b0ef2700536e1feb4893b56f96445b7ca15af4e1e6c6823c134671366334afa0"
+    },
+    "compliance-regressions.log": {
+      "bytes": 5550,
+      "sha256": "9f3c50e5cc2bb43f9c06eed7036a279c00c76fb07754a896f85a3d4cdbb29b71"
+    },
+    "diff-check.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "downloads.json": {
+      "bytes": 9502,
+      "sha256": "ce9cf8e23eddccc585686d12a2ea1f836895a7d85af470144a093eaadedc30b0"
+    },
+    "fetch-provenance.py": {
+      "bytes": 1541,
+      "sha256": "f795f583163206d40fd4d97d3a6e0258d90094a99c8665e4d38b021e2b469875"
+    },
+    "generated-project.pbxproj": {
+      "bytes": 161987,
+      "sha256": "4b245a5a05d6611e1ea001bfc66f15982893c8fd6f8fab7c84333b809f0a5ad1"
+    },
+    "ownership-before-seal.json": {
+      "bytes": 2074,
+      "sha256": "53dd17fb815a83434a981487ade8b39d29f125a358c4f262692255bed6ebd4f1"
+    },
+    "pin-xcode.log": {
+      "bytes": 70,
+      "sha256": "b2be8d12c3194b89502a2b9bcdb39f066f3ffdf67f4945db582b64bf30595151"
+    },
+    "pins-match.log": {
+      "bytes": 66,
+      "sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c"
+    },
+    "prism-LICENSE-v1.29.0": {
+      "bytes": 1066,
+      "sha256": "2b947f0901a7ffcf08a89957da9783c0e9c6e72cb6ce8e959f501ab5409e4d2b"
+    },
+    "prism-cdn-default.js": {
+      "bytes": 58198,
+      "sha256": "4b9994fc5f441d4c4fff23dee2535c09010bf93b1d90c2c72b0430c3d3f1008e"
+    },
+    "prism-cdn-default.min.js": {
+      "bytes": 18997,
+      "sha256": "e7b88bddc6c757b2fc8cb113e2469801ab14a78ec1a8fada4d6391e3573f5f9f"
+    },
+    "prism-git-tag.json": {
+      "bytes": 331,
+      "sha256": "48c85845a1b067dcca52b29804fecb26b4d203146c2b7687c859f0d8d15bd60a"
+    },
+    "prism-npm-metadata.json": {
+      "bytes": 4261,
+      "sha256": "a3ffc5945178bceaafd3593b1d1a65eb2d3e57a8e05ec814ebe17117cff2e989"
+    },
+    "prism-tag-object.json": {
+      "bytes": 660,
+      "sha256": "51bb7cf4b4dafa59c9b35c3c4fbdd1b35c8f4b9176aceed09bdfe93249035c38"
+    },
+    "prismjs-1.29.0.tgz": {
+      "bytes": 540152,
+      "sha256": "e3b4e4286835f6f01a2cfaf8d0545542dd3da9dcc904fd134d4aface3aef499c"
+    },
+    "regenerate-notices.log": {
+      "bytes": 50,
+      "sha256": "916a4698d9177a9597cb4fc51950f9842bb6a71ce740a0f2540b4a8bb51d77a1"
+    },
+    "regenerate-sbom.log": {
+      "bytes": 41,
+      "sha256": "a2d24371d17e6c6f1296277ca983dce9065ade847908059bfd7be20d4458cf2a"
+    },
+    "release-app.log": {
+      "bytes": 6512823,
+      "sha256": "3e2381efdc0ae827978200b0bc4ae19cd4acad4eb84c612ca9d15707d31c4124"
+    },
+    "release-preflight.log": {
+      "bytes": 1460,
+      "sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522"
+    },
+    "source-ceecea9c4a8297db6aa24e3afa9163406e4a10e5.tar": {
+      "bytes": 76134400,
+      "sha256": "ebdd2108342ff5d85ca850d5baffc4476ab5c20fbfbc241b541c69dbc1639df9"
+    },
+    "source-compliance.log": {
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    "swiftformat.log": {
+      "bytes": 222,
+      "sha256": "1ef47efd12028c6e65bc643edcfbad573bd96afc355d364390330d9cd50fd6ba"
+    },
+    "swiftlint.log": {
+      "bytes": 47654,
+      "sha256": "7b67b0ebd3fb8b38a04c143d49165b2b0dd2440448c9cbd140c3cc9726b385f2"
+    },
+    "unchanged-pins-and-runtime-source.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "validate-packaging.py": {
+      "bytes": 5653,
+      "sha256": "d159f9bc3e589dcc2c529bd9e0958ae27d99106095a940ad5521c376be281421"
+    },
+    "validation.json": {
+      "bytes": 48732,
+      "sha256": "066ac31af6a2227f3657cb6bd2095cde7a2d83e7d4ab13f987bf6b39458859fe"
+    },
+    "xcodegen-ProjectSpec.md": {
+      "bytes": 71105,
+      "sha256": "ce704024acbb39b2d9aa2b2a1bf95ab95f27f21ec9d6219b8fc3b7558576ef7c"
+    },
+    "xcodegen.log": {
+      "bytes": 175,
+      "sha256": "58aa2a3119b37b0a5af3e23bf3029d9ae18ed71807d26d2f10974839c4481fd0"
+    }
+  },
+  "repository_evidence_files": {
+    "FirstPartyWarnings.xcconfig": {
+      "bytes": 386,
+      "sha256": "87047bbba2b8c0b4e375ba4a0152b1262ba14b08019c667b3e63476bf67e25ef"
+    },
+    "INDEPENDENT_REVIEW.md": {
+      "bytes": 2922,
+      "sha256": "8ecf35cd5d614dc49700d15c8d4ac6d5c8a3a0991673dd025be8d51cfe125361"
+    },
+    "README.md": {
+      "bytes": 10105,
+      "sha256": "ca85ae1eed49d5cd3f87d2f502c6adde6636f8c56cab98d503bb8a9fff1fe70f"
+    },
+    "additional-downloads.json": {
+      "bytes": 1336,
+      "sha256": "db7d7153a26b956d8f2a38d1f114d2a9c65e4c5cc03975c5c4754fa354822d46"
+    },
+    "artifact-files.json": {
+      "bytes": 33702,
+      "sha256": "f743b9c7e4432d7c921047f8d91fab580c849566e5d004bf87aafd827adfe1b9"
+    },
+    "audit-bundle.py": {
+      "bytes": 3689,
+      "sha256": "5e6add9d7bb492b6988048475c63643f18d1b5f135d3b5a7ffeac28da6ec15a9"
+    },
+    "build-inspection.json": {
+      "bytes": 3845,
+      "sha256": "89a204680c287878552f2b3d3fe57748bfb87b632db3d2d2d9c6d661e6ebe343"
+    },
+    "bundle-audit.json": {
+      "bytes": 30929,
+      "sha256": "27fb377392739f226e90f966759210450a5e9de6bc01276411c207b8f3271439"
+    },
+    "checkout-provenance.json": {
+      "bytes": 11701,
+      "sha256": "b0ef2700536e1feb4893b56f96445b7ca15af4e1e6c6823c134671366334afa0"
+    },
+    "downloads.json": {
+      "bytes": 9502,
+      "sha256": "ce9cf8e23eddccc585686d12a2ea1f836895a7d85af470144a093eaadedc30b0"
+    },
+    "logs/artifact-compliance.log": {
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    "logs/artifact-release-preflight.log": {
+      "bytes": 1460,
+      "sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522"
+    },
+    "logs/compliance-regressions.log": {
+      "bytes": 5550,
+      "sha256": "9f3c50e5cc2bb43f9c06eed7036a279c00c76fb07754a896f85a3d4cdbb29b71"
+    },
+    "logs/pins-match.log": {
+      "bytes": 66,
+      "sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c"
+    },
+    "logs/release-preflight.log": {
+      "bytes": 1460,
+      "sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522"
+    },
+    "logs/source-compliance.log": {
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    "logs/swiftformat.log": {
+      "bytes": 222,
+      "sha256": "1ef47efd12028c6e65bc643edcfbad573bd96afc355d364390330d9cd50fd6ba"
+    },
+    "validate-packaging.py": {
+      "bytes": 5653,
+      "sha256": "d159f9bc3e589dcc2c529bd9e0958ae27d99106095a940ad5521c376be281421"
+    },
+    "validation.json": {
+      "bytes": 13818,
+      "sha256": "7ca49f23b6845657f70158c59bf045a252c4c44a8201ccb2aab2422647c0a91b"
+    }
+  },
+  "scope": "Hashes identify retained raw evidence and repository evidence before the evidence-only commit. The manifest excludes itself; subsequent final-checkpoint metadata is separate. Artifact contents are covered by artifact-files.json."
+}

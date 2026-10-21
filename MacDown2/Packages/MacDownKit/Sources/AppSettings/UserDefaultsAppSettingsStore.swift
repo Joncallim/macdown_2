@@ -1,3 +1,4 @@
+import CoreFoundation
 import Foundation
 
 /// `UserDefaults`-backed `AppSettingsStoring`. Each domain is one JSON blob
@@ -45,7 +46,8 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
     /// schema-less blobs keep every valid value; see `EditorSettings.init(from:)`). Data that cannot be understood
     /// (malformed bytes, a wrong type, an out-of-range value, a newer `schemaVersion`) falls back to the default
     /// for the running session only: the raw bytes stay in `UserDefaults`, are reported by `unreadableDomains`, and
-    /// are copied to a one-time preserved key before any later `save` could replace them (#53).
+    /// are copied to the existing one-time preserved key when a later save is refused (#53).
+    /// A backup never authorizes replacement of an unreadable primary value.
     private func load<T: AppSettingsDomain>(_ key: Key) -> T {
         guard let data = defaults.data(forKey: key.rawValue), let value = Self.decode(T.self, from: data)
         else { return T.defaultValue }
@@ -54,27 +56,61 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
 
     private func save(_ value: some Encodable, key: Key) {
         guard let data = try? JSONEncoder().encode(value) else { return }
-        preserveUnreadableBytes(for: key, ifDifferentFrom: data)
+        // Recheck at the write boundary: another store or a newer build may have replaced
+        // the value since this session loaded it. Preserve every present value we cannot read.
+        if let existing = defaults.object(forKey: key.rawValue) {
+            guard let current = existing as? Data, key.decodes(current) else {
+                preserveUnreadableBytes(for: key, ifDifferentFrom: data)
+                return
+            }
+        }
         defaults.set(data, forKey: key.rawValue)
     }
 
     /// The highest settings schema this build understands. The historical schema has no version key (named
-    /// "schema-less"); a blob that declares a larger `schemaVersion` was written by a newer build and must not be
-    /// rewritten by this one.
+    /// "schema-less"); a blob that declares a larger `schemaVersion` is rejected on read and protected from
+    /// ordinary writes. The first unreadable Data backup is retained for compatibility; the primary is also preserved.
     nonisolated static let supportedSchemaVersion = 1
 
     fileprivate nonisolated static func decode<T: Decodable>(_: T.Type, from data: Data) -> T? {
-        if let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-           let declared = object["schemaVersion"] {
-            guard let version = declared as? Int, version <= supportedSchemaVersion else { return nil }
+        guard let object = try? JSONSerialization.jsonObject(with: data),
+              let object = object as? [String: Any]
+        else { return nil }
+
+        if let declared = object["schemaVersion"] {
+            guard isSupportedSchemaVersion(declared) else { return nil }
         }
         return try? JSONDecoder().decode(T.self, from: data)
     }
 
-    /// Domains whose stored bytes exist but cannot be read by this build; empty when everything is absent or valid.
+    private nonisolated static func isSupportedSchemaVersion(_ value: Any) -> Bool {
+        // JSON booleans bridge to NSNumber, but are not schema versions. Check
+        // the Core Foundation type identity before reading numeric accessors.
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID()
+        else { return false }
+
+        let numericValue = number.doubleValue
+        guard numericValue.isFinite,
+              numericValue.rounded(.towardZero) == numericValue
+        else { return false }
+
+        // NSNumber's fixed-width accessors do not trap for oversized values;
+        // the explicit range and round-trip comparison reject values that
+        // saturate or lose precision during accessor conversion, without
+        // converting an untrusted value to Int. Lexical precision already
+        // discarded by JSONSerialization cannot be recovered here.
+        let version = number.int64Value
+        return (1 ... Int64(supportedSchemaVersion)).contains(version)
+            && Double(version) == numericValue
+    }
+
+    /// Domains whose stored values exist but cannot be read by this build. Ordinary writes to
+    /// these domains are refused; other domains remain writable. Includes non-Data values.
     public var unreadableDomains: [String] {
         Key.allCases.compactMap { key in
-            guard let data = defaults.data(forKey: key.rawValue) else { return nil }
+            guard let value = defaults.object(forKey: key.rawValue) else { return nil }
+            guard let data = value as? Data else { return key.rawValue }
             return key.decodes(data) ? nil : key.rawValue
         }
     }

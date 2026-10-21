@@ -29,6 +29,12 @@ import WebKit
 ///   SwiftUI updates never restart WebKit. A failed main-document load
 ///   re-arms the gate so the same generation can be retried.
 struct HTMLPreviewView: NSViewRepresentable {
+    private struct PendingNavigation {
+        let navigation: WKNavigation
+        let webViewID: ObjectIdentifier
+        let generation: UInt
+    }
+
     let document: FileCore.FileDocument
 
     func makeCoordinator() -> Coordinator {
@@ -49,14 +55,21 @@ struct HTMLPreviewView: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
-        private static let reloadDelay: Duration = .milliseconds(150)
-
+        private let reloadDelay: Duration
         private let handler = PreviewSchemeHandler()
-        private var gate = HTMLPreviewReloadGate()
+        private(set) var gate = HTMLPreviewReloadGate()
         private var reloadBudget = HTMLPreviewReloadBudget()
         private var reloadTask: Task<Void, Never>?
+        private var scheduledLoadID: UUID?
         private var securityScope: PreviewSecurityScope?
-        private var pendingLoadGeneration: UInt?
+        private var pendingNavigation: PendingNavigation?
+        private var currentPageGeneration: UInt?
+        private weak var currentWebView: WKWebView?
+
+        init(reloadDelay: Duration = .milliseconds(150)) {
+            self.reloadDelay = reloadDelay
+            super.init()
+        }
 
         func makeWebView() -> WKWebView {
             let configuration = WKWebViewConfiguration()
@@ -87,21 +100,27 @@ struct HTMLPreviewView: NSViewRepresentable {
             guard document.state == .clean else {
                 reloadTask?.cancel()
                 reloadTask = nil
+                scheduledLoadID = nil
                 return
             }
             let generation = document.mutationGeneration
             guard gate.shouldLoad(generation: generation) else { return }
 
             reloadTask?.cancel()
+            let loadID = UUID()
+            scheduledLoadID = loadID
             let source = document.text
             let baseURL = document.fileURL?.deletingLastPathComponent()
+            let delay = reloadDelay
             reloadTask = Task { @MainActor [weak self, weak webView] in
                 do {
-                    try await Task.sleep(for: Self.reloadDelay)
+                    try await Task.sleep(for: delay)
                 } catch {
                     return
                 }
-                guard let self, let webView, !Task.isCancelled else { return }
+                guard let self, let webView, !Task.isCancelled, scheduledLoadID == loadID else { return }
+                scheduledLoadID = nil
+                reloadTask = nil
                 beginLoad(
                     source: source,
                     baseURL: baseURL,
@@ -114,8 +133,11 @@ struct HTMLPreviewView: NSViewRepresentable {
         func dispose(webView: WKWebView) {
             reloadTask?.cancel()
             reloadTask = nil
+            scheduledLoadID = nil
             gate.cancelPendingLoad()
-            pendingLoadGeneration = nil
+            pendingNavigation = nil
+            currentPageGeneration = nil
+            currentWebView = nil
             handler.request = nil
             webView.stopLoading()
             securityScope?.stop()
@@ -130,6 +152,10 @@ struct HTMLPreviewView: NSViewRepresentable {
             generation: UInt,
             in webView: WKWebView
         ) {
+            // Revoke the old delegate identity before WebKit can report its cancellation.
+            pendingNavigation = nil
+            currentPageGeneration = generation
+            currentWebView = webView
             // Balance any prior security scope before opening the new one.
             securityScope?.stop()
             securityScope = nil
@@ -142,7 +168,6 @@ struct HTMLPreviewView: NSViewRepresentable {
                 baseURL: baseURL,
                 policy: .v1
             )
-            pendingLoadGeneration = generation
             // A genuinely new document (not the process-termination reload): its crashes are a new story.
             reloadBudget.documentChanged()
 
@@ -152,7 +177,7 @@ struct HTMLPreviewView: NSViewRepresentable {
             // alone can land in dead markup (`<template>`, `<select>`, …) and
             // silently do nothing; a response header cannot be diverted.
             guard let previewURL = URL(string: Self.mainDocumentURLString) else { return }
-            webView.load(URLRequest(url: previewURL))
+            recordNavigation(webView.load(URLRequest(url: previewURL)), generation: generation, in: webView)
         }
 
         /// The scheme-handler URL for the main document (host `document`,
@@ -160,10 +185,24 @@ struct HTMLPreviewView: NSViewRepresentable {
         private static let mainDocumentURLString =
             "\(HTMLPreviewNavigationPolicy.previewURLScheme)://document/"
 
-        private func completeLoad() {
-            guard let generation = pendingLoadGeneration else { return }
-            pendingLoadGeneration = nil
-            gate.loadCompleted(generation: generation)
+        private func recordNavigation(_ navigation: WKNavigation?, generation: UInt, in webView: WKWebView) {
+            guard let navigation else {
+                // Only this attempt may be rearmed; a newer debounced request owns its own admission.
+                gate.loadFailed(generation: generation)
+                return
+            }
+            pendingNavigation = PendingNavigation(
+                navigation: navigation, webViewID: ObjectIdentifier(webView), generation: generation
+            )
+        }
+
+        private func takeGeneration(for navigation: WKNavigation?, in webView: WKWebView) -> UInt? {
+            guard let navigation, let pendingNavigation,
+                  pendingNavigation.navigation === navigation,
+                  pendingNavigation.webViewID == ObjectIdentifier(webView)
+            else { return nil }
+            self.pendingNavigation = nil
+            return pendingNavigation.generation
         }
 
         // MARK: WKNavigationDelegate
@@ -207,23 +246,35 @@ struct HTMLPreviewView: NSViewRepresentable {
             decisionHandler(.allow)
         }
 
-        func webView(_: WKWebView, didFinish _: WKNavigation!) {
-            completeLoad()
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard let generation = takeGeneration(for: navigation, in: webView) else { return }
+            gate.loadCompleted(generation: generation)
         }
 
         /// The WebContent process died (memory pressure, a crash on a huge page): the pane would stay blank
         /// until the next save. The scheme handler still holds the request, so reload it.
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-            guard handler.request != nil, reloadBudget.consumeReload() else { return }
-            webView.reload()
+            guard webView === currentWebView, handler.request != nil,
+                  scheduledLoadID == nil,
+                  let generation = currentPageGeneration,
+                  reloadBudget.consumeReload()
+            else { return }
+            // A queued load owns its admission even when it retries this page's generation.
+            // Recovery has its own navigation identity and never borrows that admission.
+            pendingNavigation = nil
+            recordNavigation(webView.reload(), generation: generation, in: webView)
         }
 
-        func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {
-            handleLoadFailure(error)
+        func webView(
+            _ webView: WKWebView,
+            didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            handleLoadFailure(error, navigation: navigation, in: webView)
         }
 
-        func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
-            handleLoadFailure(error)
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            handleLoadFailure(error, navigation: navigation, in: webView)
         }
 
         /// A failed main-document load re-arms the gate so the same saved
@@ -231,20 +282,21 @@ struct HTMLPreviewView: NSViewRepresentable {
         /// superseded loads are ignored (they are not failures), and only the
         /// main document URL may fail the gate: a subframe failure must never
         /// clear a still-pending main load.
-        private func handleLoadFailure(_ error: Error) {
+        private func handleLoadFailure(_ error: Error, navigation: WKNavigation?, in webView: WKWebView) {
+            guard Self.isMainDocumentLoadFailure(error),
+                  let generation = takeGeneration(for: navigation, in: webView)
+            else { return }
+            gate.loadFailed(generation: generation)
+        }
+
+        static func isMainDocumentLoadFailure(_ error: Error) -> Bool {
             let nsError = error as NSError
             // -999 (NSURLErrorCancelled, incl. policy cancels) and 102
             // (WebKitErrorFrameLoadInterruptedByPolicyChange, supersede) are
             // not failures of the pending load.
-            guard nsError.code != NSURLErrorCancelled, nsError.code != 102 else { return }
-            guard let failingURLString = nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String,
-                  failingURLString == Self.mainDocumentURLString
-            else {
-                return
-            }
-            guard let generation = pendingLoadGeneration else { return }
-            pendingLoadGeneration = nil
-            gate.loadFailed(generation: generation)
+            guard nsError.code != NSURLErrorCancelled, nsError.code != 102 else { return false }
+            guard let failingURL = nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL else { return false }
+            return failingURL.absoluteString == mainDocumentURLString
         }
 
         // MARK: WKUIDelegate

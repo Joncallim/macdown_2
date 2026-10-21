@@ -44,16 +44,7 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
         busy = Array(repeating: false, count: self.poolSize)
     }
 
-    /// `context`'s theme colors are accepted (matching the
-    /// `MermaidDiagramRendering` contract every caller/cache/contribution
-    /// keys against) but not yet passed through to Mermaid's own theming —
-    /// Slice 2's scope is the render pipeline, timeout, output ceiling, and
-    /// security containment (epic-20-implementation.md §17 Slice 2), not
-    /// color-accurate theme matching. Every diagram currently renders with
-    /// Mermaid's own default theme regardless of the app's active theme.
-    /// Deliberate, not an oversight — tracked as residual work (§18) rather
-    /// than silently dropped.
-    public func render(_ fence: MermaidFence, context _: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
+    public func render(_ fence: MermaidFence, context: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
         let index = await checkout()
         let page: MermaidHarnessPage
         do {
@@ -67,7 +58,7 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
             diagram = try await DiagramTimeoutRace.run(
                 timeout: timeout,
                 timeoutError: MermaidRenderError.timedOut
-            ) { try await page.render(fence.source) }
+            ) { try await page.render(fence.source, context: context) }
         } catch {
             // The script may still be running: replace the page instead of reusing it.
             if error is CancellationError || (error as? MermaidRenderError) == .timedOut {

@@ -2,8 +2,9 @@
 import Foundation
 import Testing
 
-/// #53 SETTINGS-COMPAT: the pre-E22 editor blob (no `showsStatusBar`) must keep every valid user value, and anything
-/// this build cannot read must be retained verbatim and reported, never replaced by defaults.
+/// #53 SETTINGS-COMPAT: old readable values remain compatible, while unreadable primary values
+/// remain in place across ordinary writes. The first backup is retained for compatibility;
+/// migration/conversion and explicit recovery acceptance remain separate work.
 @MainActor
 struct SettingsCompatibilityTests {
     private static let editorKey = "appSettings.editor"
@@ -14,14 +15,14 @@ struct SettingsCompatibilityTests {
             Issue.record("no suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suite) }
+        defer { defaults.removePersistentDomain(forName: suite) }
         try body(defaults, UserDefaultsAppSettingsStore(defaults: defaults))
     }
 
-    private func editorJSON(statusBar: String? = nil, width: String = "2", extra: String = "",
+    private func editorJSON(statusBar: String? = nil, fontSize: String = "15", width: String = "2", extra: String = "",
                             omit: String? = nil) -> Data {
         var fields = [
-            "\"font\":{\"familyName\":\"Menlo\",\"size\":15}",
+            "\"font\":{\"familyName\":\"Menlo\",\"size\":\(fontSize)}",
             "\"wrapsLines\":false",
             "\"showsInvisibles\":true",
             "\"indentationWidth\":\(width)",
@@ -59,10 +60,26 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func aPresentFalseStatusBarStaysFalse() {
+    @Test(arguments: [false, true])
+    func aPresentBooleanStatusBarKeepsItsValue(value: Bool) {
         isolated { defaults, store in
-            defaults.set(editorJSON(statusBar: "false"), forKey: Self.editorKey)
-            #expect(!store.editor.showsStatusBar)
+            let original = editorJSON(statusBar: String(value))
+            defaults.set(original, forKey: Self.editorKey)
+            #expect(store.editor.showsStatusBar == value)
+            #expect(store.unreadableDomains.isEmpty)
+            #expect(defaults.data(forKey: Self.editorKey) == original)
+        }
+    }
+
+    @Test(arguments: ["null", "0", "\"false\"", "[]", "{}"])
+    func aPresentMalformedStatusBarIsUnreadableNotAMissingField(value: String) {
+        isolated { defaults, store in
+            let invalid = editorJSON(statusBar: value)
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default, "malformed input uses only the session fallback")
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading cannot rewrite malformed data")
         }
     }
 
@@ -79,8 +96,9 @@ struct SettingsCompatibilityTests {
             store.editor = EditorSettings(indentationWidth: 3)
 
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == original)
-            #expect(store.editor.indentationWidth == 3)
-            #expect(store.unreadableDomains.isEmpty)
+            #expect(defaults.data(forKey: Self.editorKey) == original)
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
         }
     }
 
@@ -94,7 +112,57 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func aNewerSchemaVersionIsKeptAndNotRewrittenByAnOlderBuild() {
+    @Test(arguments: ["0", "-1"])
+    func anInvalidPersistedFontSizeIsUnreadableAndPreserved(size: String) {
+        isolated { defaults, store in
+            var store = store
+            let invalid = editorJSON(fontSize: size)
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
+
+            store.editor = EditorSettings(indentationWidth: 5)
+            #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
+        }
+    }
+
+    @Test func aLargeButSupportedPersistedFontSizeIsKept() {
+        isolated { defaults, store in
+            defaults.set(editorJSON(fontSize: "1000"), forKey: Self.editorKey)
+
+            #expect(store.editor.font.size == 1000)
+            #expect(store.unreadableDomains.isEmpty)
+        }
+    }
+
+    /// Review of the combined tree: a persisted size of 1e100 was accepted and then trapped the Settings pane's
+    /// `Int(size)` label. Sizes beyond the supported bound are unreadable and preserved, never applied.
+    @Test(arguments: ["1000.5", "1e100", "1.7976931348623157e308"])
+    func aPersistedFontSizeBeyondTheSupportedBoundIsUnreadableAndPreserved(size: String) {
+        isolated { defaults, store in
+            let invalid = editorJSON(fontSize: size)
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
+        }
+    }
+
+    @Test(arguments: ["1.0000000000000001", "0.99999999999999999"])
+    func schemaVersionUsesTheFoundationParsedNumericValue(version: String) {
+        isolated { defaults, store in
+            defaults.set(editorJSON(extra: "\"schemaVersion\":\(version)"), forKey: Self.editorKey)
+
+            // Foundation has already rounded both literals to the exact NSNumber value 1.
+            #expect(store.editor.indentationWidth == 2)
+            #expect(store.unreadableDomains.isEmpty)
+        }
+    }
+
+    @Test func aNewerSchemaVersionIsBackedUpBeforeAnOrdinarySaveReplacesIt() {
         isolated { defaults, store in
             var store = store
             let future = editorJSON(extra: "\"schemaVersion\":2,\"futureOnlyField\":\"keep me\"")
@@ -113,6 +181,61 @@ struct SettingsCompatibilityTests {
             defaults.set(editorJSON(extra: "\"schemaVersion\":1"), forKey: Self.editorKey)
             #expect(store.editor.indentationWidth == 2)
             #expect(store.unreadableDomains.isEmpty)
+
+            defaults.removeObject(forKey: Self.editorKey)
+            defaults.set(editorJSON(), forKey: Self.editorKey)
+            #expect(store.editor.indentationWidth == 2)
+            #expect(store.unreadableDomains.isEmpty)
+        }
+    }
+
+    @Test(arguments: ["Inf", "-Inf", "NaN"])
+    func nonFiniteFontSizesAreRejectedByTheDecodingBoundary(value: String) {
+        let data = Data("{\"familyName\":\"Menlo\",\"size\":\"\(value)\"}".utf8)
+        let decoder = JSONDecoder()
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: "Inf", negativeInfinity: "-Inf", nan: "NaN"
+        )
+
+        #expect(throws: DecodingError.self) {
+            try decoder.decode(FontDescriptor.self, from: data)
+        }
+    }
+
+    @Test(arguments: [
+        "0", "-1", "true", "false", "\"1\"", "1.5", "9223372036854775808", "-9223372036854775809",
+        "1e100", "-1e100", "1e400", "-1e400",
+    ])
+    func anInvalidDeclaredSchemaVersionIsUnreadableAndPreserved(version: String) {
+        isolated { defaults, store in
+            var store = store
+            let invalid = editorJSON(extra: "\"schemaVersion\":\(version)")
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
+
+            store.editor = EditorSettings(indentationWidth: 5)
+            #expect(defaults.data(forKey: Self.editorKey) == invalid)
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
+        }
+    }
+
+    @Test func anUnparseableFutureSchemaPayloadIsUnreadableAndPreserved() {
+        isolated { defaults, store in
+            var store = store
+            let invalid = editorJSON(extra: "\"schemaVersion\":2,\"futureOnlyField\":1e400")
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
+
+            store.editor = EditorSettings(indentationWidth: 5)
+            #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
         }
     }
 
@@ -130,16 +253,18 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func thePreservedCopyIsTheFirstUnreadableBlobAndRepeatedLaunchesAreIdempotent() {
+    @Test func theFirstUnreadableBlobIsKeptAndRepeatedReadsDoNotWrite() {
         isolated { defaults, store in
             var store = store
             let first = Data("not json".utf8)
             defaults.set(first, forKey: Self.editorKey)
-            store.editor = EditorSettings(indentationWidth: 2) // preserves `first`, writes valid data
-            defaults.set(Data("also not json".utf8), forKey: Self.editorKey) // a second unreadable generation
+            store.editor = EditorSettings(indentationWidth: 2) // preserves `first` without replacing the primary
+            let second = Data("also not json".utf8)
+            defaults.set(second, forKey: Self.editorKey) // a second unreadable generation
             store.editor = EditorSettings(indentationWidth: 3)
 
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == first, "never overwritten once kept")
+            #expect(defaults.data(forKey: Self.editorKey) == second, "the second generation remains at the primary")
 
             // Repeated reads are stable and never write.
             let written = defaults.data(forKey: Self.editorKey)

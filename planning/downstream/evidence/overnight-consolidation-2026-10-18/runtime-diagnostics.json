@@ -1,0 +1,67 @@
+{
+  "app-nonperformance-tests.log": {
+    "AppKit table delegate reentrancy": {
+      "count": 68,
+      "examples": [
+        "2026-10-19 05:13:37.432619+0800 MacDown2[17241:50833704] WARNING: Application performed a reentrant operation in its NSTableView delegate. This warning will become an assert in the future.",
+        "2026-10-19 05:13:37.673650+0800 MacDown2[17241:50833704] WARNING: Application performed a reentrant operation in its NSTableView delegate. This warning will become an assert in the future."
+      ]
+    },
+    "SwiftUI state during update": {
+      "count": 11,
+      "examples": [
+        "2026-10-19 05:13:37.769700+0800 MacDown2[17241:50833704] [SwiftUI] Modifying state during view update, this will cause undefined behavior.",
+        "2026-10-19 05:13:42.638229+0800 MacDown2[17241:50833704] [SwiftUI] Modifying state during view update, this will cause undefined behavior."
+      ]
+    },
+    "WebKit service unavailable": {
+      "count": 14,
+      "examples": [
+        "2026-10-19 05:13:49.755574+0800 MacDown2[17241:50833704] Could not signal service com.apple.WebKit.WebContent: 1: Operation not permitted",
+        "2026-10-19 05:14:19.722379+0800 MacDown2[17241:50833704] Could not signal service com.apple.WebKit.WebContent: 113: Could not find specified service"
+      ]
+    },
+    "WebKit launch services": {
+      "count": 27,
+      "examples": [
+        "2026-10-19 05:13:39.649440+0800 MacDown2[17241:50833704] [cas] WebContent[17274] CONNECT: Attempt to connect to launchservicesd prohibited because kLSServerConnectionStatusProcessIsDaemonMask is set.",
+        "2026-10-19 05:13:39.649446+0800 MacDown2[17241:50833704] [cas] WebContent[17274] CRASHSTRING: rdar://problem/28724618 Couldn't connect to launchservicesd."
+      ]
+    },
+    "Linkd autoShortcut connection": {
+      "count": 16,
+      "examples": [
+        "2026-10-19 05:13:36.704303+0800 MacDown2[17241:50833745] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 \"connection to service named com.apple.linkd.autoShortcut\" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}",
+        "2026-10-19 05:13:36.705491+0800 MacDown2[17241:50833745] [Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 \"connection to service named com.apple.linkd.autoShortcut\" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}"
+      ]
+    },
+    "ApplePersistenceIgnoreState": {
+      "count": 1,
+      "examples": [
+        "2026-10-19 05:13:36.862765+0800 MacDown2[17241:50833704] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/j5/wl06phn904v7z5wrg04dh3z40000gn/T/com.joncallim.MacDown2.savedState"
+      ]
+    },
+    "Excessive live NSWindow count": {
+      "count": 2,
+      "examples": [
+        "2026-10-19 05:14:13.216710+0800 MacDown2[17241:50833704] [Window] WARNING: NSWindow has detected an excessive live window count of 101. Window <MacDown2.DocumentWindow: 0xadf431900> windowNumber=22efc created after passing the threshold of 100. This window is not necessarily the cause, and this warning will only be shown once per window class. (",
+        "2026-10-19 05:14:13.828419+0800 MacDown2[17241:50833704] [Window] WARNING: NSWindow has detected an excessive live window count of 102. Window <_NSAlertPanel: 0xadf8f2800> windowNumber=ffffffffffffffff created after passing the threshold of 100. This window is not necessarily the cause, and this warning will only be shown once per window class. ("
+      ]
+    }
+  },
+  "app-test-enumeration.log": {
+    "Linkd autoShortcut connection": {
+      "count": 8,
+      "examples": [
+        "2026-10-19 05:10:35.176990+0800 MacDown2[16521:50828990] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 \"connection to service named com.apple.linkd.autoShortcut\" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}",
+        "2026-10-19 05:10:35.175168+0800 MacDown2[16521:50829012] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 \"connection to service named com.apple.linkd.autoShortcut\" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}"
+      ]
+    },
+    "ApplePersistenceIgnoreState": {
+      "count": 1,
+      "examples": [
+        "2026-10-19 05:10:35.483545+0800 MacDown2[16521:50828472] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/j5/wl06phn904v7z5wrg04dh3z40000gn/T/com.joncallim.MacDown2.savedState"
+      ]
+    }
+  }
+}

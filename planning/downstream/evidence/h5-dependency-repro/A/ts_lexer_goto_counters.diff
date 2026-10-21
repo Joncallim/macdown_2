@@ -1,0 +1,20 @@
+--- ts-lib/src/lexer.c	2026-10-16 07:23:36
++++ ts-lib-instr/src/lexer.c	2026-10-16 07:24:02
+@@ -135,7 +135,9 @@
+   }
+ }
+ 
++unsigned long long ts_goto_calls=0, ts_goto_iters=0;
+ static void ts_lexer_goto(Lexer *self, Length position) {
++  ts_goto_calls++;
+   if (position.bytes != self->current_position.bytes) {
+     ts_lexer__invalidate_column_data(self);
+   }
+@@ -146,6 +148,7 @@
+   bool found_included_range = false;
+   for (unsigned i = 0; i < self->included_range_count; i++) {
+     TSRange *included_range = &self->included_ranges[i];
++    ts_goto_iters++;
+     if (
+       included_range->end_byte > self->current_position.bytes &&
+       included_range->end_byte > included_range->start_byte

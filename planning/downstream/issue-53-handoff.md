@@ -6,11 +6,63 @@ Import useful original-MacDown preferences without changing that app, reviving i
 
 Reviewed baseline: `b95fe439672dbcad4e5c9d04f7f353ffc85ff26b`, 2026-09-26. Read [README](README.md) and [readiness review](READINESS_REVIEW.md). E22 exclusively owns the inert MarkdownParseOptions cleanup. This document changes no active E22 code and cannot close its parser half. The full issue closes only after both halves have evidence.
 
-## Current source reconciliation
+## 2026-10-18 current-source reconciliation
+
+Reviewed integration baseline: `d3cc8883a08df02a9a98165b1833ca950948dc5d`;
+live master: `4aa46bfa6b91bf1c1d218b9b1f67480312f66396`. The live issue's
+30 September ownership clarification remains binding: #53 owns semantics and
+tests; #18 executes the agreed map after destination settings/themes freeze.
+
+The missing-status-bar historical decode is already implemented and tested.
+A narrower regression was reproduced: a present JSON `null` was treated as an
+absent field. The bounded correction rejects that malformed value while keeping
+the absent-field default and both Boolean values. Test preference suites are
+explicitly isolated and remove only their own persisted domains.
+
+The [machine-readable disposition record](legacy-preference-dispositions.json)
+covers all 52 stored, four calculated and two transient properties in the pinned
+legacy header/implementation. Its read-only checker verifies source digests,
+declaration coverage, exact spellings and current destination candidates. It is
+**not** an importer, a complete conversion map or proof of migration readiness.
+Six destination candidates still need semantic and precedence fixtures; E23
+theme and other owned policies remain unresolved.
+
+The store's existing first-unreadable-blob backup is narrower than the protected
+writer required below. An isolated baseline probe demonstrates that an ordinary
+save replaces a future-version primary blob while retaining its first backup;
+a second unreadable generation is not retained after another save. Non-Data
+objects are neither reported as unreadable nor retained on replacement. This
+contradicts a claim of complete no-clobber compatibility, and is an explicit
+stop boundary for this slice: remedying it requires the shared admission,
+error-reporting and recovery policy specified below, not another decode default.
+See [reproduction and evidence](evidence/settings-53-2026-10-18/README.md).
+
+## Historical 2026-10-14 reconciliation
+
+The current source still matches the boundary above: `LegacyPreferencesDetector`
+only performs presence detection for `com.uranusjr.macdown`, while
+`UserDefaultsAppSettingsStore` owns five whole-JSON domains
+(`appSettings.general`, `editor`, `markdown`, `previewExport`, and `formats`).
+The store preserves unreadable raw bytes and reports them; it does not import
+legacy values. No real user domain was read or changed during this
+reconciliation.
+
+The key-by-key table below remains the source-grounded disposition map, not an
+implemented migration. Parser-specific rows remain delegated to E22, and
+theme rows remain delegated to E23. The next executable unit is still
+SETTINGS-COMPAT plus a machine-readable coverage test; no legacy import,
+preference write, or migration completion claim is made by this integration
+branch.
+
+## Historical source finding — missing-field decoder now implemented
 
 LegacyPreferencesDetector still only checks `com.uranusjr.macdown`. Current settings are whole JSON blobs under appSettings.general/editor/markdown/previewExport/formats. Original MPPreferences.h/.m at upstream `3e2a2bf101c215c143bf00d9f857965f0ee82487` define the legacy keys below. Do not instantiate MPPreferences: its initializer writes defaults/version state and cleans old autosave records.
 
-A newly relevant defect boundary: current EditorSettings added required showsStatusBar, with an initializer default but synthesized Codable decoding. A pre-E22 JSON object missing that field can fail decoding; the existing generic store then returns the WHOLE default domain. If later saved, it can overwrite font/indentation/assist choices. This is not permission to patch Claude's current branch; it is an explicit compatibility prerequisite for migration and final release.
+The older `EditorSettings` added required `showsStatusBar` with an initializer
+default but synthesized decoding. That could reject a pre-E22 blob and return
+the whole default domain. Current explicit decoding addresses this historical
+finding; it must not be reimplemented as if still absent. The broader
+protected-write contract remains required as described above.
 
 ## Settings compatibility — first executable unit
 
@@ -40,14 +92,14 @@ Preserve exact legacy spellings. This table is exhaustive for the stored keys de
 | supressesUntitledDocumentOnLaunch | No baseline equivalent. Untitled suppression is not session restoration; retain misspelling and report unsupported unless final exact behavior exists. |
 | createFileForLinkTarget | Unsupported unless the exact final action policy exists; never enable implicit file creation from import. |
 | extensionIntraEmphasis | Parser-specific grammar difference; no generic Markdown switch. |
-| extensionTables | Consume actual E22 capability/toggle disposition; never import inert Boolean. |
+| extensionTables | Current E22 parser always supports tables. True requests an unconditional capability; false has no disable preference. Never import an inert Boolean. |
 | extensionFencedCode | Core grammar: true means equivalent unconditional capability; unsupported request to disable on false. |
-| extensionAutolink | Consume actual E22 outcome; do not assume all autolink forms were unconditionally supported. |
-| extensionStrikethough | Preserve misspelling; use actual E22 strikethrough capability, not a guessed corrected source key. |
+| extensionAutolink | Current parser supports CommonMark angle-bracket autolinks, not GFM extended bare autolinks. Legacy semantics are not interchangeable and no toggle exists. |
+| extensionStrikethough | Preserve misspelling. Current E22 parser always supports strikethrough; false has no disable preference. |
 | extensionUnderline | Unsupported grammar; not editor underline formatting. |
 | extensionSuperscript | Unsupported unless the actual final grammar supports it. |
 | extensionHighlight | Unsupported grammar; not syntax highlighting. |
-| extensionFootnotes | Actual E22 outcome; do not falsely report current footnote behavior as proven by a stored flag. |
+| extensionFootnotes | Current engine does not support footnotes; the inert option was removed. Preserve the unsupported request in any future import report. |
 | extensionQuote | Original extension differs from ordinary block quotes; unsupported unless exact equivalent exists. |
 | extensionSmartyPants | Unsupported typography; no punctuation normalization or hidden system substitution changes. |
 | markdownManualRender | Manual render is not hiding Preview; unsupported at baseline. |
@@ -74,7 +126,7 @@ Preserve exact legacy spellings. This table is exhaustive for the stored keys de
 | htmlTemplateName | Default is equivalent fixed-template policy only; other executable markup templates unsupported. Not an export-format switch. |
 | htmlStyleName | Legacy CSS is not embedded/linked delivery. No arbitrary stylesheet import. |
 | htmlDetectFrontMatter | Actual final parser policy; never blockDirectives. |
-| htmlTaskList | Consume actual E22 task-list capability; no inert toggle. |
+| htmlTaskList | Current E22 parser always supports task lists; false has no disable preference. No inert toggle. |
 | htmlHardWrap | Rendering hard breaks differ from editor line wrapping; only exact final parser/render option. |
 | htmlMathJax | Explain the engine/capability change; no MathJax runtime/URL/hidden switch. |
 | htmlMathJaxInlineDollar | Explain #116's shared grammar and unsupported disabling behavior; no second grammar. |

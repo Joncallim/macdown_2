@@ -1,0 +1,29 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Compiling TextFiltersTests TextFilterCancellationIsolationTests.swift
+[4/6] Emitting module TextFiltersTests
+[4/6] Write Objects.LinkFileList
+[5/6] Linking MacDownKitPackageTests
+Build complete! (11.76s)
+Test Suite 'Selected tests' started at 2026-10-19 22:55:20.613.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-19 22:55:20.625.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-19 22:55:20.625.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-19 22:55:20.625.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.013) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "TextFilter fixture cancellation isolation" started.
+◇ Test blockedCancellationKeepsOwnerResponsiveAndSharesTheCompleteCleanupTask() started.
+✘ Test blockedCancellationKeepsOwnerResponsiveAndSharesTheCompleteCleanupTask() recorded an issue at TextFilterCancellationIsolationTests.swift:71:9: Expectation failed: !((probe.snapshot → (events: ["first cancellation started", "first cancellation finished", "second cancellation", "second join", "first join"], expired: true)).expired → true → true)
+↳ // Both callers obtain the same pending cleanup while cancellation is
+↳ // held, and registration closes without waiting for that callback.
+✘ Test blockedCancellationKeepsOwnerResponsiveAndSharesTheCompleteCleanupTask() recorded an issue at TextFilterCancellationIsolationTests.swift:72:9: Expectation failed: (probe.snapshot.events → ["first cancellation started", "first cancellation finished", "second cancellation", "second join", "first join"]) == ["first cancellation started"]
+± inserted ["first cancellation finished", "second cancellation", "second join", "first join"]
+✘ Test blockedCancellationKeepsOwnerResponsiveAndSharesTheCompleteCleanupTask() recorded an issue at TextFilterCancellationIsolationTests.swift:85:9: Expectation failed: !((probe.snapshot → (events: ["first cancellation started", "first cancellation finished", "second cancellation", "second join", "first join"], expired: true)).expired → true → true)
+✘ Test blockedCancellationKeepsOwnerResponsiveAndSharesTheCompleteCleanupTask() failed after 2.004 seconds with 3 issues.
+✘ Suite "TextFilter fixture cancellation isolation" failed after 2.004 seconds with 3 issues.
+✘ Test run with 1 test in 1 suite failed after 2.004 seconds with 3 issues.

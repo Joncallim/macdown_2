@@ -11,6 +11,14 @@ extension EditorView.Coordinator {
         onScrollChange?(system.topVisibleUTF16Offset)
     }
 
+    @objc @MainActor func editorLayoutDidChange(_: Notification) {
+        onLayoutChange?()
+    }
+
+    @MainActor func editorAttachmentDidChange() {
+        onLayoutChange?()
+    }
+
     /// `EditorTextSystem` itself keeps `lineIndex` correct across undo/redo
     /// (see its own `registerUndoRedoObservers()`); this coordinator-level
     /// observer exists only to redraw the gutter, which `EditorTextSystem`
@@ -69,12 +77,20 @@ extension EditorView {
     /// `system.undoManager` fresh and checks the notification's sender
     /// against it instead.
     func registerCoordinatorObservers(scrollView: NSScrollView, coordinator: Coordinator) {
+        scrollView.documentView?.postsFrameChangedNotifications = true
         NotificationCenter.default.addObserver(
             coordinator,
             selector: #selector(Coordinator.scrollViewDidScroll(_:)),
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.editorLayoutDidChange(_:)),
+            name: NSView.frameDidChangeNotification,
+            object: scrollView.documentView
+        )
+        coordinator.onLayoutChange?()
         NotificationCenter.default.addObserver(
             coordinator,
             selector: #selector(Coordinator.undoManagerDidChange(_:)),

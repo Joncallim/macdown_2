@@ -190,13 +190,7 @@ extension WindowCoordinator {
     func makeRestoredController(tab: WorkspaceTab) -> WindowController {
         let model = makeWindowModel()
         model.tabStore.newTab(id: tab.id, document: tab.document)
-        return WindowController(
-            model: model,
-            coordinator: self,
-            themeController: themeController,
-            grammarRegistry: grammarRegistry,
-            fileTreePreferences: fileTreePreferences
-        )
+        return makeWindowController(model: model)
     }
 
     func applyRestoredState(controller: WindowController, tab: WorkspaceTab) {

@@ -1,0 +1,148 @@
+diff --git a/Sources/SwiftTreeSitterLayer/DiagTrace.swift b/Sources/SwiftTreeSitterLayer/DiagTrace.swift
+new file mode 100644
+index 0000000..f30842d
+--- /dev/null
++++ b/Sources/SwiftTreeSitterLayer/DiagTrace.swift
+@@ -0,0 +1,59 @@
++import Foundation
++import SwiftTreeSitter
++
++/// DIAG SCRATCH ONLY: appends trace lines to the file named by DIAG_TRACE while `enabled`.
++public enum DiagTrace {
++	nonisolated(unsafe) public static var enabled = false
++	nonisolated(unsafe) public static var tag = ""
++	nonisolated(unsafe) public static var rootLayers: [LanguageLayer] = []
++	private static let lock = NSLock()
++	private static let handle: FileHandle? = {
++		guard let path = ProcessInfo.processInfo.environment["DIAG_TRACE"] else { return nil }
++		FileManager.default.createFile(atPath: path, contents: nil)
++		return FileHandle(forWritingAtPath: path)
++	}()
++
++	public static func log(_ message: @autoclosure () -> String) {
++		guard enabled, let handle else { return }
++		let line = "[\(tag)] " + message() + "\n"
++		lock.withLock { handle.write(line.data(using: .utf8)!) }
++	}
++
++	public static func ranges(_ set: IndexSet) -> String {
++		let r = set.rangeView.map { "\($0.lowerBound)..<\($0.upperBound)" }
++		return r.count > 12 ? "\(r.count) ranges [" + r.prefix(6).joined(separator: ",") + " ... " + r.suffix(3).joined(separator: ",") + "]" : "[" + r.joined(separator: ",") + "]"
++	}
++
++	public static func edit(_ e: InputEdit) -> String {
++		"start=\(e.startByte / 2)@\(e.startPoint.row):\(e.startPoint.column) oldEnd=\(e.oldEndByte / 2)@\(e.oldEndPoint.row):\(e.oldEndPoint.column) newEnd=\(e.newEndByte / 2)@\(e.newEndPoint.row):\(e.newEndPoint.column)"
++	}
++}
++
++extension LanguageLayer {
++	/// DIAG: the current tree of `name` (self or a direct sublayer).
++	public func diagTree(_ name: String) -> MutableTree? {
++		if languageName == name { return state.tree }
++		return diagSublayer(name)?.state.tree
++	}
++
++	public func diagSublayer(_ name: String) -> LanguageLayer? {
++		diagSublayers[name]
++	}
++}
++
++/// DIAG: the root-layer calls Neon makes, with the exact text each one read.
++public enum DiagEvent {
++	case edit(InputEdit, text: String)
++	case resolve(IndexSet, text: String)
++}
++
++extension DiagTrace {
++	nonisolated(unsafe) public static var recording = false
++	nonisolated(unsafe) public static var events: [DiagEvent] = []
++
++	public static func read(_ content: LanguageLayer.Content) -> String {
++		var data = Data()
++		while let chunk = content.readHandler(data.count, .zero), chunk.count > 0 { data.append(chunk) }
++		return String(data: data, encoding: .utf16LittleEndian) ?? ""
++	}
++}
+diff --git a/Sources/SwiftTreeSitterLayer/LanguageLayer.swift b/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
+index 9272812..a6f4cac 100644
+--- a/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
++++ b/Sources/SwiftTreeSitterLayer/LanguageLayer.swift
+@@ -91,6 +91,7 @@ public final class LanguageLayer {
+ 	private let parser = Parser()
+ 	private(set) var state = ParseState()
+ 	private var sublayers = [String : LanguageLayer]()
++	var diagSublayers: [String : LanguageLayer] { sublayers }
+ 	private var missingInjections = [String : [TSRange]]()
+ 	private let rangeRestricted: Bool
+ 
+@@ -102,7 +103,9 @@ public final class LanguageLayer {
+ 
+ 		try parser.setLanguage(languageConfig.language)
+ 
++		if depth == 0 { DiagTrace.rootLayers.append(self) }
+ 		if rangeRestricted {
++			DiagTrace.log("layer.init \(languageConfig.name) ranges=\(ranges.count)")
+ 			guard parser.setIncludedRanges(ranges) else {
+ 				throw LanguageLayerError.includedRangesRejected(languageConfig.name)
+ 			}
+@@ -146,6 +149,7 @@ extension LanguageLayer {
+ 
+ extension LanguageLayer {
+ 	public func applyEdit(_ edit: InputEdit) {
++		DiagTrace.log("layer.applyEdit \(languageName) \(DiagTrace.edit(edit))")
+ 		state.applyEdit(edit)
+ 
+ 		// and now update the included ranges
+@@ -166,6 +170,7 @@ extension LanguageLayer {
+ 		self.state = newState
+ 
+ 		var invalidations = oldState.changedSet(for: newState)
++		DiagTrace.log("layer.parse \(languageName) includedRanges=\(newState.tree?.includedRanges.count ?? -1) zeroLen=\(newState.tree?.includedRanges.filter { $0.bytes.isEmpty }.count ?? -1) changed=\(DiagTrace.ranges(invalidations))")
+ 
+ 		for layer in sublayers.values {
+ 			let subset = layer.parse(with: content)
+@@ -224,6 +229,7 @@ extension LanguageLayer {
+ 	/// - Parameter edit: Describes how the content has changed
+ 	/// - Parameter resolveSublayers: If false, this will defer sublayer resolution.
+ 	public func didChangeContent(_ content: LanguageLayer.Content, using edit: InputEdit, resolveSublayers: Bool = true) -> IndexSet {
++		if DiagTrace.recording, depth == 0 { DiagTrace.events.append(.edit(edit, text: DiagTrace.read(content))) }
+ 		// includedRangeSet becomes invalid here
+ 		applyEdit(edit)
+ 
+@@ -345,7 +351,19 @@ extension LanguageLayer {
+ 		}
+ 
+ 		// if tree-sitter rejects them, the parser keeps its current ranges, so report that instead of reparsing
+-		guard parser.setIncludedRanges(Self.mergeIncludedRanges(includedRanges, with: tsRanges)) else {
++		var merged = Self.mergeIncludedRanges(includedRanges, with: tsRanges)
++		// DIAG experiment: DIAG_NO_B1=1 restores the stock (pre-B1) range list
++		if ProcessInfo.processInfo.environment["DIAG_NO_B1"] == "1" {
++			var allRanges = includedRanges
++			for newTSRange in tsRanges {
++				allRanges.removeAll(where: { newTSRange.bytes.lowerBound == $0.bytes.lowerBound })
++				allRanges.append(newTSRange)
++			}
++			merged = allRanges.sorted()
++		}
++		DiagTrace.log("layer.encorporate \(languageName) existing=\(includedRanges.count) existingZero=\(includedRanges.filter { $0.bytes.isEmpty }.count) new=\(tsRanges.count) merged=\(merged.count) newSpan=\(DiagTrace.ranges(invalidation))")
++		guard parser.setIncludedRanges(merged) else {
++			DiagTrace.log("layer.encorporate REJECTED \(languageName)")
+ 			throw LanguageLayerError.includedRangesRejected(languageName)
+ 		}
+ 
+@@ -415,6 +433,7 @@ extension LanguageLayer {
+ 	///
+ 	/// - Returns: The set of content indices that have been invalidated as part of the resolution.
+ 	public func resolveSublayers(with content: LanguageLayer.Content, in set: IndexSet) throws -> IndexSet {
++		if DiagTrace.recording, depth == 0 { DiagTrace.events.append(.resolve(set, text: DiagTrace.read(content))) }
+ 		guard supportsNestedLanguages else {
+ 			return IndexSet()
+ 		}
+@@ -422,6 +441,7 @@ extension LanguageLayer {
+ 		// injections must be shallow
+ 		let injections = try executeShallowQuery(.injections, in: set).injections(with: content.textProvider)
+ 		let groupedInjections = Dictionary(grouping: injections, by: { $0.name })
++		DiagTrace.log("layer.resolveSublayers \(languageName) in=\(DiagTrace.ranges(set)) injections=\(groupedInjections.mapValues { $0.count })")
+ 		var invalidations = IndexSet()
+ 
+ 		// they could be new, or could be updates to existing
