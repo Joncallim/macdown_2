@@ -123,6 +123,41 @@ final class TabLifecycleUITests: XCTestCase {
         )
     }
 
+    func testQuickOpenReactivatesAnAlreadyOpenBackgroundTab() {
+        app.launchArguments += ["-openFolder", fixturesDir.path]
+        app.launch()
+        app.activate()
+
+        let tabA = tab(named: "a.md")
+        XCTAssertTrue(tabA.waitForExistence(timeout: 8))
+        XCTAssertTrue(tab(named: "b.md").exists)
+        XCTAssertTrue(tab(named: "c.md").exists)
+
+        app.menuBars.menuBarItems["Window"].click()
+        app.menuBars.menuBarItems["Window"].menuItems["Select Tab 2"].firstMatch.click()
+        let selectedB = app.tabs.matching(NSPredicate(
+            format: "value == %d AND title CONTAINS[c] %@", 1, "b.md"
+        )).firstMatch
+        XCTAssertTrue(selectedB.waitForExistence(timeout: 5))
+
+        app.typeKey("p", modifierFlags: .command)
+        let search = app.textFields["quickOpenSearchField"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.typeText("a.md")
+        XCTAssertTrue(app.descendants(matching: .any)
+            .matching(identifier: "quickOpenRow.a.md").firstMatch.waitForExistence(timeout: 8))
+        app.typeKey(.return, modifierFlags: [])
+
+        let selectedA = app.tabs.matching(NSPredicate(
+            format: "value == %d AND title CONTAINS[c] %@", 1, "a.md"
+        )).firstMatch
+        XCTAssertTrue(selectedA.waitForExistence(timeout: 8))
+        XCTAssertEqual(app.tabs.count, 3, "Opening an existing file must reuse its native tab")
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        XCTAssertTrue((editor.value as? String)?.contains("# File A") == true)
+    }
+
     private func tab(named name: String) -> XCUIElement {
         app.tabs.matching(NSPredicate(format: "title CONTAINS[c] %@", name)).firstMatch
     }

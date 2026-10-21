@@ -59,7 +59,7 @@ struct MermaidExportRegistryTests {
         let parsed = try await ParseEngine().parse(text, revision: 0)
         let registry = ContributionRegistry.standardForExport(theme: BundledThemes.light, isPrintTarget: false)
         let results = try await registry.run(document: parsed, sourceText: text, sourceGeneration: 9)
-        let adaptation = ExportContributionAdapter.adapt(results)
+        let adaptation = ExportContributionAdapter.adapt(results, destination: .htmlExport)
 
         // TOC + the one diagram actually placed content — proves the
         // registry change and the .html pass-through are wired together for

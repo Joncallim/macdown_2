@@ -50,6 +50,9 @@ extension PreviewContributionAdapter {
         guard result.sourceGeneration == context.sourceGeneration else {
             return .rejected(String(localized: "\(result.contributionID) is stale; authored source preserved"))
         }
+        guard case .accepted = content.representation.admission(to: .nativePreview) else {
+            return .rejected(rejectedHTMLMessage(contributionID: result.contributionID))
+        }
         guard case let .markdown(markdown) = content.representation else {
             return .rejected(rejectedHTMLMessage(contributionID: result.contributionID))
         }
