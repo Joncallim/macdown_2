@@ -37,7 +37,7 @@ enum ExportContributionAdapter {
     /// and `DerivedContentComposer` already fails it closed.
     static func adapt(
         _ results: [ContributionResult],
-        destination: ContributionDestination = .htmlExport
+        destination: ContributionDestination
     ) -> Adaptation {
         var contributions: [ExportDerivedContribution] = []
         var standaloneDiagnostics: [ExportDiagnostic] = []

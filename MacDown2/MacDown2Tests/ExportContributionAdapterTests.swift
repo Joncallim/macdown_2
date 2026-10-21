@@ -12,7 +12,7 @@ struct ExportContributionAdapterTests {
         let content = ContributionContent(sourceRange: 0 ..< 5, placement: .block, representation: .markdown("- One"))
         let result = ContributionResult(contributionID: "toc", content: content, sourceGeneration: 4)
 
-        let adaptation = ExportContributionAdapter.adapt([result])
+        let adaptation = ExportContributionAdapter.adapt([result], destination: .htmlExport)
 
         #expect(adaptation.contributions.count == 1)
         #expect(adaptation.contributions.first?.html.contains("<li>One</li>") == true)
@@ -27,7 +27,7 @@ struct ExportContributionAdapterTests {
         let content = ContributionContent(sourceRange: 2 ..< 4, placement: .inline, representation: .markdown("x"))
         let result = ContributionResult(contributionID: "t", content: content, sourceGeneration: 0)
 
-        let adaptation = ExportContributionAdapter.adapt([result])
+        let adaptation = ExportContributionAdapter.adapt([result], destination: .htmlExport)
 
         #expect(adaptation.contributions.first?.placement == .inline)
     }
@@ -52,7 +52,7 @@ struct ExportContributionAdapterTests {
         let content = ContributionContent(sourceRange: 0 ..< 3, placement: .block, representation: .html("<p>x</p>"))
         let result = ContributionResult(contributionID: "math", content: content, sourceGeneration: 1)
 
-        let adaptation = ExportContributionAdapter.adapt([result])
+        let adaptation = ExportContributionAdapter.adapt([result], destination: .htmlExport)
 
         #expect(adaptation.contributions.count == 1)
         #expect(adaptation.contributions.first?.html == "<p>x</p>")
@@ -68,7 +68,7 @@ struct ExportContributionAdapterTests {
             diagnostics: [ContributionDiagnostic(severity: .error, message: "boom")]
         )
 
-        let adaptation = ExportContributionAdapter.adapt([result])
+        let adaptation = ExportContributionAdapter.adapt([result], destination: .htmlExport)
 
         #expect(adaptation.contributions.isEmpty)
         #expect(adaptation.standaloneDiagnostics == [ExportDiagnostic(severity: .error, message: "boom")])
@@ -77,7 +77,7 @@ struct ExportContributionAdapterTests {
     @Test func aContentlessResultWithNoDiagnosticsProducesNothing() {
         let result = ContributionResult(contributionID: "quiet", content: nil, sourceGeneration: 0)
 
-        let adaptation = ExportContributionAdapter.adapt([result])
+        let adaptation = ExportContributionAdapter.adapt([result], destination: .htmlExport)
 
         #expect(adaptation.contributions.isEmpty)
         #expect(adaptation.standaloneDiagnostics.isEmpty)
@@ -92,7 +92,7 @@ struct ExportContributionAdapterTests {
             diagnostics: [ContributionDiagnostic(severity: .warning, message: "heads up")]
         )
 
-        let adaptation = ExportContributionAdapter.adapt([result])
+        let adaptation = ExportContributionAdapter.adapt([result], destination: .htmlExport)
 
         #expect(adaptation.contributions.first?.diagnostics.first?.message == "heads up")
         #expect(adaptation.contributions.first?.diagnostics.first?.severity == .warning)
@@ -111,7 +111,10 @@ struct ExportContributionAdapterTests {
             diagnostics: [ContributionDiagnostic(severity: .warning, message: "second")]
         )
 
-        let adaptation = ExportContributionAdapter.adapt([diagnosticOnly, placed, anotherDiagnosticOnly])
+        let adaptation = ExportContributionAdapter.adapt(
+            [diagnosticOnly, placed, anotherDiagnosticOnly],
+            destination: .htmlExport
+        )
 
         #expect(adaptation.contributions.count == 1)
         #expect(adaptation.standaloneDiagnostics.map(\.message) == ["first", "second"])
@@ -127,7 +130,7 @@ struct ExportContributionAdapterTests {
         let results = try await ContributionRegistry.standard.run(
             document: parsed, sourceText: text, sourceGeneration: 5
         )
-        let adaptation = ExportContributionAdapter.adapt(results)
+        let adaptation = ExportContributionAdapter.adapt(results, destination: .htmlExport)
 
         let request = ExportRequest(
             text: text, sourceGeneration: 5, theme: BundledThemes.light, contributions: adaptation.contributions
