@@ -17,6 +17,57 @@ import Workspace
 @MainActor
 @Suite("WindowCoordinator folder-search navigation")
 struct FolderSearchNavigationTests {
+    @Test func existingBackgroundNativeTabIsActivatedAndItsMatchIsRevealed() async throws {
+        let coordinator = FolderSearchTestSupport.makeCoordinator()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let firstURL = root.appendingPathComponent("first.md")
+        let secondURL = root.appendingPathComponent("second.md")
+        try "prefix needle suffix".write(to: firstURL, atomically: true, encoding: .utf8)
+        try "second document".write(to: secondURL, atomically: true, encoding: .utf8)
+        defer {
+            coordinator.controllers.forEach { $0.close() }
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        await coordinator.openDocument(at: firstURL, folderRoot: root, folderAccessURL: root)
+        let first = try #require(coordinator.controllerForDocument(url: firstURL))
+        let firstWindow = try #require(first.window)
+        await coordinator.openDocument(
+            at: secondURL, folderRoot: root, folderAccessURL: root, relativeTo: firstWindow
+        )
+        let second = try #require(coordinator.controllerForDocument(url: secondURL))
+        let secondWindow = try #require(second.window)
+        let tabGroup = try #require(firstWindow.tabGroup)
+        #expect(tabGroup.windows.contains { $0 === secondWindow })
+        tabGroup.selectedWindow = secondWindow
+        secondWindow.makeKeyAndOrderFront(nil)
+        #expect(tabGroup.selectedWindow === secondWindow)
+
+        await coordinator.openFolderSearchResult(
+            relativePath: "first.md",
+            root: root,
+            folderAccessURL: root,
+            range: NSRange(location: 7, length: 6)
+        )
+
+        #expect(tabGroup.selectedWindow === firstWindow)
+        #expect(coordinator.controllers.count == 2, "the existing native tab must be reused")
+        let tabID = try #require(first.model.tabStore.tabID(forFileURL: firstURL))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
+            coordinator.folderSearchEditorLayoutChanged(tabID: tabID.uuidString)
+            if first.editorStore.existingSystem(for: tabID.uuidString)?.selectedRange
+                == NSRange(location: 7, length: 6) {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let system = try #require(first.editorStore.existingSystem(for: tabID.uuidString))
+        #expect(system.selectedRange == NSRange(location: 7, length: 6))
+        #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
+    }
+
     @Test func newerNavigationDuringFileLoadDoesNotPublishFolderSearchResult() async throws {
         let coordinator = FolderSearchTestSupport.makeCoordinator()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

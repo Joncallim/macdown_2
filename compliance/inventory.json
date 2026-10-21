@@ -726,8 +726,8 @@
         {
           "path": "compliance/licenses/textual--LICENSE.txt",
           "sha256": "9c9191ada6888f3da1a888b6c74dae46e98787b1150c734e3b1e5ec5bbf73b09",
-          "upstream": "https://github.com/gonzalezreal/textual",
-          "upstream_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+          "upstream": "https://github.com/Joncallim/textual",
+          "upstream_revision": "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6",
           "upstream_path": "LICENSE"
         }
       ],
@@ -741,7 +741,7 @@
         {
           "name": "prism-bundle.js",
           "sha256": "22b70192dc9d73377b5b8fe2c85655c7e3218afd37b65db638b4e168c4bacbf5",
-          "source": "textual 0.5.0 at 01b51875a5406eefc95f52a058cb059e7bc94dc4, Sources/Textual/Internal/Highlighter/Prism/prism-bundle.js"
+          "source": "textual fork at d3ddabb1da37681083cdc3da706f96cf2fb6a3c6, Sources/Textual/Internal/Highlighter/Prism/prism-bundle.js"
         }
       ],
       "notes": "All 138163 bytes are accounted for in compliance/evidence/prism-textual-1.29.0/bundle-audit.json. Actual app bytes equal the locked Textual resource. CDN default bytes and all appended npm component bytes match; Textual helper equals its source heredoc. This is exact distribution provenance, not reproduced minification or native runtime/network proof. No build-only npm dependencies or merely referenced plugins are treated as shipped."
@@ -942,9 +942,9 @@
       "id": "textual",
       "name": "Textual",
       "kind": "swiftpm",
-      "version": "0.5.0",
-      "upstream": "https://github.com/gonzalezreal/textual",
-      "revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+      "version": "d3ddabb",
+      "upstream": "https://github.com/Joncallim/textual",
+      "revision": "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6",
       "resolution": "exact",
       "licence": "MIT",
       "copyright": [
@@ -954,8 +954,8 @@
         {
           "path": "compliance/licenses/textual--LICENSE.txt",
           "sha256": "9c9191ada6888f3da1a888b6c74dae46e98787b1150c734e3b1e5ec5bbf73b09",
-          "upstream": "https://github.com/gonzalezreal/textual",
-          "upstream_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+          "upstream": "https://github.com/Joncallim/textual",
+          "upstream_revision": "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6",
           "upstream_path": "LICENSE"
         }
       ],
@@ -965,8 +965,9 @@
         "LC-07"
       ],
       "manifest_requirement": {
-        "exact": "0.5.0"
-      }
+        "revision": "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6"
+      },
+      "evidence": "Forked from gonzalezreal/textual 0.5.0 at 01b51875a5406eefc95f52a058cb059e7bc94dc4 for bounded preview-image HTML copy. The MIT licence and bundled Prism bytes match the original digests; the local dependency candidate passed focused tests and independent source review before its immutable revision was pushed."
     },
     {
       "id": "theme-tomorrow-dark",

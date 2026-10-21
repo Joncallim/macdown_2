@@ -32,6 +32,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     /// `fileTreeModel.root` exclusively through `setFolderRoot(_:accessURL:)`
     /// below, never mutated directly by any other call site.
     let workspaceFileIndex: WorkspaceFileIndex
+    /// Window-local preview authority. Every renderer load receives its own revocable token.
+    let previewResourceState = PreviewResourceWindowState()
     /// Test seam: runs just before a root switch awaits the new root's tree and index rebuild.
     var beforeRootRebuild: (@MainActor () async -> Void)?
     /// Folder-wide search sidebar state (EPIC-22 §6.16, Slice 7b), one per
@@ -116,6 +118,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             externalFileController: externalFileController
         )
         .environment(\.windowCoordinator, coordinator)
+        .environment(\.previewResourceWindowState, previewResourceState)
         let hostingController = NSHostingController(rootView: shell)
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
@@ -125,11 +128,16 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         window.tabbingMode = .preferred
 
         super.init(window: window)
+        installPreviewIdentityInvalidation()
         makeSessionsForActiveTab()
         externalFileController.attach(owner: self)
         installFolderSearchHooks()
         installSaveAsGuard()
         window.delegate = self
+        startWindowObservations()
+    }
+
+    private func startWindowObservations() {
         fileTreeModel.startObservingPreferences()
         updateTitleAndEditedState()
         startObservingActiveDocument()
@@ -214,6 +222,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func updateTitleAndEditedState() {
         let document = model.activeDocument
+        previewResourceState.reconcile(with: document)
         let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
         let isDirty = document?.state == .dirty || document?.state == .conflict
         let title = isDirty ? "● \(baseTitle)" : baseTitle
@@ -253,6 +262,11 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_: Notification) {
         isClosed = true
+        previewResourceState.close()
+        previewResourceState.setCurrentPreviewDocument(nil)
+        model.tabStore.setActiveIdentityWillChange(nil)
+        model.setFolderAssociationWillChange(nil)
+        fileTreeModel.setRootAccessWillChange(nil)
         workspaceRootRequestGeneration &+= 1
         workspaceTreeRootAppliedGeneration = nil
         workspaceIndexBuildGeneration &+= 1
@@ -349,5 +363,19 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // write whichever document is active *now* to the name the user
         // chose for that one.
         await model.saveAs(to: url, expecting: document)
+    }
+}
+
+private extension WindowController {
+    func installPreviewIdentityInvalidation() {
+        previewResourceState.setCurrentPreviewDocument { [weak model] in
+            (model?.tabStore.activeTabID, model?.activeDocument)
+        }
+        let invalidate: @MainActor () -> Void = { [weak state = previewResourceState] in
+            state?.invalidateForIdentityChange()
+        }
+        model.tabStore.setActiveIdentityWillChange { _, _ in invalidate() }
+        model.setFolderAssociationWillChange(invalidate)
+        fileTreeModel.setRootAccessWillChange(invalidate)
     }
 }

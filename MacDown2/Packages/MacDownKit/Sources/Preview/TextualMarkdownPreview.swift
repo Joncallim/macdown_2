@@ -15,6 +15,10 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
     public let theme: PreviewTheme
     public let linkResolver: PreviewLinkResolver
     public let controller: ScrollSyncController
+    /// A live preview host supplies a context-bound loader and changes this ID for each resource lifetime.
+    /// Nil keeps the existing renderer behavior until the app's grant routing is activated.
+    public let resourceImageLoader: PreviewResourceImageLoader?
+    public let resourceLoadID: UUID?
 
     /// Pre-computed preview blocks, if the caller caches them. When `nil`
     /// (the default) blocks are sliced lazily from `document`/`text`.
@@ -52,6 +56,8 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         theme: PreviewTheme,
         linkResolver: PreviewLinkResolver = PreviewLinkResolver(),
         controller: ScrollSyncController = ScrollSyncController(),
+        resourceImageLoader: PreviewResourceImageLoader? = nil,
+        resourceLoadID: UUID? = nil,
         blocks: [PreviewBlock]? = nil,
         linkDefinitions: [String]? = nil,
         mermaidFenceView: ((String) -> AnyView)? = nil,
@@ -63,6 +69,8 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
         self.theme = theme
         self.linkResolver = linkResolver
         self.controller = controller
+        self.resourceImageLoader = resourceImageLoader
+        self.resourceLoadID = resourceLoadID
         self.blocks = blocks
         self.linkDefinitions = linkDefinitions
         // Built once per view value, not once per block: each block picks out the definitions it uses from it.
@@ -134,6 +142,8 @@ public struct TextualMarkdownPreview: MarkdownPreviewing {
                                     block: block,
                                     theme: theme,
                                     linkResolver: linkResolver,
+                                    resourceImageLoader: resourceImageLoader,
+                                    resourceLoadID: resourceLoadID,
                                     definitionIndex: definitionIndex,
                                     mermaidFenceView: mermaidFenceView,
                                     d2FenceView: d2FenceView,
