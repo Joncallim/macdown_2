@@ -176,11 +176,51 @@ This is a staged parser, **not activation evidence**. Before enabling it,
 review CSS nesting/escapes and encoded CSS references against real Graphviz,
 D2 and Mermaid output; prove namespace disjointness from final-template IDs;
 measure adversarial time/memory bounds; and
-obtain independent security and native visual review. The current conservative
-CSS path rejects at-rules, comments and quoted strings instead of publishing a
-partly rewritten diagram. Linked TOC serialization, destination-specific
-failure behavior and signed owner-observed navigation remain open.
+obtain independent security and native visual review. At this checkpoint the
+conservative CSS path rejected at-rules, comments and quoted strings instead
+of publishing a partly rewritten diagram. Linked TOC serialization,
+destination-specific failure behavior and signed owner-observed navigation
+remain open.
 Entity-encoded SVG attribute IDs/references are decoded before matching, and
 the opt-in emitted-DOM check rejects a collision with an authored ID that
 duplicates the SVG namespace. These checks do not cover every CSS escape or
 the final document template.
+
+## Rebaseline 2026-10-22 — actual renderer CSS and complete-template probe
+
+The first CSS scanner rejected actual D2 and Mermaid output. A bounded
+follow-up admits the forms those bundled renderers emit: quoted font values,
+`@font-face` data-font URLs, `@keyframes`, grouped CSS rules and Mermaid's
+quoted attribute suffix selectors. It balances blocks and separates
+declarations outside quoted values and URL parentheses. Unknown at-rules,
+comments, CSS escapes, malformed blocks and quoted fragment selectors still
+reject the opt-in diagram; the authored fence remains available. The default
+export route remains unchanged.
+
+The newly admitted font rule accepts only local `#id` URLs and embedded WOFF
+data-font bytes. A remote, file or relative CSS resource URL rejects the
+opt-in diagram, including when the SVG has no IDs or the URL is in a paint
+attribute, preserving the offline contract for this new path. D2's bundled
+`data:application/font-woff` is covered by the real-renderer test.
+
+One serial package test renders representative actual Graphviz, D2 and
+Mermaid diagrams in WebKit, sanitizes them, rewrites their IDs and references,
+and compares the original and rewritten canvas PNG bytes. All three passed
+on CORTANA. The D2 fixture includes four unresolved fragment references in
+CSS rules without corresponding IDs; this corpus proves visual parity for the
+sample, not that every D2 stylesheet rule has an internal target. A separate
+test parses the assembled built-in document template, with and without the
+PDF policy header, and finds one unique emitted heading target and one
+distinct SVG ID. The current fixed template emits no competing ID. These
+tests do not prove that a future template or arbitrary additional head markup
+cannot add one; collision validation must use the actual final output at
+activation.
+
+The opt-in dense-stylesheet Release package probe on CORTANA rewrote
+1,116,064 input bytes to 2,124,093 output bytes in 0.357 seconds, with a
+single SwiftPM build job. The command's 797 MB peak resident set includes
+the compiler and test host; it is not a per-operation memory ceiling or
+complete app measurement. Independent security review,
+broader adversarial CSS/reference handling, native visual/navigation checks,
+linked TOC serialization, and destination-specific failure behavior remain
+activation gates. No generated link is exposed by this checkpoint.

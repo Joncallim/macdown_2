@@ -1,6 +1,7 @@
 @testable import ExportService
 import Foundation
 import MarkdownEngine
+import SwiftSoup
 import Testing
 
 @Suite("Emitted heading DOM targets")
@@ -256,5 +257,40 @@ struct EmittedHeadingDOMTests {
         let match = (text as NSString).range(of: needle)
         guard match.location != NSNotFound else { return nil }
         return match.location ..< (match.location + match.length)
+    }
+}
+
+extension EmittedHeadingDOMTests {
+    @Test func completeBuiltInTemplateKeepsPublishedTargetsUnique() async throws {
+        let source = "# graph0\n\n```diagram\nsource\n```\n"
+        let fence = try #require(range(of: "```diagram\nsource\n```", in: source))
+        let fixture = try await makeFixture(source, contributions: [
+            ExportDerivedContribution(
+                sourceRange: fence, placement: .block,
+                html: ##"<svg id="graph0"><use href="#graph0" /></svg>"##, sourceGeneration: 1
+            ),
+        ])
+        let inspection = try #require(EmittedHeadingDOM.inspect(fixture.rendered))
+        let index = try index(for: fixture, reservedIDs: inspection.reservedIDs)
+        let matches = try #require(match(fixture, index: index))
+        let body = try #require(EmittedHeadingDOM.publish(
+            inspected: inspection, rendered: fixture.rendered, matches: matches
+        ))
+        for headExtras in ["", #"<meta http-equiv="Content-Security-Policy" content="default-src 'none'">"#] {
+            let html = BuiltInExportTemplate.document(
+                title: "Example", visibleTitle: "Visible", headExtras: headExtras,
+                styleElement: "<style>body { color: black; }</style>", body: body
+            )
+            let dom = try SwiftSoup.parse(html)
+            let heading = try #require(try dom.getElementById("graph0"))
+            #expect(heading.tagNameNormal() == "h1")
+            let svg = try #require(try dom.getElementById("mt117-svg-0-0-graph0"))
+            #expect(svg.tagNameNormal() == "svg")
+            let identifiers = try dom.getAllElements().array().filter { $0.hasAttr("id") }
+                .map { try $0.attr("id") }
+            #expect(Set(identifiers).count == identifiers.count)
+            #expect(identifiers.count == 2)
+            #expect(try dom.select("body > h1").size() == 2)
+        }
     }
 }

@@ -203,7 +203,10 @@ let package = Package(
         ),
         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
         .testTarget(name: "JSONSupportTests", dependencies: ["JSONSupport"]),
-        .testTarget(name: "ExportServiceTests", dependencies: ["ExportService", "MarkdownEngine"]),
+        .testTarget(
+            name: "ExportServiceTests",
+            dependencies: ["ExportService", "MarkdownEngine", .product(name: "SwiftSoup", package: "SwiftSoup")]
+        ),
         .testTarget(name: "ContributionsTests", dependencies: ["Contributions", "MarkdownEngine"]),
         .testTarget(name: "TextFiltersTests", dependencies: ["TextFilters"]),
         .testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"]),
@@ -214,5 +217,12 @@ let package = Package(
         .testTarget(name: "D2RenderingTests", dependencies: ["D2Rendering"]),
         .testTarget(name: "DiagramsGraphvizTests", dependencies: ["DiagramsGraphviz", "MarkdownEngine"]),
         .testTarget(name: "GraphvizRenderingTests", dependencies: ["GraphvizRendering"]),
+        .testTarget(
+            name: "ExportDiagramIntegrationTests",
+            dependencies: [
+                "ExportService", "Diagrams", "DiagramRendering",
+                "DiagramsD2", "D2Rendering", "DiagramsGraphviz", "GraphvizRendering",
+            ]
+        ),
     ]
 )
