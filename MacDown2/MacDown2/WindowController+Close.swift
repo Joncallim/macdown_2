@@ -59,16 +59,11 @@ extension WindowController {
         let alert = Self.makeDirtyCloseAlert(fileName: fileName)
         alert.beginSheetModal(for: sender) { [weak self] response in
             Task { @MainActor [weak self] in
-                guard let self, coordinator != nil,
-                      let current = model.activeDocument,
-                      current.state != .clean
-                else { return }
-                guard matchesPresentedContext(current, context) else {
+                guard let self, coordinator != nil else { return }
+                switch Self.dirtyCloseDisposition(response, current: model.activeDocument, context: context) {
+                case .reevaluate:
                     _ = windowShouldClose(sender)
-                    return
-                }
-                switch response {
-                case .alertFirstButtonReturn:
+                case .save:
                     // Explicit-origin, not the ambient `saveDocument()` this
                     // used ambiguously resolve its Save As panel against
                     // `NSApp.keyWindow` — during a close sheet that is
@@ -76,7 +71,9 @@ extension WindowController {
                     // window-bound save path in this app was already fixed
                     // to route this way; this alert's Save button was the
                     // one place that hadn't been (#57).
-                    await saveDocumentFromExplicitOrigin()
+                    if model.activeDocument?.state != .clean {
+                        await saveDocumentFromExplicitOrigin()
+                    }
                     if model.activeDocument?.state == .clean {
                         if let saved = model.activeDocument {
                             guard await (externalFileController.retireRecovery(
@@ -86,13 +83,13 @@ extension WindowController {
                             await closeAfterRetire(of: saved)
                         }
                     }
-                case .alertThirdButtonReturn:
+                case let .discard(current):
                     guard await (externalFileController.retireRecovery(
                         for: current,
                         resumeCloseOnSuccess: true
                     )).isAbsent else { return }
                     await closeAfterRetire(of: current)
-                default:
+                case .cancel:
                     sender.makeKeyAndOrderFront(nil)
                 }
             }
@@ -191,6 +188,42 @@ extension WindowController {
             && document.pendingExternalRevision == context.pendingExternalRevision
     }
 
+    enum DirtyCloseDisposition {
+        case save
+        case discard(FileDocument)
+        case cancel
+        case reevaluate
+    }
+
+    /// Save Changes expresses intent, so a backing-state change alone must
+    /// not reopen the sheet before the save can recheck the live destination.
+    /// Discard remains strict: a vanished file may make this the last copy.
+    static func dirtyCloseDisposition(
+        _ response: NSApplication.ModalResponse,
+        current: FileDocument?,
+        context: CloseSheetContext
+    ) -> DirtyCloseDisposition {
+        if response == .alertSecondButtonReturn {
+            return .cancel
+        }
+        guard let current else { return .reevaluate }
+        switch response {
+        case .alertFirstButtonReturn:
+            let sameContent = current.id == context.documentID
+                && current.recoveryEpoch == context.recoveryEpoch
+                && current.fileURL?.standardizedFileURL == context.fileURL
+                && current.text.isExactlyEqual(to: context.text)
+                && (current.state == context.state || current.state == .clean)
+            return sameContent ? .save : .reevaluate
+        case .alertThirdButtonReturn:
+            return current.recoveryEpoch == context.recoveryEpoch
+                && presentedContextMatches(current, context) && current.state != .clean
+                ? .discard(current) : .reevaluate
+        default:
+            return .cancel
+        }
+    }
+
     func completeCloseAfterRecoveryRetry(
         documentID: String,
         recoveryEpoch: UUID,
@@ -209,6 +242,7 @@ extension WindowController {
 
 struct CloseSheetContext {
     let documentID: String
+    let recoveryEpoch: UUID
     let fileURL: URL?
     let text: String
     let state: FileDocumentState
@@ -220,6 +254,7 @@ struct CloseSheetContext {
 
     init(_ document: FileDocument) {
         documentID = document.id
+        recoveryEpoch = document.recoveryEpoch
         fileURL = document.fileURL?.standardizedFileURL
         text = document.text
         state = document.state
