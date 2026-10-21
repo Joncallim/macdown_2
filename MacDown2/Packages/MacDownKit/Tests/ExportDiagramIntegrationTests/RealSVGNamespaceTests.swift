@@ -153,6 +153,40 @@ struct RealSVGNamespaceTests {
 @Suite("Assembled SVG resource admission", .serialized)
 @MainActor
 struct AssembledSVGResourceTests {
+    @Test func validatedPublishableHTMLKeepsOwnedPaintWithoutPrivateMarkers() async throws {
+        let artwork = #"<svg id="root"><defs><linearGradient id="paint"/></defs>"#
+            + #"<rect id="shape" fill="url(#paint)" width="20" height="20"/></svg>"#
+        let marked = try #require(SVGIDNamespace.rewriteMarked(artwork, occurrence: 0))
+        let assembled = BuiltInExportTemplate.document(
+            title: "Owned paint", styleElement: "<style></style>", body: marked.html
+        )
+        let inspected = try #require(SVGAssemblyOwnership.inspect(markedDocument: assembled, fragment: marked))
+        let publication = try #require(SVGAssemblyOwnership.publish(
+            markedDocument: assembled, fragment: marked, inspected: inspected
+        ))
+        let handler = RecordingResourceHandler()
+        let configuration = WKWebViewConfiguration()
+        configuration.setURLSchemeHandler(handler, forURLScheme: "resourceprobe")
+        let view = WKWebView(frame: .init(x: 0, y: 0, width: 80, height: 80), configuration: configuration)
+        view.loadHTMLString(publication.html, baseURL: nil)
+        try await waitForLoad(in: view)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
+            if try await view.evaluateJavaScript("document.querySelectorAll('svg rect').length") as? Int == 1 {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let script = """
+        const rect = document.querySelector('svg rect');
+        [rect?.id, rect?.getAttribute('fill'),
+         document.documentElement.outerHTML.includes('MT117-SVG')].join('|')
+        """
+        let observed = try await view.evaluateJavaScript(script) as? String
+        #expect(observed == "mt117-svg-0-0-shape|url(#mt117-svg-0-0-paint)|false")
+        #expect(handler.requests.isEmpty)
+    }
+
     @Test func validNegativeAnimationDelayKeepsItsComputedValue() async throws {
         let artwork = #"<svg id="root"><style>@keyframes pulse{to{opacity:1}}"#
             + #"#root rect{animation:pulse 1s -.5s linear}</style>"#

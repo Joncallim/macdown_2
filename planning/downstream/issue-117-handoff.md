@@ -359,3 +359,40 @@ The assembled document, including template/head IDs and authored CSS
 keyframes/font names, still needs a complete ownership check. Signed/native
 navigation and exact-head hosted validation remain separate gates; the older
 unexplained signal-11 run is retained as unresolved evidence.
+
+## Private complete-document ownership receipt
+
+The next opt-in unit marks each namespaced SVG with a one-render comment pair
+and captures its root ID and owned-ID inventory. After body, head and template
+assembly, it parses the **complete exact HTML**. Every generated ID must occur
+once inside its marked SVG; resource, fragment and accessibility references
+must resolve inside the same subtree. It inventories rewritten keyframes and
+case-folded embedded font families, rejecting matching authored definitions
+outside the SVG. Outside inline styles that name a generated prefix, escaped
+CSS definitions, imported stylesheets and linked stylesheets fail closed.
+
+The receipt hashes the marked complete document and the marked contribution.
+Private comments must be adjacent to their SVG in the parsed tree; a raw
+open-tag stack check also rejects cases where HTML parsing moves the SVG and
+both comments out of a malformed container together. Publication removes the
+comments in one pass and parses the resulting exact bytes again, requiring
+the same roots, ID/reference edges, definitions, subtree shape and ancestor
+locations. A changed head, template or recomposed fragment cannot reuse the
+receipt. The test-only caller can check the returned publication hash before
+writing; normal ExportHTMLWriter remains unchanged.
+
+This is still disabled groundwork. It does **not** yet route a final-assembly
+failure back through ExportComposer's source-preserving re-composition or bind
+the receipt to the actual file/PDF writer. That failure path and source-to-
+rendered identity remain activation gates. Analysis is limited to 8 MiB of
+complete HTML, 64 marked SVG roots and 4,096 generated IDs; documents beyond
+those limits must keep their authored diagram source in the future opt-in
+route. A companion linked stylesheet is a separate byte stream and is
+currently rejected until its bytes can be inventoried and bound. The normal
+no-TOC export path has no new size limit or changed output.
+
+The bounded Release package probe used 1,006,567 assembled HTML bytes and 16
+marked SVGs. It measured 5.54 seconds with one raw-tag scan per SVG and 2.84
+seconds after making that scan single-pass. These are package-host timings,
+not full-app, WebKit-process or peak-memory figures. The admission budgets
+and performance need review on the eventual combined publish path.

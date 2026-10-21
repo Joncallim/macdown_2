@@ -24,7 +24,7 @@ enum SVGIDNamespace {
         return output
     }
 
-    private static func findRoots(in scalars: [Unicode.Scalar]) -> [Range<Int>]? {
+    static func findRoots(in scalars: [Unicode.Scalar]) -> [Range<Int>]? {
         var roots: [Range<Int>] = []
         var cursor = 0
         var rootStart: Int?
@@ -54,7 +54,7 @@ enum SVGIDNamespace {
         return depth == 0 ? roots : nil
     }
 
-    private static func rewriteRoot(_ svg: String, prefix: String) -> String? {
+    static func rewriteRoot(_ svg: String, prefix: String) -> String? {
         let scalars = Array(svg.unicodeScalars)
         guard let ids = collectIDs(in: scalars),
               let root = HTMLTagScanner.parseTag(at: 0, in: scalars), root.name == "svg" else { return nil }
@@ -82,7 +82,7 @@ enum SVGIDNamespace {
                            scopeID: scopeID, rootClasses: rootClasses)
     }
 
-    private static func collectIDs(in scalars: [Unicode.Scalar]) -> Set<String>? {
+    static func collectIDs(in scalars: [Unicode.Scalar]) -> Set<String>? {
         var ids: Set<String> = []
         var cursor = 0
         while cursor < scalars.count {
