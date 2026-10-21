@@ -39,7 +39,7 @@ struct FolderSearchNavigationTests {
         let second = try #require(coordinator.controllerForDocument(url: secondURL))
         let secondWindow = try #require(second.window)
         let tabGroup = try #require(firstWindow.tabGroup)
-        #expect(tabGroup.windows.count == 2)
+        #expect(tabGroup.windows.contains { $0 === secondWindow })
         tabGroup.selectedWindow = secondWindow
         secondWindow.makeKeyAndOrderFront(nil)
         #expect(tabGroup.selectedWindow === secondWindow)
