@@ -23,7 +23,7 @@ final class FolderBrowserUITests: XCTestCase {
         XCTAssertTrue(app.buttons["openFolderButton"].waitForExistence(timeout: 5))
     }
 
-    func testCreateFileAddsARowAndOffersRename() throws {
+    func testCreateFileKeepsRenameInTheOpenedTab() throws {
         let folder = try temporaryDirectory()
         let seed = try temporaryFile(named: "seed.md")
         let app = launch(folder: folder, opening: seed)
@@ -42,10 +42,39 @@ final class FolderBrowserUITests: XCTestCase {
             .firstMatch
         XCTAssertTrue(createdRow.waitForExistence(timeout: 8))
 
-        createdRow.rightClick()
-        let rename = app.menuItems["fileTreeRenameAction"]
-        XCTAssertTrue(rename.waitForExistence(timeout: 5))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("untitled.md").path))
+        let rename = app.textFields["fileTreeRenameField"]
+        XCTAssertTrue(rename.waitForExistence(timeout: 8))
+        rename.click()
+        rename.typeKey("a", modifierFlags: .command)
+        rename.typeText("A.md")
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "fileRow-A.md").firstMatch
+            .waitForExistence(timeout: 8))
+        XCTAssertFalse(app.alerts["Folder Operation Failed"].exists)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("A.md").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("untitled.md").path))
+
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(rename.waitForExistence(timeout: 8))
+        rename.click()
+        rename.typeKey("a", modifierFlags: .command)
+        rename.typeText("B.md")
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "fileRow-B.md").firstMatch
+            .waitForExistence(timeout: 8))
+        XCTAssertFalse(app.alerts["Folder Operation Failed"].exists)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("A.md").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("B.md").path))
+        XCTAssertEqual(try Data(contentsOf: folder.appendingPathComponent("A.md")), Data())
+        XCTAssertEqual(try Data(contentsOf: folder.appendingPathComponent("B.md")), Data())
+
+        // Folder actions remain discoverable after the folder is no longer empty.
+        let actions = app.buttons["folderActionsButton"]
+        XCTAssertTrue(actions.waitForExistence(timeout: 5))
+        actions.click()
+        XCTAssertTrue(app.menuItems["Open Another Folder…"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["New File"].exists)
+        XCTAssertTrue(app.menuItems["New Folder"].exists)
     }
 
     func testMoveToTrashOffersDestructiveConfirmationAction() throws {
