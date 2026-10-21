@@ -204,7 +204,8 @@ attribute, preserving the offline contract for this new path. D2's bundled
 `data:application/font-woff` is covered by the real-renderer test.
 Resource-bearing SVG element links (`image`, `use`, text paths and similar)
 must also resolve to an ID inside the same diagram. The opt-in path rejects
-`src` inside SVG; it still permits an interactive `<a href="https:…">`
+`src`, `srcset`, `poster`, `background` and CSS image functions inside SVG;
+it still permits an interactive `<a href="https:…">`
 link, which opens only by a user action. This distinction is necessary because
 the pre-existing sanitizer permits HTTPS for clickable links.
 

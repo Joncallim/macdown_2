@@ -161,6 +161,7 @@ extension SVGIDNamespace {
         // over the network or from disk, so the opt-in path keeps only SVG
         // fragments and embedded font bytes.
         let lower = declaration.lowercased()
+        guard !["image-set(", "image(", "cross-fade("].contains(where: lower.contains) else { return false }
         var cursor = lower.startIndex
         while let token = lower.range(of: "url(", range: cursor ..< lower.endIndex) {
             guard let close = lower[token.upperBound...].firstIndex(of: ")") else { return false }

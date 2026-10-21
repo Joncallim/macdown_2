@@ -94,6 +94,9 @@ struct SVGIDNamespaceTests {
             #"<svg id="x"><style>#x::after{content:url(https://example.test/image.png)}</style></svg>"#,
             occurrence: 0
         ) == nil)
+    }
+
+    @Test func automaticSVGResourceLoadsRejectOutsideTargets() {
         #expect(SVGIDNamespace.rewrite(
             #"<svg><image href="https://example.test/image.svg"/></svg>"#,
             occurrence: 0
@@ -107,6 +110,18 @@ struct SVGIDNamespaceTests {
             occurrence: 0
         ) == nil)
         #expect(SVGIDNamespace.rewrite(#"<svg><image href/></svg>"#, occurrence: 0) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg><foreignObject><img srcset="https://example.test/image.png 1x"/></foreignObject></svg>"#,
+            occurrence: 0
+        ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg><foreignObject><video poster="https://example.test/poster.png"/></foreignObject></svg>"#,
+            occurrence: 0
+        ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg id="x"><style>#x{background:image-set("https://example.test/image.png" 1x)}</style></svg>"#,
+            occurrence: 0
+        ) == nil)
         #expect(SVGIDNamespace.rewrite(#"<svg id="x"><style>#\\78{fill:red}</style></svg>"#,
                                        occurrence: 0) == nil)
         #expect(SVGIDNamespace.rewrite(

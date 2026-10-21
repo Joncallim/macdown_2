@@ -124,7 +124,7 @@ enum SVGIDNamespace {
         var output = "<\(tag.name)"
         for attribute in tag.attributes {
             guard let raw = attribute.value else {
-                guard !["href", "xlink:href", "src"].contains(attribute.name) else { return nil }
+                guard !resourceLoadingAttributes.contains(attribute.name) else { return nil }
                 output += " \(attribute.name)"
                 continue
             }
@@ -146,7 +146,7 @@ enum SVGIDNamespace {
         case "href", "xlink:href":
             guard let href = rewrittenHref(value, tagName: tagName, ids: ids, prefix: prefix) else { return nil }
             updated = href
-        case "src": return nil
+        case "src", "srcset", "imagesrcset", "poster", "background": return nil
         case "aria-labelledby", "aria-describedby", "aria-controls", "aria-owns", "aria-flowto", "aria-details":
             updated = value.split(whereSeparator: \.isWhitespace).map {
                 ids.contains(String($0)) ? prefix + $0 : String($0)
@@ -196,5 +196,9 @@ enum SVGIDNamespace {
     private static let urlBearingAttributes: Set<String> = [
         "clip-path", "color-profile", "cursor", "fill", "filter", "marker", "marker-start",
         "marker-mid", "marker-end", "mask", "stroke", "style",
+    ]
+
+    private static let resourceLoadingAttributes: Set<String> = [
+        "href", "xlink:href", "src", "srcset", "imagesrcset", "poster", "background",
     ]
 }
