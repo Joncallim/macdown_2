@@ -1,6 +1,50 @@
 import Foundation
 import WebKit
 
+/// Completes a harness load only for the navigation returned by its own `loadFileURL` call.
+/// A late callback for a different navigation cannot make an unready page appear ready.
+@MainActor
+final class DiagramHarnessNavigationCompletion {
+    private var navigation: WKNavigation?
+    private var continuation: CheckedContinuation<Void, any Error>?
+
+    var isPending: Bool {
+        continuation != nil
+    }
+
+    func begin(
+        _ continuation: CheckedContinuation<Void, any Error>,
+        start: () -> WKNavigation?
+    ) {
+        guard self.continuation == nil else {
+            continuation.resume(throwing: DiagramPoolError.pageUnavailable)
+            return
+        }
+        self.continuation = continuation
+        guard let navigation = start() else {
+            complete(.failure(DiagramPoolError.pageUnavailable))
+            return
+        }
+        self.navigation = navigation
+    }
+
+    func finish(for callback: WKNavigation?, with result: Result<Void, any Error>) {
+        guard let navigation, let callback, navigation === callback else { return }
+        complete(result)
+    }
+
+    func terminate(with error: any Error) {
+        complete(.failure(error))
+    }
+
+    private func complete(_ result: Result<Void, any Error>) {
+        guard let continuation else { return }
+        self.continuation = nil
+        navigation = nil
+        continuation.resume(with: result)
+    }
+}
+
 /// Only the scalar values D2 and Graphviz consume cross the page callback
 /// boundary. WebKit's raw bridged `Any` remains on the main actor.
 public struct DiagramHarnessResult: Sendable {
@@ -45,7 +89,7 @@ public struct DiagramHarnessResult: Sendable {
 public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let webView: WKWebView
     private let allowedDirectory: URL
-    private var loadContinuation: CheckedContinuation<Void, Error>?
+    private let loadCompletion = DiagramHarnessNavigationCompletion()
     private var evaluations: [UUID: CheckedContinuation<DiagramHarnessResult, any Error>] = [:]
 
     /// App-owned callbacks still awaiting a WebKit result; kept internal for
@@ -102,8 +146,9 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
                     continuation.resume(throwing: DiagramPoolError.pageUnavailable)
                     return
                 }
-                loadContinuation = continuation
-                webView.loadFileURL(harnessURL, allowingReadAccessTo: allowedDirectory)
+                loadCompletion.begin(continuation) {
+                    webView.loadFileURL(harnessURL, allowingReadAccessTo: allowedDirectory)
+                }
             }
         } onCancel: {
             Task { @MainActor [weak self] in self?.teardown() }
@@ -150,7 +195,7 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
 
     public func teardown() {
         isTerminated = true
-        finishLoad(with: .failure(DiagramPoolError.pageUnavailable))
+        loadCompletion.terminate(with: DiagramPoolError.pageUnavailable)
         let pending = evaluations
         evaluations.removeAll()
         for continuation in pending.values {
@@ -163,13 +208,13 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
 
     // MARK: - WKNavigationDelegate
 
-    public func webView(_: WKWebView, didFinish _: WKNavigation!) {
-        finishLoad(with: .success(()))
+    public func webView(_: WKWebView, didFinish navigation: WKNavigation!) {
+        loadCompletion.finish(for: navigation, with: .success(()))
     }
 
     public func webViewWebContentProcessDidTerminate(_: WKWebView) {
         isTerminated = true
-        finishLoad(with: .failure(DiagramPoolError.pageUnavailable))
+        loadCompletion.terminate(with: DiagramPoolError.pageUnavailable)
         let pending = evaluations
         evaluations.removeAll()
         for continuation in pending.values {
@@ -177,18 +222,12 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
         }
     }
 
-    public func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
-        finishLoad(with: .failure(error))
+    public func webView(_: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        loadCompletion.finish(for: navigation, with: .failure(error))
     }
 
-    public func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {
-        finishLoad(with: .failure(error))
-    }
-
-    private func finishLoad(with result: Result<Void, any Error>) {
-        guard let continuation = loadContinuation else { return }
-        loadContinuation = nil
-        continuation.resume(with: result)
+    public func webView(_: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        loadCompletion.finish(for: navigation, with: .failure(error))
     }
 
     private func finishEvaluation(_ id: UUID, with result: Result<DiagramHarnessResult, any Error>) {
