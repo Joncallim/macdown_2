@@ -11,27 +11,35 @@ struct TextFilterBlockingCleanupDeadlineTests {
         var observedDirectory: URL?
         var observedOwner: TextFilterFixtures.TaskOwner?
         let fixtureStarted = ContinuousClock.now
+        let cleanupClockBase = ContinuousClock.now
         var cleanupStarted: ContinuousClock.Instant?
         let observeCleanup: @Sendable (TextFilterFixtures.CleanupPhase) -> Void = { probe.record($0) }
 
         do {
             try await TextFilterFixtures
                 .withOwnedTemporaryDirectory(
-                    cleanupTimeout: .milliseconds(25), cleanupObserver: observeCleanup
-                ) { directory, owner in
-                    observedDirectory = directory
-                    observedOwner = owner
-                    if setupDelay > .zero {
-                        try await Task.sleep(for: setupDelay)
+                    cleanupTimeout: .milliseconds(25), cleanupObserver: observeCleanup,
+                    cleanupNow: { cleanupClockBase },
+                    cleanupSleepUntil: { requestedDeadline in
+                        // Ordering tests cover the real wait. This test isolates whether blocking
+                        // cancellation dispatch can hold the watchdog past the 150 ms bound.
+                        #expect(requestedDeadline == cleanupClockBase.advanced(by: .milliseconds(25)))
+                    },
+                    { directory, owner in
+                        observedDirectory = directory
+                        observedOwner = owner
+                        if setupDelay > .zero {
+                            try await Task.sleep(for: setupDelay)
+                        }
+                        try await owner.registerCleanup(
+                            cancel: { probe.blockFor(200_000) },
+                            join: { .completed(nil) }
+                        )
+                        // Keep a separate cleanup interval for diagnostics, including cancellation dispatch.
+                        // The zero-delay case also retains the original whole-call 150 ms assertion below.
+                        cleanupStarted = .now
                     }
-                    try await owner.registerCleanup(
-                        cancel: { probe.blockFor(200_000) },
-                        join: { .completed(nil) }
-                    )
-                    // Keep a separate cleanup interval for diagnostics, including cancellation dispatch.
-                    // The zero-delay case also retains the original whole-call 150 ms assertion below.
-                    cleanupStarted = .now
-                }
+                )
             Issue.record("expected cleanup watchdog to include cancellation dispatch")
         } catch let error as TextFilterFixtures.FixtureCleanupError {
             if case let .cleanupTimedOut(primary, timeout) = error {
