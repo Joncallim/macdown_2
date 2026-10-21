@@ -115,7 +115,7 @@
         "status": "planned"
       },
       "open_items": [
-        "LC-03: identify the D2 Go source revision and the Go modules compiled into the embedded WebAssembly, record their licences, and publish the upstream package plus the one-line patch through LC-09."
+        "LC-03: complete independent review of the recorded D2 Go/WASM source graph, including the embedded Liberation Mono WOFF's Reserved Font Name treatment, and publish the upstream package plus the one-line patch through LC-09."
       ],
       "runtime_resources": [
         {
@@ -124,6 +124,36 @@
           "path": "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/d2-browser.js"
         }
       ]
+    },
+    {
+      "id": "d2-liberation-mono",
+      "name": "Liberation Mono WOFF (embedded in D2 WebAssembly via Chroma)",
+      "kind": "embedded",
+      "version": "bundled in Chroma v2.14.0",
+      "upstream": "https://github.com/alecthomas/chroma",
+      "resolution": "exact",
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Digitized data copyright (c) 2010 Google Corporation; Reserved Font Names Arimo, Tinos and Cousine",
+        "Copyright (c) 2012 Red Hat, Inc.; Reserved Font Name Liberation"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/d2--LIBERATION-MONO-OFL.txt",
+          "sha256": "985e76906c34ca203039d0d0aa47237d059de14d7c70c891e7f75171d0258753",
+          "upstream": "https://github.com/alecthomas/chroma",
+          "upstream_revision": "v2.14.0",
+          "upstream_path": "formatters/svg/font_liberation_mono.go"
+        }
+      ],
+      "embedded_in": "d2",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-03",
+        "LC-07"
+      ],
+      "notes": "The Chroma v2.14.0 module ZIP in the retained D2 source-review archive contains the full copyright/OFL header and 233,248-byte base64 WOFF. That exact string occurs once in both publisher d2.wasm variants at byte offset 14,657,061. Decoded WOFF SHA-256: 29d9447a83dbf9866aff37f7dc972441302da97f9a242ea0405f60841e9b630f. Its name table identifies Liberation Mono and OFL-1.1. This proves publisher-byte correspondence, not an independent D2 rebuild or a Reserved Font Name clearance; see compliance/evidence/d2-0.1.33/README.md."
     },
     {
       "id": "expat",

@@ -133,6 +133,9 @@
         }
       }
     },
+    "%@ is unavailable for this export; authored source preserved": {
+      "extractionState": "manual"
+    },
     "%@ is stale; authored source preserved": {
       "localizations": {
         "fr": {
