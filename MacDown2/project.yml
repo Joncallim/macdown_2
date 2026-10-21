@@ -27,6 +27,8 @@ targets:
     - package: MacDownKit
       product: FileCore
     - package: MacDownKit
+      product: LocalResourceAccess
+    - package: MacDownKit
       product: AppSettings
     - package: MacDownKit
       product: Themes
@@ -207,6 +209,8 @@ targets:
     - target: MacDown2
     - package: MacDownKit
       product: FileCore
+    - package: MacDownKit
+      product: LocalResourceAccess
     - package: MacDownKit
       product: Workspace
     - package: MacDownKit

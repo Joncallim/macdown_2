@@ -150,7 +150,15 @@ public final class WorkspaceModel {
     }
 
     /// The folder opened via ⌘⇧O, if any. The actual folder tree UI is E09.
-    public private(set) var folderURL: URL?
+    public private(set) var folderURL: URL? {
+        willSet {
+            if folderURL != newValue {
+                folderAssociationWillChange?()
+            }
+        }
+    }
+
+    @ObservationIgnored var folderAssociationWillChange: (@MainActor () -> Void)?
 
     /// Keeps the per-window folder association aligned with an in-app folder
     /// rename without changing a lexical URL that is outside that subtree.
