@@ -331,3 +331,31 @@ against the actual assembled document, including its head/template, without
 adding a global DOM gate to ordinary no-TOC exports. The writer currently
 returns a non-optional complete string, so the opt-in failure route needs an
 architecture review before this boundary is wired into export.
+
+## Fail-closed resource ownership checkpoint
+
+The next disabled-path review found that a quoted custom `@font-face` named
+`"serif"` could be mistaken for an unquoted generic `serif` reference. The
+limited embedded-font admission now rejects reserved generic and CSS keyword
+family names. It also rejects unsupported fallback lists such as
+`Demo,sans-serif`; this is a narrower safe subset, not complete CSS font
+support.
+
+Every actual local `url(#id)` token in an SVG presentation attribute or CSS
+declaration must now name an ID collected from that same SVG. Entity-decoded
+attribute fragments follow the same rule. Unsupported or unresolved tokens
+reject the entire derived contribution: Export retains the authored source
+fence and records an error diagnostic, without quietly dropping a declaration
+or synthesizing a target. A quoted CSS content string containing `url(#id)`
+remains text. Repeated owned IDs are still rewritten per occurrence.
+
+The representative D2 renderer emits unresolved paint references, so this
+opt-in path currently falls back to its source fence for that diagram. Native
+WebKit fixtures still show unchanged canvas pixels for admitted Graphviz and
+Mermaid SVGs. This is an explicit compatibility limit to resolve before
+activation, not a reason to allow references to authored outside IDs.
+Generated links and SVG namespacing remain unwired in the normal export path.
+The assembled document, including template/head IDs and authored CSS
+keyframes/font names, still needs a complete ownership check. Signed/native
+navigation and exact-head hosted validation remain separate gates; the older
+unexplained signal-11 run is retained as unresolved evidence.

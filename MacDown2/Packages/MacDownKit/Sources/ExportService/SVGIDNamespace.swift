@@ -208,10 +208,14 @@ enum SVGIDNamespace {
             return rewriteInlineStyle(updated, ids: ids, prefix: prefix)
         }
         if urlBearingAttributes.contains(attribute) {
-            guard safeResourceURLs(in: updated) else { return nil }
-            updated = rewriteURLReferences(updated, ids: ids, prefix: prefix)
+            return rewrittenResourceValue(updated, ids: ids, prefix: prefix)
         }
         return updated
+    }
+
+    private static func rewrittenResourceValue(_ value: String, ids: Set<String>, prefix: String) -> String? {
+        guard safeResourceURLs(in: value) else { return nil }
+        return rewriteURLReferences(value, ids: ids, prefix: prefix)
     }
 
     private static func rewrittenHref(_ value: String, tagName: String, ids: Set<String>, prefix: String) -> String? {
@@ -230,25 +234,35 @@ enum SVGIDNamespace {
         return value
     }
 
-    static func rewriteURLReferences(_ text: String, ids _: Set<String>, prefix: String) -> String {
-        guard text.range(of: "url(", options: .caseInsensitive) != nil else { return text }
-        let source = text as NSString
-        var output = text
-        let matches = urlReference.matches(in: text, range: NSRange(location: 0, length: source.length))
-        for match in matches.reversed() {
-            let idRange = match.range(at: 1)
-            let id = source.substring(with: idRange)
-            output = (output as NSString).replacingCharacters(in: idRange, with: prefix + id)
+    static func rewriteURLReferences(_ text: String, ids: Set<String>, prefix: String) -> String? {
+        var output = ""
+        var cursor = text.startIndex
+        while let opening = text.range(of: "url(", options: .caseInsensitive, range: cursor ..< text.endIndex) {
+            guard let close = text[opening.upperBound...].firstIndex(of: ")") else { return nil }
+            let raw = text[opening.upperBound ..< close]
+            var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let quote = value.first, quote == "\"" || quote == "'" {
+                guard value.count >= 2, value.last == quote else { return nil }
+                value.removeFirst()
+                value.removeLast()
+            }
+            if value.lowercased().hasPrefix("data:") {
+                // Embedded WOFF URLs have already passed safeResourceURLs.
+                output += text[cursor ... close]
+                cursor = text.index(after: close)
+                continue
+            }
+            guard value.first == "#", validID(String(value.dropFirst())),
+                  ids.contains(String(value.dropFirst())), let hash = raw.firstIndex(of: "#")
+            else { return nil }
+            let idStart = text.index(after: hash)
+            output += text[cursor ..< idStart]
+            output += prefix + value.dropFirst()
+            cursor = text.index(idStart, offsetBy: value.dropFirst().count)
         }
+        output += text[cursor...]
         return output
     }
-
-    private static let urlReference: NSRegularExpression = {
-        guard let expression = try? NSRegularExpression(
-            pattern: #"(?i)url\(\s*(?:&quot;|&apos;|["'])?\s*#([A-Za-z0-9_-]+)\s*(?:&quot;|&apos;|["'])?\s*\)"#
-        ) else { preconditionFailure("invalid SVG URL reference pattern") }
-        return expression
-    }()
 
     private static let urlBearingAttributes: Set<String> = [
         "clip-path", "color-profile", "cursor", "fill", "filter", "marker", "marker-start",

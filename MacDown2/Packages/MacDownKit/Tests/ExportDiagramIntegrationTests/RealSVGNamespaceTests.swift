@@ -11,7 +11,7 @@ import WebKit
 
 @Suite("Real diagram SVG namespace compatibility")
 struct RealSVGNamespaceTests {
-    @Test @MainActor func representativeRendererOutputsRemainAdmissible() async throws {
+    @Test @MainActor func ownedRendererOutputsRemainAdmissibleAndD2FallsBack() async throws {
         let graphviz = GraphvizWebRenderer()
         let dot = try await graphviz.render(
             GraphvizFence(source: "digraph { a -> b; b -> c; }", sourceRange: 0 ..< 28),
@@ -45,7 +45,25 @@ struct RealSVGNamespaceTests {
         let canvas = try await MermaidHarnessPage.make()
         defer { canvas.teardown() }
 
-        let outputs = [("Graphviz", dot.svg), ("D2", d2Diagram.svg), ("Mermaid", mermaid.svg)]
+        let d2Sanitized = DerivedHTMLSanitizer.sanitized(d2Diagram.svg)
+        #expect(SVGIDNamespace.rewrite(d2Sanitized, occurrence: 0) == nil)
+        // This D2 fixture emits a paint URL without a matching local ID. The
+        // opt-in path retains the authored fence until renderer output can
+        // meet the same ownership rule as Graphviz and Mermaid.
+        let source = "```d2\na -> b -> c\n```\n"
+        let d2Contribution = ExportDerivedContribution(
+            sourceRange: 0 ..< source.utf16.count, placement: .block,
+            html: d2Diagram.svg, sourceGeneration: 1
+        )
+        let fallback = DerivedContentComposer.compose(
+            bodyText: source, bodyStartOffset: 0, sourceUTF16Length: source.utf16.count,
+            contributions: [d2Contribution], sourceGeneration: 1, namespaceSVGIDs: true
+        )
+        #expect(fallback.splicedBody == source)
+        #expect(fallback.customNodes.isEmpty)
+        #expect(fallback.diagnostics.contains { $0.severity == .error })
+
+        let outputs = [("Graphviz", dot.svg), ("Mermaid", mermaid.svg)]
         for (name, svg) in outputs {
             try await check(name: name, svg: svg, on: canvas)
         }

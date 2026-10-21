@@ -66,7 +66,8 @@ extension SVGIDNamespace {
             let value = segment[segment.index(after: colon)...].trimmingCharacters(in: .whitespacesAndNewlines)
             switch property {
             case "font-family":
-                guard name == nil, let family = fontName(value) else { return nil }
+                guard name == nil, let family = fontName(value),
+                      !reservedFamilyNames.contains(family.lowercased()) else { return nil }
                 name = family
             case "src":
                 let lower = value.lowercased()
@@ -119,6 +120,15 @@ extension SVGIDNamespace {
         }
         return validID(name) ? name : nil
     }
+
+    /// A quoted @font-face name and an unquoted generic/CSS keyword have
+    /// different meanings. Reject these names rather than guessing token kind
+    /// when rewriting references from the renderer's limited CSS grammar.
+    private static let reservedFamilyNames: Set<String> = [
+        "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
+        "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "emoji", "math", "fangsong",
+        "inherit", "initial", "unset", "revert", "revert-layer", "default",
+    ]
 
     private static func fontDeclarationSegments(_ declarations: String) -> [String]? {
         var parts: [String] = []

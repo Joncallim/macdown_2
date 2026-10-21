@@ -211,13 +211,13 @@ extension SVGIDNamespace {
     }
 
     private static func rewriteDeclaration(
-        _ declaration: String, ids _: Set<String>, prefix: String, fontFaces: Set<String>,
+        _ declaration: String, ids: Set<String>, prefix: String, fontFaces: Set<String>,
         keyframes: Set<String>?
     ) -> String? {
         guard safeResourceURLs(in: declaration) else { return nil }
         // A quoted content string is text, while content:url(#id) is a
         // resource. Scan actual CSS function tokens outside string literals.
-        let rewritten = rewriteCSSTokenURLs(declaration, prefix: prefix)
+        guard let rewritten = rewriteCSSTokenURLs(declaration, ids: ids, prefix: prefix) else { return nil }
         guard let animation = rewriteAnimation(
             in: rewritten, prefix: prefix, knownKeyframes: keyframes
         ) else { return nil }
@@ -230,7 +230,7 @@ extension SVGIDNamespace {
         return rewriteDeclarations(declarations, ids: ids, prefix: prefix, fontFaces: [], keyframes: [])
     }
 
-    private static func rewriteCSSTokenURLs(_ declaration: String, prefix: String) -> String {
+    private static func rewriteCSSTokenURLs(_ declaration: String, ids: Set<String>, prefix: String) -> String? {
         let scalars = Array(declaration.unicodeScalars)
         var output = ""
         var cursor = 0
@@ -252,9 +252,10 @@ extension SVGIDNamespace {
             }
             if cursor + 4 <= scalars.count,
                String(String.UnicodeScalarView(scalars[cursor ..< (cursor + 4)])).lowercased() == "url(" {
-                guard let end = scalars[(cursor + 4)...].firstIndex(of: ")") else { return declaration }
+                guard let end = scalars[(cursor + 4)...].firstIndex(of: ")") else { return nil }
                 let token = String(String.UnicodeScalarView(scalars[cursor ... end]))
-                output += rewriteURLReferences(token, ids: [], prefix: prefix)
+                guard let rewritten = rewriteURLReferences(token, ids: ids, prefix: prefix) else { return nil }
+                output += rewritten
                 cursor = end + 1
                 continue
             }

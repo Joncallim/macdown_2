@@ -50,14 +50,43 @@ struct SVGIDNamespaceTests {
         #expect(result.contains(#"aria-labelledby="mt117-svg-3-0-node1 mt117-svg-3-0-other""#))
     }
 
-    @Test func unresolvedPaintReferencesAwaitFinalDocumentOwnershipValidation() throws {
-        let html = #"<svg id="root"><style>#root::after{content:url(#missing);"#
-            + #"font-family:"url(#paint)"}</style><rect fill="url(#outside)"/></svg>"#
+    @Test func unresolvedResourceReferencesRejectTheWholeSVG() {
+        for fragment in [
+            #"<rect fill="url(#outside)"/>"#,
+            #"<rect fill="url(&#35;outside)"/>"#,
+            #"<style>#root{fill:url(#outside)}</style>"#,
+            #"<style>#root::after{content:url(#outside)}</style>"#,
+        ] {
+            let html = #"<svg id="root">"# + fragment + "</svg>"
+            #expect(SVGIDNamespace.rewrite(html, occurrence: 5) == nil, "\(fragment)")
+        }
+        // An authored ID that resembles our generated prefix is not owned by this SVG.
+        let outside = #"<div id="mt117-svg-5-0-outside"></div><svg id="root"><rect fill="url(#outside)"/></svg>"#
+        #expect(SVGIDNamespace.rewrite(outside, occurrence: 5) == nil)
+    }
+
+    @Test func quotedContentRemainsTextWhileOwnedResourceTokensAreRewritten() throws {
+        let html = #"<svg id="root"><style>#root::after{content:"url(#outside)";}"#
+            + #"#root rect{fill:url(#paint)}</style><linearGradient id="paint"/><rect fill="url(&#35;paint)"/></svg>"#
         let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 5))
-        #expect(result.contains("content:url(#mt117-svg-5-0-missing)"))
-        #expect(result.contains("font-family:\"url(#paint)\""))
-        #expect(result.contains(#"fill="url(#mt117-svg-5-0-outside)""#))
-        #expect(!result.contains("#outside"))
+        #expect(result.contains("content:\"url(#outside)\""))
+        #expect(result.contains("fill:url(#mt117-svg-5-0-paint)"))
+        #expect(result.contains(#"fill="url(#mt117-svg-5-0-paint)""#))
+    }
+
+    @Test func unresolvedResourcePreservesTheSourceFenceWithADiagnostic() {
+        let source = "```diagram\nsource\n```\n"
+        let contribution = ExportDerivedContribution(
+            sourceRange: 0 ..< source.utf16.count, placement: .block,
+            html: #"<svg id="root"><rect fill="url(#outside)"/></svg>"#, sourceGeneration: 1
+        )
+        let result = DerivedContentComposer.compose(
+            bodyText: source, bodyStartOffset: 0, sourceUTF16Length: source.utf16.count,
+            contributions: [contribution], sourceGeneration: 1, namespaceSVGIDs: true
+        )
+        #expect(result.splicedBody == source)
+        #expect(result.customNodes.isEmpty)
+        #expect(result.diagnostics.contains { $0.severity == .error })
     }
 
     @Test func keyframeNamesAndAnimationReferencesStayWithinEachOccurrence() throws {

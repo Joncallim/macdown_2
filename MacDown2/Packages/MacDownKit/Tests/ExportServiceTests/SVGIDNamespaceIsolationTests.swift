@@ -15,20 +15,15 @@ struct SVGIDNamespaceIsolationTests {
         ) == nil)
     }
 
-    @Test func syntheticRootScopeDoesNotTurnAnUnresolvedPaintIntoARealTarget() throws {
+    @Test func syntheticRootScopeDoesNotTurnAnUnresolvedPaintIntoARealTarget() {
         let html = #"<svg><style>.shape{stroke:red}</style>"#
             + #"<rect class="shape" fill="url(#mtScope)"/></svg>"#
-        let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 7))
-        #expect(result.contains(#"id="mt117-svg-7-0-mtScope_""#))
-        #expect(result.contains(#"fill="url(#mt117-svg-7-0-mtScope)""#))
-        #expect(result.contains(#"#mt117-svg-7-0-mtScope_ .shape{stroke:red}"#))
+        #expect(SVGIDNamespace.rewrite(html, occurrence: 7) == nil)
     }
 
-    @Test func encodedReferenceCannotBecomeTheSyntheticRootID() throws {
+    @Test func encodedReferenceCannotBecomeTheSyntheticRootID() {
         let html = #"<svg><rect fill="url(#mt&#83;cope)"/></svg>"#
-        let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 8))
-        #expect(result.contains(#"id="mt117-svg-8-0-mtScope_""#))
-        #expect(result.contains(#"fill="url(#mt117-svg-8-0-mtScope)""#))
+        #expect(SVGIDNamespace.rewrite(html, occurrence: 8) == nil)
     }
 
     @Test func selectorsThatCanEscapeTheSVGOrMissItsRootFailClosed() {
@@ -90,6 +85,19 @@ struct SVGIDNamespaceIsolationTests {
         #expect(result.contains("font-family:mt117-svg-4-0-demo"))
         #expect(!result.contains("font-family:Demo"))
         #expect(!result.contains("font-family:demo"))
+    }
+
+    @Test func reservedEmbeddedFontNamesCannotCaptureGenericOrCSSKeywords() {
+        for name in ["serif", "inherit", "initial", "system-ui"] {
+            let html = #"<svg id="root"><style>@font-face{font-family:"\#(name)";"#
+                + #"src:url("data:font/woff;base64,AA==")}#root text{font-family:\#(name)}</style>"#
+                + "<text>Sample</text></svg>"
+            #expect(SVGIDNamespace.rewrite(html, occurrence: 0) == nil, "\(name)")
+        }
+        let fallbackList = #"<svg id="root"><style>@font-face{font-family:Demo;"#
+            + #"src:url("data:font/woff;base64,AA==")}#root text{font-family:Demo,sans-serif}</style>"#
+            + "<text>Sample</text></svg>"
+        #expect(SVGIDNamespace.rewrite(fallbackList, occurrence: 0) == nil)
     }
 
     @Test func aStyleCannotBorrowAnotherStyleBlocksFontFace() {
