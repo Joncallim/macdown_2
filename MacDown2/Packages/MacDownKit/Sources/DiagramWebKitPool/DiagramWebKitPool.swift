@@ -20,13 +20,18 @@ public actor DiagramWebKitPool {
 
     private let poolSize: Int
     private let timeout: Duration
-    private let harnessResourceName: String
-    private let bundle: Bundle
+    private let makePage: @Sendable () async throws -> DiagramHarnessPage
 
     private var slots: [DiagramHarnessPage?]
     private var busy: [Bool]
     private var waiters: [Waiter] = []
+    private var constructing: [Int: Task<DiagramHarnessPage, any Error>] = [:]
+    private var shutdownTask: Task<Void, Never>?
     private var closed = false
+
+    var isShuttingDown: Bool {
+        closed
+    }
 
     public init(
         harnessResourceName: String,
@@ -34,10 +39,21 @@ public actor DiagramWebKitPool {
         poolSize: Int = 2,
         timeout: Duration = .seconds(5)
     ) {
-        self.harnessResourceName = harnessResourceName
-        self.bundle = bundle
+        self.init(poolSize: poolSize, timeout: timeout) {
+            try await DiagramHarnessPage.make(harnessResourceName: harnessResourceName, bundle: bundle)
+        }
+    }
+
+    /// Allows lifecycle tests to hold construction at a precise suspension point.
+    /// Production always uses the bundled, contained harness factory above.
+    init(
+        poolSize: Int,
+        timeout: Duration,
+        makePage: @escaping @Sendable () async throws -> DiagramHarnessPage
+    ) {
         self.poolSize = max(1, poolSize)
         self.timeout = timeout
+        self.makePage = makePage
         slots = Array(repeating: nil, count: self.poolSize)
         busy = Array(repeating: false, count: self.poolSize)
     }
@@ -80,6 +96,10 @@ public actor DiagramWebKitPool {
     /// Tears down every pooled page. Called on app termination and in
     /// tests; not required between individual documents.
     public func shutdown() async {
+        if let shutdownTask {
+            await shutdownTask.value
+            return
+        }
         guard !closed else { return }
         closed = true
         let queued = waiters
@@ -87,10 +107,26 @@ public actor DiagramWebKitPool {
         for waiter in queued {
             waiter.continuation.resume(throwing: DiagramPoolError.pageUnavailable)
         }
-        for case let page? in slots {
-            await page.teardown()
-        }
+        let pages = slots.compactMap(\.self)
+        let builds = Array(constructing.values)
+        constructing.removeAll()
         slots = Array(repeating: nil, count: poolSize)
+        let task = Task {
+            for build in builds {
+                build.cancel()
+            }
+            for page in pages {
+                await page.teardown()
+            }
+            for build in builds {
+                if case let .success(page) = await build.result {
+                    await page.teardown()
+                }
+            }
+        }
+        shutdownTask = task
+        await task.value
+        shutdownTask = nil
     }
 
     private func page(at index: Int) async throws -> DiagramHarnessPage {
@@ -103,10 +139,29 @@ public actor DiagramWebKitPool {
             await existing.teardown()
             slots[index] = nil
         }
-        let page = try await DiagramHarnessPage.make(harnessResourceName: harnessResourceName, bundle: bundle)
+        guard !closed else { throw DiagramPoolError.pageUnavailable }
+        let factory = makePage
+        let construction = Task { try await factory() }
+        constructing[index] = construction
+        let page: DiagramHarnessPage
+        do {
+            page = try await withTaskCancellationHandler {
+                try await construction.value
+            } onCancel: {
+                construction.cancel()
+            }
+        } catch {
+            constructing[index] = nil
+            throw error
+        }
+        constructing[index] = nil
         guard !closed else {
-            await page.teardown()
+            // Shutdown owns every registered construction, including this page.
             throw DiagramPoolError.pageUnavailable
+        }
+        if Task.isCancelled {
+            await page.teardown()
+            throw CancellationError()
         }
         slots[index] = page
         return page

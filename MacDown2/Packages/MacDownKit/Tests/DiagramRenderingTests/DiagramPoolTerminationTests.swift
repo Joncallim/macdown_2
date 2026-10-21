@@ -114,7 +114,125 @@ struct DiagramPoolTerminationTests {
         }
         await pool.shutdown()
     }
+}
 
+extension DiagramPoolTerminationTests {
+    @Test func concurrentShutdownCallersWaitForAnInFlightPageConstruction() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+        let constructing = DiagramPoolTestSignal()
+        let release = DiagramPoolTestSignal()
+        let firstDone = DiagramPoolTestSignal()
+        let secondDone = DiagramPoolTestSignal()
+        let pool = DiagramWebKitPool(poolSize: 1, timeout: .seconds(30)) {
+            await constructing.fire()
+            await release.wait()
+            return page
+        }
+
+        let render = Task { try await pool.withPage { _ in 42 } }
+        await constructing.wait()
+        let firstShutdown = Task {
+            await pool.shutdown()
+            await firstDone.fire()
+        }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while await !(pool.isShuttingDown), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        #expect(await pool.isShuttingDown)
+        let secondShutdown = Task {
+            await pool.shutdown()
+            await secondDone.fire()
+        }
+        #expect(await !(firstDone.hasFired))
+        #expect(await !(secondDone.hasFired))
+
+        await release.fire()
+        await firstShutdown.value
+        await secondShutdown.value
+        #expect(await firstDone.hasFired)
+        #expect(await secondDone.hasFired)
+        #expect(page.isTerminated)
+        do {
+            _ = try await render.value
+            Issue.record("construction published a page after shutdown")
+        } catch {
+            #expect(error as? DiagramPoolError == .pageUnavailable)
+        }
+    }
+
+    @Test func cancellingDuringPageConstructionTearsDownTheUnpublishedPage() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+        let constructing = DiagramPoolTestSignal()
+        let release = DiagramPoolTestSignal()
+        let pool = DiagramWebKitPool(poolSize: 1, timeout: .seconds(30)) {
+            await constructing.fire()
+            await release.wait()
+            return page
+        }
+
+        let render = Task { try await pool.withPage { _ in 42 } }
+        await constructing.wait()
+        render.cancel()
+        await release.fire()
+        do {
+            _ = try await render.value
+            Issue.record("cancelled construction published a page")
+        } catch {
+            #expect(error is CancellationError)
+        }
+        #expect(page.isTerminated)
+        await pool.shutdown()
+    }
+
+    @Test func shutdownTearsDownLivePagesWhileAnotherPageIsStillConstructing() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let livePage = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+        let constructingPage = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+        let firstEntered = DiagramPoolTestSignal()
+        let releaseFirst = DiagramPoolTestSignal()
+        let secondConstructing = DiagramPoolTestSignal()
+        let releaseSecond = DiagramPoolTestSignal()
+        let factory = DiagramPoolConstructionFactory(
+            first: livePage,
+            second: constructingPage,
+            secondConstructing: secondConstructing,
+            releaseSecond: releaseSecond
+        )
+        let pool = DiagramWebKitPool(poolSize: 2, timeout: .seconds(30)) {
+            await factory.make()
+        }
+        let first = Task {
+            try await pool.withPage { _ in
+                await firstEntered.fire()
+                await releaseFirst.wait()
+            }
+        }
+        await firstEntered.wait()
+        let second = Task { try await pool.withPage { _ in 42 } }
+        await secondConstructing.wait()
+        let shutdown = Task { await pool.shutdown() }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while !livePage.isTerminated, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        #expect(livePage.isTerminated)
+        #expect(!constructingPage.isTerminated)
+        await releaseSecond.fire()
+        await shutdown.value
+        #expect(constructingPage.isTerminated)
+        await releaseFirst.fire()
+        _ = try? await first.value
+        _ = try? await second.value
+    }
+}
+
+extension DiagramPoolTerminationTests {
     @Test func teardownSettlesAnEvaluatingPageBeforeWebKitCompletes() async throws {
         let (bundle, directory) = try makeHarnessBundle()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -171,6 +289,10 @@ private actor DiagramPoolTestSignal {
     private var fired = false
     private var waiter: CheckedContinuation<Void, Never>?
 
+    var hasFired: Bool {
+        fired
+    }
+
     func wait() async {
         if fired {
             return
@@ -182,5 +304,35 @@ private actor DiagramPoolTestSignal {
         fired = true
         waiter?.resume()
         waiter = nil
+    }
+}
+
+private actor DiagramPoolConstructionFactory {
+    let first: DiagramHarnessPage
+    let second: DiagramHarnessPage
+    let secondConstructing: DiagramPoolTestSignal
+    let releaseSecond: DiagramPoolTestSignal
+    var calls = 0
+
+    init(
+        first: DiagramHarnessPage,
+        second: DiagramHarnessPage,
+        secondConstructing: DiagramPoolTestSignal,
+        releaseSecond: DiagramPoolTestSignal
+    ) {
+        self.first = first
+        self.second = second
+        self.secondConstructing = secondConstructing
+        self.releaseSecond = releaseSecond
+    }
+
+    func make() async -> DiagramHarnessPage {
+        calls += 1
+        if calls == 1 {
+            return first
+        }
+        await secondConstructing.fire()
+        await releaseSecond.wait()
+        return second
     }
 }
