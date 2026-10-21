@@ -45,9 +45,11 @@ struct RealSVGNamespaceTests {
         let canvas = try await MermaidHarnessPage.make()
         defer { canvas.teardown() }
 
-        for (name, svg) in [("Graphviz", dot.svg), ("D2", d2Diagram.svg), ("Mermaid", mermaid.svg)] {
+        let outputs = [("Graphviz", dot.svg), ("D2", d2Diagram.svg), ("Mermaid", mermaid.svg)]
+        for (name, svg) in outputs {
             try await check(name: name, svg: svg, on: canvas)
         }
+        try await checkInlineComposition(outputs.map(\.1) + [dot.svg])
     }
 
     @MainActor private func check(name: String, svg: String, on canvas: MermaidHarnessPage) async throws {
@@ -65,7 +67,9 @@ struct RealSVGNamespaceTests {
         let originalIDs = try ids(in: sanitized)
         let rewrittenIDs = try ids(in: rewritten)
         #expect(!originalIDs.isEmpty)
-        #expect(rewrittenIDs == originalIDs.map { "mt117-svg-0-0-" + $0 })
+        #expect(Set(rewrittenIDs).isSuperset(of: originalIDs.map { "mt117-svg-0-0-" + $0 }))
+        let rootOpening = sanitized.split(separator: ">", maxSplits: 1).first ?? ""
+        #expect(rewrittenIDs.count == originalIDs.count + (rootOpening.contains(" id=") ? 0 : 1))
         for id in originalIDs {
             if sanitized.contains("url(#\(id))") {
                 #expect(rewritten.contains("url(#mt117-svg-0-0-\(id))"))
@@ -91,11 +95,91 @@ struct RealSVGNamespaceTests {
         let base64 = try #require(result["png"] as? String)
         return try #require(Data(base64Encoded: base64))
     }
+
+    @MainActor private func checkInlineComposition(_ outputs: [String]) async throws {
+        let handler = RecordingResourceHandler()
+        let configuration = WKWebViewConfiguration()
+        configuration.setURLSchemeHandler(handler, forURLScheme: "resourceprobe")
+        let view = WKWebView(frame: .init(x: 0, y: 0, width: 320, height: 200), configuration: configuration)
+        var body = #"<svg id="graph0"><rect id="paint" style="fill:green"/></svg>"#
+        for (index, svg) in outputs.enumerated() {
+            let sanitized = DerivedHTMLSanitizer.sanitized(svg)
+            let rewritten = try #require(SVGIDNamespace.rewrite(sanitized, occurrence: index))
+            body += "<section class=\"diagram\">\(rewritten)</section>"
+        }
+        let html = BuiltInExportTemplate.document(
+            title: "Mixed inline diagrams", styleElement: "<style></style>", body: body
+        )
+        view.loadHTMLString(html, baseURL: nil)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        var count = 0
+        while ContinuousClock.now < deadline {
+            count = await (try? view.evaluateJavaScript("document.querySelectorAll('section.diagram > svg').length")
+                as? Int) ?? 0
+            if count == outputs.count {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(count == outputs.count)
+        let script = """
+        Array.from(document.querySelectorAll('section.diagram')).map((section, index) =>
+          Array.from(section.querySelectorAll('[id]')).every(element =>
+            element.id.startsWith(`mt117-svg-${index}-0-`))).every(Boolean)
+        """
+        #expect(try await view.evaluateJavaScript(script) as? Bool == true)
+        #expect(handler.requests.isEmpty)
+    }
 }
 
 @Suite("Assembled SVG resource admission", .serialized)
 @MainActor
 struct AssembledSVGResourceTests {
+    @Test func repeatedInlineSVGsKeepStylesAndReferencesInsideTheirOwnOccurrence() async throws {
+        let handler = RecordingResourceHandler()
+        let configuration = WKWebViewConfiguration()
+        configuration.setURLSchemeHandler(handler, forURLScheme: "resourceprobe")
+        let view = WKWebView(frame: .init(x: 0, y: 0, width: 320, height: 200), configuration: configuration)
+        let artwork = #"<svg id="root"><style>#root rect{fill:red}.scopeTarget{stroke:red}</style>"#
+            + #"<rect id="shape" class="scopeTarget" width="20" height="20"/></svg>"#
+        let different = #"<svg id="root"><style>#root rect{fill:blue}.scopeTarget{stroke:blue}</style>"#
+            + #"<rect id="shape" class="scopeTarget" width="20" height="20"/></svg>"#
+        let first = try #require(SVGIDNamespace.rewrite(artwork, occurrence: 0))
+        let repeated = try #require(SVGIDNamespace.rewrite(artwork, occurrence: 1))
+        let mixed = try #require(SVGIDNamespace.rewrite(different, occurrence: 2))
+        let body = #"<svg id="root"><rect id="shape" class="scopeTarget" style="fill:green"/></svg>"#
+            + "<div class=\"card\">\(first)</div><div class=\"card\">\(repeated)</div>"
+            + "<div class=\"card\">\(mixed)</div>"
+        let html = BuiltInExportTemplate.document(
+            title: "Inline SVG isolation", styleElement: "<style></style>", body: body
+        )
+        view.loadHTMLString(html, baseURL: nil)
+        try await waitForLoad(in: view)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
+            if let count = try? await view.evaluateJavaScript("document.querySelectorAll('.card svg').length") as? Int,
+               count == 3 {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let script = """
+        Array.from(document.querySelectorAll('.card svg')).map(svg => {
+          const rect = svg.querySelector('rect');
+          return [svg.id, rect.id, getComputedStyle(rect).fill].join(':');
+        }).join('|')
+        """
+        let result = try #require(try await view.evaluateJavaScript(script) as? String)
+        #expect(result == "mt117-svg-0-0-root:mt117-svg-0-0-shape:rgb(255, 0, 0)"
+            + "|mt117-svg-1-0-root:mt117-svg-1-0-shape:rgb(255, 0, 0)"
+            + "|mt117-svg-2-0-root:mt117-svg-2-0-shape:rgb(0, 0, 255)")
+        #expect(handler.requests.isEmpty)
+        let outsideStroke = try await view.evaluateJavaScript(
+            "getComputedStyle(document.querySelector('body > svg rect')).stroke"
+        ) as? String
+        #expect(outsideStroke == "none")
+    }
+
     @Test func rejectedCSSNeverRequestsAResourceAfterInlineAssembly() async throws {
         let handler = RecordingResourceHandler()
         let configuration = WKWebViewConfiguration()

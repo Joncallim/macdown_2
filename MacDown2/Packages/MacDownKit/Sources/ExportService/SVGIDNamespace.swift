@@ -56,8 +56,18 @@ enum SVGIDNamespace {
 
     private static func rewriteRoot(_ svg: String, prefix: String) -> String? {
         let scalars = Array(svg.unicodeScalars)
-        guard let ids = collectIDs(in: scalars) else { return nil }
-        return rewriteTags(in: scalars, ids: ids, prefix: prefix)
+        guard let ids = collectIDs(in: scalars),
+              let root = HTMLTagScanner.parseTag(at: 0, in: scalars), root.name == "svg" else { return nil }
+        let authoredRootID = root.attributes.first { $0.name == "id" }?.value
+            .flatMap { try? Parser.unescapeEntities($0, true) }
+        var synthetic = "mtScope"
+        while svg.contains(synthetic), synthetic.count < 64 {
+            synthetic += "_"
+        }
+        guard !svg.contains(synthetic) else { return nil }
+        let scopeID = prefix + (authoredRootID ?? synthetic)
+        return rewriteTags(in: scalars, ids: ids, prefix: prefix,
+                           scopeID: scopeID, addRootID: authoredRootID == nil)
     }
 
     private static func collectIDs(in scalars: [Unicode.Scalar]) -> Set<String>? {
@@ -77,10 +87,14 @@ enum SVGIDNamespace {
         return ids
     }
 
-    private static func rewriteTags(in scalars: [Unicode.Scalar], ids: Set<String>, prefix: String) -> String? {
+    private static func rewriteTags(
+        in scalars: [Unicode.Scalar], ids: Set<String>, prefix: String,
+        scopeID: String, addRootID: Bool
+    ) -> String? {
         var output = ""
         var cursor = 0
         var style = false
+        var rootOpened = false
         while cursor < scalars.count {
             guard scalars[cursor] == "<" else {
                 let start = cursor
@@ -89,7 +103,8 @@ enum SVGIDNamespace {
                 }
                 let text = String(String.UnicodeScalarView(scalars[start ..< cursor]))
                 if style {
-                    guard let rewritten = rewriteStyle(text, ids: ids, prefix: prefix) else { return nil }
+                    guard let rewritten = rewriteStyle(text, ids: ids, prefix: prefix, scopeID: scopeID)
+                    else { return nil }
                     output += rewritten
                 } else {
                     output += text
@@ -104,11 +119,20 @@ enum SVGIDNamespace {
                 output += "</\(tag.name)>"
             } else {
                 guard let opening = openingTag(tag, ids: ids, prefix: prefix) else { return nil }
-                output += opening
+                output += scopedOpening(opening, isFirstRoot: tag.name == "svg" && !rootOpened,
+                                        scopeID: scopeID, addRootID: addRootID)
+                rootOpened = rootOpened || tag.name == "svg"
             }
             cursor = tag.end
         }
         return style ? nil : output
+    }
+
+    private static func scopedOpening(
+        _ opening: String, isFirstRoot: Bool, scopeID: String, addRootID: Bool
+    ) -> String {
+        guard isFirstRoot, addRootID else { return opening }
+        return String(opening.dropLast()) + " id=\"\(scopeID)\">"
     }
 
     static func validID(_ id: String) -> Bool {
@@ -148,10 +172,13 @@ enum SVGIDNamespace {
             updated = href
         case "src", "srcset", "imagesrcset", "poster", "background": return nil
         case "aria-labelledby", "aria-describedby", "aria-controls", "aria-owns", "aria-flowto", "aria-details":
-            updated = value.split(whereSeparator: \.isWhitespace).map {
-                ids.contains(String($0)) ? prefix + $0 : String($0)
-            }.joined(separator: " ")
+            let targets = value.split(whereSeparator: \.isWhitespace)
+            guard targets.allSatisfy({ validID(String($0)) }) else { return nil }
+            updated = targets.map { prefix + $0 }.joined(separator: " ")
         default: break
+        }
+        if attribute == "style" {
+            return rewriteInlineStyle(updated, ids: ids, prefix: prefix)
         }
         if urlBearingAttributes.contains(attribute) {
             guard safeResourceURLs(in: updated) else { return nil }
@@ -169,10 +196,14 @@ enum SVGIDNamespace {
             guard value.first == "#", ids.contains(target) else { return nil }
             return "#" + prefix + target
         }
-        return value.first == "#" && ids.contains(target) ? "#" + prefix + target : value
+        if value.first == "#" {
+            guard validID(target) else { return nil }
+            return "#" + prefix + target
+        }
+        return value
     }
 
-    static func rewriteURLReferences(_ text: String, ids: Set<String>, prefix: String) -> String {
+    static func rewriteURLReferences(_ text: String, ids _: Set<String>, prefix: String) -> String {
         guard text.range(of: "url(", options: .caseInsensitive) != nil else { return text }
         let source = text as NSString
         var output = text
@@ -180,7 +211,6 @@ enum SVGIDNamespace {
         for match in matches.reversed() {
             let idRange = match.range(at: 1)
             let id = source.substring(with: idRange)
-            guard ids.contains(id) else { continue }
             output = (output as NSString).replacingCharacters(in: idRange, with: prefix + id)
         }
         return output
