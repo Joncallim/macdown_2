@@ -7,8 +7,13 @@ a second copy of the notices to maintain. The screen shows the generated
 `compliance/generated/THIRD_PARTY_NOTICES.md`, bundled into the app, in the
 app's existing native Markdown preview.
 
-**Not started. Starts after E22 closes**, because E22's session is actively
-changing the same app menus and window code. It must land before the final
+**The screen remains not started. Its existing dependency is E22 closure**,
+because the contract reserves the shared app menus and window code for that work.
+The resource-packaging prerequisite was completed and verified on unsigned
+Release candidate `ceecea9c4a8297db6aa24e3afa9163406e4a10e5`; see the
+[exact artifact evidence](evidence/prism-textual-1.29.0/README.md).
+This does not implement the screen or establish that E22 has closed.
+The screen must land before the final
 E16 string freeze (#17). It adds a few UI strings and no new dependency.
 
 Risks: the screen could show a stale or hand-edited copy (prevented by
@@ -32,9 +37,10 @@ bodies as preformatted text, which the generator already emits).
 
 ## Implementation notes
 
-- **Resource:** add `compliance/generated/THIRD_PARTY_NOTICES.md` and
-  `LICENSE` to the app target's resources in `MacDown2/project.yml`, as
-  references to those files rather than copies, then regenerate the project.
+- **Resource (implemented):** `compliance/generated/THIRD_PARTY_NOTICES.md` and
+  `LICENSE` are explicit app-target resource references in
+  `MacDown2/project.yml`. Regenerate the project after editing the specification;
+  keep using these original files rather than separate maintained copies.
 - **Strings:** the window title, button and menu titles, and any
   empty-or-error state go in the String Catalog for localisation. Licence text
   itself is never localised.

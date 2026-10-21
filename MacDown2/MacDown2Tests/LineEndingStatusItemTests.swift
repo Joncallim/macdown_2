@@ -2,6 +2,7 @@ import FileCore
 @testable import MacDown2
 import Testing
 
+@MainActor
 @Suite("LineEndingStatusItemView (Slice 8c)")
 struct LineEndingStatusItemTests {
     private func label(for text: String) -> String {

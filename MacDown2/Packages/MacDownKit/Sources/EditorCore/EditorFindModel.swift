@@ -262,12 +262,8 @@ public final class EditorFindModel {
             let length = max(0, min(domain.length, fullLength - location))
             let end = location + length
             return .success(found.filter { $0.range.location >= location && NSMaxRange($0.range) <= end })
-        } catch let error as SearchQueryError {
-            return .failure(error)
         } catch {
-            // `matches` is `throws(SearchQueryError)`, so this is unreachable; it
-            // exists only because this function is not itself typed-throws.
-            return .failure(.invalidRegex(error.localizedDescription))
+            return .failure(error)
         }
     }
 

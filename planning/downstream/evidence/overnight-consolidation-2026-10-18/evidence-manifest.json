@@ -1,0 +1,228 @@
+{
+  "captured_utc": "2026-10-18T21:18:57.221969+00:00",
+  "raw_root": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18",
+  "candidate": "400d475caaae130cdce1f6de4c6904027e700827",
+  "scope": "Top-level regular files at consolidation sealing; excludes this manifest and later final-checkpoint records. Source archive, artifact-file manifest and xcresult-file manifest cover their respective payloads.",
+  "files": {
+    "FirstPartyWarnings.xcconfig": {
+      "bytes": 386,
+      "sha256": "87047bbba2b8c0b4e375ba4a0152b1262ba14b08019c667b3e63476bf67e25ef"
+    },
+    "app-execution-selection.json": {
+      "bytes": 847,
+      "sha256": "560d56eeaa1094180a719fd97e41a2e9e05c3a52aff6e52baeb5643a945f1ba5"
+    },
+    "app-nonperformance-tests.log": {
+      "bytes": 204281,
+      "sha256": "057895e789b23159384b839157ae208d0b4791f562cad273cedcc7b0ec01166e"
+    },
+    "app-selection-check.json": {
+      "bytes": 2786,
+      "sha256": "53a523745935805f0087759c67c0b7cf0c223299b3ffefcfc0fa191320d49446"
+    },
+    "app-test-enumeration.json": {
+      "bytes": 59141,
+      "sha256": "055b379b81b99198419e087f54e1e638cbcad28bc7d3e983030c40702bc0ece6"
+    },
+    "app-test-enumeration.log": {
+      "bytes": 7158,
+      "sha256": "d725b533e6c374c5c6c9b8bd86f8a97e119f8913acd730f60f2b44cb10d2bc39"
+    },
+    "app-xcresult-summary.json": {
+      "bytes": 1240,
+      "sha256": "78a3b1a7347bfd4736512669687345b67a6cadee693ffcd25e2fec30702e720c"
+    },
+    "app-xcresult-tests.json": {
+      "bytes": 287903,
+      "sha256": "b54fb4c3741b13786ca46147a196405501a51be4cf0b1196351cc4a799b9b1a3"
+    },
+    "artifact-compliance.log": {
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    "artifact-files.json": {
+      "bytes": 33702,
+      "sha256": "e4590b90d6c5327b5f935bb421ded95bcec20edec2e791b53c74250a4c0b7503"
+    },
+    "artifact-release-preflight.log": {
+      "bytes": 1460,
+      "sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522"
+    },
+    "artifact-signature-inspection.log": {
+      "bytes": 444,
+      "sha256": "4796d37c5517c10d50d665686de54757154304142c39316ad56776cee1801e57"
+    },
+    "build-for-testing.log": {
+      "bytes": 4099116,
+      "sha256": "28b21cbfdc523e89e21df4cf7e030daf07555caf7fd8fa02170985aa6d47f610"
+    },
+    "build-warnings.json": {
+      "bytes": 21636,
+      "sha256": "c417e2cc9771601d5ffb9eda86a3d097e34c0810bca4500e4964e3a4ee674075"
+    },
+    "checkout-provenance.json": {
+      "bytes": 11701,
+      "sha256": "ee1bf5eb6d093ff792af09ed6dc0970bebaebdeb9c50753e4fa5f0c1995d9c0a"
+    },
+    "compliance-tests.log": {
+      "bytes": 5550,
+      "sha256": "b708dde474d6e3e8f0681bc234985aed4556254e1ed02bf964af9db13fd0e577"
+    },
+    "debug-app.log": {
+      "bytes": 3470153,
+      "sha256": "59fd15b557601c306c8f2a93a311fe6ac870a23852c093be351bf2a45a673d9b"
+    },
+    "debug-cli.log": {
+      "bytes": 82808,
+      "sha256": "f7d6546213a0e42e830264e4e94099b7300d6b67ad088967b723d7321c16e774"
+    },
+    "environment-os.log": {
+      "bytes": 65,
+      "sha256": "e369ac71ae1ffdf3230a664aee3f2258f8786b9262a715c677cd1ab59d0b615b"
+    },
+    "environment-swift.log": {
+      "bytes": 128,
+      "sha256": "5fa4b669e41b23b9ad0760253d062493487f93cf5d8ad8c44f0d4fd635137499"
+    },
+    "environment-xcode.log": {
+      "bytes": 32,
+      "sha256": "18730ed2ae28a2c9cf0c2d5db549033a4f07089331391a7133b7b32187454fa9"
+    },
+    "generated-project.pbxproj": {
+      "bytes": 161987,
+      "sha256": "4b245a5a05d6611e1ea001bfc66f15982893c8fd6f8fab7c84333b809f0a5ad1"
+    },
+    "independent-close-ownership-review.md": {
+      "bytes": 1217,
+      "sha256": "8d2a18df18182091541e65d02db00082719a89e2ec0ad332a2ff25a4ac357df7"
+    },
+    "independent-source-review.md": {
+      "bytes": 2879,
+      "sha256": "4bcf94c09644b75f94c518d643f632995b4b31b341eb28690adfc91e2cb93188"
+    },
+    "independent-validation-review.md": {
+      "bytes": 2789,
+      "sha256": "f596a50385845fa0acc1f50d5c8758175c3e30087a0a176be590c0cc3c1a53de"
+    },
+    "legacy-map-tests.log": {
+      "bytes": 110,
+      "sha256": "395f4ba177429a162b2f04a7e5dd660a39233158ce91c848b5b64fb547fbd0ed"
+    },
+    "legacy-map.log": {
+      "bytes": 423,
+      "sha256": "147f93cb21dac9fdcd98fa670d1f505a294848296f91e69e993535a7c6df6678"
+    },
+    "opt-in-measurement-environment.json": {
+      "bytes": 440,
+      "sha256": "f57a4d51ff47196736809746a576178441bde83c3b55321fb955136d9e3f18a9"
+    },
+    "overnight-stat.txt": {
+      "bytes": 6686,
+      "sha256": "4369236c2529340fbf4b58f8857c05bc81d6fd89c445bac580a0908edf07a5c4"
+    },
+    "overnight.diff": {
+      "bytes": 2390672,
+      "sha256": "faa1590724379c715be03e7046dc886d87c3eeb7707de6f7038782a750cb5684"
+    },
+    "owner-checkpoint-draft.md": {
+      "bytes": 3230,
+      "sha256": "9308d6c1c7dfce2badb35b947fe561fcd540d55a6ee52384a2987292a7236081"
+    },
+    "ownership.json": {
+      "bytes": 872,
+      "sha256": "bb54155e3666e42a8f2217de8585e21e736e92441ef375b0744d88a0cb7534bc"
+    },
+    "package-build.log": {
+      "bytes": 120,
+      "sha256": "18ac4ba7d6f024a25ea8b3720078ae03432663a30daec1a63dac73a4f37dd562"
+    },
+    "package-nonperformance-tests.log": {
+      "bytes": 886311,
+      "sha256": "abb3a36376cdbf8553586dc13ccafd3da62a9b34fbf125d802cfc65e22322ea0"
+    },
+    "package-selection-summary.json": {
+      "bytes": 7304,
+      "sha256": "04765309de34e9df2b09db126159809afe29163d02d4e982860cf883b62db8c2"
+    },
+    "package-selection.json": {
+      "bytes": 243660,
+      "sha256": "6961498f7d9f5ae2560703c94e6832c1912d33738bf87c409472957a363b9474"
+    },
+    "package-test-list.log": {
+      "bytes": 221984,
+      "sha256": "6a49aabea3afee6673d6ba077a7c3c1439ca493a5213a6638292785c6aba37f3"
+    },
+    "pin-xcode.log": {
+      "bytes": 70,
+      "sha256": "b2be8d12c3194b89502a2b9bcdb39f066f3ffdf67f4945db582b64bf30595151"
+    },
+    "pins-match.log": {
+      "bytes": 66,
+      "sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c"
+    },
+    "release-app.log": {
+      "bytes": 3624822,
+      "sha256": "ae350ce06d4829e7f9c24a7d69c308609b8794182ea1c054f7ac7d6ef9ef523b"
+    },
+    "release-cli.log": {
+      "bytes": 188932,
+      "sha256": "efb25a317eeadfe7e20e3fdd517144e8082ff746f0f85928a258e16e95e687d8"
+    },
+    "release-preflight.log": {
+      "bytes": 1460,
+      "sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522"
+    },
+    "resource-comparison.json": {
+      "bytes": 3982,
+      "sha256": "ce20bf3c4d31e828f0f34086bd69bcceb0b1fde5031ec77a935905c4ec8b22c9"
+    },
+    "run-app-tests.py": {
+      "bytes": 2006,
+      "sha256": "c29872ea7ffd9fbe87f3f976a53c2b8dc22ec669f88248d0eb6559e2adf0f002"
+    },
+    "run-gates.py": {
+      "bytes": 8234,
+      "sha256": "87b22a48eddb3740a8bb42c9450ad57c8afdec7f4d1a8aabaa985015a445f0e9"
+    },
+    "runtime-diagnostics.json": {
+      "bytes": 4769,
+      "sha256": "b37aa37d90db505d8504e00d1e206b7994fc272262e00b9411ee8f060e860dd5"
+    },
+    "source-400d475caaae130cdce1f6de4c6904027e700827.tar": {
+      "bytes": 76257280,
+      "sha256": "5f892f970b888af53f69aff8cb2aa6fc8b6530d2a94e1b4f3626a30a0d0b0cc2"
+    },
+    "source-compliance.log": {
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    "swiftformat.log": {
+      "bytes": 222,
+      "sha256": "48c790cbfeff3884bcb0611eaa977c60176d7255258913883b97403a3e55e564"
+    },
+    "swiftlint.log": {
+      "bytes": 47654,
+      "sha256": "8218e47709f4e38db61cacfcd73311324d657dd0a87d2b89499dc4541d808912"
+    },
+    "unchanged-production-pins.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "validation.json": {
+      "bytes": 30811,
+      "sha256": "e05d4b70b10db6c6ce1e4df175a55401d4d2ea6ac77c3b034ab79b1859d0b6c0"
+    },
+    "window-warning-history.json": {
+      "bytes": 8667,
+      "sha256": "57b711ed23d3ec4ef8925b8135fd3774bf028d851dc23f76253e9dbd20d2d3de"
+    },
+    "xcodegen.log": {
+      "bytes": 175,
+      "sha256": "58aa2a3119b37b0a5af3e23bf3029d9ae18ed71807d26d2f10974839c4481fd0"
+    },
+    "xcresult-file-manifest.json": {
+      "bytes": 616535,
+      "sha256": "a559f58ab6a4feeadbb8727199c2a5961cc7e3467c7ae0863036008df0759834"
+    }
+  }
+}

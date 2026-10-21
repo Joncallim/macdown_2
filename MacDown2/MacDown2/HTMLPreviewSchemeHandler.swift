@@ -8,27 +8,43 @@ import WebKit
 ///
 /// The main document and every subresource (relative image/style/font/media
 /// and intra-preview navigations) arrive here. The main document is served
-/// from the saved source; subresources are resolved against the approved
-/// document directory and validated by `HTMLPreviewResourceScope` —
-/// including symlink containment — before any byte is served. Every response
+/// from the saved source; subresources still use the legacy path check and
+/// separate file reopen. That is not atomic filesystem containment. Every response
 /// carries the CSP header (`HTMLPreviewResponseHeaders`), which governs any
 /// document the payload renders as and cannot be diverted by markup;
 /// `text/html` payloads are additionally re-hardened with the meta CSP
 /// injection.
 ///
-/// Serving is synchronous, so a task either completes or fails before WebKit
-/// can stop it. The single mutable `request` slot is swapped only on the main
-/// actor at load boundaries; WebKit cancels superseded loads' tasks around
-/// the same boundary, so a subresource resolved against a newer request's
-/// root is theoretically possible only in that interleaving window (same
-/// user's directories, no cross-user exposure).
+/// Reads remain synchronous, but delivery callbacks can reenter stop or
+/// request replacement. Each admitted attempt therefore owns a revocable
+/// delivery token. This does not establish immutable resource authority:
+/// a delayed task can still start against the mutable request's newer root
+/// until the explicit directory-grant integration in #121 is complete.
 @MainActor
 final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
+    private struct DeliveryAttempt {
+        let taskID: ObjectIdentifier
+        let webViewID: ObjectIdentifier
+        let token = UUID()
+    }
+
+    private var attempts: [ObjectIdentifier: DeliveryAttempt] = [:]
+
     /// The request currently being rendered; `nil` between loads and after
     /// disposal (nothing is served then).
-    var request: HTMLPreviewRequest?
+    var request: HTMLPreviewRequest? {
+        willSet {
+            // Retire consumers before replacement/disposal can reenter WebKit.
+            // This revokes delivery, not blocking I/O or resource ownership.
+            attempts.removeAll()
+        }
+    }
 
-    func webView(_: WKWebView, start task: WKURLSchemeTask) {
+    func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
+        let taskID = ObjectIdentifier(task)
+        guard attempts[taskID] == nil else { return }
+        let attempt = DeliveryAttempt(taskID: taskID, webViewID: ObjectIdentifier(webView))
+        attempts[taskID] = attempt
         // Validate the authority too: the scheme handler is the containment
         // boundary, so host/userinfo/port abuse must fail closed even though
         // the current path mapping ignores them.
@@ -39,24 +55,41 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
               url.password == nil,
               url.port == nil
         else {
-            task.didFailWithError(PreviewSchemeError.denied)
+            fail(task, attempt: attempt)
             return
         }
         guard let request else {
             // Nothing is being previewed (between loads or after disposal).
-            task.didFailWithError(PreviewSchemeError.denied)
+            fail(task, attempt: attempt)
             return
         }
+        guard isLive(attempt) else { return }
         if url.path.isEmpty || url.path == "/" {
-            serveMainDocument(request: request, url: url, task: task)
+            serveMainDocument(request: request, url: url, task: task, attempt: attempt)
             return
         }
-        serveSubresource(request: request, url: url, task: task)
+        serveSubresource(request: request, url: url, task: task, attempt: attempt)
     }
 
-    func webView(_: WKWebView, stop _: WKURLSchemeTask) {
-        // Serving is synchronous: start(_:) always completes or fails the
-        // task before stop can arrive, so there is nothing to cancel.
+    func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {
+        let taskID = ObjectIdentifier(task)
+        guard attempts[taskID]?.webViewID == ObjectIdentifier(webView) else { return }
+        attempts.removeValue(forKey: taskID)
+    }
+
+    private func isLive(_ attempt: DeliveryAttempt) -> Bool {
+        attempts[attempt.taskID]?.token == attempt.token
+    }
+
+    private func consume(_ attempt: DeliveryAttempt) -> Bool {
+        guard isLive(attempt) else { return false }
+        attempts.removeValue(forKey: attempt.taskID)
+        return true
+    }
+
+    private func fail(_ task: WKURLSchemeTask, attempt: DeliveryAttempt) {
+        guard consume(attempt) else { return }
+        task.didFailWithError(PreviewSchemeError.denied)
     }
 
     /// Serves the main document: the saved source with the belt-and-braces
@@ -64,32 +97,37 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
     private func serveMainDocument(
         request: HTMLPreviewRequest,
         url: URL,
-        task: WKURLSchemeTask
+        task: WKURLSchemeTask,
+        attempt: DeliveryAttempt
     ) {
         let hardened = PreviewSecurity.hardenedHTMLDocument(from: request.source)
         serve(
             Data(hardened.utf8),
-            policy: request.policy,
-            contentType: HTMLPreviewContentType.mainDocument,
+            headers: HTMLPreviewResponseHeaders.headers(
+                for: request.policy,
+                contentType: HTMLPreviewContentType.mainDocument
+            ),
             url: url,
-            task: task
+            task: task,
+            attempt: attempt
         )
     }
 
     private func serveSubresource(
         request: HTMLPreviewRequest,
         url: URL,
-        task: WKURLSchemeTask
+        task: WKURLSchemeTask,
+        attempt: DeliveryAttempt
     ) {
         guard let rootURL = request.baseURL else {
             // Untitled documents have no approved resource root.
-            task.didFailWithError(PreviewSchemeError.denied)
+            fail(task, attempt: attempt)
             return
         }
         guard let approved = approvedResourceURL(for: url, rootURL: rootURL),
               let data = try? Data(contentsOf: approved)
         else {
-            task.didFailWithError(PreviewSchemeError.denied)
+            fail(task, attempt: attempt)
             return
         }
 
@@ -114,29 +152,38 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
         } else {
             responseData = data
         }
-        serve(responseData, policy: request.policy, contentType: contentType, url: url, task: task)
+        serve(
+            responseData,
+            headers: HTMLPreviewResponseHeaders.headers(for: request.policy, contentType: contentType),
+            url: url,
+            task: task,
+            attempt: attempt
+        )
     }
 
     /// Finishes `task` with `data` and the hardening response headers.
     private func serve(
         _ data: Data,
-        policy: HTMLPreviewPolicy,
-        contentType: String,
+        headers: [String: String],
         url: URL,
-        task: WKURLSchemeTask
+        task: WKURLSchemeTask,
+        attempt: DeliveryAttempt
     ) {
-        let headers = HTMLPreviewResponseHeaders.headers(for: policy, contentType: contentType)
         guard let response = HTTPURLResponse(
             url: url,
             statusCode: 200,
             httpVersion: "HTTP/1.1",
             headerFields: headers
         ) else {
-            task.didFailWithError(PreviewSchemeError.denied)
+            fail(task, attempt: attempt)
             return
         }
+        guard isLive(attempt) else { return }
         task.didReceive(response)
+        guard isLive(attempt) else { return }
         task.didReceive(data)
+        // Terminalize before calling out: a callback may admit another attempt.
+        guard consume(attempt) else { return }
         task.didFinish()
     }
 

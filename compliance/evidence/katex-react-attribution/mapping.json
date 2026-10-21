@@ -1,0 +1,13 @@
+{
+  "adaptation_limit": "React v0.11.0 matches the credited Apache-era helpers; KaTeX does not name an exact original React revision",
+  "generated_mapping_references": {
+    "69": 12,
+    "81": 15
+  },
+  "katex_archive_sha256": "ad2d1ab2f7fcc227019784320e8a2c5218ff6bb333b36df4136d10365ae29375",
+  "katex_mapped_source_sha256": "09a78a9812d1e7d3ace85033512e6a450127b9554ef281b4b6567408694c6e36",
+  "mermaid_shipped_sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
+  "react_reference_commit": "95d82cacd6e9cc6a2fe6366d79510cc9133886cb",
+  "react_reference_license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "scope": "mapped KaTeX helper attribution only; other Mermaid nested code remains open"
+}

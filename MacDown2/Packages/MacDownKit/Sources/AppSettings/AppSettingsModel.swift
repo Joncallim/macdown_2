@@ -6,9 +6,9 @@ import Observation
 /// SwiftUI's environment — mirrors `Themes.ThemeController` and
 /// `FileTree.FileTreePreferences`.
 ///
-/// Every write goes straight to the backing store; there is no pending or
-/// staged state and no explicit "Apply" action (epic-13-implementation.md
-/// §7). Consumers read the published properties directly, so a change is
+/// Every write is offered to the backing store; unreadable persisted domains are
+/// protected from replacement and changes to them apply only to this session.
+/// There is no explicit "Apply" action. Consumers read the published properties directly, so a change is
 /// visible to every open tab/window the next time its SwiftUI body
 /// re-evaluates — no manual notification is needed.
 @MainActor
@@ -32,6 +32,11 @@ public final class AppSettingsModel {
 
     public var formats: FormatSettings {
         didSet { store.formats = formats }
+    }
+
+    /// The Settings window explains that changes to affected domains are session-only.
+    public var hasUnreadableSettings: Bool {
+        !store.unreadableDomains.isEmpty
     }
 
     private var store: any AppSettingsStoring

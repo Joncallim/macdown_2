@@ -57,7 +57,7 @@ struct HighlightingRestoreRepaintTests {
         editor.textView.insertText(small, replacementRange: NSRange(location: 0, length: editor.length))
         editor.textView.breakUndoCoalescing()
         let text = editor.textView.string
-        await editor.settle(.milliseconds(400)) // restore not yet due: still reduced
+        await editor.settle(.milliseconds(400)) // allow the 200 ms idle delay and queued styling to run
         let edits = editor.highlighter.gate.characterEditCount
 
         #expect(await editor.waitUntil { editor.mode == .full && editor.highlighter.repaintCount >= 1 })

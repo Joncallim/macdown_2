@@ -5,7 +5,7 @@ on:
     branches: [master]
     paths: ['MacDown2/**', '.github/workflows/ci.yml']
   pull_request:
-    branches: [master]
+    branches: [master, integration-final]
     paths: ['MacDown2/**', '.github/workflows/ci.yml']
   workflow_dispatch: {}  # allow manual re-runs from the Actions tab / gh CLI
 

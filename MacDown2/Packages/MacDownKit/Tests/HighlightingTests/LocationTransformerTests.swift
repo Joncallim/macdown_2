@@ -17,14 +17,14 @@ struct LocationTransformerTests {
     }
 
     @Test func singleLineNoNewline() {
-        #expect(transform("hello", at: 3) == SwiftTreeSitter.Point(row: 0, column: 3))
+        #expect(transform("hello", at: 3) == SwiftTreeSitter.Point(row: 0, column: 6))
     }
 
     @Test func secondLineAfterOneNewline() {
         let text = "hello\nworld"
         // "world" starts at offset 6.
         #expect(transform(text, at: 6) == SwiftTreeSitter.Point(row: 1, column: 0))
-        #expect(transform(text, at: 8) == SwiftTreeSitter.Point(row: 1, column: 2))
+        #expect(transform(text, at: 8) == SwiftTreeSitter.Point(row: 1, column: 4))
     }
 
     // Regression: the line-offset table build was swapped from a

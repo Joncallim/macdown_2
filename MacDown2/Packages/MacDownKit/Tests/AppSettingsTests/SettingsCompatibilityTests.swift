@@ -2,8 +2,9 @@
 import Foundation
 import Testing
 
-/// #53 SETTINGS-COMPAT: the pre-E22 editor blob (no `showsStatusBar`) must keep every valid user value, and anything
-/// this build cannot read must be retained verbatim and reported, never replaced by defaults.
+/// #53 SETTINGS-COMPAT: old readable values remain compatible, while unreadable primary values
+/// remain in place across ordinary writes. The first backup is retained for compatibility;
+/// migration/conversion and explicit recovery acceptance remain separate work.
 @MainActor
 struct SettingsCompatibilityTests {
     private static let editorKey = "appSettings.editor"
@@ -14,7 +15,7 @@ struct SettingsCompatibilityTests {
             Issue.record("no suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suite) }
+        defer { defaults.removePersistentDomain(forName: suite) }
         try body(defaults, UserDefaultsAppSettingsStore(defaults: defaults))
     }
 
@@ -59,10 +60,26 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func aPresentFalseStatusBarStaysFalse() {
+    @Test(arguments: [false, true])
+    func aPresentBooleanStatusBarKeepsItsValue(value: Bool) {
         isolated { defaults, store in
-            defaults.set(editorJSON(statusBar: "false"), forKey: Self.editorKey)
-            #expect(!store.editor.showsStatusBar)
+            let original = editorJSON(statusBar: String(value))
+            defaults.set(original, forKey: Self.editorKey)
+            #expect(store.editor.showsStatusBar == value)
+            #expect(store.unreadableDomains.isEmpty)
+            #expect(defaults.data(forKey: Self.editorKey) == original)
+        }
+    }
+
+    @Test(arguments: ["null", "0", "\"false\"", "[]", "{}"])
+    func aPresentMalformedStatusBarIsUnreadableNotAMissingField(value: String) {
+        isolated { defaults, store in
+            let invalid = editorJSON(statusBar: value)
+            defaults.set(invalid, forKey: Self.editorKey)
+
+            #expect(store.editor == .default, "malformed input uses only the session fallback")
+            #expect(store.unreadableDomains == [Self.editorKey])
+            #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading cannot rewrite malformed data")
         }
     }
 
@@ -79,8 +96,9 @@ struct SettingsCompatibilityTests {
             store.editor = EditorSettings(indentationWidth: 3)
 
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == original)
-            #expect(store.editor.indentationWidth == 3)
-            #expect(store.unreadableDomains.isEmpty)
+            #expect(defaults.data(forKey: Self.editorKey) == original)
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
         }
     }
 
@@ -144,7 +162,7 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func aNewerSchemaVersionIsKeptAndNotRewrittenByAnOlderBuild() {
+    @Test func aNewerSchemaVersionIsBackedUpBeforeAnOrdinarySaveReplacesIt() {
         isolated { defaults, store in
             var store = store
             let future = editorJSON(extra: "\"schemaVersion\":2,\"futureOnlyField\":\"keep me\"")
@@ -199,8 +217,9 @@ struct SettingsCompatibilityTests {
             #expect(defaults.data(forKey: Self.editorKey) == invalid, "loading never rewrites the invalid blob")
 
             store.editor = EditorSettings(indentationWidth: 5)
-            #expect(defaults.data(forKey: Self.editorKey) != invalid)
-            #expect(store.editor.indentationWidth == 5)
+            #expect(defaults.data(forKey: Self.editorKey) == invalid)
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == invalid)
         }
     }
@@ -234,16 +253,18 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func thePreservedCopyIsTheFirstUnreadableBlobAndRepeatedLaunchesAreIdempotent() {
+    @Test func theFirstUnreadableBlobIsKeptAndRepeatedReadsDoNotWrite() {
         isolated { defaults, store in
             var store = store
             let first = Data("not json".utf8)
             defaults.set(first, forKey: Self.editorKey)
-            store.editor = EditorSettings(indentationWidth: 2) // preserves `first`, writes valid data
-            defaults.set(Data("also not json".utf8), forKey: Self.editorKey) // a second unreadable generation
+            store.editor = EditorSettings(indentationWidth: 2) // preserves `first` without replacing the primary
+            let second = Data("also not json".utf8)
+            defaults.set(second, forKey: Self.editorKey) // a second unreadable generation
             store.editor = EditorSettings(indentationWidth: 3)
 
             #expect(store.preservedUnreadableData(forDomain: Self.editorKey) == first, "never overwritten once kept")
+            #expect(defaults.data(forKey: Self.editorKey) == second, "the second generation remains at the primary")
 
             // Repeated reads are stable and never write.
             let written = defaults.data(forKey: Self.editorKey)

@@ -10,7 +10,7 @@ struct LegacyPreferencesDetectorTests {
             Issue.record("Could not create test UserDefaults suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
         defaults.set(true, forKey: "someLegacyKey")
 
         #expect(LegacyPreferencesDetector.detect(suiteName: suiteName))
@@ -18,11 +18,11 @@ struct LegacyPreferencesDetectorTests {
 
     @Test func reportsFalseWhenTheSuiteExistsButIsEmpty() {
         let suiteName = UUID().uuidString
-        guard UserDefaults(suiteName: suiteName) != nil else {
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
             Issue.record("Could not create test UserDefaults suite")
             return
         }
-        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
 
         #expect(!LegacyPreferencesDetector.detect(suiteName: suiteName))
     }

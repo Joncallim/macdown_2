@@ -1,0 +1,11 @@
+{
+  "command": [
+    "swift",
+    "test",
+    "--no-parallel",
+    "--force-resolved-versions",
+    "--filter",
+    "aFailedDecodeReusesAnExplicitOpenCompletedDuringDetection"
+  ],
+  "exitCode": 1
+}

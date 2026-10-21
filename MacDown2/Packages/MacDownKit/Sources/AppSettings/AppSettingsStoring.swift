@@ -11,6 +11,15 @@ public protocol AppSettingsStoring: Sendable {
     var markdown: MarkdownSettings { get set }
     var previewExport: PreviewExportSettings { get set }
     var formats: FormatSettings { get set }
+    /// Present domains this build cannot read or safely replace. Changes to these domains
+    /// may apply to the session model, but must not overwrite their persisted originals.
+    var unreadableDomains: [String] { get }
+}
+
+public extension AppSettingsStoring {
+    var unreadableDomains: [String] {
+        []
+    }
 }
 
 /// Domain types that know their own default, so `UserDefaultsAppSettingsStore`

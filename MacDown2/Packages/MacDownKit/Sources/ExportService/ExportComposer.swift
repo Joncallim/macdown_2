@@ -63,7 +63,6 @@ enum ExportComposer {
         // path the HTML never points at.
         let assetsDirName = ExportHTMLWriter.assetsDirectoryName(for: primaryURL(of: target))
 
-        let sourceUTF16Length = request.text.utf16.count
         let parsed = try await parse(request: request, engine: engine)
         try Task.checkCancellation()
 

@@ -3,9 +3,337 @@ import Foundation
 import Testing
 @testable import TextFilters
 
+final class BlockingCancellationProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private let finishedGroup = DispatchGroup()
+    private var phases: [(TextFilterFixtures.CleanupPhase, ContinuousClock.Instant)] = []
+
+    init() {
+        finishedGroup.enter()
+    }
+
+    func record(_ phase: TextFilterFixtures.CleanupPhase) {
+        let instant = ContinuousClock.now
+        lock.lock()
+        phases.append((phase, instant))
+        lock.unlock()
+    }
+
+    func timeline(from start: ContinuousClock.Instant) -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        return phases.map { "\($0.0.rawValue)=\(start.duration(to: $0.1))" }.joined(separator: ", ")
+    }
+
+    func blockFor(_ duration: useconds_t) {
+        usleep(duration)
+        finishedGroup.leave()
+    }
+
+    func waitForFinished(timeout: DispatchTime) -> Bool {
+        finishedGroup.wait(timeout: timeout) == .success
+    }
+}
+
 // Ownership state, process identity and bounded teardown stay in one support
 // implementation so every fixture follows the same cleanup contract.
 // swiftlint:disable file_length
+
+/// Shared test clocks and barriers for deterministic cleanup deadline tests.
+final class CleanupManualInstant: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: ContinuousClock.Instant
+
+    init(_ value: ContinuousClock.Instant) {
+        self.value = value
+    }
+
+    var now: ContinuousClock.Instant {
+        lock.withLock { value }
+    }
+
+    func advance(by duration: Duration) {
+        lock.withLock { value = value.advanced(by: duration) }
+    }
+}
+
+actor CleanupDeadlineProbe {
+    private(set) var requestedDeadline: ContinuousClock.Instant?
+    private(set) var didReturn = false
+    private var releaseRequested = false
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func sleepUntil(_ deadline: ContinuousClock.Instant, now: ContinuousClock.Instant) async throws {
+        requestedDeadline = deadline
+        guard now < deadline else {
+            didReturn = true
+            return
+        }
+        await withCheckedContinuation { continuation in
+            if releaseRequested {
+                continuation.resume()
+            } else {
+                waiter = continuation
+            }
+        }
+        didReturn = true
+    }
+
+    func waitForRequest(timeout: Duration = .seconds(5)) async -> ContinuousClock.Instant? {
+        let clock = ContinuousClock()
+        let limit = clock.now.advanced(by: timeout)
+        while requestedDeadline == nil, clock.now < limit {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return requestedDeadline
+    }
+
+    func releaseSleep() {
+        releaseRequested = true
+        if let waiter {
+            waiter.resume()
+            self.waiter = nil
+        }
+    }
+
+    func waitForReturn(timeout: Duration = .seconds(5)) async -> Bool {
+        let clock = ContinuousClock()
+        let limit = clock.now.advanced(by: timeout)
+        while !didReturn, clock.now < limit {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return didReturn
+    }
+}
+
+final class CleanupWatchdogStartBarrier: @unchecked Sendable {
+    private let released = DispatchSemaphore(value: 0)
+    private let signal = CleanupWatchdogStartedSignal()
+
+    func pauseWatchdog() {
+        Task { await signal.markStarted() }
+        released.wait()
+    }
+
+    func waitUntilStarted(timeout: Duration = .seconds(5)) async -> Bool {
+        await signal.waitUntilStarted(timeout: timeout)
+    }
+
+    func release() {
+        released.signal()
+    }
+}
+
+private actor CleanupWatchdogStartedSignal {
+    private var started = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func markStarted() {
+        started = true
+        continuation?.resume()
+        continuation = nil
+    }
+
+    func waitUntilStarted(timeout: Duration) async -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while !started, clock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return started
+    }
+}
+
+actor CleanupControlledJoin {
+    private(set) var started = false
+    private var task: Task<FixtureCleanupJoinResult, Never>?
+    private var pendingResult: FixtureCleanupJoinResult?
+    private var releaseContinuation: CheckedContinuation<FixtureCleanupJoinResult, Never>?
+
+    func trackedJoin() async -> FixtureCleanupJoinResult {
+        let task = Task { await self.join() }
+        self.task = task
+        return await task.value
+    }
+
+    func taskHandle() -> Task<FixtureCleanupJoinResult, Never>? {
+        task
+    }
+
+    func join() async -> FixtureCleanupJoinResult {
+        await withCheckedContinuation { (continuation: CheckedContinuation<FixtureCleanupJoinResult, Never>) in
+            if let pendingResult {
+                self.pendingResult = nil
+                continuation.resume(returning: pendingResult)
+                started = true
+                return
+            }
+            releaseContinuation = continuation
+            started = true
+        }
+    }
+
+    func release(_ result: FixtureCleanupJoinResult = .completed(nil)) {
+        if let releaseContinuation {
+            releaseContinuation.resume(returning: result)
+            self.releaseContinuation = nil
+        } else {
+            pendingResult = result
+        }
+    }
+
+    func waitUntilStarted(timeout: Duration = .seconds(5)) async -> Bool {
+        if started {
+            return true
+        }
+        let clock = ContinuousClock()
+        let limit = clock.now.advanced(by: timeout)
+        while !started, clock.now < limit {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return started
+    }
+}
+
+actor CleanupDirectoryProbe {
+    private(set) var directory: URL?
+    private(set) var owner: TextFilterFixtures.TaskOwner?
+
+    func record(_ directory: URL, owner: TextFilterFixtures.TaskOwner) {
+        self.directory = directory
+        self.owner = owner
+    }
+}
+
+enum CleanupRunOutcome: Sendable, Equatable {
+    case completed
+    case timedOut(Duration)
+    case failed(String)
+
+    static func capture(_ operation: () async throws -> Void) async -> Self {
+        do {
+            try await operation()
+            return .completed
+        } catch let error as TextFilterFixtures.FixtureCleanupError {
+            if case let .cleanupTimedOut(_, timeout) = error {
+                return .timedOut(timeout)
+            }
+            return .failed(String(describing: error))
+        } catch {
+            return .failed(String(describing: error))
+        }
+    }
+}
+
+actor CleanupOutcomeProbe {
+    private var outcome: CleanupRunOutcome?
+
+    func record(_ outcome: CleanupRunOutcome) {
+        self.outcome = outcome
+    }
+
+    func wait(timeout: Duration = .seconds(5)) async -> CleanupRunOutcome? {
+        let clock = ContinuousClock()
+        let limit = clock.now.advanced(by: timeout)
+        while outcome == nil, clock.now < limit {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return outcome
+    }
+}
+
+final class CleanupWatchdogRun {
+    let base: ContinuousClock.Instant
+    let virtualNow: CleanupManualInstant
+    let deadlineProbe: CleanupDeadlineProbe
+    let startBarrier: CleanupWatchdogStartBarrier
+    let join: CleanupControlledJoin
+    let directoryProbe: CleanupDirectoryProbe
+    let outcome = CleanupOutcomeProbe()
+    let cleanupTask: Task<Void, Never>
+
+    init(timeout: Duration, delayWatchdogStart: Bool = false) {
+        let base = ContinuousClock.now
+        let virtualNow = CleanupManualInstant(base)
+        let deadlineProbe = CleanupDeadlineProbe()
+        let startBarrier = CleanupWatchdogStartBarrier()
+        let join = CleanupControlledJoin()
+        let directoryProbe = CleanupDirectoryProbe()
+        let observer: (@Sendable (TextFilterFixtures.CleanupPhase) -> Void)? = if delayWatchdogStart {
+            { phase in
+                if phase == .watchdogTaskStarted {
+                    startBarrier.pauseWatchdog()
+                }
+            }
+        } else {
+            nil
+        }
+        let sleepUntil: @Sendable (ContinuousClock.Instant) async throws -> Void = { deadline in
+            try await deadlineProbe.sleepUntil(deadline, now: virtualNow.now)
+        }
+
+        self.base = base
+        self.virtualNow = virtualNow
+        self.deadlineProbe = deadlineProbe
+        self.startBarrier = startBarrier
+        self.join = join
+        self.directoryProbe = directoryProbe
+        let outcome = outcome
+        cleanupTask = Task {
+            let result = await CleanupRunOutcome.capture {
+                try await TextFilterFixtures.withOwnedTemporaryDirectory(
+                    cleanupTimeout: timeout,
+                    cleanupObserver: observer,
+                    cleanupNow: { virtualNow.now },
+                    cleanupSleepUntil: sleepUntil,
+                    { directory, owner in
+                        await directoryProbe.record(directory, owner: owner)
+                        try await owner.registerCleanup(
+                            cancel: {},
+                            join: { await join.trackedJoin() }
+                        )
+                    }
+                )
+            }
+            await outcome.record(result)
+        }
+    }
+
+    /// Release every test-owned suspension even after a failed observation.
+    /// Join the actual work before removing a directory preserved on timeout.
+    func finish() async -> Bool? {
+        startBarrier.release()
+        await deadlineProbe.releaseSleep()
+        await join.release()
+        await cleanupTask.value
+        if let owner = await directoryProbe.owner {
+            let aggregate = await owner.cancelAllAndCreateJoinTask()
+            _ = await aggregate.value
+        } else {
+            Issue.record("cleanup did not retain its fixture owner")
+            return nil
+        }
+        if let task = await join.taskHandle() {
+            _ = await task.value
+        } else {
+            Issue.record("cleanup did not expose its owned join task")
+        }
+        #expect(await deadlineProbe.waitForReturn(), "the released watchdog sleep must finish")
+        guard let directory = await directoryProbe.directory else {
+            Issue.record("fixture directory was not recorded")
+            return nil
+        }
+        let preserved = FileManager.default.fileExists(atPath: directory.path)
+        if preserved {
+            do {
+                try FileManager.default.removeItem(at: directory)
+            } catch {
+                Issue.record("could not remove joined fixture: \(error)")
+            }
+        }
+        return preserved
+    }
+}
 
 private struct FixtureCleanupRecord: Sendable {
     let cancel: @Sendable () -> Void
@@ -363,12 +691,12 @@ extension TextFilterFixtures {
 }
 
 extension TextFilterFixtures {
-    private enum CleanupWaitResult: Sendable {
+    enum CleanupWaitResult: Sendable {
         case completed(FixtureCleanupReport)
         case timedOut
     }
 
-    private actor CleanupGate {
+    actor CleanupGate {
         private var result: CleanupWaitResult?
         private var continuation: CheckedContinuation<CleanupWaitResult, Never>?
 
@@ -430,11 +758,12 @@ extension TextFilterFixtures {
             cleanupRecords.append(FixtureCleanupRecord(cancel: cancel, join: join))
         }
 
-        /// Closes registration and cancels every owned resource synchronously
-        /// before starting any asynchronous joins. The returned unstructured
-        /// task joins all resources concurrently, so one resource waiting for
-        /// another to observe cancellation cannot block that other resource's
-        /// cancellation.
+        /// Closes registration and shares one task covering cancellation and
+        /// joining. Potentially blocking cancellation callbacks run serially
+        /// off the cooperative executor, so they cannot occupy the worker
+        /// needed by the cleanup watchdog. Every cancellation finishes before
+        /// the task starts concurrent joins; obtaining its handle does not
+        /// mean cancellation has finished.
         func cancelAllAndCreateJoinTask() -> Task<FixtureCleanupReport, Never> {
             if let joinTask {
                 return joinTask
@@ -443,12 +772,17 @@ extension TextFilterFixtures {
             let records = cleanupRecords
             cleanupRecords.removeAll()
 
-            for record in records {
-                record.cancel()
-            }
-
             let joinTask = Task.detached {
-                await withTaskGroup(of: FixtureCleanupJoinResult.self, returning: FixtureCleanupReport.self) { group in
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    DispatchQueue.global().async {
+                        for record in records {
+                            record.cancel()
+                        }
+                        continuation.resume()
+                    }
+                }
+                return await withTaskGroup(of: FixtureCleanupJoinResult.self,
+                                           returning: FixtureCleanupReport.self) { group in
                     for record in records {
                         group.addTask {
                             await record.join()
@@ -515,6 +849,13 @@ extension TextFilterFixtures {
     /// removed, preserving the fixture for late process I/O and callbacks.
     static func withOwnedTemporaryDirectory<T: Sendable>(
         cleanupTimeout: Duration = .seconds(5),
+        cleanupObserver: (@Sendable (CleanupPhase) -> Void)? = nil,
+        cleanupNow: @Sendable () -> ContinuousClock.Instant = { .now },
+        cleanupSleepUntil: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void = { deadline in
+            // The fixture's short watchdog should not opt into implementation-defined timer coalescing.
+            // This does not guarantee when a suspended task will resume on a loaded host.
+            try await ContinuousClock().sleep(until: deadline, tolerance: .zero)
+        },
         _ operation: (URL, TaskOwner) async throws -> T
     ) async throws -> T {
         let directory = try makeTemporaryDirectory()
@@ -527,15 +868,22 @@ extension TextFilterFixtures {
             bodyOutcome = .failure(error)
         }
 
+        let cleanupDeadline = cleanupNow().advanced(by: cleanupTimeout)
+        cleanupObserver?(.cancellationRequested)
         let cancellationAndJoinTask = Task.detached {
+            cleanupObserver?(.cancellationTaskStarted)
             let joinTask = await owner.cancelAllAndCreateJoinTask()
+            cleanupObserver?(.cleanupTaskAcquired)
             return await withTaskCancellationHandler(operation: {
                 await joinTask.value
             }, onCancel: {
                 joinTask.cancel()
             })
         }
-        let cleanupResult = await waitForCleanup(cancellationAndJoinTask, timeout: cleanupTimeout)
+        let cleanupResult = await waitForCleanup(
+            cancellationAndJoinTask, deadline: cleanupDeadline, sleepUntil: cleanupSleepUntil,
+            observer: cleanupObserver
+        )
         switch cleanupResult {
         case let .completed(report):
             if !report.unresolved.isEmpty {
@@ -592,20 +940,36 @@ extension TextFilterFixtures {
 }
 
 extension TextFilterFixtures {
+    enum CleanupPhase: String, Sendable {
+        case cancellationRequested
+        case cancellationTaskStarted
+        case cleanupTaskAcquired
+        case watchdogTaskStarted
+        case watchdogSleepReturned
+        case timeoutGateCompleted
+        case gateWaitReturned
+    }
+
     private static func waitForCleanup(
         _ joinTask: Task<FixtureCleanupReport, Never>,
-        timeout: Duration
+        deadline: ContinuousClock.Instant,
+        sleepUntil: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void,
+        observer: (@Sendable (CleanupPhase) -> Void)?
     ) async -> CleanupWaitResult {
         let gate = CleanupGate()
         let completionObserver = Task.detached {
             await gate.complete(.completed(joinTask.value))
         }
         let watchdog = Task.detached {
-            try? await Task.sleep(for: timeout)
+            observer?(.watchdogTaskStarted)
+            try? await sleepUntil(deadline)
+            observer?(.watchdogSleepReturned)
             guard !Task.isCancelled else { return }
             await gate.complete(.timedOut)
+            observer?(.timeoutGateCompleted)
         }
         let result = await gate.wait()
+        observer?(.gateWaitReturned)
         watchdog.cancel()
         completionObserver.cancel()
         if case .timedOut = result {

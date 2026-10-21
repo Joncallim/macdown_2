@@ -1,18 +1,16 @@
-viz-global.js is @viz-js/viz 3.30.0 (https://github.com/mdaines/viz-js),
-unmodified, vendored verbatim.
+viz-global.js is the unmodified dist/viz-global.js from @viz-js/viz 3.30.0.
+Its SHA-256 is c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab.
 
-The npm package's own `license` field says MIT (VIZJS-LICENSE.txt) — that
-covers the JavaScript wrapper Michael Daines wrote. The compiled artifact
-also embeds the real Graphviz C core compiled to WebAssembly. Graphviz
-itself is licensed under the Eclipse Public License 2.0
-(GRAPHVIZ-EPL-LICENSE.txt) — the viz-js project's own documentation
-states this directly ("since Viz.js is a derivative work, it is released
-under EPL too"), even though the npm `license` field alone does not
-surface it.
+The JavaScript wrapper is by Michael Daines under MIT (VIZJS-LICENSE.txt).
+The bundle embeds Graphviz 16.0.0 under EPL-2.0 (GRAPHVIZ-EPL-LICENSE.txt).
+The upstream build also statically links Expat 2.8.4 under MIT; its original
+COPYING text is included in the app's THIRD_PARTY_NOTICES.md.
 
-EPL-2.0 is weak, module-level copyleft: bundling this unmodified library
-inside a closed-source application does not require the application's
-own source to be disclosed, but EPL notices/attribution for the Graphviz
-portion must be carried — this file is that notice. See
-planning/epic-21-implementation.md §1.2 for the full research this
-NOTICE was written from.
+Viz.js source: https://github.com/mdaines/viz-js
+Revision: 99da545270e6e7b127a5c7ba65974b8a604a6358 (release-viz-3.30.0)
+Graphviz source: https://gitlab.com/graphviz/graphviz
+Expat source: https://github.com/libexpat/libexpat
+
+The matching upstream source archives and build records are documented in
+compliance/evidence/viz-js-3.30.0/. Public corresponding-source availability
+and final release-artifact verification remain separate release gates.

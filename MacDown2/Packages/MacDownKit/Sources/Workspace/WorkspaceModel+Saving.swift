@@ -104,6 +104,7 @@ public extension WorkspaceModel {
             if case FileStoreError.fileChangedDuringRead = error {
                 return await reconcileSaveConflict(
                     for: document,
+                    context: context,
                     isRetry: isRetry,
                     destinationPolicy: destinationPolicy,
                     encodingOverride: encodingOverride

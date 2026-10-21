@@ -1,0 +1,20 @@
+{
+  "utc": "2026-10-18T21:00:49.602117+00:00",
+  "head": "400d475caaae130cdce1f6de4c6904027e700827",
+  "status": "",
+  "processes": [
+    {
+      "pid": "35667",
+      "state": "S",
+      "command": "/Users/jonathanlim/Library/Application Support/Claude/claude-code/2.1.295/9d6405864fdc/claude.app/Contents/MacOS/claude",
+      "cwd": "p35667\nfcwd\nn/Users/jonathanlim/GitHub\n"
+    },
+    {
+      "pid": "86211",
+      "state": "S",
+      "command": "/Users/jonathanlim/Library/Application Support/Claude/claude-code/2.1.295/9d6405864fdc/claude.app/Contents/MacOS/claude",
+      "cwd": "p86211\nfcwd\nn/Users/jonathanlim/.Trash/GitHub-from-Documents-010230/macdown_2-slice7a\n"
+    }
+  ],
+  "disk": "Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk3s5   460Gi   410Gi    12Gi    98%    4.1M  129M    3%   /System/Volumes/Data\n"
+}

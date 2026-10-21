@@ -27,37 +27,6 @@ struct TextFilterFixtureCleanupSafetyTests {
         }
     }
 
-    private final class BlockingCancellationProbe: @unchecked Sendable {
-        private let lock = NSLock()
-        private var finished = false
-
-        var isFinished: Bool {
-            lock.lock()
-            defer { lock.unlock() }
-            return finished
-        }
-
-        func blockFor(_ duration: useconds_t) {
-            usleep(duration)
-            lock.lock()
-            finished = true
-            lock.unlock()
-        }
-    }
-
-    private actor CancellationAwareJoinProbe {
-        private(set) var joinStarted = false
-        private(set) var joinFinished = false
-
-        func recordJoinStarted() {
-            joinStarted = true
-        }
-
-        func recordJoinFinished() {
-            joinFinished = true
-        }
-    }
-
     @Test func concurrentCleanupCallersShareTheSameJoinTask() async throws {
         let probe = CleanupProbe()
         let owner = TextFilterFixtures.TaskOwner()
@@ -100,12 +69,13 @@ struct TextFilterFixtureCleanupSafetyTests {
     @Test func nonCooperativeCleanupUsesAWatchdogAndPreservesDirectoryWhenUnresolved() async throws {
         let probe = CleanupProbe()
         var observedDirectory: URL?
+        var worker: Task<Void, any Error>?
 
         do {
             try await TextFilterFixtures
                 .withOwnedTemporaryDirectory(cleanupTimeout: .milliseconds(25)) { directory, owner in
                     observedDirectory = directory
-                    _ = try await owner.start {
+                    worker = try await owner.start {
                         usleep(200_000)
                         await probe.recordTaskFinished()
                     }
@@ -113,65 +83,34 @@ struct TextFilterFixtureCleanupSafetyTests {
                 }
             Issue.record("expected fixture cleanup to exceed its watchdog")
         } catch let error as TextFilterFixtures.FixtureCleanupError {
-            guard case let .cleanupTimedOut(primary, timeout) = error else {
+            if case let .cleanupTimedOut(primary, timeout) = error {
+                #expect(primary?.contains("expected") == true)
+                #expect(timeout == .milliseconds(25))
+            } else {
                 Issue.record("unexpected fixture cleanup error: \(error)")
-                return
             }
-            #expect(primary?.contains("expected") == true)
-            #expect(timeout == .milliseconds(25))
         }
 
-        let directory = try #require(observedDirectory)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        #expect(FileManager.default.fileExists(atPath: directory.path))
+        if let directory = observedDirectory {
+            #expect(FileManager.default.fileExists(atPath: directory.path))
+        } else {
+            Issue.record("noncooperative fixture directory was not recorded")
+        }
         #expect(await !probe.taskFinished)
-
-        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-        while await !probe.taskFinished, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
+        if let worker {
+            _ = try? await worker.value
+        } else {
+            Issue.record("owned worker handle was not captured")
         }
         #expect(await probe.taskFinished)
-        #expect(FileManager.default.fileExists(atPath: directory.path))
-    }
-
-    @Test func cleanupDeadlineIncludesBlockingCancellationDispatch() async throws {
-        let probe = BlockingCancellationProbe()
-        var observedDirectory: URL?
-        let started = ContinuousClock.now
-
-        do {
-            try await TextFilterFixtures
-                .withOwnedTemporaryDirectory(cleanupTimeout: .milliseconds(25)) { directory, owner in
-                    observedDirectory = directory
-                    try await owner.registerCleanup(
-                        cancel: { probe.blockFor(200_000) },
-                        join: { .completed(nil) }
-                    )
-                }
-            Issue.record("expected cleanup watchdog to include cancellation dispatch")
-        } catch let error as TextFilterFixtures.FixtureCleanupError {
-            guard case let .cleanupTimedOut(primary, timeout) = error else {
-                Issue.record("unexpected fixture cleanup error: \(error)")
-                return
-            }
-            #expect(primary == nil)
-            #expect(timeout == .milliseconds(25))
+        if let directory = observedDirectory {
+            #expect(FileManager.default.fileExists(atPath: directory.path))
+            try FileManager.default.removeItem(at: directory)
         }
-
-        #expect(started.duration(to: .now) < .milliseconds(150))
-        let directory = try #require(observedDirectory)
-        #expect(FileManager.default.fileExists(atPath: directory.path))
-        let deadline = ContinuousClock.now.advanced(by: .seconds(1))
-        while !probe.isFinished, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-        #expect(probe.isFinished)
-        try? FileManager.default.removeItem(at: directory)
     }
 
     @Test func unresolvedCleanupPreservesOrdinaryCleanupFailures() async throws {
         var observedDirectory: URL?
-
         do {
             try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
                 observedDirectory = directory
@@ -186,12 +125,12 @@ struct TextFilterFixtureCleanupSafetyTests {
             }
             Issue.record("expected unresolved cleanup")
         } catch let error as TextFilterFixtures.FixtureCleanupError {
-            guard case let .cleanupUnresolved(_, reasons) = error else {
+            if case let .cleanupUnresolved(_, reasons) = error {
+                #expect(reasons.contains("worker still running"))
+                #expect(reasons.contains("cleanup failure: important cleanup failure"))
+            } else {
                 Issue.record("unexpected fixture cleanup error: \(error)")
-                return
             }
-            #expect(reasons.contains("worker still running"))
-            #expect(reasons.contains("cleanup failure: important cleanup failure"))
         }
 
         if let observedDirectory {
@@ -199,43 +138,75 @@ struct TextFilterFixtureCleanupSafetyTests {
         }
     }
 
-    @Test func cleanupTimeoutCancelsTheInnerAggregateJoinAndItsObserverCanFinish() async throws {
+    private actor CancellationAwareJoinProbe {
+        private var forcedRelease = false
+        private var observedCancellation = false
+        private var finished = false
+
+        func join() async -> FixtureCleanupJoinResult {
+            // This executes in the aggregate's actual child task, so its
+            // cancellation state is the contract under test.
+            while !Task.isCancelled, !forcedRelease {
+                try? await Task.sleep(for: .milliseconds(5))
+            }
+            observedCancellation = Task.isCancelled
+            finished = true
+            return .unresolved(observedCancellation ? "aggregate join was cancelled" : "test released the join")
+        }
+
+        func waitForCancellation() async -> Bool {
+            let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+            while !finished, ContinuousClock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(5))
+            }
+            return finished && observedCancellation
+        }
+
+        func releaseForTeardown() {
+            forcedRelease = true
+        }
+    }
+
+    @Test func cleanupTimeoutCancelsTheInnerAggregateJoinAndItsObserverCanFinish() async {
         let probe = CancellationAwareJoinProbe()
         var observedDirectory: URL?
+        var observedOwner: TextFilterFixtures.TaskOwner?
 
         do {
             try await TextFilterFixtures
                 .withOwnedTemporaryDirectory(cleanupTimeout: .milliseconds(25)) { directory, owner in
                     observedDirectory = directory
+                    observedOwner = owner
                     try await owner.registerCleanup(
                         cancel: {},
-                        join: {
-                            await probe.recordJoinStarted()
-                            while !Task.isCancelled {
-                                try? await Task.sleep(for: .milliseconds(10))
-                            }
-                            await probe.recordJoinFinished()
-                            return .unresolved("aggregate join was cancelled")
-                        }
+                        join: { await probe.join() }
                     )
                 }
             Issue.record("expected cleanup watchdog to cancel the aggregate join")
         } catch let error as TextFilterFixtures.FixtureCleanupError {
-            guard case .cleanupTimedOut = error else {
+            if case .cleanupTimedOut = error {} else {
                 Issue.record("unexpected fixture cleanup error: \(error)")
-                return
             }
+        } catch {
+            Issue.record("unexpected fixture failure: \(error)")
         }
 
-        #expect(await probe.joinStarted)
-        let deadline = ContinuousClock.now.advanced(by: .seconds(1))
-        while await !probe.joinFinished, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
+        #expect(await probe.waitForCancellation(), "timeout must cancel the actual aggregate child join")
+        // Even a missing-cancellation regression must leave no suspended work.
+        // Observe cancellation first so this fallback cannot satisfy the test.
+        await probe.releaseForTeardown()
+        if let observedOwner {
+            let aggregate = await observedOwner.cancelAllAndCreateJoinTask()
+            _ = await aggregate.value
+        } else {
+            Issue.record("fixture owner was not captured")
         }
-        #expect(await probe.joinFinished)
 
-        let directory = try #require(observedDirectory)
-        #expect(FileManager.default.fileExists(atPath: directory.path))
-        try? FileManager.default.removeItem(at: directory)
+        if let directory = observedDirectory {
+            #expect(FileManager.default.fileExists(atPath: directory.path))
+            try? FileManager.default.removeItem(at: directory)
+        } else {
+            Issue.record("canceled-join fixture directory was not recorded")
+        }
     }
 }

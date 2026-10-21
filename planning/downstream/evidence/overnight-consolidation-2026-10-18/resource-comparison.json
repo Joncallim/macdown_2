@@ -1,0 +1,82 @@
+{
+  "head": "400d475caaae130cdce1f6de4c6904027e700827",
+  "artifact": "/Users/jonathanlim/GitHub/_cleanup-archive/overnight-consolidation-400d475c-2026-10-18/DerivedData/Build/Products/Release/MacDown2.app",
+  "files": 167,
+  "compared_resources": {
+    "Contents/Resources/LICENSE": {
+      "bytes": 1368,
+      "sha256": "d6469c902a56daa3dd8f075486621f2e061d511d398d4a87f7e6dc84cb9f0d78",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Asana-Math.otf": {
+      "bytes": 433528,
+      "sha256": "b0d9e681c08ff1f4dc6ebf085cc962585ec12cdbd25dc6225890b9f8fd12d568",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Euler-Math.otf": {
+      "bytes": 428792,
+      "sha256": "bd07fef1faecea7fa4a89256e4e06ef94b19e23b1785db6e420229fda37c2efb",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/FiraMath-Regular.otf": {
+      "bytes": 179840,
+      "sha256": "2028cbd3dd4d8c0cf1608520eb4759956a83a67931d7b6d8e7c313520186e35b",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/Garamond-Math.otf": {
+      "bytes": 823988,
+      "sha256": "c6161377e97084152b948f62abe874cbe27405938956346b54a4c6488a5009f1",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/KpMath-Light.otf": {
+      "bytes": 451008,
+      "sha256": "aa6713ae76838a7db9eefe4f503b963dad50df77555ff67a50b72eb832221660",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/KpMath-Sans.otf": {
+      "bytes": 293084,
+      "sha256": "a9e82575a514f10ceed193d393bf2ea6ac82980ce7eb8c81be085df159a8c253",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/LeteSansMath.otf": {
+      "bytes": 440268,
+      "sha256": "b9242115e4d41b9ccbe179340d4ddaf5598863389a23677eefb87e8950781313",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/LibertinusMath-Regular.otf": {
+      "bytes": 588848,
+      "sha256": "e81bd44acbb7119c8f00128b36fecc5d980e10d2450a226ba52402ccf4da9d32",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/NotoSansMath-Regular.otf": {
+      "bytes": 498408,
+      "sha256": "9dda7e17fa67b7e34083798f56faf5e53ac524456e730ead35c2957e4397ca28",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/latinmodern-math.otf": {
+      "bytes": 733736,
+      "sha256": "6075562b771f8b82f0c179e363389684f2dd09de30038269e2628e504bd7be0f",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/texgyretermes-math.otf": {
+      "bytes": 532404,
+      "sha256": "e5ce42b4fe826b7ea4c0874359decf0b294439355c511a4794107a9924e2cd5a",
+      "matches_previous": true
+    },
+    "Contents/Resources/swiftui-math_SwiftUIMath.bundle/Contents/Resources/mathFonts.bundle/xits-math.otf": {
+      "bytes": 538696,
+      "sha256": "d76666cb2dc222b4a811db96c41cc1853988b91008ec44a194126b4e010a5c6c",
+      "matches_previous": true
+    },
+    "Contents/Resources/textual_Textual.bundle/Contents/Resources/prism-bundle.js": {
+      "bytes": 138163,
+      "sha256": "22b70192dc9d73377b5b8fe2c85655c7e3218afd37b65db638b4e168c4bacbf5",
+      "matches_previous": true
+    },
+    "Contents/Resources/THIRD_PARTY_NOTICES.md": {
+      "bytes": 158472,
+      "sha256": "2e0f032cf971b0b5b9befae297e026941ecb241023b5f338ad081a9f6b1d8867",
+      "matches_previous": true
+    }
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "created_utc": "2026-10-18T20:37:31.913211+00:00",
+  "raw_root": "/Users/jonathanlim/GitHub/_cleanup-archive/preview-grants-fonts-aaec0728-2026-10-18",
+  "coverage": "Top-level raw evidence files at this snapshot. Extracted source directories are represented by archived source digests. Final clean-checkpoint provenance is written separately after commit.",
+  "files": {
+    "baseline-release.log": {
+      "bytes": 1925,
+      "sha256": "0d6822d8318b7e53ae435442aa10f8a88d266edcc5906f855a173e8b36081c80"
+    },
+    "baseline-source.log": {
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    "baseline-source.tar": {
+      "bytes": 76001280,
+      "sha256": "5dd6b35ce815e48d7cededc24beb5dde948f0343806c4a828a31191387fd9f62"
+    },
+    "baseline-unsigned-artifact-compliance.log": {
+      "bytes": 329,
+      "sha256": "92e9a21ed88b27b3fa715ac46a717d2ac2732110f31376b7dc5a58780c864fe7"
+    },
+    "baseline-validation.json": {
+      "bytes": 508,
+      "sha256": "890b23c3f803884aad7947b970bbc7bfe581fbd4f96a0b9d7bfe453a0c00e15a"
+    },
+    "check-final-checkpoint.py": {
+      "bytes": 4317,
+      "sha256": "f99fa00f0c8e9a99e1022281de680550b71fb5d8d0e6449964cb9d39ac2d1d89"
+    },
+    "complete-artifact-evidence.py": {
+      "bytes": 3547,
+      "sha256": "555aafdefcff9791eb554fb2fa946949777c16147d751fa4241da67c9c9ab2a8"
+    },
+    "compliance-regressions-unsandboxed.log": {
+      "bytes": 5550,
+      "sha256": "b67d41de2125a1d8d5426f3e83aaac226500817ec47852175d36bc91d3fdba3b"
+    },
+    "compliance-regressions.log": {
+      "bytes": 13624,
+      "sha256": "f31c24e1c115eacef4c8d0fb453d1cfe283044c6342dba6c2ead653e0214de02"
+    },
+    "continue-font-validation.py": {
+      "bytes": 4576,
+      "sha256": "73cb495645eb73d1bd842414adc2da4f88215e7f0cd5efece7aa31381d3338e3"
+    },
+    "continued-validation.json": {
+      "bytes": 43771,
+      "sha256": "8a0ee483cc07353f951b0fda6739d448635de07ac067caa166ff879561d81ff2"
+    },
+    "diff-check.log": {
+      "bytes": 86,
+      "sha256": "a763b9a2f6bdd4636c9a04f49d41f00013e3bf783ece83aa2bd02acc959087fc"
+    },
+    "documentation-diff-check.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "final-validation.json": {
+      "bytes": 52534,
+      "sha256": "4916709434d63b338bec34bb8e94944e684d83567650f1ad200ba8070ef9e85e"
+    },
+    "font-decision-source.json": {
+      "bytes": 15468,
+      "sha256": "61e8714185842247f41bb3984238197bacb3a783b5afa724e393958b8d8f47bd"
+    },
+    "independent-final-review.txt": {
+      "bytes": 1282,
+      "sha256": "12fe52d4c727db221a5df813bf301f79cc55c8b99cbcb53f2d9f45ef0d95fd4f"
+    },
+    "pins-match.log": {
+      "bytes": 66,
+      "sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c"
+    },
+    "precommit-release.log": {
+      "bytes": 1460,
+      "sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522"
+    },
+    "precommit-validation.json": {
+      "bytes": 1655,
+      "sha256": "e90aafa51ff7441f606058201615276d119403a16134a20a55a66e94c7f033e1"
+    },
+    "regenerate-notices.log": {
+      "bytes": 50,
+      "sha256": "916a4698d9177a9597cb4fc51950f9842bb6a71ce740a0f2540b4a8bb51d77a1"
+    },
+    "regenerate-sbom.log": {
+      "bytes": 41,
+      "sha256": "a2d24371d17e6c6f1296277ca983dce9065ade847908059bfd7be20d4458cf2a"
+    },
+    "release-preflight.log": {
+      "bytes": 1460,
+      "sha256": "97b9592711686cb337643d6dc667839190032c3af41be62dfc6dd87f20ef9522"
+    },
+    "source-compliance.log": {
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    "source-e14b677d85044dcfd4db141b87b24bc15a08dd34.tar": {
+      "bytes": 76021760,
+      "sha256": "f3ff5c75b4dd3c1d39c43305942cb0e7b582a56ee86f5f8c8a90fd7bf56d3b97"
+    },
+    "unchanged-product-and-checker.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "unsigned-artifact-compliance.log": {
+      "bytes": 329,
+      "sha256": "92e9a21ed88b27b3fa715ac46a717d2ac2732110f31376b7dc5a58780c864fe7"
+    },
+    "unsigned-artifact-release-preflight.log": {
+      "bytes": 1752,
+      "sha256": "4131d63dddf7890b85897c1152aa87b6b5bb827d98001496a9267c731492d71c"
+    },
+    "validate-font-decision.py": {
+      "bytes": 6115,
+      "sha256": "5823e78851cd98d0fd88851d14268b833fac76e69238ae06d54651c081ff85c9"
+    },
+    "validation.json": {
+      "bytes": 5385,
+      "sha256": "66eebb906d992253d58bd84714b39c8aba21fe7abddbae11d4ef300b1da93ff9"
+    }
+  },
+  "repository_evidence": {
+    "INDEPENDENT_REVIEW.md": {
+      "bytes": 2032,
+      "sha256": "db609147da1e3abaa8513598198a5c1135faabcc08019095108dc2d1eb26ee71"
+    },
+    "README.md": {
+      "bytes": 6104,
+      "sha256": "b474e0b38c5e7c4d47b5b5642366ca7d093af201a6d071f8904f26acd7be8485"
+    },
+    "artifact-files.json": {
+      "bytes": 33407,
+      "sha256": "dc0e34444eb80e76e3e8ab230a1f3252c7472dfee29d827cdbbf84aa65255d2c"
+    },
+    "decision-source.json": {
+      "bytes": 3549,
+      "sha256": "78fc6f3d0919a782cc14c8acd3c394334fb0f3bf658d3fe04897e7517a170323"
+    },
+    "validation.json": {
+      "bytes": 18420,
+      "sha256": "6a975657a4e19137d800287fe1a183c09928f0289d0633cbee6836e1afacb4e0"
+    }
+  }
+}

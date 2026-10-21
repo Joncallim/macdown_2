@@ -1,12 +1,12 @@
 {
-  "originHash" : "7c4c3d9c078ff79fa4fc477579c58e0600ce5e1813815dd3dca8e477074edaaa",
+  "originHash" : "66cf1e68ff9a68c6d0eebd8f74b05d840cd1e9f9cc90543c460b89773f598a87",
   "pins" : [
     {
       "identity" : "neon",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ChimeHQ/Neon",
+      "location" : "https://github.com/Joncallim/Neon",
       "state" : {
-        "revision" : "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"
+        "revision" : "dabf50c947148c49acd0d321dfe8f3805d10b3da"
       }
     },
     {
@@ -66,10 +66,9 @@
     {
       "identity" : "textual",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/gonzalezreal/textual",
+      "location" : "https://github.com/Joncallim/textual",
       "state" : {
-        "revision" : "01b51875a5406eefc95f52a058cb059e7bc94dc4",
-        "version" : "0.5.0"
+        "revision" : "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6"
       }
     },
     {

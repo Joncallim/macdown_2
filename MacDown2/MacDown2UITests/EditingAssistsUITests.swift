@@ -8,7 +8,7 @@ final class EditingAssistsUITests: XCTestCase {
     private var sessionDir: URL!
     private var fixturesDir: URL!
 
-    override func setUp() {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
 
@@ -33,7 +33,7 @@ final class EditingAssistsUITests: XCTestCase {
         ]
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         app.terminate()
         try? FileManager.default.removeItem(at: sessionDir)
         try? FileManager.default.removeItem(at: fixturesDir)

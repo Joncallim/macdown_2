@@ -1,0 +1,159 @@
+{
+  "scope": "Already observed in earlier validation, not proof of a new leak or comparable trend. No tests rerun.",
+  "records": [
+    {
+      "log": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-validation-60f779fc-2026-10-18/final-f9f9926f/app-target-tests.log",
+      "log_sha256": "39e46f2ee89c2edad0bdef336fe928cf96b4d482e3100b9a99a4ffa2269ea611",
+      "command_record": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-validation-60f779fc-2026-10-18/final-f9f9926f/app-target-tests.json",
+      "command_record_sha256": "6f0c541d1ac33e7c60b8648292395282a92fdd39bef68c4f9cb29f4fab70c139",
+      "warnings": [
+        {
+          "line": 1268,
+          "text": "2026-10-19 01:17:24.092875+0800 MacDown2[42257:50279442] [Window] WARNING: NSWindow has detected an excessive live window count of 101. Window <MacDown2.DocumentWindow: 0xc4695e080> windowNumber=22a2c created after passing the threshold of 100. This window is not necessarily the cause, and this warning will only be shown once per window class. ("
+        },
+        {
+          "line": 1341,
+          "text": "2026-10-19 01:19:08.093287+0800 MacDown2[42257:50279442] [Window] WARNING: NSWindow has detected an excessive live window count of 107. Window <_NSAlertPanel: 0xc45c86f80> windowNumber=ffffffffffffffff created after passing the threshold of 100. This window is not necessarily the cause, and this warning will only be shown once per window class. ("
+        }
+      ],
+      "command_metadata": {
+        "name": "app-target-tests",
+        "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+        "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+        "command": [
+          "xcodebuild",
+          "-project",
+          "MacDown2/MacDown2.xcodeproj",
+          "-scheme",
+          "MacDown2",
+          "-destination",
+          "platform=macOS",
+          "-onlyUsePackageVersionsFromResolvedFile",
+          "-enableCodeCoverage",
+          "NO",
+          "-parallel-testing-enabled",
+          "NO",
+          "-only-testing:MacDown2Tests",
+          "CODE_SIGNING_ALLOWED=NO",
+          "CODE_SIGNING_REQUIRED=NO",
+          "test-without-building"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T17:16:42.044132+00:00",
+        "load_before": "1:16  up 19 days, 52 mins, 2 users, load averages: 11.61 7.36 6.84",
+        "exit_code": 0,
+        "elapsed_seconds": 174.893,
+        "finished_utc": "2026-10-18T17:19:36.944921+00:00",
+        "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+        "git_status_after": "",
+        "load_after": "1:19  up 19 days, 55 mins, 2 users, load averages: 5.65 6.47 6.57"
+      }
+    },
+    {
+      "log": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-followup-272933c4-2026-10-18/final-95c3d25f/app-target-tests.log",
+      "log_sha256": "bffd3486845f362a8776c61f786e0b680dcbd88a6e7845de0e68b0e1a8f69058",
+      "command_record": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-followup-272933c4-2026-10-18/final-95c3d25f/app-target-tests.json",
+      "command_record_sha256": "5cc8e9294bca49c6200d9c3aee1cbae61f3044530922cc6a3af653d80aeeb868",
+      "warnings": [
+        {
+          "line": 1273,
+          "text": "2026-10-19 01:54:54.029100+0800 MacDown2[56278:50405853] [Window] WARNING: NSWindow has detected an excessive live window count of 101. Window <MacDown2.DocumentWindow: 0xa5d798000> windowNumber=22c68 created after passing the threshold of 100. This window is not necessarily the cause, and this warning will only be shown once per window class. ("
+        },
+        {
+          "line": 1344,
+          "text": "2026-10-19 01:54:55.325744+0800 MacDown2[56278:50405853] [Window] WARNING: NSWindow has detected an excessive live window count of 104. Window <_NSAlertPanel: 0xa5c64de00> windowNumber=ffffffffffffffff created after passing the threshold of 100. This window is not necessarily the cause, and this warning will only be shown once per window class. ("
+        }
+      ],
+      "command_metadata": {
+        "name": "app-target-tests",
+        "head": "95c3d25f8adb44aba709f2818400cb90941d2a7e",
+        "tree": "c2b212eeea35611f0d122f019857c7fd44098d9b",
+        "command": [
+          "xcodebuild",
+          "-derivedDataPath",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/astra-followup-272933c4-2026-10-18/final-95c3d25f/DerivedData",
+          "-clonedSourcePackagesDirPath",
+          "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+          "-project",
+          "MacDown2/MacDown2.xcodeproj",
+          "-scheme",
+          "MacDown2",
+          "-destination",
+          "platform=macOS",
+          "-onlyUsePackageVersionsFromResolvedFile",
+          "-enableCodeCoverage",
+          "NO",
+          "-parallel-testing-enabled",
+          "NO",
+          "-only-testing:MacDown2Tests",
+          "CODE_SIGNING_ALLOWED=NO",
+          "CODE_SIGNING_REQUIRED=NO",
+          "test-without-building"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T17:53:45.091798+00:00",
+        "load_before": "1:53  up 19 days,  1:29, 2 users, load averages: 23.03 13.59 9.01",
+        "exit_code": 0,
+        "elapsed_seconds": 93.989,
+        "finished_utc": "2026-10-18T17:55:19.087983+00:00",
+        "head_after": "95c3d25f8adb44aba709f2818400cb90941d2a7e",
+        "git_status_after": "",
+        "load_after": "1:55  up 19 days,  1:31, 2 users, load averages: 12.33 12.97 9.29"
+      }
+    },
+    {
+      "log": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-followup-272933c4-2026-10-18/final-0b85e6f0/scoped-compiler-policy/app-target-tests.log",
+      "log_sha256": "e46287d2dc7e113938c52574281a1b2c83c319b2ad546a1c868443aa3da5cbda",
+      "command_record": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-followup-272933c4-2026-10-18/final-0b85e6f0/scoped-compiler-policy/app-target-tests.json",
+      "command_record_sha256": "045119bcd00560ef2b65ad1273560d07c671a842c8f31be4de2cfc7e3e7d5e10",
+      "warnings": [
+        {
+          "line": 1286,
+          "text": "2026-10-19 02:02:02.071066+0800 MacDown2[60233:50438056] [Window] WARNING: NSWindow has detected an excessive live window count of 101. Window <MacDown2.DocumentWindow: 0xbc6c64a00> windowNumber=22d18 created after passing the threshold of 100. This window is not necessarily the cause, and this warning will only be shown once per window class. ("
+        },
+        {
+          "line": 1351,
+          "text": "2026-10-19 02:02:02.872900+0800 MacDown2[60233:50438056] [Window] WARNING: NSWindow has detected an excessive live window count of 102. Window <_NSAlertPanel: 0xbc663ea80> windowNumber=ffffffffffffffff created after passing the threshold of 100. This window is not necessarily the cause, and this warning will only be shown once per window class. ("
+        }
+      ],
+      "command_metadata": {
+        "name": "app-target-tests",
+        "head": "0b85e6f09dc3bba82a0da3b15f1583b3263fcb74",
+        "tree": "c1ae686117edc72624ec7b4254cc9b1915842b20",
+        "command": [
+          "xcodebuild",
+          "-derivedDataPath",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/astra-followup-272933c4-2026-10-18/final-95c3d25f/DerivedData",
+          "-xcconfig",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/astra-followup-272933c4-2026-10-18/final-0b85e6f0/scoped-compiler-policy/FirstPartyWarnings.xcconfig",
+          "-clonedSourcePackagesDirPath",
+          "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+          "-project",
+          "MacDown2/MacDown2.xcodeproj",
+          "-scheme",
+          "MacDown2",
+          "-destination",
+          "platform=macOS",
+          "-onlyUsePackageVersionsFromResolvedFile",
+          "-enableCodeCoverage",
+          "NO",
+          "-parallel-testing-enabled",
+          "NO",
+          "-only-testing:MacDown2Tests",
+          "CODE_SIGNING_ALLOWED=NO",
+          "CODE_SIGNING_REQUIRED=NO",
+          "test-without-building"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T18:01:20.340606+00:00",
+        "load_before": "2:01  up 19 days,  1:37, 2 users, load averages: 11.84 9.74 8.76",
+        "exit_code": 0,
+        "elapsed_seconds": 64.26,
+        "finished_utc": "2026-10-18T18:02:24.604288+00:00",
+        "head_after": "0b85e6f09dc3bba82a0da3b15f1583b3263fcb74",
+        "git_status_after": "",
+        "load_after": "2:02  up 19 days,  1:38, 2 users, load averages: 7.43 8.91 8.53"
+      }
+    }
+  ]
+}

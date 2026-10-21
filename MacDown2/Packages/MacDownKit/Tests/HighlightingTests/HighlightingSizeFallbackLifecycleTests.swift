@@ -92,14 +92,14 @@ struct HighlightingSizeFallbackLifecycleTests {
         #expect(editor.isPlain)
     }
 
-    @Test func teardownLeavesPlainPresentationAndIntactContentUndoSelectionAndDelegate() async {
+    @Test func teardownLeavesPlainPresentationAndIntactContentUndoSelectionAndDelegate() async throws {
         let system = EditorTextSystem(
             identity: "teardown",
             initialText: Fixtures.markdown(units: 4000),
             configuration: .default
         )
-        let storage = try? #require(system.textView.textStorage)
-        #expect(storage?.delegate == nil)
+        let storage = try #require(system.textView.textStorage)
+        #expect(storage.delegate == nil)
         let highlighter = NeonSyntaxHighlighter(
             textSystem: system, languageID: "markdown", theme: BundledThemes.light,
             registry: GrammarRegistry(), sizePolicy: Fixtures.markdownOnly
@@ -112,7 +112,7 @@ struct HighlightingSizeFallbackLifecycleTests {
         try? await Task.sleep(for: .milliseconds(300))
 
         highlighter.tearDown()
-        #expect(storage?.delegate == nil, "the delegate slot is handed back")
+        #expect(storage.delegate == nil, "the delegate slot is handed back")
         #expect(system.text == text)
         #expect(system.textView.selectedRange() == NSRange(location: 40, length: 12))
         let probe = HighlightedEditorProbe(textView: system.textView)

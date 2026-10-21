@@ -1,0 +1,1578 @@
+{
+  "captured_utc": "2026-10-18T18:49:09.428633+00:00",
+  "root": "/Users/jonathanlim/GitHub/_cleanup-archive/mermaid-148-40b25974-2026-10-18",
+  "excluded": [
+    "validated-source-* extracted source trees",
+    "source-*.tar (hashes in corresponding validation records)",
+    "__pycache__",
+    "evidence-manifest.json itself",
+    "final-checkpoint-provenance.json (written after final commit)"
+  ],
+  "files": [
+    {
+      "path": "LICENSE",
+      "bytes": 1089,
+      "sha256": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80"
+    },
+    {
+      "path": "analyze-sources.py",
+      "bytes": 7457,
+      "sha256": "75c78ea67d9d26efb5978144979538a61c4f438ea551d3549c1598c800937285"
+    },
+    {
+      "path": "audit-plan.md",
+      "bytes": 1889,
+      "sha256": "8bc34b2af0cad1d5ca2a9f9a9c8e3ac7babe2b050e4ef2d9f3e7f2866fa5af08"
+    },
+    {
+      "path": "candidate-validation.json",
+      "bytes": 2557,
+      "sha256": "dedb9539b21a648715048a0318478e9fa2e635beeadba2bfa6ac25545763c5d7"
+    },
+    {
+      "path": "captured-licenses/braintree__sanitize-url@7.1.2--LICENSE",
+      "bytes": 1066,
+      "sha256": "0984740e0c3d725c8044dec7edcefe1dbce180ef5a7bc710c251e19607000158"
+    },
+    {
+      "path": "captured-licenses/chevrotain-allstar@0.3.1--LICENSE",
+      "bytes": 1068,
+      "sha256": "1db2cfbc7ce5fa3b82699b4ac4badce8984084d25b5308ece00f5c9b1381a0a5"
+    },
+    {
+      "path": "captured-licenses/chevrotain@11.1.2--LICENSE.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "captured-licenses/chevrotain__gast@11.1.2--LICENSE.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "captured-licenses/chevrotain__regexp-to-ast@11.1.2--LICENSE.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "captured-licenses/chevrotain__utils@11.1.2--LICENSE.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "captured-licenses/cose-base@1.0.3--LICENSE",
+      "bytes": 1081,
+      "sha256": "5fb3cf4a14c3c5af6e473a192df8bca10c77754e3a0c6492c79fb92a76a5478a"
+    },
+    {
+      "path": "captured-licenses/cose-base@2.2.0--LICENSE",
+      "bytes": 1081,
+      "sha256": "5fb3cf4a14c3c5af6e473a192df8bca10c77754e3a0c6492c79fb92a76a5478a"
+    },
+    {
+      "path": "captured-licenses/cytoscape-cose-bilkent@4.1.0--LICENSE",
+      "bytes": 1084,
+      "sha256": "440fc58a56a12814e417d2b341da89b050da052dc75bdb235607d37ec5fe74ef"
+    },
+    {
+      "path": "captured-licenses/cytoscape-fcose@2.2.0--LICENSE",
+      "bytes": 1079,
+      "sha256": "2837634f403949215760fcdd2fa1ed0c64875d02099ecc8318c704b852f1421d"
+    },
+    {
+      "path": "captured-licenses/cytoscape@3.34.0--LICENSE",
+      "bytes": 1082,
+      "sha256": "eb319c6e6f233607f71e8e2f450391751883cfc0eeb3ca7ef574c13d1d9c2203"
+    },
+    {
+      "path": "captured-licenses/cytoscape@3.34.0--license-update.mjs",
+      "bytes": 1416,
+      "sha256": "4a5a644717fc90d678e8fbbc537a08452d0566726710eef47b196abd6363e635"
+    },
+    {
+      "path": "captured-licenses/d3-array@2.12.1--LICENSE",
+      "bytes": 1475,
+      "sha256": "0747bebeb06b10954913149be9b9a8bdf6fad3e6fdcbd9f9524e7a94c13d2cea"
+    },
+    {
+      "path": "captured-licenses/d3-array@3.2.4--LICENSE",
+      "bytes": 731,
+      "sha256": "3e6849627f74ff73c257a3ae1efb574015d94fc1035c05ec3c15805165efcbc4"
+    },
+    {
+      "path": "captured-licenses/d3-axis@3.0.0--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-brush@3.0.0--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-chord@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-color@3.1.0--LICENSE",
+      "bytes": 731,
+      "sha256": "faa682e3e430941f958d26180458f5934a62f58dac4d70ccdd15608c15d0f884"
+    },
+    {
+      "path": "captured-licenses/d3-contour@4.0.2--LICENSE",
+      "bytes": 731,
+      "sha256": "e51cba0e4fa1d8c078e15319868f2b90188f413f9ce9dac1043b62db32901e93"
+    },
+    {
+      "path": "captured-licenses/d3-delaunay@6.0.4--LICENSE",
+      "bytes": 757,
+      "sha256": "582c3022bd01942336095f92b58a90b1be624dc547d987555c6c956512dd24c1"
+    },
+    {
+      "path": "captured-licenses/d3-dispatch@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-drag@3.0.0--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-dsv@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "7842a82012622e5a37bfe4f6c1b67cd3bae6350716b5bf87f36cea0bdc1319dc"
+    },
+    {
+      "path": "captured-licenses/d3-ease@3.0.1--LICENSE",
+      "bytes": 1504,
+      "sha256": "b989d9085148d21ff64a75e14462aefa06b2589a55553b07b1460c70081c7d08"
+    },
+    {
+      "path": "captured-licenses/d3-fetch@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "ffdc17dc9040006bddeb891c95bfbb492e86d6bc64a4a4233666febab1be35e0"
+    },
+    {
+      "path": "captured-licenses/d3-force@3.0.0--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-format@3.1.0--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-geo@3.1.1--LICENSE",
+      "bytes": 1857,
+      "sha256": "3e3edc1224eec9c39cd26491a21304a62883c1e5b6a65c5283ccc7a6cc94baee"
+    },
+    {
+      "path": "captured-licenses/d3-hierarchy@3.1.2--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-interpolate@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-path@1.0.9--LICENSE",
+      "bytes": 1475,
+      "sha256": "b8265327ab678f554800e71188b1cc6b1ff57522e292d2b1c0be66f27cf328b6"
+    },
+    {
+      "path": "captured-licenses/d3-path@3.1.0--LICENSE",
+      "bytes": 731,
+      "sha256": "a09b0d6d76e768fca2085fad05743ee81ddd11946bcda160a3cf5e1081a479aa"
+    },
+    {
+      "path": "captured-licenses/d3-polygon@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-quadtree@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-random@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-sankey@0.12.3--LICENSE",
+      "bytes": 1471,
+      "sha256": "2bf785e778d67a4f5266cffcd4f2cc5bb98cde73791666e7efeb8002ba32dfa5"
+    },
+    {
+      "path": "captured-licenses/d3-scale-chromatic@3.1.0--LICENSE",
+      "bytes": 1423,
+      "sha256": "0986d93944902cca9af86824b6a641b4b7c2d10602fc510c433a8bcd443919fe"
+    },
+    {
+      "path": "captured-licenses/d3-scale@4.0.2--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-selection@3.0.0--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-shape@1.3.7--LICENSE",
+      "bytes": 1475,
+      "sha256": "7eea8533ea92bd8c32a901e89ecb0305890905bb12711449565ddff96891146d"
+    },
+    {
+      "path": "captured-licenses/d3-shape@3.2.0--LICENSE",
+      "bytes": 731,
+      "sha256": "faa682e3e430941f958d26180458f5934a62f58dac4d70ccdd15608c15d0f884"
+    },
+    {
+      "path": "captured-licenses/d3-time-format@4.1.0--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-time@3.1.0--LICENSE",
+      "bytes": 731,
+      "sha256": "faa682e3e430941f958d26180458f5934a62f58dac4d70ccdd15608c15d0f884"
+    },
+    {
+      "path": "captured-licenses/d3-timer@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-transition@3.0.1--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3-zoom@3.0.0--LICENSE",
+      "bytes": 731,
+      "sha256": "e008c5e25a6be382593089c29bfabbc553c6378eee02895aec46ce396cc404ee"
+    },
+    {
+      "path": "captured-licenses/d3@7.9.0--LICENSE",
+      "bytes": 731,
+      "sha256": "3e6849627f74ff73c257a3ae1efb574015d94fc1035c05ec3c15805165efcbc4"
+    },
+    {
+      "path": "captured-licenses/dagre-d3-es@7.0.14--LICENSE.md",
+      "bytes": 1328,
+      "sha256": "d01eb84ccce437dbf5fd40853bceea0f287930920acea066597a4a25ead63858"
+    },
+    {
+      "path": "captured-licenses/dayjs@1.11.21--LICENSE",
+      "bytes": 1072,
+      "sha256": "5faab7526d055651be3aab769d58897be6bd91f3d39d137f25f12dba1b31d5dc"
+    },
+    {
+      "path": "captured-licenses/dompurify@3.4.12--LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "captured-licenses/dompurify@3.4.12--LICENSE-MPL",
+      "bytes": 16726,
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+    },
+    {
+      "path": "captured-licenses/dompurify@3.4.12--src__license_header",
+      "bytes": 192,
+      "sha256": "5803fa925ae1703b9c752921c95a321570e6cabf06fcf2de895ddaf1687cebef"
+    },
+    {
+      "path": "captured-licenses/es-toolkit@1.45.1--LICENSE",
+      "bytes": 1424,
+      "sha256": "ed68888a2a28f32a05e88f24d4d4ee75075a1bda2b6372a1f2e00fa0576a5524"
+    },
+    {
+      "path": "captured-licenses/fastdom@1.0.12--README-License.txt",
+      "bytes": 1094,
+      "sha256": "50c0de64f5cd5e39859b43f7eca7f5843fb3c3d5ac7e34a453e27419ad51e08c"
+    },
+    {
+      "path": "captured-licenses/hachure-fill@0.5.2--LICENSE",
+      "bytes": 1068,
+      "sha256": "5e807b516a9be9229ed459880bf353a336e2d947867247290680d437017be391"
+    },
+    {
+      "path": "captured-licenses/iconify__utils@3.0.2--license.txt",
+      "bytes": 1083,
+      "sha256": "a86793ac023162ce98b91899601c15f6712f44943163c4f92a0a4bf89152b3bf"
+    },
+    {
+      "path": "captured-licenses/internmap@2.0.3--LICENSE",
+      "bytes": 726,
+      "sha256": "9ea8903938dab5f12c4572d60725069bec2d1b0dc3bcc210b09bae946a5ebb1f"
+    },
+    {
+      "path": "captured-licenses/js-yaml@4.3.0--LICENSE",
+      "bytes": 1084,
+      "sha256": "a07bc24468b9654ce76a547d47a2db282d07733b715db4c73a98bd63961f9550"
+    },
+    {
+      "path": "captured-licenses/katex@0.16.47--LICENSE",
+      "bytes": 1107,
+      "sha256": "766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3"
+    },
+    {
+      "path": "captured-licenses/khroma@2.1.0--license",
+      "bytes": 1105,
+      "sha256": "66b333b0f66759a0b710459e03f7029abe17f4358114a128d2c972e642961b49"
+    },
+    {
+      "path": "captured-licenses/langium@4.2.1--LICENSE",
+      "bytes": 1052,
+      "sha256": "599bf70b4e55f06250571d103dbd8441e0c47cb7f858c0147ca312ce38e9ef2a"
+    },
+    {
+      "path": "captured-licenses/layout-base@1.0.2--LICENSE",
+      "bytes": 1069,
+      "sha256": "eabb762d8a95109a39c9be3247325529a5239a7aca327d909c3ccdc41f3a06bf"
+    },
+    {
+      "path": "captured-licenses/layout-base@2.0.1--LICENSE",
+      "bytes": 1069,
+      "sha256": "eabb762d8a95109a39c9be3247325529a5239a7aca327d909c3ccdc41f3a06bf"
+    },
+    {
+      "path": "captured-licenses/lodash-es@4.17.23--LICENSE",
+      "bytes": 1952,
+      "sha256": "f71e8ed126b46346494aad5486874cd8f0aafe95092ed67d2e3cb6110f939abc"
+    },
+    {
+      "path": "captured-licenses/lodash-es@4.18.1--LICENSE",
+      "bytes": 1952,
+      "sha256": "f71e8ed126b46346494aad5486874cd8f0aafe95092ed67d2e3cb6110f939abc"
+    },
+    {
+      "path": "captured-licenses/marked@16.3.0--LICENSE.md",
+      "bytes": 2942,
+      "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c"
+    },
+    {
+      "path": "captured-licenses/mermaid-js__parser@1.2.1--LICENSE",
+      "bytes": 1077,
+      "sha256": "d374061c40bfb6f99c5033290caefda97a9b3e7e477e5ee02f487143ef2177e8"
+    },
+    {
+      "path": "captured-licenses/path-browserify@1.0.1--LICENSE",
+      "bytes": 1071,
+      "sha256": "a22b9d5763f574e5db347c30acc0b33eaf4846767c03d2e27d012e864e79a824"
+    },
+    {
+      "path": "captured-licenses/points-on-curve@0.2.0--LICENSE",
+      "bytes": 1068,
+      "sha256": "e9754a00aebde654e80f40bcf41dab667d6a41dfbbd2912bcf14fb07d468bf71"
+    },
+    {
+      "path": "captured-licenses/points-on-path@0.2.1--LICENSE",
+      "bytes": 1062,
+      "sha256": "b6fc1f7f1d96a48bc97176f3dcef959e364c5c17ba44167511de421500a86c6c"
+    },
+    {
+      "path": "captured-licenses/roughjs@4.6.6--LICENSE",
+      "bytes": 1068,
+      "sha256": "dca9a392272606ac748ac0976a2a1133f14eef841c27beaa51a844d53c56a09d"
+    },
+    {
+      "path": "captured-licenses/stylis@4.3.6--LICENSE",
+      "bytes": 1078,
+      "sha256": "88c579c6ee44b41137a21321190d177982e5b17d4fa1b83a4a2e3ea325a8fc9a"
+    },
+    {
+      "path": "captured-licenses/ts-dedent@2.2.0--LICENSE",
+      "bytes": 1073,
+      "sha256": "eff13095d9d762c3bd9dda74370c81e2130c28f2691bc455603abf973bac25b9"
+    },
+    {
+      "path": "captured-licenses/upsetjs__venn.js@2.0.0--LICENSE",
+      "bytes": 1106,
+      "sha256": "6a3508febf2cfccfee96597394543a6154a4bb0b1f91f28404be42c09e9fcb54"
+    },
+    {
+      "path": "captured-licenses/uuid@14.0.0--LICENSE.md",
+      "bytes": 1109,
+      "sha256": "beaa6b04fb82e41dd2ad679e19e27953afb5999b1abbb455b6564e78ebfeb332"
+    },
+    {
+      "path": "captured-licenses/vscode-jsonrpc@8.2.0--License.txt",
+      "bytes": 1095,
+      "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+    },
+    {
+      "path": "captured-licenses/vscode-languageserver-protocol@3.17.5--License.txt",
+      "bytes": 1095,
+      "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+    },
+    {
+      "path": "captured-licenses/vscode-languageserver-textdocument@1.0.12--License.txt",
+      "bytes": 1095,
+      "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+    },
+    {
+      "path": "captured-licenses/vscode-languageserver-types@3.17.5--License.txt",
+      "bytes": 1095,
+      "sha256": "ec9ee83580841e8eb687aca9867f221503809ba6426c7f876ede17d91b9fcfd0"
+    },
+    {
+      "path": "captured-licenses/vscode-uri@3.1.0--LICENSE.md",
+      "bytes": 1070,
+      "sha256": "c669138cb1eb01fbb745e8e460b291e4f2869c14a40061390b6095d845ed4c82"
+    },
+    {
+      "path": "checkpoint-processes.txt",
+      "bytes": 69746,
+      "sha256": "8986c352909fdda2729a24b762e0ae8c1d2c1bf74a032908955edf18f760db88"
+    },
+    {
+      "path": "collect-packages.py",
+      "bytes": 4215,
+      "sha256": "222166457ab3f69214f4fdda7cad154f61a742f63e7ad93076226cb1b25741d6"
+    },
+    {
+      "path": "complete-checkpoint-validation.py",
+      "bytes": 2905,
+      "sha256": "2cb29e88ccf9e8616c8a4ca6fe13e2a7b889b048920bd1cd0bf37396aac39872"
+    },
+    {
+      "path": "fetch-failures.json",
+      "bytes": 802,
+      "sha256": "d670110fcb984a3651784139b15abcf5f813ce925b6459b0f7e5fd5374430d6e"
+    },
+    {
+      "path": "final-committed-diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-full-compliance-tests.log",
+      "bytes": 5550,
+      "sha256": "d92464a14c5c083141861f155d575241524049f8e5e6b1fafa25d450f9630d1a"
+    },
+    {
+      "path": "final-offline-replay.log",
+      "bytes": 387,
+      "sha256": "5fe70bb5d17ba42d778ac97ccbf457ba61f3520f0102cc8f927350f08e10f6f4"
+    },
+    {
+      "path": "final-production-files-unchanged.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-release-preflight.log",
+      "bytes": 1925,
+      "sha256": "0d6822d8318b7e53ae435442aa10f8a88d266edcc5906f855a173e8b36081c80"
+    },
+    {
+      "path": "final-replay-byte-comparison.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-replay.json",
+      "bytes": 700023,
+      "sha256": "6183e8177380457abbe5522f173ac844da1a4ae6609408c7d5de727a306609cb"
+    },
+    {
+      "path": "final-source-compliance.log",
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    {
+      "path": "final-validated-replay.json",
+      "bytes": 700023,
+      "sha256": "6183e8177380457abbe5522f173ac844da1a4ae6609408c7d5de727a306609cb"
+    },
+    {
+      "path": "final-validation.json",
+      "bytes": 5051,
+      "sha256": "9a143793329b9a45de7691f1d82cf662bdbc3f0912fb5b584006d3de39cb011a"
+    },
+    {
+      "path": "fixture-independent-review.md",
+      "bytes": 1011,
+      "sha256": "bb8bcdcc6cfedd88771c3471c8c8a780128517e5147cae452f2947e6ae18b816"
+    },
+    {
+      "path": "full-compliance-tests-allowed-process-substitution.log",
+      "bytes": 10207,
+      "sha256": "4bcde488d07655c14608866ca7cab21a744f59d0d9038f289912b89d8abcdb81"
+    },
+    {
+      "path": "full-compliance-tests.log",
+      "bytes": 11737,
+      "sha256": "8333cc390667f3a9c9c766e1bbd8065c55bc1089158ac4524a23da3cd1cd6024"
+    },
+    {
+      "path": "independent-review-final.md",
+      "bytes": 1020,
+      "sha256": "4d03fc8f028b7aef09bffa3f1a1379fcb96c10f21023ba3f42e5e57883e550e6"
+    },
+    {
+      "path": "independent-review-findings.md",
+      "bytes": 2540,
+      "sha256": "a24d8ae0aefddd0edd74a657d93db5a68bb773dc005b8676b8e4c5775d4ef0a1"
+    },
+    {
+      "path": "initial-source-groups.json",
+      "bytes": 120704,
+      "sha256": "492573dc583acf5076e2aadd8473dac1f82ec0aeb2bc1cbb46eaa655726ae473"
+    },
+    {
+      "path": "initial-validation-1350ff78.json",
+      "bytes": 2557,
+      "sha256": "dedb9539b21a648715048a0318478e9fa2e635beeadba2bfa6ac25545763c5d7"
+    },
+    {
+      "path": "issue-148-comments.json",
+      "bytes": 40049,
+      "sha256": "b0ec30e1b5a97ef1221ff5e6fc8ae0d6d0e127c31f4f824333e0acf68ac436ba"
+    },
+    {
+      "path": "issue-148.json",
+      "bytes": 15473,
+      "sha256": "64cc95e7f595d2501c9a4c276f62b58c5ab5c35d2a186559fd531d803c76e65c"
+    },
+    {
+      "path": "mermaid-11.17.2-attestations.json",
+      "bytes": 14484,
+      "sha256": "51ceb0fb31618d7429e0a77ca994dc17b30df6e5296d3dc30c3e1c737b7a6a87"
+    },
+    {
+      "path": "mermaid-11.17.2-registry.json",
+      "bytes": 5777,
+      "sha256": "9cfaf8475068a3976bf6b8ee0a53747885151226eac8f438d24653a94ff85370"
+    },
+    {
+      "path": "mermaid-11.17.2.tgz",
+      "bytes": 17796365,
+      "sha256": "6ad2f42c3fc26bbf9e45cbb6d11898972573ea52b33a5f4ff51952899f950ffd"
+    },
+    {
+      "path": "mermaid.min.js",
+      "bytes": 3572661,
+      "sha256": "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8"
+    },
+    {
+      "path": "mermaid.min.js.map",
+      "bytes": 13346621,
+      "sha256": "43cd977e8e0f351d6c47d31302c564f1c21fdc1e0be0d9e46370ee5e23cea004"
+    },
+    {
+      "path": "npm-packages/braintree__sanitize-url@7.1.2/package.tgz",
+      "bytes": 8567,
+      "sha256": "fd9a220c24c5cdd406433cce1c3db7f09222d8f7977f0fe087aec914e1a63dc0"
+    },
+    {
+      "path": "npm-packages/braintree__sanitize-url@7.1.2/registry.json",
+      "bytes": 1914,
+      "sha256": "47d32549c03ed7470eedef8620b879374f799fcb500066583d45af00f0669b4e"
+    },
+    {
+      "path": "npm-packages/chevrotain-allstar@0.3.1/package.tgz",
+      "bytes": 28317,
+      "sha256": "51027c5355c69e6404bb6415e2cd27594569616f97daf613535b662cc5cf0763"
+    },
+    {
+      "path": "npm-packages/chevrotain-allstar@0.3.1/registry.json",
+      "bytes": 1828,
+      "sha256": "48091f292553fe797ddc17606e42323e0a455cb50c9054c4fc3ad5730f9852fd"
+    },
+    {
+      "path": "npm-packages/chevrotain@11.1.2/package.tgz",
+      "bytes": 298709,
+      "sha256": "bf2d28019e3a6b2d5f0980440c8467721e6e0a12cdce8b778a32034f3c516297"
+    },
+    {
+      "path": "npm-packages/chevrotain@11.1.2/registry.json",
+      "bytes": 3201,
+      "sha256": "8e10fb795b1ccfdea540bb2b43f63fc777f607e9aad2545609063829d2a8cba0"
+    },
+    {
+      "path": "npm-packages/chevrotain__gast@11.1.2/package.tgz",
+      "bytes": 11987,
+      "sha256": "10d6ea7e6884108dd7167c0aed54c300b525683574e9336ff1507a472414df1e"
+    },
+    {
+      "path": "npm-packages/chevrotain__gast@11.1.2/registry.json",
+      "bytes": 2210,
+      "sha256": "e7cfdd2f0297da5d688e5ba69b52a33fa4ca863f540b2a6e1244a4297834f352"
+    },
+    {
+      "path": "npm-packages/chevrotain__regexp-to-ast@11.1.2/package.tgz",
+      "bytes": 19979,
+      "sha256": "bda3be7ab6ad851d5bc723af365c547e630ddb3f065c2b0513c1a9ac69757294"
+    },
+    {
+      "path": "npm-packages/chevrotain__regexp-to-ast@11.1.2/registry.json",
+      "bytes": 2063,
+      "sha256": "12ae0d13834766944920f471aa93604ec970840a71d2f463e2b2794681ccb77a"
+    },
+    {
+      "path": "npm-packages/chevrotain__utils@11.1.2/package.tgz",
+      "bytes": 6532,
+      "sha256": "be2de827ae6eaa5cbd1fa1e912302139992da39e483970cf20556de5cba0194a"
+    },
+    {
+      "path": "npm-packages/chevrotain__utils@11.1.2/registry.json",
+      "bytes": 2015,
+      "sha256": "d055c28bfb6bf5eaf6cf9c465d8fcc68850d4dff897954ea7916f433e6bea3b6"
+    },
+    {
+      "path": "npm-packages/cose-base@1.0.3/package.tgz",
+      "bytes": 22534,
+      "sha256": "a20640fb8c1a2cf226eb9195785e9f714ba1cce1e80cb8f48d131d1bc0909d18"
+    },
+    {
+      "path": "npm-packages/cose-base@1.0.3/registry.json",
+      "bytes": 2678,
+      "sha256": "06d9e8f83eecf28273e601add7c89820f25e9050ffc82c2912a8e706056c8ea6"
+    },
+    {
+      "path": "npm-packages/cose-base@2.2.0/package.tgz",
+      "bytes": 45826,
+      "sha256": "612ec91a30b7f2dc158cca4846eeea1b7f89a97fc672951da3c1932107de6da8"
+    },
+    {
+      "path": "npm-packages/cose-base@2.2.0/registry.json",
+      "bytes": 2804,
+      "sha256": "c5cb4cc492faf3e29c9af23f7f30345084d3c707ea544e7561b225356f7324a5"
+    },
+    {
+      "path": "npm-packages/cytoscape-cose-bilkent@4.1.0/package.tgz",
+      "bytes": 17457,
+      "sha256": "9df46b10952452b1d2a5d4cd942f70709a037bc6b7ef25cf1d9fb70be73bb950"
+    },
+    {
+      "path": "npm-packages/cytoscape-cose-bilkent@4.1.0/registry.json",
+      "bytes": 3471,
+      "sha256": "0b2de04e1aa6bca47d4f4783eed5ce7e65fede00f25b39e518ecbb96d60594af"
+    },
+    {
+      "path": "npm-packages/cytoscape-fcose@2.2.0/package.tgz",
+      "bytes": 7604808,
+      "sha256": "4e1f30e1821fdd4b66f21043c8ea40a8e2ad0ba75e4ccdd2c24d289cf5595432"
+    },
+    {
+      "path": "npm-packages/cytoscape-fcose@2.2.0/registry.json",
+      "bytes": 3163,
+      "sha256": "693a02d4da94b4e5164b2cbdd26533cacdc0ba6fcd84efa51c1729f98b67cc51"
+    },
+    {
+      "path": "npm-packages/cytoscape@3.34.0/package.tgz",
+      "bytes": 1376375,
+      "sha256": "4155f863f4408d18bb637afb5808dff7840ca7361437067faf45bbe8c970e768"
+    },
+    {
+      "path": "npm-packages/cytoscape@3.34.0/registry.json",
+      "bytes": 5719,
+      "sha256": "50d9e2c13a7bdd4da8415fdee0f27e053654c8ab6a0b214ba79254ba53e10466"
+    },
+    {
+      "path": "npm-packages/d3-array@2.12.1/package.tgz",
+      "bytes": 31975,
+      "sha256": "3795da9bd345fc440b82be032400c538298e021b559ca48342fe9647e44bb86b"
+    },
+    {
+      "path": "npm-packages/d3-array@2.12.1/registry.json",
+      "bytes": 3324,
+      "sha256": "aeba34f3b861b7c1ead6a250d109f2d6b767ab5edffa5cc374da925f6da45072"
+    },
+    {
+      "path": "npm-packages/d3-array@3.2.4/package.tgz",
+      "bytes": 38377,
+      "sha256": "6dbf3f2be39e48f86775be6e166a5d3e5a585ca7144453cd6ad1912f5ae4417f"
+    },
+    {
+      "path": "npm-packages/d3-array@3.2.4/registry.json",
+      "bytes": 2428,
+      "sha256": "efc336f352239ffe4ad51a7e77a0e918bf1019915ee066b801136d802e35a9c1"
+    },
+    {
+      "path": "npm-packages/d3-axis@3.0.0/package.tgz",
+      "bytes": 7618,
+      "sha256": "b5ca6e00b9a2503d6b473485684670564a370733cdc8565a45b63f9fb4d944f6"
+    },
+    {
+      "path": "npm-packages/d3-axis@3.0.0/registry.json",
+      "bytes": 3248,
+      "sha256": "65ac9e37ca77819738a02fdfb2f2701343a2fd51bbb2a1537b56b94c0aa4f01a"
+    },
+    {
+      "path": "npm-packages/d3-brush@3.0.0/package.tgz",
+      "bytes": 14219,
+      "sha256": "fde88a49b16f92d067401df00abf88bf07eec3e091343eb902caf9cab02bdf2a"
+    },
+    {
+      "path": "npm-packages/d3-brush@3.0.0/registry.json",
+      "bytes": 3296,
+      "sha256": "a1f59424450218081f01dafd09e11caccb858da37222b321f07ea3e207424e24"
+    },
+    {
+      "path": "npm-packages/d3-chord@3.0.1/package.tgz",
+      "bytes": 8600,
+      "sha256": "84c47d193e5e8c5fd3a28783a55b34f08dfaa1c8d764e96d9b49c78a3b6b40b5"
+    },
+    {
+      "path": "npm-packages/d3-chord@3.0.1/registry.json",
+      "bytes": 3266,
+      "sha256": "0110fe7cddadb3ba64a6ce7bc929e16e9a4befb7e439890dc2f9000d3128b80e"
+    },
+    {
+      "path": "npm-packages/d3-color@3.1.0/package.tgz",
+      "bytes": 14297,
+      "sha256": "d41bbcd99dd4f00e696546bffc73fed9b8fb6c3354905b6ea1721bff25f33b42"
+    },
+    {
+      "path": "npm-packages/d3-color@3.1.0/registry.json",
+      "bytes": 3269,
+      "sha256": "85bb4cf747b3f64fee8ad46ff6dbc416d889d2090296cf27016cb39de44eae73"
+    },
+    {
+      "path": "npm-packages/d3-contour@4.0.2/package.tgz",
+      "bytes": 11549,
+      "sha256": "fa347e237c259a987fc3cfd890e2fcb0f2ec42ed125a2c9363854509e86db8f4"
+    },
+    {
+      "path": "npm-packages/d3-contour@4.0.2/registry.json",
+      "bytes": 3518,
+      "sha256": "704c181306d1f63b51d96616a860d3fc10a7d2282a83df7314e2a881091702ed"
+    },
+    {
+      "path": "npm-packages/d3-delaunay@6.0.4/package.tgz",
+      "bytes": 25941,
+      "sha256": "935113ffa78d545505c8f1accf95be0e48594737eab34db8f50c9d6319907971"
+    },
+    {
+      "path": "npm-packages/d3-delaunay@6.0.4/registry.json",
+      "bytes": 3079,
+      "sha256": "74a2ca02083955edbd4657dfc39f1a24993e39580730b38a7eee5e26c7e733fb"
+    },
+    {
+      "path": "npm-packages/d3-dispatch@3.0.1/package.tgz",
+      "bytes": 5011,
+      "sha256": "3d1a0b5c003e0e9608ad57f6ca21a0c8368031fcbe5f5317fe4e50b3f797ea23"
+    },
+    {
+      "path": "npm-packages/d3-dispatch@3.0.1/registry.json",
+      "bytes": 3225,
+      "sha256": "b2eb396e040ae2af159f8c7e45499ed2f35b4af7491838024c12b7fdac827fae"
+    },
+    {
+      "path": "npm-packages/d3-drag@3.0.0/package.tgz",
+      "bytes": 11088,
+      "sha256": "a3ccc9d31d85135f35a4eda3ec0fae6ac22435d4e3fe2d2e0c73b5246460d4db"
+    },
+    {
+      "path": "npm-packages/d3-drag@3.0.0/registry.json",
+      "bytes": 3250,
+      "sha256": "8a56ffd0df82a9c5408cdc2860d9926392c0263553ba4c816276ec9c0b4828cb"
+    },
+    {
+      "path": "npm-packages/d3-dsv@3.0.1/package.tgz",
+      "bytes": 12063,
+      "sha256": "fdafcae0362205e2fc63fe3e87fed54822227d9370ce5150914f863ec36153cb"
+    },
+    {
+      "path": "npm-packages/d3-dsv@3.0.1/registry.json",
+      "bytes": 3545,
+      "sha256": "0b74c55612e6e14da3645eeef7b5f59c1c8f8dc4e99d3185117bd259e069cb03"
+    },
+    {
+      "path": "npm-packages/d3-ease@3.0.1/package.tgz",
+      "bytes": 7848,
+      "sha256": "b249afe4aa8b741beeaf2d14f625ccf49270adb645e3f1c755d11476c1fdbe2a"
+    },
+    {
+      "path": "npm-packages/d3-ease@3.0.1/registry.json",
+      "bytes": 3186,
+      "sha256": "420fca6d2ef552b861007907df81d2b2281ba7b26558360f1614a6c595a29564"
+    },
+    {
+      "path": "npm-packages/d3-fetch@3.0.1/package.tgz",
+      "bytes": 4735,
+      "sha256": "8a3d61af2bed2b4899df1a90dfed41c0e10ad79d1bea93a18155f5d4e11a526f"
+    },
+    {
+      "path": "npm-packages/d3-fetch@3.0.1/registry.json",
+      "bytes": 3204,
+      "sha256": "2f29e4101089048afe5bb4cea5462848dafa87d3251b1b34f04ca2fead3b4270"
+    },
+    {
+      "path": "npm-packages/d3-force@3.0.0/package.tgz",
+      "bytes": 19189,
+      "sha256": "deacfa7ecb466f88717fe1863347dd65e5a5422d9f8c893d771cb2a7f987fa15"
+    },
+    {
+      "path": "npm-packages/d3-force@3.0.0/registry.json",
+      "bytes": 3306,
+      "sha256": "9f09f32eba453073850596cda7a1d1844f0f82c724913ce59f908525eab720f6"
+    },
+    {
+      "path": "npm-packages/d3-format@3.1.0/package.tgz",
+      "bytes": 14827,
+      "sha256": "5439103fc9b6f033e02bf68fbeb13ecd2c33442f77ea772a4b2b1bc4f4cee5ba"
+    },
+    {
+      "path": "npm-packages/d3-format@3.1.0/registry.json",
+      "bytes": 3239,
+      "sha256": "107ec875df2f2858e95d6c3c4803caf284554059fe13cb52d04a44e110b07791"
+    },
+    {
+      "path": "npm-packages/d3-geo@3.1.1/package.tgz",
+      "bytes": 61257,
+      "sha256": "fe1f2dd81a87d942790c5a7786f4aab03df2b357d46d8af56b613fb8a1bb9be5"
+    },
+    {
+      "path": "npm-packages/d3-geo@3.1.1/registry.json",
+      "bytes": 2385,
+      "sha256": "755cb2734b363cb00edf8003a8aee70cfb52a5de37145af8fb4159da910eebea"
+    },
+    {
+      "path": "npm-packages/d3-hierarchy@3.1.2/package.tgz",
+      "bytes": 37342,
+      "sha256": "7681875f06440c088afda1fd834d853dd560166c945e731382ee0c636332360b"
+    },
+    {
+      "path": "npm-packages/d3-hierarchy@3.1.2/registry.json",
+      "bytes": 3393,
+      "sha256": "2f3af515824350e6acd86b9ec0c357e6f922ef7288bb0c8887524dd775760424"
+    },
+    {
+      "path": "npm-packages/d3-interpolate@3.0.1/package.tgz",
+      "bytes": 18040,
+      "sha256": "7e8df78d233cd102a0bb518658dc0b7d5c38442b6f2dbc8b95ffc14ba87c7c33"
+    },
+    {
+      "path": "npm-packages/d3-interpolate@3.0.1/registry.json",
+      "bytes": 3313,
+      "sha256": "7d5b2c6d687b626131c96fc00948bbef399ae46c5ffdfeb88a12030f2d0bbe90"
+    },
+    {
+      "path": "npm-packages/d3-path@1.0.9/package.tgz",
+      "bytes": 5697,
+      "sha256": "2c10702bad9be578f0827d00e45010ae59cb67165f65462e5c781913a5505db1"
+    },
+    {
+      "path": "npm-packages/d3-path@1.0.9/registry.json",
+      "bytes": 3207,
+      "sha256": "eba4bd05cd250f03d1ca6893ffec629b97eae4923688ee716636cb8ff7d0ff36"
+    },
+    {
+      "path": "npm-packages/d3-path@3.1.0/package.tgz",
+      "bytes": 5755,
+      "sha256": "94e9b69f82f113ed4ada36703c05f6b7406723c55affe2a443d69729d6d5da14"
+    },
+    {
+      "path": "npm-packages/d3-path@3.1.0/registry.json",
+      "bytes": 3283,
+      "sha256": "b41bac95560fe34589b26faa7d763e9506d8b36e0bd63cbe0a92a5117c1f59ba"
+    },
+    {
+      "path": "npm-packages/d3-polygon@3.0.1/package.tgz",
+      "bytes": 4870,
+      "sha256": "6a33e6b083bd596a08e6f9e973fdb0d098f9ac8348cdc86346bb3e9c15614aca"
+    },
+    {
+      "path": "npm-packages/d3-polygon@3.0.1/registry.json",
+      "bytes": 3210,
+      "sha256": "98598215bcb8a149e3966689cee50527a8a0d5ba2ff779bd2db4f45d58fdcb05"
+    },
+    {
+      "path": "npm-packages/d3-quadtree@3.0.1/package.tgz",
+      "bytes": 10707,
+      "sha256": "d4145e9cecca8a6077e1099de96375ec9923b0de0df4004bd98aafa17c2d557f"
+    },
+    {
+      "path": "npm-packages/d3-quadtree@3.0.1/registry.json",
+      "bytes": 3218,
+      "sha256": "c01550da058b264c4936b1e80d99c3fa791bddc31124105c1648033b83766b2f"
+    },
+    {
+      "path": "npm-packages/d3-random@3.0.1/package.tgz",
+      "bytes": 8791,
+      "sha256": "c35794d70beff4e2e2da799cd7fb0e3e763574f24c0fad38c1841770c12b99e8"
+    },
+    {
+      "path": "npm-packages/d3-random@3.0.1/registry.json",
+      "bytes": 3217,
+      "sha256": "9c504da01b2d4de030a89758de846416bc0ba8ab3d091b36dee202c57ce3b5d5"
+    },
+    {
+      "path": "npm-packages/d3-sankey@0.12.3/package.tgz",
+      "bytes": 9981,
+      "sha256": "6bd8cdb143d4088ff38179def70954419868d4b95f136c168ffef2dad004ff22"
+    },
+    {
+      "path": "npm-packages/d3-sankey@0.12.3/registry.json",
+      "bytes": 2770,
+      "sha256": "2564cd8954660a9b8a33112944d09a619b840e048da683d20a38d9e2cf1a27c9"
+    },
+    {
+      "path": "npm-packages/d3-scale-chromatic@3.1.0/package.tgz",
+      "bytes": 20179,
+      "sha256": "2573f980e0acbbecc919f5c5fdf7cd3a8110eda2497da7b94ae303fab9c32aa4"
+    },
+    {
+      "path": "npm-packages/d3-scale-chromatic@3.1.0/registry.json",
+      "bytes": 2463,
+      "sha256": "b38590190a0e2faf7c34c33a541ef49a53b53eb9708374ef07bdae873108fd65"
+    },
+    {
+      "path": "npm-packages/d3-scale@4.0.2/package.tgz",
+      "bytes": 33190,
+      "sha256": "bf50a1f34ba0e6fa25cb7ae902abe0b9e2f85ced39fdca7b18fbe863fbaa39a7"
+    },
+    {
+      "path": "npm-packages/d3-scale@4.0.2/registry.json",
+      "bytes": 3372,
+      "sha256": "d54b5c17c1c85071ed35b71c46160d4d2a9a4f4cbebdfc7cb32cc3a75d637951"
+    },
+    {
+      "path": "npm-packages/d3-selection@3.0.0/package.tgz",
+      "bytes": 33016,
+      "sha256": "a1f872f30dca23b76de89cae9e882f56c325433e7f3aee87b95fa830d12789f3"
+    },
+    {
+      "path": "npm-packages/d3-selection@3.0.0/registry.json",
+      "bytes": 3265,
+      "sha256": "ad3a82c93377f90bb52dc5c88d4137d17358b79aa0996736c937975247d3e4ca"
+    },
+    {
+      "path": "npm-packages/d3-shape@1.3.7/package.tgz",
+      "bytes": 48026,
+      "sha256": "d19261dad8ff192357db2720d57c1786dbfb8c9f42eafe577cb7c4d5b473fd0e"
+    },
+    {
+      "path": "npm-packages/d3-shape@1.3.7/registry.json",
+      "bytes": 3243,
+      "sha256": "238e90fa1c6304ef26cb415e1a583e8a3c131e752866c43806d7d500ef6603a0"
+    },
+    {
+      "path": "npm-packages/d3-shape@3.2.0/package.tgz",
+      "bytes": 51395,
+      "sha256": "8b4b2bc9daa99a957abe17656c5944fd3f28efb88f788e6b4fdba346cb80e602"
+    },
+    {
+      "path": "npm-packages/d3-shape@3.2.0/registry.json",
+      "bytes": 3317,
+      "sha256": "5109e9194deac647e0ed48fdef983386fc786238739c148ac6ac09fe956ad6eb"
+    },
+    {
+      "path": "npm-packages/d3-time-format@4.1.0/package.tgz",
+      "bytes": 21389,
+      "sha256": "46f1492ef6be8afe04a844876a644a4a964da7f87937e90e93f9585acff9d30e"
+    },
+    {
+      "path": "npm-packages/d3-time-format@4.1.0/registry.json",
+      "bytes": 3402,
+      "sha256": "d35c1f7e9fb5d8058c9659bae40e4b11f8ab1aa27f98421373ea781f569e12dc"
+    },
+    {
+      "path": "npm-packages/d3-time@3.1.0/package.tgz",
+      "bytes": 13544,
+      "sha256": "a9f2c8e177b76e7068e7c9c77722c4924c71c9e54f9b1e245d27ef11b28dbc08"
+    },
+    {
+      "path": "npm-packages/d3-time@3.1.0/registry.json",
+      "bytes": 3303,
+      "sha256": "6bc04ee13779fe228160e61f0820d55ad08a9368ad6e90387df613da61182db6"
+    },
+    {
+      "path": "npm-packages/d3-timer@3.0.1/package.tgz",
+      "bytes": 5774,
+      "sha256": "05cdf901e1876a7f24f4c365a879252752e22e3cc52b131ca616639f07e8ed05"
+    },
+    {
+      "path": "npm-packages/d3-timer@3.0.1/registry.json",
+      "bytes": 3266,
+      "sha256": "dcce69a0bb17b1c0116b5a8d32c71b3bd8802a19c1277a9c2da76d2b2bb39213"
+    },
+    {
+      "path": "npm-packages/d3-transition@3.0.1/package.tgz",
+      "bytes": 22980,
+      "sha256": "260eb8eaed565581afc00634ec83c83fd3b7e830e2a6b73b49f3f744dce0254c"
+    },
+    {
+      "path": "npm-packages/d3-transition@3.0.1/registry.json",
+      "bytes": 3475,
+      "sha256": "83ffcb5a7430b7647acef661b8f36de027c722b6954ce464d6245762ca9bde5f"
+    },
+    {
+      "path": "npm-packages/d3-zoom@3.0.0/package.tgz",
+      "bytes": 18107,
+      "sha256": "846d28725c4889d6a2069c6cf084ca7e7730ee917a9b87960ecc53247f840f85"
+    },
+    {
+      "path": "npm-packages/d3-zoom@3.0.0/registry.json",
+      "bytes": 3311,
+      "sha256": "9d2d220a366a69969b9ab12ae4c08d05763561df7071e7e4d0c7ac4d96e0436d"
+    },
+    {
+      "path": "npm-packages/d3@7.9.0/package.tgz",
+      "bytes": 233671,
+      "sha256": "7e36605710a2ba54846797c8c6d888911341b215ae53257dc32a49a0b824355e"
+    },
+    {
+      "path": "npm-packages/d3@7.9.0/registry.json",
+      "bytes": 2643,
+      "sha256": "a8852f42809b57096b811eb24a994fc05612b11068cf6086973466c9edbf02a8"
+    },
+    {
+      "path": "npm-packages/dagre-d3-es@7.0.14/package.tgz",
+      "bytes": 64093,
+      "sha256": "488d146fc076978029da937a54628f840dbbcb48e6f95ea79e6c58cc384fe157"
+    },
+    {
+      "path": "npm-packages/dagre-d3-es@7.0.14/registry.json",
+      "bytes": 2570,
+      "sha256": "7ca7a5dffe34cfdcd49ad74250c097c7fea6de5d226caefd4896b8a9af63d1de"
+    },
+    {
+      "path": "npm-packages/dayjs@1.11.21/package.tgz",
+      "bytes": 147879,
+      "sha256": "290ec8bf81878ae4927581d9be74125f07722ea8bbea2ff77a2226dce12df876"
+    },
+    {
+      "path": "npm-packages/dayjs@1.11.21/registry.json",
+      "bytes": 3426,
+      "sha256": "a04614247bbc82f7452a3aedf89da7302b76f5c83856524af2c29b13ac1113b6"
+    },
+    {
+      "path": "npm-packages/dompurify@3.4.12/package.tgz",
+      "bytes": 362323,
+      "sha256": "4fd255d4cd435ffc74d59b7ffa8b4a92f8e4a7fc84faf1d0f9d298cd7d741616"
+    },
+    {
+      "path": "npm-packages/dompurify@3.4.12/registry.json",
+      "bytes": 6378,
+      "sha256": "39c258b5a49f9a907a7121914109b40d05a338a2e857117c9e675f9dc5cf7248"
+    },
+    {
+      "path": "npm-packages/es-toolkit@1.45.1/package.tgz",
+      "bytes": 348481,
+      "sha256": "0ab10ae18c0853f0c989ee187cecd9d5b2dd561bdf2b3c9f314bbc981aab427f"
+    },
+    {
+      "path": "npm-packages/es-toolkit@1.45.1/registry.json",
+      "bytes": 8645,
+      "sha256": "044746e01957d5c2e2733de17ab158e3632e698f2a3b8013f2988fe350a439bd"
+    },
+    {
+      "path": "npm-packages/fastdom@1.0.12/package.tgz",
+      "bytes": 13150,
+      "sha256": "15e452be64ae3661c3cc9d736524ebb689c23f162765d60741dcc518ec182265"
+    },
+    {
+      "path": "npm-packages/fastdom@1.0.12/registry.json",
+      "bytes": 2235,
+      "sha256": "5a2cee4f117bc194bb923afd460dec3e86967c38cc65f939efc8c9c966d215a1"
+    },
+    {
+      "path": "npm-packages/hachure-fill@0.5.2/package.tgz",
+      "bytes": 3314,
+      "sha256": "d816b83fea8b39161ef35c46f5080a0a7e406dce39ebf26f1ec8a1daea06a837"
+    },
+    {
+      "path": "npm-packages/hachure-fill@0.5.2/registry.json",
+      "bytes": 1620,
+      "sha256": "cbddbb5b0b0e7337296350f865fe609c25b08932523c58dec5cb893fa4e16836"
+    },
+    {
+      "path": "npm-packages/iconify__utils@3.0.2/package.tgz",
+      "bytes": 55031,
+      "sha256": "7f1b0f8bd152444d962bbcb258f57583bea55bb05e437eedf4cc950b9b56f969"
+    },
+    {
+      "path": "npm-packages/iconify__utils@3.0.2/registry.json",
+      "bytes": 6084,
+      "sha256": "8e28d004658d257c0f043db940d50cefa0a164d9cbb52b8b16e452b6307337a3"
+    },
+    {
+      "path": "npm-packages/internmap@2.0.3/package.tgz",
+      "bytes": 3608,
+      "sha256": "39d1936831a4d3f2bd6e088db28a10de4458d823f652c36b2c808bf5b978c48d"
+    },
+    {
+      "path": "npm-packages/internmap@2.0.3/registry.json",
+      "bytes": 2674,
+      "sha256": "efff9214ae9163a79f6c925b1fd68cb5a4d92a053f376ab4df25e1ae9ae01a0a"
+    },
+    {
+      "path": "npm-packages/js-yaml@4.3.0/package.tgz",
+      "bytes": 226823,
+      "sha256": "8594ee34496dd2e41ec934fd202843dc993be9ab2d7d5d47579146962fbdfae6"
+    },
+    {
+      "path": "npm-packages/js-yaml@4.3.0/registry.json",
+      "bytes": 2976,
+      "sha256": "4b02807ee34fe30d821a23060ada59b9d06da1b3d248a7663751f46d827348f2"
+    },
+    {
+      "path": "npm-packages/katex@0.16.47/package.tgz",
+      "bytes": 1495784,
+      "sha256": "ad2d1ab2f7fcc227019784320e8a2c5218ff6bb333b36df4136d10365ae29375"
+    },
+    {
+      "path": "npm-packages/katex@0.16.47/registry.json",
+      "bytes": 6480,
+      "sha256": "9e3f3f8753429ad8a7e5e61771448a10b46391a91c6dfb6b09245e8eee7e60d1"
+    },
+    {
+      "path": "npm-packages/khroma@2.1.0/package.tgz",
+      "bytes": 32965,
+      "sha256": "8963d209f3a682374d7f7e45e5fa361a58fc060c8528df6656fae0fc7c508110"
+    },
+    {
+      "path": "npm-packages/khroma@2.1.0/registry.json",
+      "bytes": 1767,
+      "sha256": "523d6298a1a0dffc7196c57571bfb27e77809ab19391af7092c46f59c559e044"
+    },
+    {
+      "path": "npm-packages/langium@4.2.1/package.tgz",
+      "bytes": 640257,
+      "sha256": "640d97d6f78fc6c98411863f9390e516cb9d714d80b12a56e5b1b1e7e18e4f20"
+    },
+    {
+      "path": "npm-packages/langium@4.2.1/registry.json",
+      "bytes": 3069,
+      "sha256": "faa3f60d4636522e9c4f57b60b3a4d6736bfdbc9414020defef5b7a31d5b28cf"
+    },
+    {
+      "path": "npm-packages/layout-base@1.0.2/package.tgz",
+      "bytes": 120071,
+      "sha256": "efea1306903d9d043c42c1e7931b2d97b4f519cff04b1347fa308032a52eebab"
+    },
+    {
+      "path": "npm-packages/layout-base@1.0.2/registry.json",
+      "bytes": 2948,
+      "sha256": "2dadc00c8afbc27c6be3108590473b27daca8b38f8bd477e5b5356ebc0f28174"
+    },
+    {
+      "path": "npm-packages/layout-base@2.0.1/package.tgz",
+      "bytes": 175302,
+      "sha256": "34165e46d8c4b9d719a592e39a60fa5f7324c21a3edd02733e1116b17013defd"
+    },
+    {
+      "path": "npm-packages/layout-base@2.0.1/registry.json",
+      "bytes": 2955,
+      "sha256": "75def23dd3bbd9028ba4504978d3972b355f88fabc85270d807979809b860940"
+    },
+    {
+      "path": "npm-packages/lodash-es@4.17.23/package.tgz",
+      "bytes": 149733,
+      "sha256": "2dbc40d4f256e6c2eccc6c355e5e068acf78b3117a8b0c458be004319a3108ff"
+    },
+    {
+      "path": "npm-packages/lodash-es@4.17.23/registry.json",
+      "bytes": 1761,
+      "sha256": "f226bc2c2ba789acf2caaf1abf3b522513b487ee12d143062f2254e65b50953d"
+    },
+    {
+      "path": "npm-packages/lodash-es@4.18.1/package.tgz",
+      "bytes": 149990,
+      "sha256": "b0c810e5cd4cd580ed7b18fc71384b9a80c151dc5c85b1729bd656a49e3f16f8"
+    },
+    {
+      "path": "npm-packages/lodash-es@4.18.1/registry.json",
+      "bytes": 1756,
+      "sha256": "175e33b8efa9221ac159d49fdea2d70ec967d02bbd4e2f4613da9993bf920dea"
+    },
+    {
+      "path": "npm-packages/marked@16.3.0/package.tgz",
+      "bytes": 106636,
+      "sha256": "c333c47cd3802a1d631dfdd8c6cfc411a88599a872c04ce8cd2291381a7767a0"
+    },
+    {
+      "path": "npm-packages/marked@16.3.0/registry.json",
+      "bytes": 4027,
+      "sha256": "5c7117f46954b48b9068005f7c7a717797d29c1c6a6e5e63ea326c1ce7560692"
+    },
+    {
+      "path": "npm-packages/mermaid-js__parser@1.2.1/package.tgz",
+      "bytes": 2228172,
+      "sha256": "97eef1a4c37110e4836b6eb8dd6a348d989efb370a7672831df01042a7c323f4"
+    },
+    {
+      "path": "npm-packages/mermaid-js__parser@1.2.1/registry.json",
+      "bytes": 2786,
+      "sha256": "e459c0c73581a223252bb9c92598bbb30ce7e54d8c0f73fe7c3dfb775f8f6555"
+    },
+    {
+      "path": "npm-packages/path-browserify@1.0.1/package.tgz",
+      "bytes": 12477,
+      "sha256": "74ad6965c6f8cb61d17b1798d48095c3238eca5707b517640a12150f17b8f93d"
+    },
+    {
+      "path": "npm-packages/path-browserify@1.0.1/registry.json",
+      "bytes": 4398,
+      "sha256": "93729b30dbf074ba0272f63b302bdc276418b526d255de11bb0b3b2d9eb081e8"
+    },
+    {
+      "path": "npm-packages/points-on-curve@0.2.0/package.tgz",
+      "bytes": 5522,
+      "sha256": "adc00f4d5ae800c315aea316822fb6f8dd4529f76107facbdccf356372e5ddbf"
+    },
+    {
+      "path": "npm-packages/points-on-curve@0.2.0/registry.json",
+      "bytes": 2486,
+      "sha256": "c1f1310555375e915d32634c007160fd38d4cc06a5c8dc55f09b254d6221a1ca"
+    },
+    {
+      "path": "npm-packages/points-on-path@0.2.1/package.tgz",
+      "bytes": 3429,
+      "sha256": "eb57ddbb156d4e73cbc8d9416e1b666ace0d8abf9dc783f8c934ab63dbae6e44"
+    },
+    {
+      "path": "npm-packages/points-on-path@0.2.1/registry.json",
+      "bytes": 2508,
+      "sha256": "923c68cfab86707b223a19320f8dea8c40dc4c018ee32702977bcfb447881574"
+    },
+    {
+      "path": "npm-packages/roughjs@4.6.6/package.tgz",
+      "bytes": 32624,
+      "sha256": "373873b2c3f1b7ddba878525c774816057c5818029780c7fba081f06018ba78c"
+    },
+    {
+      "path": "npm-packages/roughjs@4.6.6/registry.json",
+      "bytes": 1951,
+      "sha256": "5bbfdba7a1dc7a8e2b7fe4fad275018bb726346d52a561352562f814a16b721c"
+    },
+    {
+      "path": "npm-packages/stylis@4.3.6/package.tgz",
+      "bytes": 41641,
+      "sha256": "57bd37727276e7e30d2f15472a43c5d5b8ae6cd9cebd36dbb84880c500de568e"
+    },
+    {
+      "path": "npm-packages/stylis@4.3.6/registry.json",
+      "bytes": 3289,
+      "sha256": "80d3411c537d63df13c9830454c4a613d1e7fa53a4b2abc725ca0fe13f3fe38d"
+    },
+    {
+      "path": "npm-packages/ts-dedent@2.2.0/package.tgz",
+      "bytes": 5920,
+      "sha256": "f04cddc15ce3aad91287aebdcb0d6b6997b85222769c35c910038f59bfd2234d"
+    },
+    {
+      "path": "npm-packages/ts-dedent@2.2.0/registry.json",
+      "bytes": 3223,
+      "sha256": "eb745d6a3d13d5dc0cb13fe2a8aa16c233a5d00d72dcd91b8bb43f0fd1974965"
+    },
+    {
+      "path": "npm-packages/upsetjs__venn.js@2.0.0/package.tgz",
+      "bytes": 66162,
+      "sha256": "23c5da5de5c23351c6c6ed891d6416284c05c618e2774bd55484a4c4bef321e4"
+    },
+    {
+      "path": "npm-packages/upsetjs__venn.js@2.0.0/registry.json",
+      "bytes": 3002,
+      "sha256": "f2cbe7871fd3e8e5afc078875c98b84c86024f407e2cde7e87b038abd5ca1e5b"
+    },
+    {
+      "path": "npm-packages/uuid@14.0.0/package.tgz",
+      "bytes": 15346,
+      "sha256": "ca468c168ec7f2021f6a98041e943443b29e67e0e0ff5b4c1caca17c6efa9870"
+    },
+    {
+      "path": "npm-packages/uuid@14.0.0/registry.json",
+      "bytes": 4466,
+      "sha256": "afed241ba8e324aebc43bce60ec011146f5c142a84e0795795b3c91ee18f2ff8"
+    },
+    {
+      "path": "npm-packages/vscode-jsonrpc@8.2.0/package.tgz",
+      "bytes": 35427,
+      "sha256": "3da44531c398f1545074cb728e359a822f35b9f8ac7171c847f42f0728b9c7cb"
+    },
+    {
+      "path": "npm-packages/vscode-jsonrpc@8.2.0/registry.json",
+      "bytes": 3294,
+      "sha256": "d7c5d44851991270c6c637330cb9876c43982a37b2acaca1973be830d43f30e9"
+    },
+    {
+      "path": "npm-packages/vscode-languageserver-protocol@3.17.5/package.tgz",
+      "bytes": 59008,
+      "sha256": "7473eb2d2163f3f8bea09644f9d803789a195e596b65d3946c4157e583e3ccc8"
+    },
+    {
+      "path": "npm-packages/vscode-languageserver-protocol@3.17.5/registry.json",
+      "bytes": 4009,
+      "sha256": "cb1f75db8ebe97065e0ab77f26196d54f6baafd59718bf8818679914a0538f0d"
+    },
+    {
+      "path": "npm-packages/vscode-languageserver-textdocument@1.0.12/package.tgz",
+      "bytes": 7800,
+      "sha256": "9f1d28814d6ee81267f52f5bc8c920bb6a0a23eb6de48960345a0a25fbf3b0db"
+    },
+    {
+      "path": "npm-packages/vscode-languageserver-textdocument@1.0.12/registry.json",
+      "bytes": 2945,
+      "sha256": "b9fe078ae576a21bd2e5ebc9639a27aea792fd9a7deb80cd2bb4a9f59d22fe04"
+    },
+    {
+      "path": "npm-packages/vscode-languageserver-types@3.17.5/package.tgz",
+      "bytes": 71382,
+      "sha256": "d673f9e7f8bbe51351be51c58f32d4dcfa97a670ebb86bc633368394c609cac0"
+    },
+    {
+      "path": "npm-packages/vscode-languageserver-types@3.17.5/registry.json",
+      "bytes": 2970,
+      "sha256": "0d5de326ffe080453948905a9644473b799e941d579d2bbbfe6fe5b2932fb0a1"
+    },
+    {
+      "path": "npm-packages/vscode-uri@3.1.0/package.tgz",
+      "bytes": 59768,
+      "sha256": "c6ec752d7a4858237389b23fb4d5ac05c2f1f606071cd212a9b54730e43cfc54"
+    },
+    {
+      "path": "npm-packages/vscode-uri@3.1.0/registry.json",
+      "bytes": 2517,
+      "sha256": "4a113f58bd08b0b10ba0371cc1b5c4c6ab6959e143b460901accccf1fc662595"
+    },
+    {
+      "path": "package-downloads.json",
+      "bytes": 58761,
+      "sha256": "fd098460c197de83efc0eac339984d0fdd5a0b1e6a5111f0d740a9a4710c6cd1"
+    },
+    {
+      "path": "package-table.md",
+      "bytes": 2951,
+      "sha256": "9569023bf18be0fedadcb9af0d795a3bb1d5791649a68ef3000e1566a5fd5dcb"
+    },
+    {
+      "path": "package.json",
+      "bytes": 4734,
+      "sha256": "b3aa59ed78f7146391d76e6da0753e33ab31da809a5dbb5f45ee627365f40a5e"
+    },
+    {
+      "path": "parser-1.2.1-registry.json",
+      "bytes": 2786,
+      "sha256": "e459c0c73581a223252bb9c92598bbb30ce7e54d8c0f73fe7c3dfb775f8f6555"
+    },
+    {
+      "path": "parser-1.2.1.tgz",
+      "bytes": 2228172,
+      "sha256": "97eef1a4c37110e4836b6eb8dd6a348d989efb370a7672831df01042a7c323f4"
+    },
+    {
+      "path": "parser-chunk-comparison.json",
+      "bytes": 8192,
+      "sha256": "e83ecda7b8f396b23a4c8246557b41487f1b16db2ea3cb91ce6bdf272a4d8b48"
+    },
+    {
+      "path": "parser-maps/architecture-7GRP2DOG.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/chunk-2ZTRR5NV.mjs.map",
+      "bytes": 5439,
+      "sha256": "5ceb607bb0a519f645bd89f03bc8823aa66dc679a2927559698b79a54346ba03"
+    },
+    {
+      "path": "parser-maps/chunk-3Z5EZCMW.mjs.map",
+      "bytes": 3879,
+      "sha256": "9e05585afbe4cbdf5c51e99f7271fc98c4a3d27a8c3c8953bc237aafc69578e2"
+    },
+    {
+      "path": "parser-maps/chunk-5V3GS4D5.mjs.map",
+      "bytes": 3185,
+      "sha256": "433f3780260d1ca36baead227918170871651fce18332ca9085af91c3ee78b00"
+    },
+    {
+      "path": "parser-maps/chunk-6AZGARVD.mjs.map",
+      "bytes": 5104,
+      "sha256": "48125401c007ec97814fb6e7c129002e2dc320814f9f9ef79f57dbe6094b26cf"
+    },
+    {
+      "path": "parser-maps/chunk-6EIED4P4.mjs.map",
+      "bytes": 7047,
+      "sha256": "0cd690efc2f193950e5303d694312966e5e3c31d7a9eb7420292871dcf991e9a"
+    },
+    {
+      "path": "parser-maps/chunk-6K3QC6MW.mjs.map",
+      "bytes": 8749,
+      "sha256": "09bd07ea4d5458649b00832b36f80bdce1cb550101318d09eb7d7e0f579a00b0"
+    },
+    {
+      "path": "parser-maps/chunk-6TQVIW2G.mjs.map",
+      "bytes": 2437,
+      "sha256": "e161c69567810e0c71456d55f5571fd2d48cdabba8a365722960b0cecd71f6c9"
+    },
+    {
+      "path": "parser-maps/chunk-747NJXEK.mjs.map",
+      "bytes": 5230,
+      "sha256": "8ef31b906287150cd95932b76c990eb980e9cca8e43523761f3625de6773548d"
+    },
+    {
+      "path": "parser-maps/chunk-FOHPRMQF.mjs.map",
+      "bytes": 2693696,
+      "sha256": "d0c740de3781a6575045f623a4cc7f3e01d9c0bd2956fc2de91840193caae7fd"
+    },
+    {
+      "path": "parser-maps/chunk-I5DQTOEV.mjs.map",
+      "bytes": 3207,
+      "sha256": "7d9657c6ec002b84b7c15bb3d065c06f0b8558138d867159f5a00dcfcbd07464"
+    },
+    {
+      "path": "parser-maps/chunk-ICYGCRZG.mjs.map",
+      "bytes": 3552,
+      "sha256": "34bbc9fc3bd91d7a37a58892deb4dc7c001eb0689d3c8445ffe1abbd21faa1ec"
+    },
+    {
+      "path": "parser-maps/chunk-IH6LHLGP.mjs.map",
+      "bytes": 5407,
+      "sha256": "701eb5ca8066db01a9af7995a245ec6cd22d5dc6b86607013e15cdc1c929c0dd"
+    },
+    {
+      "path": "parser-maps/chunk-KI3K4JFJ.mjs.map",
+      "bytes": 2456,
+      "sha256": "9caa9a25e9871d8dd6fc51419d10c68a9c56c51995235df8f993acf76399a7e8"
+    },
+    {
+      "path": "parser-maps/chunk-OUJLGHUK.mjs.map",
+      "bytes": 5138,
+      "sha256": "b2fc8f5373fe8e2571a072e04901eaa071acbc651c4018f6d461d8d7d47015bd"
+    },
+    {
+      "path": "parser-maps/chunk-UY3FDG6J.mjs.map",
+      "bytes": 3238,
+      "sha256": "766ec0381fc4911f4b999c2cb7b743015d5d4f6bbfe4e7d83f22e261dd403dae"
+    },
+    {
+      "path": "parser-maps/chunk-XHIXRSVI.mjs.map",
+      "bytes": 4151,
+      "sha256": "66016691c072207af8652feb584708ab342f3d58cb4bd48e8c4ca40668a7f3d9"
+    },
+    {
+      "path": "parser-maps/cynefin-OW5HDTMX.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/eventmodeling-NTZA5JFV.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/gitGraph-4MIJSDKK.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/info-A6RAGUB7.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/mermaid-parser.core.mjs.map",
+      "bytes": 10938,
+      "sha256": "e54a4525848fc12d0688e3d46bc347952efeacdb9e725809545f04edeb306555"
+    },
+    {
+      "path": "parser-maps/packet-AYTQ26CC.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/pie-WAS4IAKB.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/radar-RG4KPBEZ.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/railroad-74A4TZTK.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/railroad-abnf-HS5TGJTU.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/railroad-ebnf-LZEXJU2U.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/railroad-peg-WCYAUIDC.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/treeView-Q6P3EWNA.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/treemap-WGGIJYW6.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-maps/wardley-WFR3VGLG.mjs.map",
+      "bytes": 93,
+      "sha256": "ed562b0bba7ee7214e56ac7f728054b3496bec4597c94a4eb7b4179e6f5cb1c9"
+    },
+    {
+      "path": "parser-source-package.json",
+      "bytes": 1164,
+      "sha256": "131781c3d500d3c43453193dc3deeea281f8645d00831d85905180a6796e14ce"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 743752,
+      "sha256": "fdc5fdda2c7067c9e10cc8743e0837554c5a924a763a7e2fbaa1cbaa9a775ffa"
+    },
+    {
+      "path": "release-fixture-diagnostic.log",
+      "bytes": 1164,
+      "sha256": "f471cb06325ff3bab2d4ab55ba046f6071d751a5918cb94e77fcb83791dec989"
+    },
+    {
+      "path": "roughjs.patch",
+      "bytes": 348,
+      "sha256": "3543d47108cb41b68ec6a671c0e1f9d0cfe2ce524fea5b0992511ae84c3c6b64"
+    },
+    {
+      "path": "source-analysis.json",
+      "bytes": 883465,
+      "sha256": "fcac550e044825db7cc9b4b04832da5878ee89a0e05dbd823aee25713c1365b0"
+    },
+    {
+      "path": "source-mapping-counts.json",
+      "bytes": 160907,
+      "sha256": "6acf42b0a280ac2a3fd78ed4c153edb0749acdd489705fba15cdd7d2726f0bcf"
+    },
+    {
+      "path": "validate-checkpoint.py",
+      "bytes": 2932,
+      "sha256": "57ce49717621337e00b5cc052659118f30c7c785183ef4eac1feb35e0099da77"
+    },
+    {
+      "path": "validate-final-checkpoint.py",
+      "bytes": 3201,
+      "sha256": "61f05e065a9998b2115ccfa1c379cbbe16e359c38a6acd936f6bc6609f1d4ac0"
+    },
+    {
+      "path": "verified-module-report.json",
+      "bytes": 692102,
+      "sha256": "1cbdd4006ab14a99a8fe21b13e3bdac0b59caed68ec1127b00ec92f61a410434"
+    }
+  ]
+}

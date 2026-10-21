@@ -1,0 +1,113 @@
+START_UTC=2026-10-19T06:33:54.377719+00:00
+COMMAND=swift test --force-resolved-versions --no-parallel --filter HighlightingSizeFallbackTests|HighlightingSizeFallbackLifecycleTests|TextFilterFixtureCleanupSafetyTests|TextFilterBlockingCleanupDeadlineTests|TextFilterFixtureCleanupOrderingTests
+CWD=/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit
+TIMEOUT_SECONDS=600
+
+[0/1] Planning build
+Building for debugging...
+[0/3] Write sources
+[1/3] Write swift-version--58304C5D6DBC2206.txt
+[3/5] Compiling TextFiltersTests TextFilterFixtureOwnershipSupport.swift
+[4/5] Emitting module TextFiltersTests
+[4/6] Write Objects.LinkFileList
+[5/6] Linking MacDownKitPackageTests
+Build complete! (9.58s)
+Test Suite 'Selected tests' started at 2026-10-19 14:34:05.753.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-19 14:34:05.760.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-19 14:34:05.760.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-19 14:34:05.760.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite HighlightingSizeFallbackLifecycleTests started.
+◇ Test themeAndFontChangesWhileReducedKeepItPlainAndUsable() started.
+✔ Test themeAndFontChangesWhileReducedKeepItPlainAndUsable() passed after 0.296 seconds.
+◇ Test languageChangesReevaluateTheModeWithoutBuildingForAnOversizedDocument() started.
+✔ Test languageChangesReevaluateTheModeWithoutBuildingForAnOversizedDocument() passed after 0.171 seconds.
+◇ Test anExternalReloadPastTheCutoffIsWithheldAndAShorterOneRestores() started.
+✔ Test anExternalReloadPastTheCutoffIsWithheldAndAShorterOneRestores() passed after 0.248 seconds.
+◇ Test aCrossingDuringIMECompositionKeepsTheMarkedText() started.
+✔ Test aCrossingDuringIMECompositionKeepsTheMarkedText() passed after 0.936 seconds.
+◇ Test teardownLeavesPlainPresentationAndIntactContentUndoSelectionAndDelegate() started.
+✔ Test teardownLeavesPlainPresentationAndIntactContentUndoSelectionAndDelegate() passed after 1.687 seconds.
+◇ Test theStoreReportsStatesAndHandlesTabCloseAndReopen() started.
+✔ Test theStoreReportsStatesAndHandlesTabCloseAndReopen() passed after 0.028 seconds.
+✔ Suite HighlightingSizeFallbackLifecycleTests passed after 3.368 seconds.
+◇ Suite HighlightingSizeFallbackTests started.
+◇ Test justBelowAndAtTheCutoffGetFullHighlighting() started.
+✔ Test justBelowAndAtTheCutoffGetFullHighlighting() passed after 1.233 seconds.
+◇ Test aboveTheCutoffOpensReducedWithoutBuildingAParser() started.
+✔ Test aboveTheCutoffOpensReducedWithoutBuildingAParser() passed after 0.170 seconds.
+◇ Test theCutoffIsInUTF16Units() started.
+✔ Test theCutoffIsInUTF16Units() passed after 0.044 seconds.
+◇ Test theCrossingEditNeverReachesNeon() started.
+✔ Test theCrossingEditNeverReachesNeon() passed after 0.613 seconds.
+◇ Test aCrossingPasteIsWithheldAndThePresentationBecomesPlain() started.
+✔ Test aCrossingPasteIsWithheldAndThePresentationBecomesPlain() passed after 1.603 seconds.
+◇ Test queuedWorkFromTheDiscardedHighlighterIsInert() started.
+✔ Test queuedWorkFromTheDiscardedHighlighterIsInert() passed after 2.039 seconds.
+◇ Test undoingTheCrossingPasteRestoresFullHighlightingAfterIdle() started.
+✔ Test undoingTheCrossingPasteRestoresFullHighlightingAfterIdle() passed after 0.848 seconds.
+◇ Test editingAroundTheCutoffNeverRebuilds() started.
+✔ Test editingAroundTheCutoffNeverRebuilds() passed after 0.614 seconds.
+◇ Test shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:) started.
+◇ Test case passing 1 argument includesIdlePause → false to shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:) started.
+◇ Test case passing 1 argument includesIdlePause → true to shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:) started.
+✔ Test shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause:) with 2 test cases passed after 3.723 seconds.
+◇ Test controlledIdleClockRejectsEarlyRestoreAndJoinsDueWaiters(includesIdlePause:) started.
+◇ Test case passing 1 argument includesIdlePause → false to controlledIdleClockRejectsEarlyRestoreAndJoinsDueWaiters(includesIdlePause:) started.
+◇ Test case passing 1 argument includesIdlePause → true to controlledIdleClockRejectsEarlyRestoreAndJoinsDueWaiters(includesIdlePause:) started.
+✔ Test controlledIdleClockRejectsEarlyRestoreAndJoinsDueWaiters(includesIdlePause:) with 2 test cases passed after 0.076 seconds.
+◇ Test belowTheCutoffHighlightingMatchesAFreshHighlighter() started.
+✔ Test belowTheCutoffHighlightingMatchesAFreshHighlighter() passed after 2.678 seconds.
+◇ Test markedTextRetryReceivesAFullNewIdleDelay() started.
+✔ Test markedTextRetryReceivesAFullNewIdleDelay() passed after 0.018 seconds.
+◇ Test languageChangeCancelsRestoreWaitAndOldWaitMayCompleteNormally() started.
+✔ Test languageChangeCancelsRestoreWaitAndOldWaitMayCompleteNormally() passed after 0.023 seconds.
+◇ Test teardownCancelsRestoreWaitAndOldWaitMayCompleteNormally() started.
+✔ Test teardownCancelsRestoreWaitAndOldWaitMayCompleteNormally() passed after 0.023 seconds.
+◇ Test canceledRestoreCannotClearOrRestoreOverItsReplacement(holdRegistration:) started.
+◇ Test case passing 1 argument holdRegistration → false to canceledRestoreCannotClearOrRestoreOverItsReplacement(holdRegistration:) started.
+◇ Test case passing 1 argument holdRegistration → true to canceledRestoreCannotClearOrRestoreOverItsReplacement(holdRegistration:) started.
+✔ Test canceledRestoreCannotClearOrRestoreOverItsReplacement(holdRegistration:) with 2 test cases passed after 0.060 seconds.
+◇ Test terminatingBeforeRestoreAllocationReleasesPendingRegistrationHolds() started.
+✔ Test terminatingBeforeRestoreAllocationReleasesPendingRegistrationHolds() passed after 0.010 seconds.
+✔ Suite HighlightingSizeFallbackTests passed after 13.784 seconds.
+◇ Suite "TextFilter blocking cleanup deadline" started.
+◇ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+◇ Test case passing 1 argument setupDelay → 0.0 seconds to cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+CLEANUP_TIMELINE setup=0.000248708 seconds, cleanup=0.026925625 seconds, cancellationRequested=1.792e-06 seconds, cancellationTaskStarted=2.4625e-05 seconds, watchdogTaskStarted=2.8042e-05 seconds, watchdogSleepReturned=0.026880834 seconds, timeoutGateCompleted=0.02688675 seconds, gateWaitReturned=0.02688925 seconds
+◇ Test case passing 1 argument setupDelay → 0.2 seconds to cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+CLEANUP_TIMELINE setup=0.200683333 seconds, cleanup=0.025606042 seconds, cancellationRequested=1.917e-06 seconds, cancellationTaskStarted=1.0583e-05 seconds, watchdogTaskStarted=1.5917e-05 seconds, watchdogSleepReturned=0.025553167 seconds, timeoutGateCompleted=0.025559875 seconds, gateWaitReturned=0.025563833 seconds
+✔ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) with 2 test cases passed after 0.623 seconds.
+✔ Suite "TextFilter blocking cleanup deadline" passed after 0.623 seconds.
+◇ Suite "TextFilter fixture cleanup ordering" started.
+◇ Test watchdogStartingAfterItsAbsoluteDeadlineTimesOutImmediately() started.
+✔ Test watchdogStartingAfterItsAbsoluteDeadlineTimesOutImmediately() passed after 0.013 seconds.
+◇ Test completionWinsAfterDeadlineWhileWatchdogIsHeld() started.
+✔ Test completionWinsAfterDeadlineWhileWatchdogIsHeld() passed after 0.023 seconds.
+◇ Test timeoutWinsBeforeLateJoin() started.
+✔ Test timeoutWinsBeforeLateJoin() passed after 0.015 seconds.
+◇ Test cleanupGateKeepsFirstResultAfterAcknowledgingBothAttempts(timeoutFirst:) started.
+◇ Test case passing 1 argument timeoutFirst → false to cleanupGateKeepsFirstResultAfterAcknowledgingBothAttempts(timeoutFirst:) started.
+◇ Test case passing 1 argument timeoutFirst → true to cleanupGateKeepsFirstResultAfterAcknowledgingBothAttempts(timeoutFirst:) started.
+✔ Test cleanupGateKeepsFirstResultAfterAcknowledgingBothAttempts(timeoutFirst:) with 2 test cases passed after 0.001 seconds.
+◇ Test failedObservationStillReleasesAndJoinsAllHeldWork() started.
+✔ Test failedObservationStillReleasesAndJoinsAllHeldWork() passed after 0.033 seconds.
+✔ Suite "TextFilter fixture cleanup ordering" passed after 0.088 seconds.
+◇ Suite "TextFilter fixture cleanup safety" started.
+◇ Test concurrentCleanupCallersShareTheSameJoinTask() started.
+✔ Test concurrentCleanupCallersShareTheSameJoinTask() passed after 0.153 seconds.
+◇ Test nonCooperativeCleanupUsesAWatchdogAndPreservesDirectoryWhenUnresolved() started.
+✔ Test nonCooperativeCleanupUsesAWatchdogAndPreservesDirectoryWhenUnresolved() passed after 0.210 seconds.
+◇ Test unresolvedCleanupPreservesOrdinaryCleanupFailures() started.
+✔ Test unresolvedCleanupPreservesOrdinaryCleanupFailures() passed after 0.001 seconds.
+◇ Test cleanupTimeoutCancelsTheInnerAggregateJoinAndItsObserverCanFinish() started.
+✔ Test cleanupTimeoutCancelsTheInnerAggregateJoinAndItsObserverCanFinish() passed after 0.028 seconds.
+✔ Suite "TextFilter fixture cleanup safety" passed after 0.395 seconds.
+✔ Test run with 32 tests in 5 suites passed after 18.260 seconds.
+
+END_UTC=2026-10-19T06:34:24.182550+00:00
+EXIT=0

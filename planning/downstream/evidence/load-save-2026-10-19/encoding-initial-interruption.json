@@ -1,0 +1,5 @@
+{
+  "outcome": "interrupted, no completion record",
+  "logBytes": 0,
+  "recoveryCheck": "No surviving compiler/test process; no test result claimed."
+}
