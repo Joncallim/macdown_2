@@ -124,31 +124,52 @@ enum SVGIDNamespace {
         var output = "<\(tag.name)"
         for attribute in tag.attributes {
             guard let raw = attribute.value else {
+                guard !["href", "xlink:href", "src"].contains(attribute.name) else { return nil }
                 output += " \(attribute.name)"
                 continue
             }
             guard let value = try? Parser.unescapeEntities(raw, true) else { return nil }
-            var updated = value
-            switch attribute.name {
-            case "id": updated = prefix + value
-            case "href", "xlink:href":
-                if value.first == "#", ids.contains(String(value.dropFirst())) {
-                    updated = "#" + prefix + value.dropFirst()
-                }
-            case "aria-labelledby", "aria-describedby", "aria-controls", "aria-owns", "aria-flowto", "aria-details":
-                updated = value.split(whereSeparator: \.isWhitespace).map {
-                    ids.contains(String($0)) ? prefix + $0 : String($0)
-                }.joined(separator: " ")
-            default: break
-            }
-            if urlBearingAttributes.contains(attribute.name) {
-                guard safeResourceURLs(in: updated) else { return nil }
-                updated = rewriteURLReferences(updated, ids: ids, prefix: prefix)
-            }
+            guard let updated = rewrittenValue(value, attribute: attribute.name, tagName: tag.name,
+                                               ids: ids, prefix: prefix) else { return nil }
             let emitted = updated == value ? raw : HTMLEscaping.escape(updated)
             output += " \(attribute.name)=\"\(emitted)\""
         }
         return output + (tag.isSelfClosing ? " />" : ">")
+    }
+
+    private static func rewrittenValue(
+        _ value: String, attribute: String, tagName: String, ids: Set<String>, prefix: String
+    ) -> String? {
+        var updated = value
+        switch attribute {
+        case "id": updated = prefix + value
+        case "href", "xlink:href":
+            guard let href = rewrittenHref(value, tagName: tagName, ids: ids, prefix: prefix) else { return nil }
+            updated = href
+        case "src": return nil
+        case "aria-labelledby", "aria-describedby", "aria-controls", "aria-owns", "aria-flowto", "aria-details":
+            updated = value.split(whereSeparator: \.isWhitespace).map {
+                ids.contains(String($0)) ? prefix + $0 : String($0)
+            }.joined(separator: " ")
+        default: break
+        }
+        if urlBearingAttributes.contains(attribute) {
+            guard safeResourceURLs(in: updated) else { return nil }
+            updated = rewriteURLReferences(updated, ids: ids, prefix: prefix)
+        }
+        return updated
+    }
+
+    private static func rewrittenHref(_ value: String, tagName: String, ids: Set<String>, prefix: String) -> String? {
+        let target = String(value.dropFirst())
+        if tagName != "a" {
+            // SVG image/use/text-path links can load without a user click.
+            // The sanitizer permits HTTPS for interactive links, so require
+            // an owned local target on every other element.
+            guard value.first == "#", ids.contains(target) else { return nil }
+            return "#" + prefix + target
+        }
+        return value.first == "#" && ids.contains(target) ? "#" + prefix + target : value
     }
 
     static func rewriteURLReferences(_ text: String, ids: Set<String>, prefix: String) -> String {

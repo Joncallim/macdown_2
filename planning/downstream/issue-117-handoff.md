@@ -202,6 +202,11 @@ data-font bytes. A remote, file or relative CSS resource URL rejects the
 opt-in diagram, including when the SVG has no IDs or the URL is in a paint
 attribute, preserving the offline contract for this new path. D2's bundled
 `data:application/font-woff` is covered by the real-renderer test.
+Resource-bearing SVG element links (`image`, `use`, text paths and similar)
+must also resolve to an ID inside the same diagram. The opt-in path rejects
+`src` inside SVG; it still permits an interactive `<a href="https:…">`
+link, which opens only by a user action. This distinction is necessary because
+the pre-existing sanitizer permits HTTPS for clickable links.
 
 One serial package test renders representative actual Graphviz, D2 and
 Mermaid diagrams in WebKit, sanitizes them, rewrites their IDs and references,

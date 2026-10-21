@@ -94,6 +94,19 @@ struct SVGIDNamespaceTests {
             #"<svg id="x"><style>#x::after{content:url(https://example.test/image.png)}</style></svg>"#,
             occurrence: 0
         ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg><image href="https://example.test/image.svg"/></svg>"#,
+            occurrence: 0
+        ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            ##"<svg><use href="#outside"/></svg>"##,
+            occurrence: 0
+        ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg><foreignObject><img src="https://example.test/image.png"/></foreignObject></svg>"#,
+            occurrence: 0
+        ) == nil)
+        #expect(SVGIDNamespace.rewrite(#"<svg><image href/></svg>"#, occurrence: 0) == nil)
         #expect(SVGIDNamespace.rewrite(#"<svg id="x"><style>#\\78{fill:red}</style></svg>"#,
                                        occurrence: 0) == nil)
         #expect(SVGIDNamespace.rewrite(
