@@ -148,13 +148,47 @@ test-data font licence is present in the source ZIP but the test data is not
 identified as a compiled package by the recorded Go graph. The distribution
 choice and any additional embedded-code notice duties still need independent
 review before adding shipped notice texts or calling this a complete offer.
-In particular, the pinned Chroma SVG formatter embeds a Liberation Mono WOFF
-font with SIL Open Font License text and Reserved Font Names. Its full encoded
-font string matches the publisher's `d2.wasm` at byte offset 14,657,061;
-`Liberation Mono` appears at offset 11,658,002. The applicable notice and
-Reserved Font Name treatment need separate review; this evidence is not a
-licence clearance. See [the pinned font source](https://github.com/alecthomas/chroma/blob/v2.14.0/formatters/svg/font_liberation_mono.go)
+In particular, the pinned Chroma v2.14.0 SVG formatter embeds a Liberation
+Mono WOFF font. The `formatters/svg/font_liberation_mono.go` file in the retained
+module ZIP has SHA-256 `62b52a13f5eaa92c7ec5cecbdb9fc17871ad98095668967938ffe3ae4ee96a2c`.
+Its 233,248-byte base64 WOFF string has SHA-256
+`08a76705aa3a34ece73a65398252e0df807f7671231a0d2a3f6fd4719e851380`
+and occurs exactly once at byte offset 14,657,061 in each byte-identical
+publisher `d2.wasm` variant (SHA-256
+`7b0d5db9e148d1eba9ab7494a468a79fd92aca93fd3a89cad5876e68097170af`).
+The decoded 174,936-byte WOFF has SHA-256
+`29d9447a83dbf9866aff37f7dc972441302da97f9a242ea0405f60841e9b630f`.
+Its `name` table identifies the family as Liberation Mono, names Google and
+Red Hat in its copyright metadata, and identifies SIL OFL 1.1. The exact
+copyright, Reserved Font Name declarations and OFL text from the Chroma source
+header are now carried as the separate `d2-liberation-mono` embedded component
+in the generated third-party notices and SBOM. The source header stripped of
+Go comment markers is copied at `compliance/licenses/d2--LIBERATION-MONO-OFL.txt`
+(SHA-256 `985e76906c34ca203039d0d0aa47237d059de14d7c70c891e7f75171d0258753`).
+See [the pinned font source](https://github.com/alecthomas/chroma/blob/v2.14.0/formatters/svg/font_liberation_mono.go)
 and [formatter registration](https://github.com/alecthomas/chroma/blob/v2.14.0/formatters/api.go).
+This is publisher-byte correspondence and attribution, not an independent
+WebAssembly rebuild. The font's Reserved Font Name treatment still requires
+review under the D2 LC-03 release finding; this change does not clear it or
+publish the source archive. The [OFL guidance on webfonts and Reserved Font
+Names](https://openfontlicense.org/webfonts-and-reserved-font-names) explains
+why format conversion and embedding need a case-specific review. The WOFF name
+table retains `Liberation Mono`; no MostlyText-side font conversion or edit was
+made. Reproduce the byte and notice checks with:
+
+```sh
+python3 compliance/tools/verify_d2_offer.py /path/to/d2-source-review-bundle.tar.gz
+python3 compliance/tools/verify_d2_font.py --archive /path/to/d2-source-review-bundle.tar.gz
+python3 compliance/tools/compliance.py check
+```
+
+The verifier accepts only the retained archive SHA-256 above. With that archive
+it reported the source, encoded/decoded font, publisher WASM and copied licence
+hashes above. A copy of the licence with one added line was rejected. All 87
+compliance tests passed outside the nested sandbox; `check --release` still has
+seven findings, including the unchanged D2 public-source URL and the expanded
+LC-03 review item. These checks do not establish font-version identity or legal
+clearance of the publisher's Reserved Font Name use.
 The archive is local only. `source_offer.status` remains `planned`, the strict
 release check retains its D2 findings, and no website object or binary was
 published.
