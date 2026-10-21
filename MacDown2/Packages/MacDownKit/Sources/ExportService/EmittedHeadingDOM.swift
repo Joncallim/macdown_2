@@ -81,6 +81,7 @@ enum EmittedHeadingDOM {
         expectedCount: Int, markedHTML: String
     ) -> Inspection? {
         var reservedIDs: Set<String> = []
+        var namespaceIDs: Set<String> = []
         var explicitCount = 0
         var markerParents: [String: Int] = [:]
         var tags: [String] = []
@@ -89,6 +90,9 @@ enum EmittedHeadingDOM {
             let tag = element.tagNameNormal()
             tags.append(tag)
             if element.hasAttr("id"), let value = try? element.attr("id") {
+                if value.hasPrefix("mt117-svg-"), !namespaceIDs.insert(value).inserted {
+                    return nil
+                }
                 reservedIDs.insert(value)
                 explicitCount += 1
             }

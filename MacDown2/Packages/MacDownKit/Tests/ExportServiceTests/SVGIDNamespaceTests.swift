@@ -35,8 +35,18 @@ struct SVGIDNamespaceTests {
             + #" style="stroke:url(#paint)"/></svg>"#
         let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 0))
         #expect(result.contains(#"aria-label="url(#paint)""#))
-        #expect(result.contains(#"fill="url( '#mt117-svg-0-0-paint' )""#))
+        #expect(result.contains(#"fill="url( &#39;#mt117-svg-0-0-paint&#39; )""#))
         #expect(result.contains(#"style="stroke:url(#mt117-svg-0-0-paint)""#))
+    }
+
+    @Test func encodedAttributeReferencesResolveToTheirDecodedSVGID() throws {
+        let html = #"<svg><g id="node&#49;"/><use href="&#35;node1" fill="url(&#35;node1)""#
+            + #" aria-labelledby="node&#49;&#9;other"/></svg>"#
+        let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 3))
+        #expect(result.contains(#"id="mt117-svg-3-0-node1""#))
+        #expect(result.contains(##"href="#mt117-svg-3-0-node1""##))
+        #expect(result.contains(#"fill="url(#mt117-svg-3-0-node1)""#))
+        #expect(result.contains(#"aria-labelledby="mt117-svg-3-0-node1 other""#))
     }
 
     @Test func ambiguousOrUnsupportedArtworkPreservesTheAuthoredSource() {

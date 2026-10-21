@@ -174,6 +174,18 @@ struct EmittedHeadingDOMTests {
         #expect(html.contains(##"href="#mt117-svg-1-0-graph0""##))
     }
 
+    @Test func authoredIDMatchingAnSVGNamespaceFailsTheOptInAnalysis() async throws {
+        let source = "<div id=mt117-svg-0-0-graph0>Authored</div>\n\n# Heading\n\n```diagram\nsource\n```\n"
+        let fence = try #require(range(of: "```diagram\nsource\n```", in: source))
+        let fixture = try await makeFixture(source, contributions: [
+            ExportDerivedContribution(
+                sourceRange: fence, placement: .block,
+                html: "<svg id=graph0></svg>", sourceGeneration: 1
+            ),
+        ])
+        #expect(EmittedHeadingDOM.inspect(fixture.rendered) == nil)
+    }
+
     /// Run explicitly in Release for phase timing; package-process timings do
     /// not stand in for the signed app or WebKit's child-process memory.
     @Test func oneMiBTechnicalDocumentReleaseProbe() async throws {

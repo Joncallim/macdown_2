@@ -1,4 +1,5 @@
 import Foundation
+import SwiftSoup
 
 /// Gives each accepted diagram occurrence its own SVG IDs. Renderer caches keep
 /// their canonical artwork; this runs only on the sanitized export fragment.
@@ -68,7 +69,8 @@ enum SVGIDNamespace {
             guard let tag = HTMLTagScanner.parseTag(at: cursor, in: scalars) else { return nil }
             if !tag.isClosing {
                 for attribute in tag.attributes where attribute.name == "id" {
-                    guard let value = attribute.value, validID(value), ids.insert(value).inserted else { return nil }
+                    guard let raw = attribute.value, let value = try? Entities.unescape(raw),
+                          validID(value), ids.insert(value).inserted else { return nil }
                 }
             }
             cursor = tag.end
@@ -99,7 +101,12 @@ enum SVGIDNamespace {
             if tag.name == "style" {
                 style = !tag.isClosing
             }
-            output += tag.isClosing ? "</\(tag.name)>" : openingTag(tag, ids: ids, prefix: prefix)
+            if tag.isClosing {
+                output += "</\(tag.name)>"
+            } else {
+                guard let opening = openingTag(tag, ids: ids, prefix: prefix) else { return nil }
+                output += opening
+            }
             cursor = tag.end
         }
         return style ? nil : output
@@ -114,13 +121,14 @@ enum SVGIDNamespace {
         }
     }
 
-    private static func openingTag(_ tag: HTMLTagScanner.Tag, ids: Set<String>, prefix: String) -> String {
+    private static func openingTag(_ tag: HTMLTagScanner.Tag, ids: Set<String>, prefix: String) -> String? {
         var output = "<\(tag.name)"
         for attribute in tag.attributes {
-            guard let value = attribute.value else {
+            guard let raw = attribute.value else {
                 output += " \(attribute.name)"
                 continue
             }
+            guard let value = try? Entities.unescape(raw) else { return nil }
             var updated = value
             switch attribute.name {
             case "id": updated = prefix + value
@@ -129,7 +137,7 @@ enum SVGIDNamespace {
                     updated = "#" + prefix + value.dropFirst()
                 }
             case "aria-labelledby", "aria-describedby", "aria-controls", "aria-owns", "aria-flowto", "aria-details":
-                updated = value.split(separator: " ").map {
+                updated = value.split(whereSeparator: \.isWhitespace).map {
                     ids.contains(String($0)) ? prefix + $0 : String($0)
                 }.joined(separator: " ")
             default: break
@@ -137,7 +145,8 @@ enum SVGIDNamespace {
             if urlBearingAttributes.contains(attribute.name) {
                 updated = rewriteURLReferences(updated, ids: ids, prefix: prefix)
             }
-            output += " \(attribute.name)=\"\(updated)\""
+            let emitted = updated == value ? raw : HTMLEscaping.escape(updated)
+            output += " \(attribute.name)=\"\(emitted)\""
         }
         return output + (tag.isSelfClosing ? " />" : ">")
     }

@@ -173,10 +173,14 @@ the `# graph0` heading target. Native preview links still use their existing
 route; no generated heading link is exposed.
 
 This is a staged parser, **not activation evidence**. Before enabling it,
-review entity-encoded references and CSS nesting/escapes against real
-Graphviz, D2 and Mermaid output; prove namespace disjointness from decoded
-authored and final-template IDs; measure adversarial time/memory bounds; and
+review CSS nesting/escapes and encoded CSS references against real Graphviz,
+D2 and Mermaid output; prove namespace disjointness from final-template IDs;
+measure adversarial time/memory bounds; and
 obtain independent security and native visual review. The current conservative
 CSS path rejects at-rules, comments and quoted strings instead of publishing a
 partly rewritten diagram. Linked TOC serialization, destination-specific
 failure behavior and signed owner-observed navigation remain open.
+Entity-encoded SVG attribute IDs/references are decoded before matching, and
+the opt-in emitted-DOM check rejects a collision with an authored ID that
+duplicates the SVG namespace. These checks do not cover every CSS escape or
+the final document template.
