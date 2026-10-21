@@ -8,7 +8,9 @@ import Foundation
 public actor GraphvizWebRenderer: GraphvizDiagramRendering {
     public static let defaultMaxOutputBytes = 2 * 1024 * 1024
 
-    private let pool: DiagramWebKitPool
+    private var pool: DiagramWebKitPool
+    private let poolSize: Int
+    private let timeout: Duration
     private let maxOutputBytes: Int
 
     public init(
@@ -16,6 +18,8 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
         timeout: Duration = .seconds(5),
         maxOutputBytes: Int = GraphvizWebRenderer.defaultMaxOutputBytes
     ) {
+        self.poolSize = poolSize
+        self.timeout = timeout
         pool = DiagramWebKitPool(
             harnessResourceName: "harness",
             bundle: Bundle.module,
@@ -40,7 +44,16 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
     }
 
     public func shutdown() async {
-        await pool.shutdown()
+        // Preserve the renderer's lazy reuse contract without reopening the
+        // old pool generation while its queued or in-flight work retires.
+        let retiring = pool
+        pool = DiagramWebKitPool(
+            harnessResourceName: "harness",
+            bundle: Bundle.module,
+            poolSize: poolSize,
+            timeout: timeout
+        )
+        await retiring.shutdown()
     }
 
     @MainActor

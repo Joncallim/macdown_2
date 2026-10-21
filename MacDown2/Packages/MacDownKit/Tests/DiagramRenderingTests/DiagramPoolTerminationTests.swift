@@ -49,4 +49,87 @@ struct DiagramPoolTerminationTests {
         #expect(first == second)
         await pool.shutdown()
     }
+
+    @Test func queuedRenderCannotReopenAPoolAfterShutdown() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pool = DiagramWebKitPool(harnessResourceName: "harness", bundle: bundle, poolSize: 1)
+        let entered = DiagramPoolTestSignal()
+        let release = DiagramPoolTestSignal()
+
+        let first = Task {
+            try await pool.withPage { _ in
+                await entered.fire()
+                await release.wait()
+            }
+        }
+        await entered.wait()
+        let queued = Task { try await pool.withPage { _ in 42 } }
+
+        await pool.shutdown()
+        await release.fire()
+        _ = try? await first.value
+        do {
+            _ = try await queued.value
+            Issue.record("a queued request reopened the pool after terminal shutdown")
+        } catch {
+            #expect(error as? DiagramPoolError == .pageUnavailable)
+        }
+    }
+
+    @Test func cancellingAQueuedRenderSettlesBeforeItsSlotIsReleased() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pool = DiagramWebKitPool(harnessResourceName: "harness", bundle: bundle, poolSize: 1)
+        let entered = DiagramPoolTestSignal()
+        let release = DiagramPoolTestSignal()
+
+        let first = Task {
+            try await pool.withPage { _ in
+                await entered.fire()
+                await release.wait()
+            }
+        }
+        await entered.wait()
+        let queued = Task { try await pool.withPage { _ in 42 } }
+        queued.cancel()
+
+        let outcome: Result<Int, any Error>
+        do {
+            outcome = try await .success(DiagramTimeoutRace.run(
+                timeout: .seconds(2),
+                timeoutError: DiagramPoolError.timedOut
+            ) { try await queued.value })
+        } catch {
+            outcome = .failure(error)
+        }
+        await release.fire()
+        _ = try? await first.value
+        _ = try? await queued.value
+        switch outcome {
+        case .success:
+            Issue.record("a cancelled request waited for the occupied page")
+        case let .failure(error):
+            #expect(error is CancellationError)
+        }
+        await pool.shutdown()
+    }
+}
+
+private actor DiagramPoolTestSignal {
+    private var fired = false
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func wait() async {
+        if fired {
+            return
+        }
+        await withCheckedContinuation { waiter = $0 }
+    }
+
+    func fire() {
+        fired = true
+        waiter?.resume()
+        waiter = nil
+    }
 }
