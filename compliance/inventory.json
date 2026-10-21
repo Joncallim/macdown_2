@@ -102,7 +102,7 @@
       "npm_file_sha256": "9898965444a940cdbedda3b039f717e96a86ffe9b3170bf30f8fea94ffb66e8a",
       "modifications": "Trailing `export{lw as D2}` replaced with `window.D2=lw;` (one statement; every other byte identical). Documented in NOTICE.txt.",
       "provenance": "verified",
-      "evidence": "Byte comparison with dist/browser/index.js in the npm tarball @terrastruct/d2@0.1.33 (2026-09-28): 8,194,848-byte common prefix, 2-byte common suffix, difference is exactly the export statement.",
+      "evidence": "The integrity-checked @terrastruct/d2@0.1.33 npm archive matches the shipped browser file except for the documented export replacement. npm gitHead names source commit 581c91096b62d644fb5168313142c836b7e68e74; the js/wasm source-build graph and 16 external Go module licence-text hashes are recorded in compliance/evidence/d2-0.1.33/. This is publisher provenance and source-graph evidence, not an independent rebuild or completed source offer.",
       "lc": [
         "LC-01",
         "LC-03",
@@ -155,6 +155,111 @@
         "LC-07"
       ],
       "notes": "The Viz.js 3.30.0 Dockerfile statically builds Expat 2.8.4 and links -lexpat. The npm backend publisher provenance names the same gzip archive digest independently downloaded here. COPYING is byte-identical to that archive. See compliance/evidence/viz-js-3.30.0/ for correspondence checks and limits; no independent rebuild is claimed."
+    },
+    {
+      "id": "graphviz-ellipse-maisonobe",
+      "name": "Luc Maisonobe-derived ellipse routine (via Graphviz/Viz.js)",
+      "kind": "embedded",
+      "version": "Graphviz 16.0.0 source snapshot",
+      "upstream": "https://gitlab.com/graphviz/graphviz",
+      "revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+      "resolution": "exact",
+      "licence": "BSD-3-Clause AND EPL-2.0",
+      "copyright": [
+        "Copyright (c) 2003-2004, Luc Maisonobe",
+        "Copyright (c) 2012 AT&T Intellectual Property"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/graphviz-ellipse--LUC-MAISONOBE.txt",
+          "sha256": "354cf0b3bc6b4bc4b0db8b446aaa3f82777f64debfd3cc12bdd3ffbb1db97c3a",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/common/ellipse.c",
+          "upstream_excerpt": "Verbatim Luc Maisonobe attribution and licence comment; Graphviz EPL-2.0 text is carried by viz-js"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+      "notes": "The Viz.js build links libgvc, which links Graphviz libcommon; its source list includes ellipse.c. That file credits a Luc Maisonobe-derived implementation under a separate three-clause notice alongside Graphviz EPL-2.0. Source linkage does not prove the exact published WebAssembly objects; the broader linked-code audit stays open."
+    },
+    {
+      "id": "graphviz-randomkit",
+      "name": "Random kit routines (via Graphviz/Viz.js)",
+      "kind": "embedded",
+      "version": "Random kit 1.3 in Graphviz 16.0.0",
+      "upstream": "https://gitlab.com/graphviz/graphviz",
+      "revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+      "resolution": "exact",
+      "licence": "BSD-3-Clause AND MIT",
+      "copyright": [
+        "Copyright (c) 2003-2005, Jean-Sebastien Roy",
+        "Copyright (C) 1997-2002, Makoto Matsumoto and Takuji Nishimura"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/graphviz-randomkit--SOURCE-NOTICE.txt",
+          "sha256": "d153c538b26c67cf85a430d30df672154daec3e17be7d92e52dba2887e8d6097",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/neatogen/randomkit.c",
+          "upstream_excerpt": "Verbatim opening copyright and licence comment"
+        },
+        {
+          "path": "compliance/licenses/graphviz-randomkit--HEADER-NOTICE.txt",
+          "sha256": "1be5b0283ded0074ee5c213b0b011a05cfc472fbd4e87518977f7131b972b347",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/neatogen/randomkit.h",
+          "upstream_excerpt": "Verbatim opening copyright and licence comment"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+      "notes": "The Neato plugin source build links libneatogen_C.la, whose source list includes randomkit.c. The C and header comments separately preserve the BSD-style Mersenne Twister notice and MIT permissions. Source linkage does not prove the exact published WebAssembly objects; the broader linked-code audit stays open."
+    },
+    {
+      "id": "graphviz-rbtree",
+      "name": "Graphviz red-black tree library (via Viz.js)",
+      "kind": "embedded",
+      "version": "Graphviz 16.0.0 source snapshot",
+      "upstream": "https://gitlab.com/graphviz/graphviz",
+      "revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+      "resolution": "exact",
+      "licence": "LicenseRef-Graphviz-RBTree",
+      "copyright": [
+        "No explicit copyright line in upstream Graphviz lib/rbtree/LICENSE"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/graphviz-rbtree--LICENSE.txt",
+          "sha256": "fcb423209a3a3909f41e629a4973eab3995ceb93136dd72485fb12ad3de29dfc",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/rbtree/LICENSE"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+      "notes": "The Graphviz 16.0.0 Neato plugin source build links librbtree_C.la, and its overlap source calls the tree functions. Viz.js links the Neato plugin. This is source build linkage, not an independent proof of the exact published WebAssembly code. The upstream text is preserved verbatim under a custom LicenseRef because it has no stated SPDX identifier or explicit copyright line. The broader Graphviz/Emscripten audit remains open."
     },
     {
       "id": "libyaml",
@@ -320,12 +425,40 @@
       ]
     },
     {
+      "id": "katex-react-helpers",
+      "name": "React-derived KaTeX utility helpers (via Mermaid)",
+      "kind": "attribution",
+      "version": "KaTeX 0.16.47",
+      "upstream": "https://github.com/KaTeX/KaTeX",
+      "resolution": "exact",
+      "licence": "Apache-2.0",
+      "copyright": [
+        "Copyright 2013-2014 Facebook, Inc."
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/react-katex--APACHE-2.0.txt",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "upstream": "https://github.com/facebook/react",
+          "upstream_revision": "95d82cacd6e9cc6a2fe6366d79510cc9133886cb",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/katex-react-attribution/mapping.json",
+      "notes": "Conservative attribution for the hyphenate and escape helpers that KaTeX 0.16.47 explicitly credits to Facebook React under Apache 2. The verified Mermaid source map reaches both helper lines. React v0.11.0 is a matching Apache-era reference for the full licence text, not a proven exact original adaptation revision. The remaining Mermaid nested-attribution item stays open."
+    },
+    {
       "id": "neon",
       "name": "Neon",
       "kind": "swiftpm",
-      "version": "484d6fb",
-      "upstream": "https://github.com/ChimeHQ/Neon",
-      "revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+      "version": "dabf50c",
+      "upstream": "https://github.com/Joncallim/Neon",
+      "revision": "dabf50c947148c49acd0d321dfe8f3805d10b3da",
       "resolution": "exact",
       "licence": "BSD-3-Clause",
       "copyright": [
@@ -335,8 +468,8 @@
         {
           "path": "compliance/licenses/neon--LICENSE.txt",
           "sha256": "d11b5eea8e9ae2f6dd06545633e8daf0dfcbc7dbb911a20d1504c905e5808775",
-          "upstream": "https://github.com/ChimeHQ/Neon",
-          "upstream_revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+          "upstream": "https://github.com/Joncallim/Neon",
+          "upstream_revision": "dabf50c947148c49acd0d321dfe8f3805d10b3da",
           "upstream_path": "LICENSE"
         }
       ],
@@ -346,7 +479,7 @@
         "LC-07"
       ],
       "manifest_requirement": {
-        "revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"
+        "revision": "dabf50c947148c49acd0d321dfe8f3805d10b3da"
       }
     },
     {
@@ -1887,6 +2020,27 @@
           "licence": "MIT",
           "upstream": "https://github.com/libexpat/libexpat",
           "inventory_id": "expat"
+        },
+        {
+          "name": "Graphviz red-black tree library",
+          "version": "Graphviz 16.0.0 source snapshot",
+          "licence": "LicenseRef-Graphviz-RBTree",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "inventory_id": "graphviz-rbtree"
+        },
+        {
+          "name": "Luc Maisonobe-derived ellipse routine",
+          "version": "Graphviz 16.0.0 source snapshot",
+          "licence": "BSD-3-Clause AND EPL-2.0",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "inventory_id": "graphviz-ellipse-maisonobe"
+        },
+        {
+          "name": "Random kit routines",
+          "version": "Random kit 1.3 in Graphviz 16.0.0",
+          "licence": "BSD-3-Clause AND MIT",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "inventory_id": "graphviz-randomkit"
         }
       ],
       "source_offer": {
@@ -1897,7 +2051,7 @@
       },
       "open_items": [
         "LC-02: exact Graphviz 16.0.0, Viz.js 3.30.0 and Expat 2.8.4 source/build inputs are hashed in compliance/evidence/viz-js-3.30.0; assemble and review the complete corresponding-source offer, then publish it through LC-09.",
-        "Expat 2.8.4 linkage and its MIT notice are recorded. Complete the remaining embedded Graphviz and Emscripten runtime attribution audit; the direct linker list alone is not a complete linked-code inventory."
+        "Expat 2.8.4, Graphviz's red-black tree, Luc Maisonobe-derived ellipse routine and Random kit source linkage and notices are recorded. Complete the remaining embedded Graphviz and Emscripten runtime attribution audit, including generated Bison parser skeleton exceptions; the source linker chains alone are not a complete linked-code inventory."
       ],
       "runtime_resources": [
         {

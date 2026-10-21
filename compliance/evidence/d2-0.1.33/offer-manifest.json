@@ -1,0 +1,289 @@
+{
+  "files": [
+    {
+      "path": "licences/D2-LICENSE.txt",
+      "sha256": "97933e571f92c0b21e09a59fe67d7ce9a77d3eac5efe5f341756d5f93d191775",
+      "size": 16758
+    },
+    {
+      "path": "licences/D2-NOTICE.txt",
+      "sha256": "31d12ea70d767e555cccfee22c18a902176e76edc7e4f54e6cd94e82be63270d",
+      "size": 1569
+    },
+    {
+      "path": "modules/01/LICENSE",
+      "sha256": "ab79785bfa235ac1c5e16f75e0f85eb7ce0402fb72f4667fffa0729e694579b8",
+      "size": 1491
+    },
+    {
+      "path": "modules/01/source.zip",
+      "sha256": "0bd7e0e8b5d3c82484b2e144502399f8387a9eaf00acb0c92f6d195c7f4cb4cc",
+      "size": 135118
+    },
+    {
+      "path": "modules/02/COPYING",
+      "sha256": "e7bf754e7153012a3a8ff697d21acd6c12e590d6a55f2aef8ee83616aa9a795f",
+      "size": 1055
+    },
+    {
+      "path": "modules/02/source.zip",
+      "sha256": "1fc346b3317079b8c8ab6927cd3f3da494561116f0e9613a08a714bd9cfbd76a",
+      "size": 1380666
+    },
+    {
+      "path": "modules/03/LICENSE",
+      "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
+      "size": 1084
+    },
+    {
+      "path": "modules/03/source.zip",
+      "sha256": "e4c47dd6da396292eed4107838ccfd1fee632884caa8da8a027623435b6daa36",
+      "size": 1886553
+    },
+    {
+      "path": "modules/04/LICENSE",
+      "sha256": "04a8e475337d6b9959a8c47956bf713dd3362d3aadf839e74b376afb07487167",
+      "size": 1293
+    },
+    {
+      "path": "modules/04/source.zip",
+      "sha256": "dec535cccf58418de6a38909010cfcea9e46475f79aab9f53cd80d133abcdd3a",
+      "size": 53781
+    },
+    {
+      "path": "modules/05/LICENSE",
+      "sha256": "9be5d04bb4d706914d5bf943710da4afeb42048f7c529902fb57c82762a991a9",
+      "size": 1072
+    },
+    {
+      "path": "modules/05/source.zip",
+      "sha256": "29613e60dfc18d0f94c6382522b2496716e01dce8bd660fe68c83d3e9acd7386",
+      "size": 703526
+    },
+    {
+      "path": "modules/06/LICENSE",
+      "sha256": "d3ba056adc2b7909e95681deaae397fb37c97ed491a920f491214f07b62c41d0",
+      "size": 565
+    },
+    {
+      "path": "modules/06/source.zip",
+      "sha256": "cdcb9e6a14933dcbf167b44dcd5083fc6a2e52c4fae8fb79747c691efeb7d84e",
+      "size": 491249
+    },
+    {
+      "path": "modules/07/LICENSE",
+      "sha256": "1e4cf2a117516ec1b54041d68ed4f5d331878b04de3386f4790e7b5b9c04e1ec",
+      "size": 1055
+    },
+    {
+      "path": "modules/07/source.zip",
+      "sha256": "78d5d0e0737f0f54bbed77b6dfa847d8c871bed2668a9dc44328c7c3411ada10",
+      "size": 958042
+    },
+    {
+      "path": "modules/08/LICENSE",
+      "sha256": "54d5c177c5a7b24ec8b5b3182a5884d958c6a70c6be1ebb2fdd4627841415204",
+      "size": 1073
+    },
+    {
+      "path": "modules/08/source.zip",
+      "sha256": "c6ae8b1878b632a894e47df22a070d0cf270f3547800647eb1d48667c579baea",
+      "size": 22667
+    },
+    {
+      "path": "modules/09/LICENSE.txt",
+      "sha256": "a59885f5f0f3b3c07cf9444db5fe399b6f0791eac82055f7b85cc65500551039",
+      "size": 1072
+    },
+    {
+      "path": "modules/09/source.zip",
+      "sha256": "b995e4aa0cc1e5779cc61138ac925cb8c1e963e40c80e4b93ee8553812ebb792",
+      "size": 481951
+    },
+    {
+      "path": "modules/10/LICENSE",
+      "sha256": "c1d6f653c38c80294dc7994647ba0dcc508ce64a86996303c804efa2f7982bff",
+      "size": 1071
+    },
+    {
+      "path": "modules/10/source.zip",
+      "sha256": "7e0a308bb016a245a6e20ed44f088b0a17b46ccac70e454735ae1575703a4816",
+      "size": 240128
+    },
+    {
+      "path": "modules/11/LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "size": 1453
+    },
+    {
+      "path": "modules/11/source.zip",
+      "sha256": "447a436882177a2a9fc281116f1858d6e0533c790a90f55cf3a64f1cafb752c6",
+      "size": 629088
+    },
+    {
+      "path": "modules/12/LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "size": 1453
+    },
+    {
+      "path": "modules/12/source.zip",
+      "sha256": "1f0f48daa679986db28876cef4074ff192fb705fcdc537627903270375bf6971",
+      "size": 5301188
+    },
+    {
+      "path": "modules/13/LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "size": 1453
+    },
+    {
+      "path": "modules/13/source.zip",
+      "sha256": "9c746c215d695e80d6f4d1b1f1d55deaae5e451b4c031223af25f2b2f0757215",
+      "size": 1903185
+    },
+    {
+      "path": "modules/14/LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "size": 1453
+    },
+    {
+      "path": "modules/14/source.zip",
+      "sha256": "939cb4c202aa8fa302f2ba6f9d29165ce82fce9c665d9a1a0bb0d9e51b79e6f5",
+      "size": 9233999
+    },
+    {
+      "path": "modules/15/LICENSE",
+      "sha256": "f9a2df4fb1d45cef691b8bc2e35776f8bee5af5b3696d48d4547635d7858bf91",
+      "size": 1453
+    },
+    {
+      "path": "modules/15/source.zip",
+      "sha256": "07ee9f680118861ee732ce0df4553b834383b87e0519fb9a0990c51d7abd6885",
+      "size": 21783
+    },
+    {
+      "path": "modules/16/LICENSE",
+      "sha256": "798801f8406a10b9ab31136f8fd05ddbdc61d8dea37e6e6f5687bd8541884005",
+      "size": 752
+    },
+    {
+      "path": "modules/16/source.zip",
+      "sha256": "850c470a3055d03061536e1341fc8d87237613612743637bdaeebff3cdfab239",
+      "size": 1280179
+    },
+    {
+      "path": "patches/d2-browser.patch",
+      "sha256": "b811610e6a2eab33cb1453b4f3466cd40ca686bed3ed9c9d3e3ac153186ef1d0",
+      "size": 4284
+    },
+    {
+      "path": "publisher/d2-0.1.33.tgz",
+      "sha256": "b84f8fe9b8d4e32223a436a54aa47867179856612174e803c04a725c93834191",
+      "size": 21308350
+    },
+    {
+      "path": "upstream/d2-source-581c9109.tar.gz",
+      "sha256": "91e4234ad509b7e673a19541feda2b66f88311b3c6dd9f8257a0d2e350922391",
+      "size": 29945918
+    }
+  ],
+  "module_order": [
+    {
+      "directory": "modules/01",
+      "go_sum": "h1:6fiXdLuUvYs2OJSvNRqlNPoBm6YABE226xrbavY5Wv4=",
+      "path": "github.com/PuerkitoBio/goquery",
+      "version": "v1.10.0"
+    },
+    {
+      "directory": "modules/02",
+      "go_sum": "h1:R3+wzpnUArGcQz7fCETQBzO5n9IMNi13iIs46aU4V9E=",
+      "path": "github.com/alecthomas/chroma/v2",
+      "version": "v2.14.0"
+    },
+    {
+      "directory": "modules/03",
+      "go_sum": "h1:ukwgCxwYrmACq68yiUqwIWnGY0cTPox/M94sVwToPjQ=",
+      "path": "github.com/andybalholm/brotli",
+      "version": "v1.2.0"
+    },
+    {
+      "directory": "modules/04",
+      "go_sum": "h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=",
+      "path": "github.com/andybalholm/cascadia",
+      "version": "v1.3.2"
+    },
+    {
+      "directory": "modules/05",
+      "go_sum": "h1:rPYF9/LECdNymJufQKmri9gV604RvvABwgOA8un7yAo=",
+      "path": "github.com/dlclark/regexp2",
+      "version": "v1.11.4"
+    },
+    {
+      "directory": "modules/06",
+      "go_sum": "h1:DACJavvAHhabrF08vX0COfcOBJRhZ8lUbR+ZWIs0Y5g=",
+      "path": "github.com/golang/freetype",
+      "version": "v0.0.0-20170609003504-e2365dfdc4a0"
+    },
+    {
+      "directory": "modules/07",
+      "go_sum": "h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=",
+      "path": "github.com/lucasb-eyer/go-colorful",
+      "version": "v1.2.0"
+    },
+    {
+      "directory": "modules/08",
+      "go_sum": "h1:Wr4uNIE+pHWN3TqZn2SGpA2nLRG064gB7WdSfSS5cz4=",
+      "path": "github.com/mazznoer/csscolorparser",
+      "version": "v0.1.5"
+    },
+    {
+      "directory": "modules/09",
+      "go_sum": "h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=",
+      "path": "github.com/rivo/uniseg",
+      "version": "v0.4.7"
+    },
+    {
+      "directory": "modules/10",
+      "go_sum": "h1:BDXOHExt+A7gwPCJgPIIq7ENvceR7we7rOS9TNoLZeg=",
+      "path": "github.com/yuin/goldmark",
+      "version": "v1.7.4"
+    },
+    {
+      "directory": "modules/11",
+      "go_sum": "h1:e66Fs6Z+fZTbFBAxKfP3PALWBtpfqks2bwGcexMxgtk=",
+      "path": "golang.org/x/exp",
+      "version": "v0.0.0-20240909161429-701f63a606c0"
+    },
+    {
+      "directory": "modules/12",
+      "go_sum": "h1:7cVCUjQwfL18gyBJOmYvptfSHS8Fb3YUDtfLIZ7Nbpw=",
+      "path": "golang.org/x/image",
+      "version": "v0.20.0"
+    },
+    {
+      "directory": "modules/13",
+      "go_sum": "h1:T5GQRQb2y08kTAByq9L4/bz8cipCdA8FbRTXewonqY8=",
+      "path": "golang.org/x/net",
+      "version": "v0.35.0"
+    },
+    {
+      "directory": "modules/14",
+      "go_sum": "h1:bofq7m3/HAFvbF51jz3Q9wLg3jkvSPuiZu/pD1XwgtM=",
+      "path": "golang.org/x/text",
+      "version": "v0.22.0"
+    },
+    {
+      "directory": "modules/15",
+      "go_sum": "h1:noIWHXmPHxILtqtCOPIhSt0ABwskkZKjD3bXGnZGpNY=",
+      "path": "golang.org/x/xerrors",
+      "version": "v0.0.0-20240903120638-7835f813f4da"
+    },
+    {
+      "directory": "modules/16",
+      "go_sum": "h1:UXF/Z9i9tOx/wqGUOn/T12wZeez1Gg0sAVKKl7YUDwM=",
+      "path": "oss.terrastruct.com/util-go",
+      "version": "v0.0.0-20250213174338-243d8661088a"
+    }
+  ],
+  "source_commit": "581c91096b62d644fb5168313142c836b7e68e74",
+  "status": "local preparation only; not a verified or published source offer"
+}

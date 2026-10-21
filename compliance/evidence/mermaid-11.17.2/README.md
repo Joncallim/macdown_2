@@ -89,7 +89,6 @@ Apache-2.0. This is not a claim that every alternative licence text was captured
 | Observed gap | Required completion evidence |
 | --- | --- |
 | 3,980 outer parser positions have no inner source association | Classify the unmapped/generated regions and any required helper attribution. Zero unclassified *named source paths* does not resolve these positions. |
-| KaTeX `dist/katex.mjs:67` says `hyphenate` and `escape` are adapted from Facebook React under Apache 2 | Trace the corresponding upstream material and required copyright/licence/NOTICE text, including the portions actually present in the shipped output. The parent MIT text alone is not closure. |
 | Cytoscape's matching prebundle identifies Engelschall's promises code, jQuery-derived events, Gaetan Renaudeau's Bezier generator and Framer/Koen Bok spring code | Resolve the exact embedded attribution/text obligations at the shipped revision. The existing bundle preserves short comments; those are not assumed to substitute for all required texts. |
 | Rough.js is itself a prebundle with nested inputs | Establish its nested source/build linkage. The recorded patch changes only `bin/rough.d.ts`; its shipped runtime source is byte-identical to the unpatched archive. A lock entry is not proof that a nested dependency was emitted. |
 | Other prebuilt units and webpack helpers | Finish a focused embedded-code/notice review; a matching parent artifact is not a complete transitive audit. |
@@ -99,6 +98,10 @@ This is the bounded stop point: further completion requires deeper source/build
 attribution, not another package-range enumeration or an automatic inventory
 status change. Publication and final signed-artifact inspection remain separate
 owner-authorized phases. The recorded font KEEP decision is not reopened here.
+
+The KaTeX `hyphenate` and `escape` attribution is addressed separately in
+[`../katex-react-attribution/README.md`](../katex-react-attribution/README.md).
+That scoped notice does not close the other Mermaid nested-code gaps above.
 
 ## Reproduction and negative controls
 

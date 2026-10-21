@@ -34,6 +34,14 @@ def member(archive, path):
     return archive.extractfile(entry).read()
 
 
+def notice_blocks(source, marker, count=1):
+    start = source.index(marker)
+    end = start
+    for _ in range(count):
+        end = source.index(b"*/", end) + 2
+    return source[start:end] + b"\n"
+
+
 def audit(inputs, repo):
     archives = {}
     for name, expected in ARCHIVES.items():
@@ -85,6 +93,7 @@ def audit(inputs, repo):
         require(member(source, prefix + "LICENSE") == (resource / "VIZJS-LICENSE.txt").read_bytes(), "Viz.js licence mismatch")
         dockerfile = member(source, prefix + "packages/viz/backend/Dockerfile").decode()
         require("-lexpat" in dockerfile and "R_2_8_4/expat-2.8.4.tar.gz" in dockerfile, "Expat link input missing")
+        require("-lgvplugin_neato_layout" in dockerfile, "Neato plugin link input missing")
 
     with tarfile.open(inputs / "expat-2.8.4.tar.gz") as source:
         expat_license = member(source, "expat-2.8.4/COPYING")
@@ -92,6 +101,45 @@ def audit(inputs, repo):
     with tarfile.open(inputs / "graphviz-16.0.0.tar.gz") as source:
         graphviz_license = member(source, "graphviz-16.0.0/COPYING")
         require(graphviz_license == (resource / "GRAPHVIZ-EPL-LICENSE.txt").read_bytes(), "Graphviz licence mismatch")
+        graphviz_prefix = "graphviz-16.0.0/"
+        plugin_make = member(source, graphviz_prefix + "plugin/neato_layout/Makefile.am")
+        neatogen_make = member(source, graphviz_prefix + "lib/neatogen/Makefile.am")
+        overlap = member(source, graphviz_prefix + "lib/neatogen/overlap.c")
+        rbtree_make = member(source, graphviz_prefix + "lib/rbtree/Makefile.am")
+        rbtree_source = member(source, graphviz_prefix + "lib/rbtree/red_black_tree.c")
+        rbtree_license = member(source, graphviz_prefix + "lib/rbtree/LICENSE")
+        require(b"lib/rbtree/librbtree_C.la" in plugin_make
+                and b"lib/neatogen/libneatogen_C.la" in plugin_make,
+                "Neato plugin no longer links the tree and layout libraries")
+        require(b"overlap.c" in neatogen_make and b"RBTreeCreate" in overlap
+                and b"RBTreeInsert" in overlap and b"RBTreeDestroy" in overlap,
+                "Neato overlap source no longer uses red-black tree code")
+        require(b"librbtree_C_la_SOURCES = red_black_tree.c" in rbtree_make
+                and b"RBTreeCreate" in rbtree_source,
+                "Red-black tree source build path changed")
+        require(rbtree_license == (repo / "compliance/licenses/graphviz-rbtree--LICENSE.txt").read_bytes(),
+                "Graphviz red-black tree licence mismatch")
+
+        common_make = member(source, graphviz_prefix + "lib/common/Makefile.am")
+        gvc_make = member(source, graphviz_prefix + "lib/gvc/Makefile.am")
+        ellipse = member(source, graphviz_prefix + "lib/common/ellipse.c")
+        randomkit_source = member(source, graphviz_prefix + "lib/neatogen/randomkit.c")
+        randomkit_header = member(source, graphviz_prefix + "lib/neatogen/randomkit.h")
+        require("-lgvc" in dockerfile and b"lib/common/libcommon_C.la" in gvc_make
+                and b"ellipse.c" in common_make,
+                "Graphviz common ellipse source build path changed")
+        require(b"randomkit.c" in neatogen_make and b"lib/neatogen/libneatogen_C.la" in plugin_make,
+                "Graphviz Neato Random kit source build path changed")
+        ellipse_notice = notice_blocks(ellipse, b"/* This code is derived", count=2)
+        randomkit_source_notice = notice_blocks(randomkit_source, b"/*\n * Copyright (c) 2003-2005")
+        randomkit_header_notice = notice_blocks(randomkit_header, b"/*\n * Copyright (c) 2003-2005")
+        for notice, path in (
+            (ellipse_notice, "graphviz-ellipse--LUC-MAISONOBE.txt"),
+            (randomkit_source_notice, "graphviz-randomkit--SOURCE-NOTICE.txt"),
+            (randomkit_header_notice, "graphviz-randomkit--HEADER-NOTICE.txt"),
+        ):
+            require(notice == (repo / "compliance/licenses" / path).read_bytes(),
+                    f"Graphviz nested source notice mismatch: {path}")
 
     return {
         "status": "passed",
@@ -108,7 +156,25 @@ def audit(inputs, repo):
         "build_source_sha256": source_files,
         "expat_copying_sha256": digest(expat_license),
         "graphviz_copying_sha256": digest(graphviz_license),
-        "limits": ["Publisher provenance was cross-checked, not signature-verified.", "No independent rebuild or exhaustive linked-code licence audit.", "No public corresponding-source offer or signed-app verification."],
+        "rbtree_source_linkage": {
+            "plugin_makefile_sha256": digest(plugin_make),
+            "neatogen_makefile_sha256": digest(neatogen_make),
+            "overlap_source_sha256": digest(overlap),
+            "rbtree_makefile_sha256": digest(rbtree_make),
+            "rbtree_source_sha256": digest(rbtree_source),
+            "rbtree_license_sha256": digest(rbtree_license),
+        },
+        "other_nested_source_linkage": {
+            "common_makefile_sha256": digest(common_make),
+            "gvc_makefile_sha256": digest(gvc_make),
+            "ellipse_source_sha256": digest(ellipse),
+            "ellipse_notice_sha256": digest(ellipse_notice),
+            "randomkit_source_sha256": digest(randomkit_source),
+            "randomkit_header_sha256": digest(randomkit_header),
+            "randomkit_source_notice_sha256": digest(randomkit_source_notice),
+            "randomkit_header_notice_sha256": digest(randomkit_header_notice),
+        },
+        "limits": ["Publisher provenance was cross-checked, not signature-verified.", "Source build files establish a path to the red-black tree library, not its exact contribution to the published WebAssembly.", "No independent rebuild or exhaustive linked-code licence audit.", "No public corresponding-source offer or signed-app verification."],
     }
 
 

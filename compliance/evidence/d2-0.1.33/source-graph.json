@@ -1,0 +1,221 @@
+{
+  "go_graph": {
+    "external_modules": [
+      {
+        "go_sum": "h1:6fiXdLuUvYs2OJSvNRqlNPoBm6YABE226xrbavY5Wv4=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "ab79785bfa235ac1c5e16f75e0f85eb7ce0402fb72f4667fffa0729e694579b8"
+          }
+        ],
+        "package_count": 1,
+        "path": "github.com/PuerkitoBio/goquery",
+        "version": "v1.10.0"
+      },
+      {
+        "go_sum": "h1:R3+wzpnUArGcQz7fCETQBzO5n9IMNi13iIs46aU4V9E=",
+        "licence_texts": [
+          {
+            "filename": "COPYING",
+            "sha256": "e7bf754e7153012a3a8ff697d21acd6c12e590d6a55f2aef8ee83616aa9a795f"
+          }
+        ],
+        "package_count": 6,
+        "path": "github.com/alecthomas/chroma/v2",
+        "version": "v2.14.0"
+      },
+      {
+        "go_sum": "h1:ukwgCxwYrmACq68yiUqwIWnGY0cTPox/M94sVwToPjQ=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+          }
+        ],
+        "package_count": 2,
+        "path": "github.com/andybalholm/brotli",
+        "version": "v1.2.0"
+      },
+      {
+        "go_sum": "h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "04a8e475337d6b9959a8c47956bf713dd3362d3aadf839e74b376afb07487167"
+          }
+        ],
+        "package_count": 1,
+        "path": "github.com/andybalholm/cascadia",
+        "version": "v1.3.2"
+      },
+      {
+        "go_sum": "h1:rPYF9/LECdNymJufQKmri9gV604RvvABwgOA8un7yAo=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "9be5d04bb4d706914d5bf943710da4afeb42048f7c529902fb57c82762a991a9"
+          }
+        ],
+        "package_count": 2,
+        "path": "github.com/dlclark/regexp2",
+        "version": "v1.11.4"
+      },
+      {
+        "go_sum": "h1:DACJavvAHhabrF08vX0COfcOBJRhZ8lUbR+ZWIs0Y5g=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "d3ba056adc2b7909e95681deaae397fb37c97ed491a920f491214f07b62c41d0"
+          }
+        ],
+        "package_count": 2,
+        "path": "github.com/golang/freetype",
+        "version": "v0.0.0-20170609003504-e2365dfdc4a0"
+      },
+      {
+        "go_sum": "h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "1e4cf2a117516ec1b54041d68ed4f5d331878b04de3386f4790e7b5b9c04e1ec"
+          }
+        ],
+        "package_count": 1,
+        "path": "github.com/lucasb-eyer/go-colorful",
+        "version": "v1.2.0"
+      },
+      {
+        "go_sum": "h1:Wr4uNIE+pHWN3TqZn2SGpA2nLRG064gB7WdSfSS5cz4=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "54d5c177c5a7b24ec8b5b3182a5884d958c6a70c6be1ebb2fdd4627841415204"
+          }
+        ],
+        "package_count": 1,
+        "path": "github.com/mazznoer/csscolorparser",
+        "version": "v0.1.5"
+      },
+      {
+        "go_sum": "h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE.txt",
+            "sha256": "a59885f5f0f3b3c07cf9444db5fe399b6f0791eac82055f7b85cc65500551039"
+          }
+        ],
+        "package_count": 1,
+        "path": "github.com/rivo/uniseg",
+        "version": "v0.4.7"
+      },
+      {
+        "go_sum": "h1:BDXOHExt+A7gwPCJgPIIq7ENvceR7we7rOS9TNoLZeg=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "c1d6f653c38c80294dc7994647ba0dcc508ce64a86996303c804efa2f7982bff"
+          }
+        ],
+        "package_count": 9,
+        "path": "github.com/yuin/goldmark",
+        "version": "v1.7.4"
+      },
+      {
+        "go_sum": "h1:e66Fs6Z+fZTbFBAxKfP3PALWBtpfqks2bwGcexMxgtk=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          }
+        ],
+        "package_count": 1,
+        "path": "golang.org/x/exp",
+        "version": "v0.0.0-20240909161429-701f63a606c0"
+      },
+      {
+        "go_sum": "h1:7cVCUjQwfL18gyBJOmYvptfSHS8Fb3YUDtfLIZ7Nbpw=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          }
+        ],
+        "package_count": 2,
+        "path": "golang.org/x/image",
+        "version": "v0.20.0"
+      },
+      {
+        "go_sum": "h1:T5GQRQb2y08kTAByq9L4/bz8cipCdA8FbRTXewonqY8=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          }
+        ],
+        "package_count": 2,
+        "path": "golang.org/x/net",
+        "version": "v0.35.0"
+      },
+      {
+        "go_sum": "h1:bofq7m3/HAFvbF51jz3Q9wLg3jkvSPuiZu/pD1XwgtM=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          }
+        ],
+        "package_count": 14,
+        "path": "golang.org/x/text",
+        "version": "v0.22.0"
+      },
+      {
+        "go_sum": "h1:noIWHXmPHxILtqtCOPIhSt0ABwskkZKjD3bXGnZGpNY=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "f9a2df4fb1d45cef691b8bc2e35776f8bee5af5b3696d48d4547635d7858bf91"
+          }
+        ],
+        "package_count": 2,
+        "path": "golang.org/x/xerrors",
+        "version": "v0.0.0-20240903120638-7835f813f4da"
+      },
+      {
+        "go_sum": "h1:UXF/Z9i9tOx/wqGUOn/T12wZeez1Gg0sAVKKl7YUDwM=",
+        "licence_texts": [
+          {
+            "filename": "LICENSE",
+            "sha256": "798801f8406a10b9ab31136f8fd05ddbdc61d8dea37e6e6f5687bd8541884005"
+          }
+        ],
+        "package_count": 3,
+        "path": "oss.terrastruct.com/util-go",
+        "version": "v0.0.0-20250213174338-243d8661088a"
+      }
+    ],
+    "package_count": 288,
+    "source_sha256": "505017100487dc73230d6d95b2788c37f1f5192a17db11f8a07d4786e1962acc"
+  },
+  "npm": {
+    "browser_sha256": "9898965444a940cdbedda3b039f717e96a86ffe9b3170bf30f8fea94ffb66e8a",
+    "name": "@terrastruct/d2",
+    "registry_integrity": "sha512-eK5hyfGIJFolC7sUsiKvWdY9xGFctTe3d+PSijo09IYDso8psztC+A4SammizXtlwYZpnnW0AtDjfBYauceSeA==",
+    "tarball_sha256": "b84f8fe9b8d4e32223a436a54aa47867179856612174e803c04a725c93834191",
+    "version": "0.1.33",
+    "wasm_sha256": "7b0d5db9e148d1eba9ab7494a468a79fd92aca93fd3a89cad5876e68097170af"
+  },
+  "patch": {
+    "new": "window.D2=lw;",
+    "old": "export{lw as D2}"
+  },
+  "scope": "publisher-reported source graph, not an independent binary rebuild",
+  "shipped_browser_sha256": "991a44779c91b74cbdf141228a6ba34592fe9b708fe19c221eba9ef4a7cfe33e",
+  "source": {
+    "archive_sha256": "91e4234ad509b7e673a19541feda2b66f88311b3c6dd9f8257a0d2e350922391",
+    "build_script_sha256": "eecb46730c487fb253c85ea029eb4e811360e84377cf39ab012981bacf422cb0",
+    "commit": "581c91096b62d644fb5168313142c836b7e68e74",
+    "go_mod_sha256": "3e80ff104186c4966c030fd807ef143fed3e92d551a7da48b1ffbbc830624810",
+    "target": "GOOS=js GOARCH=wasm ./d2js"
+  }
+}

@@ -45,12 +45,16 @@ upstream revisions are in the SBOM for anyone who wants the source.
 
 ## Retention and stable links
 
-The [2026-10-19 input audit](evidence/viz-js-3.30.0/README.md) now retains
-the exact Graphviz and Viz.js archives/build records plus Expat 2.8.4, which
-the WebAssembly build explicitly links. Include that source and its MIT text
-in the reviewed Graphviz package. The archive digests match the npm backend's
-publisher provenance; no independent rebuild or complete runtime attribution
-audit is claimed. This preparation has not published a source offer.
+The [Graphviz input audit](evidence/viz-js-3.30.0/README.md) retains the exact
+Graphviz and Viz.js archives/build records plus Expat 2.8.4, which the
+WebAssembly build explicitly links. It also identifies separately licensed
+Graphviz red-black tree, Luc Maisonobe-derived ellipse and Random kit sources
+on the renderer's source-build paths. Include Expat's MIT text and these
+verbatim nested notices in the reviewed Graphviz package; the sources are in
+the retained archives. The archive digests match
+the npm backend's publisher provenance; no independent rebuild or complete
+runtime attribution audit is claimed. This preparation has not published a
+source offer.
 
 - Keep every release folder for as long as that release, or any update that
   could install it, is downloadable, and for at least three years after the
