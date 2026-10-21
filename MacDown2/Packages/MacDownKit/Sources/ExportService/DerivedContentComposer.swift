@@ -48,6 +48,7 @@ enum DerivedContentComposer {
         /// Source-coordinate UTF-16 ranges of every block quote and list item.
         let containerRanges: [Range<Int>]
         let bodyText: NSString
+        let namespaceSVGIDs: Bool
 
         /// Whether the contributed range opens with a code-fence line (after any quote/list/indent prefix).
         func startsFence(_ bodyRange: Range<Int>) -> Bool {
@@ -116,7 +117,8 @@ enum DerivedContentComposer {
         sourceGeneration: UInt,
         budget: ExportResourceBudget = .standard,
         containerRanges: [Range<Int>] = [],
-        recordCoordinates: Bool = false
+        recordCoordinates: Bool = false,
+        namespaceSVGIDs: Bool = false
     ) -> Result {
         guard !contributions.isEmpty else {
             return Result(
@@ -137,7 +139,8 @@ enum DerivedContentComposer {
             sentinelSuffix: sentinelSuffix(notCollidingWith: bodyText),
             budget: budget,
             containerRanges: containerRanges,
-            bodyText: bodyText as NSString
+            bodyText: bodyText as NSString,
+            namespaceSVGIDs: namespaceSVGIDs
         )
 
         let sorted = contributions.sorted { $0.sourceRange.lowerBound < $1.sourceRange.lowerBound }
@@ -299,9 +302,21 @@ private struct DerivedContentPlan {
             index: index,
             suffix: context.sentinelSuffix
         )
+        let sanitized = DerivedHTMLSanitizer.sanitized(contribution.html)
+        var preparedHTML = sanitized
+        if context.namespaceSVGIDs {
+            guard let namespaced = SVGIDNamespace.rewrite(sanitized, occurrence: index) else {
+                diagnostics.append(ExportDiagnostic(
+                    severity: .error,
+                    message: "derived SVG identifiers could not be safely isolated; authored source preserved"
+                ))
+                return
+            }
+            preparedHTML = namespaced
+        }
         customNodes.append(CMarkGFM.CustomNodeSpec(sentinel: sentinel,
                                                    isBlock: isBlock,
-                                                   html: DerivedHTMLSanitizer.sanitized(contribution.html)))
+                                                   html: preparedHTML))
         splices.append(DerivedContentComposer.Splice(range: bodyRange, sentinel: sentinel, isBlock: isBlock))
         previousBodyUpperBound = bodyRange.upperBound
         placedCount += 1

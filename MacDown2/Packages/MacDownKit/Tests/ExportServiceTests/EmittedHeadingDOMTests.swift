@@ -142,15 +142,36 @@ struct EmittedHeadingDOMTests {
             ),
         ])
         let inspection = try #require(EmittedHeadingDOM.inspect(fixture.rendered))
-        #expect(inspection.reservedIDs.contains("diagram"))
+        #expect(inspection.reservedIDs.contains("mt117-svg-0-0-diagram"))
         let index = try index(for: fixture, reservedIDs: inspection.reservedIDs)
         let matches = try #require(match(fixture, index: index))
         let html = try #require(EmittedHeadingDOM.publish(
             inspected: inspection, rendered: fixture.rendered, matches: matches
         ))
         #expect(matches.map(\.emitted.level) == [1, 2])
-        #expect(html.contains("<svg id=\"diagram\">Diagram</svg>"))
+        #expect(html.contains("<svg id=\"mt117-svg-0-0-diagram\">Diagram</svg>"))
         #expect(html.contains("<h2 id=\"last\">Last</h2>"))
+    }
+
+    @Test func repeatedSVGArtworkCannotStealTheGraphHeadingTarget() async throws {
+        let source = "# graph0\n\n```diagram\nfirst\n```\n\n```diagram\nsecond\n```\n"
+        let first = try #require(range(of: "```diagram\nfirst\n```", in: source))
+        let second = try #require(range(of: "```diagram\nsecond\n```", in: source))
+        let canonical = ##"<svg id="graph0"><use href="#graph0" /></svg>"##
+        let fixture = try await makeFixture(source, contributions: [first, second].map {
+            ExportDerivedContribution(sourceRange: $0, placement: .block, html: canonical, sourceGeneration: 1)
+        })
+        let inspection = try #require(EmittedHeadingDOM.inspect(fixture.rendered))
+        #expect(inspection.reservedIDs == ["mt117-svg-0-0-graph0", "mt117-svg-1-0-graph0"])
+        let index = try index(for: fixture, reservedIDs: inspection.reservedIDs)
+        let matches = try #require(match(fixture, index: index))
+        let html = try #require(EmittedHeadingDOM.publish(
+            inspected: inspection, rendered: fixture.rendered, matches: matches
+        ))
+        #expect(index.headings.map(\.fragment) == ["graph0"])
+        #expect(html.contains("<h1 id=\"graph0\">graph0</h1>"))
+        #expect(html.contains(##"href="#mt117-svg-0-0-graph0""##))
+        #expect(html.contains(##"href="#mt117-svg-1-0-graph0""##))
     }
 
     /// Run explicitly in Release for phase timing; package-process timings do
@@ -196,7 +217,7 @@ struct EmittedHeadingDOMTests {
         let derived = DerivedContentComposer.compose(
             bodyText: document.body, bodyStartOffset: bodyStart,
             sourceUTF16Length: source.utf16.count, contributions: contributions,
-            sourceGeneration: 1, recordCoordinates: true
+            sourceGeneration: 1, recordCoordinates: true, namespaceSVGIDs: true
         )
         let rendered = try CMarkGFM.render(
             derived.splicedBody, options: CMarkGFM.optUnsafe,

@@ -159,3 +159,24 @@ review must inspect these boundaries before activation. The SwiftSoup pin,
 licence, generated notices and software bill of materials are part of the
 same candidate, with no production dependency re-resolution beyond that
 one immutable package.
+
+## Rebaseline 2026-10-22 — opt-in SVG namespace candidate
+
+The export assembly now has an opt-in per-contribution SVG ID rewrite after
+derived HTML sanitization. The default remains off, so ordinary export output
+is unchanged. The candidate isolates repeated cached SVG occurrences, their
+plain `href`/`xlink:href` fragments, paint `url(#…)` references, simple CSS ID
+selectors and accessibility ID lists. An ambiguous ID or unsupported SVG/CSS
+form returns a diagnostic and leaves the authored fence in the opt-in path.
+Its focused pipeline tests show that two reused `graph0` diagrams do not steal
+the `# graph0` heading target. Native preview links still use their existing
+route; no generated heading link is exposed.
+
+This is a staged parser, **not activation evidence**. Before enabling it,
+review entity-encoded references and CSS nesting/escapes against real
+Graphviz, D2 and Mermaid output; prove namespace disjointness from decoded
+authored and final-template IDs; measure adversarial time/memory bounds; and
+obtain independent security and native visual review. The current conservative
+CSS path rejects at-rules, comments and quoted strings instead of publishing a
+partly rewritten diagram. Linked TOC serialization, destination-specific
+failure behavior and signed owner-observed navigation remain open.
