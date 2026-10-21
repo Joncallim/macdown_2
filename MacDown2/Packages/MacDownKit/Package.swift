@@ -68,6 +68,7 @@ let package = Package(
         .package(path: "../TreeSitterMarkdown"),
         .package(url: "https://github.com/swiftlang/swift-markdown", exact: "0.8.0"),
         .package(url: "https://github.com/swiftlang/swift-cmark", exact: "0.8.0"),
+        .package(url: "https://github.com/scinfu/SwiftSoup", exact: "2.13.9"),
         .package(url: "https://github.com/jpsim/Yams", exact: "6.2.2"),
         .package(url: "https://github.com/Joncallim/textual", revision: "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6"),
         // Only a transitive dependency of `textual` (via its own Package.swift)
@@ -140,6 +141,7 @@ let package = Package(
                 "Themes",
                 .product(name: "cmark-gfm", package: "swift-cmark"),
                 .product(name: "cmark-gfm-extensions", package: "swift-cmark"),
+                .product(name: "SwiftSoup", package: "SwiftSoup"),
             ],
             resources: [.process("Resources")]
         ),

@@ -129,7 +129,7 @@ struct SplicedBodySourceMapTests {
         let differentLevel = try CMarkGFM.render(
             derived.splicedBody.replacingOccurrences(of: "> ## Nested", with: "> ### Nested"),
             options: CMarkGFM.optUnsafe,
-            collectHeadingLocations: true
+            headingAnalysis: .locations
         )
         #expect(EmittedHeadingMatcher.match(
             index: index, document: document, sourceText: source, derived: derived, rendered: differentLevel
@@ -137,7 +137,7 @@ struct SplicedBodySourceMapTests {
         let differentText = try CMarkGFM.render(
             derived.splicedBody.replacingOccurrences(of: "# Repeat", with: "# Change"),
             options: CMarkGFM.optUnsafe,
-            collectHeadingLocations: true
+            headingAnalysis: .locations
         )
         #expect(EmittedHeadingMatcher.match(
             index: index, document: document, sourceText: source, derived: derived, rendered: differentText
@@ -157,7 +157,7 @@ struct SplicedBodySourceMapTests {
         let otherRender = try CMarkGFM.render(
             otherDerived.splicedBody,
             options: CMarkGFM.optUnsafe,
-            collectHeadingLocations: true
+            headingAnalysis: .locations
         )
         #expect(EmittedHeadingMatcher.match(
             index: index, document: document, sourceText: source, derived: otherDerived, rendered: otherRender
@@ -182,7 +182,7 @@ struct SplicedBodySourceMapTests {
         let fallbackRender = try CMarkGFM.render(
             fallback.splicedBody,
             options: CMarkGFM.optUnsafe,
-            collectHeadingLocations: true
+            headingAnalysis: .locations
         )
         #expect(EmittedHeadingMatcher.match(
             index: index, document: document, sourceText: source, derived: fallback, rendered: fallbackRender
@@ -226,7 +226,7 @@ private extension SplicedBodySourceMapTests {
             derived.splicedBody,
             options: CMarkGFM.optUnsafe,
             customNodes: derived.customNodes,
-            collectHeadingLocations: true
+            headingAnalysis: .locations
         )
         return HeadingFixture(
             source: source, document: document, index: index, derived: derived,

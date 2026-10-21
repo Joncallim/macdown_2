@@ -1,6 +1,12 @@
 import Foundation
 
 extension CMarkGFM {
+    enum HeadingAnalysis {
+        case none
+        case locations
+        case marked
+    }
+
     /// A deterministic replacement performed after parsing but before rendering:
     /// the authored range was already substituted with `sentinel` in the source
     /// handed to the parser, and this spec turns that sentinel back into a
@@ -28,6 +34,10 @@ extension CMarkGFM {
         /// Collected only when anchor analysis requests generated heading
         /// identity. Raw authored h-tags are never included in this list.
         let headingLocations: [HeadingLocation]
+        /// One-use comments placed directly inside generated heading nodes.
+        /// Present only for an opt-in analysis render; never publish these
+        /// bytes or remove them by a document-wide replacement.
+        let headingMarkers: [HeadingMarker]
         /// Present only when heading locations were requested, so a later
         /// match can reject a result from a different transformed body.
         let headingSourceSHA256: String?
@@ -37,5 +47,10 @@ extension CMarkGFM {
         let level: Int
         let line: Int
         let column: Int
+    }
+
+    struct HeadingMarker: Sendable, Equatable {
+        let location: HeadingLocation
+        let comment: String
     }
 }

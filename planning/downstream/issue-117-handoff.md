@@ -123,3 +123,39 @@ first implementation unit is the pure coordinate map with tests for multiple
 inline/block substitutions, Unicode/CRLF, replacement boundaries, rejected
 contributions and front-matter offsets. It is not acceptance of generated
 navigation.
+
+## Rebaseline 2026-10-22 — marked emitted headings and final DOM check
+
+The pinned cmark probe established that a custom inline first child can mark
+an ordinary generated heading without changing its output after the comment
+is removed. An authored comment equal to a predictable marker disproved a
+document-wide replacement approach. The next implementation unit therefore
+uses a fresh one-render marker value, attached only to cmark heading nodes.
+The marked output is private intermediate data: it is never sent to the
+ordinary exporter or published as HTML.
+
+For a bounded anchor-analysis request, parse the **emitted** marked HTML as a
+body fragment with pinned SwiftSoup 2.13.9. Require each marker exactly once
+as a direct child of the expected heading, and reserve DOM IDs plus legacy
+`a[name]` values from that emitted tree. Allocate fragments against those
+reservations; verify the source index against the spliced-body cmark locations.
+Patch only each uniquely matched literal `<hN><private-comment>` span to an
+escaped `<hN id="…">`, preserving every other authored byte. Parse the actual
+patched HTML again and require the same element order, one target per
+fragment, and the target at the originally marked heading's position. A
+malformed structure, duplicate/private marker, changed source/render identity,
+wrong reservation set, or analysis-budget failure returns no generated links.
+The current candidate caps each analyzed HTML string at 8 MiB and the
+explicit ID/name inventory at 4,096 entries; it does not impose these caps on
+ordinary no-TOC export.
+
+The marker/DOM code is opt-in and **not wired into export or Preview** yet.
+The first local corpus covers raw/tagfiltered IDs, legacy named anchors,
+authored marker copies, malformed HTML, front matter, block/inline splices and
+both analysis budgets. It does not prove per-occurrence SVG ID namespacing,
+normal linked-TOC serialization, native navigation, final-template IDs,
+Release parser memory/cost, or signed/owner-observed behaviour. Independent
+review must inspect these boundaries before activation. The SwiftSoup pin,
+licence, generated notices and software bill of materials are part of the
+same candidate, with no production dependency re-resolution beyond that
+one immutable package.
