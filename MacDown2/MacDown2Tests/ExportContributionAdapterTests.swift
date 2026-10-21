@@ -32,6 +32,17 @@ struct ExportContributionAdapterTests {
         #expect(adaptation.contributions.first?.placement == .inline)
     }
 
+    @Test func aPDFExportAdmitsFirstPartyHTMLWithoutChangingIt() {
+        let html = "<span>fixed artwork</span>"
+        let content = ContributionContent(sourceRange: 0 ..< 4, placement: .inline, representation: .html(html))
+        let result = ContributionResult(contributionID: "art", content: content, sourceGeneration: 7)
+
+        let adaptation = ExportContributionAdapter.adapt([result], destination: .pdfExport)
+
+        #expect(adaptation.contributions.first?.html == html)
+        #expect(adaptation.standaloneDiagnostics.isEmpty)
+    }
+
     /// `.html` is passed through verbatim (epic-19-implementation.md §6.2):
     /// `MathContribution` already renders a self-contained fragment, so
     /// there is nothing left for this adapter to do beyond forwarding it —
