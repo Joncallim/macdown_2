@@ -481,3 +481,51 @@ Release memory, full combined-candidate validation and the visible chooser
 remain pending. Promoting this separate dependency also needs a reviewed
 immutable hosted revision and deliberate lockfile/compliance changes; no fork,
 push or pin change has occurred at this checkpoint.
+
+### Hosted fork and local pin checkpoint (2026-10-21)
+
+The owner approved the bounded Textual fork and local integration pin. The
+reviewed candidate is now hosted at
+`Joncallim/textual@d3ddabb1da37681083cdc3da706f96cf2fb6a3c6` on
+`review/bounded-preview-image-export-121`; the remote commit was checked after
+push. The MostlyText package manifest and committed lockfile candidate now
+reference that immutable revision. No other locked dependency changed. The
+compliance inventory, notices and software bill of materials have been updated
+for the fork; the Textual licence and bundled Prism digests remain identical.
+
+The secured attachment now hands its admitted decoded raster to the fork's
+bounded PNG encoder and checks its document generation before and after export.
+The mounted granted-resource preview enables Textual selection, so its native
+copy action can use this path. Focused package tests exercised exact encoded
+byte limits, denied/revoked images and the real Textual formatter's image and
+alt-text outputs. A native temporary-folder fixture exercised mounted Textual
+copy, then invalidated the window grant and confirmed the later copy omitted
+the image. The file-only chooser remains hidden; this does not establish live
+user permission behavior or signed acceptance.
+
+The first mounted-copy test exposed two missing pieces: selection was disabled
+in the granted preview, and checking copy immediately after input-byte
+admission could precede asynchronous attachment publication. Enabling
+selection only on the granted path and waiting for image publication made the
+focused native test pass. The exact pinned candidate subsequently passed the
+unsigned, testable Release mounted Markdown and live WebKit revision fixtures.
+An opt-in optimized probe again admitted three retained 4 MiB HTML sources and
+denied the fourth. Its measured creation time was about 102 ms and test-host
+high-water resident size rose from 194,920,448 to 279,986,176 bytes, about
+81 MiB. This excludes WebKit child processes, image-copy concurrency and
+signed-app permission behavior; it is not a shipping performance guarantee.
+
+The ordinary compliance check passes with zero unverified items for this
+candidate. Release compliance still reports seven unrelated existing gates:
+D2 and Viz.js/Graphviz corresponding-source publication, D2 component
+provenance, Mermaid nested licences, Viz.js/Graphviz/Emscripten attribution,
+and Tomorrow Light naming. No production chooser, merge or release occurred.
+
+A subsequent package-wide run used the locked dependency graph and one build
+job, but Swift Testing still executed many suites concurrently. It finished
+with 122 reported issues (two known) across 25 suites, including document
+monitor, TextFilter, D2 and workspace timing/ordering tests. No Preview suite
+reported a failure. Several failures were expired asynchronous waits; the run
+does not establish whether those represent contention or product defects.
+The held timing area was not retried or relaxed. The focused Preview package
+tests and native Debug/Release fixtures above remain separate passing evidence.

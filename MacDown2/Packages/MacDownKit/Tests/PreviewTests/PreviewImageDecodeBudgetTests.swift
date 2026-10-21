@@ -2,11 +2,12 @@ import AppKit
 @testable import Preview
 import SwiftUI
 import Testing
+@testable import Textual
 
 @Suite("Preview image decoded-output admission", .serialized)
 @MainActor
 struct PreviewImageDecodeBudgetTests {
-    @Test func smallImageRetainsItsOutputReservationAndDoesNotOfferAnUnchargedPNGCopy() throws {
+    @Test func smallImageRetainsItsOutputReservationAndOffersOnlyABoundedPNGCopy() throws {
         let bitmap = try #require(NSBitmapImageRep(
             bitmapDataPlanes: nil, pixelsWide: 8, pixelsHigh: 8,
             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
@@ -19,10 +20,35 @@ struct PreviewImageDecodeBudgetTests {
         #expect(budget.reservedBytes == 8 * 8 * 8)
 
         let attachment = PreviewImageAttachment(
-            image: Image(nsImage: decoded.image), size: decoded.image.size,
+            image: Image(nsImage: decoded.image), raster: decoded.raster,
+            size: decoded.image.size,
             description: "small", reservation: decoded.reservation
         )
         #expect(attachment.pngData() == nil)
+        let exported = try #require(attachment.boundedPNGData(maxBytes: 1024 * 1024))
+        #expect(exported.prefix(8) == Data([137, 80, 78, 71, 13, 10, 26, 10]))
+        #expect(attachment.boundedPNGData(maxBytes: exported.count) == exported)
+        #expect(attachment.boundedPNGData(maxBytes: exported.count - 1) == nil)
+        #expect(attachment.boundedPNGData(maxBytes: 0) == nil)
+        let revoked = PreviewImageAttachment(
+            image: Image(nsImage: decoded.image), raster: decoded.raster,
+            size: decoded.image.size, description: "small",
+            reservation: decoded.reservation, isLive: { false }
+        )
+        #expect(revoked.boundedPNGData(maxBytes: 1024 * 1024) == nil)
+
+        // Exercise the exact pinned Textual formatter with the secured attachment,
+        // including its image budget and revocation fallback.
+        let base: any Textual.Attachment = attachment
+        let formatter = Formatter(AttributedString())
+        formatter.blockNodes = [.paragraph(children: [.attachment(AnyAttachment(base))])]
+        let html = formatter.htmlExport().string
+        #expect(html.contains("data:image/png;base64,"))
+        #expect(!html.contains("<p>small</p>"))
+        #expect(formatter.htmlExport(maxImageBytes: 1).string == "<p>small</p>")
+        let revokedBase: any Textual.Attachment = revoked
+        formatter.blockNodes = [.paragraph(children: [.attachment(AnyAttachment(revokedBase))])]
+        #expect(formatter.htmlExport().string == "<p>small</p>")
     }
 
     @Test func repeatedImagesCannotOversubscribeOneLoadAndReleasingReturnsCapacity() throws {

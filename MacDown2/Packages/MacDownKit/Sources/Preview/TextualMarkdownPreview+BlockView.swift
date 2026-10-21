@@ -118,6 +118,7 @@ struct BlockView: View {
             text.id(resourceLoadID)
                 .textual.imageAttachmentLoader(resourceImageLoader)
                 .textual.emojiAttachmentLoader(resourceImageLoader)
+                .textual.textSelection(.enabled)
         } else {
             text
         }

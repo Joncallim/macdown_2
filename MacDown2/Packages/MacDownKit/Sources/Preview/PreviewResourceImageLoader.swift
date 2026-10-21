@@ -48,7 +48,8 @@ public struct PreviewResourceImageLoader: AttachmentLoader {
             let decoded = try PreviewImageDecoder.decode(bytes.data, budget: decodeBudget)
             guard !Task.isCancelled, isLive() else { throw CancellationError() }
             return PreviewImageAttachment(
-                image: Image(nsImage: decoded.image), size: decoded.image.size,
+                image: Image(nsImage: decoded.image), raster: decoded.raster,
+                size: decoded.image.size,
                 description: text,
                 reservation: PreviewImageResources(input: bytes.reservation, decoded: decoded.reservation),
                 isLive: isLive
@@ -133,6 +134,7 @@ public final class PreviewImageDecodeBudget: @unchecked Sendable {
 enum PreviewImageDecoder {
     struct Decoded {
         let image: NSImage
+        let raster: CGImage
         let reservation: PreviewImageDecodeBudget.Reservation
     }
 
@@ -160,6 +162,7 @@ enum PreviewImageDecoder {
         else { throw PreviewImageLoadError.decodedLimitExceeded }
         return Decoded(
             image: NSImage(cgImage: raster, size: NSSize(width: width, height: height)),
+            raster: raster,
             reservation: reservation
         )
     }
@@ -169,16 +172,18 @@ enum PreviewImageDecoder {
 public struct PreviewImageAttachment: Attachment {
     private let id = UUID()
     private let image: Image
+    private let raster: CGImage
     private let size: CGSize
     public let description: String
     private let reservation: any Sendable
     private let isLive: @Sendable () -> Bool
 
     init(
-        image: Image, size: CGSize, description: String, reservation: any Sendable,
+        image: Image, raster: CGImage, size: CGSize, description: String, reservation: any Sendable,
         isLive: @escaping @Sendable () -> Bool = { true }
     ) {
         self.image = image
+        self.raster = raster
         self.size = size
         self.description = description
         self.reservation = reservation
@@ -202,9 +207,15 @@ public struct PreviewImageAttachment: Attachment {
         hasher.combine(id)
     }
 
-    /// Textual's default is intentional: this attachment does not create an unreserved PNG copy for export.
+    /// The legacy callback cannot accept a byte limit. The pinned Textual fork uses boundedPNGData instead.
     public func pngData() -> Data? {
         nil
+    }
+
+    public func boundedPNGData(maxBytes: Int) -> Data? {
+        guard isLive(), let data = BoundedPNGEncoder.encode(raster, maxBytes: maxBytes), isLive()
+        else { return nil }
+        return data
     }
 }
 
