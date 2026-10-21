@@ -140,9 +140,11 @@ struct AssembledSVGResourceTests {
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(handler, forURLScheme: "resourceprobe")
         let view = WKWebView(frame: .init(x: 0, y: 0, width: 320, height: 200), configuration: configuration)
-        let artwork = #"<svg id="root"><style>#root rect{fill:red}.scopeTarget{stroke:red}</style>"#
+        let artwork = #"<svg id="root"><style>@keyframes pulse{from{opacity:0}to{opacity:1}}"#
+            + #"#root rect{fill:red;animation:pulse 2s linear infinite}.scopeTarget{stroke:red}</style>"#
             + #"<rect id="shape" class="scopeTarget" width="20" height="20"/></svg>"#
-        let different = #"<svg id="root"><style>#root rect{fill:blue}.scopeTarget{stroke:blue}</style>"#
+        let different = #"<svg id="root"><style>@keyframes pulse{from{opacity:1}to{opacity:0}}"#
+            + #"#root rect{fill:blue;animation:pulse 2s linear infinite}.scopeTarget{stroke:blue}</style>"#
             + #"<rect id="shape" class="scopeTarget" width="20" height="20"/></svg>"#
         let first = try #require(SVGIDNamespace.rewrite(artwork, occurrence: 0))
         let repeated = try #require(SVGIDNamespace.rewrite(artwork, occurrence: 1))
@@ -178,6 +180,10 @@ struct AssembledSVGResourceTests {
             "getComputedStyle(document.querySelector('body > svg rect')).stroke"
         ) as? String
         #expect(outsideStroke == "none")
+        let animationNames = try await view.evaluateJavaScript(
+            "Array.from(document.querySelectorAll('.card rect')).map(x => getComputedStyle(x).animationName).join('|')"
+        ) as? String
+        #expect(animationNames == "mt117-svg-0-0-pulse|mt117-svg-1-0-pulse|mt117-svg-2-0-pulse")
     }
 
     @Test func rejectedCSSNeverRequestsAResourceAfterInlineAssembly() async throws {

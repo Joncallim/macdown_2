@@ -21,6 +21,7 @@ extension SVGIDNamespace {
     }
 
     private struct CSSState {
+        var declaredKeyframes: Set<String> = []
         var output = ""
         var segment = ""
         var stack: [CSSBlock] = []
@@ -57,7 +58,15 @@ extension SVGIDNamespace {
                 guard stack.last != .declarations,
                       let atRule = SVGIDNamespace.atRuleBlock(trimmed) else { return false }
                 kind = atRule
-                output += segment
+                if atRule == .keyframes {
+                    guard let name = SVGIDNamespace.keyframeName(
+                        segment.trimmingCharacters(in: .whitespacesAndNewlines)
+                    ),
+                        declaredKeyframes.insert(name).inserted else { return false }
+                    output += "@keyframes \(prefix)\(name)"
+                } else {
+                    output += segment
+                }
             } else if stack.last == .keyframes {
                 guard trimmed == "from" || trimmed == "to" || trimmed.hasSuffix("%"),
                       !trimmed.contains(";") else { return false }
@@ -108,7 +117,7 @@ extension SVGIDNamespace {
         let name = String(prelude.prefix { !$0.isWhitespace && $0 != "(" })
         switch name {
         case "@font-face": return prelude == name ? .declarations : nil
-        case "@keyframes": return prelude.count > name.count ? .keyframes : nil
+        case "@keyframes": return keyframeName(prelude) == nil ? nil : .keyframes
         case "@media", "@supports", "@container", "@layer": return .group
         default: return nil
         }
@@ -164,7 +173,8 @@ extension SVGIDNamespace {
         guard safeResourceURLs(in: declaration) else { return nil }
         // A quoted content string is text, while content:url(#id) is a
         // resource. Scan actual CSS function tokens outside string literals.
-        return rewriteCSSTokenURLs(declaration, prefix: prefix)
+        let rewritten = rewriteCSSTokenURLs(declaration, prefix: prefix)
+        return rewriteAnimation(in: rewritten, prefix: prefix)
     }
 
     static func rewriteInlineStyle(_ declarations: String, ids: Set<String>, prefix: String) -> String? {

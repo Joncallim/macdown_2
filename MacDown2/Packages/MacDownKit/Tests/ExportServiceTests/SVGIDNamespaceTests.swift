@@ -78,6 +78,19 @@ struct SVGIDNamespaceTests {
         #expect(result.contains(#"#mt117-svg-7-0-mtScope_ .shape{stroke:red}"#))
     }
 
+    @Test func keyframeNamesAndAnimationReferencesStayWithinEachOccurrence() throws {
+        let html = #"<svg id="root"><style>@keyframes pulse{from{opacity:0}to{opacity:1}}"#
+            + #"#root rect{animation:pulse 1s linear infinite;animation-name:outside}</style>"#
+            + #"<rect id="shape"/></svg>"#
+        let first = try #require(SVGIDNamespace.rewrite(html, occurrence: 0))
+        let second = try #require(SVGIDNamespace.rewrite(html, occurrence: 1))
+        #expect(first.contains("@keyframes mt117-svg-0-0-pulse{"))
+        #expect(first.contains("animation:mt117-svg-0-0-pulse 1s linear infinite"))
+        #expect(first.contains("animation-name:mt117-svg-0-0-outside"))
+        #expect(second.contains("@keyframes mt117-svg-1-0-pulse{"))
+        #expect(!second.contains("mt117-svg-0-0-pulse"))
+    }
+
     @Test func exactIDAttributeSelectorsAreRejected() {
         #expect(SVGIDNamespace.rewrite(
             #"<svg id="root"><style>[id="paint"]{fill:red}</style><rect id="paint"/></svg>"#,
@@ -100,7 +113,7 @@ struct SVGIDNamespaceTests {
         #expect(result.contains("color:#abc"))
         #expect(result.contains("content:\"url(#paint)\""))
         #expect(result.contains(##"#mt117-svg-4-0-root [id$="-arrowhead"] path{fill:#123456;}"##))
-        #expect(result.contains("@keyframes dash{to{stroke-dashoffset:0;}}"))
+        #expect(result.contains("@keyframes mt117-svg-4-0-dash{to{stroke-dashoffset:0;}}"))
         #expect(result.contains(#"url("data:font/woff;base64,AA==")"#))
         #expect(SVGIDNamespace.rewrite(
             #"<svg id="x"><style>@media screen {#x{fill:red}}</style></svg>"#, occurrence: 0
