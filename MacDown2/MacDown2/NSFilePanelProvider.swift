@@ -43,16 +43,43 @@ struct PreviewResourceFolderSelection {
 /// captured from a document window may use only that window.
 @MainActor
 final class NSFilePanelProvider: FilePanelProviding {
+    @MainActor
     private final class WeakOrigin {
         weak var window: NSWindow?
+        let hadWindowAtInvocation: Bool
+        private var closed = false
+        private var closeObserver: NSObjectProtocol?
 
         init(_ window: NSWindow?) {
             self.window = window
+            hadWindowAtInvocation = window != nil
+            if let window {
+                closeObserver = NotificationCenter.default.addObserver(
+                    forName: NSWindow.willCloseNotification, object: window, queue: nil
+                ) { [weak self] _ in
+                    if Thread.isMainThread {
+                        MainActor.assumeIsolated { self?.closed = true }
+                    } else {
+                        Task { @MainActor in self?.closed = true }
+                    }
+                }
+            }
+        }
+
+        isolated deinit {
+            if let closeObserver {
+                NotificationCenter.default.removeObserver(closeObserver)
+            }
+        }
+
+        var usableWindow: NSWindow? {
+            closed ? nil : window
         }
     }
 
     private enum Origin {
         case applicationInitiated
+        case capturedApplication(WeakOrigin)
         case explicit(WeakOrigin)
     }
 
@@ -72,6 +99,32 @@ final class NSFilePanelProvider: FilePanelProviding {
         origin = .explicit(WeakOrigin(window))
     }
 
+    /// Captures a normal Open command's application window at dispatch. A
+    /// later key-window change cannot silently retarget the panel or document.
+    init(applicationWindow: NSWindow?) {
+        origin = .capturedApplication(WeakOrigin(applicationWindow))
+    }
+
+    var scopedOpenWindow: NSWindow? {
+        switch origin {
+        case .applicationInitiated:
+            nil
+        case let .capturedApplication(origin), let .explicit(origin):
+            origin.usableWindow
+        }
+    }
+
+    var canCompleteScopedOpen: Bool {
+        switch origin {
+        case .applicationInitiated:
+            true
+        case let .capturedApplication(origin):
+            !origin.hadWindowAtInvocation || origin.usableWindow != nil
+        case let .explicit(origin):
+            origin.usableWindow != nil
+        }
+    }
+
     func presentation(keyWindow: NSWindow?) -> Presentation {
         switch origin {
         case .applicationInitiated:
@@ -79,8 +132,16 @@ final class NSFilePanelProvider: FilePanelProviding {
                 return .sheet(keyWindow)
             }
             return .modal
+        case let .capturedApplication(origin):
+            if !origin.hadWindowAtInvocation {
+                return .modal
+            }
+            guard let window = origin.usableWindow else {
+                return .cancelled
+            }
+            return .sheet(window)
         case let .explicit(origin):
-            guard let window = origin.window else {
+            guard let window = origin.usableWindow else {
                 return .cancelled
             }
             return .sheet(window)

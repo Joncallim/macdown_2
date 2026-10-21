@@ -14,7 +14,8 @@ extension WindowCoordinator {
         folderRenameURL: URL? = nil,
         relativeTo overrideKeyWindow: NSWindow? = nil,
         encoding: FileEncodingMetadata? = nil,
-        shouldContinue: (@MainActor () -> Bool)? = nil
+        shouldContinue: (@MainActor () -> Bool)? = nil,
+        useAmbientWindow: Bool = true
     ) async {
         let resolved = url.resolvingFinalSymlink()
         await documentOpens.run(key: Self.openSerializationKey(for: resolved)) { [self] in
@@ -27,7 +28,8 @@ extension WindowCoordinator {
                 folderRenameURL: folderRenameURL,
                 relativeTo: overrideKeyWindow,
                 encoding: encoding,
-                shouldContinue: shouldContinue
+                shouldContinue: shouldContinue,
+                useAmbientWindow: useAmbientWindow
             )
         }
     }

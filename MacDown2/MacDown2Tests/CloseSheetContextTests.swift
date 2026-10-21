@@ -48,11 +48,20 @@ struct CloseSheetContextTests {
             Issue.record("A disposed explicit origin must cancel its panel request")
             return
         }
+        #expect(!missingOrigin.canCompleteScopedOpen)
 
         let applicationOrigin = NSFilePanelProvider()
         guard case .modal = applicationOrigin.presentation(keyWindow: nil) else {
             Issue.record("An application command without a key window may use a modal panel")
             return
         }
+
+        let capturedWithoutWindow = NSFilePanelProvider(applicationWindow: nil)
+        guard case .modal = capturedWithoutWindow.presentation(keyWindow: nil) else {
+            Issue.record("An Open command captured without a key window remains modal")
+            return
+        }
+        #expect(capturedWithoutWindow.canCompleteScopedOpen)
+        #expect(capturedWithoutWindow.scopedOpenWindow == nil)
     }
 }
