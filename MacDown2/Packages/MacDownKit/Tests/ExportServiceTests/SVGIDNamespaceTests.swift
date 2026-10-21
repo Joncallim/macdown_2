@@ -40,7 +40,7 @@ struct SVGIDNamespaceTests {
     }
 
     @Test func encodedAttributeReferencesResolveToTheirDecodedSVGID() throws {
-        let html = #"<svg><g id="node&#49;"/><use href="&#35;node1" fill="url(&#35;node1)""#
+        let html = #"<svg><g id="node&#49"/><use href="&#35;node1" fill="url(&#35;node1)""#
             + #" aria-labelledby="node&#49;&#9;other"/></svg>"#
         let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 3))
         #expect(result.contains(#"id="mt117-svg-3-0-node1""#))

@@ -69,7 +69,7 @@ enum SVGIDNamespace {
             guard let tag = HTMLTagScanner.parseTag(at: cursor, in: scalars) else { return nil }
             if !tag.isClosing {
                 for attribute in tag.attributes where attribute.name == "id" {
-                    guard let raw = attribute.value, let value = try? Entities.unescape(raw),
+                    guard let raw = attribute.value, let value = try? Parser.unescapeEntities(raw, true),
                           validID(value), ids.insert(value).inserted else { return nil }
                 }
             }
@@ -128,7 +128,7 @@ enum SVGIDNamespace {
                 output += " \(attribute.name)"
                 continue
             }
-            guard let value = try? Entities.unescape(raw) else { return nil }
+            guard let value = try? Parser.unescapeEntities(raw, true) else { return nil }
             var updated = value
             switch attribute.name {
             case "id": updated = prefix + value
