@@ -230,3 +230,26 @@ complete app measurement. Independent security review,
 broader adversarial CSS/reference handling, native visual/navigation checks,
 linked TOC serialization, and destination-specific failure behavior remain
 activation gates. No generated link is exposed by this checkpoint.
+
+## Independent review 2026-10-22 — SVG/CSS admission remains gated
+
+An independent review of `dc02e478` requested changes. Its P1 findings were
+that inline CSS escapes/comments could hide a resource URL from literal
+`url(` scanning, an accepted at-rule prelude could contain an earlier statement,
+and HTML entity decoding could make CSS source and browser interpretation
+disagree. The follow-up rejects escapes, comments and residual `&` entities
+in every SVG CSS entry point, admits only one exact supported at-rule before
+each block, and retains source-fence fallback on rejection. A WebKit package
+fixture loads the actually assembled fallback with an in-memory custom URL
+scheme handler. No resource request occurred for the rejected payloads; a
+positive-control image did reach that handler. It makes no external request.
+
+The same review found P2 isolation gaps: unresolved paint URLs, bare CSS ID
+selectors and accessibility ID references can bind outside the occurrence;
+exact-match ID attribute selectors change meaning when IDs are renamed;
+and `content:url(#id)` needs token-aware rewriting. Separate standalone SVG
+canvas comparisons do not prove isolation in a composed HTML document. These
+remain open for a subsequent bounded change and browser fixture. The reviewer
+has not approved activation or run native navigation tests. The generated
+link route stays disabled while these findings, linked TOC integration and
+signed owner-observed acceptance remain unresolved.

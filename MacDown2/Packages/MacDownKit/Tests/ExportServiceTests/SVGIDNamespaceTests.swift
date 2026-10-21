@@ -94,6 +94,18 @@ struct SVGIDNamespaceTests {
             #"<svg id="x"><style>#x::after{content:url(https://example.test/image.png)}</style></svg>"#,
             occurrence: 0
         ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg id="g"><path fill="u\72l(https://example.invalid/x.svg#g)"/></svg>"#,
+            occurrence: 0
+        ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg id="g"><path style="fill:u/**/rl(https://example.invalid/x.svg#g)"/></svg>"#,
+            occurrence: 0
+        ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg id="g"><style>@layer safe; @import url(https://example.invalid/x.css) {#g{fill:red}}</style></svg>"#,
+            occurrence: 0
+        ) == nil)
     }
 
     @Test func automaticSVGResourceLoadsRejectOutsideTargets() {
@@ -127,6 +139,30 @@ struct SVGIDNamespaceTests {
         #expect(SVGIDNamespace.rewrite(
             ##"<svg id="x"><style>a[href="#x"]{fill:red}</style></svg>"##, occurrence: 0
         ) == nil)
+    }
+
+    @Test func encodedCSSCannotTurnIntoAnUnreviewedResourceURL() {
+        let source = "```diagram\nsource\n```\n"
+        for html in [
+            #"<svg id="g"><rect fill="u&amp;#114;l(resourceprobe://fixture/x.svg#g)"/></svg>"#,
+            #"<svg id="g"><rect style="fill:u&amp;#114;l(resourceprobe://fixture/x.svg#g)"/></svg>"#,
+            #"<svg id="g"><style>#g{fill:u&amp;#114;l(resourceprobe://fixture/x.svg#g)}</style></svg>"#,
+            #"<svg id="g"><style>@layer safe; @import url(resourceprobe://fixture/x.css) {#g{fill:red}}</style></svg>"#,
+        ] {
+            let sanitized = DerivedHTMLSanitizer.sanitized(html)
+            #expect(SVGIDNamespace.rewrite(sanitized, occurrence: 0) == nil)
+            let contribution = ExportDerivedContribution(
+                sourceRange: 0 ..< source.utf16.count, placement: .block,
+                html: html, sourceGeneration: 1
+            )
+            let result = DerivedContentComposer.compose(
+                bodyText: source, bodyStartOffset: 0, sourceUTF16Length: source.utf16.count,
+                contributions: [contribution], sourceGeneration: 1, namespaceSVGIDs: true
+            )
+            #expect(result.splicedBody == source)
+            #expect(result.customNodes.isEmpty)
+            #expect(result.diagnostics.contains { $0.severity == .error })
+        }
     }
 
     @Test func rejectedOptInSVGPreservesTheFenceAndOrdinaryExportIsUnchanged() {

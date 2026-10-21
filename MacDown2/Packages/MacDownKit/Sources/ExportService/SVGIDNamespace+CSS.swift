@@ -6,7 +6,7 @@ extension SVGIDNamespace {
         // @font-face and @keyframes. Scan balanced blocks and quoted text so
         // braces in a string cannot turn declaration bytes into selectors.
         // Unknown at-rules, comments and CSS escapes remain fail-closed.
-        guard !css.contains("/*"), !css.contains("\\") else { return nil }
+        guard !css.contains("/*"), !css.contains("\\"), !css.contains("&") else { return nil }
         var state = CSSState()
         for character in css {
             guard state.consume(character, ids: ids, prefix: prefix) else { return nil }
@@ -51,16 +51,9 @@ extension SVGIDNamespace {
             let trimmed = segment.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             let kind: CSSBlock
             if trimmed.hasPrefix("@") {
-                guard stack.last != .declarations else { return false }
-                if trimmed.hasPrefix("@font-face") {
-                    kind = .declarations
-                } else if ["@keyframes", "@media", "@supports", "@container", "@layer"].contains(where: {
-                    trimmed.hasPrefix($0)
-                }) {
-                    kind = .group
-                } else {
-                    return false
-                }
+                guard stack.last != .declarations,
+                      let atRule = SVGIDNamespace.atRuleBlock(trimmed) else { return false }
+                kind = atRule
                 output += segment
             } else {
                 guard stack.last != .declarations,
@@ -95,6 +88,19 @@ extension SVGIDNamespace {
                   !segment.trimmingCharacters(in: .whitespacesAndNewlines).contains("@")
             else { return nil }
             return output + segment
+        }
+    }
+
+    private static func atRuleBlock(_ prelude: String) -> CSSBlock? {
+        // One complete at-rule may precede a block. A semicolon or second @
+        // could hide a resource-loading statement before an accepted rule.
+        guard prelude.first == "@", !prelude.contains(";"), !prelude.dropFirst().contains("@") else { return nil }
+        let name = String(prelude.prefix { !$0.isWhitespace && $0 != "(" })
+        switch name {
+        case "@font-face": return prelude == name ? .declarations : nil
+        case "@keyframes": return prelude.count > name.count ? .group : nil
+        case "@media", "@supports", "@container", "@layer": return .group
+        default: return nil
         }
     }
 
@@ -160,6 +166,10 @@ extension SVGIDNamespace {
         // The bundled D2 font is a data URL. Other CSS resources could fetch
         // over the network or from disk, so the opt-in path keeps only SVG
         // fragments and embedded font bytes.
+        // Inline presentation/style attributes do not pass rewriteStyle's
+        // CSS escape/comment gate, so enforce it here too before URL scanning.
+        guard !declaration.contains("\\"), !declaration.contains("/*"), !declaration.contains("&")
+        else { return false }
         let lower = declaration.lowercased()
         guard !["image-set(", "image(", "cross-fade("].contains(where: lower.contains) else { return false }
         var cursor = lower.startIndex

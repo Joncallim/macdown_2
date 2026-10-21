@@ -7,6 +7,7 @@ import DiagramsGraphviz
 import Foundation
 import GraphvizRendering
 import Testing
+import WebKit
 
 @Suite("Real diagram SVG namespace compatibility")
 struct RealSVGNamespaceTests {
@@ -90,4 +91,85 @@ struct RealSVGNamespaceTests {
         let base64 = try #require(result["png"] as? String)
         return try #require(Data(base64Encoded: base64))
     }
+}
+
+@Suite("Assembled SVG resource admission", .serialized)
+@MainActor
+struct AssembledSVGResourceTests {
+    @Test func rejectedCSSNeverRequestsAResourceAfterInlineAssembly() async throws {
+        let handler = RecordingResourceHandler()
+        let configuration = WKWebViewConfiguration()
+        configuration.setURLSchemeHandler(handler, forURLScheme: "resourceprobe")
+        let view = WKWebView(frame: .init(x: 0, y: 0, width: 320, height: 200), configuration: configuration)
+
+        for payload in [
+            #"<svg id="g"><path fill="u\72l(resourceprobe://fixture/x.svg#g)"/></svg>"#,
+            #"<svg id="g"><path style="fill:u&amp;#114;l(resourceprobe://fixture/x.svg#g)"/></svg>"#,
+            #"<svg id="g"><style>@layer safe; @import url(resourceprobe://fixture/x.css) {#g{fill:red}}</style></svg>"#,
+        ] {
+            let html = try assembledHTML(for: payload)
+            #expect(html.contains("<pre><code"))
+            #expect(!html.contains("<svg"))
+            view.loadHTMLString(html, baseURL: nil)
+            try await waitForLoad(in: view)
+            try await Task.sleep(for: .milliseconds(100))
+            #expect(handler.requests.isEmpty)
+        }
+
+        // Prove this harness observes a subresource attempt without ever
+        // touching an external network address.
+        view.loadHTMLString(#"<img src="resourceprobe://fixture/control.png">"#, baseURL: nil)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while handler.requests.isEmpty, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(handler.requests.map(\.absoluteString) == ["resourceprobe://fixture/control.png"])
+        view.stopLoading()
+    }
+
+    private func assembledHTML(for payload: String) throws -> String {
+        let source = "```diagram\nsource\n```\n"
+        let contribution = ExportDerivedContribution(
+            sourceRange: 0 ..< source.utf16.count, placement: .block,
+            html: payload, sourceGeneration: 1
+        )
+        let composed = DerivedContentComposer.compose(
+            bodyText: source, bodyStartOffset: 0, sourceUTF16Length: source.utf16.count,
+            contributions: [contribution], sourceGeneration: 1, namespaceSVGIDs: true
+        )
+        #expect(composed.splicedBody == source)
+        #expect(composed.customNodes.isEmpty)
+        let rendered = try CMarkGFM.render(composed.splicedBody, options: CMarkGFM.optUnsafe)
+        return BuiltInExportTemplate.document(
+            title: "Resource admission", styleElement: "<style></style>", body: rendered.html
+        )
+    }
+
+    private func waitForLoad(in view: WKWebView) async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
+            if let state = try? await view.evaluateJavaScript("document.readyState") as? String,
+               state == "complete" {
+                return
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        Issue.record("WebKit did not finish the inline assembly fixture")
+    }
+}
+
+@MainActor
+private final class RecordingResourceHandler: NSObject, WKURLSchemeHandler {
+    private(set) var requests: [URL] = []
+
+    func webView(_: WKWebView, start task: any WKURLSchemeTask) {
+        guard let url = task.request.url else { return }
+        requests.append(url)
+        task.didReceive(URLResponse(url: url, mimeType: "image/png", expectedContentLength: 0,
+                                    textEncodingName: nil))
+        task.didReceive(Data())
+        task.didFinish()
+    }
+
+    func webView(_: WKWebView, stop _: any WKURLSchemeTask) {}
 }
