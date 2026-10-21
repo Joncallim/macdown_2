@@ -65,19 +65,14 @@ public actor D2WebRenderer: D2DiagramRendering {
             "return await window.__macdownRenderD2(source);",
             arguments: ["source": fence.source]
         )
-        guard let dict = result as? [String: Any], let succeeded = dict["ok"] as? Bool else {
-            throw D2RenderError.rendererUnavailable
-        }
-        guard succeeded else {
-            let message = (dict["message"] as? String) ?? "unknown error"
+        guard result.succeeded else {
+            let message = result.message ?? "unknown error"
             throw D2RenderError.invalidSyntax(message)
         }
-        guard let svg = dict["svg"] as? String else {
+        guard let svg = result.svg else {
             throw D2RenderError.rendererUnavailable
         }
-        let width = (dict["width"] as? NSNumber)?.doubleValue ?? 0
-        let height = (dict["height"] as? NSNumber)?.doubleValue ?? 0
-        return RenderedD2Diagram(svg: svg, naturalWidth: width, naturalHeight: height)
+        return RenderedD2Diagram(svg: svg, naturalWidth: result.width, naturalHeight: result.height)
     }
 
     /// Maps the shared pool's generic errors to this language's own

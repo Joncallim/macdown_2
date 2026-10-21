@@ -70,19 +70,14 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
                 ],
             ]
         )
-        guard let dict = result as? [String: Any], let succeeded = dict["ok"] as? Bool else {
-            throw GraphvizRenderError.rendererUnavailable
-        }
-        guard succeeded else {
-            let message = (dict["message"] as? String) ?? "unknown error"
+        guard result.succeeded else {
+            let message = result.message ?? "unknown error"
             throw GraphvizRenderError.invalidSyntax(message)
         }
-        guard let svg = dict["svg"] as? String else {
+        guard let svg = result.svg else {
             throw GraphvizRenderError.rendererUnavailable
         }
-        let width = (dict["width"] as? NSNumber)?.doubleValue ?? 0
-        let height = (dict["height"] as? NSNumber)?.doubleValue ?? 0
-        return RenderedGraphvizDiagram(svg: svg, naturalWidth: width, naturalHeight: height)
+        return RenderedGraphvizDiagram(svg: svg, naturalWidth: result.width, naturalHeight: result.height)
     }
 
     private func withPoolErrorMapping<T: Sendable>(_ body: () async throws -> T) async throws -> T {

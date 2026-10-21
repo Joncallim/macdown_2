@@ -1,4 +1,4 @@
-import DiagramWebKitPool
+@testable import DiagramWebKitPool
 import Foundation
 import Testing
 import WebKit
@@ -113,6 +113,57 @@ struct DiagramPoolTerminationTests {
             #expect(error is CancellationError)
         }
         await pool.shutdown()
+    }
+
+    @Test func teardownSettlesAnEvaluatingPageBeforeWebKitCompletes() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+        let evaluation = Task {
+            _ = try await page.evaluate("return await new Promise(() => {});", arguments: [:])
+        }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while page.pendingEvaluationCount == 0, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(page.pendingEvaluationCount == 1)
+        page.teardown()
+        do {
+            _ = try await DiagramTimeoutRace.run(
+                timeout: .seconds(2),
+                timeoutError: DiagramPoolError.timedOut
+            ) { try await evaluation.value }
+            Issue.record("teardown published a late evaluation")
+        } catch {
+            #expect(error as? DiagramPoolError == .pageUnavailable)
+        }
+        #expect(page.pendingEvaluationCount == 0)
+    }
+
+    @Test func cancellationSettlesAnEvaluatingPageWithoutWaitingForJavaScript() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+        let evaluation = Task {
+            _ = try await page.evaluate("return await new Promise(() => {});", arguments: [:])
+        }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while page.pendingEvaluationCount == 0, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(page.pendingEvaluationCount == 1)
+        evaluation.cancel()
+        do {
+            _ = try await DiagramTimeoutRace.run(
+                timeout: .seconds(2),
+                timeoutError: DiagramPoolError.timedOut
+            ) { try await evaluation.value }
+            Issue.record("cancellation waited for the unending JavaScript promise")
+        } catch {
+            #expect(error is CancellationError)
+        }
+        #expect(page.pendingEvaluationCount == 0)
+        page.teardown()
     }
 }
 

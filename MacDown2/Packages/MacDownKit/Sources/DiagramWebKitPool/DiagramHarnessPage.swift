@@ -1,6 +1,27 @@
 import Foundation
 import WebKit
 
+/// Only the scalar values D2 and Graphviz consume cross the page callback
+/// boundary. WebKit's raw bridged `Any` remains on the main actor.
+public struct DiagramHarnessResult: Sendable {
+    public let succeeded: Bool
+    public let message: String?
+    public let svg: String?
+    public let width: Double
+    public let height: Double
+
+    init?(webKitValue: Any) {
+        guard let values = webKitValue as? [String: Any],
+              let succeeded = values["ok"] as? Bool
+        else { return nil }
+        self.succeeded = succeeded
+        message = values["message"] as? String
+        svg = values["svg"] as? String
+        width = (values["width"] as? NSNumber)?.doubleValue ?? 0
+        height = (values["height"] as? NSNumber)?.doubleValue ?? 0
+    }
+}
+
 /// One offscreen, never-displayed page hosting a bundled JS harness,
 /// generalized from `MermaidHarnessPage` (epic-20-implementation.md §10)
 /// to be renderer-agnostic — this type owns the pool/page lifecycle and
@@ -25,6 +46,13 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
     private let webView: WKWebView
     private let allowedDirectory: URL
     private var loadContinuation: CheckedContinuation<Void, Error>?
+    private var evaluations: [UUID: CheckedContinuation<DiagramHarnessResult, any Error>] = [:]
+
+    /// App-owned callbacks still awaiting a WebKit result; kept internal for
+    /// lifecycle diagnostics and deterministic teardown tests.
+    var pendingEvaluationCount: Int {
+        evaluations.count
+    }
 
     /// WebKit's content process behind this page died (memory pressure, a crash in a huge diagram). Every
     /// later evaluation would fail, so the pool replaces a terminated page instead of reusing it.
@@ -41,8 +69,13 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
             throw DiagramPoolError.pageUnavailable
         }
         let page = DiagramHarnessPage(allowedDirectory: harnessURL.deletingLastPathComponent())
-        try await page.load(harnessURL: harnessURL)
-        return page
+        do {
+            try await page.load(harnessURL: harnessURL)
+            return page
+        } catch {
+            page.teardown()
+            throw error
+        }
     }
 
     private init(allowedDirectory: URL) {
@@ -62,23 +95,67 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
     }
 
     private func load(harnessURL: URL) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            loadContinuation = continuation
-            webView.loadFileURL(harnessURL, allowingReadAccessTo: allowedDirectory)
+        try Task.checkCancellation()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                guard !isTerminated else {
+                    continuation.resume(throwing: DiagramPoolError.pageUnavailable)
+                    return
+                }
+                loadContinuation = continuation
+                webView.loadFileURL(harnessURL, allowingReadAccessTo: allowedDirectory)
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.teardown() }
         }
     }
 
     /// Evaluates `functionBody` (a `callAsyncJavaScript` body) with
     /// `arguments` bound directly — never string-interpolated — via
     /// WebKit's own argument-binding mechanism, matching
-    /// `MermaidHarnessPage.render`'s exact pattern. Returns the raw
-    /// bridged result; interpreting its shape is the caller's own
-    /// language-specific concern.
-    public func evaluate(_ functionBody: String, arguments: [String: Any]) async throws -> Any? {
-        try await webView.callAsyncJavaScript(functionBody, arguments: arguments, in: nil, contentWorld: .page)
+    /// `MermaidHarnessPage.render`'s exact pattern. Validates the shared
+    /// result fields on the main actor before completing the continuation;
+    /// each language still interprets success and syntax failures itself.
+    public func evaluate(_ functionBody: String, arguments: [String: Any]) async throws -> DiagramHarnessResult {
+        try Task.checkCancellation()
+        guard !isTerminated else { throw DiagramPoolError.pageUnavailable }
+        let id = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                guard !isTerminated else {
+                    continuation.resume(throwing: DiagramPoolError.pageUnavailable)
+                    return
+                }
+                evaluations[id] = continuation
+                webView.callAsyncJavaScript(
+                    functionBody,
+                    arguments: arguments,
+                    in: nil,
+                    in: .page
+                ) { [weak self] result in
+                    self?.finishEvaluation(id, with: result.flatMap { value in
+                        guard let parsed = DiagramHarnessResult(webKitValue: value) else {
+                            return .failure(DiagramPoolError.pageUnavailable)
+                        }
+                        return .success(parsed)
+                    })
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.finishEvaluation(id, with: .failure(CancellationError()))
+            }
+        }
     }
 
     public func teardown() {
+        isTerminated = true
+        finishLoad(with: .failure(DiagramPoolError.pageUnavailable))
+        let pending = evaluations
+        evaluations.removeAll()
+        for continuation in pending.values {
+            continuation.resume(throwing: DiagramPoolError.pageUnavailable)
+        }
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
         webView.stopLoading()
@@ -87,24 +164,36 @@ public final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDeleg
     // MARK: - WKNavigationDelegate
 
     public func webView(_: WKWebView, didFinish _: WKNavigation!) {
-        loadContinuation?.resume()
-        loadContinuation = nil
+        finishLoad(with: .success(()))
     }
 
     public func webViewWebContentProcessDidTerminate(_: WKWebView) {
         isTerminated = true
-        loadContinuation?.resume(throwing: DiagramPoolError.pageUnavailable)
-        loadContinuation = nil
+        finishLoad(with: .failure(DiagramPoolError.pageUnavailable))
+        let pending = evaluations
+        evaluations.removeAll()
+        for continuation in pending.values {
+            continuation.resume(throwing: DiagramPoolError.pageUnavailable)
+        }
     }
 
     public func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
-        loadContinuation?.resume(throwing: error)
-        loadContinuation = nil
+        finishLoad(with: .failure(error))
     }
 
     public func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {
-        loadContinuation?.resume(throwing: error)
+        finishLoad(with: .failure(error))
+    }
+
+    private func finishLoad(with result: Result<Void, any Error>) {
+        guard let continuation = loadContinuation else { return }
         loadContinuation = nil
+        continuation.resume(with: result)
+    }
+
+    private func finishEvaluation(_ id: UUID, with result: Result<DiagramHarnessResult, any Error>) {
+        guard let continuation = evaluations.removeValue(forKey: id) else { return }
+        continuation.resume(with: result)
     }
 
     public func webView(
