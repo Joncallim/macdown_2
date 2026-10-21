@@ -60,14 +60,26 @@ enum SVGIDNamespace {
               let root = HTMLTagScanner.parseTag(at: 0, in: scalars), root.name == "svg" else { return nil }
         let authoredRootID = root.attributes.first { $0.name == "id" }?.value
             .flatMap { try? Parser.unescapeEntities($0, true) }
-        var synthetic = "mtScope"
-        while svg.contains(synthetic), synthetic.count < 64 {
-            synthetic += "_"
+        let rootClasses = Set((root.attributes.first { $0.name == "class" }?.value
+                .flatMap { try? Parser.unescapeEntities($0, true) } ?? "")
+            .split(whereSeparator: \.isWhitespace).map(String.init))
+        let scopeID: String
+        if let authoredRootID {
+            scopeID = prefix + authoredRootID
+        } else {
+            // The browser sees decoded attribute references. Reserving only
+            // against raw bytes can make an unresolved entity-encoded paint
+            // URL resolve to the synthetic root we just created.
+            guard let decoded = try? Parser.unescapeEntities(svg, true) else { return nil }
+            var synthetic = "mtScope"
+            while svg.contains(synthetic) || decoded.contains(synthetic), synthetic.count < 64 {
+                synthetic += "_"
+            }
+            guard !svg.contains(synthetic), !decoded.contains(synthetic) else { return nil }
+            scopeID = prefix + synthetic
         }
-        guard !svg.contains(synthetic) else { return nil }
-        let scopeID = prefix + (authoredRootID ?? synthetic)
         return rewriteTags(in: scalars, ids: ids, prefix: prefix,
-                           scopeID: scopeID, addRootID: authoredRootID == nil)
+                           scopeID: scopeID, rootClasses: rootClasses)
     }
 
     private static func collectIDs(in scalars: [Unicode.Scalar]) -> Set<String>? {
@@ -89,8 +101,9 @@ enum SVGIDNamespace {
 
     private static func rewriteTags(
         in scalars: [Unicode.Scalar], ids: Set<String>, prefix: String,
-        scopeID: String, addRootID: Bool
+        scopeID: String, rootClasses: Set<String>
     ) -> String? {
+        let addRootID = !ids.contains(String(scopeID.dropFirst(prefix.count)))
         var output = ""
         var cursor = 0
         var style = false
@@ -103,7 +116,9 @@ enum SVGIDNamespace {
                 }
                 let text = String(String.UnicodeScalarView(scalars[start ..< cursor]))
                 if style {
-                    guard let rewritten = rewriteStyle(text, ids: ids, prefix: prefix, scopeID: scopeID)
+                    guard let rewritten = rewriteStyle(
+                        text, ids: ids, prefix: prefix, scopeID: scopeID, rootClasses: rootClasses
+                    )
                     else { return nil }
                     output += rewritten
                 } else {
@@ -173,7 +188,7 @@ enum SVGIDNamespace {
         case "src", "srcset", "imagesrcset", "poster", "background": return nil
         case "aria-labelledby", "aria-describedby", "aria-controls", "aria-owns", "aria-flowto", "aria-details":
             let targets = value.split(whereSeparator: \.isWhitespace)
-            guard targets.allSatisfy({ validID(String($0)) }) else { return nil }
+            guard targets.allSatisfy({ validID(String($0)) && ids.contains(String($0)) }) else { return nil }
             updated = targets.map { prefix + $0 }.joined(separator: " ")
         default: break
         }
@@ -197,7 +212,7 @@ enum SVGIDNamespace {
             return "#" + prefix + target
         }
         if value.first == "#" {
-            guard validID(target) else { return nil }
+            guard validID(target), ids.contains(target) else { return nil }
             return "#" + prefix + target
         }
         return value

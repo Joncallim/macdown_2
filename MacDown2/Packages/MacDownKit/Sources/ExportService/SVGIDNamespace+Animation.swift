@@ -14,11 +14,17 @@ extension SVGIDNamespace {
         guard ["animation", "animation-name", "-webkit-animation", "-webkit-animation-name"].contains(property)
         else { return declaration }
         let namesOnly = property.hasSuffix("animation-name")
-        let value = declaration[declaration.index(after: colon)...]
-        guard !value.contains("\""), !value.contains("'") else { return nil }
+        let value = String(declaration[declaration.index(after: colon)...])
+        guard !value.contains("\""), !value.contains("'"),
+              !value.lowercased().contains("var(") else { return nil }
+        let importance = value.firstIndex(of: "!")
+        let body = importance.map { String(value[..<$0]) } ?? value
+        let suffix = importance.map { String(value[$0...]) } ?? ""
+        guard suffix.isEmpty || suffix.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "!important"
+        else { return nil }
         var output = String(declaration[...colon])
         var token = ""
-        for scalar in value.unicodeScalars {
+        for scalar in body.unicodeScalars {
             if validID(String(scalar)) {
                 token.unicodeScalars.append(scalar)
             } else {
@@ -28,13 +34,14 @@ extension SVGIDNamespace {
             }
         }
         output += rewrittenAnimationToken(token, namesOnly: namesOnly, prefix: prefix)
-        return output
+        return output + suffix
     }
 
     private static func rewrittenAnimationToken(_ token: String, namesOnly: Bool, prefix: String) -> String {
         guard !token.isEmpty else { return token }
         let lower = token.lowercased()
-        if token.first?.isNumber == true {
+        if token.first?.isNumber == true ||
+            (token.first == "-" && token.dropFirst().first?.isNumber == true) {
             return token
         }
         if namesOnly, ["none", "initial", "inherit", "unset", "revert", "revert-layer"].contains(lower) {

@@ -253,3 +253,27 @@ remain open for a subsequent bounded change and browser fixture. The reviewer
 has not approved activation or run native navigation tests. The generated
 link route stays disabled while these findings, linked TOC integration and
 signed owner-observed acceptance remain unresolved.
+
+## Subsequent SVG isolation regression checkpoint
+
+The next review confirmed the direct CSS/resource bypasses closed at
+`522c0443`, but did not approve SVG isolation. Failing-before regressions
+reproduced a decoded reference selecting a synthetic root, sibling selectors
+escaping an SVG, root class selectors losing their effect, and animation
+rewriting that corrupted negative delays and `!important`. The opt-in parser
+now reserves synthetic IDs against decoded markup, rejects unowned interactive
+fragments, accessibility references and CSS ID selectors, rejects selectors
+whose scope or root semantics cannot be preserved, and preserves signed
+animation durations and importance while rejecting `var(...)` animation
+values. Strict format/lint and focused serial Release tests passed, including
+the existing real Graphviz, D2 and Mermaid canvas comparisons. The ordinary
+export path and generated heading links remain unchanged and disabled.
+
+This is not activation evidence. Unresolved paint `url(#id)` and animation
+names still need final-document ownership proof or safe fallback. D2's real
+output contains unresolved CSS paint references, so simply rejecting every
+unknown fragment would break a supported diagram. `@font-face` and custom
+font-family names remain document-global; the real D2 fixture uses both.
+The complete emitted document/template still needs ownership validation,
+source-to-rendered identity binding, controlled network/file-load testing,
+and the handoff's native navigation, Release and signed owner-observed gates.

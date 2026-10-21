@@ -40,7 +40,8 @@ struct SVGIDNamespaceTests {
     }
 
     @Test func encodedAttributeReferencesResolveToTheirDecodedSVGID() throws {
-        let html = #"<svg><g id="node&#49"/><use href="&#35;node1" fill="url(&#35;node1)""#
+        let html = #"<svg><g id="node&#49"/><g id="other"/>"#
+            + #"<use href="&#35;node1" fill="url(&#35;node1)""#
             + #" aria-labelledby="node&#49;&#9;other"/></svg>"#
         let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 3))
         #expect(result.contains(#"id="mt117-svg-3-0-node1""#))
@@ -49,33 +50,14 @@ struct SVGIDNamespaceTests {
         #expect(result.contains(#"aria-labelledby="mt117-svg-3-0-node1 mt117-svg-3-0-other""#))
     }
 
-    @Test func unresolvedPaintAndSelectorReferencesCannotBindOutsideTheDiagram() throws {
-        let html = #"<svg id="root"><style>#outside{fill:red}#root::after{content:url(#missing);"#
-            + #"font-family:"url(#paint)"}</style><rect fill="url(#outside)""#
-            + #" aria-describedby="outside"/></svg>"#
+    @Test func unresolvedPaintReferencesAwaitFinalDocumentOwnershipValidation() throws {
+        let html = #"<svg id="root"><style>#root::after{content:url(#missing);"#
+            + #"font-family:"url(#paint)"}</style><rect fill="url(#outside)"/></svg>"#
         let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 5))
-        #expect(result.contains("#mt117-svg-5-0-outside{fill:red}"))
         #expect(result.contains("content:url(#mt117-svg-5-0-missing)"))
         #expect(result.contains("font-family:\"url(#paint)\""))
         #expect(result.contains(#"fill="url(#mt117-svg-5-0-outside)""#))
-        #expect(result.contains(#"aria-describedby="mt117-svg-5-0-outside""#))
         #expect(!result.contains("#outside"))
-    }
-
-    @Test func unresolvedInteractiveFragmentCannotNavigateToAnOutsideTarget() throws {
-        let html = ##"<svg id="root"><a href="#outside"><text>Go</text></a></svg>"##
-        let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 6))
-        #expect(result.contains(##"href="#mt117-svg-6-0-outside""##))
-        #expect(!result.contains(##"href="#outside""##))
-    }
-
-    @Test func syntheticRootScopeDoesNotTurnAnUnresolvedPaintIntoARealTarget() throws {
-        let html = #"<svg><style>.shape{stroke:red}</style>"#
-            + #"<rect class="shape" fill="url(#mtScope)"/></svg>"#
-        let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 7))
-        #expect(result.contains(#"id="mt117-svg-7-0-mtScope_""#))
-        #expect(result.contains(#"fill="url(#mt117-svg-7-0-mtScope)""#))
-        #expect(result.contains(#"#mt117-svg-7-0-mtScope_ .shape{stroke:red}"#))
     }
 
     @Test func keyframeNamesAndAnimationReferencesStayWithinEachOccurrence() throws {
