@@ -55,7 +55,13 @@ jobs:
           # Homebrew refuse to install; untap defensively.
           brew untap aws/tap 2>/dev/null || true
           brew install xcodegen
+      - name: Select Python for the scoped crash diagnostic
+        if: ${{ startsWith(github.ref_name, 'diagnostic/ordinary-crash-') }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Package build + tests
+        id: ordinary-package-tests
         working-directory: MacDown2/Packages/MacDownKit
         # --force-resolved-versions builds exactly the revisions in the
         # committed Package.resolved and fails if it is missing, stale or
@@ -67,7 +73,12 @@ jobs:
           # resources; concurrent XCTest scheduling makes these load-sensitive
           # tests exceed their bounded coordination timeouts on CI. Keep the
           # full suite and its assertions intact, but serialize execution.
-          swift test --no-parallel --force-resolved-versions
+          if [ "${{ startsWith(github.ref_name, 'diagnostic/ordinary-crash-') }}" = "true" ]; then
+            python3 "$GITHUB_WORKSPACE/MacDown2/scripts/crash-capture/capture.py" \
+              --repo "$GITHUB_WORKSPACE" --output "$RUNNER_TEMP/ordinary-crash-evidence"
+          else
+            swift test --no-parallel --force-resolved-versions
+          fi
       - name: Generate Xcode project
         working-directory: MacDown2
         run: xcodegen generate
@@ -133,3 +144,20 @@ jobs:
         run: |
           MacDown2/scripts/pin-xcode-package-versions.sh --check
           git diff --exit-code -- MacDown2/Packages/MacDownKit/Package.resolved
+      - name: Upload scoped ordinary-suite crash evidence
+        if: ${{ always() && startsWith(github.ref_name, 'diagnostic/ordinary-crash-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ordinary-crash-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ordinary-crash-evidence
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Verify crash-capture provenance separately from the test result
+        if: ${{ always() && startsWith(github.ref_name, 'diagnostic/ordinary-crash-') && steps.ordinary-package-tests.outcome != 'skipped' }}
+        run: |
+          python3 - "$RUNNER_TEMP/ordinary-crash-evidence/run.json" <<'PYCODE'
+          import json, pathlib, sys
+          record = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          if record.get('diagnostic_integrity') != 'passed':
+              raise SystemExit('Scoped crash diagnostic integrity is unavailable; original test status is retained separately.')
+          PYCODE
