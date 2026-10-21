@@ -201,7 +201,7 @@ let package = Package(
         ),
         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
         .testTarget(name: "JSONSupportTests", dependencies: ["JSONSupport"]),
-        .testTarget(name: "ExportServiceTests", dependencies: ["ExportService"]),
+        .testTarget(name: "ExportServiceTests", dependencies: ["ExportService", "MarkdownEngine"]),
         .testTarget(name: "ContributionsTests", dependencies: ["Contributions", "MarkdownEngine"]),
         .testTarget(name: "TextFiltersTests", dependencies: ["TextFilters"]),
         .testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"]),

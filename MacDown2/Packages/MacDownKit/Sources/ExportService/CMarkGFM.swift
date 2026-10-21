@@ -1,5 +1,6 @@
 import cmark_gfm
 import cmark_gfm_extensions
+import CryptoKit
 import Foundation
 
 /// How the bridge should treat an authored link/image URL during rendering.
@@ -28,32 +29,6 @@ enum CMarkGFM {
     static let optUnsafe: Int32 = CMARK_OPT_UNSAFE
     static let optSmart: Int32 = CMARK_OPT_SMART
 
-    /// A deterministic replacement performed after parsing but before rendering:
-    /// the authored range was already substituted with `sentinel` in the source
-    /// handed to the parser, and this spec turns that sentinel back into a
-    /// custom cmark node carrying the derived `html`.
-    struct CustomNodeSpec: Sendable, Equatable {
-        let sentinel: String
-        let isBlock: Bool
-        let html: String
-
-        init(sentinel: String, isBlock: Bool, html: String) {
-            self.sentinel = sentinel
-            self.isBlock = isBlock
-            self.html = html
-        }
-    }
-
-    /// What one render produced: the HTML fragment plus the structural facts the
-    /// composer needs in order to apply its target policy. Reported from the same
-    /// tree walk that does the substitutions, so no extra pass is needed.
-    struct Rendered {
-        let html: String
-        /// `true` when the source contained an authored raw-HTML block or inline
-        /// span. Self-contained export treats this as fatal; PDF warns.
-        let containsRawHTML: Bool
-    }
-
     private static let coreExtensionNames = ["table", "strikethrough", "autolink", "tagfilter", "tasklist"]
 
     /// cmark-gfm's `ensure_registered` mutates a process-global registry behind a
@@ -77,13 +52,18 @@ enum CMarkGFM {
         _ text: String,
         options: Int32,
         customNodes: [CustomNodeSpec] = [],
+        collectHeadingLocations: Bool = false,
         urlTransformer: ((String, Bool) -> URLDisposition)? = nil
     ) throws -> Rendered {
         // `walk` recurses once per nesting level, so a few thousand `>` would
         // overflow a cooperative thread's stack and kill the app. Like the parse
         // engine, run on a dedicated thread with a large, lazily committed stack.
         try OnLargeStack.run {
-            try renderOnCurrentThread(text, options: options, customNodes: customNodes, urlTransformer: urlTransformer)
+            try renderOnCurrentThread(
+                text, options: options, customNodes: customNodes,
+                collectHeadingLocations: collectHeadingLocations,
+                urlTransformer: urlTransformer
+            )
         }
     }
 
@@ -91,6 +71,7 @@ enum CMarkGFM {
         _ text: String,
         options: Int32,
         customNodes: [CustomNodeSpec],
+        collectHeadingLocations: Bool,
         urlTransformer: ((String, Bool) -> URLDisposition)?
     ) throws -> Rendered {
         // Reading the `static let` runs its initialiser exactly once under the
@@ -124,7 +105,7 @@ enum CMarkGFM {
         }
         defer { cmark_node_free(root) }
 
-        var walkResult = WalkResult()
+        var walkResult = WalkResult(collectHeadingLocations: collectHeadingLocations)
         transform(root, customNodes: customNodes, urlTransformer: urlTransformer, result: &walkResult)
 
         // tagfilter/table/tasklist rendering reads the parser's extension list,
@@ -136,7 +117,14 @@ enum CMarkGFM {
         defer { free(rendered) }
 
         let html = substitutingDeferredSentinels(walkResult.deferredInline, in: String(cString: rendered))
-        return Rendered(html: html, containsRawHTML: walkResult.sawRawHTML)
+        return Rendered(
+            html: html,
+            containsRawHTML: walkResult.sawRawHTML,
+            headingLocations: walkResult.headingLocations,
+            headingSourceSHA256: collectHeadingLocations
+                ? SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+                : nil
+        )
     }
 
     /// Convenience for callers that only need the HTML fragment.
@@ -154,7 +142,9 @@ enum CMarkGFM {
     /// Facts gathered while walking the tree, so the composer never needs a
     /// second pass over the document to learn them.
     private struct WalkResult {
+        let collectHeadingLocations: Bool
         var sawRawHTML = false
+        var headingLocations: [HeadingLocation] = []
         /// Inline contributions in a parent that refuses custom inline nodes (a GFM table cell): the sentinel
         /// text stays in the tree and is replaced in the rendered HTML instead.
         var deferredInline: [CustomNodeSpec] = []
@@ -183,6 +173,13 @@ enum CMarkGFM {
         urlTransformer: ((String, Bool) -> URLDisposition)?,
         result: inout WalkResult
     ) {
+        if result.collectHeadingLocations, cmark_node_get_type(node) == CMARK_NODE_HEADING {
+            result.headingLocations.append(HeadingLocation(
+                level: Int(cmark_node_get_heading_level(node)),
+                line: Int(cmark_node_get_start_line(node)),
+                column: Int(cmark_node_get_start_column(node))
+            ))
+        }
         applyNodePolicy(node, urlTransformer: urlTransformer, result: &result)
 
         var child = cmark_node_first_child(node)

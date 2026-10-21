@@ -89,3 +89,37 @@ Second review resolved the palette dependency cycle, stale pre-panel document ca
 The heading allocator reserves authored IDs, but contributed IDs were only detected afterwards, and cached diagram artwork has no per-occurrence namespace. Graphviz emits `graph0`/`node1`-style IDs and leaves embedding uniqueness to the caller; an `[TOC]`, a heading `graph0` and a simple DOT diagram can therefore lose the requested TOC anchor or yield an ambiguous one, and a repeated cached SVG or page-local Mermaid counters duplicate IDs. Pipeline today: Graphviz SVG is emitted inline, the sanitizer preserves IDs, custom HTML is emitted as-is.
 
 Contract: the assembly step owns a deterministic per-OCCURRENCE SVG namespace (rewriting `id`, `href`/`xlink:href` fragments, `url(#…)`, CSS selectors and accessibility `aria-*` references together) that is disjoint from authored, heading and template IDs and is allocated BEFORE heading IDs are finalised. Cached canonical artwork stays immutable. Tests: heading `graph0` + DOT, explicit DOT IDs, repeated cached occurrences, mixed engines, separate Mermaid workers/restarts. Duplicate composition IDs and the TOC conflict are source-confirmed; native visual symptoms are not claimed reproduced.
+
+## Rebaseline 2026-10-22 — coordinates after derived-content splicing
+
+The earlier direction to compare a heading's original line with cmark's line
+assumed that both parsers saw the same body. That assumption is false when
+Export replaces an accepted contribution with an inline sentinel or a
+blank-line-delimited block sentinel. An earlier replacement can shift all
+later cmark line/column positions, including after the existing leaked-sentinel
+fallback re-composes the body. The isolated top-level heading probe did not
+exercise this pipeline.
+
+When generated-heading analysis is requested, Export must carry a bounded
+original-body-to-spliced-body coordinate map from the exact *accepted*
+replacements it actually applies. Ordinary no-TOC export does not build this
+map or hash its body again. An offset inside a
+replaced source range has no faithful output coordinate and must be reported
+as unmappable; before/after offsets map by the accumulated UTF-16 length delta.
+Build a fresh map for every re-composition, including the leaked-sentinel
+fallback. Bind the map to the original body and collected cmark heading
+locations to the exact transformed body with stable content fingerprints;
+otherwise a same-shaped result from another render could be misidentified.
+Front matter is already removed from the body handed to cmark, so
+convert an index heading's original line through `bodyLineOffset` before using
+the map. A later heading match must verify one generated cmark heading at the
+mapped line and expected level and reject any ambiguous or structurally changed
+case. Heading ordinal by itself, raw authored h-tags and spoofable `data-sourcepos`
+attributes are not identity evidence. Keep generated links disabled until the
+marker/target and final DOM checks also pass their hostile fixtures and review.
+
+This correction changes no normal no-TOC HTML output or dependency pin. Its
+first implementation unit is the pure coordinate map with tests for multiple
+inline/block substitutions, Unicode/CRLF, replacement boundaries, rejected
+contributions and front-matter offsets. It is not acceptance of generated
+navigation.

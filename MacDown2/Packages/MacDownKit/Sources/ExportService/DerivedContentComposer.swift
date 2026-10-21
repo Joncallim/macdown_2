@@ -14,6 +14,9 @@ import Foundation
 enum DerivedContentComposer {
     struct Result {
         let splicedBody: String
+        /// Requested only by generated-heading analysis. Ordinary export
+        /// does not allocate a map or hash the body a second time.
+        let coordinates: SplicedBodySourceMap?
         let customNodes: [CMarkGFM.CustomNodeSpec]
         let diagnostics: [ExportDiagnostic]
         let sentinelSuffix: String
@@ -25,6 +28,10 @@ enum DerivedContentComposer {
         let range: Range<Int>
         let sentinel: String
         let isBlock: Bool
+
+        var renderedText: String {
+            isBlock ? "\n\n\(sentinel)\n\n" : sentinel
+        }
     }
 
     /// Immutable inputs shared by every contribution validation in one compose
@@ -108,10 +115,16 @@ enum DerivedContentComposer {
         contributions: [ExportDerivedContribution],
         sourceGeneration: UInt,
         budget: ExportResourceBudget = .standard,
-        containerRanges: [Range<Int>] = []
+        containerRanges: [Range<Int>] = [],
+        recordCoordinates: Bool = false
     ) -> Result {
         guard !contributions.isEmpty else {
-            return Result(splicedBody: bodyText, customNodes: [], diagnostics: [], sentinelSuffix: "")
+            return Result(
+                splicedBody: bodyText,
+                coordinates: recordCoordinates
+                    ? SplicedBodySourceMap(sourceText: bodyText, renderedText: bodyText, splices: []) : nil,
+                customNodes: [], diagnostics: [], sentinelSuffix: ""
+            )
         }
 
         let context = ValidationContext(
@@ -133,8 +146,11 @@ enum DerivedContentComposer {
             plan.consider(contribution, index: index, context: context)
         }
 
+        let splicedBody = splice(plan.splices, into: bodyText)
         return Result(
-            splicedBody: splice(plan.splices, into: bodyText),
+            splicedBody: splicedBody,
+            coordinates: recordCoordinates
+                ? SplicedBodySourceMap(sourceText: bodyText, renderedText: splicedBody, splices: plan.splices) : nil,
             customNodes: plan.customNodes,
             diagnostics: plan.diagnostics,
             sentinelSuffix: context.sentinelSuffix
@@ -221,7 +237,7 @@ enum DerivedContentComposer {
 
         for entry in splices {
             appendUnits(upTo: entry.range.lowerBound)
-            result += entry.isBlock ? "\n\n\(entry.sentinel)\n\n" : entry.sentinel
+            result += entry.renderedText
             // Jump past the replaced range; its characters are not emitted.
             cursor = min(max(entry.range.upperBound, cursor), units.count)
         }
