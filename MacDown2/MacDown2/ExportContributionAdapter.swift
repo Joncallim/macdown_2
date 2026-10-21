@@ -35,12 +35,25 @@ enum ExportContributionAdapter {
     /// real content but reported an `.error` diagnostic on it — stays
     /// attached to that contribution, since that result keeps its content
     /// and `DerivedContentComposer` already fails it closed.
-    static func adapt(_ results: [ContributionResult]) -> Adaptation {
+    static func adapt(
+        _ results: [ContributionResult],
+        destination: ContributionDestination
+    ) -> Adaptation {
         var contributions: [ExportDerivedContribution] = []
         var standaloneDiagnostics: [ExportDiagnostic] = []
         for result in results {
             guard let content = result.content else {
                 standaloneDiagnostics.append(contentsOf: result.diagnostics.map(exportDiagnostic))
+                continue
+            }
+
+            guard case .accepted = content.representation.admission(to: destination) else {
+                standaloneDiagnostics.append(ExportDiagnostic(
+                    severity: .error,
+                    message: String(
+                        localized: "\(result.contributionID) is unavailable for this export; authored source preserved"
+                    )
+                ))
                 continue
             }
 
