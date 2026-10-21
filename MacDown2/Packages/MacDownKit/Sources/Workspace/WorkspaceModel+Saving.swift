@@ -69,6 +69,22 @@ public extension WorkspaceModel {
         encodingOverride: FileEncodingMetadata? = nil,
         target: FileDocument? = nil
     ) async -> NonPromptingSaveResult {
+        await saveAttempt(
+            isRetry: isRetry,
+            destinationPolicy: destinationPolicy,
+            encodingOverride: encodingOverride,
+            target: target,
+            continuingOperation: nil
+        )
+    }
+
+    internal func saveAttempt(
+        isRetry: Bool,
+        destinationPolicy: SaveDestinationPolicy,
+        encodingOverride: FileEncodingMetadata?,
+        target: FileDocument?,
+        continuingOperation: LogicalSaveOperationID?
+    ) async -> NonPromptingSaveResult {
         guard let document = target ?? tabStore.activeDocument else {
             lastError = .noActiveDocument
             return .handled
@@ -78,17 +94,20 @@ public extension WorkspaceModel {
             return .handled
         }
         if document.fileURL == nil || isBackingUnavailable(document) {
-            if destinationPolicy == .promptIfNeeded {
-                await saveAs()
-                return .handled
-            }
-            return .requiresDestination
+            return await handleMissingSaveDestination(destinationPolicy, continuingOperation: continuingOperation)
         }
         guard inFlightSaveAsByDocumentID[document.id] == nil else { return .handled }
 
         let context = beginSave(for: document)
-        let operation = beginSavingIndicator(for: document)
-        defer { endSavingIndicator(operation) }
+        let operation = continuingOperation ?? beginSavingIndicator(for: document)
+        if continuingOperation != nil {
+            includeSavingLifetime(document, in: operation)
+        }
+        defer {
+            if continuingOperation == nil {
+                endSavingIndicator(operation)
+            }
+        }
         do {
             let result = try await documentWriter.save(document, encodingOverride: encodingOverride)
             result.document.fileURL.map { onDocumentWritten?($0) }
@@ -105,15 +124,34 @@ public extension WorkspaceModel {
                 return await reconcileSaveConflict(
                     for: document,
                     context: context,
-                    isRetry: isRetry,
-                    destinationPolicy: destinationPolicy,
-                    encodingOverride: encodingOverride
+                    retry: SaveConflictRetry(
+                        isRetry: isRetry,
+                        destinationPolicy: destinationPolicy,
+                        encodingOverride: encodingOverride,
+                        operation: operation
+                    )
                 )
             }
             guard shouldSurfaceSaveFailure(for: document, context: context, error: error) else { return .handled }
             lastError = workspaceError(for: error)
         }
         return .handled
+    }
+
+    private func handleMissingSaveDestination(
+        _ policy: SaveDestinationPolicy,
+        continuingOperation: LogicalSaveOperationID?
+    ) async -> NonPromptingSaveResult {
+        // A retry that lost its destination is no longer writing. Save As
+        // starts a separate operation only after the user accepts a location.
+        if let continuingOperation {
+            endSavingIndicator(continuingOperation)
+        }
+        if policy == .promptIfNeeded {
+            await saveAs()
+            return .handled
+        }
+        return .requiresDestination
     }
 
     /// Saves the active document to a user-chosen location, prompted via
