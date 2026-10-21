@@ -103,6 +103,7 @@ enum SVGIDNamespace {
         in scalars: [Unicode.Scalar], ids: Set<String>, prefix: String,
         scopeID: String, rootClasses: Set<String>
     ) -> String? {
+        guard let hasFontFace = admittedFontFaceScope(in: scalars) else { return nil }
         let addRootID = !ids.contains(String(scopeID.dropFirst(prefix.count)))
         var output = ""
         var cursor = 0
@@ -133,7 +134,8 @@ enum SVGIDNamespace {
             if tag.isClosing {
                 output += "</\(tag.name)>"
             } else {
-                guard let opening = openingTag(tag, ids: ids, prefix: prefix) else { return nil }
+                guard let opening = openingTag(tag, ids: ids, prefix: prefix, hasFontFace: hasFontFace)
+                else { return nil }
                 output += scopedOpening(opening, isFirstRoot: tag.name == "svg" && !rootOpened,
                                         scopeID: scopeID, addRootID: addRootID)
                 rootOpened = rootOpened || tag.name == "svg"
@@ -159,7 +161,9 @@ enum SVGIDNamespace {
         }
     }
 
-    private static func openingTag(_ tag: HTMLTagScanner.Tag, ids: Set<String>, prefix: String) -> String? {
+    private static func openingTag(
+        _ tag: HTMLTagScanner.Tag, ids: Set<String>, prefix: String, hasFontFace: Bool
+    ) -> String? {
         var output = "<\(tag.name)"
         for attribute in tag.attributes {
             guard let raw = attribute.value else {
@@ -168,6 +172,14 @@ enum SVGIDNamespace {
                 continue
             }
             guard let value = try? Parser.unescapeEntities(raw, true) else { return nil }
+            if hasFontFace {
+                let compact = value.lowercased().filter { !$0.isWhitespace }
+                if attribute.name == "font-family" || attribute.name == "font"
+                    || (attribute.name == "style"
+                        && (compact.contains("font-family:") || compact.contains("font:"))) {
+                    return nil
+                }
+            }
             guard let updated = rewrittenValue(value, attribute: attribute.name, tagName: tag.name,
                                                ids: ids, prefix: prefix) else { return nil }
             let emitted = updated == value ? raw : HTMLEscaping.escape(updated)

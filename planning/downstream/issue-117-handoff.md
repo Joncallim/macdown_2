@@ -277,3 +277,26 @@ font-family names remain document-global; the real D2 fixture uses both.
 The complete emitted document/template still needs ownership validation,
 source-to-rendered identity binding, controlled network/file-load testing,
 and the handoff's native navigation, Release and signed owner-observed gates.
+
+## Embedded font follow-up
+
+A failing-before Release test showed that an accepted SVG `@font-face` family
+kept its original document-global name. The opt-in CSS pass now prefixes a
+supported embedded WOFF family and its references within the same style block;
+unsupported local-font sources, cross-style references, font shorthand and
+inline family references preserve the authored diagram source instead. A
+separate D2 stylesheet without font-family references remains admitted, as do
+its inline font-size declarations. The focused serial Release parser and real
+Graphviz, D2 and Mermaid pixel tests passed on this local candidate. This
+limits accidental font-name collisions but does not by itself prove that
+authored final-document CSS cannot deliberately name the predictable prefix.
+The final-document ownership and activation gates above remain open.
+
+The local Release package probes after the font change processed a 1,116,064
+byte dense stylesheet in 0.754 seconds and a 1,131,120 byte technical document
+in 0.094 seconds parse/render, 0.007 seconds inspection and 0.103 seconds
+patch/validation. These are package-host timings, not full-app or memory
+ceilings. The previous `61513b06` hosted run ended with process signal 11 in
+the package-test step, without a recorded failed assertion or crash stack;
+later log lines were buffered. Its exact cause is unproven, and an exact final
+candidate needs successful hosted validation before any merge.

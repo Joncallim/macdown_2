@@ -49,4 +49,28 @@ struct SVGIDNamespaceIsolationTests {
             occurrence: 0
         ) == nil)
     }
+
+    @Test func embeddedFontFamilyCannotAffectAuthoredDocumentStyles() throws {
+        let html = #"<svg id="root"><style>@font-face{font-family:"diagramFace";"#
+            + #"src:url("data:font/woff;base64,AA==");}"#
+            + #"#root text{font-family:"diagramFace"}</style><text>Sample</text></svg>"#
+        let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 3))
+        #expect(result.contains(#"font-family:"mt117-svg-3-0-diagramFace""#))
+        #expect(!result.contains(#"font-family:"diagramFace""#))
+    }
+
+    @Test func fontFacesWithUnsupportedCrossStyleOrInlineReferencesFailClosed() {
+        let face = #"<style>@font-face{font-family:diagramFace;"#
+            + #"src:url("data:font/woff;base64,AA==")}</style>"#
+        for extra in [
+            #"<style>#root text{font-family:diagramFace}</style>"#,
+            #"<text font-family="diagramFace">A</text>"#,
+            #"<text style="font-family:diagramFace">A</text>"#,
+        ] {
+            #expect(SVGIDNamespace.rewrite(#"<svg id="root">"# + face + extra + "</svg>", occurrence: 0) == nil)
+        }
+        let local = #"<svg id="root"><style>@font-face{font-family:diagramFace;"#
+            + #"src:local("Private Font")}</style></svg>"#
+        #expect(SVGIDNamespace.rewrite(local, occurrence: 0) == nil)
+    }
 }
