@@ -18,6 +18,31 @@ import Testing
 @MainActor
 @Suite("WorkspaceModel Save As destination expectation")
 struct WorkspaceModelSaveAsExpectationTests {
+    @Test func saveAsAdmissionRejectsAReplacementWithTheSameVisibleState() throws {
+        let directory = temporaryDirectory()
+        defer { cleanup(directory) }
+        let source = directory.appendingPathComponent("source.md")
+        _ = try FileStore().write("same text", to: source)
+
+        let tabStore = TabStore(sessionStore: FakeSessionStore())
+        try tabStore.newTab(document: FileDocument(fileURL: source).load())
+        let tabID = try #require(tabStore.activeTab).id
+        let model = WorkspaceModel(tabStore: tabStore, stateStore: FakeStateStore())
+        let original = try #require(model.activeDocument)
+        let admission = try #require(model.reserveSaveAs(for: original))
+        defer { model.finishSaveAs(admission) }
+
+        let replacement = try FileDocument(fileURL: source).load()
+        #expect(replacement.id == original.id)
+        #expect(replacement.text == original.text)
+        #expect(replacement.mutationGeneration == original.mutationGeneration)
+        #expect(replacement.recoveryEpoch != original.recoveryEpoch)
+        tabStore.updateActiveDocument { _ in replacement }
+
+        #expect(!model.isAdmittedSaveAsCurrent(admission, for: original))
+        #expect(!model.isCurrent(original, inTab: tabID))
+    }
+
     @Test func destinationPanelOwnsTheSaveAsAdmissionUntilItReturns() async throws {
         let directory = temporaryDirectory()
         defer { cleanup(directory) }

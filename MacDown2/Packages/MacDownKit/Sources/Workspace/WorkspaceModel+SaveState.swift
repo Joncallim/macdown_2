@@ -29,6 +29,7 @@ extension WorkspaceModel {
     func isCurrent(_ document: FileDocument) -> Bool {
         guard let current = tabStore.activeDocument else { return false }
         return current.id == document.id
+            && current.recoveryEpoch == document.recoveryEpoch
             && current.fileURL?.standardizedFileURL == document.fileURL?.standardizedFileURL
             && current.text.isExactlyEqual(to: document.text)
             && current.state == document.state
@@ -39,6 +40,7 @@ extension WorkspaceModel {
     func isCurrent(_ document: FileDocument, inTab tabID: UUID) -> Bool {
         guard let current = tabStore.tabs.first(where: { $0.id == tabID })?.document else { return false }
         return current.id == document.id
+            && current.recoveryEpoch == document.recoveryEpoch
             && current.fileURL?.standardizedFileURL == document.fileURL?.standardizedFileURL
             && current.text.isExactlyEqual(to: document.text)
             && current.state == document.state
