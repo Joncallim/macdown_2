@@ -101,13 +101,11 @@ extension SVGIDNamespace {
             let original = String(part)
             let trimmed = original.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return nil }
-            if let name = fontName(trimmed), names.contains(name), let range = original.range(of: name) {
-                var updated = original
-                updated.replaceSubrange(range, with: prefix + name)
-                rewritten.append(updated)
-            } else {
-                rewritten.append(original)
-            }
+            guard let name = fontName(trimmed), names.contains(name.lowercased()),
+                  let range = original.range(of: name) else { return nil }
+            var updated = original
+            updated.replaceSubrange(range, with: prefix + name.lowercased())
+            rewritten.append(updated)
         }
         return String(declaration[...colon]) + rewritten.joined(separator: ",") + suffix
     }

@@ -41,11 +41,19 @@ struct SVGIDNamespaceIsolationTests {
 
     @Test func animationImportanceAndSignedDelayArePreservedOrRejectedSafely() throws {
         let html = #"<svg id="root"><style>@keyframes pulse{to{opacity:1}}"#
-            + #"#root{animation:pulse -0.5s linear !important}</style></svg>"#
+            + #"#root{animation:pulse 1s -0.5s linear !important}</style></svg>"#
         let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 9))
-        #expect(result.contains("animation:mt117-svg-9-0-pulse -0.5s linear !important"))
+        #expect(result.contains("animation:mt117-svg-9-0-pulse 1s -0.5s linear !important"))
+        let leadingDot = #"<svg id="root"><style>@keyframes pulse{to{opacity:1}}"#
+            + #"#root{animation:pulse 1s -.5s linear}</style></svg>"#
+        let leadingDotResult = try #require(SVGIDNamespace.rewrite(leadingDot, occurrence: 9))
+        #expect(leadingDotResult.contains("animation:mt117-svg-9-0-pulse 1s -.5s linear"))
         #expect(SVGIDNamespace.rewrite(
             #"<svg id="root"><style>#root{animation:var(--motion)}</style></svg>"#,
+            occurrence: 0
+        ) == nil)
+        #expect(SVGIDNamespace.rewrite(
+            #"<svg id="root"><style>#root{animation:pulse 1s calc(-.5s)}</style></svg>"#,
             occurrence: 0
         ) == nil)
     }
@@ -55,7 +63,7 @@ struct SVGIDNamespaceIsolationTests {
             + #"src:url("data:font/woff;base64,AA==");}"#
             + #"#root text{font-family:"diagramFace"}</style><text>Sample</text></svg>"#
         let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 3))
-        #expect(result.contains(#"font-family:"mt117-svg-3-0-diagramFace""#))
+        #expect(result.contains(#"font-family:"mt117-svg-3-0-diagramface""#))
         #expect(!result.contains(#"font-family:"diagramFace""#))
     }
 
@@ -72,5 +80,31 @@ struct SVGIDNamespaceIsolationTests {
         let local = #"<svg id="root"><style>@font-face{font-family:diagramFace;"#
             + #"src:local("Private Font")}</style></svg>"#
         #expect(SVGIDNamespace.rewrite(local, occurrence: 0) == nil)
+    }
+
+    @Test func fontFamilyNamesAreResolvedCaseInsensitively() throws {
+        let html = #"<svg id="root"><style>@font-face{font-family:Demo;"#
+            + #"src:url("data:font/woff;base64,AA==")}#root text{font-family:demo}</style>"#
+            + #"<text>Sample</text></svg>"#
+        let result = try #require(SVGIDNamespace.rewrite(html, occurrence: 4))
+        #expect(result.contains("font-family:mt117-svg-4-0-demo"))
+        #expect(!result.contains("font-family:Demo"))
+        #expect(!result.contains("font-family:demo"))
+    }
+
+    @Test func aStyleCannotBorrowAnotherStyleBlocksFontFace() {
+        let first = #"<style>@font-face{font-family:A;src:url("data:font/woff;base64,AA==")}"#
+            + #"#root text{font-family:B}</style>"#
+        let second = #"<style>@font-face{font-family:B;src:url("data:font/woff;base64,AA==")}"#
+            + #"#root rect{font-family:B}</style>"#
+        let html = #"<svg id="root">"# + first + second + "<text>A</text><rect/></svg>"
+        #expect(SVGIDNamespace.rewrite(html, occurrence: 0) == nil)
+    }
+
+    @Test func animationNamesNeedAnOwnedKeyframeInTheirStyle() {
+        for declaration in ["animation-name:outside", "animation:outside 1s linear"] {
+            let html = #"<svg id="root"><style>#root rect{"# + declaration + #"}</style><rect/></svg>"#
+            #expect(SVGIDNamespace.rewrite(html, occurrence: 0) == nil)
+        }
     }
 }

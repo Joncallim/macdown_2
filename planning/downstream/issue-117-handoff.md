@@ -300,3 +300,34 @@ ceilings. The previous `61513b06` hosted run ended with process signal 11 in
 the package-test step, without a recorded failed assertion or crash stack;
 later log lines were buffered. Its exact cause is unproven, and an exact final
 candidate needs successful hosted validation before any merge.
+
+## Follow-up review of `ee277a8d`
+
+The next independent source review found three more parser errors: embedded
+font-family lookup was case-sensitive even though CSS family matching is not;
+two face-bearing style blocks could refer to each other's family without a
+rewrite; and the animation scanner changed a valid leading-dot negative
+delay (`pulse 1s -.5s`) into an invalid name. `calc(...)` in animation values
+was also admitted without a supported parser. Failing-before package and
+WebKit tests reproduced these cases, including a computed delay of `0s`
+instead of `-0.5s`.
+
+The disabled SVG path now folds supported embedded font-family names to one
+case, rejects a family not declared in that same style block, preserves valid
+leading-dot negative delays, and rejects unsupported animation functions.
+Its second CSS pass also requires animation names to match a keyframe in the
+same stylesheet; unknown names and inline animation references fail closed.
+The focused serial Release suite again matched real D2, Graphviz and Mermaid
+canvas output and WebKit computed the valid delay as `-0.5s`. The ordinary
+export path and generated links remain unchanged. Exact-head hosted checks,
+independent re-review of this new checkpoint, and the full activation gates
+remain necessary. The prior `ee277a8d` hosted run passed package, app and
+pin checks; that does not explain the older `61513b06` signal-11 crash.
+
+Unresolved paint fragments are still predictable and can bind to an authored
+outside ID. The deterministic prefix can also be named deliberately in raw
+authored stylesheet rules. The accepted handoff requires checking ownership
+against the actual assembled document, including its head/template, without
+adding a global DOM gate to ordinary no-TOC exports. The writer currently
+returns a non-optional complete string, so the opt-in failure route needs an
+architecture review before this boundary is wired into export.

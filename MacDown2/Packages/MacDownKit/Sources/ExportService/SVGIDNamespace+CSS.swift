@@ -9,17 +9,21 @@ extension SVGIDNamespace {
         // braces in a string cannot turn declaration bytes into selectors.
         // Unknown at-rules, comments and CSS escapes remain fail-closed.
         guard !css.contains("/*"), !css.contains("\\"), !css.contains("&") else { return nil }
-        var state = CSSState(rootClasses: rootClasses, knownFontFaces: [])
+        var state = CSSState(rootClasses: rootClasses, knownFontFaces: [], knownKeyframes: nil)
         for character in css {
             guard state.consume(character, ids: ids, prefix: prefix, scopeID: scopeID) else { return nil }
         }
         guard let first = state.finish() else { return nil }
-        guard !state.declaredFontFaces.isEmpty else { return first }
-        var final = CSSState(rootClasses: rootClasses, knownFontFaces: state.declaredFontFaces)
+        guard !state.declaredFontFaces.isEmpty || state.sawAnimation else { return first }
+        var final = CSSState(
+            rootClasses: rootClasses, knownFontFaces: state.declaredFontFaces,
+            knownKeyframes: state.declaredKeyframes
+        )
         for character in css {
             guard final.consume(character, ids: ids, prefix: prefix, scopeID: scopeID) else { return nil }
         }
-        guard final.declaredFontFaces == state.declaredFontFaces else { return nil }
+        guard final.declaredFontFaces == state.declaredFontFaces,
+              final.declaredKeyframes == state.declaredKeyframes else { return nil }
         return final.finish()
     }
 
@@ -33,8 +37,10 @@ extension SVGIDNamespace {
     private struct CSSState {
         let rootClasses: Set<String>
         let knownFontFaces: Set<String>
+        let knownKeyframes: Set<String>?
         var declaredKeyframes: Set<String> = []
         var declaredFontFaces: Set<String> = []
+        var sawAnimation = false
         var output = ""
         var segment = ""
         var stack: [CSSBlock] = []
@@ -103,12 +109,16 @@ extension SVGIDNamespace {
         mutating func close(ids: Set<String>, prefix: String) -> Bool {
             guard let kind = stack.popLast() else { return false }
             if kind == .declarations || kind == .fontFace {
+                if segment.range(of: "animation", options: .caseInsensitive) != nil {
+                    sawAnimation = true
+                }
                 if kind == .fontFace {
                     guard let name = SVGIDNamespace.fontFaceName(in: segment) else { return false }
-                    declaredFontFaces.insert(name)
+                    declaredFontFaces.insert(name.lowercased())
                 }
                 guard let rewritten = SVGIDNamespace.rewriteDeclarations(
-                    segment, ids: ids, prefix: prefix, fontFaces: knownFontFaces
+                    segment, ids: ids, prefix: prefix, fontFaces: knownFontFaces,
+                    keyframes: knownKeyframes
                 )
                 else { return false }
                 output += rewritten
@@ -143,13 +153,16 @@ extension SVGIDNamespace {
     }
 
     private static func rewriteDeclarations(
-        _ declarations: String, ids: Set<String>, prefix: String, fontFaces: Set<String>
+        _ declarations: String, ids: Set<String>, prefix: String, fontFaces: Set<String>,
+        keyframes: Set<String>?
     ) -> String? {
         var scanner = DeclarationScanner()
         for character in declarations {
-            guard scanner.consume(character, ids: ids, prefix: prefix, fontFaces: fontFaces) else { return nil }
+            guard scanner.consume(
+                character, ids: ids, prefix: prefix, fontFaces: fontFaces, keyframes: keyframes
+            ) else { return nil }
         }
-        return scanner.finish(ids: ids, prefix: prefix, fontFaces: fontFaces)
+        return scanner.finish(ids: ids, prefix: prefix, fontFaces: fontFaces, keyframes: keyframes)
     }
 
     private struct DeclarationScanner {
@@ -159,7 +172,8 @@ extension SVGIDNamespace {
         var parentheses = 0
 
         mutating func consume(
-            _ character: Character, ids: Set<String>, prefix: String, fontFaces: Set<String>
+            _ character: Character, ids: Set<String>, prefix: String, fontFaces: Set<String>,
+            keyframes: Set<String>?
         ) -> Bool {
             if let current = quote {
                 segment.append(character)
@@ -177,7 +191,7 @@ extension SVGIDNamespace {
                 segment.append(character)
             case ";" where parentheses == 0:
                 guard let rewritten = rewriteDeclaration(
-                    segment, ids: ids, prefix: prefix, fontFaces: fontFaces
+                    segment, ids: ids, prefix: prefix, fontFaces: fontFaces, keyframes: keyframes
                 ) else { return false }
                 output += rewritten + ";"
                 segment = ""
@@ -186,29 +200,34 @@ extension SVGIDNamespace {
             return true
         }
 
-        func finish(ids: Set<String>, prefix: String, fontFaces: Set<String>) -> String? {
+        func finish(ids: Set<String>, prefix: String, fontFaces: Set<String>, keyframes: Set<String>?) -> String? {
             guard quote == nil, parentheses == 0,
-                  let rewritten = rewriteDeclaration(segment, ids: ids, prefix: prefix, fontFaces: fontFaces)
+                  let rewritten = rewriteDeclaration(
+                      segment, ids: ids, prefix: prefix, fontFaces: fontFaces, keyframes: keyframes
+                  )
             else { return nil }
             return output + rewritten
         }
     }
 
     private static func rewriteDeclaration(
-        _ declaration: String, ids _: Set<String>, prefix: String, fontFaces: Set<String>
+        _ declaration: String, ids _: Set<String>, prefix: String, fontFaces: Set<String>,
+        keyframes: Set<String>?
     ) -> String? {
         guard safeResourceURLs(in: declaration) else { return nil }
         // A quoted content string is text, while content:url(#id) is a
         // resource. Scan actual CSS function tokens outside string literals.
         let rewritten = rewriteCSSTokenURLs(declaration, prefix: prefix)
-        guard let animation = rewriteAnimation(in: rewritten, prefix: prefix) else { return nil }
+        guard let animation = rewriteAnimation(
+            in: rewritten, prefix: prefix, knownKeyframes: keyframes
+        ) else { return nil }
         return rewriteFontFamily(in: animation, names: fontFaces, prefix: prefix)
     }
 
     static func rewriteInlineStyle(_ declarations: String, ids: Set<String>, prefix: String) -> String? {
         guard !declarations.contains("&"), !declarations.contains("\\"), !declarations.contains("/*")
         else { return nil }
-        return rewriteDeclarations(declarations, ids: ids, prefix: prefix, fontFaces: [])
+        return rewriteDeclarations(declarations, ids: ids, prefix: prefix, fontFaces: [], keyframes: [])
     }
 
     private static func rewriteCSSTokenURLs(_ declaration: String, prefix: String) -> String {

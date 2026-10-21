@@ -62,13 +62,13 @@ struct SVGIDNamespaceTests {
 
     @Test func keyframeNamesAndAnimationReferencesStayWithinEachOccurrence() throws {
         let html = #"<svg id="root"><style>@keyframes pulse{from{opacity:0}to{opacity:1}}"#
-            + #"#root rect{animation:pulse 1s linear infinite;animation-name:outside}</style>"#
+            + #"#root rect{animation:pulse 1s linear infinite;animation-name:pulse}</style>"#
             + #"<rect id="shape"/></svg>"#
         let first = try #require(SVGIDNamespace.rewrite(html, occurrence: 0))
         let second = try #require(SVGIDNamespace.rewrite(html, occurrence: 1))
         #expect(first.contains("@keyframes mt117-svg-0-0-pulse{"))
         #expect(first.contains("animation:mt117-svg-0-0-pulse 1s linear infinite"))
-        #expect(first.contains("animation-name:mt117-svg-0-0-outside"))
+        #expect(first.contains("animation-name:mt117-svg-0-0-pulse"))
         #expect(second.contains("@keyframes mt117-svg-1-0-pulse{"))
         #expect(!second.contains("mt117-svg-0-0-pulse"))
     }

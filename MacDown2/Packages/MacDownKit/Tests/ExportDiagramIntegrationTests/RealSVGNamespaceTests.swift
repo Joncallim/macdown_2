@@ -135,6 +135,30 @@ struct RealSVGNamespaceTests {
 @Suite("Assembled SVG resource admission", .serialized)
 @MainActor
 struct AssembledSVGResourceTests {
+    @Test func validNegativeAnimationDelayKeepsItsComputedValue() async throws {
+        let artwork = #"<svg id="root"><style>@keyframes pulse{to{opacity:1}}"#
+            + #"#root rect{animation:pulse 1s -.5s linear}</style>"#
+            + #"<rect width="20" height="20"/></svg>"#
+        let rewritten = try #require(SVGIDNamespace.rewrite(artwork, occurrence: 0))
+        let view = WKWebView(frame: .init(x: 0, y: 0, width: 50, height: 50))
+        view.loadHTMLString(BuiltInExportTemplate.document(
+            title: "Animation delay", styleElement: "<style></style>", body: rewritten
+        ), baseURL: nil)
+        try await waitForLoad(in: view)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
+            let count = try await view.evaluateJavaScript("document.querySelectorAll('svg rect').length") as? Int
+            if count == 1 {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let delay = try await view.evaluateJavaScript(
+            "getComputedStyle(document.querySelector('svg rect')).animationDelay"
+        ) as? String
+        #expect(delay == "-0.5s")
+    }
+
     @Test func repeatedInlineSVGsKeepStylesAndReferencesInsideTheirOwnOccurrence() async throws {
         let handler = RecordingResourceHandler()
         let configuration = WKWebViewConfiguration()
