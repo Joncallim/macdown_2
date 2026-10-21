@@ -852,7 +852,9 @@ extension TextFilterFixtures {
         cleanupObserver: (@Sendable (CleanupPhase) -> Void)? = nil,
         cleanupNow: @Sendable () -> ContinuousClock.Instant = { .now },
         cleanupSleepUntil: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void = { deadline in
-            try await ContinuousClock().sleep(until: deadline)
+            // The fixture's short watchdog should not opt into implementation-defined timer coalescing.
+            // This does not guarantee when a suspended task will resume on a loaded host.
+            try await ContinuousClock().sleep(until: deadline, tolerance: .zero)
         },
         _ operation: (URL, TaskOwner) async throws -> T
     ) async throws -> T {
