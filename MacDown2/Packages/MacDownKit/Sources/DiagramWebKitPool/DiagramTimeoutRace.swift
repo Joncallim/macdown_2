@@ -3,29 +3,56 @@ import Foundation
 /// Races an operation against a timer and returns as soon as either finishes.
 ///
 /// A structured task group cannot do this: it always awaits every child before returning,
-/// and `WKWebView.callAsyncJavaScript` ignores cancellation, so a render stuck in script kept
-/// the caller (and its pool slot) waiting for as long as the script ran. Here the losing
-/// operation is left running unobserved and the caller gets its answer immediately.
+/// and `WKWebView.callAsyncJavaScript` ignores cancellation. A timed-out caller can return
+/// while the losing operation retires. Pool requests opt into waiting for their worker on
+/// explicit caller cancellation so page teardown finishes before that caller returns.
 public enum DiagramTimeoutRace {
+    private enum ResolutionSource {
+        case operation
+        case timer
+        case cancellation
+    }
+
     public static func run<T: Sendable>(
         timeout: Duration,
         timeoutError: any Error,
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
-        let gate = Gate<T>()
+        try await race(timeout: timeout, timeoutError: timeoutError, waitForOperationOnCancellation: false,
+                       operation: operation)
+    }
+
+    /// Pool callers retain cancellation ownership until their page has been torn down.
+    /// A deadline still returns promptly and leaves the cancelled worker holding its slot.
+    static func runWaitingForCancellationCleanup<T: Sendable>(
+        timeout: Duration,
+        timeoutError: any Error,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await race(timeout: timeout, timeoutError: timeoutError, waitForOperationOnCancellation: true,
+                       operation: operation)
+    }
+
+    private static func race<T: Sendable>(
+        timeout: Duration,
+        timeoutError: any Error,
+        waitForOperationOnCancellation: Bool,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        let gate = Gate<T>(waitForOperationOnCancellation: waitForOperationOnCancellation)
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 gate.install(continuation)
                 let work = Task {
                     do {
-                        try await gate.resolve(.success(operation()))
+                        try await gate.resolveOperation(.success(operation()))
                     } catch {
-                        gate.resolve(.failure(error))
+                        gate.resolveOperation(.failure(error))
                     }
                 }
                 let timer = Task {
                     try? await Task.sleep(for: timeout)
-                    gate.resolve(.failure(timeoutError))
+                    gate.resolveTimeout(timeoutError)
                 }
                 gate.onResolved {
                     timer.cancel()
@@ -33,7 +60,7 @@ public enum DiagramTimeoutRace {
                 }
             }
         } onCancel: {
-            gate.resolve(.failure(CancellationError()))
+            gate.cancel()
         }
     }
 
@@ -41,10 +68,16 @@ public enum DiagramTimeoutRace {
     /// including cancellation arriving before the continuation is installed.
     private final class Gate<T: Sendable>: @unchecked Sendable {
         private let lock = NSLock()
+        private let waitForOperationOnCancellation: Bool
         private var continuation: CheckedContinuation<T, any Error>?
         private var outcome: Result<T, any Error>?
         private var finished = false
+        private var cancellationRequested = false
         private var cleanup: (@Sendable () -> Void)?
+
+        init(waitForOperationOnCancellation: Bool) {
+            self.waitForOperationOnCancellation = waitForOperationOnCancellation
+        }
 
         func install(_ continuation: CheckedContinuation<T, any Error>) {
             lock.lock()
@@ -59,7 +92,7 @@ public enum DiagramTimeoutRace {
 
         func onResolved(_ cleanup: @escaping @Sendable () -> Void) {
             lock.lock()
-            if finished {
+            if finished || cancellationRequested {
                 lock.unlock()
                 cleanup()
                 return
@@ -68,17 +101,45 @@ public enum DiagramTimeoutRace {
             lock.unlock()
         }
 
-        func resolve(_ result: Result<T, any Error>) {
+        func cancel() {
+            guard waitForOperationOnCancellation else {
+                resolve(.failure(CancellationError()), from: .cancellation)
+                return
+            }
             lock.lock()
             guard !finished else {
                 lock.unlock()
                 return
             }
+            cancellationRequested = true
+            let cleanup = cleanup
+            self.cleanup = nil
+            lock.unlock()
+            cleanup?()
+        }
+
+        func resolveTimeout(_ error: any Error) {
+            resolve(.failure(error), from: .timer)
+        }
+
+        func resolveOperation(_ result: Result<T, any Error>) {
+            resolve(result, from: .operation)
+        }
+
+        private func resolve(_ result: Result<T, any Error>, from source: ResolutionSource) {
+            lock.lock()
+            guard !finished, !(source == .timer && cancellationRequested) else {
+                lock.unlock()
+                return
+            }
+            let result: Result<T, any Error> = source == .operation && cancellationRequested
+                ? .failure(CancellationError()) : result
             finished = true
             outcome = result
             let continuation = continuation
             self.continuation = nil
             let cleanup = cleanup
+            self.cleanup = nil
             lock.unlock()
             continuation?.resume(with: result)
             cleanup?()

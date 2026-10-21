@@ -114,6 +114,39 @@ struct DiagramPoolTerminationTests {
         }
         await pool.shutdown()
     }
+
+    @Test func queuedRequestDeadlineIncludesPageConstructionWithoutPublishingItsPage() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+        let constructing = DiagramPoolTestSignal()
+        let release = DiagramPoolTestSignal()
+        let pool = DiagramWebKitPool(poolSize: 1, timeout: .milliseconds(100)) {
+            await constructing.fire()
+            await release.wait()
+            return page
+        }
+
+        let first = Task { try await pool.withPage { _ in 1 } }
+        await constructing.wait()
+        let queued = Task { try await pool.withPage { _ in 2 } }
+        do {
+            _ = try await DiagramTimeoutRace.run(
+                timeout: .seconds(2),
+                timeoutError: DiagramPoolTestWatchdog.exceeded
+            ) { try await queued.value }
+            Issue.record("queued request ran despite an occupied construction slot")
+        } catch is DiagramPoolTestWatchdog {
+            Issue.record("queued request outlived its request deadline")
+        } catch {
+            #expect(error as? DiagramPoolError == .timedOut)
+        }
+        await release.fire()
+        _ = try? await first.value
+        _ = try? await queued.value
+        await pool.shutdown()
+        #expect(page.isTerminated)
+    }
 }
 
 extension DiagramPoolTerminationTests {
@@ -335,4 +368,8 @@ private actor DiagramPoolConstructionFactory {
         await releaseSecond.wait()
         return second
     }
+}
+
+private enum DiagramPoolTestWatchdog: Error {
+    case exceeded
 }

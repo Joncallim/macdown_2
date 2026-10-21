@@ -58,11 +58,21 @@ public actor DiagramWebKitPool {
         busy = Array(repeating: false, count: self.poolSize)
     }
 
-    /// Checks out a page, runs `body` against it racing the configured timeout, and
-    /// returns the page to the pool (or hands it directly to the next waiter). A page whose
-    /// script outlived the timeout, or whose caller was cancelled mid-run, may still be
-    /// executing, so it is torn down and replaced rather than handed to the next render.
+    /// The deadline starts before a request waits for a slot or constructs a page.
+    /// On timeout the caller can return while the cancelled worker still owns its slot;
+    /// explicit caller cancellation waits for that worker to tear down its page.
     public func withPage<T: Sendable>(
+        _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
+    ) async throws -> T {
+        try await DiagramTimeoutRace.runWaitingForCancellationCleanup(
+            timeout: timeout,
+            timeoutError: DiagramPoolError.timedOut
+        ) {
+            try await self.runWithPage(body)
+        }
+    }
+
+    private func runWithPage<T: Sendable>(
         _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
     ) async throws -> T {
         let index = try await checkout()
