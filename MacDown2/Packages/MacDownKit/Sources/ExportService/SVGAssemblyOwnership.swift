@@ -188,6 +188,10 @@ enum SVGAssemblyOwnership {
             ancestors.append(node.tagNameNormal())
             cursor = node.parent()
         }
+        // SVG presentation properties inherit across nested SVG boundaries.
+        // An authored outer SVG can supply fill=url(#outside) even when every
+        // explicit reference inside this generated subtree is owned.
+        guard !ancestors.contains("svg") else { return nil }
         return RootInspection(
             rootID: expected.rootID, ownedIDs: expected.ownedIDs, references: refs,
             keyframes: definitions.keyframes, fontFamilies: definitions.fontFamilies,

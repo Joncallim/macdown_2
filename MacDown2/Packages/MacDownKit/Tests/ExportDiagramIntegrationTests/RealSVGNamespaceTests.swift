@@ -368,7 +368,7 @@ struct AssembledSVGResourceTests {
         )
     }
 
-    private func waitForLoad(in view: WKWebView) async throws {
+    func waitForLoad(in view: WKWebView) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         while ContinuousClock.now < deadline {
             if let state = try? await view.evaluateJavaScript("document.readyState") as? String,
