@@ -8,6 +8,32 @@ import MarkdownEngine
 /// command dispatch; no production command invokes this until the remaining
 /// native and policy gates pass.
 extension WindowCoordinator {
+    /// Hidden entry point for the real sheet. It shares the capture and guard
+    /// with the injected chooser below; no app command invokes it yet.
+    func beginValidatedSVGExportUsingPanel() -> Task<ExportResult?, Error>? {
+        guard let model = keyModel,
+              let controller = controllers.first(where: { $0.model === model && !$0.isClosed })
+        else { return nil }
+        return beginValidatedSVGExportUsingPanel(from: controller)
+    }
+
+    /// Explicit origin and presentation hook keep the real AppKit sheet
+    /// testable without relying on a headless host's key-window state.
+    func beginValidatedSVGExportUsingPanel(
+        from controller: WindowController,
+        afterPresentation: (@MainActor (NSSavePanel) -> Void)? = nil
+    ) -> Task<ExportResult?, Error>? {
+        guard let document = controller.model.activeDocument else { return nil }
+        let defaultName = document.fileURL?.deletingPathExtension().lastPathComponent ?? "Untitled"
+        let directory = document.fileURL?.deletingLastPathComponent()
+        return beginValidatedSVGExport(from: controller) { window in
+            await ValidatedExportPanel.chooseTarget(
+                in: window, defaultName: defaultName, directory: directory,
+                afterPresentation: afterPresentation
+            )
+        }
+    }
+
     func beginValidatedSVGExport(
         chooseTarget: @escaping @MainActor (NSWindow) async -> ExportTarget?,
         beforePublication: (@MainActor (ExportRequest) async -> Void)? = nil

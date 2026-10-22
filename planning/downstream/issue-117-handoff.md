@@ -560,5 +560,19 @@ loads the disabled standalone HTML output and decodes its real companion PNG
 from filenames containing `#`, `?`, a literal `%23` and Unicode. This adds
 browser evidence beyond Foundation URL resolution; it does not test an actual
 save-panel selection, signed sandbox access or PDF printing. The operation has
-no production command or real save-panel caller yet. Signed owner observation
-and generated-link activation remain open.
+no production command yet. Signed owner observation and generated-link
+activation remain open.
+
+The next disabled checkpoint adds a real `NSSavePanel` helper bound to the
+captured document window. It offers HTML with embedded CSS, self-contained
+HTML and PDF; linked CSS remains unavailable because its separate bytes have
+no validated receipt. A one-shot, main-actor reply settles a user cancel,
+origin-window close notification or task cancellation without redirecting to
+a newly focused window or leaving the export guard set. The ordinary panel
+keeps its existing choices. Unsigned native tests mounted the real sheet,
+switched focus, cancelled it, posted an origin-close notification and cancelled
+its task; the focused suite and locked Release app build passed. Posting a
+close notification is a controlled lifecycle probe, not proof that macOS lets
+an owner close a tab with a sheet open. No production command invokes this
+helper. Real key-window command dispatch, accepted Save-panel selection,
+signed resource access, PDF output and owner-observed behavior remain gates.

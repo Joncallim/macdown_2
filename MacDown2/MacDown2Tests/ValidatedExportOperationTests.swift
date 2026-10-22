@@ -202,6 +202,49 @@ struct ValidatedExportOperationTests {
         }
     }
 
+    @Test func realSaveSheetRemainsOnTheCapturedWindowWhenFocusMoves() async throws {
+        let item = try fixture()
+        let coordinator = item.coordinator
+        let first = item.first
+        defer {
+            first.close()
+            item.second.close()
+            try? FileManager.default.removeItem(at: item.folder)
+        }
+        var attachedToOrigin = false
+        let pending = coordinator.beginValidatedSVGExportUsingPanel(from: first) { panel in
+            attachedToOrigin = panel.sheetParent === first.window
+            item.second.window?.makeKeyAndOrderFront(nil)
+            coordinator.updateKeyModel()
+            #expect(panel.sheetParent === first.window)
+            panel.cancel(nil)
+        }
+        let task = try #require(pending)
+        let result = try await task.value
+        #expect(attachedToOrigin)
+        #expect(result == nil)
+        #expect(!coordinator.isExporting(first.model))
+    }
+
+    @Test func originCloseNotificationSettlesTheRealSheetWithoutAnExport() async throws {
+        let item = try fixture()
+        let coordinator = item.coordinator
+        let first = item.first
+        defer {
+            first.close()
+            item.second.close()
+            try? FileManager.default.removeItem(at: item.folder)
+        }
+        let pending = coordinator.beginValidatedSVGExportUsingPanel(from: first) { _ in
+            guard let window = first.window else { return }
+            NotificationCenter.default.post(name: NSWindow.willCloseNotification, object: window)
+        }
+        let task = try #require(pending)
+        let result = try await task.value
+        #expect(result == nil)
+        #expect(!coordinator.isExporting(first.model))
+    }
+
     @Test func closeAfterContributionWorkRevokesPublication() async throws {
         let item = try fixture()
         let coordinator = item.coordinator
