@@ -101,8 +101,12 @@ struct ValidatedExportOperationTests {
         let result = try #require(try await task.value)
         let html = try String(contentsOf: result.primaryFile, encoding: .utf8)
         #expect(result.primaryFile == targetURL)
-        #expect(html.contains("Accepted"))
-        #expect(!html.contains("# Later"))
+        #expect(html.contains(">Accepted</h1>"))
+        #expect(html.contains("<li>Accepted</li>"))
+        #expect(!html.contains("Later"))
+        #expect(!html.contains("[TOC]"))
+        #expect(html.contains(ExportThemeStylesheet.variables(for: BundledThemes.dark)))
+        #expect(!html.contains(ExportThemeStylesheet.variables(for: BundledThemes.light)))
         #expect(!html.contains("second.md"))
         #expect(!coordinator.isExporting(first.model))
     }
@@ -131,6 +135,69 @@ struct ValidatedExportOperationTests {
             Issue.record("Replaced document exported from its old origin")
         } catch is CancellationError {
             #expect(!FileManager.default.fileExists(atPath: targetURL.path))
+            #expect(!coordinator.isExporting(first.model))
+        }
+    }
+
+    @Test func cancellingDuringPanelKeepsThePreviousExportAndReleasesTheGuard() async throws {
+        let item = try fixture()
+        let coordinator = item.coordinator
+        let first = item.first
+        let second = item.second
+        let folder = item.folder
+        defer {
+            first.close()
+            second.close()
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let targetURL = folder.appendingPathComponent("existing.html")
+        try "previous export".write(to: targetURL, atomically: true, encoding: .utf8)
+        var panelEntered = false
+        let pending = coordinator.beginValidatedSVGExport(from: first) { _ in
+            panelEntered = true
+            try? await Task.sleep(for: .seconds(5))
+            return .html(url: targetURL, mode: .selfContained)
+        }
+        let task = try #require(pending)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while !panelEntered, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(panelEntered)
+        task.cancel()
+        do {
+            _ = try await task.value
+            Issue.record("Cancelled panel work published an export")
+        } catch is CancellationError {
+            #expect(try String(contentsOf: targetURL, encoding: .utf8) == "previous export")
+            #expect(!coordinator.isExporting(first.model))
+        }
+    }
+
+    @Test func cancellationAfterContributionsKeepsThePreviousExport() async throws {
+        let item = try fixture()
+        let coordinator = item.coordinator
+        let first = item.first
+        let second = item.second
+        let folder = item.folder
+        defer {
+            first.close()
+            second.close()
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let targetURL = folder.appendingPathComponent("existing.html")
+        try "previous export".write(to: targetURL, atomically: true, encoding: .utf8)
+        let pending = coordinator.beginValidatedSVGExport(from: first, chooseTarget: { _ in
+            .html(url: targetURL, mode: .selfContained)
+        }, beforePublication: { _ in
+            withUnsafeCurrentTask { $0?.cancel() }
+        })
+        let task = try #require(pending)
+        do {
+            _ = try await task.value
+            Issue.record("Cancelled contribution work replaced the previous export")
+        } catch is CancellationError {
+            #expect(try String(contentsOf: targetURL, encoding: .utf8) == "previous export")
             #expect(!coordinator.isExporting(first.model))
         }
     }
