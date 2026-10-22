@@ -598,3 +598,10 @@ The retained app, fixtures, launcher and owner checklist are in
 Save-panel publication, browser companion loading, signed sandbox access,
 PDF printing and generated-link navigation have not been inferred from the
 prepared artifact.
+
+The first normal-build hosted run of this test-only entry failed the command
+catalog's source scan: it counted two commands inside the acceptance-only
+compile condition as shipping commands. The scan now excludes that specific
+conditional block and asserts both labels are absent from the shipping
+inventory. The focused catalog suite passed locally against the pinned
+dependencies; normal exact-head hosted validation is still required.
