@@ -421,3 +421,39 @@ this opt-in route. Empty head styles are inert and remain accepted for tests.
 The normal export path is still untouched. These conservative rejections need
 source-fence fallback when the route is eventually wired; they do not permit
 activation or establish native acceptance by themselves.
+
+## Proposed exact-byte publication boundary for review
+
+This is a proposal for the remaining opt-in route, not an activated contract.
+The user outcome is that a generated TOC or namespaced diagram is published
+only when its final HTML points to the intended element; an unsupported diagram
+remains readable as its authored source. Ordinary exports without the opt-in
+feature continue through the existing writer and budget policy.
+
+After the existing sentinel-leak retry settles the accepted contribution set,
+carry its source ranges and marked SVG roots with that exact render. Build the
+destination-specific complete HTML once: standalone embedded CSS, self-
+contained HTML after image data-URI expansion, or PDF input with its CSP head.
+Create the final fragment identity from the actual post-expansion body and the
+same root inventory. The assembled-document inspector either returns one
+marker-free publication bound to the exact HTML bytes or rejects it. A linked
+stylesheet is currently rejected because its separate bytes are not in the
+receipt. Failure excludes only affected opt-in contributions, adds a useful
+diagnostic, and repeats composition once with fresh source coordinates and
+resource resolver; if safe generated TOC navigation still cannot be produced,
+the destination-specific failure policy above applies. No output or companion
+asset may be written before this decision.
+
+The HTML writer should consume the immutable validated publication directly,
+checking the digest of the bytes it is about to promote and writing companions
+first, primary HTML last. It must not rebuild the template after validation.
+The app's PDF adapter currently builds its own self-contained/CSP string, so
+cross-module publication needs a small immutable export value carrying those
+validated bytes and source generation; the adapter would load exactly that
+value into its locked WebKit view. It must not add or rewrite CSP afterward.
+This public interface and the bounded re-composition loop require independent
+architecture review before implementation. Tests should cover a changed head
+or body after inspection, linked-CSS rejection, data-URI expansion, PDF CSP,
+source-fence fallback, no file side effects on rejection, and exact bytes at
+the HTML and PDF consumers. Native owner-observed navigation and signed app
+evidence remain separate gates.
