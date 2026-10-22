@@ -585,3 +585,16 @@ task starts and verifies that no sheet is presented and the export guard is
 cleared. The real-sheet cancellation test also waits for physical detachment
 from the originating window. These checks do not establish accepted panel
 selection, signed resource access, PDF output or owner-observed navigation.
+
+For the remaining native panel journey, a separately compiled Release
+acceptance build uses `ISSUE117_NATIVE_ACCEPTANCE`. Only that build has a
+labelled File-menu entry calling the disabled validated operation and a
+bounded diagnostic log. It requires an explicit isolated `-UITesting` launch
+with disposable files, so it does not restore or write the owner's ordinary
+session/recovery state. Normal Debug and Release builds compile out both
+entries; this is not generated-link activation or a production export path.
+The retained app, fixtures, launcher and owner checklist are in
+`_cleanup-archive/issue117-native-acceptance-2026-10-22/`. Actual accepted
+Save-panel publication, browser companion loading, signed sandbox access,
+PDF printing and generated-link navigation have not been inferred from the
+prepared artifact.
