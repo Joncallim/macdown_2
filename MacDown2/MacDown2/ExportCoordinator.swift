@@ -129,7 +129,7 @@ struct ExportCoordinator {
 
     /// Keeps the panel's filename and enforced content type in step with the
     /// chosen format, so picking PDF cannot save a PDF named `.html`.
-    private static func apply(_ format: ExportFormatOption, to panel: NSSavePanel, defaultBaseName: String) {
+    static func apply(_ format: ExportFormatOption, to panel: NSSavePanel, defaultBaseName: String) {
         panel.allowedContentTypes = [format.contentType]
 
         let typed = panel.nameFieldStringValue

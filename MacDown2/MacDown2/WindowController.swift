@@ -34,6 +34,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let workspaceFileIndex: WorkspaceFileIndex
     /// Window-local preview authority. Every renderer load receives its own revocable token.
     let previewResourceState = PreviewResourceWindowState()
+    /// Weak registrations for the disabled validated export path. The origin
+    /// retains the lease; the window only needs to revoke it at identity loss.
+    var validatedExportLeases: [WeakValidatedExportLease] = []
     /// Test seam: runs just before a root switch awaits the new root's tree and index rebuild.
     var beforeRootRebuild: (@MainActor () async -> Void)?
     /// Folder-wide search sidebar state (EPIC-22 §6.16, Slice 7b), one per
@@ -262,6 +265,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_: Notification) {
         isClosed = true
+        revokeValidatedExports()
         previewResourceState.close()
         previewResourceState.setCurrentPreviewDocument(nil)
         model.tabStore.setActiveIdentityWillChange(nil)
@@ -371,7 +375,8 @@ private extension WindowController {
         previewResourceState.setCurrentPreviewDocument { [weak model] in
             (model?.tabStore.activeTabID, model?.activeDocument)
         }
-        let invalidate: @MainActor () -> Void = { [weak state = previewResourceState] in
+        let invalidate: @MainActor () -> Void = { [weak self, weak state = previewResourceState] in
+            self?.revokeValidatedExports()
             state?.invalidateForIdentityChange()
         }
         model.tabStore.setActiveIdentityWillChange { _, _ in invalidate() }

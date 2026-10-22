@@ -27,7 +27,29 @@ enum PDFExportAdapter {
         // Base64-encoding every embedded image is the most expensive step in a
         // PDF export; it is done off the main actor so the app stays responsive.
         let html = await hardenedHTML(from: prepared)
+        try await exportHTML(html, to: url, lease: nil)
+    }
 
+    /// Disabled opt-in consumer: WebKit sees exactly the UTF-8 HTML accepted
+    /// by ExportService, including its already-validated CSP and resource policy.
+    static func export(_ validated: ValidatedExportHTML, to url: URL,
+                       lease: ExportLifetimeLease) async throws {
+        let html = try validatedHTMLForWebKit(validated, to: url)
+        try await exportHTML(html, to: url, lease: lease)
+    }
+
+    static func validatedHTMLForWebKit(_ validated: ValidatedExportHTML, to url: URL) throws -> String {
+        guard validated.isForPDF(at: url),
+              let html = String(data: validated.utf8, encoding: .utf8),
+              Data(html.utf8) == validated.utf8 else {
+            throw ExportError.validatedPublicationRejected
+        }
+        return html
+    }
+
+    private static func exportHTML(_ html: String, to url: URL,
+                                   lease: ExportLifetimeLease?) async throws {
+        try lease?.checkActive()
         let webView = WKWebView(frame: .zero, configuration: lockedConfiguration())
         let delegate = PDFNavigationDelegate()
         webView.navigationDelegate = delegate
@@ -42,6 +64,7 @@ enum PDFExportAdapter {
         // what went wrong.
         try await delegate.load(html, in: webView, timeout: loadTimeout)
         try Task.checkCancellation()
+        try lease?.checkActive()
 
         let tempURL = temporaryURL(nextTo: url)
         // The scratch file is never left behind, on any exit path.
@@ -76,11 +99,20 @@ enum PDFExportAdapter {
 
         // Atomic promotion: the validated PDF replaces any previous file.
         do {
-            if FileManager.default.fileExists(atPath: url.path) {
-                _ = try FileManager.default.replaceItemAt(url, withItemAt: tempURL)
-            } else {
-                try FileManager.default.moveItem(at: tempURL, to: url)
+            let promote: () throws -> Void = {
+                if FileManager.default.fileExists(atPath: url.path) {
+                    _ = try FileManager.default.replaceItemAt(url, withItemAt: tempURL)
+                } else {
+                    try FileManager.default.moveItem(at: tempURL, to: url)
+                }
             }
+            if let lease {
+                try lease.withPublicationCutoff(promote)
+            } else {
+                try promote()
+            }
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             throw ExportError.writeFailed(underlying: error)
         }
