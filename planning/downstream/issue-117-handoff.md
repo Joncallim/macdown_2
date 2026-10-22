@@ -555,6 +555,10 @@ HTML/PDF publication, and guard cleanup runs on cancellation and failure.
 Native unit tests use an explicit captured controller because a headless test
 host does not reliably provide `NSApp.keyWindow`; they cover focus/theme
 changes, later edits, Save As identity replacement, close across an await and
-revocation before publication. The operation has no production command or
-real save-panel caller yet. Actual WebKit file-load/PDF output, signed owner
-observation and generated-link activation remain open.
+revocation before publication. A separate native `WKWebView.loadFileURL` test
+loads the disabled standalone HTML output and decodes its real companion PNG
+from filenames containing `#`, `?`, a literal `%23` and Unicode. This adds
+browser evidence beyond Foundation URL resolution; it does not test an actual
+save-panel selection, signed sandbox access or PDF printing. The operation has
+no production command or real save-panel caller yet. Signed owner observation
+and generated-link activation remain open.
