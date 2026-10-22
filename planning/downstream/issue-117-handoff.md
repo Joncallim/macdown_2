@@ -525,5 +525,24 @@ symlinks, stages files relative to those descriptors, checks inode identity
 before promotion and atomically renames the accepted primary relative to the
 opened parent. Tests replace the assets pathname during and after staging,
 and verify neither replacement redirects a write or publishes new HTML.
-This protects the publication operation from a concurrent pathname swap; it
-does not make files immutable after a separate process changes them later.
+The primary HTML is now written and fsynced to an exclusive temporary inode
+before the final parent, companion and temporary-name checks. The lease cutoff
+then checks and renames without suspension. A deterministic replacement of the
+temporary name before that check rejects publication and leaves the prior
+primary intact. This narrows the final check-to-rename interval; it does not
+make primary and companions an atomic multi-file transaction. A separate actor
+with write access to the chosen directory can still replace a companion,
+parent path or temporary name after its last check, during that interval or
+after return. This disabled path assumes a destination that is not being
+concurrently mutated by an adversary. The URL tests use Foundation resolution,
+not an actual WebKit resource load.
+
+WindowController now holds weak registrations for opt-in export leases. A
+captured origin freezes the current document text, generation, URL and theme
+only after a panel would return; later edits do not change that value.
+Document replacement revokes the lease synchronously before the old identity
+is unpublished, and window close revokes it too. A focused native app test
+covers freeze timing and pre-publication revocation. The origin has no command
+or panel caller yet, and the ordinary export flow remains unchanged. Full
+contribution adaptation, actual WebKit file-load/PDF output, signed owner
+observation and generated-link activation remain open.
