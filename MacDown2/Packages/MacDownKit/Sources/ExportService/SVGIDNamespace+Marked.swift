@@ -1,7 +1,7 @@
 import Foundation
 
 extension SVGIDNamespace {
-    struct MarkedRoot: Sendable {
+    struct MarkedRoot: Sendable, Equatable {
         let startMarker: String
         let endMarker: String
         let rootID: String

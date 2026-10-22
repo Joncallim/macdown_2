@@ -83,6 +83,24 @@ struct SVGAssemblyOwnershipTests {
         ) == nil)
     }
 
+    @Test func changedMarkerInventoryCannotReuseReceiptForTheSameFragmentBytes() throws {
+        let marked = try #require(SVGIDNamespace.rewriteMarked(artwork, occurrence: 0))
+        let document = assembled(body: "<!--FAKE-BEGIN-->" + marked.html + "<!--FAKE-END-->")
+        let inspected = try #require(SVGAssemblyOwnership.inspect(
+            markedDocument: document, fragment: marked
+        ))
+        let root = try #require(marked.roots.first)
+        let forged = SVGIDNamespace.MarkedFragment(html: marked.html, roots: [
+            SVGIDNamespace.MarkedRoot(
+                startMarker: "<!--FAKE-BEGIN-->", endMarker: "<!--FAKE-END-->",
+                rootID: root.rootID, ownedIDs: root.ownedIDs
+            ),
+        ])
+        #expect(SVGAssemblyOwnership.publish(
+            markedDocument: document, fragment: forged, inspected: inspected
+        ) == nil)
+    }
+
     @Test func browserReparentingOrMissingDefinitionsRejectsTheDocument() throws {
         let marked = try #require(SVGIDNamespace.rewriteMarked(artwork, occurrence: 0))
         #expect(SVGAssemblyOwnership.inspect(

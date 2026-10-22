@@ -9,6 +9,7 @@ enum SVGAssemblyOwnership {
     struct Manifest: Sendable {
         fileprivate let markedSHA256: String
         fileprivate let fragmentSHA256: String
+        fileprivate let fragmentRoots: [SVGIDNamespace.MarkedRoot]
         fileprivate let roots: [RootInspection]
     }
 
@@ -57,7 +58,8 @@ enum SVGAssemblyOwnership {
                 else { return nil }
             }
             return Manifest(markedSHA256: sha256(markedDocument),
-                            fragmentSHA256: sha256(fragment.html), roots: roots)
+                            fragmentSHA256: sha256(fragment.html),
+                            fragmentRoots: fragment.roots, roots: roots)
         }
     }
 
@@ -70,7 +72,7 @@ enum SVGAssemblyOwnership {
     ) -> Publication? {
         guard inspected.markedSHA256 == sha256(markedDocument),
               inspected.fragmentSHA256 == sha256(fragment.html),
-              inspected.roots.count == fragment.roots.count else { return nil }
+              inspected.fragmentRoots == fragment.roots else { return nil }
         guard let publishable = strippedMarkers(from: markedDocument, roots: fragment.roots) else { return nil }
         guard publishable.utf8.count <= maximumAnalyzedBytes else { return nil }
         return parserLock.withLock {

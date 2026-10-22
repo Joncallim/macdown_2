@@ -371,7 +371,11 @@ case-folded embedded font families, rejecting matching authored definitions
 outside the SVG. Outside inline styles that name a generated prefix, escaped
 CSS definitions, imported stylesheets and linked stylesheets fail closed.
 
-The receipt hashes the marked complete document and the marked contribution.
+The receipt hashes the marked complete document and the marked contribution,
+and retains the exact marker/root/owned-ID inventory. Publication rejects a
+different inventory even if the marked contribution bytes are unchanged; a
+regression showed that otherwise forged marker metadata could remove unrelated
+comments and leave private markers in published HTML.
 Private comments must be adjacent to their SVG in the parsed tree; a raw
 open-tag stack check also rejects cases where HTML parsing moves the SVG and
 both comments out of a malformed container together. Publication removes the
