@@ -422,6 +422,14 @@ The normal export path is still untouched. These conservative rejections need
 source-fence fallback when the route is eventually wired; they do not permit
 activation or establish native acceptance by themselves.
 
+A further reviewed inheritance case uses no stylesheet: an authored outer SVG
+with `fill="url(#outside)"` can wrap a generated inner SVG whose rectangle has
+no explicit fill. The validator formerly counted no inner resource edge, while
+WebKit inherited the outside gradient and rendered blue pixels. The opt-in
+receipt now rejects any marked root nested beneath an SVG ancestor. Such
+compositions must preserve their authored source fence in the future route;
+ordinary export is still unchanged.
+
 ## Proposed exact-byte publication boundary for review
 
 This is a proposal for the remaining opt-in route, not an activated contract.
@@ -429,6 +437,16 @@ The user outcome is that a generated TOC or namespaced diagram is published
 only when its final HTML points to the intended element; an unsupported diagram
 remains readable as its authored source. Ordinary exports without the opt-in
 feature continue through the existing writer and budget policy.
+
+Capture the initiating model/window as ExportOrigin when the command opens its
+panel. After the panel returns, revalidate that same model and document
+lifetime, then freeze text, source generation, current value-type Theme,
+effective parse options, document URL and selected destination together on
+the main actor before the first parse/render suspension. A close or identity
+replacement before this freeze cancels without writing; focus on another
+window never redirects a panel or export. Later edits and theme changes do not
+change that frozen export. Explicit task cancellation is checked after each
+await and immediately before any file or WebKit publication.
 
 After the existing sentinel-leak retry settles the accepted contribution set,
 carry its source ranges and marked SVG roots with that exact render. Build the
@@ -444,6 +462,15 @@ resource resolver; if safe generated TOC navigation still cannot be produced,
 the destination-specific failure policy above applies. No output or companion
 asset may be written before this decision.
 
+The immutable receipt may be checked repeatedly only against the same marked
+document, final fragment inventory and publishable byte string. Reuse for a
+different destination, CSP, asset-directory name, recomposition or source
+generation fails identity checks; there is no consumable mutable token. A
+second export builds its own receipt from its own frozen snapshot. Cancellation
+after companion creation but before HTML primary promotion follows the
+existing primary-last durability rule: owned content-addressed assets may
+remain, but no unvalidated primary is exposed.
+
 The HTML writer should consume the immutable validated publication directly,
 checking the digest of the bytes it is about to promote and writing companions
 first, primary HTML last. It must not rebuild the template after validation.
@@ -451,6 +478,13 @@ The app's PDF adapter currently builds its own self-contained/CSP string, so
 cross-module publication needs a small immutable export value carrying those
 validated bytes and source generation; the adapter would load exactly that
 value into its locked WebKit view. It must not add or rewrite CSP afterward.
+The proposed public surface is one read-only `ValidatedExportHTML` value with
+an internal constructor, UTF-8 bytes, digest and snapshot generation, plus a
+PDF adapter entry point that accepts that value. The existing `prepare` and
+ordinary `exportHTML` APIs keep their current behavior. Whether the app should
+receive this value directly or through one opt-in ExportService operation is
+the material interface choice for review; callers cannot forge it from an
+arbitrary `PreparedExportDocument`.
 This public interface and the bounded re-composition loop require independent
 architecture review before implementation. Tests should cover a changed head
 or body after inspection, linked-CSS rejection, data-URI expansion, PDF CSP,
