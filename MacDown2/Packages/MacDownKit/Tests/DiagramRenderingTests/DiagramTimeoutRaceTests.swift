@@ -1,4 +1,4 @@
-import DiagramWebKitPool
+@testable import DiagramWebKitPool
 import Foundation
 import Testing
 
@@ -55,5 +55,32 @@ struct DiagramTimeoutRaceTests {
 
         #expect(throws: CancellationError.self) { try result.get() }
         #expect(ContinuousClock.now - start < .seconds(2))
+    }
+
+    @Test func acquisitionDeadlineStopsWhenThePageIsReady() async throws {
+        let start = ContinuousClock.now
+        let value = try await DiagramTimeoutRace.runWaitingForCancellationCleanupUntilMilestone(
+            timeout: .seconds(1),
+            timeoutError: Timeout()
+        ) { acquired in
+            acquired()
+            try await Task.sleep(for: .milliseconds(1200))
+            return 42
+        }
+        #expect(value == 42)
+        #expect(ContinuousClock.now - start >= .milliseconds(1100))
+    }
+
+    @Test func acquisitionStillTimesOutBeforeThePageIsReady() async {
+        await #expect(throws: Timeout.self) {
+            try await DiagramTimeoutRace.runWaitingForCancellationCleanupUntilMilestone(
+                timeout: .milliseconds(100),
+                timeoutError: Timeout()
+            ) { acquired in
+                try await Task.sleep(for: .seconds(2))
+                acquired()
+                return 42
+            }
+        }
     }
 }

@@ -58,22 +58,25 @@ public actor DiagramWebKitPool {
         busy = Array(repeating: false, count: self.poolSize)
     }
 
-    /// The deadline starts before a request waits for a slot or constructs a page.
-    /// On timeout the caller can return while the cancelled worker still owns its slot;
-    /// explicit caller cancellation waits for that worker to tear down its page.
+    /// The acquisition deadline starts before a request waits for a slot or
+    /// constructs a page. Once acquired, evaluation has its own existing
+    /// deadline, so queued renders do not lose their entire render budget.
+    /// On timeout the cancelled worker still owns its slot until cleanup;
+    /// explicit caller cancellation waits for that teardown.
     public func withPage<T: Sendable>(
         _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
     ) async throws -> T {
-        try await DiagramTimeoutRace.runWaitingForCancellationCleanup(
+        try await DiagramTimeoutRace.runWaitingForCancellationCleanupUntilMilestone(
             timeout: timeout,
             timeoutError: DiagramPoolError.timedOut
-        ) {
-            try await self.runWithPage(body)
+        ) { acquired in
+            try await self.runWithPage(body, acquired: acquired)
         }
     }
 
     private func runWithPage<T: Sendable>(
-        _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
+        _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T,
+        acquired: @Sendable () -> Void
     ) async throws -> T {
         let index = try await checkout()
         let page: DiagramHarnessPage
@@ -81,10 +84,16 @@ public actor DiagramWebKitPool {
             try Task.checkCancellation()
             page = try await self.page(at: index)
             guard !closed else { throw DiagramPoolError.pageUnavailable }
+            try Task.checkCancellation()
         } catch {
+            if error is CancellationError, let page = slots[index] {
+                slots[index] = nil
+                await page.teardown()
+            }
             checkin(index)
             throw error
         }
+        acquired()
         do {
             let result = try await DiagramTimeoutRace.run(
                 timeout: timeout,

@@ -18,16 +18,18 @@ public enum DiagramTimeoutRace {
         timeoutError: any Error,
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
-        try await race(timeout: timeout, timeoutError: timeoutError, waitForOperationOnCancellation: false,
-                       operation: operation)
+        try await race(timeout: timeout, timeoutError: timeoutError, waitForOperationOnCancellation: false) { _ in
+            try await operation()
+        }
     }
 
-    /// Pool callers retain cancellation ownership until their page has been torn down.
-    /// A deadline still returns promptly and leaves the cancelled worker holding its slot.
-    static func runWaitingForCancellationCleanup<T: Sendable>(
+    /// Bounds admission and page construction. Once the page is acquired,
+    /// the caller signals the milestone and its existing evaluation timer
+    /// owns the next phase. Cancellation still waits for page cleanup.
+    static func runWaitingForCancellationCleanupUntilMilestone<T: Sendable>(
         timeout: Duration,
         timeoutError: any Error,
-        operation: @escaping @Sendable () async throws -> T
+        operation: @escaping @Sendable (@Sendable () -> Void) async throws -> T
     ) async throws -> T {
         try await race(timeout: timeout, timeoutError: timeoutError, waitForOperationOnCancellation: true,
                        operation: operation)
@@ -37,7 +39,7 @@ public enum DiagramTimeoutRace {
         timeout: Duration,
         timeoutError: any Error,
         waitForOperationOnCancellation: Bool,
-        operation: @escaping @Sendable () async throws -> T
+        operation: @escaping @Sendable (@Sendable () -> Void) async throws -> T
     ) async throws -> T {
         let gate = Gate<T>(waitForOperationOnCancellation: waitForOperationOnCancellation)
         return try await withTaskCancellationHandler {
@@ -45,7 +47,7 @@ public enum DiagramTimeoutRace {
                 gate.install(continuation)
                 let work = Task {
                     do {
-                        try await gate.resolveOperation(.success(operation()))
+                        try await gate.resolveOperation(.success(operation { gate.disarmTimeout() }))
                     } catch {
                         gate.resolveOperation(.failure(error))
                     }
@@ -73,6 +75,7 @@ public enum DiagramTimeoutRace {
         private var outcome: Result<T, any Error>?
         private var finished = false
         private var cancellationRequested = false
+        private var timerStopped = false
         private var cleanup: (@Sendable () -> Void)?
 
         init(waitForOperationOnCancellation: Bool) {
@@ -118,6 +121,12 @@ public enum DiagramTimeoutRace {
             cleanup?()
         }
 
+        func disarmTimeout() {
+            lock.lock()
+            timerStopped = true
+            lock.unlock()
+        }
+
         func resolveTimeout(_ error: any Error) {
             resolve(.failure(error), from: .timer)
         }
@@ -128,7 +137,7 @@ public enum DiagramTimeoutRace {
 
         private func resolve(_ result: Result<T, any Error>, from source: ResolutionSource) {
             lock.lock()
-            guard !finished, !(source == .timer && cancellationRequested) else {
+            guard !finished, !(source == .timer && (cancellationRequested || timerStopped)) else {
                 lock.unlock()
                 return
             }
