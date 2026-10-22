@@ -45,12 +45,13 @@ final class DiagramHarnessNavigationCompletion {
     }
 }
 
-/// Only the scalar values D2 and Graphviz consume cross the page callback
-/// boundary. WebKit's raw bridged `Any` remains on the main actor.
+/// Only typed values cross the page callback boundary. WebKit's raw bridged
+/// `Any` remains on the main actor; Mermaid also consumes an encoded PNG.
 public struct DiagramHarnessResult: Sendable {
     public let succeeded: Bool
     public let message: String?
     public let svg: String?
+    public let pngBase64: String?
     public let width: Double
     public let height: Double
 
@@ -61,6 +62,7 @@ public struct DiagramHarnessResult: Sendable {
         self.succeeded = succeeded
         message = values["message"] as? String
         svg = values["svg"] as? String
+        pngBase64 = values["png"] as? String
         width = (values["width"] as? NSNumber)?.doubleValue ?? 0
         height = (values["height"] as? NSNumber)?.doubleValue ?? 0
     }
