@@ -273,3 +273,31 @@ struct ValidatedExportOperationTests {
         }
     }
 }
+
+extension ValidatedExportOperationTests {
+    @Test func closeBeforeTaskStartsNeverPresentsTheSheet() async throws {
+        let item = try fixture()
+        let coordinator = item.coordinator
+        let first = item.first
+        defer {
+            first.close()
+            item.second.close()
+            try? FileManager.default.removeItem(at: item.folder)
+        }
+        var presented = false
+        let pending = coordinator.beginValidatedSVGExportUsingPanel(from: first) { panel in
+            presented = true
+            panel.cancel(nil)
+        }
+        let task = try #require(pending)
+        #expect(coordinator.isExporting(first.model))
+        first.close()
+        do {
+            _ = try await task.value
+            Issue.record("A closed origin reached the export sheet")
+        } catch is CancellationError {
+            #expect(!presented)
+            #expect(!coordinator.isExporting(first.model))
+        }
+    }
+}

@@ -66,6 +66,7 @@ extension WindowCoordinator {
                 setExporting(false, for: model)
             }
             try Task.checkCancellation()
+            try origin.lease.checkActive()
             guard let target = await chooseTarget(window) else { return nil }
             try Task.checkCancellation()
             return try await Self.publishValidatedSVG(

@@ -576,3 +576,12 @@ close notification is a controlled lifecycle probe, not proof that macOS lets
 an owner close a tab with a sheet open. No production command invokes this
 helper. Real key-window command dispatch, accepted Save-panel selection,
 signed resource access, PDF output and owner-observed behavior remain gates.
+
+Independent review found that a captured origin could be revoked after the
+synchronous command capture but before its spawned task began. The disabled
+operation now checks the lease immediately before invoking the chooser, on
+the same main-actor turn. A native regression closes the origin before the
+task starts and verifies that no sheet is presented and the export guard is
+cleared. The real-sheet cancellation test also waits for physical detachment
+from the originating window. These checks do not establish accepted panel
+selection, signed resource access, PDF output or owner-observed navigation.

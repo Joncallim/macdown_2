@@ -14,11 +14,13 @@ struct ValidatedExportPanelTests {
         defer { window.close() }
 
         var presented = false
+        var panel: NSSavePanel?
         let task = Task { @MainActor in
             await ValidatedExportPanel.chooseTarget(
                 in: window, defaultName: "cancelled", directory: nil
-            ) { panel in
-                presented = panel.sheetParent === window
+            ) { shown in
+                panel = shown
+                presented = shown.sheetParent === window
             }
         }
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
@@ -29,5 +31,10 @@ struct ValidatedExportPanelTests {
         task.cancel()
         let result = await task.value
         #expect(result == nil)
+        let detachmentDeadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while panel?.sheetParent != nil, ContinuousClock.now < detachmentDeadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(panel?.sheetParent == nil)
     }
 }
