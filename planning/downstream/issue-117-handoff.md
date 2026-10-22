@@ -542,7 +542,19 @@ captured origin freezes the current document text, generation, URL and theme
 only after a panel would return; later edits do not change that value.
 Document replacement revokes the lease synchronously before the old identity
 is unpublished, and window close revokes it too. A focused native app test
-covers freeze timing and pre-publication revocation. The origin has no command
-or panel caller yet, and the ordinary export flow remains unchanged. Full
-contribution adaptation, actual WebKit file-load/PDF output, signed owner
+covers freeze timing and pre-publication revocation. The ordinary export flow
+remains unchanged.
+
+The next disabled operation captures the key window and reserves its export
+guard synchronously before spawning work. Its test seam accepts a destination
+from that captured window after an asynchronous panel interval, then freezes
+the live source, generation, URL and theme. One Markdown parse supplies both
+contributions and composition; the parse cache checks exact UTF-8 source
+bytes, revision and options. The same lease follows the request through
+HTML/PDF publication, and guard cleanup runs on cancellation and failure.
+Native unit tests use an explicit captured controller because a headless test
+host does not reliably provide `NSApp.keyWindow`; they cover focus/theme
+changes, later edits, Save As identity replacement, close across an await and
+revocation before publication. The operation has no production command or
+real save-panel caller yet. Actual WebKit file-load/PDF output, signed owner
 observation and generated-link activation remain open.
