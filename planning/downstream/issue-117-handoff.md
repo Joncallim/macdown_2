@@ -400,3 +400,24 @@ marked SVGs. It measured 5.54 seconds with one raw-tag scan per SVG and 2.84
 seconds after making that scan single-pass. These are package-host timings,
 not full-app, WebKit-process or peak-memory figures. The admission budgets
 and performance need review on the eventual combined publish path.
+
+## Outside CSS ownership correction
+
+A subsequent source review found that checking SVG-local references alone does
+not contain computed paint. An authored head rule such as
+`svg rect { fill: url(#outside) }` overrides a namespaced rectangle's
+`fill="url(#owned)"`; a custom property inherited from `:root` has the same
+effect. WebKit regression fixtures capture both the computed outside target
+and blue rendered pixels before the validator correction.
+
+The disabled validator now rejects every nonempty stylesheet outside a marked
+SVG except one exact head style emitted by the built-in export writer. That
+style is derived only from colour-valued Theme variables and the bundled
+structural CSS; the structural bytes are pinned to an audited SHA-256 and the
+writer's newline wrapper is compared exactly. A changed bundle needs renewed
+review before admission. Authored body styles, inline style attributes outside
+the marked SVGs, a second head style, and linked stylesheets fail closed in
+this opt-in route. Empty head styles are inert and remain accepted for tests.
+The normal export path is still untouched. These conservative rejections need
+source-fence fallback when the route is eventually wired; they do not permit
+activation or establish native acceptance by themselves.

@@ -1,15 +1,37 @@
 import CryptoKit
 import Foundation
 import SwiftSoup
+import Themes
 
 /// Private acceptance boundary for opt-in SVG contributions. The ordinary
 /// export writers never call this path. A receipt covers one exact assembled
 /// document and cannot be reused after body, head or template recomposition.
 enum SVGAssemblyOwnership {
+    /// The opt-in path may accept only the exact stylesheet generated from a
+    /// bundled, reviewed structural sheet and colour-only theme variables.
+    /// A raw authored style cannot manufacture this value by passing CSS bytes.
+    struct AuditedHeadCSS: Sendable, Equatable {
+        let stylesheet: String
+
+        /// ExportHTMLWriter.embeddedStyleElement wraps its stylesheet with
+        /// these exact newlines. Compare DOM style data to emitted bytes.
+        var emittedStyleData: String {
+            "\n" + stylesheet + "\n"
+        }
+
+        static func builtIn(for theme: Theme) -> Self? {
+            let structural = ExportThemeStylesheet.structural
+            guard SVGAssemblyOwnership.sha256(structural) == SVGAssemblyOwnership.auditedStructuralSHA256
+            else { return nil }
+            return Self(stylesheet: ExportThemeStylesheet.variables(for: theme) + "\n" + structural)
+        }
+    }
+
     struct Manifest: Sendable {
         fileprivate let markedSHA256: String
         fileprivate let fragmentSHA256: String
         fileprivate let fragmentRoots: [SVGIDNamespace.MarkedRoot]
+        fileprivate let auditedHeadCSS: AuditedHeadCSS?
         fileprivate let roots: [RootInspection]
     }
 
@@ -33,9 +55,14 @@ enum SVGAssemblyOwnership {
     private static let maximumAnalyzedBytes = 8 * 1024 * 1024
     private static let maximumRoots = 64
     private static let maximumOwnedIDs = 4096
+    /// Changes to the bundled structural CSS need renewed SVG non-interference
+    /// review before this disabled opt-in validator can admit its bytes.
+    private static let auditedStructuralSHA256 =
+        "668c19314146a74355da813dee3df584c964788e5a5b81f7233884c82ec5c5c3"
 
     static func inspect(
-        markedDocument: String, fragment: SVGIDNamespace.MarkedFragment
+        markedDocument: String, fragment: SVGIDNamespace.MarkedFragment,
+        auditedHeadCSS: AuditedHeadCSS? = nil
     ) -> Manifest? {
         guard markedDocument.utf8.count <= maximumAnalyzedBytes,
               !fragment.roots.isEmpty, fragment.roots.count <= maximumRoots,
@@ -47,7 +74,8 @@ enum SVGAssemblyOwnership {
         else { return nil }
         return parserLock.withLock {
             guard let document = try? SwiftSoup.parse(markedDocument),
-                  let roots = inspect(document, expected: fragment.roots, markersRequired: true),
+                  let roots = inspect(document, expected: fragment.roots,
+                                      markersRequired: true, auditedHeadCSS: auditedHeadCSS),
                   let rawAncestors = rawAncestorMap(
                       for: fragment.roots.map(\.startMarker), in: markedDocument
                   )
@@ -59,7 +87,8 @@ enum SVGAssemblyOwnership {
             }
             return Manifest(markedSHA256: sha256(markedDocument),
                             fragmentSHA256: sha256(fragment.html),
-                            fragmentRoots: fragment.roots, roots: roots)
+                            fragmentRoots: fragment.roots,
+                            auditedHeadCSS: auditedHeadCSS, roots: roots)
         }
     }
 
@@ -77,7 +106,8 @@ enum SVGAssemblyOwnership {
         guard publishable.utf8.count <= maximumAnalyzedBytes else { return nil }
         return parserLock.withLock {
             guard let document = try? SwiftSoup.parse(publishable),
-                  let roots = inspect(document, expected: fragment.roots, markersRequired: false),
+                  let roots = inspect(document, expected: fragment.roots,
+                                      markersRequired: false, auditedHeadCSS: inspected.auditedHeadCSS),
                   roots == inspected.roots else { return nil }
             return Publication(html: publishable, sha256: sha256(publishable))
         }
@@ -105,7 +135,8 @@ enum SVGAssemblyOwnership {
     }
 
     private static func inspect(
-        _ document: Document, expected: [SVGIDNamespace.MarkedRoot], markersRequired: Bool
+        _ document: Document, expected: [SVGIDNamespace.MarkedRoot],
+        markersRequired: Bool, auditedHeadCSS: AuditedHeadCSS?
     ) -> [RootInspection]? {
         guard let elements = try? document.getAllElements().array() else { return nil }
         let expectedIDs = expected.reduce(into: Set<String>()) { $0.formUnion($1.ownedIDs) }
@@ -130,8 +161,8 @@ enum SVGAssemblyOwnership {
             inspections.append(inspection)
             rootElements.append(root)
         }
-        guard validateOutside(elements: elements, roots: rootElements, inspections: inspections,
-                              generatedIDs: expectedIDs) else { return nil }
+        guard validateOutside(elements: elements, roots: rootElements,
+                              generatedIDs: expectedIDs, auditedHeadCSS: auditedHeadCSS) else { return nil }
         return inspections
     }
 
@@ -184,13 +215,36 @@ enum SVGAssemblyOwnership {
     }
 
     private static func validateOutside(
-        elements: [Element], roots: [Element], inspections: [RootInspection], generatedIDs: Set<String>
+        elements: [Element], roots: [Element],
+        generatedIDs: Set<String>, auditedHeadCSS: AuditedHeadCSS?
     ) -> Bool {
-        let generatedKeyframes = inspections.reduce(into: Set<String>()) { $0.formUnion($1.keyframes) }
-        let generatedFonts = inspections.reduce(into: Set<String>()) { $0.formUnion($1.fontFamilies) }
+        var matchedAuditedHeadCSS = false
         for element in elements where !roots.contains(where: { isInside(element, root: $0) }) {
+            if element.tagNameNormal() == "style" {
+                // The bundled sheet's exact bytes have been audited for SVG
+                // non-interference. CSS-token rescanning is not equivalent:
+                // even an apostrophe in a CSS comment can confuse a simple
+                // string scanner. All other outside styles fail closed.
+                let hasNoAttributes = element.getAttributes()?.asList().isEmpty ?? true
+                guard element.parent()?.tagNameNormal() == "head",
+                      hasNoAttributes else { return false }
+                let css = element.data()
+                if !css.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    guard !matchedAuditedHeadCSS, css == auditedHeadCSS?.emittedStyleData else { return false }
+                    matchedAuditedHeadCSS = true
+                }
+                continue
+            }
             guard let refs = referenceTargets(in: [element], allowExternal: true),
                   refs.isDisjoint(with: generatedIDs) else { return false }
+            if element.getAttributes()?.asList().contains(where: {
+                $0.getKey().lowercased() == "style" && !$0.getValue().trimmingCharacters(in: .whitespacesAndNewlines)
+                    .isEmpty
+            }) == true {
+                // Inline CSS on an authored ancestor can pass inherited
+                // custom properties into an otherwise owned SVG subtree.
+                return false
+            }
             if element.getAttributes()?.asList().contains(where: {
                 $0.getValue().lowercased().contains("mt117-svg-") || $0.getValue().contains("\\")
             }) == true {
@@ -203,14 +257,8 @@ enum SVGAssemblyOwnership {
                 // its own bound inventory before this path can accept it.
                 return false
             }
-            guard element.tagNameNormal() == "style" else { continue }
-            let css = element.data()
-            guard !css.lowercased().contains("mt117-svg-"), !css.lowercased().contains("@import"),
-                  let definitions = definitions(in: [element]),
-                  definitions.keyframes.isDisjoint(with: generatedKeyframes),
-                  definitions.fontFamilies.isDisjoint(with: generatedFonts) else { return false }
         }
-        return true
+        return auditedHeadCSS == nil || matchedAuditedHeadCSS
     }
 
     private static func isInside(_ element: Element, root: Element) -> Bool {

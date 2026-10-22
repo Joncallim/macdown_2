@@ -1,3 +1,4 @@
+import AppKit
 import D2Rendering
 @testable import DiagramRendering
 import Diagrams
@@ -153,6 +154,62 @@ struct RealSVGNamespaceTests {
 @Suite("Assembled SVG resource admission", .serialized)
 @MainActor
 struct AssembledSVGResourceTests {
+    @Test func outsideHeadCSSCanRedirectPaintThroughRuleOrInheritedVariable() async throws {
+        let artwork = #"<svg id="root" width="48" height="48"><defs>"#
+            + #"<linearGradient id="paint"><stop stop-color="red"/></linearGradient></defs>"#
+            + #"<rect id="shape" width="48" height="48" fill="url(#paint)"/></svg>"#
+        let marked = try #require(SVGIDNamespace.rewriteMarked(artwork, occurrence: 0))
+        let outside = #"<svg width="0" height="0"><defs>"#
+            + #"<linearGradient id="outside"><stop stop-color="blue"/></linearGradient>"#
+            + #"</defs></svg>"#
+        for css in [
+            "svg rect { fill: url(#outside) }",
+            ":root { --diagram-fill: url(#outside) } svg rect { fill: var(--diagram-fill) }",
+        ] {
+            let document = BuiltInExportTemplate.document(
+                title: "Outside paint", styleElement: "<style>\(css)</style>", body: outside + marked.html
+            )
+            // This fails before outside-CSS admission is made fail-closed:
+            // the syntactic SVG reference is owned, but browser CSS replaces it.
+            #expect(SVGAssemblyOwnership.inspect(markedDocument: document, fragment: marked) == nil)
+
+            let view = WKWebView(frame: .init(x: 0, y: 0, width: 80, height: 80))
+            view.loadHTMLString(document, baseURL: nil)
+            try await waitForLoad(in: view)
+            let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+            var expectedDOMLoaded = false
+            while ContinuousClock.now < deadline {
+                expectedDOMLoaded = await (try? view.evaluateJavaScript(
+                    "document.title === 'Outside paint' && document.querySelectorAll('svg rect').length === 1"
+                ) as? Bool) == true
+                if expectedDOMLoaded {
+                    break
+                }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            #expect(expectedDOMLoaded)
+            let fill = try #require(try await view.evaluateJavaScript(
+                "getComputedStyle(document.querySelector('svg rect')).fill"
+            ) as? String)
+            #expect(fill.contains("outside"))
+            let image = try await view.takeSnapshot(configuration: nil)
+            let tiff = try #require(image.tiffRepresentation)
+            let bitmap = try #require(NSBitmapImageRep(data: tiff))
+            var bluePixels = 0
+            for pixelY in stride(from: 0, to: bitmap.pixelsHigh, by: 4) {
+                for pixelX in stride(from: 0, to: bitmap.pixelsWide, by: 4) {
+                    guard let color = bitmap.colorAt(x: pixelX, y: pixelY)?.usingColorSpace(.deviceRGB)
+                    else { continue }
+                    if color.blueComponent > color.redComponent + 0.2,
+                       color.blueComponent > color.greenComponent + 0.2 {
+                        bluePixels += 1
+                    }
+                }
+            }
+            #expect(bluePixels > 10)
+        }
+    }
+
     @Test func validatedPublishableHTMLKeepsOwnedPaintWithoutPrivateMarkers() async throws {
         let artwork = #"<svg id="root"><defs><linearGradient id="paint"/></defs>"#
             + #"<rect id="shape" fill="url(#paint)" width="20" height="20"/></svg>"#

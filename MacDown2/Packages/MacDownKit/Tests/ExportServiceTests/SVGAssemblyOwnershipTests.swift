@@ -1,6 +1,7 @@
 @testable import ExportService
 import Foundation
 import Testing
+import Themes
 
 @Suite("Exact assembled SVG ownership")
 struct SVGAssemblyOwnershipTests {
@@ -66,7 +67,7 @@ struct SVGAssemblyOwnershipTests {
             + #"@font-face{font-family:Other;src:url("data:font/woff;base64,AA==")}</style>"#
         #expect(SVGAssemblyOwnership.inspect(
             markedDocument: assembled(body: markedFont.html, head: unrelated), fragment: markedFont
-        ) != nil)
+        ) == nil)
     }
 
     @Test func changedTemplateOrRecomposedFragmentCannotReuseReceipt() throws {
@@ -111,6 +112,56 @@ struct SVGAssemblyOwnershipTests {
         let tampered = SVGIDNamespace.MarkedFragment(html: missing, roots: marked.roots)
         #expect(SVGAssemblyOwnership.inspect(
             markedDocument: assembled(body: tampered.html), fragment: tampered
+        ) == nil)
+    }
+
+    @Test func actualExportWriterShapesNeedTheExactPublishableBytes() throws {
+        let marked = try #require(SVGIDNamespace.rewriteMarked(artwork, occurrence: 0))
+        let audited = try #require(SVGAssemblyOwnership.AuditedHeadCSS.builtIn(for: BundledThemes.light))
+        let prepared = PreparedExportDocument(
+            title: "Example", bodyHTML: marked.html,
+            stylesheet: audited.stylesheet,
+            manifest: ExportManifest(resources: [], referenceMap: [:]),
+            diagnostics: [], sourceGeneration: 1, preservesRawHTML: false
+        )
+        let candidates = [
+            ExportHTMLWriter.selfContainedHTML(from: prepared),
+            ExportHTMLWriter.selfContainedHTML(from: prepared, additionalHead:
+                #"<meta http-equiv="Content-Security-Policy" content="default-src 'none'">"#),
+            ExportHTMLWriter.companionHTML(from: prepared, style: .embedded),
+        ]
+        for document in candidates {
+            let receipt = try #require(SVGAssemblyOwnership.inspect(
+                markedDocument: document, fragment: marked, auditedHeadCSS: audited
+            ))
+            let published = try #require(SVGAssemblyOwnership.publish(
+                markedDocument: document, fragment: marked, inspected: receipt
+            ))
+            #expect(!published.html.contains(marked.roots[0].startMarker))
+            #expect(SVGAssemblyOwnership.stillMatches(published.html, publication: published))
+            #expect(!SVGAssemblyOwnership.stillMatches(
+                published.html + " ", publication: published
+            ))
+        }
+        let tamperedCSS = candidates[0].replacingOccurrences(
+            of: audited.emittedStyleData,
+            with: audited.emittedStyleData + "svg rect { fill: url(#outside) }"
+        )
+        #expect(tamperedCSS != candidates[0])
+        #expect(SVGAssemblyOwnership.inspect(
+            markedDocument: tamperedCSS, fragment: marked, auditedHeadCSS: audited
+        ) == nil)
+        let authoredStyle = candidates[0].replacingOccurrences(
+            of: marked.html,
+            with: #"<div style="--paint:url(#outside)">"# + marked.html + "</div>"
+        )
+        #expect(authoredStyle != candidates[0])
+        #expect(SVGAssemblyOwnership.inspect(
+            markedDocument: authoredStyle, fragment: marked, auditedHeadCSS: audited
+        ) == nil)
+        let linked = ExportHTMLWriter.companionHTML(from: prepared, style: .linked)
+        #expect(SVGAssemblyOwnership.inspect(
+            markedDocument: linked, fragment: marked, auditedHeadCSS: audited
         ) == nil)
     }
 
