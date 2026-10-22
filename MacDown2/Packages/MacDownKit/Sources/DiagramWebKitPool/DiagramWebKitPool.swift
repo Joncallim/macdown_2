@@ -13,14 +13,27 @@ import Foundation
 /// (loading a harness into a fresh page) is the expensive part, and
 /// nothing about a single document owns a pool exclusively.
 public actor DiagramWebKitPool {
+    private struct Waiter {
+        let id: UUID
+        let continuation: CheckedContinuation<Int, any Error>
+    }
+
     private let poolSize: Int
     private let timeout: Duration
-    private let harnessResourceName: String
-    private let bundle: Bundle
+    private let makePage: @Sendable () async throws -> DiagramHarnessPage
+    private let retirePage: @Sendable (DiagramHarnessPage) async -> Void
 
     private var slots: [DiagramHarnessPage?]
     private var busy: [Bool]
-    private var waiters: [CheckedContinuation<Int, Never>] = []
+    private var waiters: [Waiter] = []
+    private var constructing: [Int: Task<DiagramHarnessPage, any Error>] = [:]
+    private var retiring: [UUID: Task<Void, Never>] = [:]
+    private var shutdownTask: Task<Void, Never>?
+    private var closed = false
+
+    var isShuttingDown: Bool {
+        closed
+    }
 
     public init(
         harnessResourceName: String,
@@ -28,40 +41,77 @@ public actor DiagramWebKitPool {
         poolSize: Int = 2,
         timeout: Duration = .seconds(5)
     ) {
-        self.harnessResourceName = harnessResourceName
-        self.bundle = bundle
+        self.init(poolSize: poolSize, timeout: timeout) {
+            try await DiagramHarnessPage.make(harnessResourceName: harnessResourceName, bundle: bundle)
+        }
+    }
+
+    /// Allows lifecycle tests to hold construction at a precise suspension point.
+    /// Production always uses the bundled, contained harness factory above.
+    init(
+        poolSize: Int,
+        timeout: Duration,
+        makePage: @escaping @Sendable () async throws -> DiagramHarnessPage,
+        retirePage: @escaping @Sendable (DiagramHarnessPage) async -> Void = { await $0.teardown() }
+    ) {
         self.poolSize = max(1, poolSize)
         self.timeout = timeout
+        self.makePage = makePage
+        self.retirePage = retirePage
         slots = Array(repeating: nil, count: self.poolSize)
         busy = Array(repeating: false, count: self.poolSize)
     }
 
-    /// Checks out a page, runs `body` against it racing the configured timeout, and
-    /// returns the page to the pool (or hands it directly to the next waiter). A page whose
-    /// script outlived the timeout, or whose caller was cancelled mid-run, may still be
-    /// executing, so it is torn down and replaced rather than handed to the next render.
+    /// The acquisition deadline starts before a request waits for a slot or
+    /// constructs a page. Once acquired, evaluation has its own existing
+    /// deadline, so queued renders do not lose their entire render budget.
+    /// On timeout the cancelled worker still owns its slot until cleanup;
+    /// explicit caller cancellation waits for that teardown.
     public func withPage<T: Sendable>(
         _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
     ) async throws -> T {
-        let index = await checkout()
+        try await DiagramTimeoutRace.runWaitingForCancellationCleanupUntilMilestone(
+            timeout: timeout,
+            timeoutError: DiagramPoolError.timedOut
+        ) { acquired in
+            try await self.runWithPage(body, acquired: acquired)
+        }
+    }
+
+    private func runWithPage<T: Sendable>(
+        _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T,
+        acquired: @Sendable () -> Void
+    ) async throws -> T {
+        let index = try await checkout()
         let page: DiagramHarnessPage
         do {
+            try Task.checkCancellation()
             page = try await self.page(at: index)
+            guard !closed else { throw DiagramPoolError.pageUnavailable }
+            try Task.checkCancellation()
         } catch {
+            if error is CancellationError, let page = slots[index] {
+                slots[index] = nil
+                let retirement = beginRetirement(page)
+                await finishRetirement(retirement)
+            }
             checkin(index)
             throw error
         }
+        acquired()
         do {
             let result = try await DiagramTimeoutRace.run(
                 timeout: timeout,
                 timeoutError: DiagramPoolError.timedOut
             ) { try await body(page) }
+            guard !closed else { throw DiagramPoolError.pageUnavailable }
             checkin(index)
             return result
         } catch {
             if error is CancellationError || (error as? DiagramPoolError) == .timedOut {
                 slots[index] = nil
-                await page.teardown()
+                let retirement = beginRetirement(page)
+                await finishRetirement(retirement)
             }
             checkin(index)
             throw error
@@ -71,42 +121,131 @@ public actor DiagramWebKitPool {
     /// Tears down every pooled page. Called on app termination and in
     /// tests; not required between individual documents.
     public func shutdown() async {
-        for case let page? in slots {
-            await page.teardown()
+        if let shutdownTask {
+            await shutdownTask.value
+            return
         }
+        guard !closed else { return }
+        closed = true
+        let queued = waiters
+        waiters.removeAll()
+        for waiter in queued {
+            waiter.continuation.resume(throwing: DiagramPoolError.pageUnavailable)
+        }
+        let pages = slots.compactMap(\.self)
+        let builds = Array(constructing.values)
+        let earlierRetirements = Array(retiring.values)
+        let retire = retirePage
+        constructing.removeAll()
         slots = Array(repeating: nil, count: poolSize)
+        let task = Task {
+            for build in builds {
+                build.cancel()
+            }
+            for page in pages {
+                await retire(page)
+            }
+            for build in builds {
+                if case let .success(page) = await build.result {
+                    await retire(page)
+                }
+            }
+            for retirement in earlierRetirements {
+                await retirement.value
+            }
+        }
+        shutdownTask = task
+        await task.value
+        shutdownTask = nil
     }
 
     private func page(at index: Int) async throws -> DiagramHarnessPage {
+        guard !closed else { throw DiagramPoolError.pageUnavailable }
         if let existing = slots[index] {
             if await !existing.isTerminated {
+                guard !closed else { throw DiagramPoolError.pageUnavailable }
                 return existing
             }
             await existing.teardown()
             slots[index] = nil
         }
-        let page = try await DiagramHarnessPage.make(harnessResourceName: harnessResourceName, bundle: bundle)
+        guard !closed else { throw DiagramPoolError.pageUnavailable }
+        let factory = makePage
+        let construction = Task { try await factory() }
+        constructing[index] = construction
+        let page: DiagramHarnessPage
+        do {
+            page = try await withTaskCancellationHandler {
+                try await construction.value
+            } onCancel: {
+                construction.cancel()
+            }
+        } catch {
+            constructing[index] = nil
+            throw error
+        }
+        constructing[index] = nil
+        guard !closed else {
+            // Shutdown owns every registered construction, including this page.
+            throw DiagramPoolError.pageUnavailable
+        }
+        if Task.isCancelled {
+            let retirement = beginRetirement(page)
+            await finishRetirement(retirement)
+            throw CancellationError()
+        }
         slots[index] = page
         return page
     }
 
-    private func checkout() async -> Int {
+    private func checkout() async throws -> Int {
+        try Task.checkCancellation()
+        guard !closed else { throw DiagramPoolError.pageUnavailable }
         if let index = busy.firstIndex(of: false) {
             busy[index] = true
             return index
         }
-        return await withCheckedContinuation { continuation in
-            waiters.append(continuation)
+        let id = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                waiters.append(Waiter(id: id, continuation: continuation))
+            }
+        } onCancel: {
+            Task { await self.cancelCheckout(id) }
         }
+    }
+
+    private func cancelCheckout(_ id: UUID) {
+        guard let position = waiters.firstIndex(where: { $0.id == id }) else { return }
+        waiters.remove(at: position).continuation.resume(throwing: CancellationError())
+    }
+
+    /// Register retirement before removing the last slot/construction owner
+    /// across an actor suspension, so shutdown can drain that page as well.
+    private func beginRetirement(_ page: DiagramHarnessPage) -> (id: UUID, task: Task<Void, Never>) {
+        let id = UUID()
+        let retire = retirePage
+        let task = Task { await retire(page) }
+        retiring[id] = task
+        return (id, task)
+    }
+
+    private func finishRetirement(_ retirement: (id: UUID, task: Task<Void, Never>)) async {
+        await retirement.task.value
+        retiring[retirement.id] = nil
     }
 
     /// Hands the slot directly to the next waiter if one is queued (it
     /// stays marked busy — ownership transfers without ever appearing
     /// free); otherwise marks it free.
     private func checkin(_ index: Int) {
+        guard !closed else {
+            busy[index] = false
+            return
+        }
         guard waiters.isEmpty else {
-            let continuation = waiters.removeFirst()
-            continuation.resume(returning: index)
+            let waiter = waiters.removeFirst()
+            waiter.continuation.resume(returning: index)
             return
         }
         busy[index] = false
