@@ -100,4 +100,30 @@ struct ValidatedSVGFileSafetyTests {
         #expect(try Data(contentsOf: detached.appendingPathComponent(item.resource.identity.fileName))
             == item.resource.bytes)
     }
+
+    @Test func replacementOfStagedPrimaryCannotPublishDifferentBytes() async throws {
+        let item = try await fixture()
+        defer { try? FileManager.default.removeItem(at: item.directory) }
+        var replaced = false
+        #expect(throws: ExportError.self) {
+            try ExportFileWriter.writeValidatedHTML(item.validated, lease: ExportLifetimeLease(), beforePromotion: {
+                do {
+                    let names = try FileManager.default.contentsOfDirectory(atPath: item.directory.path)
+                    let temporary = try #require(names.first {
+                        $0.hasPrefix(".mt-") && $0.hasSuffix(".html.tmp")
+                    })
+                    let source = item.directory.appendingPathComponent(temporary)
+                    try FileManager.default.moveItem(
+                        at: source, to: item.directory.appendingPathComponent("detached-primary")
+                    )
+                    try Data("substituted primary".utf8).write(to: source)
+                    replaced = true
+                } catch {
+                    Issue.record("Could not replace staged primary: \(error)")
+                }
+            })
+        }
+        #expect(replaced)
+        #expect(try Data(contentsOf: item.targetURL) == Data("old primary".utf8))
+    }
 }

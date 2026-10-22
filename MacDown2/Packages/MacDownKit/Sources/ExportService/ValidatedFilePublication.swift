@@ -4,7 +4,9 @@ import Foundation
 /// Filesystem boundary for the disabled, validated HTML path. Open directory
 /// descriptors keep every staging operation in the directory actually checked;
 /// changing a pathname to a symlink cannot redirect a later read or write.
-/// Other processes can still change exported files after this operation returns.
+/// A process with write access to the destination can still race the final
+/// pathname checks or change exported files after publication. This is not an
+/// atomic transaction across the primary and its companions.
 enum ValidatedFilePublication {
     private final class DirectoryHandle {
         let descriptor: Int32
@@ -52,6 +54,33 @@ enum ValidatedFilePublication {
         let urls: [URL]
     }
 
+    private final class StagedPrimary {
+        let directory: DirectoryHandle
+        let name: String
+        let stamp: Stamp
+        private var promoted = false
+
+        init(directory: DirectoryHandle, name: String, stamp: Stamp) {
+            self.directory = directory
+            self.name = name
+            self.stamp = stamp
+        }
+
+        func promote(as destination: String) throws {
+            guard renameat(directory.descriptor, name, directory.descriptor, destination) == 0
+            else { throw ValidatedFilePublication.posixFailure() }
+            promoted = true
+        }
+
+        deinit {
+            // A replaced temporary name is not ours to remove. As with the
+            // final rename, a hostile concurrent writer can race this check.
+            if !promoted, (try? ValidatedFilePublication.childStamp(name, in: directory.descriptor)) == stamp {
+                _ = unlinkat(directory.descriptor, name, 0)
+            }
+        }
+    }
+
     static func write(
         _ validated: ValidatedExportHTML, lease: ExportLifetimeLease,
         afterCompanionDirectoryOpened: (() -> Void)?, beforePromotion: (() -> Void)?
@@ -70,14 +99,17 @@ enum ValidatedFilePublication {
             validated, in: parent, nextTo: parentURL,
             lease: lease, afterOpening: afterCompanionDirectoryOpened
         )
+        let primary = try stagePrimary(validated.utf8, in: parent)
 
         beforePromotion?()
-        // Revocation and this final synchronous verification/promotion share
-        // one cutoff. Descriptor-relative rename cannot follow a swapped path.
+        // The bounded primary write and fsync finish before the final checks.
+        // Revocation, verification and rename share one synchronous cutoff.
         try lease.withPublicationCutoff {
             try verify(validated, parent: parent, parentPath: parentURL.path,
                        parentStamp: parentStamp, staged: staged)
-            try promote(validated.utf8, as: url.lastPathComponent, in: parent.descriptor)
+            guard try childStamp(primary.name, in: parent.descriptor) == primary.stamp
+            else { throw ExportError.validatedPublicationRejected }
+            try primary.promote(as: url.lastPathComponent)
         }
         return ExportResult(primaryFile: url, companionFiles: staged?.urls ?? [],
                             diagnostics: validated.diagnostics)
@@ -152,7 +184,9 @@ enum ValidatedFilePublication {
         !name.isEmpty && name != "." && name != ".."
             && !name.contains("/") && !name.contains("\0")
     }
+}
 
+private extension ValidatedFilePublication {
     private static func directoryStamp(_ descriptor: Int32) throws -> Stamp {
         var info = stat()
         guard fstat(descriptor, &info) == 0 else { throw posixFailure() }
@@ -245,18 +279,25 @@ enum ValidatedFilePublication {
         return stamp
     }
 
-    private static func promote(_ bytes: Data, as name: String, in directory: Int32) throws {
+    private static func stagePrimary(_ bytes: Data, in directory: DirectoryHandle) throws -> StagedPrimary {
         let temporary = ".mt-\(UUID().uuidString).html.tmp"
-        let descriptor = openat(directory, temporary, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
+        let descriptor = openat(directory.descriptor, temporary, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
                                 mode_t(S_IRUSR | S_IWUSR))
         guard descriptor >= 0 else { throw posixFailure() }
+        defer { _ = Darwin.close(descriptor) }
+        var retained = false
         defer {
-            _ = Darwin.close(descriptor)
-            _ = unlinkat(directory, temporary, 0)
+            if !retained {
+                _ = unlinkat(directory.descriptor, temporary, 0)
+            }
         }
         try writeAll(bytes, to: descriptor)
         guard fsync(descriptor) == 0 else { throw posixFailure() }
-        guard renameat(directory, temporary, directory, name) == 0 else { throw posixFailure() }
+        var info = stat()
+        guard fstat(descriptor, &info) == 0, (info.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG)
+        else { throw ExportError.validatedPublicationRejected }
+        retained = true
+        return StagedPrimary(directory: directory, name: temporary, stamp: Stamp(info))
     }
 
     private static func writeAll(_ bytes: Data, to descriptor: Int32) throws {
