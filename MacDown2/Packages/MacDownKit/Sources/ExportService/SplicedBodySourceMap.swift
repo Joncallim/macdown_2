@@ -7,6 +7,7 @@ import Foundation
 /// lands inside one of those ranges.
 struct SplicedBodySourceMap {
     let sourceSHA256: String
+    let renderedSHA256: String
 
     private struct Replacement {
         let sourceRange: Range<Int>
@@ -20,6 +21,8 @@ struct SplicedBodySourceMap {
 
     init(sourceText: String, renderedText: String, splices: [DerivedContentComposer.Splice]) {
         sourceSHA256 = SHA256.hash(data: Data(sourceText.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+        renderedSHA256 = SHA256.hash(data: Data(renderedText.utf8))
             .map { String(format: "%02x", $0) }.joined()
         let sourceUTF16Length = sourceText.utf16.count
         let renderedUTF16Length = renderedText.utf16.count

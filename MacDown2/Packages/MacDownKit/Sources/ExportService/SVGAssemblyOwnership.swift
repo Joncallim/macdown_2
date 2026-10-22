@@ -222,6 +222,10 @@ enum SVGAssemblyOwnership {
         elements: [Element], roots: [Element],
         generatedIDs: Set<String>, auditedHeadCSS: AuditedHeadCSS?
     ) -> Bool {
+        // The opt-in output uses a fixed script-disabled resource policy.
+        // An authored base changes relative URL resolution after inspection;
+        // scripts cannot be admitted under that policy even if currently inert.
+        guard !elements.contains(where: { ["base", "script"].contains($0.tagNameNormal()) }) else { return false }
         var matchedAuditedHeadCSS = false
         for element in elements where !roots.contains(where: { isInside(element, root: $0) }) {
             if element.tagNameNormal() == "style" {

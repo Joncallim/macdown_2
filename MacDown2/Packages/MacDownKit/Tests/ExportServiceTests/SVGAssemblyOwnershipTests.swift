@@ -70,6 +70,22 @@ struct SVGAssemblyOwnershipTests {
         ) == nil)
     }
 
+    @Test func authoredBaseAndScriptsCannotChangeTheOptInResourcePolicy() throws {
+        let marked = try #require(SVGIDNamespace.rewriteMarked(artwork, occurrence: 0))
+        for head in [
+            #"<base href="file:///tmp/">"#,
+            #"<base target="_blank">"#,
+            #"<script>document.title='changed'</script>"#,
+        ] {
+            #expect(SVGAssemblyOwnership.inspect(
+                markedDocument: assembled(body: marked.html, head: head), fragment: marked
+            ) == nil)
+        }
+        #expect(SVGAssemblyOwnership.inspect(
+            markedDocument: assembled(body: marked.html + "<script></script>"), fragment: marked
+        ) == nil)
+    }
+
     @Test func changedTemplateOrRecomposedFragmentCannotReuseReceipt() throws {
         let marked = try #require(SVGIDNamespace.rewriteMarked(artwork, occurrence: 0))
         let document = assembled(body: marked.html)

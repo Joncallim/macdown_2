@@ -26,6 +26,7 @@ enum EmittedHeadingMatcher {
         guard (sourceText as NSString).substring(from: bodyStart) == document.body,
               let coordinates = derived.coordinates,
               coordinates.sourceSHA256 == sha256(document.body),
+              coordinates.renderedSHA256 == sha256(derived.splicedBody),
               index.identity.sourceSHA256 == sha256(sourceText),
               document.sourceMap == fullSourceMap,
               rendered.headingSourceSHA256 == sha256(derived.splicedBody),

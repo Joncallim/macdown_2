@@ -188,6 +188,28 @@ struct SplicedBodySourceMapTests {
             index: index, document: document, sourceText: source, derived: fallback, rendered: fallbackRender
         )?.count == 3)
     }
+
+    @Test func sameLengthRecompositionCannotBorrowAnotherRendersCoordinates() async throws {
+        let fixture = try await headingFixture()
+        let changedBody = fixture.derived.splicedBody.replacingOccurrences(of: "Paragraph", with: "ParagrapH")
+        #expect(changedBody != fixture.derived.splicedBody)
+        #expect(changedBody.utf16.count == fixture.derived.splicedBody.utf16.count)
+        let changed = DerivedContentComposer.Result(
+            splicedBody: changedBody,
+            coordinates: fixture.derived.coordinates,
+            customNodes: fixture.derived.customNodes,
+            diagnostics: fixture.derived.diagnostics,
+            sentinelSuffix: fixture.derived.sentinelSuffix
+        )
+        let rendered = try CMarkGFM.render(
+            changedBody, options: CMarkGFM.optUnsafe,
+            customNodes: changed.customNodes, headingAnalysis: .locations
+        )
+        #expect(EmittedHeadingMatcher.match(
+            index: fixture.index, document: fixture.document,
+            sourceText: fixture.source, derived: changed, rendered: rendered
+        ) == nil)
+    }
 }
 
 private extension SplicedBodySourceMapTests {
