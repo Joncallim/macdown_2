@@ -76,6 +76,7 @@ struct SVGAssemblyOwnershipTests {
             #"<base href="file:///tmp/">"#,
             #"<base target="_blank">"#,
             #"<script>document.title='changed'</script>"#,
+            #"<meta http-equiv="refresh" content="0;url=https://example.invalid/">"#,
         ] {
             #expect(SVGAssemblyOwnership.inspect(
                 markedDocument: assembled(body: marked.html, head: head), fragment: marked

@@ -25,6 +25,8 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
     case invalidDestination(String)
     /// The document, or what it composes to, is past an export safety gate.
     case budgetExceeded(String)
+    /// The optional generated SVG path could not prove its final output safe.
+    case validatedPublicationRejected
 
     public var description: String {
         switch self {
@@ -50,6 +52,11 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
             return String(localized: "Export destination is invalid: \(path)", bundle: .module)
         case let .budgetExceeded(detail):
             return String(localized: "This document is too large to export: \(detail).", bundle: .module)
+        case .validatedPublicationRejected:
+            return String(
+                localized: "The generated diagram could not be safely included in this export.",
+                bundle: .module
+            )
         }
     }
 
@@ -85,6 +92,8 @@ public enum ExportError: Error, LocalizedError, CustomStringConvertible {
             String(localized: "Choose a different destination folder.", bundle: .module)
         case .budgetExceeded:
             String(localized: "Split the document, or reduce the size of the images it references.", bundle: .module)
+        case .validatedPublicationRejected:
+            String(localized: "Try exporting the diagram as its authored source.", bundle: .module)
         }
     }
 }

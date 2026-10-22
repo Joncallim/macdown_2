@@ -199,7 +199,9 @@ struct SplicedBodySourceMapTests {
             coordinates: fixture.derived.coordinates,
             customNodes: fixture.derived.customNodes,
             diagnostics: fixture.derived.diagnostics,
-            sentinelSuffix: fixture.derived.sentinelSuffix
+            sentinelSuffix: fixture.derived.sentinelSuffix,
+            markedRoots: fixture.derived.markedRoots,
+            markedSourceRanges: fixture.derived.markedSourceRanges
         )
         let rendered = try CMarkGFM.render(
             changedBody, options: CMarkGFM.optUnsafe,

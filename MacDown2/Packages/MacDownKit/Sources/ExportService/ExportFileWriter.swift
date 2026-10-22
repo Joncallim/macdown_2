@@ -52,6 +52,89 @@ enum ExportFileWriter {
         return ExportResult(primaryFile: url, companionFiles: companionFiles, diagnostics: prepared.diagnostics)
     }
 
+    /// The opt-in path consumes the inspected UTF-8 bytes directly. Existing
+    /// content-addressed assets are verified and left untouched, so a failed
+    /// replacement cannot damage resources used by the previous primary.
+    static func writeValidatedHTML(
+        _ validated: ValidatedExportHTML, lease: ExportLifetimeLease,
+        beforePromotion: (() -> Void)? = nil
+    ) throws -> ExportResult {
+        guard case let .html(url, mode) = validated.target, validated.bytesAreIntact() else {
+            throw ExportError.validatedPublicationRejected
+        }
+        try Task.checkCancellation()
+        try lease.checkActive()
+        try ensureDirectory(url.deletingLastPathComponent())
+        var companionFiles: [URL] = []
+        switch mode {
+        case .selfContained:
+            break
+        case .standalone(style: .embedded):
+            if !validated.resources.isEmpty {
+                let assets = url.deletingLastPathComponent()
+                    .appendingPathComponent(validated.assetsDirectoryName, isDirectory: true)
+                try ensureValidatedAssetsDirectory(assets)
+                let marker = assets.appendingPathComponent(markerFileName)
+                try stageWithoutReplacing(Data(markerContent.utf8), at: marker)
+                companionFiles.append(marker)
+                for resource in validated.resources {
+                    try Task.checkCancellation()
+                    try lease.checkActive()
+                    let identity = ExportResourceIdentity(bytes: resource.bytes, mimeType: resource.identity.mimeType)
+                    guard identity == resource.identity else { throw ExportError.validatedPublicationRejected }
+                    let path = assets.appendingPathComponent(resource.identity.fileName)
+                    try stageWithoutReplacing(resource.bytes, at: path)
+                    companionFiles.append(path)
+                }
+            }
+        case .standalone(style: .linked):
+            throw ExportError.validatedPublicationRejected
+        }
+        // This lock acquisition is the promotion cutoff. Revocation before it
+        // cancels the export; after it, the primary is already being promoted.
+        beforePromotion?()
+        try lease.withPublicationCutoff {
+            guard validated.bytesAreIntact() else { throw ExportError.validatedPublicationRejected }
+            try writeAtomically(validated.utf8, to: url)
+        }
+        return ExportResult(primaryFile: url, companionFiles: companionFiles,
+                            diagnostics: validated.diagnostics)
+    }
+
+    private static func ensureValidatedAssetsDirectory(_ url: URL) throws {
+        if FileManager.default.fileExists(atPath: url.path) {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            guard attributes[.type] as? FileAttributeType == .typeDirectory else {
+                throw ExportError.invalidDestination(url.path)
+            }
+            return
+        }
+        try ensureDirectory(url)
+    }
+
+    private static func stageWithoutReplacing(_ bytes: Data, at url: URL) throws {
+        if FileManager.default.fileExists(atPath: url.path) {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            guard attributes[.type] as? FileAttributeType == .typeRegular,
+                  try Data(contentsOf: url) == bytes else { throw ExportError.validatedPublicationRejected }
+            return
+        }
+        let temporary = url.deletingLastPathComponent()
+            .appendingPathComponent(".\(UUID().uuidString).stage")
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        try bytes.write(to: temporary, options: [.atomic])
+        do {
+            // A hard link fails if another writer created the destination;
+            // unlike rename it never replaces a previous primary's asset.
+            try FileManager.default.linkItem(at: temporary, to: url)
+        } catch {
+            guard FileManager.default.fileExists(atPath: url.path),
+                  try (FileManager.default.attributesOfItem(atPath: url.path))[.type] as? FileAttributeType
+                  == .typeRegular,
+                  try Data(contentsOf: url) == bytes else { throw ExportError.writeFailed(underlying: error) }
+        }
+    }
+
     /// Writes every companion file a `.standalone` export needs: the resource
     /// manifest (marker first) when there are images, and the linked
     /// stylesheet when `style` calls for one. Both share one assets directory,

@@ -491,3 +491,26 @@ or body after inspection, linked-CSS rejection, data-URI expansion, PDF CSP,
 source-fence fallback, no file side effects on rejection, and exact bytes at
 the HTML and PDF consumers. Native owner-observed navigation and signed app
 evidence remain separate gates.
+
+### Disabled publication implementation checkpoint (22 October 2026)
+
+The reviewed interface choice is one opt-in `ExportService.exportValidatedSVG`
+operation. It recomposes at most once after an assembled-document rejection,
+then returns source-preserving output or an error. Its internal constructor
+produces an immutable `ValidatedExportHTML` carrying final UTF-8 bytes, source
+identity, destination, resource inventory and diagnostics. The HTML writer
+stages content-addressed companions without replacing existing assets and
+promotes the validated bytes last. The PDF adapter accepts the same bytes
+without rebuilding its CSP or template. Both publication paths check an
+app-owned lifetime lease at the final synchronous promotion cutoff.
+
+This path has no production caller yet. The initiating window/document capture,
+post-panel freeze and identity-change revocation described above still need
+app integration and native acceptance before activation. The available app
+test verifies the PDF adapter's exact HTML input conversion and destination
+binding; it does not run a WebKit print operation or prove a PDF was produced.
+Package tests cover exact HTML bytes, Unicode/data URIs, source fallback,
+asset conflicts and symbolic links, cancellation after staging, and
+fail-closed navigation policy. Ordinary export APIs and visible behavior are
+unchanged. The earlier hosted signal 11 remains an independent investigation,
+and this disabled checkpoint is not a signed runtime or release acceptance.

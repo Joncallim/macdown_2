@@ -49,11 +49,7 @@ public enum ExportHTMLWriter {
         from prepared: PreparedExportDocument,
         additionalHead: String = ""
     ) -> String {
-        let body = embedResources(
-            in: prepared.bodyHTML,
-            manifest: prepared.manifest,
-            assetsDirectoryName: prepared.assetsDirectoryName
-        )
+        let body = selfContainedBody(from: prepared)
         let style = embeddedStyleElement(prepared.stylesheet)
         return BuiltInExportTemplate.document(
             title: prepared.title,
@@ -64,9 +60,17 @@ public enum ExportHTMLWriter {
         )
     }
 
+    static func selfContainedBody(from prepared: PreparedExportDocument) -> String {
+        embedResources(in: prepared.bodyHTML, manifest: prepared.manifest,
+                       assetsDirectoryName: prepared.assetsDirectoryName)
+    }
+
     /// A companion HTML document. `style` selects embedded (`<style>`) or linked
     /// (`<link rel="stylesheet" href="<name>.assets/<hash>.css">`) CSS.
-    public static func companionHTML(from prepared: PreparedExportDocument, style: ExportStyleEmbedding) -> String {
+    public static func companionHTML(
+        from prepared: PreparedExportDocument, style: ExportStyleEmbedding,
+        additionalHead: String = ""
+    ) -> String {
         let styleElement: String = switch style {
         case .embedded:
             embeddedStyleElement(prepared.stylesheet)
@@ -76,6 +80,7 @@ public enum ExportHTMLWriter {
         return BuiltInExportTemplate.document(
             title: prepared.title,
             visibleTitle: prepared.visibleTitle,
+            headExtras: additionalHead,
             styleElement: styleElement,
             body: prepared.bodyHTML
         )

@@ -20,6 +20,8 @@ enum DerivedContentComposer {
         let customNodes: [CMarkGFM.CustomNodeSpec]
         let diagnostics: [ExportDiagnostic]
         let sentinelSuffix: String
+        let markedRoots: [SVGIDNamespace.MarkedRoot]
+        let markedSourceRanges: [Range<Int>]
     }
 
     /// One accepted replacement: a body-relative UTF-16 range and the sentinel
@@ -125,7 +127,8 @@ enum DerivedContentComposer {
                 splicedBody: bodyText,
                 coordinates: recordCoordinates
                     ? SplicedBodySourceMap(sourceText: bodyText, renderedText: bodyText, splices: []) : nil,
-                customNodes: [], diagnostics: [], sentinelSuffix: ""
+                customNodes: [], diagnostics: [], sentinelSuffix: "",
+                markedRoots: [], markedSourceRanges: []
             )
         }
 
@@ -156,7 +159,9 @@ enum DerivedContentComposer {
                 ? SplicedBodySourceMap(sourceText: bodyText, renderedText: splicedBody, splices: plan.splices) : nil,
             customNodes: plan.customNodes,
             diagnostics: plan.diagnostics,
-            sentinelSuffix: context.sentinelSuffix
+            sentinelSuffix: context.sentinelSuffix,
+            markedRoots: plan.markedRoots,
+            markedSourceRanges: plan.markedSourceRanges
         )
     }
 
@@ -256,6 +261,8 @@ private struct DerivedContentPlan {
     var diagnostics: [ExportDiagnostic] = []
     var customNodes: [CMarkGFM.CustomNodeSpec] = []
     var splices: [DerivedContentComposer.Splice] = []
+    var markedRoots: [SVGIDNamespace.MarkedRoot] = []
+    var markedSourceRanges: [Range<Int>] = []
 
     private var previousBodyUpperBound = 0
     private var placedCount = 0
@@ -304,15 +311,17 @@ private struct DerivedContentPlan {
         )
         let sanitized = DerivedHTMLSanitizer.sanitized(contribution.html)
         var preparedHTML = sanitized
-        if context.namespaceSVGIDs {
-            guard let namespaced = SVGIDNamespace.rewrite(sanitized, occurrence: index) else {
+        if context.namespaceSVGIDs, sanitized.lowercased().contains("<svg") {
+            guard let namespaced = SVGIDNamespace.rewriteMarked(sanitized, occurrence: index) else {
                 diagnostics.append(ExportDiagnostic(
                     severity: .error,
                     message: "derived SVG identifiers could not be safely isolated; authored source preserved"
                 ))
                 return
             }
-            preparedHTML = namespaced
+            preparedHTML = namespaced.html
+            markedRoots.append(contentsOf: namespaced.roots)
+            markedSourceRanges.append(contribution.sourceRange)
         }
         customNodes.append(CMarkGFM.CustomNodeSpec(sentinel: sentinel,
                                                    isBlock: isBlock,
