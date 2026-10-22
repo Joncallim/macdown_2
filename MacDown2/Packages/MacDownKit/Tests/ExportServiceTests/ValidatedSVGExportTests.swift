@@ -100,12 +100,12 @@ struct ValidatedSVGExportTests {
         let lease = ExportLifetimeLease()
         var staged = false
         #expect(throws: CancellationError.self) {
-            try ExportFileWriter.writeValidatedHTML(validated, lease: lease) {
+            try ExportFileWriter.writeValidatedHTML(validated, lease: lease, beforePromotion: {
                 staged = FileManager.default.fileExists(atPath: directory
                     .appendingPathComponent(validated.assetsDirectoryName)
                     .appendingPathComponent(resource.identity.fileName).path)
                 lease.revoke()
-            }
+            })
         }
         #expect(staged)
         #expect(try Data(contentsOf: targetURL) == Data("old primary".utf8))

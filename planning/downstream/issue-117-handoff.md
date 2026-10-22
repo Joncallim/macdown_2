@@ -514,3 +514,16 @@ asset conflicts and symbolic links, cancellation after staging, and
 fail-closed navigation policy. Ordinary export APIs and visible behavior are
 unchanged. The earlier hosted signal 11 remains an independent investigation,
 and this disabled checkpoint is not a signed runtime or release acceptance.
+
+The next review found that `#`, `?` and literal percent escapes in an output
+filename made a companion image URL resolve to the wrong path. The corrected
+path percent-encodes the single assets-directory component before cmark or
+HTML escaping; tests resolve the emitted image URL back to the exact staged
+manifest file, including Unicode names. The disabled HTML writer now opens
+the selected parent and assets directories without following their final
+symlinks, stages files relative to those descriptors, checks inode identity
+before promotion and atomically renames the accepted primary relative to the
+opened parent. Tests replace the assets pathname during and after staging,
+and verify neither replacement redirects a write or publishes new HTML.
+This protects the publication operation from a concurrent pathname swap; it
+does not make files immutable after a separate process changes them later.
