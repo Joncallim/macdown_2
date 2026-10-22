@@ -7,6 +7,41 @@ import Testing
 
 @MainActor
 struct MermaidPoolGenerationTests {
+    @Test func repeatedTimeoutAndShutdownRetireEveryPage() async throws {
+        let (bundle, directory) = try makeHarnessBundle()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pages = MermaidPageRegistry()
+        let makePool: @Sendable () -> DiagramWebKitPool = {
+            DiagramWebKitPool(poolSize: 1, timeout: .seconds(5)) {
+                let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+                await pages.add(page)
+                return page
+            }
+        }
+        let renderer = MermaidWebRenderer(pool: makePool(), makePool: makePool)
+        let context = MermaidRenderContext(
+            foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
+            backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
+        )
+        for _ in 0 ..< 3 {
+            do {
+                _ = try await renderer.render(MermaidFence(source: "hold", sourceRange: 0 ..< 4), context: context)
+                Issue.record("a never-settling Mermaid evaluation completed")
+            } catch {
+                #expect(error as? MermaidRenderError == .timedOut)
+            }
+            await renderer.shutdown()
+            #expect(pages.activeCount == 0)
+            let diagram = try await renderer.render(
+                MermaidFence(source: "graph TD; A-->B;", sourceRange: 0 ..< 17), context: context
+            )
+            #expect(diagram.pngData == Data([1, 2, 3]))
+            await renderer.shutdown()
+            #expect(pages.activeCount == 0)
+        }
+        #expect(pages.count == 6)
+    }
+
     @Test func aNewGenerationWaitsForHeldConstructionToRetire() async throws {
         let (bundle, directory) = try makeHarnessBundle()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -60,13 +95,32 @@ struct MermaidPoolGenerationTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let html = """
         <!doctype html><html><body><script>
+        window.__heldMermaidResult = new Promise(function () {});
         window.__macdownRenderMermaid = async function () {
+          if (arguments[0] === 'hold') return window.__heldMermaidResult;
           return {ok:true, svg:'<svg xmlns="http://www.w3.org/2000/svg"/>', png:'AQID', width:2, height:3};
         };
         </script></body></html>
         """
         try html.write(to: directory.appendingPathComponent("harness.html"), atomically: true, encoding: .utf8)
         return try (#require(Bundle(url: directory)), directory)
+    }
+}
+
+@MainActor
+private final class MermaidPageRegistry {
+    private var pages: [DiagramHarnessPage] = []
+
+    var count: Int {
+        pages.count
+    }
+
+    var activeCount: Int {
+        pages.filter { !$0.isTerminated }.count
+    }
+
+    func add(_ page: DiagramHarnessPage) {
+        pages.append(page)
     }
 }
 
