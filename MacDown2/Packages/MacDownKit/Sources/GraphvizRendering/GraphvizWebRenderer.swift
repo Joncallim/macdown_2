@@ -8,7 +8,8 @@ import Foundation
 public actor GraphvizWebRenderer: GraphvizDiagramRendering {
     public static let defaultMaxOutputBytes = 2 * 1024 * 1024
 
-    private var pool: DiagramWebKitPool
+    private var pool: DiagramWebKitPool?
+    private var retirement: (id: UUID, task: Task<Void, Never>)?
     private let poolSize: Int
     private let timeout: Duration
     private let maxOutputBytes: Int
@@ -31,8 +32,9 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
 
     public func render(_ fence: GraphvizFence,
                        context: GraphvizRenderContext) async throws -> RenderedGraphvizDiagram {
+        let activePool = try availablePool()
         let diagram = try await withPoolErrorMapping {
-            try await pool.withPage { page in
+            try await activePool.withPage { page in
                 try await Self.render(fence, context: context, on: page)
             }
         }
@@ -44,16 +46,36 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
     }
 
     public func shutdown() async {
-        // Preserve the renderer's lazy reuse contract without reopening the
-        // old pool generation while its queued or in-flight work retires.
-        let retiring = pool
-        pool = DiagramWebKitPool(
-            harnessResourceName: "harness",
-            bundle: Bundle.module,
-            poolSize: poolSize,
-            timeout: timeout
+        if retirement != nil {
+            await finishRetirement()
+            return
+        }
+        guard let retiring = pool else { return }
+        pool = nil
+        retirement = (UUID(), Task { await retiring.shutdown() })
+        await finishRetirement()
+    }
+
+    private func availablePool() throws -> DiagramWebKitPool {
+        try Task.checkCancellation()
+        guard retirement == nil else { throw GraphvizRenderError.rendererUnavailable }
+        if let pool {
+            return pool
+        }
+        let fresh = DiagramWebKitPool(
+            harnessResourceName: "harness", bundle: Bundle.module,
+            poolSize: poolSize, timeout: timeout
         )
-        await retiring.shutdown()
+        pool = fresh
+        return fresh
+    }
+
+    private func finishRetirement() async {
+        guard let current = retirement else { return }
+        await current.task.value
+        if retirement?.id == current.id {
+            retirement = nil
+        }
     }
 
     @MainActor

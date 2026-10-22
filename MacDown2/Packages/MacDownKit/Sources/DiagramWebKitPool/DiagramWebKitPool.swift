@@ -21,11 +21,13 @@ public actor DiagramWebKitPool {
     private let poolSize: Int
     private let timeout: Duration
     private let makePage: @Sendable () async throws -> DiagramHarnessPage
+    private let retirePage: @Sendable (DiagramHarnessPage) async -> Void
 
     private var slots: [DiagramHarnessPage?]
     private var busy: [Bool]
     private var waiters: [Waiter] = []
     private var constructing: [Int: Task<DiagramHarnessPage, any Error>] = [:]
+    private var retiring: [UUID: Task<Void, Never>] = [:]
     private var shutdownTask: Task<Void, Never>?
     private var closed = false
 
@@ -49,11 +51,13 @@ public actor DiagramWebKitPool {
     init(
         poolSize: Int,
         timeout: Duration,
-        makePage: @escaping @Sendable () async throws -> DiagramHarnessPage
+        makePage: @escaping @Sendable () async throws -> DiagramHarnessPage,
+        retirePage: @escaping @Sendable (DiagramHarnessPage) async -> Void = { await $0.teardown() }
     ) {
         self.poolSize = max(1, poolSize)
         self.timeout = timeout
         self.makePage = makePage
+        self.retirePage = retirePage
         slots = Array(repeating: nil, count: self.poolSize)
         busy = Array(repeating: false, count: self.poolSize)
     }
@@ -88,7 +92,8 @@ public actor DiagramWebKitPool {
         } catch {
             if error is CancellationError, let page = slots[index] {
                 slots[index] = nil
-                await page.teardown()
+                let retirement = beginRetirement(page)
+                await finishRetirement(retirement)
             }
             checkin(index)
             throw error
@@ -105,7 +110,8 @@ public actor DiagramWebKitPool {
         } catch {
             if error is CancellationError || (error as? DiagramPoolError) == .timedOut {
                 slots[index] = nil
-                await page.teardown()
+                let retirement = beginRetirement(page)
+                await finishRetirement(retirement)
             }
             checkin(index)
             throw error
@@ -128,6 +134,8 @@ public actor DiagramWebKitPool {
         }
         let pages = slots.compactMap(\.self)
         let builds = Array(constructing.values)
+        let earlierRetirements = Array(retiring.values)
+        let retire = retirePage
         constructing.removeAll()
         slots = Array(repeating: nil, count: poolSize)
         let task = Task {
@@ -135,12 +143,15 @@ public actor DiagramWebKitPool {
                 build.cancel()
             }
             for page in pages {
-                await page.teardown()
+                await retire(page)
             }
             for build in builds {
                 if case let .success(page) = await build.result {
-                    await page.teardown()
+                    await retire(page)
                 }
+            }
+            for retirement in earlierRetirements {
+                await retirement.value
             }
         }
         shutdownTask = task
@@ -179,7 +190,8 @@ public actor DiagramWebKitPool {
             throw DiagramPoolError.pageUnavailable
         }
         if Task.isCancelled {
-            await page.teardown()
+            let retirement = beginRetirement(page)
+            await finishRetirement(retirement)
             throw CancellationError()
         }
         slots[index] = page
@@ -206,6 +218,21 @@ public actor DiagramWebKitPool {
     private func cancelCheckout(_ id: UUID) {
         guard let position = waiters.firstIndex(where: { $0.id == id }) else { return }
         waiters.remove(at: position).continuation.resume(throwing: CancellationError())
+    }
+
+    /// Register retirement before removing the last slot/construction owner
+    /// across an actor suspension, so shutdown can drain that page as well.
+    private func beginRetirement(_ page: DiagramHarnessPage) -> (id: UUID, task: Task<Void, Never>) {
+        let id = UUID()
+        let retire = retirePage
+        let task = Task { await retire(page) }
+        retiring[id] = task
+        return (id, task)
+    }
+
+    private func finishRetirement(_ retirement: (id: UUID, task: Task<Void, Never>)) async {
+        await retirement.task.value
+        retiring[retirement.id] = nil
     }
 
     /// Hands the slot directly to the next waiter if one is queued (it

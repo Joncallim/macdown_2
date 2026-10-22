@@ -9,7 +9,8 @@ import Foundation
 public actor D2WebRenderer: D2DiagramRendering {
     public static let defaultMaxOutputBytes = 2 * 1024 * 1024
 
-    private var pool: DiagramWebKitPool
+    private var pool: DiagramWebKitPool?
+    private var retirement: (id: UUID, task: Task<Void, Never>)?
     private let poolSize: Int
     private let timeout: Duration
     private let maxOutputBytes: Int
@@ -34,8 +35,9 @@ public actor D2WebRenderer: D2DiagramRendering {
     /// to D2's own theming — the same disclosed, deliberate scope limit
     /// already recorded for Mermaid (issue #79).
     public func render(_ fence: D2Fence, context _: D2RenderContext) async throws -> RenderedD2Diagram {
+        let activePool = try availablePool()
         let diagram = try await withPoolErrorMapping {
-            try await pool.withPage { page in
+            try await activePool.withPage { page in
                 try await Self.render(fence, on: page)
             }
         }
@@ -47,16 +49,36 @@ public actor D2WebRenderer: D2DiagramRendering {
     }
 
     public func shutdown() async {
-        // This renderer may be reused after shutdown, but the retired pool
-        // must never accept a late waiter or construction completion.
-        let retiring = pool
-        pool = DiagramWebKitPool(
-            harnessResourceName: "harness",
-            bundle: Bundle.module,
-            poolSize: poolSize,
-            timeout: timeout
+        if retirement != nil {
+            await finishRetirement()
+            return
+        }
+        guard let retiring = pool else { return }
+        pool = nil
+        retirement = (UUID(), Task { await retiring.shutdown() })
+        await finishRetirement()
+    }
+
+    private func availablePool() throws -> DiagramWebKitPool {
+        try Task.checkCancellation()
+        guard retirement == nil else { throw D2RenderError.rendererUnavailable }
+        if let pool {
+            return pool
+        }
+        let fresh = DiagramWebKitPool(
+            harnessResourceName: "harness", bundle: Bundle.module,
+            poolSize: poolSize, timeout: timeout
         )
-        await retiring.shutdown()
+        pool = fresh
+        return fresh
+    }
+
+    private func finishRetirement() async {
+        guard let current = retirement else { return }
+        await current.task.value
+        if retirement?.id == current.id {
+            retirement = nil
+        }
     }
 
     @MainActor

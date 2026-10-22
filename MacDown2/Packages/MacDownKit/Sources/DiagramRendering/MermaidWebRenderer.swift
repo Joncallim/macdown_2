@@ -3,8 +3,8 @@ import DiagramWebKitPool
 import Foundation
 
 /// Renders Mermaid in a bounded, offscreen WebKit pool. The shared pool owns
-/// cancellation, construction and once-settled script evaluation. A new pool
-/// cannot start until shutdown has retired every page in the old generation.
+/// cancellation, construction and once-settled script evaluation. Admission
+/// closes during shutdown; a new pool starts only after the old one retires.
 public actor MermaidWebRenderer: MermaidDiagramRendering {
     public static let defaultMaxOutputBytes = 2 * 1024 * 1024
 
@@ -43,7 +43,7 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
     }
 
     public func render(_ fence: MermaidFence, context: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
-        let activePool = try await availablePool()
+        let activePool = try availablePool()
         do {
             let result = try await activePool.withPage { page in
                 try await page.evaluate(
@@ -93,9 +93,11 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
         await finishRetirement()
     }
 
-    private func availablePool() async throws -> DiagramWebKitPool {
-        await finishRetirement()
+    private func availablePool() throws -> DiagramWebKitPool {
         try Task.checkCancellation()
+        guard retirement == nil else {
+            throw MermaidRenderError.rendererUnavailable
+        }
         if let pool {
             return pool
         }

@@ -11,9 +11,15 @@ struct MermaidPoolGenerationTests {
         let (bundle, directory) = try makeHarnessBundle()
         defer { try? FileManager.default.removeItem(at: directory) }
         let pages = MermaidPageRegistry()
+        let readyPages = Mutex<[DiagramHarnessPage]>([])
+        defer { readyPages.withLock { $0 }.forEach { $0.teardown() } }
         let makePool: @Sendable () -> DiagramWebKitPool = {
             DiagramWebKitPool(poolSize: 1, timeout: .seconds(5)) {
-                let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+                let page = readyPages.withLock { queue -> DiagramHarnessPage? in
+                    guard !queue.isEmpty else { return nil }
+                    return queue.removeFirst()
+                }
+                guard let page else { throw DiagramPoolError.pageUnavailable }
                 await pages.add(page)
                 return page
             }
@@ -24,6 +30,8 @@ struct MermaidPoolGenerationTests {
             backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
         )
         for _ in 0 ..< 3 {
+            let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
+            readyPages.withLock { $0.append(page) }
             do {
                 _ = try await renderer.render(MermaidFence(source: "hold", sourceRange: 0 ..< 4), context: context)
                 Issue.record("a never-settling Mermaid evaluation completed")
@@ -32,14 +40,8 @@ struct MermaidPoolGenerationTests {
             }
             await renderer.shutdown()
             #expect(pages.activeCount == 0)
-            let diagram = try await renderer.render(
-                MermaidFence(source: "graph TD; A-->B;", sourceRange: 0 ..< 17), context: context
-            )
-            #expect(diagram.pngData == Data([1, 2, 3]))
-            await renderer.shutdown()
-            #expect(pages.activeCount == 0)
         }
-        #expect(pages.count == 6)
+        #expect(pages.count == 3)
     }
 
     @Test func aNewGenerationWaitsForHeldConstructionToRetire() async throws {
@@ -74,16 +76,22 @@ struct MermaidPoolGenerationTests {
         #expect(await oldPool.isShuttingDown)
 
         let next = Task { try await renderer.render(fence, context: context) }
-        for _ in 0 ..< 20 {
-            await Task.yield()
+        do {
+            _ = try await DiagramTimeoutRace.run(timeout: .seconds(2), timeoutError: DiagramPoolError.timedOut) {
+                try await next.value
+            }
+            Issue.record("a render entered a replacement generation before old construction retired")
+        } catch {
+            #expect(error as? MermaidRenderError == .rendererUnavailable)
         }
+        next.cancel()
         #expect(constructed.withLock { $0 } == 0)
 
         await release.fire()
         await shutdown.value
         #expect(heldPage.isTerminated)
         _ = try? await first.value
-        let diagram = try await next.value
+        let diagram = try await renderer.render(fence, context: context)
         #expect(diagram.pngData == Data([1, 2, 3]))
         #expect(constructed.withLock { $0 } == 1)
         await renderer.shutdown()
