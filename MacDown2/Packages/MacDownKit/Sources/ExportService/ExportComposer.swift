@@ -54,6 +54,22 @@ enum ExportComposer {
         engine: any ParseExecuting,
         budget: ExportResourceBudget = .standard
     ) async throws -> PreparedExportDocument {
+        try await prepareWithRoots(request: request, target: target, engine: engine, budget: budget).prepared
+    }
+
+    struct MarkedPreparation {
+        let prepared: PreparedExportDocument
+        let markedRoots: [SVGIDNamespace.MarkedRoot]
+        let markedSourceRanges: [Range<Int>]
+    }
+
+    static func prepareWithRoots(
+        request: ExportRequest,
+        target: ExportTarget,
+        engine: any ParseExecuting,
+        budget: ExportResourceBudget = .standard,
+        namespaceSVGIDs: Bool = false
+    ) async throws -> MarkedPreparation {
         let policy = policy(for: target)
         try checkSourceBudget(bytes: request.text.utf8.count, budget: budget)
 
@@ -68,7 +84,8 @@ enum ExportComposer {
 
         let output = try renderDerived(
             request: request, parsed: parsed, policy: policy,
-            assetsDirName: assetsDirName, budget: budget
+            assetsDirName: assetsDirName, budget: budget,
+            namespaceSVGIDs: namespaceSVGIDs
         )
         let (derived, rendered, resolver, leakWarnings) = (
             output.derived,
@@ -86,7 +103,7 @@ enum ExportComposer {
             policy: policy
         )
 
-        return PreparedExportDocument(
+        let prepared = PreparedExportDocument(
             title: parsed.metadata.browserTitle,
             visibleTitle: parsed.metadata.visibleTitle,
             bodyHTML: rendered.html,
@@ -97,6 +114,8 @@ enum ExportComposer {
             sourceGeneration: request.sourceGeneration,
             preservesRawHTML: policy.preservesRawHTML
         )
+        return MarkedPreparation(prepared: prepared, markedRoots: derived.markedRoots,
+                                 markedSourceRanges: derived.markedSourceRanges)
     }
 
     /// The primary destination URL for either target shape. PDF composition

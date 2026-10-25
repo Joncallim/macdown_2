@@ -17,10 +17,12 @@ extension ExportComposer {
         parsed: ParsedSource,
         policy: Policy,
         assetsDirName: String,
-        budget: ExportResourceBudget
+        budget: ExportResourceBudget,
+        namespaceSVGIDs: Bool = false
     ) throws -> DerivedRender {
         let sourceLength = request.text.utf16.count
-        var derived = composeDerived(request: request, parsed: parsed, budget: budget, sourceUTF16Length: sourceLength)
+        var derived = composeDerived(request: request, parsed: parsed, budget: budget,
+                                     sourceUTF16Length: sourceLength, namespaceSVGIDs: namespaceSVGIDs)
         var (rendered, resolver) = try render(
             derived: derived, policy: policy, assetsDirName: assetsDirName, request: request, budget: budget
         )
@@ -35,7 +37,8 @@ extension ExportComposer {
         let sorted = request.contributions.sorted { $0.sourceRange.lowerBound < $1.sourceRange.lowerBound }
         let kept = sorted.enumerated().filter { !leaked.contains($0.offset) }.map(\.element)
         derived = composeDerived(
-            request: request, parsed: parsed, budget: budget, sourceUTF16Length: sourceLength, contributions: kept
+            request: request, parsed: parsed, budget: budget, sourceUTF16Length: sourceLength,
+            contributions: kept, namespaceSVGIDs: namespaceSVGIDs
         )
         (rendered, resolver) = try render(
             derived: derived, policy: policy, assetsDirName: assetsDirName, request: request, budget: budget
@@ -53,7 +56,8 @@ extension ExportComposer {
         parsed: ParsedSource,
         budget: ExportResourceBudget,
         sourceUTF16Length: Int,
-        contributions: [ExportDerivedContribution]? = nil
+        contributions: [ExportDerivedContribution]? = nil,
+        namespaceSVGIDs: Bool = false
     ) -> DerivedContentComposer.Result {
         DerivedContentComposer.compose(
             bodyText: parsed.bodyText,
@@ -62,7 +66,9 @@ extension ExportComposer {
             contributions: contributions ?? request.contributions,
             sourceGeneration: request.sourceGeneration,
             budget: budget,
-            containerRanges: parsed.containerRanges
+            containerRanges: parsed.containerRanges,
+            recordCoordinates: namespaceSVGIDs,
+            namespaceSVGIDs: namespaceSVGIDs
         )
     }
 

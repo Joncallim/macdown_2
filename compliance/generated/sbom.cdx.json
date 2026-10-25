@@ -534,6 +534,38 @@
       "version": "0.8.0"
     },
     {
+      "bom-ref": "swiftsoup",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/scinfu/SwiftSoup"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "SwiftSoup",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/scinfu/swiftsoup@18b80329749eca5ea29fc50211dca5c7eff5bfec",
+      "type": "library",
+      "version": "2.13.9"
+    },
+    {
       "bom-ref": "swifttreesitter",
       "externalReferences": [
         {
@@ -1390,6 +1422,7 @@
         "swift-cmark",
         "swift-concurrency-extras",
         "swift-markdown",
+        "swiftsoup",
         "swifttreesitter",
         "swiftui-math",
         "swiftui-math-fonts",
@@ -1433,7 +1466,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:7a01d555-0f88-56f5-af56-6c1332cbb410",
+  "serialNumber": "urn:uuid:8538bbe2-e3fe-5a6a-ad27-c59de8edcb5d",
   "specVersion": "1.5",
   "version": 1
 }

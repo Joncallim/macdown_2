@@ -13,6 +13,11 @@ import Foundation
 /// (loading a harness into a fresh page) is the expensive part, and
 /// nothing about a single document owns a pool exclusively.
 public actor DiagramWebKitPool {
+    /// Queueing and cold WebKit navigation may outlast one diagram's script
+    /// budget. Six requests through the standard two-slot pool can wait for
+    /// two earlier five-second evaluation windows before acquiring a page.
+    public static let defaultAdmissionTimeout: Duration = .seconds(15)
+
     private struct Waiter {
         let id: UUID
         let continuation: CheckedContinuation<Int, any Error>
@@ -20,6 +25,7 @@ public actor DiagramWebKitPool {
 
     private let poolSize: Int
     private let timeout: Duration
+    private let admissionTimeout: Duration
     private let makePage: @Sendable () async throws -> DiagramHarnessPage
     private let retirePage: @Sendable (DiagramHarnessPage) async -> Void
 
@@ -39,9 +45,10 @@ public actor DiagramWebKitPool {
         harnessResourceName: String,
         bundle: Bundle,
         poolSize: Int = 2,
-        timeout: Duration = .seconds(5)
+        timeout: Duration = .seconds(5),
+        admissionTimeout: Duration? = nil
     ) {
-        self.init(poolSize: poolSize, timeout: timeout) {
+        self.init(poolSize: poolSize, timeout: timeout, admissionTimeout: admissionTimeout) {
             try await DiagramHarnessPage.make(harnessResourceName: harnessResourceName, bundle: bundle)
         }
     }
@@ -51,27 +58,31 @@ public actor DiagramWebKitPool {
     init(
         poolSize: Int,
         timeout: Duration,
+        admissionTimeout: Duration? = nil,
         makePage: @escaping @Sendable () async throws -> DiagramHarnessPage,
         retirePage: @escaping @Sendable (DiagramHarnessPage) async -> Void = { await $0.teardown() }
     ) {
         self.poolSize = max(1, poolSize)
         self.timeout = timeout
+        // A caller that deliberately raises the execution budget must not
+        // silently receive a shorter admission deadline than before.
+        self.admissionTimeout = admissionTimeout ?? max(timeout, Self.defaultAdmissionTimeout)
         self.makePage = makePage
         self.retirePage = retirePage
         slots = Array(repeating: nil, count: self.poolSize)
         busy = Array(repeating: false, count: self.poolSize)
     }
 
-    /// The acquisition deadline starts before a request waits for a slot or
-    /// constructs a page. Once acquired, evaluation has its own existing
-    /// deadline, so queued renders do not lose their entire render budget.
+    /// The separately bounded admission deadline starts before a request
+    /// waits for a slot or constructs a page. Once acquired, JavaScript
+    /// evaluation keeps its own five-second default deadline.
     /// On timeout the cancelled worker still owns its slot until cleanup;
     /// explicit caller cancellation waits for that teardown.
     public func withPage<T: Sendable>(
         _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
     ) async throws -> T {
         try await DiagramTimeoutRace.runWaitingForCancellationCleanupUntilMilestone(
-            timeout: timeout,
+            timeout: admissionTimeout,
             timeoutError: DiagramPoolError.timedOut
         ) { acquired in
             try await self.runWithPage(body, acquired: acquired)
