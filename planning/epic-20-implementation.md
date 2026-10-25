@@ -773,10 +773,15 @@ no access to any other part of the app.
 
 ## 11. Resource and performance budgets
 
-- **Render timeout: 5 seconds per diagram** (unit/package-benchmark
+- **JavaScript execution timeout: 5 seconds per diagram after a page is ready** (unit/package-benchmark
   enforced — `MermaidWebRendererTests` asserts a deliberately
   slow/hanging fixture is cut off at this bound, not left to the OS's
-  own process-level limits).
+  own process-level limits). Pool queueing and cold harness navigation have
+  a separate finite 15-second default admission deadline. Six requests in a
+  two-slot pool can legitimately wait through two earlier five-second
+  execution windows; that wait must not spend the request's own JavaScript
+  budget. Explicitly longer execution budgets also remain valid admission
+  budgets. Timeout and cancellation still retire owned pages before reuse.
 - **Output ceiling: `MermaidDiagramCache.Budget.standard.maxAggregateSVGBytes`
   applies per-entry too** — a single diagram's SVG larger than a fixed
   per-entry ceiling (proposed: 2MB; confirmed or adjusted during Slice 2
