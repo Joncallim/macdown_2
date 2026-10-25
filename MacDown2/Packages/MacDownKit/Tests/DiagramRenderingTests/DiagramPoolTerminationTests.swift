@@ -121,7 +121,11 @@ struct DiagramPoolTerminationTests {
         let page = try await DiagramHarnessPage.make(harnessResourceName: "harness", bundle: bundle)
         let constructing = DiagramPoolTestSignal()
         let release = DiagramPoolTestSignal()
-        let pool = DiagramWebKitPool(poolSize: 1, timeout: .milliseconds(100)) {
+        let pool = DiagramWebKitPool(
+            poolSize: 1,
+            timeout: .milliseconds(100),
+            admissionTimeout: .milliseconds(100)
+        ) {
             await constructing.fire()
             await release.wait()
             return page

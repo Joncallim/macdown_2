@@ -249,13 +249,19 @@ final class DiagramHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
 /// invocation shape, is genuinely identical across every renderer this
 /// app has or will add.
 public actor DiagramWebKitPool {
-    public init(poolSize: Int = 2, timeout: Duration = .seconds(5))
+    public init(poolSize: Int = 2, timeout: Duration = .seconds(5),
+                admissionTimeout: Duration? = nil)
     public func withPage<T: Sendable>(
         _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
     ) async throws -> T
     public func shutdown() async
 }
 ```
+
+The current implementation keeps the five-second default for JavaScript
+execution after page acquisition. The separately bounded default admission
+window is 15 seconds for pool queueing and cold harness navigation; an
+explicitly longer execution budget is not shortened during admission.
 
 Each language's own renderer (`D2WebRenderer`, `GraphvizWebRenderer`)
 owns one `DiagramWebKitPool` instance, its own bundled harness resource,
