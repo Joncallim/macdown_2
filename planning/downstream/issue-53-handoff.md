@@ -37,6 +37,21 @@ stop boundary for this slice: remedying it requires the shared admission,
 error-reporting and recovery policy specified below, not another decode default.
 See [reproduction and evidence](evidence/settings-53-2026-10-18/README.md).
 
+## 2026-10-25 integration disposition checkpoint
+
+The clean `integration-final` baseline
+`02ef38df8185c5f411dfc57f074ef5a7bea29384` was reconciled with the live
+issue, E17 gate, AppSettings, Themes and `MarkdownParseOptions`. The resulting
+[source-backed disposition and migration test contract](evidence/settings-53-2026-10-25/MIGRATION_CONTRACT.md)
+uses the existing machine-readable declaration record as its exhaustive map.
+It makes the current boundary explicit: six editor-field destinations are
+candidate equivalents needing final-schema and semantic/precedence evidence;
+theme aliases and owner-policy destinations still need their E23/E17 freezes;
+and no importer, preference access or writer was activated. The five formerly
+inert parser fields are no longer modelled as switches: tables, task lists and
+strikethrough are unconditional, while extended autolinks and footnotes are
+unsupported. `blockDirectives` remains the only real opt-in parser preference.
+
 ## Historical 2026-10-14 reconciliation
 
 The current source still matches the boundary above: `LegacyPreferencesDetector`
