@@ -34,6 +34,11 @@ public extension FileTreeModel {
         ) {
             throw error
         }
+        // A focus-loss commit may submit the unchanged field value. It is not
+        // a filesystem move, and must not produce a false file-exists error.
+        if newName == source.lastPathComponent {
+            return FileTreeOperationResult(url: source, isCurrent: operationIsCurrent(context))
+        }
         let destination = parent.appendingPathComponent(newName, isDirectory: sourceKind == .directory)
         try validate(context, members: [source, destination])
         do { try await mutator.move(from: source, to: destination) } catch {
