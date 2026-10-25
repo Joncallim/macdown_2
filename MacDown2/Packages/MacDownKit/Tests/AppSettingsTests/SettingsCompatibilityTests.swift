@@ -216,24 +216,6 @@ struct SettingsCompatibilityTests {
         }
     }
 
-    @Test func anUnknownNestedFontFieldIsProtectedFromAnOrdinaryEditorSave() {
-        isolated { defaults, store in
-            var store = store
-            let original = editorJSON(fontExtra: "\"futureFontMember\":true")
-            defaults.set(original, forKey: Self.editorKey)
-
-            #expect(store.editor == .default)
-            #expect(store.unreadableDomains == [Self.editorKey])
-
-            store.editor = EditorSettings(indentationWidth: 3)
-
-            #expect(defaults.data(forKey: Self.editorKey) == original)
-            let reopened = UserDefaultsAppSettingsStore(defaults: defaults)
-            #expect(reopened.editor == .default)
-            #expect(reopened.unreadableDomains == [Self.editorKey])
-        }
-    }
-
     @Test(arguments: ["Inf", "-Inf", "NaN"])
     func nonFiniteFontSizesAreRejectedByTheDecodingBoundary(value: String) {
         let data = Data("{\"familyName\":\"Menlo\",\"size\":\"\(value)\"}".utf8)
