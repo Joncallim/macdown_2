@@ -1,0 +1,21 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%lld file": {
+      "localizations": {
+        "fr": {
+          "stringUnit": { "state": "translated", "value": "%#@files@" },
+          "substitutions": {
+            "files": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": { "one": { "stringUnit": { "value": "%files fichier" } } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
