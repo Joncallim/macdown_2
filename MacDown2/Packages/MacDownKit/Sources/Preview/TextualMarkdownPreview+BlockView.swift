@@ -108,19 +108,26 @@ struct BlockView: View {
 
     @ViewBuilder
     private var secureOrLegacyText: some View {
+        let source = renderedSource
         let text = StructuredText(
-            renderedSource,
+            source,
             parser: PreviewMarkupParser(baseURL: linkResolver.baseURL, syntaxExtensions: [.math])
         )
+        // Textual's attachment overlay can retain old symbol geometry when
+        // an existing block gains or changes inline math. Remount only blocks
+        // with a possible math delimiter when their parsed input changes;
+        // the outer PreviewBlock ID stays stable for scroll position and sync.
+        let mathContentID = block.source.contains("$") ? source : ""
+        let content = text.id(mathContentID)
         if let resourceImageLoader {
             // Textual keys its attachment task only by attributed text and can publish after cancellation.
             // A new resource identity must therefore replace its complete state subtree.
-            text.id(resourceLoadID)
+            content.id(resourceLoadID)
                 .textual.imageAttachmentLoader(resourceImageLoader)
                 .textual.emojiAttachmentLoader(resourceImageLoader)
                 .textual.textSelection(.enabled)
         } else {
-            text
+            content
         }
     }
 }
