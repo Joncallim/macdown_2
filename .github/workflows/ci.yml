@@ -154,4 +154,4 @@ jobs:
         working-directory: MacDown2/Packages/MacDownKit
         env:
           MT_DIAGRAM_TRACE_PHASES: '1'
-        run: swift test --force-resolved-versions --no-parallel --jobs 1 --filter 'D2WebRendererTests|MermaidWebRendererTests|GraphvizWebRendererTests|RealSVGNamespaceTests'
+        run: swift test --force-resolved-versions --no-parallel --filter 'D2WebRendererTests|MermaidWebRendererTests|GraphvizWebRendererTests|RealSVGNamespaceTests'
