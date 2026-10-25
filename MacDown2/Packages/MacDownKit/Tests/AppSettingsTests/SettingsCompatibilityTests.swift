@@ -190,22 +190,23 @@ struct SettingsCompatibilityTests {
     }
 
     /// A schema-less historical blob cannot distinguish an additive field from
-    /// a value written by a newer schema-less build. Until every writer carries
-    /// an admitted schema version, an unknown field must not be silently lost
-    /// when an otherwise ordinary edit is saved (#53 SETTINGS-COMPAT).
-    @Test func aSchemaLessUnknownFieldSurvivesAnOrdinaryEditorSave() {
+    /// a value written by a newer schema-less build. Reject the whole blob so
+    /// an ordinary edit cannot silently discard that unknown field (#53).
+    @Test func aSchemaLessUnknownFieldIsProtectedFromAnOrdinaryEditorSave() {
         isolated { defaults, store in
             var store = store
             let original = editorJSON(extra: "\"unknownFutureField\":\"retain me\"")
             defaults.set(original, forKey: Self.editorKey)
 
-            #expect(store.editor.indentationWidth == 2)
-            #expect(store.unreadableDomains.isEmpty)
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
 
             store.editor = EditorSettings(indentationWidth: 3)
 
             #expect(defaults.data(forKey: Self.editorKey) == original)
-            #expect(UserDefaultsAppSettingsStore(defaults: defaults).editor.indentationWidth == 2)
+            let reopened = UserDefaultsAppSettingsStore(defaults: defaults)
+            #expect(reopened.editor == .default)
+            #expect(reopened.unreadableDomains == [Self.editorKey])
         }
     }
 

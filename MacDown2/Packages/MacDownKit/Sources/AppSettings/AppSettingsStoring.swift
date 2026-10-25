@@ -27,34 +27,54 @@ public extension AppSettingsStoring {
 /// five times.
 public protocol AppSettingsDomain: Codable, Equatable {
     static var defaultValue: Self { get }
+    /// Stored members this build can preserve when it writes the whole JSON
+    /// domain. Unknown members are rejected before typed decoding so a later
+    /// ordinary save cannot silently discard data from another schema.
+    static var admittedTopLevelKeys: Set<String> { get }
 }
 
 extension GeneralSettings: AppSettingsDomain {
     public static var defaultValue: Self {
         .default
     }
+
+    public static let admittedTopLevelKeys: Set<String> = ["launchBehavior"]
 }
 
 extension EditorSettings: AppSettingsDomain {
     public static var defaultValue: Self {
         .default
     }
+
+    public static let admittedTopLevelKeys: Set<String> = [
+        "font", "wrapsLines", "showsInvisibles", "showsStatusBar", "indentationWidth", "assistsEnabled",
+        "continuesMarkdownPrefixes", "completesMatchingCharacters", "convertsTabsToSpaces", "smartHome",
+        "autoIncrementOrderedLists",
+    ]
 }
 
 extension MarkdownSettings: AppSettingsDomain {
     public static var defaultValue: Self {
         .default
     }
+
+    public static let admittedTopLevelKeys: Set<String> = ["parsesBlockDirectives"]
 }
 
 extension PreviewExportSettings: AppSettingsDomain {
     public static var defaultValue: Self {
         .default
     }
+
+    public static let admittedTopLevelKeys: Set<String> = [
+        "defaultPreviewLayout", "defaultExportFormat", "defaultExportStyle",
+    ]
 }
 
 extension FormatSettings: AppSettingsDomain {
     public static var defaultValue: Self {
         .default
     }
+
+    public static let admittedTopLevelKeys: Set<String> = ["defaultEncodingForNewDocuments"]
 }

@@ -72,10 +72,17 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
     /// ordinary writes. The first unreadable Data backup is retained for compatibility; the primary is also preserved.
     nonisolated static let supportedSchemaVersion = 1
 
-    fileprivate nonisolated static func decode<T: Decodable>(_: T.Type, from data: Data) -> T? {
+    fileprivate nonisolated static func decode<T: AppSettingsDomain>(_: T.Type, from data: Data) -> T? {
         guard let object = try? JSONSerialization.jsonObject(with: data),
               let object = object as? [String: Any]
         else { return nil }
+
+        // A whole-domain save serializes only T's known fields. Treat an
+        // unadmitted member as unreadable rather than accepting it and
+        // silently dropping it on the next ordinary save. `schemaVersion` is
+        // optional because the historical compatible blobs were schema-less.
+        let admittedKeys = T.admittedTopLevelKeys.union(["schemaVersion"])
+        guard Set(object.keys).isSubset(of: admittedKeys) else { return nil }
 
         if let declared = object["schemaVersion"] {
             guard isSupportedSchemaVersion(declared) else { return nil }
