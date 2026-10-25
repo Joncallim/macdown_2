@@ -20,6 +20,7 @@ public actor DiagramWebKitPool {
 
     private let poolSize: Int
     private let timeout: Duration
+    private let diagnosticName: String
     private let makePage: @Sendable () async throws -> DiagramHarnessPage
     private let retirePage: @Sendable (DiagramHarnessPage) async -> Void
 
@@ -41,7 +42,8 @@ public actor DiagramWebKitPool {
         poolSize: Int = 2,
         timeout: Duration = .seconds(5)
     ) {
-        self.init(poolSize: poolSize, timeout: timeout) {
+        let diagnosticName = "\(bundle.bundleURL.lastPathComponent)/\(harnessResourceName)"
+        self.init(poolSize: poolSize, timeout: timeout, diagnosticName: diagnosticName) {
             try await DiagramHarnessPage.make(harnessResourceName: harnessResourceName, bundle: bundle)
         }
     }
@@ -51,11 +53,13 @@ public actor DiagramWebKitPool {
     init(
         poolSize: Int,
         timeout: Duration,
+        diagnosticName: String = "injected",
         makePage: @escaping @Sendable () async throws -> DiagramHarnessPage,
         retirePage: @escaping @Sendable (DiagramHarnessPage) async -> Void = { await $0.teardown() }
     ) {
         self.poolSize = max(1, poolSize)
         self.timeout = timeout
+        self.diagnosticName = diagnosticName
         self.makePage = makePage
         self.retirePage = retirePage
         slots = Array(repeating: nil, count: self.poolSize)
@@ -70,19 +74,31 @@ public actor DiagramWebKitPool {
     public func withPage<T: Sendable>(
         _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T
     ) async throws -> T {
-        try await DiagramTimeoutRace.runWaitingForCancellationCleanupUntilMilestone(
-            timeout: timeout,
-            timeoutError: DiagramPoolError.timedOut
-        ) { acquired in
-            try await self.runWithPage(body, acquired: acquired)
+        let requestID = UUID().uuidString
+        let started = ContinuousClock.now
+        trace("\(requestID) admission start")
+        do {
+            let result = try await DiagramTimeoutRace.runWaitingForCancellationCleanupUntilMilestone(
+                timeout: timeout,
+                timeoutError: DiagramPoolError.timedOut
+            ) { acquired in
+                try await self.runWithPage(body, acquired: acquired, requestID: requestID)
+            }
+            trace("\(requestID) completed after \(started.duration(to: .now))")
+            return result
+        } catch {
+            trace("\(requestID) ended with \(error) after \(started.duration(to: .now))")
+            throw error
         }
     }
 
     private func runWithPage<T: Sendable>(
         _ body: @escaping @Sendable (DiagramHarnessPage) async throws -> T,
-        acquired: @Sendable () -> Void
+        acquired: @Sendable () -> Void,
+        requestID: String
     ) async throws -> T {
         let index = try await checkout()
+        trace("\(requestID) checkout complete at slot \(index)")
         let page: DiagramHarnessPage
         do {
             try Task.checkCancellation()
@@ -99,6 +115,7 @@ public actor DiagramWebKitPool {
             throw error
         }
         acquired()
+        trace("\(requestID) page acquired; evaluation starts")
         do {
             let result = try await DiagramTimeoutRace.run(
                 timeout: timeout,
@@ -108,6 +125,7 @@ public actor DiagramWebKitPool {
             checkin(index)
             return result
         } catch {
+            trace("\(requestID) evaluation ended with \(error)")
             if error is CancellationError || (error as? DiagramPoolError) == .timedOut {
                 slots[index] = nil
                 let retirement = beginRetirement(page)
@@ -249,5 +267,12 @@ public actor DiagramWebKitPool {
             return
         }
         busy[index] = false
+    }
+
+    private func trace(_ event: String) {
+        #if DEBUG
+            guard ProcessInfo.processInfo.environment["MT_DIAGRAM_TRACE_PHASES"] == "1" else { return }
+            FileHandle.standardError.write(Data("[diagram-phase] \(diagnosticName) \(event)\n".utf8))
+        #endif
     }
 }
