@@ -81,6 +81,18 @@ class LocalizationInventoryTests(unittest.TestCase):
                 with self.assertRaisesRegex(subject.CatalogError, shape):
                     subject.inventory(repo)
 
+    def test_substitution_arg_num_must_be_a_positive_non_boolean_integer(self):
+        for fixture in ["malformed-argnum-true.json", "malformed-argnum-zero.json", "malformed-argnum-negative.json"]:
+            with self.subTest(fixture=fixture):
+                with self.assertRaisesRegex(subject.CatalogError, "argNum must be a positive integer"):
+                    subject.inventory(self.make_repo(self.fixture(fixture)))
+
+    def test_printf_position_zero_is_rejected_in_source_and_translation(self):
+        for fixture in ["zero-position-source.json", "zero-position-translation.json"]:
+            with self.subTest(fixture=fixture):
+                with self.assertRaisesRegex(subject.CatalogError, "positions are 1-based"):
+                    subject.validate(self.make_repo(self.fixture(fixture)))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,7 +5,7 @@
       "localizations": {
         "fr": {
           "stringUnit": { "value": "Bonjour" },
-          "substitutions": { "arg1": { "variations": [] } }
+          "substitutions": { "arg1": { "argNum": 1, "formatSpecifier": "@", "variations": [] } }
         }
       }
     }

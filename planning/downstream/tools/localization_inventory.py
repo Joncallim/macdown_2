@@ -62,6 +62,11 @@ def load_catalog(path: Path) -> dict[str, Any]:
             for name, substitution in substitutions.items():
                 if not isinstance(substitution, dict):
                     raise CatalogError(f"{path}: {key!r}:{locale}: substitution {name!r} is not an object")
+                arg_num = substitution.get("argNum")
+                if type(arg_num) is not int or arg_num < 1:
+                    raise CatalogError(f"{path}: {key!r}:{locale}: substitution {name!r} argNum must be a positive integer")
+                if not isinstance(substitution.get("formatSpecifier"), str):
+                    raise CatalogError(f"{path}: {key!r}:{locale}: substitution {name!r} formatSpecifier is not a string")
                 variations = substitution.get("variations", {})
                 if not isinstance(variations, dict):
                     raise CatalogError(f"{path}: {key!r}:{locale}: substitution {name!r} variations is not an object")
@@ -86,6 +91,8 @@ def printf_signature(value: str) -> list[dict[str, Any]]:
         match = PRINTF.match(value, index)
         if match:
             position = int(match.group("position")) if match.group("position") else next_position
+            if position < 1:
+                raise CatalogError("printf argument positions are 1-based; %0$ is invalid")
             if match.group("position") is None:
                 next_position += 1
             signature.append({"position": position, "type": match.group("type")})
