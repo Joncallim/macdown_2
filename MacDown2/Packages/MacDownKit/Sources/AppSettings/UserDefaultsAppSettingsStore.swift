@@ -81,8 +81,7 @@ public struct UserDefaultsAppSettingsStore: AppSettingsStoring {
         // unadmitted member as unreadable rather than accepting it and
         // silently dropping it on the next ordinary save. `schemaVersion` is
         // optional because the historical compatible blobs were schema-less.
-        let admittedKeys = T.admittedTopLevelKeys.union(["schemaVersion"])
-        guard Set(object.keys).isSubset(of: admittedKeys) else { return nil }
+        guard T.admitsStoredObject(object) else { return nil }
 
         if let declared = object["schemaVersion"] {
             guard isSupportedSchemaVersion(declared) else { return nil }

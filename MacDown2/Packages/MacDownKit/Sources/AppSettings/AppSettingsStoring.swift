@@ -31,6 +31,13 @@ public protocol AppSettingsDomain: Codable, Equatable {
     /// domain. Unknown members are rejected before typed decoding so a later
     /// ordinary save cannot silently discard data from another schema.
     static var admittedTopLevelKeys: Set<String> { get }
+    static func admitsStoredObject(_ object: [String: Any]) -> Bool
+}
+
+public extension AppSettingsDomain {
+    static func admitsStoredObject(_ object: [String: Any]) -> Bool {
+        object.keys.allSatisfy { admittedTopLevelKeys.contains($0) || $0 == "schemaVersion" }
+    }
 }
 
 extension GeneralSettings: AppSettingsDomain {
@@ -51,6 +58,14 @@ extension EditorSettings: AppSettingsDomain {
         "continuesMarkdownPrefixes", "completesMatchingCharacters", "convertsTabsToSpaces", "smartHome",
         "autoIncrementOrderedLists",
     ]
+
+    public static func admitsStoredObject(_ object: [String: Any]) -> Bool {
+        guard object.keys.allSatisfy({ admittedTopLevelKeys.contains($0) || $0 == "schemaVersion" }) else {
+            return false
+        }
+        guard let fontObject = object["font"] as? [String: Any] else { return true }
+        return FontDescriptor.admitsStoredObject(fontObject)
+    }
 }
 
 extension MarkdownSettings: AppSettingsDomain {
