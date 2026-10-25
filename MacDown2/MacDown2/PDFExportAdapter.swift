@@ -202,13 +202,19 @@ enum PDFExportAdapter {
         operation.printInfo = printInfo(savingTo: url)
     }
 
-    private static func hasUsablePDF(at url: URL, sourceHasContent: Bool) throws -> Bool {
+    static func hasUsablePDF(at url: URL, sourceHasContent: Bool) throws -> Bool {
         guard let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? NSNumber,
               size.int64Value > 0
         else { return false }
         guard size.int64Value <= Int64(maxPDFBytes) else { throw PDFExportError.pdfTooLarge }
-        guard let data = try? Data(contentsOf: url) else { return false }
-        return isPrintablePDF(data, sourceHasContent: sourceHasContent)
+        guard let data = try? Data(contentsOf: url),
+              let checked = PDFCrossReferenceIntegrity.normalized(data),
+              isPrintablePDF(checked, sourceHasContent: sourceHasContent) else { return false }
+        if checked != data {
+            try Task.checkCancellation()
+            try checked.write(to: url, options: .atomic)
+        }
+        return true
     }
 
     /// A syntactically valid PDF can still contain only empty graphics-state
