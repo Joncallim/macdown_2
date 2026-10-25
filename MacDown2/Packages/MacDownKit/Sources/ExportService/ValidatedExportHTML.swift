@@ -1,0 +1,76 @@
+import CryptoKit
+import Foundation
+
+/// A final, marker-free HTML byte string accepted for one frozen source and
+/// destination. Only ExportService can construct it; callers cannot turn an
+/// arbitrary PreparedExportDocument into a publication receipt.
+public struct ValidatedExportHTML: Sendable {
+    /// Owned UTF-8 bytes consumed unchanged by the file or PDF WebKit writer.
+    public let utf8: Data
+    public let sourceGeneration: UInt
+
+    let target: ExportTarget
+    let sourceSHA256: String
+    let bytesSHA256: String
+    let resources: [ExportResource]
+    let assetsDirectoryName: String
+    let diagnostics: [ExportDiagnostic]
+
+    init(publication: SVGAssemblyOwnership.Publication, prepared: PreparedExportDocument,
+         target: ExportTarget, sourceText: String, diagnostics: [ExportDiagnostic]? = nil) {
+        utf8 = Data(publication.html.utf8)
+        sourceGeneration = prepared.sourceGeneration
+        self.target = target
+        sourceSHA256 = Self.sha256(Data(sourceText.utf8))
+        bytesSHA256 = Self.sha256(utf8)
+        resources = prepared.manifest.resources
+        assetsDirectoryName = prepared.assetsDirectoryName
+        self.diagnostics = diagnostics ?? prepared.diagnostics
+    }
+
+    func matches(target: ExportTarget, sourceText: String, generation: UInt) -> Bool {
+        self.target == target && sourceGeneration == generation
+            && sourceSHA256 == Self.sha256(Data(sourceText.utf8))
+            && bytesSHA256 == Self.sha256(utf8)
+    }
+
+    func bytesAreIntact() -> Bool {
+        bytesSHA256 == Self.sha256(utf8)
+    }
+
+    public func isForPDF(at url: URL) -> Bool {
+        target == .pdf(url: url) && bytesAreIntact()
+    }
+
+    private static func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// App-owned document lifetime. Revocation and the final synchronous primary
+/// promotion share one lock, so a close cannot slip between the last identity
+/// check and publication. Cancellation is checked within that cutoff too.
+public final class ExportLifetimeLease: @unchecked Sendable {
+    private let lock = NSLock()
+    private var active = true
+
+    public init() {}
+
+    public func revoke() {
+        lock.withLock { active = false }
+    }
+
+    public func checkActive() throws {
+        try lock.withLock {
+            guard active else { throw CancellationError() }
+        }
+    }
+
+    public func withPublicationCutoff<T>(_ body: () throws -> T) throws -> T {
+        try lock.withLock {
+            guard active else { throw CancellationError() }
+            try Task.checkCancellation()
+            return try body()
+        }
+    }
+}
