@@ -14,9 +14,14 @@ import Foundation
 enum DerivedContentComposer {
     struct Result {
         let splicedBody: String
+        /// Requested only by generated-heading analysis. Ordinary export
+        /// does not allocate a map or hash the body a second time.
+        let coordinates: SplicedBodySourceMap?
         let customNodes: [CMarkGFM.CustomNodeSpec]
         let diagnostics: [ExportDiagnostic]
         let sentinelSuffix: String
+        let markedRoots: [SVGIDNamespace.MarkedRoot]
+        let markedSourceRanges: [Range<Int>]
     }
 
     /// One accepted replacement: a body-relative UTF-16 range and the sentinel
@@ -25,6 +30,10 @@ enum DerivedContentComposer {
         let range: Range<Int>
         let sentinel: String
         let isBlock: Bool
+
+        var renderedText: String {
+            isBlock ? "\n\n\(sentinel)\n\n" : sentinel
+        }
     }
 
     /// Immutable inputs shared by every contribution validation in one compose
@@ -41,6 +50,7 @@ enum DerivedContentComposer {
         /// Source-coordinate UTF-16 ranges of every block quote and list item.
         let containerRanges: [Range<Int>]
         let bodyText: NSString
+        let namespaceSVGIDs: Bool
 
         /// Whether the contributed range opens with a code-fence line (after any quote/list/indent prefix).
         func startsFence(_ bodyRange: Range<Int>) -> Bool {
@@ -108,10 +118,18 @@ enum DerivedContentComposer {
         contributions: [ExportDerivedContribution],
         sourceGeneration: UInt,
         budget: ExportResourceBudget = .standard,
-        containerRanges: [Range<Int>] = []
+        containerRanges: [Range<Int>] = [],
+        recordCoordinates: Bool = false,
+        namespaceSVGIDs: Bool = false
     ) -> Result {
         guard !contributions.isEmpty else {
-            return Result(splicedBody: bodyText, customNodes: [], diagnostics: [], sentinelSuffix: "")
+            return Result(
+                splicedBody: bodyText,
+                coordinates: recordCoordinates
+                    ? SplicedBodySourceMap(sourceText: bodyText, renderedText: bodyText, splices: []) : nil,
+                customNodes: [], diagnostics: [], sentinelSuffix: "",
+                markedRoots: [], markedSourceRanges: []
+            )
         }
 
         let context = ValidationContext(
@@ -124,7 +142,8 @@ enum DerivedContentComposer {
             sentinelSuffix: sentinelSuffix(notCollidingWith: bodyText),
             budget: budget,
             containerRanges: containerRanges,
-            bodyText: bodyText as NSString
+            bodyText: bodyText as NSString,
+            namespaceSVGIDs: namespaceSVGIDs
         )
 
         let sorted = contributions.sorted { $0.sourceRange.lowerBound < $1.sourceRange.lowerBound }
@@ -133,11 +152,16 @@ enum DerivedContentComposer {
             plan.consider(contribution, index: index, context: context)
         }
 
+        let splicedBody = splice(plan.splices, into: bodyText)
         return Result(
-            splicedBody: splice(plan.splices, into: bodyText),
+            splicedBody: splicedBody,
+            coordinates: recordCoordinates
+                ? SplicedBodySourceMap(sourceText: bodyText, renderedText: splicedBody, splices: plan.splices) : nil,
             customNodes: plan.customNodes,
             diagnostics: plan.diagnostics,
-            sentinelSuffix: context.sentinelSuffix
+            sentinelSuffix: context.sentinelSuffix,
+            markedRoots: plan.markedRoots,
+            markedSourceRanges: plan.markedSourceRanges
         )
     }
 
@@ -221,7 +245,7 @@ enum DerivedContentComposer {
 
         for entry in splices {
             appendUnits(upTo: entry.range.lowerBound)
-            result += entry.isBlock ? "\n\n\(entry.sentinel)\n\n" : entry.sentinel
+            result += entry.renderedText
             // Jump past the replaced range; its characters are not emitted.
             cursor = min(max(entry.range.upperBound, cursor), units.count)
         }
@@ -237,6 +261,8 @@ private struct DerivedContentPlan {
     var diagnostics: [ExportDiagnostic] = []
     var customNodes: [CMarkGFM.CustomNodeSpec] = []
     var splices: [DerivedContentComposer.Splice] = []
+    var markedRoots: [SVGIDNamespace.MarkedRoot] = []
+    var markedSourceRanges: [Range<Int>] = []
 
     private var previousBodyUpperBound = 0
     private var placedCount = 0
@@ -283,9 +309,23 @@ private struct DerivedContentPlan {
             index: index,
             suffix: context.sentinelSuffix
         )
+        let sanitized = DerivedHTMLSanitizer.sanitized(contribution.html)
+        var preparedHTML = sanitized
+        if context.namespaceSVGIDs, sanitized.lowercased().contains("<svg") {
+            guard let namespaced = SVGIDNamespace.rewriteMarked(sanitized, occurrence: index) else {
+                diagnostics.append(ExportDiagnostic(
+                    severity: .error,
+                    message: "derived SVG identifiers could not be safely isolated; authored source preserved"
+                ))
+                return
+            }
+            preparedHTML = namespaced.html
+            markedRoots.append(contentsOf: namespaced.roots)
+            markedSourceRanges.append(contribution.sourceRange)
+        }
         customNodes.append(CMarkGFM.CustomNodeSpec(sentinel: sentinel,
                                                    isBlock: isBlock,
-                                                   html: DerivedHTMLSanitizer.sanitized(contribution.html)))
+                                                   html: preparedHTML))
         splices.append(DerivedContentComposer.Splice(range: bodyRange, sentinel: sentinel, isBlock: isBlock))
         previousBodyUpperBound = bodyRange.upperBound
         placedCount += 1

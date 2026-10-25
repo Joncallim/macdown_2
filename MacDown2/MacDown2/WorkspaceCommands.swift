@@ -115,6 +115,17 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("e", modifiers: [.command, .shift])
             .disabled(coordinator?.exportCoordinator.canExportActiveDocument != true)
+
+            #if ISSUE117_NATIVE_ACCEPTANCE
+                Button("Validate Export… (#117 Test Build)") {
+                    Issue117NativeAcceptance.run(from: coordinator)
+                }
+                .disabled(coordinator?.exportCoordinator.canExportActiveDocument != true)
+
+                Button("Show #117 Acceptance Log") {
+                    Issue117NativeAcceptance.showLog()
+                }
+            #endif
         }
 
         CommandMenu("Folder") {

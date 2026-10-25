@@ -603,6 +603,33 @@
       "notes": "COPYING bundles several notices (cmark BSD-2-Clause plus MIT-licensed components and test data). It is reproduced in full."
     },
     {
+      "id": "swiftsoup",
+      "name": "SwiftSoup",
+      "kind": "swiftpm",
+      "version": "2.13.9",
+      "upstream": "https://github.com/scinfu/SwiftSoup",
+      "revision": "18b80329749eca5ea29fc50211dca5c7eff5bfec",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2009-2025 Jonathan Hedley",
+        "Copyright (c) 2016-2025 Nabil Chatbi (Swift port)"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/swiftsoup--LICENSE.txt",
+          "sha256": "6d9f121428f5571c4e20362fa91186c552f82648c0161dacc12e239b1544d49d",
+          "upstream": "https://github.com/scinfu/SwiftSoup",
+          "upstream_revision": "18b80329749eca5ea29fc50211dca5c7eff5bfec",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": ["LC-01", "LC-07"],
+      "manifest_requirement": {"exact": "2.13.9"},
+      "evidence": "Pinned SwiftSoup 2.13.9 at immutable revision 18b80329749eca5ea29fc50211dca5c7eff5bfec for bounded emitted-HTML anchor analysis (#117). The copied MIT licence matches the clean locked package checkout byte for byte. The preliminary parser/WebKit concordance corpus is retained at GitHub/_cleanup-archive/issue117-anchor-parser-probe-2026-10-21; production target validation still requires its own regression and Release evidence."
+    },
+    {
       "id": "swift-concurrency-extras",
       "name": "swift-concurrency-extras",
       "kind": "swiftpm",

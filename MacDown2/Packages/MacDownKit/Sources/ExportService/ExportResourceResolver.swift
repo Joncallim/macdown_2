@@ -212,7 +212,7 @@ final class ExportResourceResolver {
     }
 
     private func companionReference(for resource: ExportResource) -> String {
-        "\(assetsDirectoryName)/\(resource.identity.fileName)"
+        "\(ExportHTMLWriter.percentEncodedCompanionComponent(assetsDirectoryName))/\(resource.identity.fileName)"
     }
 
     /// The filesystem-relative path an authored reference points at: query and

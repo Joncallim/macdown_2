@@ -225,10 +225,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Launch argument parsing
 
     /// The arguments the test hooks (`-UITesting`, `-sessionDir`, `-openFiles`, `-openFolder`) are read from.
-    /// Debug builds only: a release build ignores them, so they cannot redirect the session and recovery
-    /// directories, disable the single-instance guard or force-open paths.
+    /// Debug builds only, except the separately flagged and explicitly launched
+    /// #117 native acceptance build. An ordinary Release build ignores them,
+    /// so they cannot redirect session/recovery directories or force-open paths.
     static var launchArguments: [String] {
-        #if DEBUG
+        #if ISSUE117_NATIVE_ACCEPTANCE
+            let args = ProcessInfo.processInfo.arguments
+            precondition(
+                args.contains("-Issue117Acceptance") && args.contains("-UITesting")
+                    && args.contains("-sessionDir") && args.contains("-openFiles"),
+                "Launch the isolated #117 acceptance build with its retained launcher"
+            )
+            return args
+        #elseif DEBUG
             ProcessInfo.processInfo.arguments
         #else
             []

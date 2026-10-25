@@ -35,6 +35,7 @@ This file is generated from `compliance/inventory.json` by
 | swift-cmark (cmark-gfm) | 0.8.0 | BSD-2-Clause AND MIT |
 | swift-concurrency-extras | 1.4.1 | MIT |
 | swift-markdown | 0.8.0 | Apache-2.0 |
+| SwiftSoup | 2.13.9 | MIT |
 | SwiftTreeSitter | main | BSD-3-Clause |
 | SwiftUIMath | 0.1.0 | MIT |
 | Textual | d3ddabb | MIT |
@@ -2513,6 +2514,44 @@ https://github.com/apple/swift-cmark.
     * https://opensource.org/licenses/BSD-2-Clause
   * HOMEPAGE:
     * https://github.com/github/cmark-gfm
+```
+
+---
+
+## SwiftSoup
+
+- Version: 2.13.9
+- Upstream: https://github.com/scinfu/SwiftSoup
+- Revision: `18b80329749eca5ea29fc50211dca5c7eff5bfec`
+- Licence: MIT
+- Copyright (c) 2009-2025 Jonathan Hedley
+- Copyright (c) 2016-2025 Nabil Chatbi (Swift port)
+
+### swiftsoup--LICENSE.txt
+
+```text
+The MIT License
+
+Copyright (c) 2009-2025 Jonathan Hedley <https://jsoup.org/>
+Copyright (c) 2016-2025 Nabil Chatbi (Swift port)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ---

@@ -27,9 +27,16 @@ jobs:
           # Runner images can ship an untrusted tap (e.g. aws/tap) that makes
           # Homebrew refuse to install; untap defensively.
           brew untap aws/tap 2>/dev/null || true
-          brew install swiftlint swiftformat
+          brew install swiftlint
+          # SwiftFormat's unpinned Homebrew formula can change formatting rules
+          # without a source change. Use the version that formatted this tree.
+          curl -fsSLo "$RUNNER_TEMP/swiftformat.zip" \
+            https://github.com/nicklockwood/SwiftFormat/releases/download/0.63.1/swiftformat.zip
+          echo '385ef1a263ba28685157b98c5536b9c9105e124518f28b7ef8a2bee4b167eaeb  '"$RUNNER_TEMP/swiftformat.zip" | shasum -a 256 -c -
+          unzip -p "$RUNNER_TEMP/swiftformat.zip" swiftformat > "$RUNNER_TEMP/swiftformat"
+          chmod +x "$RUNNER_TEMP/swiftformat"
       - name: SwiftFormat (lint)
-        run: swiftformat --lint MacDown2
+        run: '"$RUNNER_TEMP/swiftformat" --lint MacDown2'
       - name: SwiftLint (strict)
         run: swiftlint lint --strict MacDown2
 
