@@ -1,3 +1,4 @@
+import AppKit
 @testable import D2Rendering
 import DiagramsD2
 import Foundation
@@ -29,6 +30,47 @@ struct D2WebRendererTests {
         // <foreignObject>, which is exactly why RenderedD2Diagram carries
         // no pngData field — this assertion keeps that assumption honest.
         #expect(!diagram.svg.contains("foreignObject"))
+        await renderer.shutdown()
+    }
+
+    @Test func bundledBackgroundDecodesWhiteInAppKit() async throws {
+        let renderer = D2WebRenderer()
+        let diagram = try await renderer.render(Self.fence("a -> b"), context: Self.context)
+        let image = try #require(NSImage(data: Data(diagram.svg.utf8)))
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 32,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+            isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        ))
+        let graphics = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = graphics
+        NSColor.black.setFill()
+        NSRect(x: 0, y: 0, width: 32, height: 32).fill()
+        image.draw(in: NSRect(x: 0, y: 0, width: 32, height: 32))
+        NSGraphicsContext.restoreGraphicsState()
+        let corner = try #require(bitmap.colorAt(x: 1, y: 1)?.usingColorSpace(.deviceRGB))
+        #expect(corner.redComponent > 0.95)
+        #expect(corner.greenComponent > 0.95)
+        #expect(corner.blueComponent > 0.95)
+        await renderer.shutdown()
+    }
+
+    @Test func opaqueCanvasPreservesAuthoredDiagramColor() async throws {
+        let renderer = D2WebRenderer()
+        let dark = D2RenderContext(
+            foregroundRed: 1, foregroundGreen: 1, foregroundBlue: 1,
+            backgroundRed: 0, backgroundGreen: 0, backgroundBlue: 0
+        )
+        let diagram = try await renderer.render(
+            Self.fence("a: { style.fill: \"#123456\" }\na -> b: edge label"), context: dark
+        )
+        #expect(diagram.svg.range(
+            of: ##"<svg[^>]*><rect[^>]*fill="#FFFFFF""##,
+            options: [.regularExpression]
+        ) != nil)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#123456"))
+        #expect(diagram.svg.contains("edge label"))
         await renderer.shutdown()
     }
 
