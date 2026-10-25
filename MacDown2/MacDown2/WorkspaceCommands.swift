@@ -92,13 +92,13 @@ struct WorkspaceCommands: Commands {
                 coordinator?.saveKeyDocument()
             }
             .keyboardShortcut("s", modifiers: .command)
-            .disabled(coordinator?.keyModel?.canSave != true)
+            .disabled(coordinator?.canSaveCurrentDocument != true)
 
             Button("Save As…") {
                 coordinator?.saveKeyDocumentAs()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
-            .disabled(coordinator?.keyModel?.hasActiveDocument != true)
+            .disabled(coordinator?.canSaveAsCurrentDocument != true)
 
             encodingMenus
 

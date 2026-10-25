@@ -31,10 +31,13 @@ struct ExportCoordinator {
     /// How many diagnostics one alert lists before it summarises the rest.
     private let diagnosticsShownAtMost = 6
 
-    /// Whether the key window's active document is exportable Markdown and
+    /// Whether the selected document is exportable Markdown and
     /// does not already have an export in flight.
     var canExportActiveDocument: Bool {
-        guard let model = coordinator.keyModel, model.activeDocument?.format.id == "markdown" else {
+        _ = coordinator.commandStateRevision
+        guard let model = coordinator.currentCommandController(
+            keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow
+        )?.model, model.activeDocument?.format.id == "markdown" else {
             return false
         }
         return !coordinator.isExporting(model)
@@ -48,7 +51,9 @@ struct ExportCoordinator {
     /// set for the whole call including panel presentation — cancelling the
     /// panel already exits through the same `defer`.
     func exportActiveDocument() async {
-        guard let model = coordinator.keyModel, let document = model.activeDocument else { return }
+        guard let model = coordinator.currentCommandController(
+            keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow
+        )?.model, let document = model.activeDocument else { return }
         guard document.format.id == "markdown" else { return }
         guard !coordinator.isExporting(model) else { return }
 
