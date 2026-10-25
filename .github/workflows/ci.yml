@@ -36,7 +36,7 @@ jobs:
           unzip -p "$RUNNER_TEMP/swiftformat.zip" swiftformat > "$RUNNER_TEMP/swiftformat"
           chmod +x "$RUNNER_TEMP/swiftformat"
       - name: SwiftFormat (lint)
-        run: "$RUNNER_TEMP/swiftformat" --lint MacDown2
+        run: '"$RUNNER_TEMP/swiftformat" --lint MacDown2'
       - name: SwiftLint (strict)
         run: swiftlint lint --strict MacDown2
 
