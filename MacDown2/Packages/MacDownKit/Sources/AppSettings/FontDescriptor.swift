@@ -23,6 +23,15 @@ public struct FontDescriptor: Codable, Sendable, Equatable {
     /// value >= 2^63). An out-of-range blob is unreadable and preserved verbatim like any other invalid one.
     public static let maximumSupportedSize: Double = 1000
 
+    /// The persisted font descriptor is rewritten with these two fields only.
+    /// Reject an extra member before decoding so a normal editor save cannot
+    /// silently discard a value written by another schema.
+    static let admittedStoredKeys: Set<String> = ["familyName", "size"]
+
+    static func admitsStoredObject(_ object: [String: Any]) -> Bool {
+        object.keys.allSatisfy(admittedStoredKeys.contains)
+    }
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let familyName = try container.decode(String.self, forKey: .familyName)
