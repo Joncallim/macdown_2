@@ -117,7 +117,7 @@ struct BlockView: View {
         // an existing block gains or changes inline math. Remount only blocks
         // with a possible math delimiter when their parsed input changes;
         // the outer PreviewBlock ID stays stable for scroll position and sync.
-        let mathContentID = block.source.contains("$") ? source : ""
+        let mathContentID = Self.inlineMathContentID(blockSource: block.source, renderedSource: source)
         let content = text.id(mathContentID)
         if let resourceImageLoader {
             // Textual keys its attachment task only by attributed text and can publish after cancellation.
@@ -129,6 +129,10 @@ struct BlockView: View {
         } else {
             content
         }
+    }
+
+    static func inlineMathContentID(blockSource: String, renderedSource: String) -> String {
+        blockSource.contains("$") ? renderedSource : ""
     }
 }
 
