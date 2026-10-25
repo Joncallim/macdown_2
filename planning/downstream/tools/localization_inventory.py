@@ -13,6 +13,7 @@ import argparse
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 from typing import Any
 
@@ -39,24 +40,59 @@ def load_catalog(path: Path) -> dict[str, Any]:
         raise CatalogError(f"{path}: malformed JSON: {error}") from error
     if not isinstance(value, dict) or not isinstance(value.get("strings"), dict):
         raise CatalogError(f"{path}: expected an object with a strings object")
+    for key, entry in value["strings"].items():
+        if not isinstance(entry, dict):
+            raise CatalogError(f"{path}: {key!r} is not a string entry")
+        if "comment" in entry and not isinstance(entry["comment"], str):
+            raise CatalogError(f"{path}: {key!r} comment is not a string")
+        localizations = entry.get("localizations", {})
+        if not isinstance(localizations, dict):
+            raise CatalogError(f"{path}: {key!r} localizations is not an object")
+        for locale, localization in localizations.items():
+            if not isinstance(localization, dict):
+                raise CatalogError(f"{path}: {key!r}:{locale}: localization is not an object")
+            unit = localization.get("stringUnit")
+            if unit is not None and not isinstance(unit, dict):
+                raise CatalogError(f"{path}: {key!r}:{locale}: stringUnit is not an object")
+            if isinstance(unit, dict) and "value" in unit and not isinstance(unit["value"], str):
+                raise CatalogError(f"{path}: {key!r}:{locale}: stringUnit.value is not a string")
+            substitutions = localization.get("substitutions", {})
+            if not isinstance(substitutions, dict):
+                raise CatalogError(f"{path}: {key!r}:{locale}: substitutions is not an object")
+            for name, substitution in substitutions.items():
+                if not isinstance(substitution, dict):
+                    raise CatalogError(f"{path}: {key!r}:{locale}: substitution {name!r} is not an object")
+                variations = substitution.get("variations", {})
+                if not isinstance(variations, dict):
+                    raise CatalogError(f"{path}: {key!r}:{locale}: substitution {name!r} variations is not an object")
+                plural = variations.get("plural", {})
+                if not isinstance(plural, dict):
+                    raise CatalogError(f"{path}: {key!r}:{locale}: substitution {name!r} plural variations is not an object")
+                for category, variant in plural.items():
+                    if not isinstance(variant, dict):
+                        raise CatalogError(f"{path}: {key!r}:{locale}: plural {name!r}/{category!r} is not an object")
     return value
 
 
-def printf_signature(value: str) -> list[str]:
-    """Return printf argument types in argument order; escaped %% is ignored."""
-    signature: list[str] = []
+def printf_signature(value: str) -> list[dict[str, Any]]:
+    """Return canonical printf argument position/type evidence; ignore escaped %%."""
+    signature: list[dict[str, Any]] = []
     index = 0
+    next_position = 1
     while index < len(value):
         if value[index:index + 2] == "%%":
             index += 2
             continue
         match = PRINTF.match(value, index)
         if match:
-            signature.append(match.group("type"))
+            position = int(match.group("position")) if match.group("position") else next_position
+            if match.group("position") is None:
+                next_position += 1
+            signature.append({"position": position, "type": match.group("type")})
             index = match.end()
         else:
             index += 1
-    return signature
+    return sorted(signature, key=lambda argument: (argument["position"], argument["type"]))
 
 
 def catalog_target(repo: Path, catalog: Path) -> tuple[str, str, Path | None]:
@@ -76,19 +112,28 @@ def catalog_target(repo: Path, catalog: Path) -> tuple[str, str, Path | None]:
     return target, bundle, catalog.parents[1]
 
 
-def direct_callsites(source_root: Path | None, key: str, repo: Path) -> list[str]:
-    if source_root is None or not source_root.exists():
-        return []
-    found: list[str] = []
-    for source in sorted(source_root.rglob("*.swift")):
+def index_direct_callsites(source_roots: dict[str, Path | None], repo: Path) -> dict[str, dict[str, list[str]]]:
+    """Index relevant source files once, then assign literal calls to targets."""
+    found: dict[str, dict[str, list[str]]] = {target: {} for target in source_roots}
+    paths = sorted({repo_relative(repo, root) for root in source_roots.values() if root is not None})
+    search = subprocess.run(
+        ["git", "-C", str(repo), "grep", "-l", "-e", "String(localized:", "-e", "AttributedString(localized:", "--", *paths],
+        capture_output=True, text=True, check=False,
+    )
+    if search.returncode not in (0, 1):
+        raise CatalogError(f"could not index localized call sites: {search.stderr.strip()}")
+    sources = [repo / path for path in search.stdout.splitlines()]
+    for source in sources:
+        target = next((name for name, root in source_roots.items() if root is not None and source.is_relative_to(root)), None)
+        if target is None:
+            continue
         text = source.read_text(encoding="utf-8")
         for match in DIRECT_CALL.finditer(text):
-            # Compare source spelling so Swift interpolation remains deliberately
-            # unsupported evidence instead of being incorrectly decoded as JSON.
-            swift_spelling = key.replace("\\", "\\\\").replace('"', '\\"')
-            if match.group("key") == swift_spelling:
-                line = text.count("\n", 0, match.start()) + 1
-                found.append(f"{repo_relative(repo, source)}:{line}")
+            # A direct literal is useful evidence. Swift interpolation is left
+            # as unknown rather than being guessed from source spelling.
+            literal = match.group("key")
+            line = text.count("\n", 0, match.start()) + 1
+            found[target].setdefault(literal, []).append(f"{repo_relative(repo, source)}:{line}")
     return found
 
 
@@ -104,9 +149,14 @@ def variants(localization: dict[str, Any]) -> dict[str, list[str]]:
 
 def inventory(repo: Path) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
-    for catalog_path in sorted(repo.glob("MacDown2/**/*.xcstrings")):
-        catalog = load_catalog(catalog_path)
-        target, bundle, source_root = catalog_target(repo, catalog_path)
+    catalog_paths = sorted(repo.glob("MacDown2/**/*.xcstrings"))
+    catalogs = {path: load_catalog(path) for path in catalog_paths}
+    ownership = {path: catalog_target(repo, path) for path in catalog_paths}
+    source_roots = {target: source_root for target, _, source_root in ownership.values()}
+    callsite_indexes = index_direct_callsites(source_roots, repo)
+    for catalog_path in catalog_paths:
+        catalog = catalogs[catalog_path]
+        target, bundle, _ = ownership[catalog_path]
         for key, entry in sorted(catalog["strings"].items()):
             if not isinstance(entry, dict):
                 raise CatalogError(f"{catalog_path}: {key!r} is not a string entry")
@@ -118,13 +168,15 @@ def inventory(repo: Path) -> dict[str, Any]:
                 for locale, localization in sorted(localizations.items())
                 if isinstance(localization, dict)
             }
-            callsites = direct_callsites(source_root, key, repo)
+            swift_spelling = key.replace("\\", "\\\\").replace('"', '\\"')
+            callsites = callsite_indexes[target].get(swift_spelling, [])
             entries.append({
                 "target": target,
                 "catalog": repo_relative(repo, catalog_path),
                 "bundle": bundle,
                 "key": key,
                 "source_default_value": key,
+                "translator_comment": entry.get("comment", "unknown_no_catalog_comment"),
                 "required_locales": ["fr", "ja", "pl"],
                 "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
                 "interpolation": {
@@ -182,7 +234,10 @@ def validate_localization(catalog_path: Path, key: str, locale: str, value: dict
                         if variant_name not in VARIANT_REFERENCE.findall(variant_value):
                             errors.append(f"{catalog_path}:{key!r}:{locale}: plural {name!r}/{category!r} omits %{variant_name}")
         ordered.sort()
-        actual_signature = [specifier for _, _, specifier in ordered]
+        actual_signature = [
+            {"position": position, "type": specifier}
+            for position, _, specifier in sorted(ordered)
+        ]
         if actual_signature != source_signature:
             errors.append(f"{catalog_path}:{key!r}:{locale}: substitution types {actual_signature} do not match source {source_signature}")
         expected_refs = {name for _, name, _ in ordered}

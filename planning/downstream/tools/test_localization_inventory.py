@@ -40,6 +40,13 @@ class LocalizationInventoryTests(unittest.TestCase):
         errors = subject.validate(self.make_repo(self.fixture("type-mismatch.json")))
         self.assertTrue(any("placeholders" in error for error in errors))
 
+    def test_positional_identity_type_mismatch_fails(self):
+        errors = subject.validate(self.make_repo(self.fixture("positional-type-mismatch.json")))
+        self.assertTrue(any("placeholders" in error for error in errors))
+
+    def test_positional_reordering_with_matching_types_passes(self):
+        self.assertEqual(subject.validate(self.make_repo(self.fixture("positional-reordered-valid.json"))), [])
+
     def test_plural_without_other_fails(self):
         errors = subject.validate(self.make_repo(self.fixture("plural-without-other.json")))
         self.assertTrue(any("lacks an other variant" in error for error in errors))
@@ -62,6 +69,17 @@ class LocalizationInventoryTests(unittest.TestCase):
         path.write_text((self.fixtures / "malformed.json").read_text(encoding="utf-8"), encoding="utf-8")
         with self.assertRaisesRegex(subject.CatalogError, "malformed JSON"):
             subject.inventory(repo)
+
+    def test_malformed_shapes_are_controlled_catalog_errors(self):
+        for fixture, shape in [
+            ("malformed-substitutions-array.json", "substitutions"),
+            ("malformed-stringunit-value.json", "stringUnit.value"),
+            ("malformed-variations-array.json", "variations"),
+        ]:
+            with self.subTest(fixture=fixture):
+                repo = self.make_repo(self.fixture(fixture))
+                with self.assertRaisesRegex(subject.CatalogError, shape):
+                    subject.inventory(repo)
 
 
 if __name__ == "__main__":
