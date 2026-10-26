@@ -30,7 +30,14 @@ struct HTMLPreviewSchemeDeliveryTests {
         let fixture = Fixture()
         let task = fixture.task()
         task.onResponse = {
-            fixture.handler.request = dispose ? nil : HTMLPreviewRequest(source: "replacement", baseURL: nil)
+            if dispose {
+                fixture.handler.retire()
+            } else {
+                _ = fixture.handler.install(
+                    HTMLPreviewRequest(source: "replacement", baseURL: nil),
+                    documentID: "replacement", recoveryEpoch: UUID(), generation: 2
+                )
+            }
         }
         fixture.handler.webView(fixture.view, start: task)
         #expect(task.events == ["response"])
@@ -43,8 +50,11 @@ struct HTMLPreviewSchemeDeliveryTests {
         defer { coordinator.dispose(webView: view) }
         let handler = try #require(view.configuration.urlSchemeHandler(forURLScheme: "macdown-preview")
             as? PreviewSchemeHandler)
-        handler.request = HTMLPreviewRequest(source: "disposal-control", baseURL: nil)
-        let task = Fixture().task()
+        let url = try #require(handler.install(
+            HTMLPreviewRequest(source: "disposal-control", baseURL: nil),
+            documentID: "disposal-control", recoveryEpoch: UUID(), generation: 1
+        ))
+        let task = RecordedTask(url: url)
         task.onResponse = { coordinator.dispose(webView: view) }
         handler.webView(view, start: task)
         #expect(task.events == ["response"])
@@ -141,6 +151,59 @@ struct HTMLPreviewSchemeDeliveryTests {
         let html = try #require(String(bytes: task.bytes, encoding: .utf8))
         #expect(html.contains("delivery-control"))
     }
+
+    @Test func lateTasksCannotBorrowAnotherDocumentsResourceRoot() throws {
+        let fixture = Fixture()
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("preview-task-\(UUID().uuidString)", isDirectory: true)
+        let rootA = directory.appendingPathComponent("A", isDirectory: true)
+        let rootB = directory.appendingPathComponent("B", isDirectory: true)
+        try FileManager.default.createDirectory(at: rootA, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: rootB, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data("root-A-sentinel".utf8).write(to: rootA.appendingPathComponent("asset.txt"))
+        try Data("root-B-sentinel".utf8).write(to: rootB.appendingPathComponent("asset.txt"))
+
+        let oldURL = try #require(fixture.handler.install(
+            HTMLPreviewRequest(source: "A", baseURL: rootA),
+            documentID: "A", recoveryEpoch: UUID(), generation: 1
+        ))
+        let oldTask = RecordedTask(url: oldURL.appendingPathComponent("asset.txt"))
+        let currentURL = try #require(fixture.handler.install(
+            HTMLPreviewRequest(source: "B", baseURL: rootB),
+            documentID: "B", recoveryEpoch: UUID(), generation: 1
+        ))
+        #expect(oldURL.host != currentURL.host)
+        fixture.handler.webView(fixture.view, start: oldTask)
+        #expect(oldTask.events == ["failure"])
+        #expect(oldTask.bytes.isEmpty)
+
+        let currentTask = RecordedTask(url: currentURL.appendingPathComponent("asset.txt"))
+        fixture.handler.webView(fixture.view, start: currentTask)
+        #expect(currentTask.events == ["response", "data", "finish"])
+        #expect(String(bytes: currentTask.bytes, encoding: .utf8) == "root-B-sentinel")
+    }
+
+    @Test func repeatedSaveAndDisposalRejectEarlierMainDocumentTasks() throws {
+        let fixture = Fixture()
+        let request = HTMLPreviewRequest(source: "unchanged", baseURL: nil)
+        let epoch = UUID()
+        let firstURL = try #require(fixture.handler.install(
+            request, documentID: "same-document", recoveryEpoch: epoch, generation: 1
+        ))
+        let secondURL = try #require(fixture.handler.install(
+            request, documentID: "same-document", recoveryEpoch: epoch, generation: 2
+        ))
+        #expect(firstURL != secondURL)
+        let oldTask = RecordedTask(url: firstURL)
+        fixture.handler.webView(fixture.view, start: oldTask)
+        #expect(oldTask.events == ["failure"])
+
+        fixture.handler.retire()
+        let disposedTask = RecordedTask(url: secondURL)
+        fixture.handler.webView(fixture.view, start: disposedTask)
+        #expect(disposedTask.events == ["failure"])
+    }
 }
 
 private extension HTMLPreviewSchemeDeliveryTests {
@@ -148,15 +211,18 @@ private extension HTMLPreviewSchemeDeliveryTests {
     final class Fixture {
         let handler = PreviewSchemeHandler()
         let view = makeView()
+        let mainURL: URL
 
         init() {
-            handler.request = HTMLPreviewRequest(source: "<p>delivery-control</p>", baseURL: nil)
+            guard let url = handler.install(
+                HTMLPreviewRequest(source: "<p>delivery-control</p>", baseURL: nil),
+                documentID: "delivery-control", recoveryEpoch: UUID(), generation: 1
+            ) else { preconditionFailure("Invalid fixture URL") }
+            mainURL = url
         }
 
         func task(path: String = "") -> RecordedTask {
-            guard let url = URL(string: "macdown-preview://document/\(path)") else {
-                preconditionFailure("Invalid fixture URL")
-            }
+            let url = path.isEmpty ? mainURL : mainURL.appendingPathComponent(path)
             return RecordedTask(url: url)
         }
 
