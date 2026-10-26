@@ -49,6 +49,7 @@ struct DocumentEditorSplitView: View {
     @State private var previewBlocks: [PreviewBlock]?
     @State private var previewLinkDefinitions: [String] = []
     @State private var previewContributionSession = PreviewContributionSession()
+    @State private var previewDisplayCache = PreviewDisplayCache()
 
     /// Not `private`: read by DocumentEditorSplitView+EditorPane.swift.
     var parseSession: MarkdownParseSession {
@@ -153,8 +154,12 @@ struct DocumentEditorSplitView: View {
                 refreshPreviewBlocks()
                 refreshOutline()
             }
+            .onChange(of: previewContributionSession.composition) { _, _ in
+                refreshRenderedPreviewBlocks()
+            }
             .task(id: contributionTaskID) {
                 await refreshPreviewContributions()
+                refreshRenderedPreviewBlocks()
             }
             .onChange(of: jsonSession.result) { _, _ in
                 refreshJSONOutline()
@@ -251,10 +256,19 @@ struct DocumentEditorSplitView: View {
         guard let document = parseSession.document, let text = parseSession.publishedText else {
             previewBlocks = nil
             previewLinkDefinitions = []
+            previewDisplayCache.reset()
             return
         }
         previewBlocks = PreviewBlock.blocks(from: document, text: text)
         previewLinkDefinitions = PreviewLinkDefinitions.extract(from: text)
+        refreshRenderedPreviewBlocks()
+    }
+
+    private func refreshRenderedPreviewBlocks() {
+        let displayed = previewContributionSession.displayedBlocks(
+            baseBlocks: previewBlocks, currentRevision: parseSession.document?.revision
+        )
+        previewDisplayCache.update(revision: parseSession.document?.revision, blocks: displayed)
     }
 
     /// Keyed to document/tab identity + parsed revision only — never save
@@ -306,11 +320,7 @@ struct DocumentEditorSplitView: View {
                 theme: PreviewTheme(theme: themeController.current),
                 linkResolver: PreviewLinkResolver(baseURL: document.fileURL),
                 controller: scrollController,
-                blocks: MathPreviewPreprocessor.preprocessed(
-                    previewContributionSession.displayedBlocks(
-                        baseBlocks: previewBlocks, currentRevision: parseSession.document?.revision
-                    )
-                ),
+                blocks: previewDisplayCache.output,
                 linkDefinitions: previewLinkDefinitions,
                 mermaidFenceView: mermaidFenceView,
                 d2FenceView: d2FenceView,
