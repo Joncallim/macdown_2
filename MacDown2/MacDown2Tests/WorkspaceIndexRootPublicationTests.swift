@@ -145,7 +145,57 @@ struct WorkspaceIndexRootPublicationTests {
         #expect(fixture.coordinator.controllers.count == 1)
         #expect(fixture.coordinator.controllerForDocument(url: rootA.appendingPathComponent("result.md")) == nil)
     }
+}
 
+extension WorkspaceIndexRootPublicationTests {
+    @Test func changingQueryDuringResultLoadCannotPublishOldSearchRow() async throws {
+        let root = try tempRoot(["result.md"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "needle".write(to: root.appendingPathComponent("result.md"), atomically: true, encoding: .utf8)
+        let fixture = try controllerFixture(index: WorkspaceFileIndex())
+        defer { fixture.retire() }
+        let controller = fixture.controller
+        await controller.setFileTreeRoot(root)
+        controller.folderSearchModel.query = "needle"
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while controller.folderSearchModel.presentedResults.isEmpty, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let row = try #require(controller.folderSearchModel.presentedResults.first)
+        let accessRoot = try #require(controller.folderSearchModel.root)
+        let origin = FolderSearchOrigin(
+            controller: controller,
+            generation: controller.workspaceRootRequestGeneration,
+            lexicalRoot: root.standardizedFileURL,
+            accessRoot: accessRoot,
+            presentedResult: row
+        )
+        #expect(origin.isCurrent)
+
+        let gate = FolderSearchGate()
+        fixture.coordinator.afterFolderSearchFileLoad = { await gate.wait() }
+        let opening = Task {
+            await fixture.coordinator.openFolderSearchResult(
+                relativePath: "result.md", root: root.standardizedFileURL,
+                folderAccessURL: accessRoot, range: NSRange(location: 0, length: 6), origin: origin
+            )
+        }
+        guard await FolderSearchGate.waitForEntry(gate.entered) else {
+            gate.release()
+            await opening.value
+            Issue.record("folder-result open did not pause after loading")
+            return
+        }
+        controller.folderSearchModel.query = "other"
+        #expect(!origin.isCurrent)
+        gate.release()
+        await opening.value
+        #expect(fixture.coordinator.controllers.count == 1)
+        #expect(fixture.coordinator.controllerForDocument(url: root.appendingPathComponent("result.md")) == nil)
+    }
+}
+
+extension WorkspaceIndexRootPublicationTests {
     @Test func replacingAccessForSameLexicalRootRetiresOldResultsImmediately() async throws {
         let lexicalRoot = try tempRoot(["same.md"])
         let newAccess = try tempRoot(["same.md"])

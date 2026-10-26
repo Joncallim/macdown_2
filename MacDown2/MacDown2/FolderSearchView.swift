@@ -70,13 +70,16 @@ struct FolderSearchView: View {
                     if model.isReplaceVisible {
                         Toggle(
                             isOn: Binding(
-                                get: { model.isIncluded(path: fileMatch.relativePath) },
-                                set: { model.setIncluded($0, path: fileMatch.relativePath) }
+                                get: {
+                                    model.isCurrentResult(presented)
+                                        && model.isIncluded(path: fileMatch.relativePath)
+                                },
+                                set: { model.setIncluded($0, result: presented) }
                             )
                         ) { EmptyView() }
                             .toggleStyle(.checkbox)
                             .labelsHidden()
-                            .disabled(model.isReplacing)
+                            .disabled(model.isReplacing || !model.isCurrentResult(presented))
                             .accessibilityLabel("Include \(fileMatch.relativePath) in Replace")
                             .accessibilityIdentifier("folderReplaceInclude-\(fileMatch.relativePath)")
                     }
@@ -86,10 +89,11 @@ struct FolderSearchView: View {
                         FolderSearchResultRow(fileMatch: fileMatch)
                     }
                     .buttonStyle(.plain)
+                    .disabled(!model.isCurrentResult(presented))
                     .accessibilityIdentifier("folderSearchResult-\(fileMatch.relativePath)")
                     if model.isReplaceVisible {
                         Button {
-                            model.togglePreview(path: fileMatch.relativePath)
+                            model.togglePreview(result: presented)
                         } label: {
                             Image(
                                 systemName: model.expandedPaths.contains(fileMatch.relativePath)
@@ -97,12 +101,14 @@ struct FolderSearchView: View {
                             )
                         }
                         .buttonStyle(.borderless)
+                        .disabled(!model.isCurrentResult(presented))
                         .help("Preview replacements")
                         .accessibilityLabel("Preview replacements in \(fileMatch.relativePath)")
                         .accessibilityIdentifier("folderReplacePreviewToggle-\(fileMatch.relativePath)")
                     }
                 }
-                if model.isReplaceVisible, model.expandedPaths.contains(fileMatch.relativePath) {
+                if model.isReplaceVisible, model.isCurrentResult(presented),
+                   model.expandedPaths.contains(fileMatch.relativePath) {
                     FolderReplacePreviewView(preview: model.previews[fileMatch.relativePath])
                 }
             }

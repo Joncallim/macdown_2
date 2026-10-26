@@ -213,7 +213,55 @@ struct FolderSearchNavigationTests {
         #expect(system.selectedRange == NSRange(location: 2, length: 0))
         #expect(coordinator.pendingFolderSearchReveals[tabID] == nil)
     }
+}
 
+extension FolderSearchNavigationTests {
+    @Test func pendingRevealDoesNotUseARowFromAnOlderQuery() async throws {
+        let coordinator = FolderSearchTestSupport.makeCoordinator()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let url = root.appendingPathComponent("result.md")
+        try "needle after prefix".write(to: url, atomically: true, encoding: .utf8)
+        defer {
+            coordinator.controllers.forEach { $0.close() }
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        await coordinator.openDocument(at: url, folderRoot: root, folderAccessURL: root)
+        let controller = try #require(coordinator.controllerForDocument(url: url))
+        await controller.setFileTreeRoot(root)
+        controller.folderSearchModel.query = "needle"
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while controller.folderSearchModel.presentedResults.isEmpty, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let row = try #require(controller.folderSearchModel.presentedResults.first)
+        let tabID = try #require(controller.model.tabStore.tabID(forFileURL: url))
+        let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        controller.window?.makeKeyAndOrderFront(nil)
+        #expect(system.textView.window === controller.window)
+        let initialSelection = system.selectedRange
+        let generation = coordinator.folderSearchRequestGate.begin()
+        coordinator.pendingFolderSearchReveals[tabID] = PendingFolderSearchReveal(
+            generation: generation,
+            navigationRevision: coordinator.folderSearchNavigationRevision,
+            range: NSRange(location: 8, length: 6),
+            controllerID: ObjectIdentifier(controller),
+            originControllerID: ObjectIdentifier(controller),
+            originGeneration: controller.workspaceRootRequestGeneration,
+            originLexicalRoot: root.standardizedFileURL,
+            originAccessRoot: controller.folderSearchModel.root,
+            originResult: row
+        )
+
+        controller.folderSearchModel.query = "other"
+        coordinator.folderSearchEditorLayoutChanged(tabID: tabID.uuidString)
+        #expect(system.selectedRange == initialSelection)
+        #expect(coordinator.pendingFolderSearchReveals[tabID] != nil)
+    }
+}
+
+extension FolderSearchNavigationTests {
     @Test func selectAllMatchesInvalidatesSuspendedExistingWindowFolderSearch() async throws {
         let coordinator = FolderSearchTestSupport.makeCoordinator()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

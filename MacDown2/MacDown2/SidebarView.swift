@@ -201,12 +201,12 @@ struct SidebarView: View {
                           $0.folderSearchModel === folderSearchModel
                       })
                 else { return }
-                let lexicalRoot = presented.lexicalRoot
                 let origin = FolderSearchOrigin(
                     controller: originController,
                     generation: originController.workspaceRootRequestGeneration,
-                    lexicalRoot: lexicalRoot,
-                    accessRoot: root
+                    lexicalRoot: presented.lexicalRoot,
+                    accessRoot: root,
+                    presentedResult: presented
                 )
                 Task {
                     // The row's lexical and access roots travel together;
@@ -216,7 +216,7 @@ struct SidebarView: View {
                         // The folder as opened (a symlink root stays a symlink
                         // path), so the file has the identity a sidebar open
                         // would give it; access is still the physical root.
-                        root: lexicalRoot,
+                        root: presented.lexicalRoot,
                         folderAccessURL: root,
                         range: firstMatch.range,
                         origin: origin

@@ -37,6 +37,7 @@ struct PendingFolderSearchReveal {
     let originGeneration: UInt?
     let originLexicalRoot: URL?
     let originAccessRoot: URL?
+    let originResult: FolderSearchModel.PresentedResult?
 
     init(
         generation: UInt,
@@ -46,7 +47,8 @@ struct PendingFolderSearchReveal {
         originControllerID: ObjectIdentifier? = nil,
         originGeneration: UInt? = nil,
         originLexicalRoot: URL? = nil,
-        originAccessRoot: URL? = nil
+        originAccessRoot: URL? = nil,
+        originResult: FolderSearchModel.PresentedResult? = nil
     ) {
         self.generation = generation
         self.navigationRevision = navigationRevision
@@ -56,6 +58,7 @@ struct PendingFolderSearchReveal {
         self.originGeneration = originGeneration
         self.originLexicalRoot = originLexicalRoot
         self.originAccessRoot = originAccessRoot
+        self.originResult = originResult
     }
 }
 
@@ -67,6 +70,23 @@ struct FolderSearchOrigin {
     let generation: UInt
     let lexicalRoot: URL
     let accessRoot: URL
+    /// Present for a clicked sidebar row. Direct, non-row callers can still
+    /// use the existing root-only origin checks.
+    let presentedResult: FolderSearchModel.PresentedResult?
+
+    init(
+        controller: WindowController,
+        generation: UInt,
+        lexicalRoot: URL,
+        accessRoot: URL,
+        presentedResult: FolderSearchModel.PresentedResult? = nil
+    ) {
+        self.controller = controller
+        self.generation = generation
+        self.lexicalRoot = lexicalRoot
+        self.accessRoot = accessRoot
+        self.presentedResult = presentedResult
+    }
 
     var isCurrent: Bool {
         !controller.isClosed
@@ -75,6 +95,7 @@ struct FolderSearchOrigin {
             && (controller.folderSearchModel.lexicalRoot ?? accessRoot) == lexicalRoot
             && controller.fileTreeModel.root == lexicalRoot
             && controller.fileTreeModel.rootAccessURL == accessRoot
+            && (presentedResult.map { controller.folderSearchModel.isCurrentResult($0) } ?? true)
     }
 
     func matches(lexicalRoot: URL, accessRoot: URL?) -> Bool {
@@ -116,21 +137,19 @@ extension WindowCoordinator {
                 folderAccessURL: folderAccessURL,
                 folderSelectionURL: url,
                 shouldContinue: { [self] in
-                    folderSearchRequestGate.owns(requestGeneration)
-                        && folderSearchNavigationRevision == navigationRevision
-                        && !requestToken.isCancelled
-                        && !Task.isCancelled
-                        && folderSearchOriginIsCurrent(origin)
+                    folderSearchRequestIsCurrent(
+                        requestGeneration, navigationRevision: navigationRevision,
+                        token: requestToken, origin: origin
+                    )
                 }
             )
         } onCancel: {
             requestToken.cancel()
         }
-        guard folderSearchRequestGate.owns(requestGeneration),
-              folderSearchNavigationRevision == navigationRevision,
-              !requestToken.isCancelled,
-              !Task.isCancelled,
-              folderSearchOriginIsCurrent(origin)
+        guard folderSearchRequestIsCurrent(
+            requestGeneration, navigationRevision: navigationRevision,
+            token: requestToken, origin: origin
+        )
         else {
             return
         }
@@ -152,7 +171,8 @@ extension WindowCoordinator {
                 originControllerID: origin.map { ObjectIdentifier($0.controller) },
                 originGeneration: origin?.generation,
                 originLexicalRoot: origin?.lexicalRoot,
-                originAccessRoot: origin?.accessRoot
+                originAccessRoot: origin?.accessRoot,
+                originResult: origin?.presentedResult
             )
         }
     }
@@ -188,14 +208,30 @@ extension WindowCoordinator {
         origin?.isCurrent ?? true
     }
 
+    private func folderSearchRequestIsCurrent(
+        _ generation: UInt,
+        navigationRevision: UInt,
+        token: FolderSearchRequestToken,
+        origin: FolderSearchOrigin?
+    ) -> Bool {
+        folderSearchRequestGate.owns(generation)
+            && folderSearchNavigationRevision == navigationRevision
+            && !token.isCancelled
+            && !Task.isCancelled
+            && folderSearchOriginIsCurrent(origin)
+    }
+
     private func pendingFolderSearchOriginIsCurrent(_ pending: PendingFolderSearchReveal) -> Bool {
         guard let originID = pending.originControllerID else { return true }
-        return controllers.contains {
-            ObjectIdentifier($0) == originID
-                && !$0.isClosed
-                && $0.workspaceRootRequestGeneration == pending.originGeneration
-                && $0.fileTreeModel.root == pending.originLexicalRoot
-                && $0.fileTreeModel.rootAccessURL == pending.originAccessRoot
+        return controllers.contains { controller in
+            ObjectIdentifier(controller) == originID
+                && !controller.isClosed
+                && controller.workspaceRootRequestGeneration == pending.originGeneration
+                && controller.fileTreeModel.root == pending.originLexicalRoot
+                && controller.fileTreeModel.rootAccessURL == pending.originAccessRoot
+                && (pending.originResult.map { result in
+                    controller.folderSearchModel.isCurrentResult(result)
+                } ?? true)
         }
     }
 
