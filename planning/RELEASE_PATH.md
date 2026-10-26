@@ -1,6 +1,46 @@
 # MostlyText 1.0 release path
 
-**Owner summary.** This is the coordination map from today's `master` to a
+## Current integration checkpoint — 2026-10-26
+
+The order and release gates below remain the coordination contract, but their
+2026-09-28 status and credential inventory are historical. The current
+`integration-final` checkpoint is `19b4a5b76ee9f06a99d46127d996cd5669818d2b`
+(tree `3149369e7df74e7721600b15287bab71c9157ebe`). This checkpoint is
+an engineering integration branch, not a signed release candidate.
+
+Two narrowly reviewed [#183](https://github.com/Joncallim/macdown_2/issues/183)
+recovery corrections are integrated:
+
+- [#521](https://github.com/Joncallim/macdown_2/pull/521), merged at
+  `b79f8d85e33c176f26c7c0ccf92c097ed1ff6ceb`, binds recovery loading to
+  the FileDocument lifetime. Its locked focused FileDocument suite passed
+  15/15, independent source review accepted it, and hosted CI run
+  `40259974415` passed.
+- [#522](https://github.com/Joncallim/macdown_2/pull/522), merged at the
+  checkpoint above, rejects recovery publication unless the proposed text is
+  byte-for-byte identical to the captured session snapshot's text. The focused
+  app regression passed 7/7 and the combined-head FileDocument suite passed
+  15/15 locally; independent source and combined-tree reviews accepted it,
+  and hosted CI run `40262502856` passed.
+
+Those results close only their two findings. #183 remains open pending
+reconciliation of its other findings and the required real-app recovery,
+filesystem, relaunch and Release evidence. Green CI does not replace the
+release-evidence ledger or [#115](https://github.com/Joncallim/macdown_2/issues/115)
+acceptance.
+
+Two reviewed branches remain draft for native acceptance:
+[#519](https://github.com/Joncallim/macdown_2/pull/519) (#121, explicit
+window-local preview-resource grants) requires signed real-app permission,
+revocation and document-lifecycle checks; [#520](https://github.com/Joncallim/macdown_2/pull/520)
+(#112, current-line presentation) requires Release visual, scrolling and
+responsiveness checks. Their source reviews and exact-head CI passed, but
+neither is merged or accepted for 1.0. Reconcile their base with the current
+integration head before any later merge. #509's native sidebar/encoding
+acceptance and #505's held missing-file recovery test are separate open gates.
+
+**Historical owner summary (2026-09-28).** This is the coordination map from
+the recorded `master` baseline to a
 public, signed and downloadable MostlyText 1.0. It adds no scope. Every item
 below already has an owning issue or epic, and those issues remain the
 binding contracts. This page shows:
@@ -20,7 +60,7 @@ therefore off the critical path. What remains is:
 - the final string freeze (E16);
 - distribution (E17).
 
-The main risks are credentials and hosting that don't exist yet: an Apple
+At that baseline, the main risks were credentials and hosting that did not yet exist: an Apple
 Developer ID, a Sparkle signing key, and website and archive hosting. Leaving
 them to the end would stall E17. Non-goals: this page doesn't reorder the
 epics, relax any gate, or authorise publication.
