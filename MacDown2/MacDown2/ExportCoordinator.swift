@@ -50,33 +50,56 @@ struct ExportCoordinator {
     /// racing the same destination file. Scoped to `model` (one per window),
     /// set for the whole call including panel presentation — cancelling the
     /// panel already exits through the same `defer`.
-    func exportActiveDocument() async {
-        guard let model = coordinator.currentCommandController(
+    @discardableResult
+    func beginExportActiveDocument() -> Task<Void, Never>? {
+        let controller = coordinator.currentCommandController(
             keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow
-        )?.model, let document = model.activeDocument else { return }
-        guard document.format.id == "markdown" else { return }
-        guard !coordinator.isExporting(model) else { return }
+        )
+        guard let controller, let window = controller.window, window.isVisible,
+              let origin = OrdinaryExportOrigin.capture(controller: controller)
+        else { return nil }
+        let model = controller.model
+        guard !coordinator.isExporting(model) else { return nil }
 
         coordinator.setExporting(true, for: model)
-        defer { coordinator.setExporting(false, for: model) }
+        return Task { @MainActor in
+            defer { coordinator.setExporting(false, for: model) }
+            await export(from: origin)
+        }
+    }
+
+    private func export(from origin: OrdinaryExportOrigin) async {
+        guard let window = origin.presentableWindow else { return }
+        let document = origin.initialDocument
 
         let baseName = document.fileURL?.deletingPathExtension().lastPathComponent ?? "Untitled"
         let directory = document.fileURL?.deletingLastPathComponent()
 
-        guard let selection = await presentExportPanel(defaultName: baseName, directory: directory) else {
+        guard let selection = await presentExportPanel(
+            in: window, defaultName: baseName, directory: directory
+        ) else {
             return
         }
 
         do {
+            try Task.checkCancellation()
+            // A panel can suspend through focus changes, Save As, or document
+            // replacement. Read the editor-published value only after its
+            // original window and document lifetime are checked again.
+            let document = try origin.documentAfterPanel()
             let result = try await performExport(document: document, selection: selection)
             // Diagnostics are read before Finder takes focus, so the report is
             // not left sitting behind another app's window.
-            await presentDiagnosticsIfNeeded(result.diagnostics)
+            await presentDiagnosticsIfNeeded(result.diagnostics, from: origin)
+            // The diagnostic sheet itself can be cancelled by closing the
+            // origin. Also check the empty-diagnostics path, which has no
+            // sheet but still resumes after rendering has suspended.
+            guard origin.canRevealOutput(isCancelled: Task.isCancelled) else { return }
             reveal(result.primaryFile)
         } catch is CancellationError {
             // The user withdrew the export; there is nothing to report.
         } catch {
-            await presentError(error)
+            await presentError(error, from: origin)
         }
     }
 
@@ -91,6 +114,7 @@ struct ExportCoordinator {
     }
 
     private func presentExportPanel(
+        in window: NSWindow,
         defaultName: String,
         directory: URL?
     ) async -> ExportSelection? {
@@ -118,17 +142,26 @@ struct ExportCoordinator {
         accessory.frame = NSRect(origin: .zero, size: accessory.fittingSize)
         panel.accessoryView = accessory
 
-        let url = await withCheckedContinuation { continuation in
-            if let window = NSApp.keyWindow {
-                panel.beginSheetModal(for: window) { result in
-                    continuation.resume(returning: result == .OK ? panel.url : nil)
+        let session = OrdinaryExportPanelSession(panel: panel)
+        let closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: window, queue: .main
+        ) { [weak session] _ in
+            MainActor.assumeIsolated { session?.cancel() }
+        }
+        defer { NotificationCenter.default.removeObserver(closeObserver) }
+
+        let url = await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<URL?, Never>) in
+                guard session.install(continuation) else { return }
+                panel.beginSheetModal(for: window) { [weak session] result in
+                    session?.finish(result == .OK ? session?.panel.url : nil)
                 }
-            } else {
-                continuation.resume(returning: panel.runModal() == .OK ? panel.url : nil)
             }
+        } onCancel: {
+            session.requestCancel()
         }
 
-        guard let url else { return nil }
+        guard let url, !Task.isCancelled else { return nil }
         return ExportSelection(url: url, format: selectionModel.format, style: selectionModel.style)
     }
 
@@ -272,7 +305,9 @@ struct ExportCoordinator {
     /// did not resolve, not that the export failed — resolution failures that
     /// are fatal to the export itself are thrown from `performExport` and never
     /// reach this point.
-    private func presentDiagnosticsIfNeeded(_ diagnostics: [ExportDiagnostic]) async {
+    private func presentDiagnosticsIfNeeded(
+        _ diagnostics: [ExportDiagnostic], from origin: OrdinaryExportOrigin
+    ) async {
         guard !diagnostics.isEmpty else { return }
 
         let shown = diagnostics.prefix(diagnosticsShownAtMost).map(\.message)
@@ -287,10 +322,10 @@ struct ExportCoordinator {
             ? "Exported with 1 issue"
             : "Exported with \(diagnostics.count) issues"
         alert.informativeText = text
-        await present(alert)
+        await present(alert, from: origin)
     }
 
-    private func presentError(_ error: Error) async {
+    private func presentError(_ error: Error, from origin: OrdinaryExportOrigin) async {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(localized: "Export Failed")
@@ -298,18 +333,23 @@ struct ExportCoordinator {
         if let suggestion = (error as? LocalizedError)?.recoverySuggestion {
             alert.informativeText += "\n\n" + suggestion
         }
-        await present(alert)
+        await present(alert, from: origin)
     }
 
-    private func present(_ alert: NSAlert) async {
-        guard let window = NSApp.keyWindow else {
-            alert.runModal()
-            return
-        }
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            alert.beginSheetModal(for: window) { _ in
-                continuation.resume()
+    private func present(_ alert: NSAlert, from origin: OrdinaryExportOrigin) async {
+        guard let window = origin.presentableWindow else { return }
+        let session = OrdinaryExportAlertSession(alert: alert, window: window)
+        let closeObserver = session.observeOriginClose()
+        defer { NotificationCenter.default.removeObserver(closeObserver) }
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                guard session.install(continuation) else { return }
+                alert.beginSheetModal(for: window) { [weak session] _ in
+                    session?.finish()
+                }
             }
+        } onCancel: {
+            session.requestCancel()
         }
     }
 }
