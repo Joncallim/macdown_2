@@ -343,7 +343,7 @@ public struct FileDocument: Sendable {
     /// Loads the recovery copy for an untitled document, if present.
     public func loadRecovery() async -> String? {
         guard fileURL == nil else { return nil }
-        return try? await recoveryBuffer.load(for: id)
+        return try? await recoveryBuffer.load(for: id, epoch: recoveryEpoch)
     }
 
     /// Clears the recovery copy (call after a successful save-as or explicit discard).
