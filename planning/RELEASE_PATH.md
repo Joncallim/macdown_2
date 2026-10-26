@@ -4,10 +4,10 @@
 
 The order and release gates below remain the coordination contract, but their
 2026-09-28 status and credential inventory are historical. The current
-`integration-final` checkpoint is
+This snapshot records the latest app-code `integration-final` checkpoint as
 `d04bca8e93ac34120b7e2e48422d52588a3f50c4` (tree
 `d50f19b6d8ce8537a6eccdc0522c0ec984e245b0`). This is an engineering
-integration branch, not a signed release candidate. Its exact-head CI run
+integration baseline, not a signed release candidate. Its exact-head CI run
 `40286608868` and Compliance run `40286608854` passed, including locked
 package tests, Debug and Release builds, app-target tests, dependency
 verification and lint.
