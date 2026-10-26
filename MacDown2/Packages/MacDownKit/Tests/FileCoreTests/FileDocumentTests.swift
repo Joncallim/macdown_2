@@ -135,6 +135,38 @@ import Testing
     #expect(cleared == nil)
 }
 
+@Test func recoveryReadIsBoundToDocumentLifetime() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let recoveryBuffer = RecoveryBuffer(recoveryDirectory: directory)
+    let documentID = UUID().uuidString
+    let originalEpoch = UUID()
+    let original = FileDocument(
+        text: "original lifetime",
+        recoveryBuffer: recoveryBuffer,
+        documentID: documentID,
+        recoveryEpoch: originalEpoch
+    )
+    await original.autosave()
+
+    let restored = FileDocument(
+        recoveryBuffer: recoveryBuffer,
+        documentID: documentID,
+        recoveryEpoch: originalEpoch
+    )
+    #expect(await restored.loadRecovery() == "original lifetime")
+
+    let newLifetime = FileDocument(
+        recoveryBuffer: recoveryBuffer,
+        documentID: documentID,
+        recoveryEpoch: UUID()
+    )
+    #expect(await newLifetime.loadRecovery() == nil)
+}
+
 @Test func autosaveDoesNothingForSavedFiles() async {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
