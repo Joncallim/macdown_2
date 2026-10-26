@@ -87,7 +87,12 @@ struct ExportCoordinator {
             // replacement. Read the editor-published value only after its
             // original window and document lifetime are checked again.
             let document = try origin.documentAfterPanel()
-            let result = try await performExport(document: document, selection: selection)
+            let snapshot = OrdinaryExportSnapshot(
+                document: document,
+                theme: themeController.current,
+                parseOptions: DocumentEditorSplitView.markdownParseOptions(from: appSettings.markdown)
+            )
+            let result = try await performExport(snapshot: snapshot, selection: selection)
             // Diagnostics are read before Finder takes focus, so the report is
             // not left sitting behind another app's window.
             await presentDiagnosticsIfNeeded(result.diagnostics, from: origin)
@@ -107,7 +112,7 @@ struct ExportCoordinator {
 
     /// The resolved export choices: the save destination plus the panel's
     /// format and style options.
-    private struct ExportSelection {
+    struct ExportSelection {
         let url: URL
         let format: ExportFormatOption
         let style: ExportStyleEmbedding
@@ -206,87 +211,6 @@ struct ExportCoordinator {
         case .embedded: .embedded
         case .linked: .linked
         }
-    }
-
-    // MARK: - Execution
-
-    private struct ExportOutcome {
-        let primaryFile: URL
-        let diagnostics: [ExportDiagnostic]
-    }
-
-    private func performExport(
-        document: FileCore.FileDocument,
-        selection: ExportSelection
-    ) async throws -> ExportOutcome {
-        let adaptation = try await exportContributionAdaptation(for: document, isPrintTarget: selection.format == .pdf)
-        let request = ExportRequest(
-            text: document.text,
-            sourceGeneration: document.mutationGeneration,
-            theme: themeController.current,
-            documentURL: document.fileURL,
-            contributions: adaptation.contributions
-        )
-
-        switch selection.format {
-        case .standaloneHTML, .selfContainedHTML:
-            let mode: HTMLExportMode = selection.format == .selfContainedHTML
-                ? .selfContained
-                : .standalone(style: selection.style)
-            let result = try await ExportService.exportHTML(request, to: .html(url: selection.url, mode: mode))
-            return ExportOutcome(
-                primaryFile: result.primaryFile,
-                diagnostics: Self.combinedDiagnostics(adaptation, result.diagnostics)
-            )
-        case .pdf:
-            let prepared = try await ExportService.prepare(request, target: .pdf(url: selection.url))
-            try await PDFExportAdapter.export(prepared, to: selection.url)
-            return ExportOutcome(
-                primaryFile: selection.url,
-                diagnostics: Self.combinedDiagnostics(adaptation, prepared.diagnostics)
-            )
-        }
-    }
-
-    /// Standalone (anchorless) diagnostics first, then the export service's
-    /// own — the exact same order for both the HTML and PDF paths above, so
-    /// the two cannot drift through independently copy-pasted merge logic
-    /// (architecture takeover, pass 9/10).
-    nonisolated static func combinedDiagnostics(
-        _ adaptation: ExportContributionAdapter.Adaptation,
-        _ serviceDiagnostics: [ExportDiagnostic]
-    ) -> [ExportDiagnostic] {
-        adaptation.standaloneDiagnostics + serviceDiagnostics
-    }
-
-    /// Computes contribution placements for `document` via a fresh parse,
-    /// independent of whatever Preview's own parse session is doing for the
-    /// same document at the same moment — matching how
-    /// `ExportComposer.prepare` already parses `request.text` independently
-    /// of Preview, today, before this epic (epic-14-implementation.md §7.1).
-    /// One extra parse per export, accepted as proportionally negligible
-    /// next to export's other costs (§1 risk 2, §11).
-    ///
-    /// `.standardForExport(theme:isPrintTarget:)`, not `.standard` — E19's
-    /// `MathContribution` runs for Export only (epic-19-implementation.md
-    /// §4 invariant 5, §6.3). `isPrintTarget` selects a print-safe fixed
-    /// equation color for PDF, matching `structural.css`'s own `@media
-    /// print` override of every theme's foreground for the same reason —
-    /// see `ContributionRegistry.standardForExport`'s doc comment.
-    private func exportContributionAdaptation(
-        for document: FileCore.FileDocument,
-        isPrintTarget: Bool
-    ) async throws -> ExportContributionAdapter.Adaptation {
-        let revision = Int(exactly: document.mutationGeneration) ?? Int.max
-        let parsed = try await ParseEngine().parse(document.text, revision: revision)
-        let registry = ContributionRegistry.standardForExport(
-            theme: themeController.current,
-            isPrintTarget: isPrintTarget
-        )
-        let results = try await registry.run(
-            document: parsed, sourceText: document.text, sourceGeneration: document.mutationGeneration
-        )
-        return ExportContributionAdapter.adapt(results, destination: isPrintTarget ? .pdfExport : .htmlExport)
     }
 
     // MARK: - Feedback
