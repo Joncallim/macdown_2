@@ -66,12 +66,9 @@ struct WorkspaceIndexRefreshBehaviorTests {
 
     @Test func aFailedIndexRefreshReplacesStaleSearchResultsAndRecoveryRerunsTheQuery() async throws {
         let root = try tempRoot(["a.md"])
-        defer {
-            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
-            try? FileManager.default.removeItem(at: root)
-        }
+        defer { try? FileManager.default.removeItem(at: root) }
         try "needle".write(to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
-        let probe = IndexWalkProbe(unreadableRoot: root, unreadableWalkNumber: 2)
+        let probe = IndexWalkProbe(unavailableRoot: root, unavailableWalkNumber: 2)
         let fixture = try await makeController(root: root, index: probe.makeIndex())
         defer { fixture.retire() }
         let controller = fixture.controller
@@ -80,13 +77,12 @@ struct WorkspaceIndexRefreshBehaviorTests {
         try await waitForSearch(search, paths: ["a.md"])
 
         await controller.refreshWorkspaceIndex()
-        #expect(probe.permissionChangeSucceeded)
+        #expect(probe.injectedUnavailabilityWasObserved)
         try await waitForSearch(search, paths: [], outcome: .indexUnavailable)
 
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
         try "needle again".write(to: root.appendingPathComponent("restored.md"), atomically: true, encoding: .utf8)
         await controller.refreshWorkspaceIndex()
-        try await waitForSearch(search, paths: ["restored.md"])
+        try await waitForSearch(search, paths: ["a.md", "restored.md"])
     }
 
     @Test func losingTheFolderAccessScopeRetiresVisibleSearchResults() async throws {
@@ -262,11 +258,8 @@ struct WorkspaceIndexRefreshBehaviorTests {
 
     @Test func failedForcedRefreshInvalidatesFreshnessSoActivationRetries() async throws {
         let root = try tempRoot(["a.md"])
-        defer {
-            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
-            try? FileManager.default.removeItem(at: root)
-        }
-        let probe = IndexWalkProbe(unreadableRoot: root, unreadableWalkNumber: 2)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let probe = IndexWalkProbe(unavailableRoot: root, unavailableWalkNumber: 2)
         let fixture = try await makeController(root: root, index: probe.makeIndex())
         defer { fixture.retire() }
         let controller = fixture.controller
@@ -280,12 +273,11 @@ struct WorkspaceIndexRefreshBehaviorTests {
             Issue.record("the forced refresh should fail after access is removed")
             return
         }
-        #expect(probe.permissionChangeSucceeded)
+        #expect(probe.injectedUnavailabilityWasObserved)
         #expect(controller.lastWorkspaceIndexRefresh == nil)
         #expect(controller.lastWorkspaceIndexRefreshRoot == nil)
         #expect(controller.lastWorkspaceIndexRefreshGeneration == nil)
 
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
         await controller.refreshWorkspaceIndex(minInterval: 60)
 
         #expect(probe.count == 3)
