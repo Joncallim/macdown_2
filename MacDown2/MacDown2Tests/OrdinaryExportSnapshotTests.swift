@@ -3,6 +3,7 @@ import ExportService
 import FileCore
 import FileTree
 import Foundation
+import Highlighting
 @testable import MacDown2
 import MarkdownEngine
 import Testing
