@@ -53,7 +53,8 @@ the release-evidence ledger or
 Separate from #183, [#531](https://github.com/Joncallim/macdown_2/pull/531)
 implements the #116 guard for invalid rendered math image dimensions before
 HTML width/height conversion. Its independent source review and exact-head CI
-run `40282586058` passed; the current combined-head run above also passed.
+run `40282586058` passed; current integration-head CI run `40286608868` also
+passed.
 This change does not establish a pre-allocation raster memory budget.
 
 ## Current draft and acceptance status — 2026-10-26
