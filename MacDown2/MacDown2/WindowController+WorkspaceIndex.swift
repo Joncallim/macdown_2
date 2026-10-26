@@ -102,12 +102,10 @@ extension WindowController {
         // Before the first suspension: results shown against the old root must
         // never be actionable against the new one (#183 F19).
         coordinator?.closeQuickOpenIfOrigin(self)
-        // A Replace in Folder run authorised against the OLD root must stop before the (awaited) tree and index
-        // rebuild for the new one, not after it: otherwise it keeps writing old-root files while the window already
-        // shows the new folder, and its summary is then dropped.
-        if url != fileTreeModel.root {
-            folderSearchModel.retireReplaceRun()
-        }
+        // Every explicit root request replaces the folder access scope, even
+        // when the lexical path is unchanged. Retire old results and any
+        // Replace run before the first await; neither may borrow new access.
+        folderSearchModel.setRoot(nil)
         await beforeRootRebuild?()
         guard !isClosed, workspaceRootRequestGeneration == request else { return }
         await fileTreeModel.setRoot(url, accessURL: accessURL)

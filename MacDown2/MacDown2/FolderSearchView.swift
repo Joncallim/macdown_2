@@ -19,7 +19,7 @@ import TextSearch
 /// this is a real, disclosed gap, not something to silently skip.
 struct FolderSearchView: View {
     @Bindable var model: FolderSearchModel
-    let onOpen: (FolderSearchMatch) -> Void
+    let onOpen: (FolderSearchModel.PresentedResult) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -63,7 +63,8 @@ struct FolderSearchView: View {
             )
         }
 
-        ForEach(model.results, id: \.relativePath) { fileMatch in
+        ForEach(model.presentedResults) { presented in
+            let fileMatch = presented.match
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     if model.isReplaceVisible {
@@ -80,7 +81,7 @@ struct FolderSearchView: View {
                             .accessibilityIdentifier("folderReplaceInclude-\(fileMatch.relativePath)")
                     }
                     Button {
-                        onOpen(fileMatch)
+                        onOpen(presented)
                     } label: {
                         FolderSearchResultRow(fileMatch: fileMatch)
                     }

@@ -62,6 +62,128 @@ struct WorkspaceIndexRootPublicationTests {
         await Set(controller.workspaceFileIndex.allPaths().map(\.relativePath))
     }
 
+    @Test func changingRootRetiresOldSearchRowsBeforeRebuildAwaits() async throws {
+        let rootA = try tempRoot(["a.md"])
+        let rootB = try tempRoot(["b.md"])
+        defer {
+            try? FileManager.default.removeItem(at: rootA)
+            try? FileManager.default.removeItem(at: rootB)
+        }
+        let fixture = try controllerFixture(index: WorkspaceFileIndex())
+        defer { fixture.retire() }
+        let controller = fixture.controller
+        await controller.setFileTreeRoot(rootA)
+        let accessRoot = try #require(controller.folderSearchModel.root)
+        let origin = FolderSearchOrigin(
+            controller: controller,
+            generation: controller.workspaceRootRequestGeneration,
+            lexicalRoot: rootA.standardizedFileURL,
+            accessRoot: accessRoot
+        )
+        #expect(origin.isCurrent)
+
+        let gate = FolderSearchGate()
+        controller.beforeRootRebuild = { await gate.wait() }
+        defer { controller.beforeRootRebuild = nil }
+        let change = Task { await controller.setFileTreeRoot(rootB) }
+        guard await FolderSearchGate.waitForEntry(gate.entered) else {
+            gate.release()
+            await change.value
+            Issue.record("root change did not pause before rebuilding")
+            return
+        }
+
+        #expect(controller.folderSearchModel.root == nil)
+        #expect(!origin.isCurrent)
+        await fixture.coordinator.openFolderSearchResult(
+            relativePath: "a.md", root: rootA.standardizedFileURL,
+            folderAccessURL: accessRoot, range: NSRange(location: 0, length: 1), origin: origin
+        )
+        #expect(fixture.coordinator.controllers.count == 1)
+
+        gate.release()
+        await change.value
+        #expect(controller.folderSearchModel.root == rootB.standardizedFileURL)
+    }
+
+    @Test func changingRootDuringResultLoadCannotPublishOldFolderDocument() async throws {
+        let rootA = try tempRoot(["result.md"])
+        let rootB = try tempRoot(["other.md"])
+        defer {
+            try? FileManager.default.removeItem(at: rootA)
+            try? FileManager.default.removeItem(at: rootB)
+        }
+        let fixture = try controllerFixture(index: WorkspaceFileIndex())
+        defer { fixture.retire() }
+        let controller = fixture.controller
+        await controller.setFileTreeRoot(rootA)
+        let accessRoot = try #require(controller.folderSearchModel.root)
+        let origin = FolderSearchOrigin(
+            controller: controller,
+            generation: controller.workspaceRootRequestGeneration,
+            lexicalRoot: rootA.standardizedFileURL,
+            accessRoot: accessRoot
+        )
+        let gate = FolderSearchGate()
+        fixture.coordinator.afterFolderSearchFileLoad = { await gate.wait() }
+        let opening = Task {
+            await fixture.coordinator.openFolderSearchResult(
+                relativePath: "result.md", root: rootA.standardizedFileURL,
+                folderAccessURL: accessRoot, range: NSRange(location: 0, length: 1), origin: origin
+            )
+        }
+        guard await FolderSearchGate.waitForEntry(gate.entered) else {
+            gate.release()
+            await opening.value
+            Issue.record("folder-result open did not pause after loading")
+            return
+        }
+
+        await controller.setFileTreeRoot(rootB)
+        gate.release()
+        await opening.value
+        #expect(fixture.coordinator.controllers.count == 1)
+        #expect(fixture.coordinator.controllerForDocument(url: rootA.appendingPathComponent("result.md")) == nil)
+    }
+
+    @Test func replacingAccessForSameLexicalRootRetiresOldResultsImmediately() async throws {
+        let lexicalRoot = try tempRoot(["same.md"])
+        let newAccess = try tempRoot(["same.md"])
+        defer {
+            try? FileManager.default.removeItem(at: lexicalRoot)
+            try? FileManager.default.removeItem(at: newAccess)
+        }
+        let fixture = try controllerFixture(index: WorkspaceFileIndex())
+        defer { fixture.retire() }
+        let controller = fixture.controller
+        await controller.setFileTreeRoot(lexicalRoot)
+        let oldAccess = try #require(controller.folderSearchModel.root)
+        let oldOrigin = FolderSearchOrigin(
+            controller: controller,
+            generation: controller.workspaceRootRequestGeneration,
+            lexicalRoot: lexicalRoot.standardizedFileURL,
+            accessRoot: oldAccess
+        )
+        #expect(oldOrigin.isCurrent)
+
+        let gate = FolderSearchGate()
+        controller.beforeRootRebuild = { await gate.wait() }
+        defer { controller.beforeRootRebuild = nil }
+        let change = Task { await controller.setFileTreeRoot(lexicalRoot, accessURL: newAccess) }
+        guard await FolderSearchGate.waitForEntry(gate.entered) else {
+            gate.release()
+            await change.value
+            Issue.record("same-path access replacement did not pause before rebuilding")
+            return
+        }
+
+        #expect(controller.folderSearchModel.root == nil)
+        #expect(!oldOrigin.isCurrent)
+        gate.release()
+        await change.value
+        #expect(controller.folderSearchModel.root == newAccess.standardizedFileURL)
+    }
+
     @Test func activationRefreshDuringRootChangeDoesNotUseThePreviousRoot() async throws {
         let rootA = try tempRoot(["a.md"])
         let rootB = try tempRoot(["b.md"])
@@ -120,9 +242,19 @@ struct WorkspaceIndexRootPublicationTests {
         await controller.setFileTreeRoot(rootA)
         #expect(probe.count == 1)
 
+        let accessRoot = try #require(controller.folderSearchModel.root)
+        let oldOrigin = FolderSearchOrigin(
+            controller: controller,
+            generation: controller.workspaceRootRequestGeneration,
+            lexicalRoot: rootA.standardizedFileURL,
+            accessRoot: accessRoot
+        )
+        #expect(oldOrigin.isCurrent)
+
         try FileManager.default.moveItem(at: rootA, to: rootB)
         fixture.coordinator.remapFolderRootsAfterAcceptedMove(from: rootA, to: rootB)
         #expect(controller.fileTreeModel.rootAccessURL == rootB.standardizedFileURL)
+        #expect(!oldOrigin.isCurrent)
 
         await controller.refreshWorkspaceIndex(minInterval: 60)
 
