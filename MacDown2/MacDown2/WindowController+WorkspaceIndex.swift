@@ -65,6 +65,8 @@ extension WindowController {
             folderSearchModel.setRoot(root, lexicalRoot: fileTreeModel.root)
             pendingFolderSearchRoot = nil
             pendingFolderSearchRootGeneration = nil
+        } else {
+            folderSearchModel.indexDidRefresh(root: root)
         }
     }
 
