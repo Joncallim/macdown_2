@@ -6,6 +6,14 @@ import Testing
 @Suite("Preview window resource ownership")
 @MainActor
 struct PreviewResourceWindowStateTests {
+    @Test func absentGrantDeniesBothResourceConsumers() {
+        let document = FileDocument(fileURL: URL(fileURLWithPath: "/tmp/story.md"))
+        let owner = PreviewResourceWindowState()
+        #expect(owner.beginLoad(for: document, consumer: .markdown) == nil)
+        #expect(owner.beginLoad(for: document, consumer: .html) == nil)
+        owner.close()
+    }
+
     @Test func closingWindowRevokesBothConsumersAndItsBacking() async throws {
         let folder = try makeFolder()
         defer { try? FileManager.default.removeItem(at: folder) }

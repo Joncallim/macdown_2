@@ -30,6 +30,24 @@ struct BoundedHTMLPreviewHandlerTests {
         handler.dispose()
     }
 
+    @Test func ungrantedSourceLoadsButSiblingImageIsDenied() throws {
+        let document = FileDocument(fileURL: URL(fileURLWithPath: "/tmp/preview-document.html"))
+        let load = try BoundedHTMLPreviewLoad(document: document, source: "<p>source</p>", grant: nil)
+        let handler = BoundedHTMLPreviewHandler(load: load)
+        let view = makeView()
+        let main = RecordedHTMLTask(url: load.mainURL)
+        handler.webView(view, start: main)
+        #expect(main.events == ["response", "data", "finish"])
+        let source = try #require(String(bytes: main.bytes, encoding: .utf8))
+        #expect(source.contains("source"))
+
+        let image = try RecordedHTMLTask(url: #require(URL(string: load.mainURL.absoluteString + "image.png")))
+        handler.webView(view, start: image)
+        #expect(image.events == ["failure"])
+        #expect(image.bytes.isEmpty)
+        handler.dispose()
+    }
+
     @Test func stoppingAtResponseNeverDeliversDataOrTerminalCallback() throws {
         let document = FileDocument(fileURL: URL(fileURLWithPath: "/tmp/preview-document.html"))
         let load = try BoundedHTMLPreviewLoad(document: document, source: "<p>stopped</p>", grant: nil)
