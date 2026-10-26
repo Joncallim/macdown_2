@@ -37,11 +37,26 @@ import TextSearch
 @MainActor
 @Observable
 final class FolderSearchModel {
+    /// A row retains the exact search run that produced it. SwiftUI can keep
+    /// an old button alive briefly after `results` changes; the button must
+    /// not borrow the new run's folder when it is clicked.
+    struct PresentedResult: Identifiable {
+        let match: FolderSearchMatch
+        let generation: Int
+        let accessRoot: URL
+        let lexicalRoot: URL
+
+        var id: String {
+            "\(generation):\(match.relativePath)"
+        }
+    }
+
     var query = "" {
         didSet { scheduleSearch() }
     }
 
     private(set) var results: [FolderSearchMatch] = []
+    private(set) var presentedResults: [PresentedResult] = []
     private(set) var isSearching = false
     private(set) var outcome: FolderSearchOutcome?
     private(set) var root: URL?
@@ -210,6 +225,7 @@ final class FolderSearchModel {
         currentTask?.cancel()
         currentTask = nil
         results = []
+        presentedResults = []
         outcome = nil
         resetReplaceReview(keepingSummary: keepingReplaceSummary)
 
@@ -222,6 +238,7 @@ final class FolderSearchModel {
             return
         }
         isSearching = true
+        let lexicalRoot = lexicalRoot ?? root
 
         currentTask = Task { [weak self] in
             guard let self else { return }
@@ -240,10 +257,23 @@ final class FolderSearchModel {
                     excludedPaths.insert(match.relativePath)
                 }
                 results.append(match)
+                presentedResults.append(PresentedResult(
+                    match: match,
+                    generation: thisGeneration,
+                    accessRoot: root,
+                    lexicalRoot: lexicalRoot
+                ))
             }
             guard generation == thisGeneration else { return }
             outcome = searchOutcome
             isSearching = false
         }
+    }
+
+    func isCurrentResult(_ result: PresentedResult) -> Bool {
+        generation == result.generation
+            && root == result.accessRoot
+            && (lexicalRoot ?? root) == result.lexicalRoot
+            && presentedResults.contains { $0.id == result.id && $0.match == result.match }
     }
 }

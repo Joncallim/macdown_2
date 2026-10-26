@@ -84,6 +84,35 @@ struct FolderReplaceModelTests {
         #expect(model.replaceSummary?.replacedFiles == 1)
     }
 
+    @Test func staleRenderedCheckboxCannotReincludeAChangedMatch() async throws {
+        let tree = try TempTree(["a.txt": "foo first"])
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: tree.root)
+        let model = FolderSearchModel(index: index, debounce: .zero)
+        model.setRoot(tree.root)
+        model.query = "foo"
+        await waitUntil { model.presentedResults.count == 1 && model.outcome != nil }
+        let oldRow = try #require(model.presentedResults.first)
+        model.setIncluded(false, result: oldRow)
+
+        try "foo changed".write(to: tree.root.appendingPathComponent("a.txt"), atomically: true, encoding: .utf8)
+        await index.rebuild(root: tree.root)
+        model.indexDidRefresh(root: tree.root)
+        await waitUntil { model.presentedResults.count == 1 && model.outcome != nil }
+        let currentRow = try #require(model.presentedResults.first)
+        #expect(!model.isCurrentResult(oldRow))
+        #expect(model.isCurrentResult(currentRow))
+        #expect(model.excludedPaths.contains("a.txt"))
+
+        model.setIncluded(true, result: oldRow)
+        model.togglePreview(result: oldRow)
+        #expect(model.excludedPaths.contains("a.txt"))
+        #expect(!model.expandedPaths.contains("a.txt"))
+
+        model.setIncluded(true, result: currentRow)
+        #expect(!model.excludedPaths.contains("a.txt"))
+    }
+
     /// Review pass 6: a rewritten file gets a new inode and creation date, so its Open Recent entry was rejected by
     /// the fingerprint check and silently dropped on the next click.
     @Test func everyRewrittenFileIsReportedSoRecentsCanFollowIt() async throws {

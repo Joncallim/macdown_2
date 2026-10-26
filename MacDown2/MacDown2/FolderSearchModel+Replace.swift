@@ -72,6 +72,13 @@ extension FolderSearchModel {
         }
     }
 
+    /// A SwiftUI row can survive a search refresh briefly. Its checkbox must
+    /// never change inclusion for a newer match at the same path.
+    func setIncluded(_ isIncluded: Bool, result: PresentedResult) {
+        guard isCurrentResult(result) else { return }
+        setIncluded(isIncluded, path: result.match.relativePath)
+    }
+
     func isIncluded(path: String) -> Bool {
         !excludedPaths.contains(path)
     }
@@ -88,6 +95,11 @@ extension FolderSearchModel {
             expandedPaths.insert(path)
             loadPreview(path: path)
         }
+    }
+
+    func togglePreview(result: PresentedResult) {
+        guard isCurrentResult(result) else { return }
+        togglePreview(path: result.match.relativePath)
     }
 
     func cancelReplace() {
