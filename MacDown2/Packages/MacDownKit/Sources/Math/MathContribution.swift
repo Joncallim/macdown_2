@@ -60,7 +60,7 @@ public struct MathContribution: Contributing {
             let span = Self.restoringLaTeX(of: masked, from: sourceUnits)
             do {
                 let image = try await renderer(span, context)
-                results.append(ContributionResult(
+                try results.append(ContributionResult(
                     contributionID: id,
                     content: ContributionContent(
                         sourceRange: span.range,
@@ -72,6 +72,11 @@ public struct MathContribution: Contributing {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                let message = if let renderError = error as? MathRenderError, renderError == .invalidImageDimensions {
+                    String(localized: "The equation renderer produced invalid image dimensions.", bundle: .module)
+                } else {
+                    "equation could not be typeset: \(span.latex)"
+                }
                 results.append(ContributionResult(
                     contributionID: id,
                     content: nil,
@@ -79,7 +84,7 @@ public struct MathContribution: Contributing {
                     diagnostics: [
                         ContributionDiagnostic(
                             severity: .error,
-                            message: "equation could not be typeset: \(span.latex)"
+                            message: message
                         ),
                     ]
                 ))
@@ -169,10 +174,21 @@ public struct MathContribution: Contributing {
     /// finding: without these, a browser/WKWebView has no DPI hint and
     /// renders the PNG at its native pixel size, `pixelScale`× too large
     /// (`RenderedMathImage`'s own doc comment).
-    static func imgTag(image: RenderedMathImage, alt: String) -> String {
+    static func imgTag(image: RenderedMathImage, alt: String) throws -> String {
+        // Renderer output is not trusted to fit an HTML integer attribute. A
+        // trapping conversion would abort Export instead of reporting a
+        // failure for just this equation.
+        let roundedWidth = image.logicalWidth.rounded()
+        let roundedHeight = image.logicalHeight.rounded()
+        guard roundedWidth.isFinite, roundedHeight.isFinite,
+              roundedWidth > 0, roundedHeight > 0,
+              roundedWidth < Double(Int.max), roundedHeight < Double(Int.max)
+        else {
+            throw MathRenderError.invalidImageDimensions
+        }
+        let width = Int(roundedWidth)
+        let height = Int(roundedHeight)
         let base64 = image.pngData.base64EncodedString()
-        let width = Int(image.logicalWidth.rounded())
-        let height = Int(image.logicalHeight.rounded())
         return "<img src=\"data:image/png;base64,\(base64)\" width=\"\(width)\" height=\"\(height)\" " +
             "alt=\"\(htmlAttributeEscaped(alt))\">"
     }

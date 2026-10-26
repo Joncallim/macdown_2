@@ -185,17 +185,17 @@ struct MathContributionTests {
         #expect(MathContribution.excludedRanges(in: parsed).count == 2)
     }
 
-    @Test func imgTagEscapesHTMLSignificantCharactersInAlt() {
+    @Test func imgTagEscapesHTMLSignificantCharactersInAlt() throws {
         let image = RenderedMathImage(pngData: Data([0x01]), logicalWidth: 10, logicalHeight: 10)
-        let tag = MathContribution.imgTag(image: image, alt: "a < b & \"c\"")
+        let tag = try MathContribution.imgTag(image: image, alt: "a < b & \"c\"")
         #expect(tag.contains("alt=\"a &lt; b &amp; &quot;c&quot;\""))
         #expect(!tag.contains("< b"))
     }
 
-    @Test func imgTagEmbedsBase64EncodedPNGData() {
+    @Test func imgTagEmbedsBase64EncodedPNGData() throws {
         let data = Data([0xDE, 0xAD, 0xBE, 0xEF])
         let image = RenderedMathImage(pngData: data, logicalWidth: 10, logicalHeight: 10)
-        let tag = MathContribution.imgTag(image: image, alt: "x")
+        let tag = try MathContribution.imgTag(image: image, alt: "x")
         #expect(tag.contains("data:image/png;base64,\(data.base64EncodedString())"))
     }
 
@@ -203,11 +203,48 @@ struct MathContributionTests {
     /// explicit `width`/`height`, so it renders the PNG at its native
     /// PIXEL size — `pixelScale`× too large. These must reflect the
     /// LOGICAL size, rounded to the nearest whole CSS pixel.
-    @Test func imgTagEmitsLogicalWidthAndHeightNotPixelDimensions() {
+    @Test func imgTagEmitsLogicalWidthAndHeightNotPixelDimensions() throws {
         let image = RenderedMathImage(pngData: Data([0x01]), logicalWidth: 34.2, logicalHeight: 17.6)
-        let tag = MathContribution.imgTag(image: image, alt: "x")
+        let tag = try MathContribution.imgTag(image: image, alt: "x")
         #expect(tag.contains("width=\"34\""))
         #expect(tag.contains("height=\"18\""))
+    }
+
+    @Test func imgTagRejectsInvalidRendererDimensionsBeforeIntegerConversion() {
+        let invalid = [Double.nan, .infinity, -.infinity, 0, -1, 0.4, Double(Int.max), .greatestFiniteMagnitude]
+        for dimension in invalid {
+            for (width, height) in [(dimension, 12.0), (12.0, dimension)] {
+                let image = RenderedMathImage(pngData: Data([0x01]), logicalWidth: width, logicalHeight: height)
+                do {
+                    _ = try MathContribution.imgTag(image: image, alt: "x")
+                    Issue.record("accepted invalid renderer dimensions \(width) × \(height)")
+                } catch let error as MathRenderError {
+                    #expect(error == .invalidImageDimensions)
+                } catch {
+                    Issue.record("unexpected renderer error: \(error)")
+                }
+            }
+        }
+    }
+
+    @Test func runIsolatesInvalidRendererDimensionsFromAValidEquation() async throws {
+        let contribution = MathContribution(context: Self.context) { span, _ in
+            if span.latex == "bad" {
+                return RenderedMathImage(pngData: Data([0x01]), logicalWidth: .nan, logicalHeight: 10)
+            }
+            return Self.fakeImage(for: span.latex)
+        }
+        let results = try await contribution.run(
+            document: Self.document(), sourceText: "$bad$ then $good$", sourceGeneration: 0
+        )
+
+        #expect(results.count == 2)
+        #expect(results[0].content == nil)
+        #expect(results[0].diagnostics.first?.severity == .error)
+        #expect(results[0].diagnostics.first?.message.isEmpty == false)
+        #expect(results[0].diagnostics.first?.message != "equation could not be typeset: bad")
+        #expect(results[1].content != nil)
+        #expect(results[1].diagnostics.isEmpty)
     }
 
     /// Adversarial-review finding: inline code (`` `$x$` ``) inside an

@@ -147,7 +147,7 @@ let package = Package(
         ),
         .target(name: "Contributions", dependencies: ["MarkdownEngine"], resources: [.process("Resources")]),
         .target(name: "TextFilters", resources: [.process("Resources")]),
-        .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"], resources: [.process("Resources")]),
         .target(
             name: "MathRendering",
             dependencies: [
