@@ -22,17 +22,14 @@ public final class ThemeController {
         self.preferenceStore = preferenceStore
         self.appearance = appearance
 
-        guard let fallbackTheme = available.first else {
-            fatalError("ThemeController requires at least one available theme")
-        }
-        let defaultLight = available.first { $0.appearance == .light } ?? fallbackTheme
-        let defaultDark = available.first { $0.appearance == .dark } ?? fallbackTheme
+        let defaultLight = available.first { $0.appearance == .light } ?? BundledThemes.light
+        let defaultDark = available.first { $0.appearance == .dark } ?? BundledThemes.dark
 
         let initialLight: Theme
         let initialDark: Theme
         if let selection = preferenceStore.loadSelection() {
-            initialLight = available.first { $0.id == selection.lightID } ?? defaultLight
-            initialDark = available.first { $0.id == selection.darkID } ?? defaultDark
+            initialLight = available.first { $0.id == selection.lightID && $0.appearance == .light } ?? defaultLight
+            initialDark = available.first { $0.id == selection.darkID && $0.appearance == .dark } ?? defaultDark
         } else {
             initialLight = defaultLight
             initialDark = defaultDark
