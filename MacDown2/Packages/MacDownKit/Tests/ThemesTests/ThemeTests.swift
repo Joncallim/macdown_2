@@ -48,6 +48,16 @@ struct ThemeTests {
         #expect(BundledThemes.all.count == 2)
     }
 
+    @Test func bundledThemesProvideVisibleCurrentLineRoles() {
+        for theme in BundledThemes.all {
+            let active = theme.chrome.currentLine
+            #expect(active != nil, "Theme \(theme.id) must distinguish the current editor line")
+            #expect((active?.alpha ?? 0) > 0)
+            #expect((active?.alpha ?? 1) < 0.2, "the wash must remain behind legible source text")
+            #expect(active?.red != theme.chrome.background.red || active?.green != theme.chrome.background.green)
+        }
+    }
+
     @Test func bundledThemesCoverCanonicalRoots() {
         let roots: Set = [
             "keyword", "string", "comment", "number", "constant",

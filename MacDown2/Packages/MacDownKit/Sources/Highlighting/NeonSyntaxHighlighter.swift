@@ -156,6 +156,8 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
         // coincidence one (epic-22-implementation.md §6.8).
         (textView as? EditorTextView)?.invisiblesColor = theme.chrome.invisibles?.nsColor
             ?? theme.chrome.foreground.nsColor.withAlphaComponent(0.35)
+        (textView as? EditorTextView)?.currentLineColor = theme.chrome.currentLine?.nsColor
+            ?? theme.chrome.foreground.nsColor.withAlphaComponent(0.08)
     }
 
     /// Builds Neon's highlighter for `config` and puts the gate back in front

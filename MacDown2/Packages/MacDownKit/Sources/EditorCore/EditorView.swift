@@ -363,6 +363,8 @@ public struct EditorView: NSViewRepresentable {
             // The semantic primary range, not AppKit's topmost one: with Cmd-D / Select All Matches the two differ, and
             // the status bar and both outlines follow this callback.
             onSelectionChange?(system.selectionSet.primaryRange)
+            gutterView?.needsDisplay = true
+            system.textView.setNeedsDisplay(system.textView.visibleRect)
         }
 
         /// Maps the AppKit text command selectors E10 understands. Everything
