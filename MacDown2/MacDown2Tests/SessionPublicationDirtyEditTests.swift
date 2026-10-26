@@ -61,4 +61,88 @@ extension SessionViewStateRoundTripTests {
         #expect(sessions.publicationCount == 1)
         #expect(sessions.session?.tabs.first?.documentRecoveryEpoch == currentDocument.recoveryEpoch)
     }
+
+    @Test func terminationOwnsTheSessionLaneWhenAnotherSaveIsScheduled() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+        await coordinator.awaitScheduledSessionSaveForTesting()
+        sessions.session = nil
+        sessions.publicationCount = 0
+
+        var explicitRecoveryPasses = 0
+        coordinator.afterSessionRecoveryPersisted = {
+            explicitRecoveryPasses += 1
+            if explicitRecoveryPasses == 1 {
+                coordinator.scheduleSaveSession()
+            }
+        }
+
+        let result = await coordinator.saveSessionForTermination()
+        await coordinator.awaitScheduledSessionSaveForTesting()
+
+        #expect(result.persisted)
+        #expect(explicitRecoveryPasses == 2)
+        let currentDocument = try #require(coordinator.controllers.first?.model.activeDocument)
+        #expect(sessions.session?.tabs.first?.documentRecoveryEpoch == currentDocument.recoveryEpoch)
+    }
+
+    @Test func terminationDrainsAnAutosaveBeforeLaunchRestoreCompletes() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+        await coordinator.awaitScheduledSessionSaveForTesting()
+        sessions.session = nil
+        sessions.publicationCount = 0
+
+        let autosaveGate = FirstCallGate()
+        let restoreGate = FirstCallGate()
+        defer {
+            autosaveGate.release()
+            restoreGate.release()
+        }
+        var recoveryPasses = 0
+        var autosaveResumed = false
+        var autosaveWasCancelledOnResume = false
+        coordinator.afterSessionRecoveryPersisted = {
+            recoveryPasses += 1
+            if recoveryPasses == 1 {
+                await autosaveGate.pass()
+                autosaveWasCancelledOnResume = Task.isCancelled
+                autosaveResumed = true
+            }
+        }
+
+        coordinator.restoreTask = Task { @MainActor in await restoreGate.pass() }
+        try await waitForCondition { restoreGate.entered }
+
+        coordinator.scheduleSaveSession()
+        try await waitForCondition { autosaveGate.entered }
+
+        let termination = Task { @MainActor in await coordinator.saveSessionForTermination() }
+        try await waitForCondition { coordinator.terminationSaveInProgress }
+        autosaveGate.release()
+        try await waitForCondition { autosaveResumed }
+
+        #expect(autosaveWasCancelledOnResume)
+        #expect(sessions.publicationCount == 0)
+        restoreGate.release()
+
+        let result = await termination.value
+
+        #expect(result.persisted)
+        #expect(recoveryPasses == 2)
+        #expect(sessions.publicationCount == 1)
+        let currentDocument = try #require(coordinator.controllers.first?.model.activeDocument)
+        #expect(sessions.session?.tabs.first?.documentRecoveryEpoch == currentDocument.recoveryEpoch)
+    }
+
+    private func waitForCondition(_ condition: @MainActor () -> Bool) async throws {
+        for _ in 0 ..< 1000 where !condition() {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(condition())
+    }
 }
