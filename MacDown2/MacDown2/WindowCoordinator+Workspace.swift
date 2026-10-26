@@ -116,9 +116,11 @@ extension WindowCoordinator {
             if isAutosave, Task.isCancelled {
                 return .saved
             }
-            // Scheduling a changed session invalidates A immediately, even while B is still debounced. Beginning B
-            // also invalidates A if B later fails. An explicit caller must secure a fresh snapshot before success.
-            if sessionPublicationOrder.isSuperseded(sequence) {
+            // Editor text can advance dirty -> dirty without scheduling a coordinator session save. Check the live
+            // document lifetime and generation too, after recovery and before the synchronous canonical write.
+            // Scheduling a changed session invalidates A while B is debounced.
+            // Beginning B also invalidates A if B fails.
+            if sessionPublicationOrder.isSuperseded(sequence) || !capturedDocumentsRemainCurrent(snapshot) {
                 if isAutosave {
                     return .saved
                 }
@@ -138,6 +140,25 @@ extension WindowCoordinator {
             return .saved
         }
         return .sessionPublicationFailed
+    }
+
+    private func capturedDocumentsRemainCurrent(_ snapshot: [ControllerTabSnapshot]) -> Bool {
+        let current = Self.inTabOrder(controllers, window: \.window).compactMap { controller in
+            controller.model.tabStore.tabs.first.map { (controller, $0) }
+        }
+        guard current.count == snapshot.count else { return false }
+        return zip(snapshot, current).allSatisfy { saved, live in
+            let document = live.1.document
+            return saved.controller === live.0
+                && saved.tab.record.id == live.1.id
+                && saved.tab.documentID == document.id
+                && saved.tab.documentRecoveryEpoch == document.recoveryEpoch
+                && saved.tab.documentGeneration == document.mutationGeneration
+                && saved.tab.documentState == document.state
+                && saved.tab.record.fileURL == document.fileURL
+                && saved.tab.record.encoding == document.encoding
+                && saved.tab.documentText.isExactlyEqual(to: document.text)
+        }
     }
 
     private func sessionSnapshot() -> ([ControllerTabSnapshot], UUID?) {
