@@ -44,16 +44,17 @@ corrections are integrated:
   Its source review and exact-head CI run `40275023542` passed. Independent
   combined-tree review found no interaction with #528, and the post-merge
   CI at that earlier checkpoint passed on their combined tree.
-- [#531](https://github.com/Joncallim/macdown_2/pull/531), merged as the
-  current checkpoint, rejects invalid diagram image dimensions before export
-  raster allocation. Independent source review and exact-head CI run
-  `40282586058` passed; the current combined-head run above also passed.
-
 These results land only the named implementation slices. #183 remains open
 pending reconciliation of its other findings and the required real-app
 recovery, filesystem, relaunch and Release evidence. Green CI does not replace
 the release-evidence ledger or
 [#115](https://github.com/Joncallim/macdown_2/issues/115) acceptance.
+
+Separate from #183, [#531](https://github.com/Joncallim/macdown_2/pull/531)
+implements the #116 guard for invalid rendered math image dimensions before
+HTML width/height conversion. Its independent source review and exact-head CI
+run `40282586058` passed; the current combined-head run above also passed.
+This change does not establish a pre-allocation raster memory budget.
 
 ## Current draft and acceptance status — 2026-10-26
 
