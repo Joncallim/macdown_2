@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent
 HEAD = 'f5605d9aead306e15ccb1bd8fb4f48b8931c1f76'
 NEON = 'dabf50c947148c49acd0d321dfe8f3805d10b3da'
 LOCK = '7e065900332e02d784b98579400c8dec1967098884db9206acd4d6bd3bcc3d1d'
-PATCH = '148cf91c362b2641dc89aa41bf5591d858d8302d2a2c918d94d8505ba3d17c4f'
+PATCH = '8fcd517bcefba2b6704fd19297ea9d5779cf279f04cce994eeb3e0299e3ff986'
 
 def command(*args, cwd=None):
     return subprocess.run(args, cwd=cwd, check=True, capture_output=True,

@@ -109,7 +109,7 @@ index 76d2f4c..7887dab 100644
  
  		guard let first = pendingEventQueue.next() else {
 diff --git a/Sources/TreeSitterClient/BackgroundProcessor.swift b/Sources/TreeSitterClient/BackgroundProcessor.swift
-index b6263d5..11ec58f 100644
+index b6263d5..7d681ea 100644
 --- a/Sources/TreeSitterClient/BackgroundProcessor.swift
 +++ b/Sources/TreeSitterClient/BackgroundProcessor.swift
 @@ -1,4 +1,12 @@
@@ -168,11 +168,12 @@ index b6263d5..11ec58f 100644
  		
  		return opResult
  	}
-@@ -51,17 +72,24 @@ final class BackgroundProcessor<Value> {
+@@ -51,17 +72,25 @@ final class BackgroundProcessor<Value> {
  	public func accessValue<T>(
  		isolation: isolated (any Actor),
  		preferSynchronous: Bool,
 +		diagnosticParent: UInt64 = 0,
++		diagnosticDelivery: ((UInt64, sending Result<T, Error>, @escaping () -> Void) -> Void)? = nil,
  		operation: @escaping @Sendable (Value) throws -> sending T,
  		completion: @escaping (sending Result<T, Error>) -> Void
  	) {
@@ -194,7 +195,7 @@ index b6263d5..11ec58f 100644
  			completion(result)
  
  			return
-@@ -75,17 +103,32 @@ final class BackgroundProcessor<Value> {
+@@ -75,20 +104,55 @@ final class BackgroundProcessor<Value> {
  			_ = isolation
  			
  			let result = await withCheckedContinuation { continuation in
@@ -217,12 +218,10 @@ index b6263d5..11ec58f 100644
 -			endBackgroundWork()
 -			
 -			completion(result)
-+			if let gate = self.orderingGates?.delivery {
-+				nonisolated(unsafe) let heldResult = result
-+				gate(operationID) {
++			if let diagnosticDelivery {
++				diagnosticDelivery(operationID, result) {
 +					context?.record(.callback, operation: operationID, parent: diagnosticParent, pending: self.pendingCount)
 +					self.endBackgroundWork()
-+					completion(heldResult)
 +				}
 +			} else {
 +				context?.record(.callback, operation: operationID, parent: diagnosticParent, pending: self.pendingCount)
@@ -232,6 +231,31 @@ index b6263d5..11ec58f 100644
  		}
  	}
  
++	/// Only diagnostic fixtures with Sendable results may retain a delivery action.
++	/// Ordinary callers retain the generic sending path, including non-Sendable T.
++	/// Gates must release actions exactly once on the original caller's actor.
++	func accessValueForOrderingDiagnostics<T: Sendable>(
++		isolation: isolated (any Actor),
++		preferSynchronous: Bool,
++		diagnosticParent: UInt64 = 0,
++		operation: @escaping @Sendable (Value) throws -> sending T,
++		completion: @escaping (sending Result<T, Error>) -> Void
++	) {
++		accessValue(isolation: isolation, preferSynchronous: preferSynchronous,
++			diagnosticParent: diagnosticParent,
++			diagnosticDelivery: { operationID, result, finish in
++				// Result<T, Error> is Sendable here; retaining it needs no unsafe transfer.
++				let action = {
++					finish()
++					completion(result)
++				}
++				if let gate = self.orderingGates?.delivery { gate(operationID, action) } else { action() }
++			}, operation: operation, completion: completion)
++	}
++
+ 	public func accessValue<T>(
+ 		isolation: isolated (any Actor),
+ 		operation: @escaping @Sendable (Value) throws -> sending T
 diff --git a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
 index 81bd2b8..b239036 100644
 --- a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
@@ -504,7 +528,7 @@ index 0000000..5838071
 +}
 diff --git a/Tests/TreeSitterClientTests/OrderingDiagnosticsTests.swift b/Tests/TreeSitterClientTests/OrderingDiagnosticsTests.swift
 new file mode 100644
-index 0000000..2ac475f
+index 0000000..7683dbf
 --- /dev/null
 +++ b/Tests/TreeSitterClientTests/OrderingDiagnosticsTests.swift
 @@ -0,0 +1,225 @@
@@ -535,7 +559,7 @@ index 0000000..2ac475f
 +        var callbacks: [Int] = []
 +        var values: [Int: String] = [:]
 +        // This query has executed, but remains pending until its callback is delivered.
-+        processor.accessValue(isolation: MainActor.shared, preferSynchronous: false,
++        processor.accessValueForOrderingDiagnostics(isolation: MainActor.shared, preferSynchronous: false,
 +            operation: { $0.snapshot }, completion: { (result: Result<String, Error>) in
 +                values[0] = try? result.get(); callbacks.append(0)
 +            })
@@ -546,10 +570,10 @@ index 0000000..2ac475f
 +        #expect(processor.hasPendingWork)
 +
 +        // Two distinct edits, each carrying an immutable expected content snapshot.
-+        processor.accessValue(isolation: MainActor.shared, preferSynchronous: true,
++        processor.accessValueForOrderingDiagnostics(isolation: MainActor.shared, preferSynchronous: true,
 +            operation: { $0.apply(1, range: NSRange(location: 0, length: 0), replacement: "X", expected: "Xabcd") },
 +            completion: { (result: Result<String, Error>) in values[1] = try? result.get(); callbacks.append(1) })
-+        processor.accessValue(isolation: MainActor.shared, preferSynchronous: true,
++        processor.accessValueForOrderingDiagnostics(isolation: MainActor.shared, preferSynchronous: true,
 +            operation: { $0.apply(2, range: NSRange(location: 1, length: 1), replacement: "Y", expected: "XYbcd") },
 +            completion: { (result: Result<String, Error>) in values[2] = try? result.get(); callbacks.append(2) })
 +        try #require(await until { submit.ids.count == 2 })
@@ -588,10 +612,10 @@ index 0000000..2ac475f
 +        processor.orderingGates = gates
 +        defer { processor.orderingGates = nil; deliveries.releaseAll() }
 +        var order: [Int] = []
-+        processor.accessValue(isolation: MainActor.shared, preferSynchronous: false,
++        processor.accessValueForOrderingDiagnostics(isolation: MainActor.shared, preferSynchronous: false,
 +            operation: { $0.snapshot }, completion: { (_: Result<String, Error>) in
 +                order.append(1)
-+                processor.accessValue(isolation: MainActor.shared, preferSynchronous: true,
++                processor.accessValueForOrderingDiagnostics(isolation: MainActor.shared, preferSynchronous: true,
 +                    operation: { $0.snapshot }, completion: { (_: Result<String, Error>) in order.append(2) })
 +            })
 +        try #require(await until { deliveries.ids.count == 1 })
@@ -627,7 +651,7 @@ index 0000000..2ac475f
 +            let gates = OrderingGates()
 +            gates.delivery = { id, action in MainActor.assumeIsolated { deliveries.hold(id, action) } }
 +            processor.orderingGates = gates
-+            processor.accessValue(isolation: MainActor.shared, preferSynchronous: false,
++            processor.accessValueForOrderingDiagnostics(isolation: MainActor.shared, preferSynchronous: false,
 +                operation: { $0.snapshot }, completion: { (_: Result<String, Error>) in delivered += 1 })
 +            try #require(await until { deliveries.ids.count == 1 })
 +        }
