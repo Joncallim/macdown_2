@@ -4,12 +4,14 @@
 
 The order and release gates below remain the coordination contract, but their
 2026-09-28 status and credential inventory are historical. The current
-`integration-final` checkpoint is `19b4a5b76ee9f06a99d46127d996cd5669818d2b`
-(tree `3149369e7df74e7721600b15287bab71c9157ebe`). This checkpoint is
-an engineering integration branch, not a signed release candidate.
+`integration-final` checkpoint is `a129ae2be3de6f0065a2584e974de6d3d2a56c43`
+(tree `16418c77437bdc186a47836febc67ce9a5467832`). This checkpoint is
+an engineering integration branch, not a signed release candidate. Its
+post-merge CI run `40277767533` and compliance run `40277767426` passed;
+the combined source tree also matches the independently reviewed merge tree.
 
-Two narrowly reviewed [#183](https://github.com/Joncallim/macdown_2/issues/183)
-recovery corrections are integrated:
+Recent narrow [#183](https://github.com/Joncallim/macdown_2/issues/183)
+corrections are integrated:
 
 - [#521](https://github.com/Joncallim/macdown_2/pull/521), merged at
   `b79f8d85e33c176f26c7c0ccf92c097ed1ff6ceb`, binds recovery loading to
@@ -17,17 +19,34 @@ recovery corrections are integrated:
   15/15, independent source review accepted it, and hosted CI run
   `40259974415` passed.
 - [#522](https://github.com/Joncallim/macdown_2/pull/522), merged at the
-  checkpoint above, rejects recovery publication unless the proposed text is
-  byte-for-byte identical to the captured session snapshot's text. The focused
-  app regression passed 7/7 and the combined-head FileDocument suite passed
-  15/15 locally; independent source and combined-tree reviews accepted it,
+  earlier checkpoint `19b4a5b7`, rejects recovery publication unless the
+  proposed text is byte-for-byte identical to the captured session snapshot's
+  text. The focused app regression passed 7/7; the combined-head
+  FileDocument suite passed 15/15 locally. Independent source and combined-tree
+  reviews accepted it,
   and hosted CI run `40262502856` passed.
+- [#527](https://github.com/Joncallim/macdown_2/pull/527), merged at
+  `b4ff944c`, keeps Save error ownership bound to the original operation.
+  Independent source review and exact-head CI run `40268810688` passed; this
+  package-level change does not establish native Save UI acceptance.
+- [#524](https://github.com/Joncallim/macdown_2/pull/524), merged at
+  `b435fd82`, retires Folder Search results when an index refresh fails or
+  the active root changes. [#528](https://github.com/Joncallim/macdown_2/pull/528),
+  merged at `dc952693`, keeps later row clicks, match reveal and Replace
+  inclusion bound to the result the user saw. Their source reviews and
+  exact-head CI runs `40272393710` and `40274842156` passed.
+- [#529](https://github.com/Joncallim/macdown_2/pull/529), merged at the
+  current checkpoint, blocks stale session publication after a newer edit,
+  including a dirty-to-dirty edit that does not schedule a coordinator save.
+  Its source review and exact-head CI run `40275023542` passed. Independent
+  combined-tree review found no interaction with #528, and the post-merge
+  CI above passed on their combined tree.
 
-Those results close only their two findings. #183 remains open pending
-reconciliation of its other findings and the required real-app recovery,
-filesystem, relaunch and Release evidence. Green CI does not replace the
-release-evidence ledger or [#115](https://github.com/Joncallim/macdown_2/issues/115)
-acceptance.
+These results land only the named implementation slices. #183 remains open
+pending reconciliation of its other findings and the required real-app
+recovery, filesystem, relaunch and Release evidence. Green CI does not replace
+the release-evidence ledger or
+[#115](https://github.com/Joncallim/macdown_2/issues/115) acceptance.
 
 Two reviewed branches remain draft for native acceptance:
 [#519](https://github.com/Joncallim/macdown_2/pull/519) (#121, explicit
