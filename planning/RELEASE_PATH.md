@@ -3,8 +3,8 @@
 ## Current integration checkpoint — 2026-10-26
 
 The order and release gates below remain the coordination contract, but their
-2026-09-28 status and credential inventory are historical. The current
-This snapshot records the latest app-code `integration-final` checkpoint as
+2026-09-28 status and credential inventory are historical. This snapshot
+records the latest app-code `integration-final` checkpoint as
 `d04bca8e93ac34120b7e2e48422d52588a3f50c4` (tree
 `d50f19b6d8ce8537a6eccdc0522c0ec984e245b0`). This is an engineering
 integration baseline, not a signed release candidate. Its exact-head CI run
