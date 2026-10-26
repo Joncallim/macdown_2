@@ -264,6 +264,7 @@ final class WindowCoordinator {
     /// Schedules a session save, debounced so rapid changes coalesce into one
     /// write. Call this after any structural or document change.
     func scheduleSaveSession() {
+        sessionPublicationOrder.invalidateCapturedSnapshots()
         saveTask?.cancel()
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
