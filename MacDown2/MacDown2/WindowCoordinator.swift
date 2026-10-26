@@ -264,12 +264,18 @@ final class WindowCoordinator {
     /// Schedules a session save, debounced so rapid changes coalesce into one
     /// write. Call this after any structural or document change.
     func scheduleSaveSession() {
+        sessionPublicationOrder.invalidateCapturedSnapshots()
         saveTask?.cancel()
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
             guard let self, !Task.isCancelled else { return }
             _ = await saveSessionResult(isAutosave: true)
         }
+    }
+
+    /// Test seam for draining fixture startup autosaves before controlling a later publication interleaving.
+    func awaitScheduledSessionSaveForTesting() async {
+        await saveTask?.value
     }
 
     /// Begins the launch-time session restore. A short grace period lets a
