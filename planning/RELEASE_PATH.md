@@ -1,5 +1,63 @@
 # MostlyText 1.0 release path
 
+## Execution checkpoint (2026-10-26)
+
+The 2026-09-28 status and workstream table below are historical snapshots. The
+adopted sequence is [RELEASE_SEQUENCE.md](RELEASE_SEQUENCE.md) (merged in PR
+#147): stabilise software and interface (S), validate a private signed
+candidate (V1), finish E16 localisation, validate the final signed candidate
+and its exact-artifact compliance, close #115, perform #158's repository
+cutover, then seek separate authority for public app promotion. The unit graph
+in `downstream/readiness.json` records dependencies, not completed tests.
+
+Current development base is `origin/integration-final` `11213c89`; the local
+branch named `integration-final` may lag and must not be assumed current. PR
+#480 (integration into `master`) is still draft. Merged #515 protects the #53
+destination decoder but does not activate import; #516 adds localisation
+inventory checks but does not freeze strings; #517 locks release dependencies
+but does not establish a signed artifact; #518 fixes saved HTML load identity
+but does not make the live preview's resource reads contained. These parent
+issues remain open.
+
+The first concurrent source lanes are #121's explicit window-local resource
+grant and #509's sidebar/encoding reconciliation. One Mac owner at a time
+handles Release builds and native interface tests. #121's folder-choice policy
+is settled, but both HTML and Markdown consumers, the chooser and signed native
+permission evidence must pass before closure. #509 requires observed native
+acceptance before merge. #505's fresh Trash action remains held. Do not treat
+green CI or private older-app evidence as acceptance for a changed head.
+The local #121 branch `fix/121-preview-contained-read-2026-10-26` contains
+reviewed test checkpoints `4fb535cc` and `462e984e`, followed by the combined
+source checkpoint `53ca9436`; it has not passed native or signed acceptance.
+
+| Order | Owning issues and bounded outcome | Required evidence before closure or next stage |
+| --- | --- | --- |
+| 1, parallel source work | #121: explicit folder grant, contained HTML and Markdown reads, safe revocation; #509: sidebar/encoding reconciliation. #505 remains separate. | #121 race, two-window, Save As, cancellation, renamed-root and long-document tests plus signed native behavior. #509 needs exact-build sidebar/encoding dogfood. #505 needs a fresh approved Trash test. Each merged slice needs independent review and applicable exact-head CI. |
+| 2 | E22/#112 and #173: reconcile remaining editing and native navigation journeys; #116–#121, #117, #118, #120, #183 and #459: finish only their documented residuals. #119 owns external-file manual/performance evidence. | Real Release workflows and focused regressions, followed by issue-by-issue review, CI, dogfood and risk records. #203 gets an explicit E05 performance disposition; a new fork/pin remains a separate decision. |
+| 3 | E23/#113 and #79: finish theme catalog, Appearance, Quick Look, Finder and coherent diagrams. #53 and app-side E17/#18: consented migration, state compatibility, CLI and updater after E22/E23 contracts. | Theme/contrast, file/import/recovery, Quick Look/Finder, three-engine and migration/restart evidence. Existing #515 decoder protection is not importer activation. |
+| 4 | S and private V1: #88 interface gaps, #155 long-session/memory, and the finite #115 debt ledger on one identified candidate. | Executed critical native cases including accessibility, recovery, export and update paths. Any required blocked or skipped result returns to S; compilation alone is insufficient. |
+| 5 | Final E16/#17 translation and string freeze after V1. | Actual extraction, translation, native-language and layout review. #516 only validates inventory structure. |
+| 6 | Final signed E17/#18 candidate and #148 exact-artifact provenance, source offers, notices and licence UI. | Notarisation, install/update rehearsal, artifact hashes, anonymous source downloads, qualified Mermaid notice review, and artifact/locale-sensitive #115 reruns. #517 only hardens dependency resolution. |
+| 7 | Close #115, then #158 full-history repository cutover; public promotion is separate. | Frozen source/artifact identity, new-repository CI and real post-cutover commit, then explicit publication authority. |
+
+After E22 (#112) and its navigation/evidence debts converge, finish E23 (#113)
+and #53/E17 app-side migration contracts. In parallel, close concrete
+#116–#121, #79, #88, #155, #173, #183 and #459 obligations against their
+own issue criteria. #203's dependency/pin change is a separate decision, not
+an implicit performance workaround. The S gate is a reviewable ledger, not a
+claim that these open parent issues are complete. Native file, recovery,
+preview, export, math, diagram, theme, accessibility and long-session cases
+belong to the exact private candidate. Only after V1 passes do final E16
+translation and the final signed candidate/#148 artifact checks proceed.
+
+Source-only D2/Graphviz distribution and the matching open-source pages were
+published and verified earlier; this did not publish the app. A Developer ID
+identity and a local signed-build check exist, but notarisation, the final
+signed app and human Mermaid notice review are still gates. Website quality
+assurance is owned separately. No source branch or issue closure authorises a
+public app release, storage migration, new dependency, changed permissions or
+paid service.
+
 **Owner summary.** This is the coordination map from today's `master` to a
 public, signed and downloadable MostlyText 1.0. It adds no scope. Every item
 below already has an owning issue or epic, and those issues remain the
