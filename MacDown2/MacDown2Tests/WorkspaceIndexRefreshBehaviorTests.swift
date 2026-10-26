@@ -66,23 +66,47 @@ struct WorkspaceIndexRefreshBehaviorTests {
 
     @Test func aFailedIndexRefreshReplacesStaleSearchResultsAndRecoveryRerunsTheQuery() async throws {
         let root = try tempRoot(["a.md"])
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
+            try? FileManager.default.removeItem(at: root)
+        }
         try "needle".write(to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
-        let fixture = try await makeController(root: root)
+        let probe = IndexWalkProbe(unreadableRoot: root, unreadableWalkNumber: 2)
+        let fixture = try await makeController(root: root, index: probe.makeIndex())
         defer { fixture.retire() }
         let controller = fixture.controller
         let search = controller.folderSearchModel
         search.query = "needle"
         try await waitForSearch(search, paths: ["a.md"])
 
-        try FileManager.default.removeItem(at: root)
         await controller.refreshWorkspaceIndex()
+        #expect(probe.permissionChangeSucceeded)
         try await waitForSearch(search, paths: [], outcome: .indexUnavailable)
 
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
         try "needle again".write(to: root.appendingPathComponent("restored.md"), atomically: true, encoding: .utf8)
         await controller.refreshWorkspaceIndex()
         try await waitForSearch(search, paths: ["restored.md"])
+    }
+
+    @Test func losingTheFolderAccessScopeRetiresVisibleSearchResults() async throws {
+        let root = try tempRoot(["a.md"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "needle".write(to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+        let fixture = try await makeController(root: root)
+        defer { fixture.retire() }
+        let search = fixture.controller.folderSearchModel
+        search.query = "needle"
+        try await waitForSearch(search, paths: ["a.md"])
+
+        fixture.controller.fileTreeModel.tearDown()
+
+        #expect(fixture.controller.fileTreeModel.rootAccessURL == nil)
+        #expect(search.root == nil)
+        #expect(search.results.isEmpty)
+        #expect(search.outcome == .indexUnavailable)
+        search.query = "another term"
+        #expect(search.outcome == .indexUnavailable)
     }
 
     @Test func automaticRefreshNeverReincludesExcludedOrUnreviewedReplaceTargets() async throws {

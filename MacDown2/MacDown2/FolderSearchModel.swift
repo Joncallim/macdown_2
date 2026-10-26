@@ -45,6 +45,7 @@ final class FolderSearchModel {
     private(set) var isSearching = false
     private(set) var outcome: FolderSearchOutcome?
     private(set) var root: URL?
+    private(set) var rootUnavailable = false
     /// The folder as the user opened it (a symlink path stays a symlink path),
     /// used to name files that are opened from results so they carry the same
     /// identity as the same file opened from the sidebar; `root` is the
@@ -163,8 +164,21 @@ final class FolderSearchModel {
             retireReplaceRun()
         }
         self.root = root
+        rootUnavailable = false
         self.lexicalRoot = root == nil ? nil : (lexicalRoot ?? root)
         scheduleSearch(debounced: false)
+    }
+
+    /// A watcher can revoke the root's access scope without an explicit
+    /// folder switch. Keep its terminal state distinct from an empty search;
+    /// the access callback may fire twice while the tree tears down.
+    func rootAccessWasRevoked() {
+        guard root != nil else { return }
+        setRoot(nil)
+        rootUnavailable = true
+        if !query.isEmpty {
+            outcome = .indexUnavailable
+        }
     }
 
     /// A completed same-root index rebuild changes which files the current
@@ -202,6 +216,9 @@ final class FolderSearchModel {
         let currentQuery = query
         guard let root, !currentQuery.isEmpty else {
             isSearching = false
+            if rootUnavailable, !currentQuery.isEmpty {
+                outcome = .indexUnavailable
+            }
             return
         }
         isSearching = true
