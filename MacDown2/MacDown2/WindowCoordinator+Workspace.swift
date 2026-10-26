@@ -196,7 +196,7 @@ extension WindowCoordinator {
                     guard let recovered = try? await recoveryBuffer.load(
                         for: entry.tab.documentID,
                         epoch: entry.tab.documentRecoveryEpoch
-                    ), recovered == entry.tab.documentText else {
+                    ), recovered.isExactlyEqual(to: entry.tab.documentText) else {
                         return entry.controller
                     }
                 }
