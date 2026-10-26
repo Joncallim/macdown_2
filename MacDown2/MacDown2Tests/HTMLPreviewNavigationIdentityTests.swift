@@ -19,7 +19,7 @@ struct HTMLPreviewNavigationIdentityTests {
         #expect(fixture.coordinator.gate.pendingGeneration == generation)
         #expect(fixture.coordinator.gate.lastLoadedGeneration == nil)
 
-        fixture.coordinator.webView(fixture.view, didFail: current, withError: Self.failure())
+        fixture.coordinator.webView(fixture.view, didFail: current, withError: fixture.failure())
         #expect(fixture.coordinator.gate.pendingGeneration == nil)
         let retry = try await fixture.startCurrentRevision()
         fixture.coordinator.webView(fixture.view, didFinish: retry)
@@ -34,9 +34,9 @@ struct HTMLPreviewNavigationIdentityTests {
         let old = try await fixture.startNextRevision()
         let current = try await fixture.startNextRevision()
         if provisional {
-            fixture.coordinator.webView(fixture.view, didFailProvisionalNavigation: old, withError: Self.failure())
+            fixture.coordinator.webView(fixture.view, didFailProvisionalNavigation: old, withError: fixture.failure())
         } else {
-            fixture.coordinator.webView(fixture.view, didFail: old, withError: Self.failure())
+            fixture.coordinator.webView(fixture.view, didFail: old, withError: fixture.failure())
         }
         #expect(fixture.coordinator.gate.pendingGeneration == fixture.document.mutationGeneration)
         fixture.coordinator.webView(fixture.view, didFinish: current)
@@ -52,15 +52,15 @@ struct HTMLPreviewNavigationIdentityTests {
         let unknown = try #require(otherView.loadHTMLString("<!doctype html><title>fixture</title>", baseURL: nil))
         for navigation in [nil, unknown] {
             fixture.coordinator.webView(fixture.view, didFinish: navigation)
-            fixture.coordinator.webView(fixture.view, didFail: navigation, withError: Self.failure())
+            fixture.coordinator.webView(fixture.view, didFail: navigation, withError: fixture.failure())
             fixture.coordinator.webView(
                 fixture.view,
                 didFailProvisionalNavigation: navigation,
-                withError: Self.failure()
+                withError: fixture.failure()
             )
         }
         fixture.coordinator.webView(otherView, didFinish: current)
-        fixture.coordinator.webView(otherView, didFail: current, withError: Self.failure())
+        fixture.coordinator.webView(otherView, didFail: current, withError: fixture.failure())
         fixture.coordinator.webViewWebContentProcessDidTerminate(otherView)
         #expect(otherView.reloads.isEmpty)
         #expect(fixture.coordinator.gate.pendingGeneration == fixture.document.mutationGeneration)
@@ -74,7 +74,7 @@ struct HTMLPreviewNavigationIdentityTests {
         let navigation = try await fixture.startNextRevision()
         fixture.view.onStop = {
             fixture.coordinator.webView(fixture.view, didFinish: navigation)
-            fixture.coordinator.webView(fixture.view, didFail: navigation, withError: Self.failure())
+            fixture.coordinator.webView(fixture.view, didFail: navigation, withError: fixture.failure())
         }
         fixture.coordinator.dispose(webView: fixture.view)
         fixture.view.onStop = nil
@@ -141,7 +141,7 @@ struct HTMLPreviewNavigationIdentityTests {
         let fixture = Fixture()
         defer { fixture.dispose() }
         let original = try await fixture.startNextRevision()
-        fixture.coordinator.webView(fixture.view, didFail: original, withError: Self.failure())
+        fixture.coordinator.webView(fixture.view, didFail: original, withError: fixture.failure())
         // Queue B(g) and report termination without allowing its debounce task to enter beginLoad.
         fixture.coordinator.preview(document: fixture.document, in: fixture.view)
         fixture.coordinator.webViewWebContentProcessDidTerminate(fixture.view)
@@ -151,7 +151,7 @@ struct HTMLPreviewNavigationIdentityTests {
         }
         #expect(fixture.coordinator.gate.pendingGeneration == fixture.document.mutationGeneration)
         let retry = try await fixture.waitForLoad(count: 2)
-        fixture.coordinator.webView(fixture.view, didFail: retry, withError: Self.failure())
+        fixture.coordinator.webView(fixture.view, didFail: retry, withError: fixture.failure())
         #expect(fixture.coordinator.gate.pendingGeneration == nil)
         #expect(fixture.coordinator.gate.lastLoadedGeneration == nil)
         let finalRetry = try await fixture.startCurrentRevision()
@@ -165,7 +165,7 @@ struct HTMLPreviewNavigationIdentityTests {
         _ = try await fixture.startNextRevision()
         fixture.coordinator.webViewWebContentProcessDidTerminate(fixture.view)
         let recovery = try #require(fixture.view.reloads.first ?? nil)
-        fixture.coordinator.webView(fixture.view, didFail: recovery, withError: Self.failure())
+        fixture.coordinator.webView(fixture.view, didFail: recovery, withError: fixture.failure())
         #expect(fixture.coordinator.gate.pendingGeneration == nil)
         let retry = try await fixture.startCurrentRevision()
         fixture.coordinator.webView(fixture.view, didFinish: recovery)
@@ -182,7 +182,7 @@ struct HTMLPreviewNavigationIdentityTests {
         let recovery = try #require(fixture.view.reloads.first ?? nil)
         let newer = try await fixture.startNextRevision()
         fixture.coordinator.webView(fixture.view, didFinish: recovery)
-        fixture.coordinator.webView(fixture.view, didFail: recovery, withError: Self.failure())
+        fixture.coordinator.webView(fixture.view, didFail: recovery, withError: fixture.failure())
         #expect(fixture.coordinator.gate.pendingGeneration == fixture.document.mutationGeneration)
         fixture.coordinator.webView(fixture.view, didFinish: newer)
         #expect(fixture.coordinator.gate.lastLoadedGeneration == fixture.document.mutationGeneration)
@@ -214,12 +214,6 @@ struct HTMLPreviewNavigationIdentityTests {
         let retry = try await fixture.startCurrentRevision()
         fixture.coordinator.webView(fixture.view, didFinish: retry)
         #expect(fixture.coordinator.gate.lastLoadedGeneration == fixture.document.mutationGeneration)
-    }
-
-    private static func failure() -> NSError {
-        NSError(domain: NSURLErrorDomain, code: NSURLErrorTimedOut, userInfo: [
-            NSURLErrorFailingURLErrorKey: URL(string: "macdown-preview://document/")!,
-        ])
     }
 }
 
@@ -260,6 +254,13 @@ extension HTMLPreviewNavigationIdentityTests {
             return try #require(view.loads[count - 1])
         }
 
+        func failure() -> NSError {
+            guard let url = view.lastLoadURL else { preconditionFailure("No preview load URL") }
+            return NSError(domain: NSURLErrorDomain, code: NSURLErrorTimedOut, userInfo: [
+                NSURLErrorFailingURLErrorKey: url,
+            ])
+        }
+
         func dispose() {
             view.onStop = nil
             coordinator.dispose(webView: view)
@@ -273,6 +274,7 @@ extension HTMLPreviewNavigationIdentityTests {
         var returnNilFromLoad = false
         var returnNilFromReload = false
         var onStop: (() -> Void)?
+        var lastLoadURL: URL?
 
         init() {
             let configuration = WKWebViewConfiguration()
@@ -284,7 +286,8 @@ extension HTMLPreviewNavigationIdentityTests {
             nil
         }
 
-        override func load(_: URLRequest) -> WKNavigation? {
+        override func load(_ request: URLRequest) -> WKNavigation? {
+            lastLoadURL = request.url
             let navigation = returnNilFromLoad ? nil : super.loadHTMLString(
                 "<!doctype html><title>fixture</title>", baseURL: nil
             )
