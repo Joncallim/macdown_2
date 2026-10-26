@@ -273,6 +273,11 @@ final class WindowCoordinator {
         }
     }
 
+    /// Test seam for draining fixture startup autosaves before controlling a later publication interleaving.
+    func awaitScheduledSessionSaveForTesting() async {
+        await saveTask?.value
+    }
+
     /// Begins the launch-time session restore. A short grace period lets a
     /// pending `application(_:openFiles:)` arrive before the restore decision;
     /// `isDocumentOpenPending` is evaluated after that delay. The work is
