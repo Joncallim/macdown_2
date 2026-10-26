@@ -2,8 +2,8 @@ import FileCore
 import Preview
 import SwiftUI
 
-/// A document/revision-bound host for Textual attachment work. The existing preview does not use this host until
-/// HTML and Markdown both enforce the grant contract; tests can exercise it without changing the current renderer.
+/// Binds each Textual attachment load to its document and grant revision. A changed identity denies the old
+/// loader immediately, then starts a fresh token if this window still owns the document and folder selection.
 @MainActor
 struct SecuredMarkdownResourceHost<Content: View>: View {
     struct Identity: Hashable {
@@ -44,9 +44,7 @@ struct SecuredMarkdownResourceHost<Content: View>: View {
         let loader = PreviewResourceImageProvider.loader(for: current?.context)
         ZStack(alignment: .topLeading) {
             content(loader, current?.loadID)
-                .id(current?.loadID)
         }
-        .id(currentIdentity)
         .task(id: currentIdentity) {
             guard !Task.isCancelled, identity == currentIdentity else { return }
             let context = owner?.beginPreviewLoad(

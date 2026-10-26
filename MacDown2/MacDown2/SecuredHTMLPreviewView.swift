@@ -28,8 +28,8 @@ private struct SecuredHTMLPage {
     var crashReloads = 0
 }
 
-/// An opt-in saved-HTML host. Each accepted render replaces its child WKWebView, configuration and immutable
-/// scheme handler. The existing HTML preview remains active until the whole #121 grant flow passes acceptance.
+/// Saved HTML uses one immutable load and scheme handler per render. Replacing the child WKWebView retires the
+/// previous load; a missing folder grant still permits main-source rendering but denies sibling resources.
 struct SecuredHTMLPreviewView: NSViewRepresentable {
     let document: FileCore.FileDocument
     let tabID: UUID
@@ -58,10 +58,12 @@ struct SecuredHTMLPreviewView: NSViewRepresentable {
         private var scheduled: SecuredHTMLIdentity?
         private var reloadTask: Task<Void, Never>?
         private var disposed = false
+        private weak var owningWindow: PreviewResourceWindowState?
 
         func update(host: NSView, document: FileCore.FileDocument,
                     tabID: UUID, owner: PreviewResourceWindowState?) {
             guard !disposed else { return }
+            owningWindow = owner
             let identity = SecuredHTMLIdentity(
                 tabID: tabID, documentID: document.id, recoveryEpoch: document.recoveryEpoch,
                 fileURL: document.fileURL, savedGeneration: document.mutationGeneration,
@@ -91,7 +93,7 @@ struct SecuredHTMLPreviewView: NSViewRepresentable {
             guard !disposed else { return }
             disposed = true
             cancelScheduled()
-            retireCurrent(owner: nil)
+            retireCurrent(owner: owningWindow)
             host.subviews.forEach { $0.removeFromSuperview() }
         }
 
@@ -227,7 +229,7 @@ struct SecuredHTMLPreviewView: NSViewRepresentable {
         private func failDirectLoad(in webView: WKWebView) {
             guard page?.webView === webView else { return }
             let host = webView.superview
-            retireCurrent(owner: nil)
+            retireCurrent(owner: owningWindow)
             if let host {
                 showFailure(in: host)
             }

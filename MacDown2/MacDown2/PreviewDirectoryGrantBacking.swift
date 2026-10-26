@@ -1,6 +1,10 @@
 import Foundation
 import LocalResourceAccess
 
+enum PreviewResourceSelectionError: Error {
+    case folderDoesNotContainDocument
+}
+
 /// Pins a folder chosen for one document and retains its access scope until every admitted use drains.
 /// A backing cannot be retargeted; a new document/window epoch needs a new selection and backing.
 final class PreviewDirectoryGrantBacking: @unchecked Sendable {
@@ -140,7 +144,9 @@ final class PreviewDirectoryGrantBacking: @unchecked Sendable {
             .standardizedFileURL.pathComponents
         let parentComponents = selection.requestedDocumentURL.deletingLastPathComponent()
             .resolvingSymlinksInPath().standardizedFileURL.pathComponents
-        guard parentComponents.starts(with: selectedComponents) else { throw ResourceReadError.denied }
+        guard parentComponents.starts(with: selectedComponents) else {
+            throw PreviewResourceSelectionError.folderDoesNotContainDocument
+        }
 
         let root = try DirectoryLease(opening: selection.selectedFolderURL)
         guard root.identity.device == selection.selectedDevice,

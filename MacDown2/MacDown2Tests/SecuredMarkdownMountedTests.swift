@@ -79,6 +79,7 @@ struct SecuredMarkdownMountedTests {
                 resourceImageLoader: loader, resourceLoadID: loadID
             )
             .onAppear { recorder.record(loadID) }
+            .onChange(of: loadID) { _, current in recorder.record(current) }
         }
         .environment(\.previewResourceWindowState, owner)
     }
