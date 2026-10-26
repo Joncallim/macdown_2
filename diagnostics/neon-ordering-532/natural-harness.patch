@@ -1,0 +1,153 @@
+diff --git a/MacDown2/Packages/MacDownKit/Sources/Highlighting/NeonSyntaxHighlighter.swift b/MacDown2/Packages/MacDownKit/Sources/Highlighting/NeonSyntaxHighlighter.swift
+index 0422db8..c4a74ca 100644
+--- a/MacDown2/Packages/MacDownKit/Sources/Highlighting/NeonSyntaxHighlighter.swift
++++ b/MacDown2/Packages/MacDownKit/Sources/Highlighting/NeonSyntaxHighlighter.swift
+@@ -19,6 +19,8 @@ import Themes
+ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
+     let textSystem: EditorTextSystem
+     let registry: GrammarRegistry
++    /// Diagnostic-only provenance; nil in ordinary application construction.
++    private let orderingContext: OrderingContext?
+     private var currentTheme: Theme
+     /// Neon's highlighter while ``state`` is `.full`; `nil` otherwise.
+     var highlighter: TextViewHighlighter?
+@@ -88,11 +90,13 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
+         languageID: String?,
+         theme: Theme,
+         registry: GrammarRegistry,
+-        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = HighlightingSizePolicy.default(for:)
++        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = HighlightingSizePolicy.default(for:),
++        orderingContext: OrderingContext? = nil
+     ) {
+         self.textSystem = textSystem
+         self.languageID = languageID
+         self.registry = registry
++        self.orderingContext = orderingContext
+         policyProvider = sizePolicy
+         currentTheme = theme
+         baseFont = textSystem.textView.font
+@@ -194,7 +198,8 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
+                         guard state.note(builtGeneration: builtGeneration) else { return nil }
+                         return registryProvider(name)
+                     },
+-                    locationTransformer: countedLocationTransformer(builtGeneration: builtGeneration)
++                    locationTransformer: countedLocationTransformer(builtGeneration: builtGeneration),
++                    orderingContext: orderingContext
+                 )
+             )
+             if let storage = textSystem.textView.textStorage {
+diff --git a/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/KeystrokeStallSupport.swift b/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/KeystrokeStallSupport.swift
+index fc740de..5803a62 100644
+--- a/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/KeystrokeStallSupport.swift
++++ b/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/KeystrokeStallSupport.swift
+@@ -2,6 +2,7 @@ import AppKit
+ import Darwin
+ import EditorCore
+ import Foundation
++import RangeState
+ @testable import Highlighting
+ import Testing
+ import Themes
+@@ -135,6 +136,7 @@ enum StallFixtures {
+ final class HighlightedEditor {
+     let system: EditorTextSystem
+     let highlighter: NeonSyntaxHighlighter
++    private let orderingContext: OrderingContext?
+     /// Retained here: `NSTextStorage.delegate` is weak.
+     private var wideningDelegate: EditWideningStorageDelegate?
+ 
+@@ -145,8 +147,15 @@ final class HighlightedEditor {
+         text: String,
+         widensEdits: Bool = false,
+         theme: Theme = BundledThemes.light,
+-        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = { _ in nil }
++        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = { _ in nil },
++        orderingContext: OrderingContext? = nil
+     ) {
++        self.orderingContext = orderingContext
++        orderingContext?.record(.born)
++        if let orderingContext {
++            let identity = Data(ProcessInfo.processInfo.processName.utf8).base64EncodedString()
++            FileHandle.standardError.write(Data("NEON_FIXTURE pid=\(getpid()) fixture=\(orderingContext.fixture) identity64=\(identity)\n".utf8))
++        }
+         system = EditorTextSystem(identity: UUID().uuidString, initialText: text, configuration: .default)
+         system.textView.frame = NSRect(x: 0, y: 0, width: 800, height: 1000)
+         highlighter = NeonSyntaxHighlighter(
+@@ -154,7 +163,8 @@ final class HighlightedEditor {
+             languageID: "markdown",
+             theme: theme,
+             registry: GrammarRegistry(),
+-            sizePolicy: sizePolicy
++            sizePolicy: sizePolicy,
++            orderingContext: orderingContext
+         )
+         if widensEdits, let storage = system.textView.textStorage, let neon = storage.delegate {
+             let delegate = EditWideningStorageDelegate(downstream: neon)
+@@ -163,6 +173,12 @@ final class HighlightedEditor {
+         }
+     }
+ 
++    deinit {
++        // Observe scope retirement only. Do not tear down, cancel or drain Neon.
++        orderingContext?.record(.retired)
++        orderingContext?.dump()
++    }
++
+     var textView: NSTextView {
+         system.textView
+     }
+diff --git a/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/SizeFallbackTestSupport.swift b/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/SizeFallbackTestSupport.swift
+index 5872bc9..5832cd5 100644
+--- a/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/SizeFallbackTestSupport.swift
++++ b/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/SizeFallbackTestSupport.swift
+@@ -1,5 +1,6 @@
+ import AppKit
+ import Foundation
++import RangeState
+ @testable import Highlighting
+ import Testing
+ 
+@@ -177,8 +178,8 @@ enum SizeFallbackFixtures {
+     }
+ 
+     @MainActor
+-    static func editor(units: Int) -> HighlightedEditor {
+-        HighlightedEditor(text: markdown(units: units), sizePolicy: markdownOnly)
++    static func editor(units: Int, orderingContext: OrderingContext? = nil) -> HighlightedEditor {
++        HighlightedEditor(text: markdown(units: units), sizePolicy: markdownOnly, orderingContext: orderingContext)
+     }
+ }
+ 
+diff --git a/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift b/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+index 2de930e..287ac31 100644
+--- a/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
++++ b/MacDown2/Packages/MacDownKit/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+@@ -1,6 +1,7 @@
+ import AppKit
+ @testable import Highlighting
+ import Testing
++import RangeState
+ 
+ /// Register row H5: the bounded size-based highlighting fallback — cut-off,
+ /// interception of the crossing edit before Neon, teardown, hysteresis.
+@@ -220,7 +221,9 @@ struct HighlightingSizeFallbackTests {
+     /// match a fresh highlighter (selection replacement is a separately tracked
+     /// pre-existing defect, see `NeonReplacementEditTests`).
+     @Test func belowTheCutoffHighlightingMatchesAFreshHighlighter() async {
+-        let editor = Fixtures.editor(units: 5000)
++        // Shared bounded ring; separate fixture IDs distinguish edited/reference editors.
++        let trace = ProcessInfo.processInfo.environment["NEON_ORDER_TRACE"] == "1" ? OrderingTrace() : nil
++        let editor = Fixtures.editor(units: 5000, orderingContext: trace.map { OrderingContext(trace: $0) })
+         #expect(await editor.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+         for index in 0 ..< 7 {
+             editor.typeOrDelete(at: 2500, insert: index.isMultiple(of: 2))
+@@ -228,7 +231,8 @@ struct HighlightingSizeFallbackTests {
+         await editor.settle(.milliseconds(300))
+         editor.textView.insertText("", replacementRange: NSRange(location: 1000, length: 800))
+         #expect(await editor.waitUntilQuiet(quietPeriod: .seconds(1)))
+-        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
++        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly,
++                                      orderingContext: trace.map { OrderingContext(trace: $0) })
+         #expect(await fresh.waitUntilQuiet(quietPeriod: .milliseconds(500)))
+         #expect(editor.renderedRuns() == fresh.renderedRuns())
+         #expect(editor.highlighter.gate.forwardedCharacterEditCount == editor.highlighter.gate.characterEditCount)

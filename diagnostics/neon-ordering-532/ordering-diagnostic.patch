@@ -1,0 +1,735 @@
+diff --git a/Sources/RangeState/AwaitableQueue.swift b/Sources/RangeState/AwaitableQueue.swift
+index 0715326..9125b98 100644
+--- a/Sources/RangeState/AwaitableQueue.swift
++++ b/Sources/RangeState/AwaitableQueue.swift
+@@ -57,6 +57,20 @@ struct AwaitableQueue<Element> {
+ 		}
+ 	}
+ 
++	/// Diagnostic peek: neither consumes an event nor resumes a waiter.
++	var firstPendingElement: Element? {
++		for event in pendingEvents {
++			if case let .element(value) = event { return value }
++		}
++		return nil
++	}
++	var pendingElementCount: Int {
++		pendingEvents.reduce(0) { count, event in
++			if case .element = event { return count + 1 }
++			return count
++		}
++	}
++
+ 	mutating func next() -> Element? {
+ 		handlePendingWaiters()
+ 
+diff --git a/Sources/RangeState/RangeProcessor.swift b/Sources/RangeState/RangeProcessor.swift
+index 76d2f4c..7887dab 100644
+--- a/Sources/RangeState/RangeProcessor.swift
++++ b/Sources/RangeState/RangeProcessor.swift
+@@ -34,15 +34,21 @@ public final class RangeProcessor {
+ 		///
+ 		/// While the minimum always applies, the maximum will only be used for optional filling.
+ 		public let deltaRange: Range<Int>
++		public let orderingContext: OrderingContext?
++		public let diagnosticChangeHandler: ((RangeMutation, UInt64, @escaping () -> Void) -> Void)?
+ 
+ 		public init(
+ 			deltaRange: Range<Int> = 1..<Int.max,
+ 			lengthProvider: @escaping LengthProvider,
+-			changeHandler: @escaping ChangeHandler
++			changeHandler: @escaping ChangeHandler,
++			orderingContext: OrderingContext? = nil,
++			diagnosticChangeHandler: ((RangeMutation, UInt64, @escaping () -> Void) -> Void)? = nil
+ 		) {
+ 			self.deltaRange = deltaRange
+ 			self.lengthProvider = lengthProvider
+ 			self.changeHandler = changeHandler
++			self.orderingContext = orderingContext
++			self.diagnosticChangeHandler = diagnosticChangeHandler
+ 		}
+ 	}
+ 
+@@ -65,8 +71,11 @@ public final class RangeProcessor {
+ 
+     public init(configuration: Configuration) {
+         self.configuration = configuration
++        configuration.orderingContext?.record(.born)
+     }
+ 
++	deinit { configuration.orderingContext?.record(.retired) }
++
+ 	private var contentLength: Int {
+ 		configuration.lengthProvider()
+ 	}
+@@ -248,22 +257,42 @@ extension RangeProcessor {
+ 	}
+ 
+ 	private func processMutation(_ mutation: RangeMutation, in isolation: isolated (any Actor)) {
++		let operation = configuration.orderingContext?.trace.nextOperation() ?? 0
++		let mutationVersion = version
+ 		scheduledUpperBound += mutation.delta
+ 		precondition(scheduledUpperBound >= 0)
+ 		pendingEventQueue.enqueue(VersionedMutation(mutation, version: version))
+ 		self.version += 1
++		configuration.orderingContext?.record(.enqueue, operation: operation, parent: UInt64(mutationVersion),
++			pending: pendingEventQueue.pendingElementCount, range: mutation.range, delta: mutation.delta,
++			limit: mutation.postApplyLimit)
+ 
+ 		// this requires a very strange workaround to get the correct isolation inheritance from this changeHandler arrangement. I believe this is a bug.
+ 		// https://github.com/swiftlang/swift/issues/77067
+ 		func _completeContentChanged() {
+-			self.completeContentChanged(mutation, in: isolation)
++			self.completeContentChanged(mutation, operation: operation, mutationVersion: mutationVersion, in: isolation)
+ 		}
+ 
+ 		// at this point, it is possible that the target location is no longer meaningful. But that's ok, because it will be clamped and possibly overwritten anyways
+-		configuration.changeHandler(mutation, _completeContentChanged)
++		if configuration.orderingContext != nil, let diagnostic = configuration.diagnosticChangeHandler {
++			diagnostic(mutation, operation, _completeContentChanged)
++		} else {
++			configuration.changeHandler(mutation, _completeContentChanged)
++		}
+ 	}
+ 
+-	private func completeContentChanged(_ mutation: RangeMutation, in isolation: isolated (any Actor)) {
++	private func completeContentChanged(_ mutation: RangeMutation, operation: UInt64, mutationVersion: Int,
++		in isolation: isolated (any Actor)) {
++		if let context = configuration.orderingContext {
++			let first = pendingEventQueue.firstPendingElement
++			context.record(.callback, operation: operation, parent: UInt64(mutationVersion),
++				pending: pendingEventQueue.pendingElementCount, range: mutation.range, delta: mutation.delta,
++				limit: mutation.postApplyLimit)
++			context.record(.compare, operation: operation, expected: first.map { UInt64($0.version) } ?? UInt64.max,
++				pending: pendingEventQueue.pendingElementCount, range: first?.value.range ?? .zero,
++				delta: first?.value.delta ?? 0, limit: first?.value.postApplyLimit ?? -1)
++			if first?.version != mutationVersion || first?.value != mutation { context.dump() }
++		}
+ 		self.processedVersion += 1
+ 
+ 		guard let first = pendingEventQueue.next() else {
+diff --git a/Sources/TreeSitterClient/BackgroundProcessor.swift b/Sources/TreeSitterClient/BackgroundProcessor.swift
+index b6263d5..11ec58f 100644
+--- a/Sources/TreeSitterClient/BackgroundProcessor.swift
++++ b/Sources/TreeSitterClient/BackgroundProcessor.swift
+@@ -1,4 +1,12 @@
+ import Dispatch
++import RangeState
++
++/// Diagnostic fixtures may hold/release these closures on the caller's actor.
++/// No worker hook suspends, creates a Task, or reads fixture state.
++final class OrderingGates {
++	var submission: ((UInt64, @escaping () -> Void) -> Void)?
++	var delivery: ((UInt64, @escaping () -> Void) -> Void)?
++}
+ 
+ final class BackgroundProcessor<Value> {
+ 	enum AccessMode {
+@@ -11,11 +19,17 @@ final class BackgroundProcessor<Value> {
+ 	private let queue = DispatchQueue(label: "com.chimehq.Neon.BackgroundProcessor")
+ 	private var pendingCount = 0
+ 	private var pendingTask: Task<Void, Never>?
++	private let orderingContext: OrderingContext?
++	var orderingGates: OrderingGates?
+ 
+-	public init(value: Value) {
++	public init(value: Value, orderingContext: OrderingContext? = nil) {
+ 		self.value = value
++		self.orderingContext = orderingContext
++		orderingContext?.record(.born)
+ 	}
+ 
++	deinit { orderingContext?.record(.retired) }
++
+ 	public var hasPendingWork: Bool {
+ 		pendingCount > 0
+ 	}
+@@ -35,15 +49,22 @@ final class BackgroundProcessor<Value> {
+ 	public func accessValueSynchronously<T>(
+ 		operation: (Value?) throws -> T
+ 	) throws -> T {
++		let operationID = orderingContext?.trace.nextOperation() ?? 0
++		let context = orderingContext
++		context?.record(.request, operation: operationID, pending: pendingCount)
+ 		if hasPendingWork {
++			context?.record(.callback, operation: operationID, pending: pendingCount)
+ 			return try operation(nil)
+ 		}
+ 		
+ 		let opResult = try queue.sync {
+-			try operation(value)
++			context?.record(.execute, operation: operationID)
++			defer { context?.record(.executed, operation: operationID) }
++			return try operation(value)
+ 		}
+ 		
+ 		precondition(hasPendingWork == false)
++		context?.record(.callback, operation: operationID, pending: pendingCount)
+ 		
+ 		return opResult
+ 	}
+@@ -51,17 +72,24 @@ final class BackgroundProcessor<Value> {
+ 	public func accessValue<T>(
+ 		isolation: isolated (any Actor),
+ 		preferSynchronous: Bool,
++		diagnosticParent: UInt64 = 0,
+ 		operation: @escaping @Sendable (Value) throws -> sending T,
+ 		completion: @escaping (sending Result<T, Error>) -> Void
+ 	) {
++		let operationID = orderingContext?.trace.nextOperation() ?? 0
++		let context = orderingContext
++		context?.record(.request, operation: operationID, parent: diagnosticParent, pending: pendingCount)
+ 		if preferSynchronous && hasPendingWork == false {
+ 			// this is necessary because queue.sync does not return a sending value. However, because operation's return is sending, this must be safe.
+ 			nonisolated(unsafe) let result = Result {
+ 				try queue.sync {
+-					try operation(value)
++					context?.record(.execute, operation: operationID, parent: diagnosticParent)
++					defer { context?.record(.executed, operation: operationID, parent: diagnosticParent) }
++					return try operation(value)
+ 				}
+ 			}
+ 			
++			context?.record(.callback, operation: operationID, parent: diagnosticParent, pending: pendingCount)
+ 			completion(result)
+ 
+ 			return
+@@ -75,17 +103,32 @@ final class BackgroundProcessor<Value> {
+ 			_ = isolation
+ 			
+ 			let result = await withCheckedContinuation { continuation in
+-				queue.async {
++				let submit = {
++					context?.record(.submit, operation: operationID, parent: diagnosticParent)
++					self.queue.async {
++					context?.record(.execute, operation: operationID, parent: diagnosticParent)
+ 					// this should not be necessary https://github.com/swiftlang/swift/issues/88233
+ 					nonisolated(unsafe) let result = Result { try operation(unsafeValue) }
+-
++					context?.record(.executed, operation: operationID, parent: diagnosticParent)
++					context?.record(.resume, operation: operationID, parent: diagnosticParent)
+ 					continuation.resume(returning: result)
++					}
+ 				}
++				if let gate = self.orderingGates?.submission { gate(operationID, submit) } else { submit() }
+ 			}
+ 			
+-			endBackgroundWork()
+-			
+-			completion(result)
++			if let gate = self.orderingGates?.delivery {
++				nonisolated(unsafe) let heldResult = result
++				gate(operationID) {
++					context?.record(.callback, operation: operationID, parent: diagnosticParent, pending: self.pendingCount)
++					self.endBackgroundWork()
++					completion(heldResult)
++				}
++			} else {
++				context?.record(.callback, operation: operationID, parent: diagnosticParent, pending: self.pendingCount)
++				self.endBackgroundWork()
++				completion(result)
++			}
+ 		}
+ 	}
+ 
+diff --git a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+index 81bd2b8..b239036 100644
+--- a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
++++ b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+@@ -2,6 +2,7 @@ import Foundation
+ 
+ import SwiftTreeSitter
+ import SwiftTreeSitterLayer
++import RangeState
+ 
+ enum BackgroundingLanguageLayerTreeError: Error {
+ 	case unavailable
+@@ -40,12 +41,13 @@ final class BackgroundingLanguageLayerTree {
+ 	private let backgroundProcessor: BackgroundProcessor<LanguageLayer>
+ 	public var rootLanguageConfiguration: LanguageConfiguration
+ 
+-	public init(rootLanguageConfig: LanguageConfiguration, configuration: Configuration) throws {
++	public init(rootLanguageConfig: LanguageConfiguration, configuration: Configuration,
++		orderingContext: OrderingContext? = nil) throws {
+ 		self.configuration = configuration
+ 		self.rootLanguageConfiguration = rootLanguageConfig
+ 		let rootLayer = try LanguageLayer(languageConfig: rootLanguageConfig, configuration: configuration.layerConfiguration)
+ 
+-		self.backgroundProcessor = BackgroundProcessor(value: rootLayer)
++		self.backgroundProcessor = BackgroundProcessor(value: rootLayer, orderingContext: orderingContext)
+ 	}
+ 
+ 	public func willChangeContent(in range: NSRange) {
+@@ -57,6 +59,7 @@ final class BackgroundingLanguageLayerTree {
+ 		in range: NSRange,
+ 		delta: Int,
+ 		isolation: isolated (any Actor),
++		diagnosticOperation: UInt64 = 0,
+ 		completion: @escaping (IndexSet) -> Void
+ 	) {
+ 		let transformer = configuration.locationTransformer
+@@ -71,6 +74,7 @@ final class BackgroundingLanguageLayerTree {
+ 		backgroundProcessor.accessValue(
+ 			isolation: isolation,
+ 			preferSynchronous: sync,
++			diagnosticParent: diagnosticOperation,
+ 			operation: { $0.didChangeContent(snapshot.content, using: edit, resolveSublayers: false) },
+ 			completion: { result in
+ 				do {
+diff --git a/Sources/TreeSitterClient/TreeSitterClient.swift b/Sources/TreeSitterClient/TreeSitterClient.swift
+index f855711..3066e2e 100644
+--- a/Sources/TreeSitterClient/TreeSitterClient.swift
++++ b/Sources/TreeSitterClient/TreeSitterClient.swift
+@@ -89,11 +89,17 @@ public final class TreeSitterClient {
+ 
+ 	private let versionedContent: UnversionableContent
+ 	private let configuration: Configuration
++	private let orderingContext: OrderingContext?
++	private lazy var rangeOrderingContext = orderingContext?.childProcessor()
+ 	private lazy var rangeProcessor = RangeProcessor(
+ 		configuration: .init(
+ 			deltaRange: Self.deltaRange,
+ 			lengthProvider: configuration.lengthProvider,
+-			changeHandler: { [unowned self] in self.didChange($0, completion: $1) }
++			changeHandler: { [unowned self] in self.didChange($0, completion: $1) },
++			orderingContext: rangeOrderingContext,
++			diagnosticChangeHandler: { [unowned self] mutation, operation, completion in
++				self.didChange(mutation, diagnosticOperation: operation, completion: completion)
++			}
+ 		)
+ 	)
+ 	private lazy var sublayerValidator: SublayerValidator = {
+@@ -113,8 +119,12 @@ public final class TreeSitterClient {
+ 
+ 	private let layerTree: BackgroundingLanguageLayerTree
+ 
+-	public init(rootLanguageConfig: LanguageConfiguration, configuration: Configuration) throws {
++	public init(rootLanguageConfig: LanguageConfiguration, configuration: Configuration,
++		orderingContext: OrderingContext? = nil) throws {
+ 		self.configuration = configuration
++		let clientContext = orderingContext?.newClient()
++		self.orderingContext = clientContext
++		clientContext?.record(.born)
+ 		self.versionedContent = UnversionableContent(lengthProvider: configuration.lengthProvider)
+ 		self.layerTree = try BackgroundingLanguageLayerTree(
+ 			rootLanguageConfig: rootLanguageConfig,
+@@ -122,10 +132,12 @@ public final class TreeSitterClient {
+ 				locationTransformer: configuration.locationTransformer,
+ 				languageProvider: configuration.languageProvider,
+ 				maximumLanguageDepth: configuration.maximumLanguageDepth
+-			)
++			), orderingContext: clientContext?.childProcessor()
+ 		)
+ 	}
+ 
++	deinit { orderingContext?.record(.retired) }
++
+ 	public var rootLanguageConfiguration: LanguageConfiguration {
+ 		layerTree.rootLanguageConfiguration
+ 	}
+@@ -184,12 +196,13 @@ extension TreeSitterClient {
+ 		rangeProcessor.hasPendingChanges
+ 	}
+ 
+-	private func didChange(_ mutation: RangeMutation, completion: @escaping () -> Void) {
++	private func didChange(_ mutation: RangeMutation, diagnosticOperation: UInt64 = 0, completion: @escaping () -> Void) {
+ 		let limit = mutation.postApplyLimit
+ 
+ 		let content = configuration.contentSnapshotProvider(limit)
+ 
+-		layerTree.didChangeContent(content, in: mutation.range, delta: mutation.delta, isolation: MainActor.shared, completion: { invalidated in
++		layerTree.didChangeContent(content, in: mutation.range, delta: mutation.delta, isolation: MainActor.shared,
++			diagnosticOperation: diagnosticOperation, completion: { invalidated in
+ 			completion()
+ 			self.handleInvalidation(invalidated, sublayers: false)
+ 		})
+diff --git a/Sources/Neon/TextViewHighlighter.swift b/Sources/Neon/TextViewHighlighter.swift
+index dbce7d1..5558db9 100644
+--- a/Sources/Neon/TextViewHighlighter.swift
++++ b/Sources/Neon/TextViewHighlighter.swift
+@@ -45,17 +45,20 @@ public final class TextViewHighlighter {
+ 		public let attributeProvider: TokenAttributeProvider
+ 		public let languageProvider: LanguageLayer.LanguageProvider
+ 		public let locationTransformer: Point.LocationTransformer
++		public let orderingContext: OrderingContext?
+ 
+ 		public init(
+ 			languageConfiguration: LanguageConfiguration,
+ 			attributeProvider: @escaping TokenAttributeProvider,
+ 			languageProvider: @escaping LanguageLayer.LanguageProvider = { _ in nil },
+-			locationTransformer: @escaping Point.LocationTransformer
++			locationTransformer: @escaping Point.LocationTransformer,
++			orderingContext: OrderingContext? = nil
+ 		) {
+ 			self.languageConfiguration = languageConfiguration
+ 			self.attributeProvider = attributeProvider
+ 			self.languageProvider = languageProvider
+ 			self.locationTransformer = locationTransformer
++			self.orderingContext = orderingContext
+ 		}
+ 	}
+ 
+@@ -92,7 +95,7 @@ public final class TextViewHighlighter {
+ 				lengthProvider: { [interface] in interface.content.currentLength },
+ 				invalidationHandler: { [buffer] in buffer.invalidate(.set($0)) },
+ 				locationTransformer: configuration.locationTransformer
+-			)
++			), orderingContext: configuration.orderingContext
+ 		)
+ 
+ 		// this level of indirection is necessary so when the TextProvider is accessed it always uses the current version of the content
+diff --git a/Sources/RangeState/OrderingTrace.swift b/Sources/RangeState/OrderingTrace.swift
+new file mode 100644
+index 0000000..5838071
+--- /dev/null
++++ b/Sources/RangeState/OrderingTrace.swift
+@@ -0,0 +1,118 @@
++import Foundation
++
++/// Explicitly supplied by a diagnostic fixture. Never records document text.
++public final class OrderingTrace: @unchecked Sendable {
++    public enum Phase: String, Sendable {
++        case born, retired, enqueue, request, submit, execute, executed, resume, callback, compare
++    }
++
++    public struct Event: Sendable {
++        public let sequence: UInt64
++        public let fixture: UUID
++        public let client: UUID
++        public let processor: UUID
++        public let phase: Phase
++        public let operation: UInt64
++        public let parent: UInt64
++        public let expected: UInt64
++        public let pending: Int
++        public let range: NSRange
++        public let delta: Int
++        public let limit: Int
++        /// Exact within the retained trace window; eviction is explicit.
++        public let retainedDeliveryCount: Int
++    }
++
++    private let lock = NSLock()
++    private var slots: [Event?]
++    private var cursor = 0
++    private var serial: UInt64 = 0
++    private var operationSerial: UInt64 = 0
++    public let capacity: Int
++
++    public init(capacity: Int = 256) {
++        precondition((16...4096).contains(capacity))
++        self.capacity = capacity
++        slots = Array(repeating: nil, count: capacity)
++    }
++
++    public func nextOperation() -> UInt64 {
++        lock.lock()
++        defer { lock.unlock() }
++        operationSerial += 1
++        return operationSerial
++    }
++
++    public func snapshot() -> (events: [Event], evicted: UInt64) {
++        lock.lock()
++        defer { lock.unlock() }
++        return (slots.compactMap { $0 }.sorted { $0.sequence < $1.sequence },
++                serial > UInt64(capacity) ? serial - UInt64(capacity) : 0)
++    }
++
++    fileprivate func append(_ context: OrderingContext, _ phase: Phase, operation: UInt64,
++                            parent: UInt64, expected: UInt64, pending: Int,
++                            range: NSRange, delta: Int, limit: Int) {
++        lock.lock()
++        defer { lock.unlock() }
++        var deliveries = 0
++        if phase == .callback {
++            deliveries = 1
++            for (index, entry) in slots.enumerated() where index != cursor {
++                if let entry, entry.processor == context.processor,
++                   entry.operation == operation, entry.phase == .callback { deliveries += 1 }
++            }
++        }
++        serial += 1
++        slots[cursor] = Event(sequence: serial, fixture: context.fixture, client: context.client,
++                              processor: context.processor, phase: phase, operation: operation,
++                              parent: parent, expected: expected, pending: pending, range: range,
++                              delta: delta, limit: limit, retainedDeliveryCount: deliveries)
++        cursor = (cursor + 1) % capacity
++    }
++}
++
++public struct OrderingContext: Sendable {
++    public let trace: OrderingTrace
++    public let fixture: UUID
++    public let client: UUID
++    public let processor: UUID
++
++    public init(trace: OrderingTrace, fixture: UUID = UUID(), client: UUID = UUID(), processor: UUID = UUID()) {
++        self.trace = trace
++        self.fixture = fixture
++        self.client = client
++        self.processor = processor
++    }
++
++    public func childProcessor() -> Self {
++        Self(trace: trace, fixture: fixture, client: client)
++    }
++
++    /// Each rebuilt client keeps fixture provenance but receives a fresh lifetime.
++    public func newClient() -> Self {
++        Self(trace: trace, fixture: fixture)
++    }
++
++    public func record(_ phase: OrderingTrace.Phase, operation: UInt64 = 0, parent: UInt64 = 0,
++                       expected: UInt64 = 0, pending: Int = -1, range: NSRange = NSRange(location: 0, length: 0),
++                       delta: Int = 0, limit: Int = -1) {
++        trace.append(self, phase, operation: operation, parent: parent, expected: expected,
++                     pending: pending, range: range, delta: delta, limit: limit)
++    }
++
++    /// Only invoked on an invariant failure, before queue consumption.
++    public func dump() {
++        let snapshot = trace.snapshot()
++        var lines = ["NEON_ORDER_TRACE evicted=\(snapshot.evicted) capacity=\(trace.capacity)"]
++        for e in snapshot.events {
++            lines.append("NEON_ORDER \(e.sequence) fixture=\(e.fixture) client=\(e.client) processor=\(e.processor) "
++                  + "phase=\(e.phase.rawValue) op=\(e.operation) parent=\(e.parent) expected=\(e.expected) "
++                  + "pending=\(e.pending) range=\(e.range.location):\(e.range.length) delta=\(e.delta) "
++                  + "limit=\(e.limit) retainedDeliveries=\(e.retainedDeliveryCount)")
++        }
++        // snapshot() has already released the ring lock. FileHandle.write is
++        // synchronous and avoids stdout buffering immediately before a trap.
++        FileHandle.standardError.write(Data((lines.joined(separator: "\n") + "\n").utf8))
++    }
++}
+diff --git a/Tests/TreeSitterClientTests/OrderingDiagnosticsTests.swift b/Tests/TreeSitterClientTests/OrderingDiagnosticsTests.swift
+new file mode 100644
+index 0000000..2ac475f
+--- /dev/null
++++ b/Tests/TreeSitterClientTests/OrderingDiagnosticsTests.swift
+@@ -0,0 +1,225 @@
++import Foundation
++import RangeState
++import Testing
++import SwiftTreeSitter
++import NeonTestsTreeSitterSwift
++@testable import TreeSitterClient
++
++/// Scheduling is deliberately injected here; these are not CI reproductions.
++@MainActor
++@Suite(.serialized)
++struct OrderingDiagnosticsTests {
++    @Test(arguments: [true, false])
++    func reversedSubmissionAndDeliveryAreDistinguished(reverseSubmission: Bool) async throws {
++        let trace = OrderingTrace()
++        let context = OrderingContext(trace: trace)
++        let ledger = SnapshotLedger()
++        let processor = BackgroundProcessor(value: ledger, orderingContext: context)
++        let submit = HeldCalls()
++        let deliver = HeldCalls()
++        let gates = OrderingGates()
++        gates.submission = { id, action in MainActor.assumeIsolated { submit.hold(id, action) } }
++        gates.delivery = { id, action in MainActor.assumeIsolated { deliver.hold(id, action) } }
++        processor.orderingGates = gates
++        defer { processor.orderingGates = nil; submit.releaseAll(); deliver.releaseAll() }
++        var callbacks: [Int] = []
++        var values: [Int: String] = [:]
++        // This query has executed, but remains pending until its callback is delivered.
++        processor.accessValue(isolation: MainActor.shared, preferSynchronous: false,
++            operation: { $0.snapshot }, completion: { (result: Result<String, Error>) in
++                values[0] = try? result.get(); callbacks.append(0)
++            })
++        try #require(await until { submit.ids.count == 1 })
++        let query = submit.ids[0]
++        submit.release(query)
++        try #require(await until { deliver.ids.contains(query) })
++        #expect(processor.hasPendingWork)
++
++        // Two distinct edits, each carrying an immutable expected content snapshot.
++        processor.accessValue(isolation: MainActor.shared, preferSynchronous: true,
++            operation: { $0.apply(1, range: NSRange(location: 0, length: 0), replacement: "X", expected: "Xabcd") },
++            completion: { (result: Result<String, Error>) in values[1] = try? result.get(); callbacks.append(1) })
++        processor.accessValue(isolation: MainActor.shared, preferSynchronous: true,
++            operation: { $0.apply(2, range: NSRange(location: 1, length: 1), replacement: "Y", expected: "XYbcd") },
++            completion: { (result: Result<String, Error>) in values[2] = try? result.get(); callbacks.append(2) })
++        try #require(await until { submit.ids.count == 2 })
++        let requests = trace.snapshot().events.filter { $0.phase == .request }.map(\.operation)
++        try #require(requests.count == 3)
++        let a = requests[1], b = requests[2]
++        let workerOrder = reverseSubmission ? [b, a] : [a, b]
++        // Wait for each held delivery so even worker submission order is controlled.
++        for id in workerOrder {
++            submit.release(id)
++            try #require(await until { deliver.ids.contains(id) })
++        }
++        #expect(callbacks.isEmpty)
++        #expect(ledger.applied == (reverseSubmission ? [2, 1] : [1, 2]))
++        #expect(ledger.snapshot == (reverseSubmission ? "XaYcd" : "XYbcd"))
++        #expect(ledger.snapshotChecks == (reverseSubmission ? [false, false] : [true, true]))
++
++        deliver.release(query)
++        for id in reverseSubmission ? workerOrder : [b, a] { deliver.release(id) }
++        #expect(callbacks == [0, 2, 1])
++        #expect(values[0] == "abcd", "query snapshot is immutable despite later edits")
++        #expect(values[1] == (reverseSubmission ? "XaYcd" : "Xabcd"))
++        #expect(values[2] == (reverseSubmission ? "aYcd" : "XYbcd"))
++        #expect(!processor.hasPendingWork)
++        let events = trace.snapshot().events
++        #expect(events.filter { $0.phase == .execute }.map(\.operation) == [query] + workerOrder)
++        #expect(events.filter { $0.phase == .callback }.map(\.operation) == [query, b, a])
++        #expect(events.filter { $0.phase == .callback }.allSatisfy { $0.retainedDeliveryCount == 1 })
++    }
++
++    @Test func reentrantAndSynchronousAfterBackgroundCompleteExactlyOnce() async throws {
++        let processor = BackgroundProcessor(value: SnapshotLedger(), orderingContext: OrderingContext(trace: OrderingTrace()))
++        let deliveries = HeldCalls()
++        let gates = OrderingGates()
++        gates.delivery = { id, action in MainActor.assumeIsolated { deliveries.hold(id, action) } }
++        processor.orderingGates = gates
++        defer { processor.orderingGates = nil; deliveries.releaseAll() }
++        var order: [Int] = []
++        processor.accessValue(isolation: MainActor.shared, preferSynchronous: false,
++            operation: { $0.snapshot }, completion: { (_: Result<String, Error>) in
++                order.append(1)
++                processor.accessValue(isolation: MainActor.shared, preferSynchronous: true,
++                    operation: { $0.snapshot }, completion: { (_: Result<String, Error>) in order.append(2) })
++            })
++        try #require(await until { deliveries.ids.count == 1 })
++        #expect(order.isEmpty)
++        deliveries.releaseAll()
++        #expect(order == [1, 2])
++        #expect(!processor.hasPendingWork)
++    }
++
++    @Test func thrownOperationStillDeliversOnceAndClearsPending() async throws {
++        enum Failure: Error { case deliberate }
++        let trace = OrderingTrace()
++        let processor = BackgroundProcessor(value: SnapshotLedger(), orderingContext: OrderingContext(trace: trace))
++        var failures = 0
++        processor.accessValue(isolation: MainActor.shared, preferSynchronous: false,
++            operation: { _ -> String in throw Failure.deliberate },
++            completion: { result in if case .failure = result { failures += 1 } })
++        try #require(await until { failures == 1 })
++        #expect(!processor.hasPendingWork)
++        #expect(trace.snapshot().events.filter { $0.phase == .callback }.count == 1)
++    }
++
++    @Test func retiringFixtureDoesNotCancelAnOutstandingProcessorCallback() async throws {
++        let trace = OrderingTrace()
++        let fixture = OrderingContext(trace: trace)
++        weak var weakProcessor: BackgroundProcessor<SnapshotLedger>?
++        let deliveries = HeldCalls()
++        var delivered = 0
++        defer { weakProcessor?.orderingGates = nil; deliveries.releaseAll() }
++        do {
++            let processor = BackgroundProcessor(value: SnapshotLedger(), orderingContext: fixture.childProcessor())
++            weakProcessor = processor
++            let gates = OrderingGates()
++            gates.delivery = { id, action in MainActor.assumeIsolated { deliveries.hold(id, action) } }
++            processor.orderingGates = gates
++            processor.accessValue(isolation: MainActor.shared, preferSynchronous: false,
++                operation: { $0.snapshot }, completion: { (_: Result<String, Error>) in delivered += 1 })
++            try #require(await until { deliveries.ids.count == 1 })
++        }
++        fixture.record(.retired)
++        #expect(weakProcessor != nil, "held completion retains the processor after external owner scope ends")
++        deliveries.releaseAll()
++        try #require(await until { weakProcessor == nil })
++        #expect(delivered == 1)
++        let events = trace.snapshot().events
++        let retirement = try #require(events.first { $0.processor == fixture.processor && $0.phase == .retired })
++        #expect(events.contains { $0.fixture == fixture.fixture && $0.phase == .callback && $0.sequence > retirement.sequence })
++    }
++
++    @Test func fixedCapacityAndDuplicateDeliveryMetadataAreExplicit() {
++        let trace = OrderingTrace(capacity: 16)
++        let context = OrderingContext(trace: trace)
++        for _ in 0..<20 { context.record(.request) }
++        context.record(.callback, operation: 7)
++        context.record(.callback, operation: 7)
++        let snapshot = trace.snapshot()
++        #expect(snapshot.events.count == 16)
++        #expect(snapshot.evicted == 6)
++        #expect(snapshot.events.last?.retainedDeliveryCount == 2)
++
++        let wrapped = OrderingTrace(capacity: 16)
++        let wrapContext = OrderingContext(trace: wrapped)
++        wrapContext.record(.callback, operation: 7)
++        for _ in 0..<15 { wrapContext.record(.request) }
++        wrapContext.record(.callback, operation: 7)
++        #expect(wrapped.snapshot().events.last?.retainedDeliveryCount == 1,
++                "overwritten matching slot no longer belongs to the retained window")
++    }
++
++    @Test func rangeProcessorAndClientShareOperationAndLifetimeMetadata() throws {
++        let trace = OrderingTrace()
++        let fixture = OrderingContext(trace: trace)
++        let source = "func main() {}\n"
++        let query = try Query(language: Language(tree_sitter_swift()), data: Data("(\"func\" @keyword)".utf8))
++        let language = LanguageConfiguration(tree_sitter_swift(), name: "Swift", queries: [.highlights: query])
++        let config = TreeSitterClient.Configuration(
++            contentSnapshopProvider: { _ in .init(string: source) },
++            lengthProvider: { source.utf16.count }, invalidationHandler: { _ in },
++            locationTransformer: { offset in Point(row: 0, column: offset * 2) })
++        // The same fixture creates two client lifetimes, e.g. after a rebuild.
++        for _ in 0..<2 {
++            let client = try TreeSitterClient(rootLanguageConfig: language, configuration: config, orderingContext: fixture)
++            let matches = try client.highlights(in: NSRange(location: 0, length: 4),
++                provider: source.predicateTextProvider, mode: .required)
++            #expect(matches?.count == 1)
++        }
++        let events = trace.snapshot().events
++        let enqueues = events.filter { $0.phase == .enqueue }
++        #expect(enqueues.count == 2)
++        #expect(Set(enqueues.map(\.client)).count == 2, "rebuilt clients must not share a client lifetime ID")
++        #expect(enqueues.allSatisfy { $0.fixture == fixture.fixture })
++        for enqueue in enqueues {
++            let callback = events.first { $0.phase == .callback && $0.operation == enqueue.operation }
++            let request = events.first { $0.phase == .request && $0.parent == enqueue.operation }
++            #expect(callback?.processor == enqueue.processor)
++            #expect(request?.client == enqueue.client)
++            #expect(request?.fixture == fixture.fixture)
++            #expect(request?.processor != enqueue.processor)
++            #expect(events.contains { $0.phase == .compare && $0.operation == enqueue.operation && $0.expected == enqueue.parent })
++        }
++    }
++
++    private func until(_ condition: () -> Bool) async -> Bool {
++        let clock = ContinuousClock()
++        let deadline = clock.now + .seconds(3)
++        while !condition(), clock.now < deadline { await Task.yield() }
++        return condition()
++    }
++}
++
++@MainActor
++private final class HeldCalls {
++    private var calls: [(UInt64, () -> Void)] = []
++    var ids: [UInt64] { calls.map { $0.0 } }
++    func hold(_ id: UInt64, _ action: @escaping () -> Void) { calls.append((id, action)) }
++    func release(_ id: UInt64) {
++        guard let index = calls.firstIndex(where: { $0.0 == id }) else { Issue.record("missing held call"); return }
++        let action = calls.remove(at: index).1
++        action()
++    }
++    func releaseAll() { while let first = calls.first { release(first.0) } }
++}
++
++/// Mutated only on BackgroundProcessor's serial worker; lock permits fixture reads.
++private final class SnapshotLedger: @unchecked Sendable {
++    private let lock = NSLock()
++    private var text = "abcd"
++    private var edits: [Int] = []
++    private var checks: [Bool] = []
++    var snapshot: String { lock.withLock { String(text) } }
++    var applied: [Int] { lock.withLock { edits } }
++    var snapshotChecks: [Bool] { lock.withLock { checks } }
++    func apply(_ id: Int, range: NSRange, replacement: String, expected: String) -> String {
++        lock.withLock {
++            text = (text as NSString).replacingCharacters(in: range, with: replacement)
++            edits.append(id)
++            checks.append(text == expected)
++            return String(text)
++        }
++    }
++}

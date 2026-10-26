@@ -1,0 +1,70 @@
+name: Bounded Neon ordering diagnostic
+
+on:
+  push:
+    branches: [diagnostic/532-neon-natural-ordering-2026-10-26]
+    paths: ['diagnostics/neon-ordering-532/**', '.github/workflows/neon-ordering-532.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  natural-ordering:
+    if: github.repository == 'Joncallim/macdown_2'
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout diagnostic payload
+        uses: actions/checkout@v4
+        timeout-minutes: 2
+        with:
+          ref: ${{ github.sha }}
+          path: diagnostic-source
+          persist-credentials: false
+      - name: Checkout exact product source
+        uses: actions/checkout@v4
+        timeout-minutes: 2
+        with:
+          ref: f5605d9aead306e15ccb1bd8fb4f48b8931c1f76
+          path: product
+          persist-credentials: false
+      - name: Assert toolchain and paths
+        timeout-minutes: 1
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/neon532-evidence"
+          xcodebuild -version > "$RUNNER_TEMP/neon532-evidence/toolchain.txt"
+          test "$(< "$RUNNER_TEMP/neon532-evidence/toolchain.txt")" = $'Xcode 26.0.1\nBuild version 17A400'
+          printf 'actual_product=%s\nactual_diagnostics=%s\n' "$(git -C product rev-parse HEAD)" "$(git -C diagnostic-source rev-parse HEAD)"
+      - name: Lightweight helper tests
+        timeout-minutes: 1
+        working-directory: diagnostic-source/diagnostics/neon-ordering-532
+        run: python3 -m unittest -v test_hosted_helpers
+      - name: Prepare exact locked dependencies
+        timeout-minutes: 6
+        run: |
+          set -euo pipefail
+          python3 diagnostic-source/diagnostics/neon-ordering-532/prepare_dependencies.py \
+            --repo "$GITHUB_WORKSPACE/product" \
+            --scratch "$RUNNER_TEMP/neon532-scratch" \
+            --out "$RUNNER_TEMP/neon532-evidence"
+      - name: One compile and one ungated selected test
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          python3 diagnostic-source/diagnostics/neon-ordering-532/run_natural_hosted.py \
+            --repo "$GITHUB_WORKSPACE/product" \
+            --scratch "$RUNNER_TEMP/neon532-scratch" \
+            --out "$RUNNER_TEMP/neon532-evidence"
+      - name: Upload bounded evidence even on failure
+        if: always()
+        timeout-minutes: 2
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon532-ordering-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/neon532-evidence/
+          if-no-files-found: warn
+          retention-days: 7
