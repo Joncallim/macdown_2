@@ -61,10 +61,13 @@ extension WindowController {
             lastWorkspaceIndexRefreshRoot = nil
             lastWorkspaceIndexRefreshGeneration = nil
         }
-        if pendingFolderSearchRootGeneration == request, pendingFolderSearchRoot == root {
+        if (pendingFolderSearchRootGeneration == request && pendingFolderSearchRoot == root)
+            || folderSearchModel.root != root {
             folderSearchModel.setRoot(root, lexicalRoot: fileTreeModel.root)
             pendingFolderSearchRoot = nil
             pendingFolderSearchRootGeneration = nil
+        } else {
+            folderSearchModel.indexDidRefresh(root: root)
         }
     }
 

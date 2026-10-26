@@ -45,6 +45,7 @@ final class FolderSearchModel {
     private(set) var isSearching = false
     private(set) var outcome: FolderSearchOutcome?
     private(set) var root: URL?
+    private(set) var rootUnavailable = false
     /// The folder as the user opened it (a symlink path stays a symlink path),
     /// used to name files that are opened from results so they carry the same
     /// identity as the same file opened from the sidebar; `root` is the
@@ -163,11 +164,47 @@ final class FolderSearchModel {
             retireReplaceRun()
         }
         self.root = root
+        rootUnavailable = false
         self.lexicalRoot = root == nil ? nil : (lexicalRoot ?? root)
         scheduleSearch(debounced: false)
     }
 
-    func scheduleSearch(debounced: Bool = true, keepingReplaceSummary: Bool = false) {
+    /// A watcher can revoke the root's access scope without an explicit
+    /// folder switch. Keep its terminal state distinct from an empty search;
+    /// the access callback may fire twice while the tree tears down.
+    func rootAccessWasRevoked() {
+        guard root != nil else { return }
+        setRoot(nil)
+        rootUnavailable = true
+        if !query.isEmpty {
+            outcome = .indexUnavailable
+        }
+    }
+
+    /// A completed same-root index rebuild changes which files the current
+    /// query may visit. Search again against that snapshot, including a failed
+    /// rebuild so the user sees Folder Unavailable instead of stale matches.
+    /// A Replace in Folder run already re-searches after it finishes and must
+    /// keep its captured, explicitly confirmed plans until then.
+    func indexDidRefresh(root refreshedRoot: URL) {
+        guard root == refreshedRoot, !query.isEmpty, !isReplacing else { return }
+        // A background refresh must never turn a file the user excluded into
+        // an included write target. Retain inclusion only for a result whose
+        // path and reviewed revision still match; new or changed results start
+        // excluded until the user chooses them. The old confirmation closes.
+        let preservingReview = isReplaceVisible || isConfirmingReplace || !excludedPaths.isEmpty
+        let included: [String: FolderSearchMatch]? = preservingReview
+            ? Dictionary(uniqueKeysWithValues: results.filter { !excludedPaths.contains($0.relativePath) }
+                .map { ($0.relativePath, $0) })
+            : nil
+        scheduleSearch(debounced: false, keepingReplaceSummary: true, reviewedIncludedResults: included)
+    }
+
+    func scheduleSearch(
+        debounced: Bool = true,
+        keepingReplaceSummary: Bool = false,
+        reviewedIncludedResults: [String: FolderSearchMatch]? = nil
+    ) {
         generation += 1
         let thisGeneration = generation
         currentTask?.cancel()
@@ -179,6 +216,9 @@ final class FolderSearchModel {
         let currentQuery = query
         guard let root, !currentQuery.isEmpty else {
             isSearching = false
+            if rootUnavailable, !currentQuery.isEmpty {
+                outcome = .indexUnavailable
+            }
             return
         }
         isSearching = true
@@ -195,6 +235,10 @@ final class FolderSearchModel {
             }
             let searchOutcome = await performSearch(root, currentQuery) { @MainActor [weak self] match in
                 guard let self, generation == thisGeneration else { return }
+                if let reviewedIncludedResults,
+                   reviewedIncludedResults[match.relativePath]?.revision != match.revision {
+                    excludedPaths.insert(match.relativePath)
+                }
                 results.append(match)
             }
             guard generation == thisGeneration else { return }
