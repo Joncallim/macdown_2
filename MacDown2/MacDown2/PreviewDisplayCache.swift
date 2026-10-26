@@ -10,7 +10,11 @@ struct PreviewDisplayCache {
     private(set) var input: [PreviewBlock]?
     private(set) var output: [PreviewBlock]?
 
-    mutating func update(revision: Int?, blocks: [PreviewBlock]?) {
+    mutating func update(
+        revision: Int?,
+        blocks: [PreviewBlock]?,
+        preprocess: ([PreviewBlock]?) -> [PreviewBlock]? = MathPreviewPreprocessor.preprocessed
+    ) {
         guard let blocks else {
             reset()
             return
@@ -18,7 +22,7 @@ struct PreviewDisplayCache {
         guard self.revision != revision || input != blocks else { return }
         self.revision = revision
         input = blocks
-        output = MathPreviewPreprocessor.preprocessed(blocks)
+        output = preprocess(blocks)
     }
 
     mutating func reset() {

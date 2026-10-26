@@ -1,14 +1,17 @@
 import Foundation
 
-/// Splits a large plain-text preview into bounded layout units without
-/// changing the authored source. Newline boundaries are preferred, but a
-/// pathological line is still split at a grapheme-cluster boundary so
-/// CoreText never receives one multi-hundred-kilobyte run.
+/// Groups exact source at newline or grapheme boundaries, then produces
+/// bounded display units. An indivisible grapheme exceeding the layout
+/// limit is represented by an explicit preview-only omission marker;
+/// its original scalars remain intact in the document and source chunks.
 enum OversizeTextChunker {
     /// Keeps each fallback `Text` well below the size at which CoreText's
     /// bounding-rect work becomes superlinear in the native acceptance ladder.
     static let defaultMaxUTF16Length = 16 * 1024
 
+    /// Targets the limit without splitting a grapheme. A single overlong
+    /// grapheme must exceed it to preserve exact source; use ``displayChunks``
+    /// for the hard rendering bound and its visible omission fallback.
     static func chunks(_ source: String, maxUTF16Length: Int = defaultMaxUTF16Length) -> [String] {
         guard !source.isEmpty else { return [] }
         let limit = max(1, maxUTF16Length)
@@ -54,18 +57,28 @@ enum OversizeTextChunker {
     }
 
     /// Converts exact source chunks into separate text views without adding a
-    /// second line break at the boundary between adjacent views. The exact
-    /// source-preserving chunks remain available through ``chunks``.
+    /// second line break between adjacent views. The final chunk retains its
+    /// authored line ending. An oversized grapheme is omitted visibly rather
+    /// than split into scalars that could change its shaping across views.
     static func displayChunks(_ source: String, maxUTF16Length: Int = defaultMaxUTF16Length) -> [String] {
-        chunks(source, maxUTF16Length: maxUTF16Length).map { chunk in
-            let withoutBoundary = if chunk.hasSuffix("\r\n") {
-                String(chunk.dropLast(2))
-            } else if chunk.hasSuffix("\n") || chunk.hasSuffix("\r") {
-                String(chunk.dropLast())
+        let limit = max(1, maxUTF16Length)
+        let renderable = chunks(source, maxUTF16Length: limit).flatMap { chunk in
+            if chunk.utf16.count > limit {
+                // Source chunking isolates an indivisible overlong Character.
+                // Chunk the ASCII marker too when a caller uses a tiny limit.
+                chunks("[Preview omitted one oversized grapheme]", maxUTF16Length: limit)
             } else {
-                chunk
+                [chunk]
             }
-            return withoutBoundary.isEmpty ? "\u{200B}" : withoutBoundary
+        }
+        return renderable.enumerated().map { index, chunk in
+            var display = chunk
+            if index < renderable.count - 1,
+               chunk.hasSuffix("\r\n") || chunk.hasSuffix("\n") || chunk.hasSuffix("\r") {
+                // CRLF is one Swift Character, so remove exactly one Character.
+                display.removeLast()
+            }
+            return display.isEmpty ? "\u{200B}" : display
         }
     }
 }

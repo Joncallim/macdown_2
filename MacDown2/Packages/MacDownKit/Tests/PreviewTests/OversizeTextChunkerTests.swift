@@ -57,7 +57,49 @@ struct OversizeTextChunkerTests {
         let chunks = OversizeTextChunker.displayChunks(source, maxUTF16Length: 24)
 
         #expect(chunks.count > 1)
-        #expect(chunks.allSatisfy { !$0.hasSuffix("\n") && !$0.hasSuffix("\r") })
-        #expect(OversizeTextChunker.displayChunks("\n") == ["\u{200B}"])
+        #expect(chunks.dropLast().allSatisfy { !$0.hasSuffix("\n") && !$0.hasSuffix("\r") })
+    }
+
+    @Test(arguments: ["\n", "\r\n", "\r"])
+    func removesOnlyTheBoundaryLineEnding(_ ending: String) {
+        let source = "ab\(ending)cd\(ending)"
+        let limit = 2 + ending.utf16.count
+
+        #expect(OversizeTextChunker.displayChunks(source, maxUTF16Length: limit) == ["ab", "cd\(ending)"])
+        #expect(Array(OversizeTextChunker.chunks(source, maxUTF16Length: limit).joined().utf8) == Array(source.utf8))
+    }
+
+    @Test(arguments: ["\n", "\r\n", "\r"])
+    func preservesUnicodeImmediatelyBeforeTheBoundary(_ ending: String) {
+        let source = "e\u{301}\(ending)🙂\(ending)"
+        let display = OversizeTextChunker.displayChunks(source, maxUTF16Length: 2 + ending.utf16.count)
+
+        #expect(display == ["e\u{301}", "🙂\(ending)"])
+        #expect(Array(display[0].utf8) == Array("e\u{301}".utf8))
+    }
+
+    @Test(arguments: ["\n", "\r\n", "\r"])
+    func preservesBlankLinesAndTheFinalChunk(_ ending: String) {
+        #expect(OversizeTextChunker.displayChunks("\(ending)\(ending)tail", maxUTF16Length: 4) == [ending, "tail"])
+        #expect(OversizeTextChunker.displayChunks("\(ending)last", maxUTF16Length: 4) == ["\u{200B}", "last"])
+        #expect(OversizeTextChunker.displayChunks("last\(ending)") == ["last\(ending)"])
+        #expect(OversizeTextChunker.displayChunks(ending) == [ending])
+        #expect(OversizeTextChunker.displayChunks("tail") == ["tail"])
+        #expect(OversizeTextChunker.displayChunks("").isEmpty)
+    }
+
+    @Test func anIndivisibleOversizedGraphemeHasAnExplicitBoundedDisplayFallback() {
+        let grapheme = "a" + String(repeating: "\u{301}", count: 40000)
+        let source = "prefix\n" + grapheme + "\nsuffix"
+        let display = OversizeTextChunker.displayChunks(source)
+
+        #expect(grapheme.count == 1)
+        #expect(display.allSatisfy { $0.utf16.count <= OversizeTextChunker.defaultMaxUTF16Length })
+        #expect(display.contains("[Preview omitted one oversized grapheme]"))
+        #expect(!display.contains { $0.contains("\u{301}") })
+        #expect(Array(OversizeTextChunker.chunks(source).joined().utf8) == Array(source.utf8))
+        let tinyDisplay = OversizeTextChunker.displayChunks(grapheme, maxUTF16Length: 7)
+        #expect(tinyDisplay.allSatisfy { $0.utf16.count <= 7 })
+        #expect(tinyDisplay.joined() == "[Preview omitted one oversized grapheme]")
     }
 }

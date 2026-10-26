@@ -7,13 +7,22 @@ struct PreviewDisplayCacheTests {
     @Test func sameRevisionAndBlocksReuseTheCachedSnapshot() {
         let block = PreviewBlock(kind: .paragraph, source: "plain", lineRange: 1 ... 1)
         var cache = PreviewDisplayCache()
+        var calls = 0
+        let preprocess: ([PreviewBlock]?) -> [PreviewBlock]? = { blocks in
+            calls += 1
+            return blocks
+        }
 
-        cache.update(revision: 7, blocks: [block])
+        cache.update(revision: 7, blocks: [block], preprocess: preprocess)
         let firstOutput = cache.output
-        cache.update(revision: 7, blocks: [block])
+        cache.update(revision: 7, blocks: [block], preprocess: preprocess)
 
+        #expect(calls == 1)
         #expect(cache.output == firstOutput)
         #expect(cache.revision == 7)
+        cache.reset()
+        cache.update(revision: 7, blocks: [block], preprocess: preprocess)
+        #expect(calls == 2)
     }
 
     @Test func revisionChangeInvalidatesPreprocessedOutput() {
