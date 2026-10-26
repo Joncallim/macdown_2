@@ -195,7 +195,11 @@ struct FindBarView: View {
                 coordinator?.commandStateDidChange()
             }
         }
-        .onChange(of: model.query) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
+        // Literal search distinguishes canonically equal but byte-distinct
+        // queries, so Swift's normal String equality is not a refresh trigger.
+        .onChange(of: ExactTextFingerprint(model.query)) { _, _ in
+            recomputeMatches(anchor: model.currentMatch?.range.location)
+        }
         .onChange(of: model.options) { old, new in
             recomputeMatches(
                 anchor: model.currentMatch?.range.location,

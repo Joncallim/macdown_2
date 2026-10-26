@@ -171,6 +171,45 @@ struct EditorFindModelSearchDomainTests {
         #expect(starts(model) == [4, 8])
     }
 
+    @Test func anUntrackedEqualTextChangeImmediatelyRevokesOldSelectionMatches() async {
+        let model = model()
+        let text = "cat cat cat"
+        await model.updateMatches(in: text, selection: NSRange(location: 0, length: 7))
+        #expect(model.matchesAreCurrent(forLiveText: text))
+        #expect(model.replaceCurrentTransaction(with: "dog") != nil)
+
+        // Undo/reload can report an untracked change before the asynchronous
+        // Find refresh runs. Equal live bytes alone cannot authorise Replace.
+        model.noteTextChange(.untracked)
+        #expect(model.searchDomainLost)
+        #expect(!model.matchesAreCurrent(forLiveText: text))
+
+        await model.updateMatches(in: text)
+        #expect(!model.matchesAreCurrent(forLiveText: text))
+        #expect(model.matches.isEmpty)
+        await model.updateMatches(in: text, selection: NSRange(location: 4, length: 7))
+        #expect(model.matchesAreCurrent(forLiveText: text))
+        #expect(starts(model) == [4, 8])
+    }
+
+    @Test func aRemappedDomainRejectsOldMatchesBeforeRecomputeButAnUnchangedDomainDoesNot() async {
+        let model = model()
+        let text = "cat cat cat tail"
+        await model.updateMatches(in: text, selection: NSRange(location: 4, length: 7))
+        #expect(model.matchesAreCurrent(forLiveText: text))
+
+        model.noteTextChange(.edit(range: NSRange(location: 12, length: 1), replacementLength: 1))
+        #expect(model.matchesAreCurrent(forLiveText: text), "an edit after the retained domain does not move it")
+
+        // The retained range moves before the off-main matcher can recompute.
+        // Holding the bytes equal isolates scope identity from text identity.
+        model.noteTextChange(.edit(range: NSRange(location: 0, length: 0), replacementLength: 1))
+        #expect(model.searchDomain == NSRange(location: 5, length: 7))
+        #expect(!model.matchesAreCurrent(forLiveText: text))
+        await model.updateMatches(in: text)
+        #expect(model.matchesAreCurrent(forLiveText: text))
+    }
+
     @Test func changesAreIgnoredWhileInSelectionIsOff() async {
         let model = model(options: SearchOptions())
         await model.updateMatches(in: "cat cat", preferringLocationNear: 0)
