@@ -491,7 +491,7 @@ written from.
 - Licence: MIT
 - Copyright (C) 2011 Chris Kempson
 - Copyright (c) 2014 Tzu-ping Chung (MacDown's Tomorrow.style)
-- Local modifications: Colour values re-expressed as this app's JSON theme format and mapped to tree-sitter capture names.
+- Local modifications: Colour values re-expressed as this app's JSON theme format and mapped to tree-sitter capture names. The translucent current-line wash is a local UI choice using the existing foreground colour.
 
 ### tomorrow-theme--LICENSE.md.txt
 
@@ -557,7 +557,7 @@ THE SOFTWARE.
 - Revision: `9b5f41973c9d804164b52a99d3adb61c56c29d36`
 - Licence: MIT
 - Copyright (c) 2016 GitHub, Inc.
-- Local modifications: Token colours taken from GitHub Light syntax v0.4.1; chrome colours (#2d2d2d text, #6c4f6c caret, #b4d7ff selection) are local choices with no identified upstream.
+- Local modifications: Token colours taken from GitHub Light syntax v0.4.1; chrome colours (#2d2d2d text, #6c4f6c caret, #b4d7ff selection) and the translucent current-line wash are local choices with no identified upstream.
 
 ### github-syntax-light--LICENSE.txt
 

@@ -1031,20 +1031,20 @@
       "files": [
         {
           "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Dark.json",
-          "sha256": "0c383c0c91be8258b9a61788ebafdc6bd68f2079f60debd509bc3e80a706836e"
+          "sha256": "a7082ed35ca0e6eb7d64b3ef35c70fa2149f12b316738f7ef0d6a26034766dce"
         }
       ],
-      "modifications": "Colour values re-expressed as this app's JSON theme format and mapped to tree-sitter capture names.",
+      "modifications": "Colour values re-expressed as this app's JSON theme format and mapped to tree-sitter capture names. The translucent current-line wash is a local UI choice using the existing foreground colour.",
       "provenance": "verified",
       "lc": [
         "LC-01",
         "LC-06"
       ],
-      "evidence": "Every colour is in Chris Kempson's Tomorrow Night Eighties palette (textmate2 Tomorrow-Night-Eighties.tmTheme at ccf6666) except the comment grey #888888, which comes from MacDown's legacy Tomorrow.style (MacDownApp/macdown 3e2a2bf, itself a Night Eighties adaptation). Background #2d2d2d, foreground #cccccc, caret #cc99cc and selection #515151 match Tomorrow.style exactly.",
+      "evidence": "The opaque palette colours are in Chris Kempson's Tomorrow Night Eighties palette (textmate2 Tomorrow-Night-Eighties.tmTheme at ccf6666) except the comment grey #888888, which comes from MacDown's legacy Tomorrow.style (MacDownApp/macdown 3e2a2bf, itself a Night Eighties adaptation). Background #2d2d2d, foreground #cccccc, caret #cc99cc and selection #515151 match Tomorrow.style exactly. The current-line wash reuses foreground RGB with a local alpha choice.",
       "runtime_resources": [
         {
           "name": "Tomorrow Dark.json",
-          "sha256": "0c383c0c91be8258b9a61788ebafdc6bd68f2079f60debd509bc3e80a706836e",
+          "sha256": "a7082ed35ca0e6eb7d64b3ef35c70fa2149f12b316738f7ef0d6a26034766dce",
           "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Dark.json"
         }
       ]
@@ -1076,10 +1076,10 @@
       "files": [
         {
           "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Light.json",
-          "sha256": "87fee559710cc21c85a8fb424a2e62b191f5bc7c80c4abad208f55d5a3165be9"
+          "sha256": "b0a2c0e5bf6a69e50fd8b0c29b56709c646cebf1bb25b123ee1d163c1d8ae627"
         }
       ],
-      "modifications": "Token colours taken from GitHub Light syntax v0.4.1; chrome colours (#2d2d2d text, #6c4f6c caret, #b4d7ff selection) are local choices with no identified upstream.",
+      "modifications": "Token colours taken from GitHub Light syntax v0.4.1; chrome colours (#2d2d2d text, #6c4f6c caret, #b4d7ff selection) and the translucent current-line wash are local choices with no identified upstream.",
       "provenance": "verified",
       "lc": [
         "LC-01",
@@ -1092,7 +1092,7 @@
       "runtime_resources": [
         {
           "name": "Tomorrow Light.json",
-          "sha256": "87fee559710cc21c85a8fb424a2e62b191f5bc7c80c4abad208f55d5a3165be9",
+          "sha256": "b0a2c0e5bf6a69e50fd8b0c29b56709c646cebf1bb25b123ee1d163c1d8ae627",
           "path": "MacDown2/Packages/MacDownKit/Sources/Themes/Themes/Tomorrow Light.json"
         }
       ]
