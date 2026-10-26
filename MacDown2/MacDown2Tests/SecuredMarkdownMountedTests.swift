@@ -62,6 +62,7 @@ struct SecuredMarkdownMountedTests {
             after: first, recorder: recorder, minimumRetained: initialInput + imageBytes.count
         )
         #expect(second != first)
+        try await assertGrantedImageCopies(from: hosting)
         try await assertRevocationStopsCopy(from: hosting, owner: owner, document: document, tabID: tabID)
     }
 
