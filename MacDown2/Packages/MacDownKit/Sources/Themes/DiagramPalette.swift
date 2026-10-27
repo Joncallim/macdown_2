@@ -16,13 +16,10 @@ public struct DiagramPalette: Codable, Sendable, Equatable, Hashable {
     public let nodeFill: String
     public let accent: String
     public let secondary: String
-    /// The fixed twelve-color sequence belongs to this policy rather than
-    /// individual render contexts crossing actor boundaries.
+    /// Generated categories use the resolved foreground. Source-level
+    /// renderer styles remain the only way a diagram acquires colour.
     public var pieColors: [String] {
-        [
-            "#4E79A7", "#F28E2B", "#59A14F", "#E15759", "#B07AA1", "#76B7B2",
-            "#EDC949", "#FF9DA7", "#9C755F", "#BAB0AC", "#86BCB6", "#D37295",
-        ]
+        Array(repeating: text, count: 12)
     }
 
     /// The separator and fixed, validated values make this a stable, lossless
@@ -53,9 +50,9 @@ public struct DiagramPalette: Codable, Sendable, Equatable, Hashable {
         canvas: "#FFFFFF",
         text: "#1A1A1A",
         stroke: "#1A1A1A",
-        nodeFill: "#F3F5F8",
-        accent: "#285EA8",
-        secondary: "#526274"
+        nodeFill: "#FFFFFF",
+        accent: "#1A1A1A",
+        secondary: "#1A1A1A"
     )
 
     /// Preview text and canvas are separate inputs, resolved before rendering.

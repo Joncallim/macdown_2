@@ -80,8 +80,8 @@ struct GraphvizWebRendererTests {
         let lightNode = try Self.groupBody(className: "node", title: "a", in: light.svg)
         let darkNode = try Self.groupBody(className: "node", title: "a", in: dark.svg)
         #expect(lightNode.range(
-            of: ##"<(ellipse|polygon)[^>]*fill="lightgrey"[^>]*stroke="black""##,
-            options: [.regularExpression]
+            of: ##"<(ellipse|polygon)[^>]*fill="(white|#FFFFFF)"[^>]*stroke="(black|#1A1A1A)""##,
+            options: [.regularExpression, .caseInsensitive]
         ) != nil)
         #expect(darkNode.range(
             of: ##"<(ellipse|polygon)[^>]*fill="#112233"[^>]*stroke="#eeddcc""##,
@@ -131,7 +131,7 @@ struct GraphvizWebRendererTests {
             .range(of: ##"<polygon[^>]*fill="#112233"[^>]*stroke="#cccccc""##, options: [.regularExpression]) != nil)
 
         let authored = try await renderer.render(
-            Self.fence("digraph { node [style=filled, color=red, fontcolor=white]; a -> b; }"),
+            Self.fence("digraph { node [style=filled, color=red, fillcolor=red, fontcolor=white]; a -> b; }"),
             context: Self.context
         )
         let authoredNode = try Self.groupBody(className: "node", title: "a", in: authored.svg)

@@ -53,13 +53,11 @@ window.__macdownRenderGraphviz = async function (source, theme) {
             graphAttributes: { bgcolor: background, fontcolor: theme.text },
             nodeAttributes: { fontcolor: theme.text }
         };
-        if (theme.policyID === "preview-context-v1") {
-            // Native DOT defaults have lower precedence than authored
-            // graph/node/edge attributes, including explicit black paint.
-            Object.assign(options.graphAttributes, { color: theme.stroke, fillcolor: theme.canvas });
-            Object.assign(options.nodeAttributes, { color: theme.stroke, fillcolor: theme.nodeFill });
-            options.edgeAttributes = { color: theme.stroke, fontcolor: theme.text };
-        }
+        // Native DOT defaults have lower precedence than authored
+        // graph/node/edge attributes, including explicit black paint.
+        Object.assign(options.graphAttributes, { color: theme.stroke, fillcolor: theme.canvas });
+        Object.assign(options.nodeAttributes, { color: theme.stroke, fillcolor: theme.nodeFill });
+        options.edgeAttributes = { color: theme.stroke, fontcolor: theme.text };
         const svg = viz.renderString(source, options);
         const canvas = opaqueGraphvizCanvas(svg, background);
         return { ok: true, svg: canvas.svg, width: canvas.width, height: canvas.height };

@@ -7,11 +7,15 @@ struct DiagramPaletteTests {
     @Test func serializationAndFingerprintAreStable() throws {
         let palette = DiagramPalette.neutralLight
         #expect(palette.fingerprint == (
-            "neutral-light-v1|#FFFFFF|#1A1A1A|#1A1A1A|#F3F5F8|#285EA8|#526274|"
+            "neutral-light-v1|#FFFFFF|#1A1A1A|#1A1A1A|#FFFFFF|#1A1A1A|#1A1A1A|"
                 + palette.pieColors.joined(separator: "|")
         ))
         #expect(palette.rendererArguments["canvas"] == "#FFFFFF")
         #expect(palette.rendererArguments["text"] == "#1A1A1A")
+        #expect(palette.nodeFill == palette.canvas)
+        #expect(palette.accent == palette.text)
+        #expect(palette.secondary == palette.text)
+        #expect(palette.pieColors == Array(repeating: palette.text, count: 12))
         let encoded = try JSONEncoder().encode(palette)
         #expect(try JSONDecoder().decode(DiagramPalette.self, from: encoded) == palette)
         let altered = try #require(String(data: encoded, encoding: .utf8))

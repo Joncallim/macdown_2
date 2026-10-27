@@ -84,25 +84,23 @@ window.__macdownRenderD2 = async function (source, theme) {
         if (authored.themeID != null && authored.darkThemeID == null) {
             options.darkThemeID = authored.themeID;
         }
-        if (theme.policyID === "preview-context-v1") {
-            // D2 keeps generated theme tokens distinct from literal authored
-            // colors in its compiled diagram. Use its native override API;
-            // never search and replace black pixels or authored SVG paint.
-            const defaults = {
-                N1: theme.text, N2: theme.text, N3: theme.stroke,
-                N4: theme.stroke, N5: theme.nodeFill, N6: theme.nodeFill, N7: theme.canvas,
-                B1: theme.stroke, B2: theme.stroke, B3: theme.nodeFill,
-                B4: theme.nodeFill, B5: theme.nodeFill, B6: theme.nodeFill,
-                AA2: theme.accent, AA4: theme.nodeFill, AA5: theme.nodeFill,
-                AB4: theme.nodeFill, AB5: theme.nodeFill
-            };
-            // An explicitly selected source theme remains an authored palette.
-            // Explicit per-token overrides also win over application defaults.
-            if (!authored.themeID) {
-                options.themeOverrides = Object.assign({}, defaults, authored.themeOverrides || {});
-                options.darkThemeOverrides = Object.assign({}, defaults,
-                    authored.themeOverrides || {}, authored.darkThemeOverrides || {});
-            }
+        // D2 keeps generated theme tokens distinct from literal authored
+        // colors in its compiled diagram. Use its native override API;
+        // never search and replace black pixels or authored SVG paint.
+        const defaults = {
+            N1: theme.text, N2: theme.text, N3: theme.stroke,
+            N4: theme.stroke, N5: theme.nodeFill, N6: theme.nodeFill, N7: theme.canvas,
+            B1: theme.stroke, B2: theme.stroke, B3: theme.nodeFill,
+            B4: theme.nodeFill, B5: theme.nodeFill, B6: theme.nodeFill,
+            AA2: theme.text, AA4: theme.nodeFill, AA5: theme.nodeFill,
+            AB4: theme.nodeFill, AB5: theme.nodeFill
+        };
+        // An explicitly selected source theme remains an authored palette.
+        // Explicit per-token overrides also win over application defaults.
+        if (!authored.themeID) {
+            options.themeOverrides = Object.assign({}, defaults, authored.themeOverrides || {});
+            options.darkThemeOverrides = Object.assign({}, defaults,
+                authored.themeOverrides || {}, authored.darkThemeOverrides || {});
         }
         const svg = await d2.render(compiled.diagram, options);
         const canvas = opaqueD2Canvas(svg, theme.canvas);

@@ -130,7 +130,7 @@ extension MermaidWebRendererTests {
         #expect(pixels.hasDiagramContent)
     }
 
-    @Test func pieChartsUseDistinctCategoricalSliceColors() async throws {
+    @Test func pieChartsUseTheResolvedForegroundUntilSourceStylesOverrideIt() async throws {
         let renderer = MermaidWebRenderer()
         let source = """
         pie title Categories
@@ -148,25 +148,20 @@ extension MermaidWebRendererTests {
             "Twelve" : 12
         """
         let diagram = try await renderer.render(Self.fence(source), context: Self.context)
-        let sliceColors = [
-            "#4E79A7", "#F28E2B", "#59A14F", "#E15759", "#B07AA1", "#76B7B2",
-            "#EDC949", "#FF9DA7", "#9C755F", "#BAB0AC", "#86BCB6", "#D37295",
-        ]
-        for color in sliceColors {
-            #expect(diagram.svg.range(
-                of: ##"<path[^>]*fill="\##(color)"[^>]*class="pieCircle""##,
-                options: [.regularExpression, .caseInsensitive]
-            ) != nil, "no pie slice filled \(color)")
-        }
         let sliceCount = diagram.svg.components(separatedBy: "class=\"pieCircle\"").count - 1
         let legendSwatchCount = diagram.svg.components(separatedBy: "class=\"legend\"").count - 1
         #expect(sliceCount == 12)
+        let monochromeSliceCount = diagram.svg.components(
+            separatedBy: "fill=\"#1A1A1A\" class=\"pieCircle\""
+        ).count - 1
+        #expect(monochromeSliceCount == 12)
         #expect(legendSwatchCount >= 12)
-        for legendFill in ["78, 121, 167", "242, 142, 43", "89, 161, 79"] {
-            #expect(diagram.svg.range(
-                of: ##"<g class="legend"[^>]*>.*fill: rgb\(\##(legendFill)\)"##,
-                options: [.regularExpression, .caseInsensitive]
-            ) != nil, "no legend swatch filled rgb(\(legendFill))")
+        #expect(diagram.svg.range(
+            of: ##"<g class="legend"[^>]*>.*fill: rgb\(26, 26, 26\)"##,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil, "no monochrome legend swatch")
+        for generatedColor in ["#4E79A7", "#F28E2B", "#59A14F", "#E15759"] {
+            #expect(!diagram.svg.localizedCaseInsensitiveContains(generatedColor))
         }
         await renderer.shutdown()
     }
