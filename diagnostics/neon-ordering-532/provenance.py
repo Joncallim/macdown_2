@@ -47,13 +47,13 @@ def verify_files(files):
         if digest(Path(path)) != expected:
             raise ValueError('Patched file changed during compilation: ' + path)
 
-def assert_build_inputs(scratch, neon, repo, files):
+def assert_build_inputs(scratch, neon, repo, files, modules=None):
     candidates = list(scratch.glob('*/debug/description.json'))
     if len(candidates) != 1 or candidates[0].stat().st_size > 4 * 1024**2:
         raise ValueError('Missing, ambiguous or oversized SwiftPM build description')
     description = json.loads(candidates[0].read_text())
     selected = {}
-    for module in ('RangeState', 'TreeSitterClient', 'Neon', 'Highlighting', 'HighlightingTests'):
+    for module in modules or ('RangeState', 'TreeSitterClient', 'Neon', 'Highlighting', 'HighlightingTests'):
         commands = [c for c in description['swiftCommands'].values() if c['moduleName'] == module]
         if len(commands) != 1:
             raise ValueError('Missing or ambiguous compiled module: ' + module)
@@ -65,8 +65,8 @@ def assert_build_inputs(scratch, neon, repo, files):
             if not sources or any(not Path(source).is_relative_to(expected_root) for source in sources):
                 raise ValueError('Neon module uses an unpatched/alternate source directory: ' + module)
         needed = {path for path in files if '/Sources/' + module + '/' in path}
-        if module == 'HighlightingTests':
-            needed = {path for path in files if '/Tests/HighlightingTests/' in path}
+        if module.endswith('Tests'):
+            needed = {path for path in files if '/Tests/' + module + '/' in path}
         if not needed <= sources or not needed <= inputs:
             raise ValueError('Patched files missing from actual compiler inputs: ' + module)
         if not command['objects'] or any(not Path(path).is_file() for path in command['objects']):

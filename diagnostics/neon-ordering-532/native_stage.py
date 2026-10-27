@@ -23,6 +23,9 @@ FILES = (
     'native_stage.py', 'cap_stream.py', 'provenance.py', 'crash_reports.py',
     'analyze_lifecycle_trace.py', 'ordering-diagnostic.patch', 'lifecycle-harness.patch',
     'test_native_helpers.py', 'test_patch_root.py', 'test_lifecycle_helpers.py',
+    'native_real_client.py', 'test_real_client_hosted.py', 'real-client-harness.patch',
+    'real-client-source-SHA256.txt', 'real-client-Package.swift',
+    'REAL-CLIENT-README.md', 'run_real_client_incremental.py',
 )
 PAYLOAD = ['.github/workflows/neon-ordering-532.yml'] + [
     'diagnostics/neon-ordering-532/' + name for name in FILES]
@@ -177,9 +180,9 @@ NEON_TARGETS = (
 )
 
 
-def prepare_diagnostic_sources(repo, neon, diagnostic_root):
+def prepare_diagnostic_sources(repo, neon, diagnostic_root, plans=None):
     """Apply only the two known patches from their actual Git roots; prove changes."""
-    plans = [
+    plans = plans or [
         (Path(neon).resolve(), 'ordering-diagnostic.patch', '', NEON_TARGETS, False),
         (Path(repo).resolve(), 'lifecycle-harness.patch', 'MacDown2/Packages/MacDownKit', HARNESS_TARGETS, True),
     ]
@@ -298,7 +301,9 @@ def audit_evidence(output):
     return total
 
 
-def finish(repo, package, scratch, output):
+def finish(repo, package, scratch, output, *, trace_analyzer=None,
+           selected_pattern=r'Test restoreLifetimesThenOriginalBelowCutoff\(\) started',
+           original_marker='phase=original-start gates=unset', extra_verification=None):
     report = dict(outcome='incomplete; no race verdict', exitStatus=1,
         stages={name: os.environ.get(name + '_OUTCOME', 'missing') for name in STEPS})
     status = 1
@@ -314,9 +319,10 @@ def finish(repo, package, scratch, output):
         text = (test_log.read_text(errors='replace') if not test_log.is_symlink()
                 and test_log.is_file() and test_log.stat().st_size <= CAP else '')
         report.update(selectedTestExecuted=bool(re.search(
-            r'Test restoreLifetimesThenOriginalBelowCutoff\(\) started', text)),
-            originalCaseEntered='phase=original-start gates=unset' in text,
+            selected_pattern, text)),
             preconditionObserved='completed mutation does not match the expected value' in text)
+        if original_marker is not None:
+            report['originalCaseEntered'] = original_marker in text
         report['crashes'] = collect(Path.home() / 'Library/Logs/DiagnosticReports', output,
             state.get('testSince', state['started']), fixture_owners(text))
         logs = {}
@@ -331,12 +337,14 @@ def finish(repo, package, scratch, output):
             raise ValueError('Toolchain evidence missing or changed')
         if state['stage'] != 'ready-for-test' or any(value != 'success' for value in report['stages'].values()):
             raise ValueError('Preparation/compile/test did not all succeed')
-        if not report['selectedTestExecuted'] or not report['originalCaseEntered']:
+        if not report['selectedTestExecuted'] or (original_marker is not None and not report['originalCaseEntered']):
             raise ValueError('Actual selected/original cases not observed')
         if graph_for(scratch, package)[0] != state['resolvedGraph']:
             raise ValueError('Effective graph changed after test')
         verify_files(state['patchedFileHashes'])
-        report['traceAnalysis'] = analyze(text, 8)
+        if extra_verification is not None:
+            report['extraVerification'] = extra_verification(state)
+        report['traceAnalysis'] = (trace_analyzer or (lambda value: analyze(value, 8)))(text)
         headroom(repo)
         report.update(outcome='not-reproduced; not-fixed', exitStatus=0)
         status = 0

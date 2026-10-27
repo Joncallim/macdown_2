@@ -40,7 +40,7 @@ jobs:
           EVIDENCE: ${{ runner.temp }}/neon532-evidence
         run: |
           set -euo pipefail
-          python3 "$DIAG/native_stage.py" preflight
+          python3 "$DIAG/native_real_client.py" preflight
           printf 'SCRATCH=%s\nEVIDENCE=%s\n' "$SCRATCH" "$EVIDENCE" >> "$GITHUB_ENV"
       - id: helpers
         timeout-minutes: 1
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          python3 -m unittest -q test_native_helpers test_patch_root test_lifecycle_helpers 2>&1 | python3 "$DIAG/cap_stream.py" "$EVIDENCE/helper-tests.log"
+          python3 -m unittest -q test_native_helpers test_patch_root test_lifecycle_helpers test_real_client_hosted 2>&1 | python3 "$DIAG/cap_stream.py" "$EVIDENCE/helper-tests.log"
           statuses=("${PIPESTATUS[@]}")
           set -e
           test "${statuses[0]}" -eq 0 && test "${statuses[1]}" -eq 0
@@ -57,25 +57,25 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          swift package --package-path "$PACKAGE" --scratch-path "$SCRATCH" --force-resolved-versions resolve 2>&1 | python3 "$DIAG/cap_stream.py" "$EVIDENCE/dependency-prepare.log"
+          { swift package --package-path "$PACKAGE" --scratch-path "$SCRATCH" --force-resolved-versions resolve && test "$(git -C "$SCRATCH/checkouts/Neon" rev-parse HEAD)" = dabf50c947148c49acd0d321dfe8f3805d10b3da && git -C "$SCRATCH/checkouts/Neon" submodule update --init --quiet -- tree-sitter-swift; } 2>&1 | python3 "$DIAG/cap_stream.py" "$EVIDENCE/dependency-prepare.log"
           statuses=("${PIPESTATUS[@]}")
           set -e
           test "${statuses[0]}" -eq 0 && test "${statuses[1]}" -eq 0
       - id: patch
         timeout-minutes: 1
-        run: python3 "$DIAG/native_stage.py" patch
+        run: python3 "$DIAG/native_real_client.py" patch
       - id: compile
         timeout-minutes: 8
         run: |
           set -euo pipefail
           set +e
-          swift build --build-tests --jobs 2 --package-path "$PACKAGE" --scratch-path "$SCRATCH" --force-resolved-versions 2>&1 | python3 "$DIAG/cap_stream.py" "$EVIDENCE/lifecycle-compile.log"
+          swift build --build-tests --jobs 2 --package-path "$SCRATCH/real-client-package" --scratch-path "$SCRATCH/real-client-build" --force-resolved-versions 2>&1 | python3 "$DIAG/cap_stream.py" "$EVIDENCE/lifecycle-compile.log"
           statuses=("${PIPESTATUS[@]}")
           set -e
           test "${statuses[0]}" -eq 0 && test "${statuses[1]}" -eq 0
       - id: inputs
         timeout-minutes: 1
-        run: python3 "$DIAG/native_stage.py" verify-build
+        run: python3 "$DIAG/native_real_client.py" verify-build
       - id: selected
         timeout-minutes: 3
         env:
@@ -83,7 +83,7 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          swift test --skip-build --no-parallel --filter MarkdownLifecycleOrderingDiagnosticTests.restoreLifetimesThenOriginalBelowCutoff --package-path "$PACKAGE" --scratch-path "$SCRATCH" --force-resolved-versions 2>&1 | python3 "$DIAG/cap_stream.py" "$EVIDENCE/lifecycle-test.log"
+          swift test --skip-build --no-parallel --filter RealClientOrderingTests.ungatedExecutedQueryAndTwoEditsPreserveOrdering --package-path "$SCRATCH/real-client-package" --scratch-path "$SCRATCH/real-client-build" --force-resolved-versions 2>&1 | python3 "$DIAG/cap_stream.py" "$EVIDENCE/lifecycle-test.log"
           statuses=("${PIPESTATUS[@]}")
           set -e
           test "${statuses[0]}" -eq 0 && test "${statuses[1]}" -eq 0
@@ -98,7 +98,7 @@ jobs:
           COMPILE_OUTCOME: ${{ steps.compile.outcome }}
           INPUTS_OUTCOME: ${{ steps.inputs.outcome }}
           SELECTED_OUTCOME: ${{ steps.selected.outcome }}
-        run: python3 "$DIAG/native_stage.py" finish
+        run: python3 "$DIAG/native_real_client.py" finish
       - uses: actions/upload-artifact@v4
         if: always()
         timeout-minutes: 2

@@ -1,0 +1,577 @@
+diff --git a/Sources/RangeState/OrderingTrace.swift b/Sources/RangeState/OrderingTrace.swift
+index 5838071..7aebfec 100644
+--- a/Sources/RangeState/OrderingTrace.swift
++++ b/Sources/RangeState/OrderingTrace.swift
+@@ -3,7 +3,7 @@ import Foundation
+ /// Explicitly supplied by a diagnostic fixture. Never records document text.
+ public final class OrderingTrace: @unchecked Sendable {
+     public enum Phase: String, Sendable {
+-        case born, retired, enqueue, request, submit, execute, executed, resume, callback, compare
++        case born, retired, enqueue, request, submit, execute, executed, resume, callback, compare, snapshotRead, queryIssued
+     }
+ 
+     public struct Event: Sendable {
+diff --git a/Sources/TreeSitterClient/BackgroundProcessor.swift b/Sources/TreeSitterClient/BackgroundProcessor.swift
+index 7d681ea..03fa272 100644
+--- a/Sources/TreeSitterClient/BackgroundProcessor.swift
++++ b/Sources/TreeSitterClient/BackgroundProcessor.swift
+@@ -155,6 +155,7 @@ final class BackgroundProcessor<Value> {
+ 
+ 	public func accessValue<T>(
+ 		isolation: isolated (any Actor),
++		diagnosticParent: UInt64 = 0,
+ 		operation: @escaping @Sendable (Value) throws -> sending T
+ 	) async throws -> T {
+ 		// older compilers believe this is unsafe
+@@ -165,7 +166,7 @@ final class BackgroundProcessor<Value> {
+ #endif
+ 
+ 		return try await withCheckedThrowingContinuation(isolation: isolation) { continuation in
+-			localSelf.accessValue(isolation: isolation, preferSynchronous: false, operation: operation, completion: { result in
++			localSelf.accessValue(isolation: isolation, preferSynchronous: false, diagnosticParent: diagnosticParent, operation: operation, completion: { result in
+ 				continuation.resume(with: result)
+ 			})
+ 		}
+diff --git a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+index b239036..13879f1 100644
+--- a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
++++ b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+@@ -54,6 +54,12 @@ final class BackgroundingLanguageLayerTree {
+ 		self.pendingOldPoint = configuration.locationTransformer(range.max)
+ 	}
+ 
++	func installOrderingGatesForDiagnostics(_ gates: OrderingGates?) {
++		backgroundProcessor.orderingGates = gates
++	}
++
++	var hasPendingWorkForDiagnostics: Bool { backgroundProcessor.hasPendingWork }
++
+ 	public func didChangeContent(
+ 		_ snapshot: LanguageLayer.ContentSnapshot,
+ 		in range: NSRange,
+@@ -112,8 +118,9 @@ extension BackgroundingLanguageLayerTree {
+ 		}
+ 	}
+ 
+-	public func executeQuery(_ queryDef: Query.Definition, in set: IndexSet, isolation: isolated (any Actor)) async throws -> [QueryMatch] {
+-		let snapshot = try await backgroundProcessor.accessValue(isolation: isolation) { layer in
++	public func executeQuery(_ queryDef: Query.Definition, in set: IndexSet, isolation: isolated (any Actor),
++		diagnosticOperation: UInt64 = 0) async throws -> [QueryMatch] {
++		let snapshot = try await backgroundProcessor.accessValue(isolation: isolation, diagnosticParent: diagnosticOperation) { layer in
+ 			guard let snapshot = layer.snapshot(in: set) else {
+ 				throw BackgroundingLanguageLayerTreeError.unableToSnapshot
+ 			}
+diff --git a/Sources/TreeSitterClient/TreeSitterClient.swift b/Sources/TreeSitterClient/TreeSitterClient.swift
+index 3066e2e..0eea756 100644
+--- a/Sources/TreeSitterClient/TreeSitterClient.swift
++++ b/Sources/TreeSitterClient/TreeSitterClient.swift
+@@ -90,6 +90,8 @@ public final class TreeSitterClient {
+ 	private let versionedContent: UnversionableContent
+ 	private let configuration: Configuration
+ 	private let orderingContext: OrderingContext?
++	/// Test-only, caller-actor gate. Holds no generic result or parser snapshot.
++	var mutationCompletionGateForDiagnostics: ((UInt64, @escaping () -> Void) -> Void)?
+ 	private lazy var rangeOrderingContext = orderingContext?.childProcessor()
+ 	private lazy var rangeProcessor = RangeProcessor(
+ 		configuration: .init(
+@@ -138,6 +140,32 @@ public final class TreeSitterClient {
+ 
+ 	deinit { orderingContext?.record(.retired) }
+ 
++	func installOrderingGatesForDiagnostics(_ gates: OrderingGates?) {
++		layerTree.installOrderingGatesForDiagnostics(gates)
++	}
++
++	var pendingMutationCountForDiagnostics: Int { rangeProcessor.pendingMutations.count }
++	var backgroundHasPendingWorkForDiagnostics: Bool { layerTree.hasPendingWorkForDiagnostics }
++
++	/// Join the validation enqueued synchronously by fixture warm-up, with no
++	/// gates installed. This changes only the isolated harness, not normal queries.
++	func finishWarmValidationForOrderingDiagnostics() async {
++		await sublayerValidator.validationCompleted(isolation: MainActor.shared)
++	}
++
++	/// Uses the real worker snapshot/query path, without issuing extra sublayer work.
++	/// Freeze predicate text before suspending; never retain a non-Sendable result in a gate.
++	func queryForOrderingDiagnostics() async throws -> [NamedRange] {
++		let length = configuration.lengthProvider()
++		let content = configuration.contentSnapshotProvider(length)
++		let queryOperation = orderingContext?.trace.nextOperation() ?? 0
++		orderingContext?.record(.queryIssued, operation: queryOperation)
++		let matches = try await layerTree.executeQuery(.highlights,
++			in: IndexSet(integersIn: 0..<length), isolation: MainActor.shared,
++			diagnosticOperation: queryOperation)
++		return matches.resolve(with: .init(textProvider: content.textProvider)).highlights()
++	}
++
+ 	public var rootLanguageConfiguration: LanguageConfiguration {
+ 		layerTree.rootLanguageConfiguration
+ 	}
+@@ -203,8 +231,15 @@ extension TreeSitterClient {
+ 
+ 		layerTree.didChangeContent(content, in: mutation.range, delta: mutation.delta, isolation: MainActor.shared,
+ 			diagnosticOperation: diagnosticOperation, completion: { invalidated in
+-			completion()
+-			self.handleInvalidation(invalidated, sublayers: false)
++			let finish = {
++				completion()
++				self.handleInvalidation(invalidated, sublayers: false)
++			}
++			if let gate = self.mutationCompletionGateForDiagnostics, diagnosticOperation != 0 {
++				gate(diagnosticOperation, finish)
++			} else {
++				finish()
++			}
+ 		})
+ 	}
+ 
+diff --git a/Tests/TreeSitterClientTests/RealClientOrderingTests.swift b/Tests/TreeSitterClientTests/RealClientOrderingTests.swift
+new file mode 100644
+index 0000000..5ec2136
+--- /dev/null
++++ b/Tests/TreeSitterClientTests/RealClientOrderingTests.swift
+@@ -0,0 +1,444 @@
++import Foundation
++import RangeState
++import SwiftTreeSitter
++import SwiftTreeSitterLayer
++import NeonTestsTreeSitterSwift
++import Testing
++@testable import TreeSitterClient
++
++/// Real parser/client coverage; injected schedules are not a natural CI reproduction.
++@MainActor
++@Suite(.serialized)
++struct RealClientOrderingTests {
++    /// Gates remain nil: this observes the actual task/worker/callback schedule.
++    /// Observing a pending query does not hold, reorder or release any operation.
++    @Test(arguments: [4096, 32768])
++    func ungatedExecutedQueryAndTwoEditsPreserveOrdering(utf16Units: Int) async throws {
++        let text = String(repeating: "func start() {}\n", count: utf16Units / 16)
++        let fixture = try ClientFixture(initialText: text)
++        try await fixture.warm()
++        defer { fixture.dumpTrace(label: "executed-pending-\(utf16Units)") }
++        var queryResult: Result<[NamedRange], Error>?
++        var queryPhase = "not-started"
++        let query = Task {
++            queryPhase = "running"
++            do { queryResult = .success(try await fixture.client.queryForOrderingDiagnostics()); queryPhase = "success" }
++            catch { queryResult = .failure(error); queryPhase = "failure" }
++        }
++        defer { query.cancel() }
++        let observed = await fixture.until { fixture.hasExecutedPendingIssuedQuery() }
++        if !observed {
++            print("REAL_CLIENT_COVERAGE case=executed-pending-\(utf16Units) outcome=inconclusive reason=execute-without-callback-not-observed")
++            fixture.reportFailure(held: [], queryPhase: queryPhase)
++        }
++        try #require(observed, "coverage requires worker execution with its callback still outstanding; never substitute a gate")
++        fixture.edit(range: NSRange(location: 5, length: 5), replacement: "alpha")
++        fixture.edit(range: NSRange(location: 0, length: 0), replacement: "// prefix\n")
++        #expect(fixture.client.pendingMutationCountForDiagnostics == 2)
++        let completed = await fixture.until {
++            queryResult != nil && fixture.client.pendingMutationCountForDiagnostics == 0
++                && !fixture.client.backgroundHasPendingWorkForDiagnostics
++        }
++        if !completed { fixture.reportFailure(held: [], queryPhase: queryPhase) }
++        try #require(completed)
++        #expect(try #require(queryResult).get() == fixture.originalHighlights)
++        #expect(try await fixture.freshHighlightsAsync() == fixture.highlights())
++        fixture.expectOrderedExactlyOnce()
++        fixture.expectImmutableSnapshots()
++        fixture.expectEveryWorkerBoundaryOrdered()
++        try fixture.expectExecutedQueryCoverage()
++    }
++
++    @Test func cleanupWaitsForTheMissingEarlierCallback() {
++        let deliveries = ClientHeldCalls()
++        var completed: [Int] = []
++        var removedGate = false
++        deliveries.hold(2) { completed.append(2) }
++        deliveries.beginOrderedDrain([1, 2]) { removedGate = true }
++        #expect(completed.isEmpty)
++        #expect(!removedGate, "a missing predecessor must not disable the gate")
++        deliveries.hold(1) { completed.append(1) }
++        #expect(completed == [1, 2])
++        #expect(removedGate)
++        #expect(deliveries.ids.isEmpty)
++    }
++
++    @Test func outstandingQueryMakesTwoDistinctEditsAsynchronous() async throws {
++        let fixture = try ClientFixture()
++        try await fixture.warm()
++        let gates = OrderingGates()
++        let submissions = ClientHeldCalls()
++        let deliveries = ClientHeldCalls()
++        gates.submission = { id, action in MainActor.assumeIsolated { submissions.hold(id, action) } }
++        fixture.client.installOrderingGatesForDiagnostics(gates)
++        fixture.client.mutationCompletionGateForDiagnostics = { id, action in deliveries.hold(id, action) }
++        defer { fixture.releaseOutstanding(submissions: submissions, deliveries: deliveries) }
++
++        // The query owns pending work before either edit is registered.
++        var queryResult: Result<[NamedRange], Error>?
++        var queryPhase = "not-started"
++        let query = Task {
++            queryPhase = "running"
++            do { queryResult = .success(try await fixture.client.queryForOrderingDiagnostics()); queryPhase = "success" }
++            catch { queryResult = .failure(error); queryPhase = "failure" }
++        }
++        defer { query.cancel() }
++        let hasOneQuery = await fixture.until { submissions.ids.count == 1 }
++        if !hasOneQuery { fixture.reportFailure(held: submissions.ids, queryPhase: queryPhase) }
++        try #require(hasOneQuery)
++        let queryID = submissions.ids[0]
++        fixture.edit(range: NSRange(location: 5, length: 4), replacement: "alpha")
++        fixture.edit(range: NSRange(location: 0, length: 0), replacement: "// prefix\n")
++        try #require(await fixture.until { submissions.ids.count == 3 })
++        #expect(fixture.client.pendingMutationCountForDiagnostics == 2)
++        let mutationIDs = fixture.workerMutationIDs()
++        submissions.release(queryID)
++        try #require(await fixture.until { queryResult != nil })
++        let queried = try #require(queryResult).get()
++        #expect(queried == fixture.originalHighlights, "query snapshot precedes both edits")
++        for (index, id) in mutationIDs.enumerated() {
++            submissions.release(id)
++            try #require(await fixture.until { deliveries.ids.count == index + 1 })
++        }
++        for id in fixture.enqueuedMutationIDs().dropFirst() { deliveries.release(id) }
++        try #require(await fixture.until { fixture.client.pendingMutationCountForDiagnostics == 0 })
++        #expect(try fixture.highlights() == fixture.freshHighlights())
++        fixture.expectOrderedExactlyOnce()
++        fixture.expectImmutableSnapshots()
++    }
++
++    @Test(arguments: [false, true])
++    func workerSubmissionAndMutationDeliveryAreSeparateBoundaries(invertSubmission: Bool) async throws {
++        let fixture = try ClientFixture()
++        try await fixture.warm()
++        let gates = OrderingGates()
++        let submissions = ClientHeldCalls()
++        let deliveries = ClientHeldCalls()
++        gates.submission = { id, action in MainActor.assumeIsolated { submissions.hold(id, action) } }
++        fixture.client.installOrderingGatesForDiagnostics(gates)
++        fixture.client.mutationCompletionGateForDiagnostics = { id, action in deliveries.hold(id, action) }
++        defer { fixture.releaseOutstanding(submissions: submissions, deliveries: deliveries) }
++        var queryResult: Result<[NamedRange], Error>?
++        var queryPhase = "not-started"
++        let query = Task {
++            queryPhase = "running"
++            do { queryResult = .success(try await fixture.client.queryForOrderingDiagnostics()); queryPhase = "success" }
++            catch { queryResult = .failure(error); queryPhase = "failure" }
++        }
++        defer { query.cancel() }
++        let hasOneQuery = await fixture.until { submissions.ids.count == 1 }
++        if !hasOneQuery { fixture.reportFailure(held: submissions.ids, queryPhase: queryPhase) }
++        try #require(hasOneQuery)
++        let queryID = submissions.ids[0]
++        fixture.edit(range: NSRange(location: 5, length: 5), replacement: "alpha")
++        fixture.edit(range: NSRange(location: 0, length: 4), replacement: "enum")
++        try #require(await fixture.until { submissions.ids.count == 3 })
++        #expect(fixture.client.pendingMutationCountForDiagnostics == 2)
++        let mutations = fixture.enqueuedMutationIDs().dropFirst()
++        let workers = fixture.workerMutationIDs()
++        try #require(mutations.count == 2 && workers.count == 2)
++        submissions.release(queryID)
++        try #require(await fixture.until { queryResult != nil })
++        #expect(try #require(queryResult).get() == fixture.originalHighlights)
++        let order = invertSubmission ? Array(workers.reversed()) : workers
++        for (index, id) in order.enumerated() {
++            submissions.release(id)
++            try #require(await fixture.until { deliveries.ids.count == index + 1 })
++        }
++        #expect(fixture.client.pendingMutationCountForDiagnostics == 2,
++                "worker execution is not mutation callback consumption")
++        #expect(!fixture.client.backgroundHasPendingWorkForDiagnostics)
++        let issued = Array(mutations)
++        let observed = deliveries.ids
++        #expect(observed == (invertSubmission ? Array(issued.reversed()) : issued))
++        let workerParents = fixture.executedMutationIDs().dropFirst()
++        #expect(Array(workerParents) == observed)
++        #expect((observed != issued) == invertSubmission,
++                "an injected inversion is detected without calling the fatal consumer out of order")
++
++        // Probe a reversed delivery choice separately from worker order. It is
++        // not forwarded to RangeProcessor; its exact original trap is retained.
++        if !invertSubmission {
++            #expect(Array(observed.reversed()) != issued)
++        }
++        for id in issued { deliveries.release(id) }
++        #expect(fixture.client.pendingMutationCountForDiagnostics == 0)
++        fixture.expectOrderedExactlyOnce(checkWorkerOrder: !invertSubmission)
++        if !invertSubmission {
++            #expect(try fixture.highlights() == fixture.freshHighlights())
++        }
++        fixture.expectImmutableSnapshots()
++    }
++}
++
++@MainActor
++private final class ClientHeldCalls {
++    private var calls: [(UInt64, () -> Void)] = []
++    private var released: Set<UInt64> = []
++    private var draining = false
++    private var drainOrder: [UInt64]?
++    private var whenDrained: (() -> Void)?
++    var ids: [UInt64] { calls.map(\.0) }
++    func hold(_ id: UInt64, _ action: @escaping () -> Void) {
++        calls.append((id, action))
++        drainIfReady()
++    }
++    func release(_ id: UInt64) {
++        guard let index = calls.firstIndex(where: { $0.0 == id }) else {
++            Issue.record("missing held call"); return
++        }
++        let action = calls.remove(at: index).1
++        #expect(released.insert(id).inserted, "delivery action released exactly once")
++        action()
++    }
++    func releaseAll() { while let id = calls.first?.0 { release(id) } }
++    func beginOrderedDrain(_ order: [UInt64], whenDrained: @escaping () -> Void) {
++        drainOrder = order.filter { !released.contains($0) }
++        self.whenDrained = whenDrained
++        drainIfReady()
++    }
++    private func drainIfReady() {
++        guard !draining else { return }
++        draining = true
++        defer { draining = false }
++        while let first = drainOrder?.first, ids.contains(first) {
++            drainOrder?.removeFirst()
++            release(first)
++        }
++        if drainOrder?.isEmpty == true {
++            drainOrder = nil
++            let finished = whenDrained
++            whenDrained = nil
++            finished?()
++        }
++    }
++}
++
++@MainActor
++private final class ClientFixture {
++    let trace = OrderingTrace(capacity: 512)
++    let content = ClientContent()
++    let language: LanguageConfiguration
++    let client: TreeSitterClient
++    var originalHighlights: [NamedRange] = []
++    private var authoredSnapshots: [String] = []
++    private var authoredReceiptIDs: [UInt64] = []
++    private var warmTraceSequence: UInt64 = 0
++
++    init(initialText: String = "func start() {}\n") throws {
++        content.text = initialText
++        let query = try Query(language: Language(tree_sitter_swift()), data: Data("(\"func\" @keyword)".utf8))
++        language = LanguageConfiguration(tree_sitter_swift(), name: "Swift", queries: [.highlights: query])
++        client = try Self.makeClient(content: content, language: language, context: OrderingContext(trace: trace))
++    }
++
++    private static func makeClient(content: ClientContent, language: LanguageConfiguration,
++                                   context: OrderingContext? = nil) throws -> TreeSitterClient {
++        try TreeSitterClient(rootLanguageConfig: language, configuration: .init(
++            contentSnapshopProvider: { limit in
++                let frozen = content.text
++                content.snapshots.append(frozen)
++                let receipt = context?.trace.nextOperation() ?? 0
++                content.receipts.append(receipt)
++                let snapshot = LanguageLayer.ContentSnapshot(string: frozen, limit: limit)
++                return .init(readHandler: { offset, point in
++                    let bytes = snapshot.readHandler(offset, point)
++                    if let bytes {
++                        context?.record(.snapshotRead, operation: receipt,
++                            expected: receiptHash(bytes), range: NSRange(location: offset, length: bytes.count), limit: limit)
++                    }
++                    return bytes
++                }, textProvider: snapshot.textProvider)
++            }, lengthProvider: { content.text.utf16.count }, invalidationHandler: { _ in },
++            locationTransformer: { content.point($0) }), orderingContext: context)
++    }
++
++    func warm() async throws {
++        let range = NSRange(location: 0, length: content.text.utf16.count)
++        if let ready = try synchronousHighlightsIfReady() {
++            originalHighlights = ready
++        } else {
++            originalHighlights = try await client.highlights(in: range, provider: content.text.predicateTextProvider, mode: .required)
++        }
++        #expect(!originalHighlights.isEmpty)
++        await client.finishWarmValidationForOrderingDiagnostics()
++        #expect(!client.backgroundHasPendingWorkForDiagnostics)
++        #expect(client.pendingMutationCountForDiagnostics == 0)
++        warmTraceSequence = trace.snapshot().events.last?.sequence ?? 0
++    }
++
++    func reportFailure(held: [UInt64], queryPhase: String) {
++        print("REAL_CLIENT_FAILURE heldCount=\(held.count) heldIDs=\(held) queryPhase=\(queryPhase) "
++            + "pendingMutations=\(client.pendingMutationCountForDiagnostics) "
++            + "backgroundPending=\(client.backgroundHasPendingWorkForDiagnostics) warmSequence=\(warmTraceSequence)")
++        OrderingContext(trace: trace).dump()
++    }
++
++    func dumpTrace(label: String) {
++        print("REAL_CLIENT_TRACE case=\(label) gates=unset evicted=\(trace.snapshot().evicted)")
++        OrderingContext(trace: trace).dump()
++    }
++
++    func hasExecutedPendingIssuedQuery() -> Bool {
++        let events = trace.snapshot().events
++        guard let query = events.last(where: { $0.phase == .queryIssued }),
++              let request = events.last(where: { $0.phase == .request && $0.parent == query.operation }) else { return false }
++        return events.contains { $0.phase == .execute && $0.processor == request.processor
++                && $0.client == request.client && $0.operation == request.operation }
++            && !events.contains { $0.phase == .callback && $0.processor == request.processor
++                && $0.client == request.client && $0.operation == request.operation }
++            && client.backgroundHasPendingWorkForDiagnostics
++    }
++
++    func expectExecutedQueryCoverage() throws {
++        let events = trace.snapshot().events
++        let query = try #require(events.last { $0.phase == .queryIssued })
++        let request = try #require(events.last { $0.phase == .request && $0.parent == query.operation })
++        let executed = try #require(events.first { $0.phase == .execute
++            && $0.processor == request.processor && $0.client == request.client
++            && $0.operation == request.operation })
++        let callback = try #require(events.first { $0.phase == .callback
++            && $0.processor == request.processor && $0.client == request.client
++            && $0.operation == request.operation })
++        let mutations = events.filter { $0.phase == .enqueue && $0.sequence > warmTraceSequence }
++        try #require(mutations.count == 2)
++        try #require(executed.sequence < mutations[0].sequence)
++        try #require(mutations[1].sequence < callback.sequence)
++        try #require(mutations[1].pending >= 2)
++        print("REAL_CLIENT_COVERAGE outcome=covered query=\(request.operation) execute=\(executed.sequence) "
++            + "firstEdit=\(mutations[0].sequence) secondEdit=\(mutations[1].sequence) "
++            + "queryCallback=\(callback.sequence) pending=\(mutations[1].pending)")
++    }
++
++    func edit(range: NSRange, replacement: String) {
++        client.willChangeContent(in: range)
++        content.text = (content.text as NSString).replacingCharacters(in: range, with: replacement)
++        authoredSnapshots.append(content.text)
++        client.didChangeContent(in: range, delta: replacement.utf16.count - range.length)
++        if let receipt = content.receipts.last { authoredReceiptIDs.append(receipt) }
++    }
++
++    func highlights() throws -> [NamedRange] {
++        try synchronousHighlightsIfReady() ?? []
++    }
++
++    private func synchronousHighlightsIfReady() throws -> [NamedRange]? {
++        try client.highlights(in: NSRange(location: 0, length: content.text.utf16.count),
++            provider: content.text.predicateTextProvider, mode: .required)
++    }
++
++    func freshHighlights() throws -> [NamedRange] {
++        let freshContent = ClientContent()
++        freshContent.text = content.text
++        let fresh = try Self.makeClient(content: freshContent, language: language)
++        return try fresh.highlights(in: NSRange(location: 0, length: freshContent.text.utf16.count),
++            provider: freshContent.text.predicateTextProvider, mode: .required) ?? []
++    }
++
++    func freshHighlightsAsync() async throws -> [NamedRange] {
++        let freshContent = ClientContent()
++        freshContent.text = content.text
++        let fresh = try Self.makeClient(content: freshContent, language: language)
++        return try await fresh.highlights(in: NSRange(location: 0, length: freshContent.text.utf16.count),
++            provider: freshContent.text.predicateTextProvider, mode: .required)
++    }
++
++    func enqueuedMutationIDs() -> [UInt64] {
++        trace.snapshot().events.filter { $0.phase == .enqueue }.map(\.operation)
++    }
++
++    func workerMutationIDs() -> [UInt64] {
++        let mutations = Set(enqueuedMutationIDs().dropFirst())
++        return trace.snapshot().events.filter { $0.phase == .request && mutations.contains($0.parent) }.map(\.operation)
++    }
++
++    func executedMutationIDs() -> [UInt64] {
++        let mutations = Set(enqueuedMutationIDs())
++        return trace.snapshot().events.filter { $0.phase == .execute && mutations.contains($0.parent) }.map(\.parent)
++    }
++
++    func expectOrderedExactlyOnce(checkWorkerOrder: Bool = true) {
++        let events = trace.snapshot().events
++        #expect(trace.snapshot().evicted == 0)
++        let enqueued = events.filter { $0.phase == .enqueue }
++        guard let rangeProcessor = enqueued.first?.processor else { Issue.record("no mutations observed"); return }
++        let callbacks = events.filter { $0.phase == .callback && $0.processor == rangeProcessor }
++        #expect(callbacks.map(\.operation) == enqueued.map(\.operation))
++        #expect(callbacks.allSatisfy { $0.retainedDeliveryCount == 1 })
++        #expect(events.filter { $0.phase == .compare }.map(\.expected) == enqueued.map(\.parent))
++        if checkWorkerOrder { #expect(executedMutationIDs() == enqueued.map(\.operation)) }
++        #expect(!client.backgroundHasPendingWorkForDiagnostics)
++    }
++
++    func expectEveryWorkerBoundaryOrdered() {
++        let events = trace.snapshot().events
++        guard let processor = events.first(where: { $0.phase == .request })?.processor else {
++            Issue.record("missing real worker processor"); return
++        }
++        let worker = events.filter { $0.processor == processor }
++        let requested = worker.filter { $0.phase == .request }.map(\.operation)
++        for phase: OrderingTrace.Phase in [.execute, .callback] {
++            #expect(worker.filter { $0.phase == phase }.map(\.operation) == requested,
++                    "unforced request/execute/callback divergence, inspect retained trace")
++        }
++        let asynchronous = worker.filter { $0.phase == .submit }.map(\.operation)
++        let asynchronousSet = Set(asynchronous)
++        #expect(requested.filter { asynchronousSet.contains($0) } == asynchronous)
++        #expect(worker.filter { $0.phase == .resume }.map(\.operation) == asynchronous)
++        #expect(worker.filter { $0.phase == .callback }.allSatisfy { $0.retainedDeliveryCount == 1 })
++    }
++
++    func expectImmutableSnapshots() {
++        guard authoredSnapshots.count == 2, authoredReceiptIDs.count == 2 else {
++            Issue.record("expected two authored worker snapshots"); return
++        }
++        #expect(authoredSnapshots[0] != authoredSnapshots[1])
++        for (text, receipt) in zip(authoredSnapshots, authoredReceiptIDs) {
++            let reads = trace.snapshot().events.filter { $0.phase == .snapshotRead && $0.operation == receipt }
++            #expect(!reads.isEmpty, "actual parser read handler consumed each distinct snapshot")
++            #expect(reads.contains { $0.range.length > 0 })
++            let bytes = Data(text.utf16.flatMap { [UInt8($0 & 255), UInt8($0 >> 8)] })
++            for read in reads {
++                let start = read.range.location
++                let end = start + read.range.length
++                guard start >= 0, end <= bytes.count else { Issue.record("snapshot read out of bounds"); continue }
++                #expect(read.expected == receiptHash(bytes.subdata(in: start..<end)))
++            }
++        }
++    }
++
++    func releaseOutstanding(submissions: ClientHeldCalls, deliveries: ClientHeldCalls) {
++        client.installOrderingGatesForDiagnostics(nil)
++        // Keep the completion gate installed even when a callback has not yet
++        // arrived. A later callback drains only when its FIFO predecessor exists.
++        deliveries.beginOrderedDrain(Array(enqueuedMutationIDs().dropFirst())) { [weak client] in
++            client?.mutationCompletionGateForDiagnostics = nil
++        }
++        submissions.releaseAll()
++    }
++
++    func until(_ condition: () -> Bool) async -> Bool {
++        let deadline = ContinuousClock.now + .seconds(3)
++        while !condition(), ContinuousClock.now < deadline { await Task.yield() }
++        return condition()
++    }
++}
++
++@MainActor
++private final class ClientContent {
++    var text = "func start() {}\n"
++    var snapshots: [String] = []
++    var receipts: [UInt64] = []
++    func point(_ offset: Int) -> Point? {
++        guard offset >= 0, offset <= text.utf16.count else { return nil }
++        let prefix = Array(text.utf16.prefix(offset))
++        let row = prefix.filter { $0 == 10 }.count
++        let column = prefix.count - ((prefix.lastIndex(of: 10).map { $0 + 1 }) ?? 0)
++        return Point(row: row, column: column * 2)
++    }
++}
++
++/// Metadata-only signature of actual parser input bytes; no source enters the trace.
++private func receiptHash(_ data: Data) -> UInt64 {
++    data.reduce(UInt64(14695981039346656037)) { ($0 ^ UInt64($1)) &* 1099511628211 }
++}
