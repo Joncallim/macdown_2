@@ -15,6 +15,7 @@
 // reused across many renders by the pool, epic-21-implementation.md
 // §3.1) rather than once per render call.
 var __vizInstancePromise = null;
+var __comparisonVizInstancePromise = null;
 
 function getViz() {
     if (!__vizInstancePromise) {
@@ -23,22 +24,94 @@ function getViz() {
     return __vizInstancePromise;
 }
 
+// A comparison render needs distinct command-line defaults, so it cannot share
+// the primary Viz wrapper. Keep that second wrapper for the lifetime of the
+// pooled page instead of constructing another WASM wrapper for every cache
+// miss. Cache hits do not enter either render path.
+function getComparisonViz() {
+    if (!__comparisonVizInstancePromise) {
+        __comparisonVizInstancePromise = window.Viz.instance();
+    }
+    return __comparisonVizInstancePromise;
+}
+
+const GENERATED_NODE_SENTINEL = "#010203";
+const GENERATED_NODE_COMPARISON_SENTINEL = "#fdfcfb";
+
+function normalizedGraphvizSVG(svg, comparisonSVG, fill, nodeFill, stroke) {
+    const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+    const comparisonDocument = new DOMParser().parseFromString(comparisonSVG, "image/svg+xml");
+    const root = document.documentElement;
+    const comparisonRoot = comparisonDocument.documentElement;
+    if (!root || root.localName !== "svg" || !comparisonRoot || comparisonRoot.localName !== "svg") {
+        throw new Error("invalid Graphviz SVG root");
+    }
+    const values = (root.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    if (values.length !== 4 || !values.every(Number.isFinite) || values[2] <= 0 || values[3] <= 0) {
+        throw new Error("invalid Graphviz SVG dimensions");
+    }
+
+    const nodes = [...root.querySelectorAll("g.node")];
+    const comparisonNodes = [...comparisonRoot.querySelectorAll("g.node")];
+    if (nodes.length !== comparisonNodes.length) throw new Error("inconsistent Graphviz node output");
+    for (let index = 0; index < nodes.length; index += 1) {
+        const elements = [...nodes[index].querySelectorAll("[fill], [stroke]")];
+        const comparisonElements = [...comparisonNodes[index].querySelectorAll("[fill], [stroke]")];
+        if (elements.length !== comparisonElements.length) throw new Error("inconsistent Graphviz node paint output");
+        for (let elementIndex = 0; elementIndex < elements.length; elementIndex += 1) {
+            const element = elements[elementIndex];
+            const comparisonElement = comparisonElements[elementIndex];
+            if ((element.getAttribute("fill") || "").toLowerCase() === GENERATED_NODE_SENTINEL &&
+                (comparisonElement.getAttribute("fill") || "").toLowerCase() === GENERATED_NODE_COMPARISON_SENTINEL) {
+                element.setAttribute("fill", nodeFill);
+            }
+            if ((element.getAttribute("stroke") || "").toLowerCase() === GENERATED_NODE_SENTINEL &&
+                (comparisonElement.getAttribute("stroke") || "").toLowerCase() === GENERATED_NODE_COMPARISON_SENTINEL) {
+                element.setAttribute("stroke", stroke);
+            }
+        }
+    }
+
+    const canvas = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    canvas.setAttribute("x", String(values[0]));
+    canvas.setAttribute("y", String(values[1]));
+    canvas.setAttribute("width", String(values[2]));
+    canvas.setAttribute("height", String(values[3]));
+    canvas.setAttribute("fill", fill);
+    root.insertBefore(canvas, root.firstChild);
+    return { svg: new XMLSerializer().serializeToString(root), width: values[2], height: values[3] };
+}
+
+function graphvizOptions(theme, background, nodeColor) {
+    const options = {
+        format: "svg",
+        graphAttributes: { bgcolor: background, fontcolor: theme.text },
+        nodeAttributes: { color: nodeColor, fontcolor: theme.text }
+    };
+    // Native DOT defaults have lower precedence than authored graph, node, and
+    // edge attributes. Node defaults use a private marker so postprocessing can
+    // distinguish them from any authored Graphviz color without parsing DOT.
+    Object.assign(options.graphAttributes, { color: theme.stroke, fillcolor: theme.canvas });
+    options.edgeAttributes = { color: theme.stroke, fontcolor: theme.text };
+    return options;
+}
+
 window.__macdownRenderGraphviz = async function (source, theme) {
     try {
-        const viz = await getViz();
-        const background = "#FFFFFF";
-        const svg = viz.renderString(source, {
-            format: "svg",
-            graphAttributes: { bgcolor: background }
-        });
-        let width = 0;
-        let height = 0;
-        const viewBoxMatch = svg.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/);
-        if (viewBoxMatch) {
-            width = parseFloat(viewBoxMatch[3]);
-            height = parseFloat(viewBoxMatch[4]);
+        if (!theme || !["neutral-light-v1", "preview-context-v1"].includes(theme.policyID)) {
+            throw new Error("unsupported diagram palette");
         }
-        return { ok: true, svg: svg, width: width, height: height };
+        const viz = await getViz();
+        const background = theme && theme.canvas ? theme.canvas : "#FFFFFF";
+        const svg = viz.renderString(source, graphvizOptions(theme, background, GENERATED_NODE_SENTINEL));
+        // Viz keeps command-line defaults on an instance. The retained second
+        // wrapper gives the comparison render an independent node marker.
+        const comparisonViz = await getComparisonViz();
+        const comparisonSVG = comparisonViz.renderString(
+            source, graphvizOptions(theme, background, GENERATED_NODE_COMPARISON_SENTINEL)
+        );
+        const canvas = normalizedGraphvizSVG(svg, comparisonSVG, background, theme.nodeFill, theme.stroke);
+        return { ok: true, svg: canvas.svg, width: canvas.width, height: canvas.height };
     } catch (error) {
         const message = error && error.message ? error.message : String(error);
         return { ok: false, message: message };

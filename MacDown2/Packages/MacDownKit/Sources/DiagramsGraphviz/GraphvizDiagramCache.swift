@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Bounded LRU-style cache, mirroring `MermaidDiagramCache`'s exact
@@ -16,8 +17,11 @@ public actor GraphvizDiagramCache: GraphvizDiagramRendering {
     }
 
     private struct Key: Hashable {
-        let source: String
-        let context: GraphvizRenderContext
+        let sourceDigest: SHA256.Digest
+        let paletteFingerprint: String
+        let rendererVersion = "viz-js-3.30.0"
+        let layoutPolicy = "dot-default-v1"
+        let outputKind = "svg"
     }
 
     private let budget: Budget
@@ -33,7 +37,10 @@ public actor GraphvizDiagramCache: GraphvizDiagramRendering {
     }
 
     public func render(_ fence: GraphvizFence, context: GraphvizRenderContext) async throws -> RenderedGraphvizDiagram {
-        let key = Key(source: fence.source, context: .neutralLight)
+        let key = Key(
+            sourceDigest: SHA256.hash(data: Data(fence.source.utf8)),
+            paletteFingerprint: context.fingerprint
+        )
         if let cached = entries[key] {
             touch(key)
             return cached

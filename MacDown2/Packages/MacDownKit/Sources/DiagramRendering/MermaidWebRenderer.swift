@@ -50,10 +50,7 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
                     "return await window.__macdownRenderMermaid(source, theme);",
                     arguments: [
                         "source": fence.source,
-                        "theme": [
-                            "foreground": context.foregroundHex,
-                            "background": context.backgroundHex,
-                        ],
+                        "theme": context.palette.rendererArguments,
                     ]
                 )
             }
@@ -61,6 +58,9 @@ public actor MermaidWebRenderer: MermaidDiagramRendering {
                 throw MermaidRenderError.invalidSyntax(result.message ?? "unknown error")
             }
             guard let svg = result.svg else {
+                throw MermaidRenderError.rendererUnavailable
+            }
+            guard result.width.isFinite, result.height.isFinite, result.width > 0, result.height > 0 else {
                 throw MermaidRenderError.rendererUnavailable
             }
             let byteCount = svg.utf8.count

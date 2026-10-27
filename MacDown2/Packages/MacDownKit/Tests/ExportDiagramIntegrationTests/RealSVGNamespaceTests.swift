@@ -109,12 +109,6 @@ struct RealSVGNamespaceTests {
             .map { source.substring(with: $0.range(at: 1)) }
     }
 
-    @MainActor private func png(for svg: String, on canvas: MermaidHarnessPage) async throws -> Data {
-        let result = try await canvas.inspectSVGCanvasForTesting(svg)
-        let base64 = try #require(result["png"] as? String)
-        return try #require(Data(base64Encoded: base64))
-    }
-
     @MainActor private func checkInlineComposition(_ outputs: [String]) async throws {
         let handler = RecordingResourceHandler()
         let configuration = WKWebViewConfiguration()

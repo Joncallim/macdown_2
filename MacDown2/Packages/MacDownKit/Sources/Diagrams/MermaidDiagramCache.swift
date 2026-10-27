@@ -1,6 +1,7 @@
+import CryptoKit
 import Foundation
 
-/// Bounded LRU-style cache, keyed by (fence source, render context) equality
+/// Bounded LRU-style cache, keyed by source digest and resolved renderer policy
 /// — not by document or block identity — so an unchanged diagram copy-pasted
 /// into a different document, or a diagram whose surrounding prose changed
 /// but whose own fence content did not, still hits the cache
@@ -20,6 +21,7 @@ public actor MermaidDiagramCache: MermaidDiagramRendering {
         public static let standard = Budget(maxEntries: 128, maxAggregateSVGBytes: 8 * 1024 * 1024)
 
         public let maxEntries: Int
+        /// Historical parameter name; bounds retained SVG and PNG bytes together.
         public let maxAggregateSVGBytes: Int
 
         public init(maxEntries: Int, maxAggregateSVGBytes: Int) {
@@ -29,8 +31,13 @@ public actor MermaidDiagramCache: MermaidDiagramRendering {
     }
 
     private struct Key: Hashable {
-        let source: String
-        let context: MermaidRenderContext
+        let sourceDigest: SHA256.Digest
+        let paletteFingerprint: String
+        let rendererVersion = "mermaid-11.17.2"
+        let layoutPolicy = "bundled-default-v1"
+        let outputKind = "svg+png"
+        let rasterScale = 2
+        let rasterPolicy = "neutral-light-v1-raster-v1"
     }
 
     private let budget: Budget
@@ -47,7 +54,10 @@ public actor MermaidDiagramCache: MermaidDiagramRendering {
     }
 
     public func render(_ fence: MermaidFence, context: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
-        let key = Key(source: fence.source, context: .neutralLight)
+        let key = Key(
+            sourceDigest: SHA256.hash(data: Data(fence.source.utf8)),
+            paletteFingerprint: context.fingerprint
+        )
         if let cached = entries[key] {
             touch(key)
             return cached
@@ -72,9 +82,9 @@ public actor MermaidDiagramCache: MermaidDiagramRendering {
     private func store(key: Key, value: RenderedMermaidDiagram) {
         // Replacing a key (two concurrent renders of one diagram) must not double-count its bytes.
         if let replaced = entries.updateValue(value, forKey: key) {
-            totalBytes -= replaced.svg.utf8.count
+            totalBytes -= retainedBytes(of: replaced)
         }
-        totalBytes += value.svg.utf8.count
+        totalBytes += retainedBytes(of: value)
         touch(key)
         evictIfNeeded()
     }
@@ -83,8 +93,12 @@ public actor MermaidDiagramCache: MermaidDiagramRendering {
         while order.count > budget.maxEntries || totalBytes > budget.maxAggregateSVGBytes, let oldestKey = order.first {
             order.removeFirst()
             if let removed = entries.removeValue(forKey: oldestKey) {
-                totalBytes -= removed.svg.utf8.count
+                totalBytes -= retainedBytes(of: removed)
             }
         }
+    }
+
+    private func retainedBytes(of value: RenderedMermaidDiagram) -> Int {
+        value.svg.utf8.count + (value.pngData?.count ?? 0)
     }
 }

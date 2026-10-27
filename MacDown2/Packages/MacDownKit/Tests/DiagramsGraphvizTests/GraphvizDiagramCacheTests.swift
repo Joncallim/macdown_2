@@ -45,7 +45,7 @@ struct GraphvizDiagramCacheTests {
         #expect(await counting.callCount == 1)
     }
 
-    @Test func appThemeContextVariantsShareNeutralLightCacheIdentity() async throws {
+    @Test func screenThemeChangesInvalidateCachedArtwork() async throws {
         let counting = CountingRenderer()
         let cache = GraphvizDiagramCache(renderer: counting)
         let dark = GraphvizRenderContext(
@@ -56,7 +56,17 @@ struct GraphvizDiagramCacheTests {
         _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: Self.context)
         _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: dark)
 
-        #expect(await counting.callCount == 1)
+        #expect(await counting.callCount == 2)
+    }
+
+    @Test func destinationIsPartOfCacheIdentityEvenWithTheSamePalette() async throws {
+        let counting = CountingRenderer()
+        let cache = GraphvizDiagramCache(renderer: counting)
+        let screen = GraphvizRenderContext(palette: .neutralLight, destination: .screen)
+        _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: .neutralLight)
+        _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: screen)
+        _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: .neutralLight)
+        #expect(await counting.callCount == 2)
     }
 
     @Test func aFailedRenderIsNotCached() async throws {
