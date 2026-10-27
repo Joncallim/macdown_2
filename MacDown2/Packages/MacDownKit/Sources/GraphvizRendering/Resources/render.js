@@ -37,6 +37,10 @@ function getComparisonViz() {
 
 const GENERATED_NODE_SENTINEL = "#010203";
 const GENERATED_NODE_COMPARISON_SENTINEL = "#fdfcfb";
+// Graphviz otherwise defaults to Times-Roman. Helvetica is bundled as a
+// Graphviz-native PostScript font, so layout metrics and emitted SVG agree
+// without applying a CSS-only substitution after layout.
+const GENERATED_FONT_NAME = "Helvetica";
 
 function normalizedGraphvizSVG(svg, comparisonSVG, fill, nodeFill, stroke) {
     const document = new DOMParser().parseFromString(svg, "image/svg+xml");
@@ -85,14 +89,14 @@ function normalizedGraphvizSVG(svg, comparisonSVG, fill, nodeFill, stroke) {
 function graphvizOptions(theme, background, nodeColor) {
     const options = {
         format: "svg",
-        graphAttributes: { bgcolor: background, fontcolor: theme.text },
-        nodeAttributes: { color: nodeColor, fontcolor: theme.text }
+        graphAttributes: { bgcolor: background, fontcolor: theme.text, fontname: GENERATED_FONT_NAME },
+        nodeAttributes: { color: nodeColor, fontcolor: theme.text, fontname: GENERATED_FONT_NAME }
     };
     // Native DOT defaults have lower precedence than authored graph, node, and
     // edge attributes. Node defaults use a private marker so postprocessing can
     // distinguish them from any authored Graphviz color without parsing DOT.
     Object.assign(options.graphAttributes, { color: theme.stroke, fillcolor: theme.canvas });
-    options.edgeAttributes = { color: theme.stroke, fontcolor: theme.text };
+    options.edgeAttributes = { color: theme.stroke, fontcolor: theme.text, fontname: GENERATED_FONT_NAME };
     return options;
 }
 
