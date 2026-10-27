@@ -2,32 +2,111 @@
 import argparse
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shutil
 import subprocess
 import time
 from validate_bounded import run, reserve
 from crash_reports import collect, fixture_owners
-from provenance import assert_workspace, assert_build_inputs, patched_files, verify_files, digest
+from provenance import assert_workspace, assert_build_inputs, verify_files, digest
 from analyze_lifecycle_trace import analyze
 
 ROOT = Path(__file__).resolve().parent
 HEAD = 'f5605d9aead306e15ccb1bd8fb4f48b8931c1f76'
 LOCK = '7e065900332e02d784b98579400c8dec1967098884db9206acd4d6bd3bcc3d1d'
 NEON_PATCH = '8fcd517bcefba2b6704fd19297ea9d5779cf279f04cce994eeb3e0299e3ff986'
+NEON_HEAD = 'dabf50c947148c49acd0d321dfe8f3805d10b3da'
 HARNESS_PATCH = 'fa4474c116844811a368b82329e1e54c695fab4e4e66efb5302bdd41c918959e'
 SELECTED = 'MarkdownLifecycleOrderingDiagnosticTests.restoreLifetimesThenOriginalBelowCutoff'
 PAYLOAD = ['.github/workflows/neon-ordering-532.yml'] + [
     'diagnostics/neon-ordering-532/' + name for name in (
         'prepare_dependencies.py', 'validate_bounded.py', 'provenance.py', 'crash_reports.py',
         'ordering-diagnostic.patch', 'test_hosted_helpers.py', 'run_lifecycle_hosted.py',
-        'lifecycle-harness.patch', 'analyze_lifecycle_trace.py', 'test_lifecycle_helpers.py')]
+        'lifecycle-harness.patch', 'analyze_lifecycle_trace.py', 'test_lifecycle_helpers.py', 'test_patch_root.py')]
 
 
 def command(*args, cwd=None):
     return subprocess.run(args, cwd=cwd, check=True, capture_output=True,
                           text=True, timeout=15).stdout.strip()
+
+
+HARNESS_TARGETS = (
+    'Sources/Highlighting/NeonSyntaxHighlighter.swift',
+    'Tests/HighlightingTests/KeystrokeStallSupport.swift',
+    'Tests/HighlightingTests/SizeFallbackTestSupport.swift',
+    'Tests/HighlightingTests/HighlightingSizeFallbackTests.swift',
+    'Tests/HighlightingTests/MarkdownLifecycleOrderingDiagnosticTests.swift',
+)
+NEON_TARGETS = (
+    'Sources/RangeState/AwaitableQueue.swift', 'Sources/RangeState/RangeProcessor.swift',
+    'Sources/TreeSitterClient/BackgroundProcessor.swift',
+    'Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift',
+    'Sources/TreeSitterClient/TreeSitterClient.swift', 'Sources/Neon/TextViewHighlighter.swift',
+    'Sources/RangeState/OrderingTrace.swift', 'Tests/TreeSitterClientTests/OrderingDiagnosticsTests.swift',
+)
+
+
+def prepare_diagnostic_sources(repo, neon, diagnostic_root):
+    """Apply only the two known patches from their actual Git roots; prove changes."""
+    plans = [
+        (Path(neon).resolve(), 'ordering-diagnostic.patch', '', NEON_TARGETS, False),
+        (Path(repo).resolve(), 'lifecycle-harness.patch', 'MacDown2/Packages/MacDownKit', HARNESS_TARGETS, True),
+    ]
+    prepared = []
+    for root, name, prefix, targets, zero_context in plans:
+        actual_root = Path(command('git', 'rev-parse', '--show-toplevel', cwd=root)).resolve()
+        if actual_root != root or command('git', 'status', '--porcelain', cwd=root):
+            raise ValueError('Patch needs its clean Git root: ' + str(root))
+        patch = (Path(diagnostic_root) / name).resolve()
+        declared = [line[6:] for line in patch.read_text().splitlines() if line.startswith('+++ b/')]
+        if declared != list(targets) or len(set(declared)) != len(targets):
+            raise ValueError('Unexpected/missing patch target set: ' + name)
+        base = (root / prefix).resolve()
+        if not base.is_relative_to(root):
+            raise ValueError('Patch directory escapes Git root')
+        before = {}
+        for relative in targets:
+            parts = PurePosixPath(relative)
+            if parts.is_absolute() or '..' in parts.parts:
+                raise ValueError('Unsafe patch target')
+            path = base / relative
+            if path.is_symlink() or not path.resolve().is_relative_to(base):
+                raise ValueError('Patch target redirects outside its scope')
+            if path.exists() and not path.is_file():
+                raise ValueError('Patch target is not a regular file')
+            before[relative] = digest(path) if path.exists() else None
+        argv = ['git', 'apply']
+        if zero_context:
+            argv.append('--unidiff-zero')
+        if prefix:
+            argv.append('--directory=' + prefix)
+        # Preflight both patches before either repository is mutated.
+        command(*argv, '--check', str(patch), cwd=root)
+        prepared.append((root, patch, base, targets, before, argv))
+    files = {}
+    applications = []
+    for root, patch, base, targets, before, argv in prepared:
+        command(*argv, str(patch), cwd=root)
+        hashes = {}
+        for relative in targets:
+            path = base / relative
+            if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(base):
+                raise ValueError('Patch failed to materialize regular target: ' + relative)
+            value = digest(path)
+            if value == before[relative]:
+                raise ValueError('Successful git apply left target unchanged: ' + relative)
+            hashes[str(path.resolve())] = value
+        tracked = command('git', 'diff', '--name-only', '--no-renames', '-z', cwd=root)
+        untracked = command('git', 'ls-files', '--others', '--exclude-standard', '-z', cwd=root)
+        changed = {p for text in (tracked, untracked) for p in text.split('\0') if p}
+        expected = {str((base / relative).relative_to(root)) for relative in targets}
+        if changed != expected:
+            raise ValueError('Applied file set differs from exact target scope: ' + patch.name)
+        files.update(hashes)
+        applications.append({'patch': patch.name, 'cwd': str(root),
+                             'targets': sorted(expected), 'materializedCount': len(hashes)})
+    return {'applications': applications, 'patchedFileHashes': files}
 
 
 def main():
@@ -60,7 +139,7 @@ def main():
         if command('git', 'status', '--porcelain', cwd=path):
             raise SystemExit('Dependency not initially clean: ' + pin['identity'])
     neon = found['neon']
-    if command('git', 'rev-parse', 'HEAD', cwd=neon) != 'dabf50c947148c49acd0d321dfe8f3805d10b3da':
+    if command('git', 'rev-parse', 'HEAD', cwd=neon) != NEON_HEAD:
         raise SystemExit('Pinned Neon baseline mismatch')
     initial = shutil.disk_usage(repo).free
     budget = 4 * 1024**3
@@ -84,12 +163,9 @@ def main():
     started = time.time()
     status = 1
     try:
-        command('git', 'apply', '--check', str(ROOT / 'ordering-diagnostic.patch'), cwd=neon)
-        command('git', 'apply', '--unidiff-zero', '--check', str(ROOT / 'lifecycle-harness.patch'), cwd=package)
-        command('git', 'apply', str(ROOT / 'ordering-diagnostic.patch'), cwd=neon)
-        command('git', 'apply', '--unidiff-zero', str(ROOT / 'lifecycle-harness.patch'), cwd=package)
-        files = patched_files(neon, ROOT / 'ordering-diagnostic.patch')
-        files.update(patched_files(package, ROOT / 'lifecycle-harness.patch'))
+        application = prepare_diagnostic_sources(repo, neon, ROOT)
+        files = application['patchedFileHashes']
+        metadata['patchApplication'] = application['applications']
         metadata['patchedFileHashes'] = files
         common = ['--package-path', str(package), '--scratch-path', str(scratch), '--force-resolved-versions']
         metadata['stage'] = 'compile'

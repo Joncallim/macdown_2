@@ -42,7 +42,7 @@ jobs:
       - name: Lightweight helper tests
         timeout-minutes: 1
         working-directory: diagnostic-source/diagnostics/neon-ordering-532
-        run: python3 -m unittest -v test_hosted_helpers test_lifecycle_helpers
+        run: python3 -m unittest -v test_hosted_helpers test_lifecycle_helpers test_patch_root
       - name: Prepare exact locked dependencies
         timeout-minutes: 9
         run: |
