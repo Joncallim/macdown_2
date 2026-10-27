@@ -44,7 +44,7 @@ jobs:
         working-directory: diagnostic-source/diagnostics/neon-ordering-532
         run: python3 -m unittest -v test_hosted_helpers test_lifecycle_helpers
       - name: Prepare exact locked dependencies
-        timeout-minutes: 6
+        timeout-minutes: 9
         run: |
           set -euo pipefail
           python3 diagnostic-source/diagnostics/neon-ordering-532/prepare_dependencies.py \
@@ -52,7 +52,7 @@ jobs:
             --scratch "$RUNNER_TEMP/neon532-scratch" \
             --out "$RUNNER_TEMP/neon532-evidence"
       - name: One compile and one ungated restore-lifecycle sequence
-        timeout-minutes: 15
+        timeout-minutes: 12
         run: |
           set -euo pipefail
           python3 diagnostic-source/diagnostics/neon-ordering-532/run_lifecycle_hosted.py \

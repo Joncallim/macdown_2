@@ -94,7 +94,7 @@ def main():
         common = ['--package-path', str(package), '--scratch-path', str(scratch), '--force-resolved-versions']
         metadata['stage'] = 'compile'
         run('lifecycle-compile', ['swift', 'build', '--build-tests', '--jobs', '2'] + common,
-            600, log_root=output, baseline_free=initial, disk_budget=budget)
+            480, log_root=output, baseline_free=initial, disk_budget=budget)
         metadata['compileCompleted'] = True
         metadata['workspaceAfterCompile'] = assert_workspace(scratch, pins)
         metadata['buildInputs'] = assert_build_inputs(scratch, neon, repo, files)
