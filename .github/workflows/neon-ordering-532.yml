@@ -20,8 +20,6 @@ jobs:
       DIAG: ${{ github.workspace }}/diagnostic-source/diagnostics/neon-ordering-532
       PRODUCT: ${{ github.workspace }}/product
       PACKAGE: ${{ github.workspace }}/product/MacDown2/Packages/MacDownKit
-      SCRATCH: ${{ runner.temp }}/neon532-scratch
-      EVIDENCE: ${{ runner.temp }}/neon532-evidence
     steps:
       - uses: actions/checkout@v4
         timeout-minutes: 1
@@ -37,7 +35,13 @@ jobs:
           persist-credentials: false
       - id: preflight
         timeout-minutes: 1
-        run: python3 "$DIAG/native_stage.py" preflight
+        env:
+          SCRATCH: ${{ runner.temp }}/neon532-scratch
+          EVIDENCE: ${{ runner.temp }}/neon532-evidence
+        run: |
+          set -euo pipefail
+          python3 "$DIAG/native_stage.py" preflight
+          printf 'SCRATCH=%s\nEVIDENCE=%s\n' "$SCRATCH" "$EVIDENCE" >> "$GITHUB_ENV"
       - id: helpers
         timeout-minutes: 1
         working-directory: diagnostic-source/diagnostics/neon-ordering-532
