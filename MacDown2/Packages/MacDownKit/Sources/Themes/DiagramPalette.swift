@@ -16,10 +16,12 @@ public struct DiagramPalette: Codable, Sendable, Equatable, Hashable {
     public let nodeFill: String
     public let accent: String
     public let secondary: String
-    /// Generated categories use the resolved foreground. Source-level
-    /// renderer styles remain the only way a diagram acquires colour.
+    /// Generated categories use high-contrast monochrome shades of the
+    /// resolved foreground. Source-level renderer styles remain the only way
+    /// a diagram acquires hue.
     public var pieColors: [String] {
-        Array(repeating: text, count: 12)
+        [1.00, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.79, 0.76, 0.73, 0.70, 0.67]
+            .map { blend(foreground: text, into: canvas, foregroundWeight: $0) }
     }
 
     /// The separator and fixed, validated values make this a stable, lossless
@@ -74,6 +76,25 @@ public struct DiagramPalette: Codable, Sendable, Equatable, Hashable {
         guard components.allSatisfy(\.isFinite) else { return fallback }
         return "#" + components.map {
             String(format: "%02X", Int((min(max($0, 0), 1) * 255).rounded()))
+        }.joined()
+    }
+
+    private func blend(foreground: String, into background: String, foregroundWeight: Double) -> String {
+        func channels(for hex: String) -> [Int]? {
+            guard hex.count == 7, hex.first == "#" else { return nil }
+            let digits = hex.dropFirst()
+            return stride(from: 0, to: 6, by: 2).compactMap { offset in
+                Int(digits.dropFirst(offset).prefix(2), radix: 16)
+            }
+        }
+        guard let foregroundChannels = channels(for: foreground),
+              let backgroundChannels = channels(for: background),
+              foregroundChannels.count == 3, backgroundChannels.count == 3 else {
+            return foreground
+        }
+        return "#" + zip(foregroundChannels, backgroundChannels).map { foreground, background in
+            String(format: "%02X", Int((Double(foreground) * foregroundWeight
+                    + Double(background) * (1 - foregroundWeight)).rounded()))
         }.joined()
     }
 

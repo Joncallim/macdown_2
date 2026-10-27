@@ -104,16 +104,19 @@ function svgCanvasDimensions(root) {
     var rectHeight = root.getAttribute("height") || "";
     var width = positiveLength(rectWidth);
     var height = positiveLength(rectHeight);
-    if (!width || !height) throw new Error("invalid SVG dimensions");
-    return {
-        x: 0,
-        y: 0,
-        width: width,
-        height: height,
-        usesViewBox: false,
-        rectWidth: rectWidth,
-        rectHeight: rectHeight
-    };
+    if (width && height) {
+        return {
+            x: 0,
+            y: 0,
+            width: width,
+            height: height,
+            usesViewBox: false,
+            rectWidth: rectWidth,
+            rectHeight: rectHeight
+        };
+    }
+
+    throw new Error("invalid SVG dimensions");
 }
 
 function addOpaqueCanvas(svg, fill) {
@@ -224,6 +227,9 @@ window.__macdownRenderMermaid = async function (source, theme) {
                 noteBorderColor: stroke,
                 noteTextColor: foreground,
                 titleColor: foreground,
+                pieSectionTextColor: background,
+                pieLegendTextColor: foreground,
+                pieTitleTextColor: foreground,
                 pie1: theme.pie1,
                 pie2: theme.pie2,
                 pie3: theme.pie3,
@@ -235,7 +241,11 @@ window.__macdownRenderMermaid = async function (source, theme) {
                 pie9: theme.pie9,
                 pie10: theme.pie10,
                 pie11: theme.pie11,
-                pie12: theme.pie12
+                pie12: theme.pie12,
+                critBkgColor: nodeFill,
+                critBorderColor: stroke,
+                todayLineColor: stroke,
+                vertLineColor: stroke
             }
         };
         mermaid.initialize(configuration);

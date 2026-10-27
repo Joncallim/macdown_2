@@ -3,6 +3,7 @@ import AppKit
 import Diagrams
 import Foundation
 import Testing
+@testable import Themes
 
 /// Canvas rasterization and pie-palette cases of the `MermaidWebRenderer`
 /// suite, kept in an extension so the suite stays one Swift Testing suite.
@@ -130,7 +131,7 @@ extension MermaidWebRendererTests {
         #expect(pixels.hasDiagramContent)
     }
 
-    @Test func pieChartsUseTheResolvedForegroundUntilSourceStylesOverrideIt() async throws {
+    @Test func pieChartsUseDistinctMonochromeDefaultsUntilSourceStylesOverrideIt() async throws {
         let renderer = MermaidWebRenderer()
         let source = """
         pie title Categories
@@ -151,10 +152,10 @@ extension MermaidWebRendererTests {
         let sliceCount = diagram.svg.components(separatedBy: "class=\"pieCircle\"").count - 1
         let legendSwatchCount = diagram.svg.components(separatedBy: "class=\"legend\"").count - 1
         #expect(sliceCount == 12)
-        let monochromeSliceCount = diagram.svg.components(
-            separatedBy: "fill=\"#1A1A1A\" class=\"pieCircle\""
-        ).count - 1
-        #expect(monochromeSliceCount == 12)
+        let expectedColors = DiagramPalette.neutralLight.pieColors
+        #expect(expectedColors.count == 12)
+        #expect(Set(expectedColors).count == 12)
+        #expect(expectedColors.allSatisfy(diagram.svg.localizedCaseInsensitiveContains))
         #expect(legendSwatchCount >= 12)
         #expect(diagram.svg.range(
             of: ##"<g class="legend"[^>]*>.*fill: rgb\(26, 26, 26\)"##,
@@ -163,6 +164,29 @@ extension MermaidWebRendererTests {
         for generatedColor in ["#4E79A7", "#F28E2B", "#59A14F", "#E15759"] {
             #expect(!diagram.svg.localizedCaseInsensitiveContains(generatedColor))
         }
+        await renderer.shutdown()
+    }
+
+    @Test func generatedGanttColorsUseTheResolvedMonochromePalette() async throws {
+        let renderer = MermaidWebRenderer()
+        let source = """
+        gantt
+            title Plan
+            dateFormat  YYYY-MM-DD
+            todayMarker off
+            section Plan
+            Ordinary : 2026-01-01, 1d
+            Critical :crit, 2026-01-02, 1d
+        """
+        let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+        let viewBox = try MermaidSVGProbe.svgViewBox(in: diagram.svg)
+        #expect(viewBox.width > 0)
+        #expect(viewBox.height > 0)
+        for generatedColor in ["#ff8888", "#ff0000", "#000080"] {
+            #expect(!diagram.svg.localizedCaseInsensitiveContains(generatedColor))
+        }
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#1A1A1A"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#FFFFFF"))
         await renderer.shutdown()
     }
 }

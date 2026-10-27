@@ -104,7 +104,7 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         pagePreferences.allowsContentJavaScript = true
         configuration.defaultWebpagePreferences = pagePreferences
 
-        webView = WKWebView(frame: .zero, configuration: configuration)
+        webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 1200, height: 900), configuration: configuration)
         super.init()
         webView.navigationDelegate = self
         webView.uiDelegate = self
