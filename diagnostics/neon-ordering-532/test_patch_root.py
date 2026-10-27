@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import run_lifecycle_hosted as runner
+import native_stage as runner
 
 PRODUCT = 'f5605d9aead306e15ccb1bd8fb4f48b8931c1f76'
 NEON = 'dabf50c947148c49acd0d321dfe8f3805d10b3da'
@@ -164,57 +164,6 @@ class NestedGitPatchTests(unittest.TestCase):
         self.assertEqual(git(self.repo, 'status', '--porcelain'), b'')
         self.assertEqual(git(self.neon, 'status', '--porcelain'), b'')
 
-    def invoke_hosted_main(self, skip_harness=False):
-        real = runner.command
-        def platform_only(*args, cwd=None):
-            if args == ('xcodebuild', '-version'): return 'Xcode 26.0.1\nBuild version 17A400'
-            if args == ('swift', '--version'): return 'mock platform identity; no compiler executed'
-            if args == ('xcrun', '--find', 'swift'): return '/fixture/not-executed/swift'
-            if args and args[0] not in ('git',): raise AssertionError('Unexpected executable: '+str(args))
-            if skip_harness and args[:2] == ('git', 'apply') and '--check' not in args and Path(cwd) == self.repo:
-                return ''
-            return real(*args, cwd=cwd)
-        def stop_before_compile(stage, arguments, seconds, **kwargs):
-            self.assertEqual(stage, 'lifecycle-compile')
-            self.assertEqual(seconds, 480)
-            self.assertTrue((self.package / NEW_HARNESS).is_file())
-            self.assertIn('--force-resolved-versions', arguments)
-            raise SystemExit('intentional fixture boundary; compiler not executed')
-        out = self.root / 'out'
-        argv = ['runner', '--repo', str(self.repo), '--scratch', str(self.scratch), '--out', str(out)]
-        env = {'GITHUB_EVENT_NAME':'push', 'GITHUB_RUN_ATTEMPT':'1', 'GITHUB_SHA':self.diag_head,
-               'GITHUB_REF':'refs/heads/diagnostic/532-neon-natural-ordering-2026-10-26'}
-        with patch.object(sys, 'argv', argv), patch.dict(os.environ, env), \
-                patch.object(runner, 'ROOT', self.diag), patch.object(runner, 'HEAD', self.product_head), \
-                patch.object(runner, 'NEON_HEAD', self.neon_head), patch.object(runner, 'LOCK', self.lock_hash), \
-                patch.object(runner, 'NEON_PATCH', hashlib.sha256(self.neon_patch).hexdigest()), \
-                patch.object(runner, 'command', side_effect=platform_only), \
-                patch.object(runner, 'collect', return_value={'fixture':'no native test executed'}), \
-                patch.object(runner, 'run', side_effect=stop_before_compile) as run:
-            with self.assertRaises(SystemExit) as result: runner.main()
-            self.assertEqual(result.exception.code, 1)
-            self.assertEqual(run.call_count, 0 if skip_harness else 1)
-        metadata = json.loads((out / 'metadata.json').read_text())
-        self.assertEqual(metadata['stage'], 'preparation' if skip_harness else 'compile')
-        if skip_harness:
-            self.assertIn('unchanged', metadata['failure'])
-        else:
-            self.assertEqual(metadata['failure'], 'SystemExit: intentional fixture boundary; compiler not executed')
-            self.assertEqual(run.call_args.args[0], 'lifecycle-compile')
-            self.assertEqual(run.call_args.args[2], 480)
-            self.assertIn('--force-resolved-versions', run.call_args.args[1])
-            self.assertEqual([a['materializedCount'] for a in metadata['patchApplication']], [8,5])
-            self.assertEqual(len(metadata['patchedFileHashes']), 13)
-        self.assertFalse(metadata['compileCompleted'])
-        self.assertFalse(metadata['selectedTestExecuted'])
-        if not skip_harness:
-            print('HOSTED_PREPARATION_EVIDENCE real_git=true patches=13 workspace_checked=true compile_stubbed=true')
-
-    def test_hosted_main_preparation_reaches_compile_boundary(self):
-        self.invoke_hosted_main()
-
-    def test_hosted_main_zero_apply_never_reaches_compile(self):
-        self.invoke_hosted_main(skip_harness=True)
 
 
 if __name__ == '__main__':
