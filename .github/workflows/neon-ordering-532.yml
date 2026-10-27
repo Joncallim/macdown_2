@@ -1,4 +1,4 @@
-name: Bounded Neon ordering diagnostic
+name: Bounded Markdown lifecycle ordering diagnostic
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   natural-ordering:
-    if: github.repository == 'Joncallim/macdown_2'
+    if: github.repository == 'Joncallim/macdown_2' && github.run_attempt == 1
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -42,7 +42,7 @@ jobs:
       - name: Lightweight helper tests
         timeout-minutes: 1
         working-directory: diagnostic-source/diagnostics/neon-ordering-532
-        run: python3 -m unittest -v test_hosted_helpers
+        run: python3 -m unittest -v test_hosted_helpers test_lifecycle_helpers
       - name: Prepare exact locked dependencies
         timeout-minutes: 6
         run: |
@@ -51,11 +51,11 @@ jobs:
             --repo "$GITHUB_WORKSPACE/product" \
             --scratch "$RUNNER_TEMP/neon532-scratch" \
             --out "$RUNNER_TEMP/neon532-evidence"
-      - name: One compile and one ungated selected test
+      - name: One compile and one ungated restore-lifecycle sequence
         timeout-minutes: 15
         run: |
           set -euo pipefail
-          python3 diagnostic-source/diagnostics/neon-ordering-532/run_natural_hosted.py \
+          python3 diagnostic-source/diagnostics/neon-ordering-532/run_lifecycle_hosted.py \
             --repo "$GITHUB_WORKSPACE/product" \
             --scratch "$RUNNER_TEMP/neon532-scratch" \
             --out "$RUNNER_TEMP/neon532-evidence"

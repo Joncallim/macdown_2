@@ -1,0 +1,112 @@
+diff --git a/Sources/Highlighting/NeonSyntaxHighlighter.swift b/Sources/Highlighting/NeonSyntaxHighlighter.swift
+--- a/Sources/Highlighting/NeonSyntaxHighlighter.swift
++++ b/Sources/Highlighting/NeonSyntaxHighlighter.swift
+@@ -21,0 +22,2 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
++    /// Diagnostic-only provenance; nil in ordinary application construction.
++    private let orderingContext: OrderingContext?
+@@ -91 +93,2 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
+-        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = HighlightingSizePolicy.default(for:)
++        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = HighlightingSizePolicy.default(for:),
++        orderingContext: OrderingContext? = nil
+@@ -95,0 +99 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
++        self.orderingContext = orderingContext
+@@ -197 +201,2 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
+-                    locationTransformer: countedLocationTransformer(builtGeneration: builtGeneration)
++                    locationTransformer: countedLocationTransformer(builtGeneration: builtGeneration),
++                    orderingContext: orderingContext
+diff --git a/Tests/HighlightingTests/KeystrokeStallSupport.swift b/Tests/HighlightingTests/KeystrokeStallSupport.swift
+--- a/Tests/HighlightingTests/KeystrokeStallSupport.swift
++++ b/Tests/HighlightingTests/KeystrokeStallSupport.swift
+@@ -4,0 +5 @@ import Foundation
++import RangeState
+@@ -137,0 +139 @@ final class HighlightedEditor {
++    private let orderingContext: OrderingContext?
+@@ -148 +150,2 @@ final class HighlightedEditor {
+-        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = { _ in nil }
++        sizePolicy: @escaping (String?) -> HighlightingSizePolicy? = { _ in nil },
++        orderingContext: OrderingContext? = nil
+@@ -149,0 +153,8 @@ final class HighlightedEditor {
++        let orderingContext = orderingContext
++            ?? MarkdownOrderingDiagnosticContext.trace.map { OrderingContext(trace: $0) }
++        self.orderingContext = orderingContext
++        orderingContext?.record(.born)
++        if let orderingContext {
++            let identity = Data(ProcessInfo.processInfo.processName.utf8).base64EncodedString()
++            FileHandle.standardError.write(Data("NEON_FIXTURE pid=\(getpid()) fixture=\(orderingContext.fixture) identity64=\(identity)\n".utf8))
++        }
+@@ -157 +168,2 @@ final class HighlightedEditor {
+-            sizePolicy: sizePolicy
++            sizePolicy: sizePolicy,
++            orderingContext: orderingContext
+@@ -165,0 +178,6 @@ final class HighlightedEditor {
++    deinit {
++        // Observe scope retirement only. Do not tear down, cancel or drain Neon.
++        orderingContext?.record(.retired)
++        orderingContext?.dump()
++    }
++
+diff --git a/Tests/HighlightingTests/SizeFallbackTestSupport.swift b/Tests/HighlightingTests/SizeFallbackTestSupport.swift
+--- a/Tests/HighlightingTests/SizeFallbackTestSupport.swift
++++ b/Tests/HighlightingTests/SizeFallbackTestSupport.swift
+@@ -2,0 +3 @@ import Foundation
++import RangeState
+@@ -180,2 +181,2 @@ enum SizeFallbackFixtures {
+-    static func editor(units: Int) -> HighlightedEditor {
+-        HighlightedEditor(text: markdown(units: units), sizePolicy: markdownOnly)
++    static func editor(units: Int, orderingContext: OrderingContext? = nil) -> HighlightedEditor {
++        HighlightedEditor(text: markdown(units: units), sizePolicy: markdownOnly, orderingContext: orderingContext)
+diff --git a/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift b/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+--- a/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
++++ b/Tests/HighlightingTests/HighlightingSizeFallbackTests.swift
+@@ -3,0 +4 @@ import Testing
++import RangeState
+@@ -223 +225,4 @@ struct HighlightingSizeFallbackTests {
+-        let editor = Fixtures.editor(units: 5000)
++        // Shared bounded ring; separate fixture IDs distinguish edited/reference editors.
++        let trace = MarkdownOrderingDiagnosticContext.trace
++            ?? (ProcessInfo.processInfo.environment["NEON_ORDER_TRACE"] == "1" ? OrderingTrace() : nil)
++        let editor = Fixtures.editor(units: 5000, orderingContext: trace.map { OrderingContext(trace: $0) })
+@@ -231 +236,2 @@ struct HighlightingSizeFallbackTests {
+-        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly)
++        let fresh = HighlightedEditor(text: editor.textView.string, sizePolicy: Fixtures.markdownOnly,
++                                      orderingContext: trace.map { OrderingContext(trace: $0) })
+diff --git a/Tests/HighlightingTests/MarkdownLifecycleOrderingDiagnosticTests.swift b/Tests/HighlightingTests/MarkdownLifecycleOrderingDiagnosticTests.swift
+new file mode 100644
+--- /dev/null
++++ b/Tests/HighlightingTests/MarkdownLifecycleOrderingDiagnosticTests.swift
+@@ -0,0 +1,35 @@
++import Darwin
++import Foundation
++import RangeState
++import Testing
++
++enum MarkdownOrderingDiagnosticContext {
++    @TaskLocal static var trace: OrderingTrace?
++
++    static func mark(_ phase: String) {
++        FileHandle.standardError.write(Data("NEON_SEQUENCE pid=\(getpid()) phase=\(phase) gates=unset\n".utf8))
++    }
++}
++
++/// Calls the existing methods in order. No new sleeps, drains, cancellation or teardown.
++@MainActor
++@Suite(.serialized)
++struct MarkdownLifecycleOrderingDiagnosticTests {
++    @Test func restoreLifetimesThenOriginalBelowCutoff() async {
++        let trace = OrderingTrace(capacity: 4096)
++        await MarkdownOrderingDiagnosticContext.$trace.withValue(trace) {
++            MarkdownOrderingDiagnosticContext.mark("restore-start")
++            await HighlightingSizeFallbackTests().shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause: false)
++            await HighlightingSizeFallbackTests().shrinkingBelowTheRestoreThresholdRestoresOnlyAfterIdle(includesIdlePause: true)
++            await HighlightingSizeFallbackTests().controlledIdleClockRejectsEarlyRestoreAndJoinsDueWaiters(includesIdlePause: false)
++            await HighlightingSizeFallbackTests().controlledIdleClockRejectsEarlyRestoreAndJoinsDueWaiters(includesIdlePause: true)
++            MarkdownOrderingDiagnosticContext.mark("restore-returned")
++            MarkdownOrderingDiagnosticContext.mark("original-start")
++            await HighlightingSizeFallbackTests().belowTheCutoffHighlightingMatchesAFreshHighlighter()
++            MarkdownOrderingDiagnosticContext.mark("original-returned")
++        }
++        MarkdownOrderingDiagnosticContext.mark("sequence-returned")
++        OrderingContext(trace: trace).dump()
++        #expect(trace.snapshot().evicted == 0)
++    }
++}
