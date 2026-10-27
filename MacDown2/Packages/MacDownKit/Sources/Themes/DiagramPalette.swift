@@ -1,6 +1,12 @@
 import Foundation
 
-/// The one default presentation policy for first-party diagram artwork.
+/// Screen artwork follows preview colors; paper has its own readable defaults.
+public enum DiagramDestination: String, Sendable, Codable, Hashable {
+    case screen
+    case print
+}
+
+/// The resolved default presentation policy for first-party diagram artwork.
 /// Explicit colors in authored diagrams remain the renderer's responsibility.
 public struct DiagramPalette: Codable, Sendable, Equatable, Hashable {
     public let policyID: String
@@ -52,6 +58,28 @@ public struct DiagramPalette: Codable, Sendable, Equatable, Hashable {
         secondary: "#526274"
     )
 
+    /// Preview text and canvas are separate inputs, resolved before rendering.
+    /// Print never inherits screen colors baked into SVG or PNG artwork.
+    public static func resolved(
+        for destination: DiagramDestination, foreground: ThemeColor, background: ThemeColor
+    ) -> DiagramPalette {
+        guard destination == .screen else { return .neutralLight }
+        let text = hex(foreground, fallback: neutralLight.text)
+        let canvas = hex(background, fallback: neutralLight.canvas)
+        return DiagramPalette(
+            policyID: "preview-context-v1", canvas: canvas, text: text, stroke: text,
+            nodeFill: canvas, accent: text, secondary: text
+        )
+    }
+
+    private static func hex(_ color: ThemeColor, fallback: String) -> String {
+        let components = [color.red, color.green, color.blue]
+        guard components.allSatisfy(\.isFinite) else { return fallback }
+        return "#" + components.map {
+            String(format: "%02X", Int((min(max($0, 0), 1) * 255).rounded()))
+        }.joined()
+    }
+
     init(policyID: String, canvas: String, text: String, stroke: String,
          nodeFill: String, accent: String, secondary: String) {
         self.policyID = policyID
@@ -78,7 +106,16 @@ public struct DiagramPalette: Codable, Sendable, Equatable, Hashable {
             accent: fields.decode(String.self, forKey: .accent),
             secondary: fields.decode(String.self, forKey: .secondary)
         )
-        guard candidate == .neutralLight,
+        let colors = [
+            candidate.canvas, candidate.text, candidate.stroke,
+            candidate.nodeFill, candidate.accent, candidate.secondary,
+        ]
+        let supported = candidate == .neutralLight || (
+            candidate.policyID == "preview-context-v1" && colors.allSatisfy {
+                $0.range(of: "^#[0-9A-F]{6}$", options: .regularExpression) != nil
+            }
+        )
+        guard supported,
               try fields.decode([String].self, forKey: .pieColors) == candidate.pieColors else {
             throw DecodingError.dataCorruptedError(
                 forKey: .policyID, in: fields, debugDescription: "Unsupported diagram palette policy"

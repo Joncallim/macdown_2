@@ -8,12 +8,12 @@ mermaid.initialize({
     startOnLoad: false,
     securityLevel: "strict",
     // Mermaid applies init directives and frontmatter config through the
-    // same config sanitizer. Keep the product's neutral-light-v1 palette
-    // authoritative by protecting the supported theme keys there, rather
-    // than rewriting authored source text.
+    // same config sanitizer. Protect security and the selected base theme,
+    // while allowing explicitly authored themeVariables (including colors)
+    // to override the application's defaults without rewriting source.
     secure: [
         "secure", "securityLevel", "startOnLoad", "maxTextSize",
-        "suppressErrorRendering", "maxEdges", "theme", "themeVariables", "themeCSS"
+        "suppressErrorRendering", "maxEdges", "theme", "themeCSS"
     ]
 });
 
@@ -167,7 +167,7 @@ window.__macdownRenderMermaid = async function (source, theme) {
     __macdownRenderCounter += 1;
     var id = "macdown-diagram-" + __macdownRenderCounter;
     try {
-        if (!theme || theme.policyID !== "neutral-light-v1") {
+        if (!theme || !["neutral-light-v1", "preview-context-v1"].includes(theme.policyID)) {
             throw new Error("unsupported diagram palette");
         }
         var foreground = theme && theme.text ? theme.text : "#1A1A1A";
@@ -179,7 +179,7 @@ window.__macdownRenderMermaid = async function (source, theme) {
             securityLevel: "strict",
             secure: [
                 "secure", "securityLevel", "startOnLoad", "maxTextSize",
-                "suppressErrorRendering", "maxEdges", "theme", "themeVariables", "themeCSS"
+                "suppressErrorRendering", "maxEdges", "theme", "themeCSS"
             ],
             theme: "base",
             themeVariables: {
@@ -190,6 +190,40 @@ window.__macdownRenderMermaid = async function (source, theme) {
                 lineColor: stroke,
                 secondaryColor: nodeFill,
                 tertiaryColor: nodeFill,
+                secondaryTextColor: foreground,
+                tertiaryTextColor: foreground,
+                secondaryBorderColor: stroke,
+                tertiaryBorderColor: stroke,
+                activationBorderColor: stroke,
+                pieStrokeColor: stroke,
+                pieOuterStrokeColor: stroke,
+                archGroupBorderColor: stroke,
+                archEdgeColor: foreground,
+                archEdgeArrowColor: foreground,
+                attributeBackgroundColorOdd: nodeFill,
+                attributeBackgroundColorEven: nodeFill,
+                altSectionBkgColor: nodeFill,
+                excludeBkgColor: nodeFill,
+                doneTaskBkgColor: nodeFill,
+                doneTaskBorderColor: stroke,
+                activeTaskBkgColor: nodeFill,
+                activeTaskBorderColor: stroke,
+                edgeLabelBackground: background,
+                clusterBkg: nodeFill,
+                clusterBorder: stroke,
+                actorBkg: nodeFill,
+                actorBorder: stroke,
+                actorTextColor: foreground,
+                signalColor: stroke,
+                signalTextColor: foreground,
+                labelBoxBkgColor: nodeFill,
+                labelBoxBorderColor: stroke,
+                labelTextColor: foreground,
+                loopTextColor: foreground,
+                noteBkgColor: nodeFill,
+                noteBorderColor: stroke,
+                noteTextColor: foreground,
+                titleColor: foreground,
                 pie1: theme.pie1,
                 pie2: theme.pie2,
                 pie3: theme.pie3,
@@ -206,7 +240,11 @@ window.__macdownRenderMermaid = async function (source, theme) {
             }
         });
         var result = await mermaid.render(id, source);
-        var canvas = addOpaqueCanvas(result.svg, background);
+        // Read the resolved library configuration after its own safe directive
+        // parser has applied init/frontmatter. An authored canvas color is
+        // content too; it must not be covered by our default backing rect.
+        var resolved = mermaid.mermaidAPI.getConfig().themeVariables || {};
+        var canvas = addOpaqueCanvas(result.svg, resolved.background || background);
         var png = await rasterize(canvas.svg, canvas.width, canvas.height);
         return { ok: true, svg: canvas.svg, png: png, width: canvas.width, height: canvas.height };
     } catch (error) {

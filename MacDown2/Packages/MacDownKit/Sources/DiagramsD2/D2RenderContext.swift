@@ -1,23 +1,34 @@
 import Themes
 
-/// A resolved diagram policy, independent of the surrounding app theme.
+/// Resolved artwork defaults and destination, shared by preview and export.
 public struct D2RenderContext: Sendable, Equatable, Hashable {
     public let palette: DiagramPalette
+    public let destination: DiagramDestination
 
-    public init(palette: DiagramPalette = .neutralLight) {
-        self.palette = palette
+    public var fingerprint: String {
+        destination.rawValue + "|" + palette.fingerprint
     }
 
-    /// Legacy component inputs intentionally resolve to the fixed policy.
+    public init(palette: DiagramPalette = .neutralLight, destination: DiagramDestination = .print) {
+        self.palette = palette
+        self.destination = destination
+    }
+
+    /// Component callers describe screen preview colors.
     public init(
-        foregroundRed _: Double,
-        foregroundGreen _: Double,
-        foregroundBlue _: Double,
-        backgroundRed _: Double,
-        backgroundGreen _: Double,
-        backgroundBlue _: Double
+        foregroundRed: Double,
+        foregroundGreen: Double,
+        foregroundBlue: Double,
+        backgroundRed: Double,
+        backgroundGreen: Double,
+        backgroundBlue: Double
     ) {
-        palette = .neutralLight
+        destination = .screen
+        palette = .resolved(
+            for: .screen,
+            foreground: ThemeColor(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue),
+            background: ThemeColor(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
+        )
     }
 
     public static let neutralLight = D2RenderContext()

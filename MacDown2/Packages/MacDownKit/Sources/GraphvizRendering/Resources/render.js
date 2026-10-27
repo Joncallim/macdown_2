@@ -43,21 +43,24 @@ function opaqueGraphvizCanvas(svg, fill) {
 
 window.__macdownRenderGraphviz = async function (source, theme) {
     try {
-        if (!theme || theme.policyID !== "neutral-light-v1") {
+        if (!theme || !["neutral-light-v1", "preview-context-v1"].includes(theme.policyID)) {
             throw new Error("unsupported diagram palette");
         }
         const viz = await getViz();
         const background = theme && theme.canvas ? theme.canvas : "#FFFFFF";
-        const svg = viz.renderString(source, {
+        const options = {
             format: "svg",
-            graphAttributes: {
-                bgcolor: background,
-                fontcolor: theme.text
-            },
-            nodeAttributes: {
-                fontcolor: theme.text
-            }
-        });
+            graphAttributes: { bgcolor: background, fontcolor: theme.text },
+            nodeAttributes: { fontcolor: theme.text }
+        };
+        if (theme.policyID === "preview-context-v1") {
+            // Native DOT defaults have lower precedence than authored
+            // graph/node/edge attributes, including explicit black paint.
+            Object.assign(options.graphAttributes, { color: theme.stroke, fillcolor: theme.canvas });
+            Object.assign(options.nodeAttributes, { color: theme.stroke, fillcolor: theme.nodeFill });
+            options.edgeAttributes = { color: theme.stroke, fontcolor: theme.text };
+        }
+        const svg = viz.renderString(source, options);
         const canvas = opaqueGraphvizCanvas(svg, background);
         return { ok: true, svg: canvas.svg, width: canvas.width, height: canvas.height };
     } catch (error) {

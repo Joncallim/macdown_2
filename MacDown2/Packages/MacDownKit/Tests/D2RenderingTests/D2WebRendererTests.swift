@@ -11,10 +11,7 @@ import Testing
 /// `MermaidWebRendererTests`).
 @Suite("D2WebRenderer")
 struct D2WebRendererTests {
-    private static let context = D2RenderContext(
-        foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
-        backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
-    )
+    private static let context = D2RenderContext.neutralLight
 
     private static func fence(_ source: String) -> D2Fence {
         D2Fence(source: source, sourceRange: 0 ..< source.count)
@@ -86,11 +83,34 @@ struct D2WebRendererTests {
             Self.fence("a: { style.fill: \"#123456\" }\na -> b: edge label"), context: dark
         )
         #expect(diagram.svg.range(
-            of: ##"<svg[^>]*><rect[^>]*fill="#FFFFFF""##,
+            of: ##"<svg[^>]*><rect[^>]*fill="#000000""##,
             options: [.regularExpression]
         ) != nil)
         #expect(diagram.svg.localizedCaseInsensitiveContains("#123456"))
         #expect(diagram.svg.contains("edge label"))
+        await renderer.shutdown()
+    }
+
+    @Test func darkScreenDefaultsUsePreviewTextStrokeAndCanvas() async throws {
+        let renderer = D2WebRenderer(poolSize: 1)
+        let dark = D2RenderContext(
+            foregroundRed: 1, foregroundGreen: 1, foregroundBlue: 1,
+            backgroundRed: 0, backgroundGreen: 0, backgroundBlue: 0
+        )
+        let diagram = try await renderer.render(Self.fence("a -> b: edge"), context: dark)
+        #expect(diagram.svg.contains(".fill-N1{fill:#FFFFFF;}"))
+        #expect(diagram.svg.contains(".fill-N2{fill:#FFFFFF;}"))
+        #expect(diagram.svg.contains(".stroke-B1{stroke:#FFFFFF;}"))
+        #expect(diagram.svg.range(of: ##"<text[^>]*fill="#FFFFFF""##, options: .regularExpression) != nil)
+        #expect(diagram.svg.range(of: ##"<path[^>]*stroke="#FFFFFF""##, options: .regularExpression) != nil)
+        #expect(diagram.svg.contains(##"fill="#000000""##))
+        let authored = try await renderer.render(Self.fence(
+            "style.fill: \"#654321\"\na: {style.fill: \"#123456\"; style.stroke: black; style.font-color: black}"
+        ), context: dark)
+        #expect(authored.svg.localizedCaseInsensitiveContains("#654321"))
+        #expect(authored.svg.localizedCaseInsensitiveContains("#123456"))
+        #expect(authored.svg.contains("stroke=\"black\""))
+        #expect(authored.svg.contains("fill=\"black\""))
         await renderer.shutdown()
     }
 

@@ -28,6 +28,33 @@ struct DiagramPaletteTests {
         #expect(Self.contrast("#FFFFFF", palette.accent) >= 4.5)
     }
 
+    @Test func screenDefaultsResolveTextAndCanvasIndependently() throws {
+        let foreground = ThemeColor(red: 0.9, green: 0.8, blue: 0.7)
+        let background = ThemeColor(red: 0.1, green: 0.2, blue: 0.3)
+        let dark = DiagramPalette.resolved(for: .screen, foreground: foreground, background: background)
+        let light = DiagramPalette.resolved(for: .screen, foreground: background, background: foreground)
+        #expect(dark.text == "#E6CCB3")
+        #expect(dark.stroke == dark.text)
+        #expect(dark.canvas == "#1A334D")
+        #expect(dark.nodeFill == dark.canvas)
+        #expect(dark.fingerprint != light.fingerprint)
+        #expect(try JSONDecoder().decode(DiagramPalette.self, from: JSONEncoder().encode(dark)) == dark)
+        let printPalette = DiagramPalette.resolved(for: .print, foreground: foreground, background: background)
+        #expect(printPalette == .neutralLight)
+        #expect(printPalette.text == "#1A1A1A")
+        #expect(printPalette.canvas == "#FFFFFF")
+    }
+
+    @Test func screenColorsClampFiniteComponentsAndRejectNonFiniteColors() {
+        let palette = DiagramPalette.resolved(
+            for: .screen,
+            foreground: ThemeColor(red: -1, green: 2, blue: 0.5),
+            background: ThemeColor(red: .nan, green: .infinity, blue: 0)
+        )
+        #expect(palette.text == "#00FF80")
+        #expect(palette.canvas == "#FFFFFF")
+    }
+
     private static func contrast(_ first: String, _ second: String) -> Double {
         func luminance(_ hex: String) -> Double {
             let digits = Array(hex.dropFirst())

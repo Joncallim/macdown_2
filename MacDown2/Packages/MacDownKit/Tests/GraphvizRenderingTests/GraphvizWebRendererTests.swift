@@ -7,10 +7,7 @@ import Testing
 /// viz-js/Graphviz, no fakes.
 @Suite("GraphvizWebRenderer")
 struct GraphvizWebRendererTests {
-    private static let context = GraphvizRenderContext(
-        foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
-        backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
-    )
+    private static let context = GraphvizRenderContext.neutralLight
 
     private static func fence(_ source: String) -> GraphvizFence {
         GraphvizFence(source: source, sourceRange: 0 ..< source.count)
@@ -45,14 +42,14 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
-    @Test func renderUsesNeutralLightCanvasRegardlessOfThemeContext() async throws {
+    @Test func screenCanvasUsesResolvedPreviewBackground() async throws {
         let renderer = GraphvizWebRenderer()
         let themedContext = GraphvizRenderContext(
             foregroundRed: 0x11 / 255.0, foregroundGreen: 0x22 / 255.0, foregroundBlue: 0x33 / 255.0,
             backgroundRed: 0xEE / 255.0, backgroundGreen: 0xDD / 255.0, backgroundBlue: 0xCC / 255.0
         )
         let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: themedContext)
-        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#eeddcc\""))
         await renderer.shutdown()
     }
 
@@ -67,7 +64,7 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
-    @Test func filledNodesPreserveNativeDefaultsAndAuthoredFillFallback() async throws {
+    @Test func filledNodesUseResolvedDefaultsAndPreserveAuthoredFill() async throws {
         let renderer = GraphvizWebRenderer()
         let light = try await renderer.render(
             Self.fence("digraph { node [style=filled]; a -> b; }"),
@@ -87,7 +84,7 @@ struct GraphvizWebRendererTests {
             options: [.regularExpression]
         ) != nil)
         #expect(darkNode.range(
-            of: ##"<(ellipse|polygon)[^>]*fill="lightgrey"[^>]*stroke="black""##,
+            of: ##"<(ellipse|polygon)[^>]*fill="#112233"[^>]*stroke="#eeddcc""##,
             options: [.regularExpression]
         ) != nil)
         let authored = try await renderer.render(
@@ -99,7 +96,7 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 
-    @Test func graphAndClusterDefaultsUseNeutralLightCanvasAndNativeForeground() async throws {
+    @Test func graphAndClusterDefaultsUseResolvedCanvasAndForeground() async throws {
         let renderer = GraphvizWebRenderer()
         let themedContext = GraphvizRenderContext(
             foregroundRed: 0x11 / 255.0, foregroundGreen: 0x22 / 255.0, foregroundBlue: 0x33 / 255.0,
@@ -112,9 +109,9 @@ struct GraphvizWebRendererTests {
         let cluster = try Self.groupBody(className: "cluster", title: "cluster_one", in: diagram.svg)
         let node = try Self.groupBody(className: "node", title: "a", in: diagram.svg)
         #expect(cluster
-            .range(of: ##"<polygon[^>]*fill="#ffffff"[^>]*stroke="black""##, options: [.regularExpression]) != nil)
+            .range(of: ##"<polygon[^>]*fill="#eeddcc"[^>]*stroke="#112233""##, options: [.regularExpression]) != nil)
         #expect(node.range(
-            of: ##"<(ellipse|polygon)[^>]*fill="none"[^>]*stroke="black""##,
+            of: ##"<(ellipse|polygon)[^>]*fill="none"[^>]*stroke="#112233""##,
             options: [.regularExpression]
         ) != nil)
         await renderer.shutdown()
@@ -131,7 +128,7 @@ struct GraphvizWebRendererTests {
         )
         let cluster = try Self.groupBody(className: "cluster", title: "cluster_a", in: clustered.svg)
         #expect(cluster
-            .range(of: ##"<polygon[^>]*fill="#ffffff"[^>]*stroke="black""##, options: [.regularExpression]) != nil)
+            .range(of: ##"<polygon[^>]*fill="#112233"[^>]*stroke="#cccccc""##, options: [.regularExpression]) != nil)
 
         let authored = try await renderer.render(
             Self.fence("digraph { node [style=filled, color=red, fontcolor=white]; a -> b; }"),
@@ -154,7 +151,7 @@ struct GraphvizWebRendererTests {
         let darkSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: dark).svg
         let lightAgainSVG = try await renderer.render(Self.fence("digraph { a -> b; }"), context: light).svg
         #expect(lightSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
-        #expect(darkSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
+        #expect(darkSVG.localizedCaseInsensitiveContains("fill=\"#112233\""))
         #expect(lightAgainSVG.localizedCaseInsensitiveContains("fill=\"#FFFFFF\""))
         await renderer.shutdown()
     }
@@ -167,7 +164,7 @@ struct GraphvizWebRendererTests {
         )
         let diagram = try await renderer.render(Self.fence("digraph { a -> b; }"), context: context)
         #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
-        #expect(diagram.svg.localizedCaseInsensitiveContains("stroke=\"black\""))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("stroke=\"#1a1a1a\""))
         #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
         #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()
@@ -289,6 +286,34 @@ struct GraphvizWebRendererTests {
 }
 
 extension GraphvizWebRendererTests {
+    @Test func darkScreenEdgesAndLabelsUseDefaultsWhileExplicitBlackStaysBlack() async throws {
+        let renderer = GraphvizWebRenderer()
+        let dark = GraphvizRenderContext(
+            foregroundRed: 1, foregroundGreen: 1, foregroundBlue: 1,
+            backgroundRed: 0, backgroundGreen: 0, backgroundBlue: 0
+        )
+        let diagram = try await renderer.render(Self.fence("digraph { a -> b [label=label]; }"), context: dark)
+        let edge = try Self.groupBody(className: "edge", title: "a&#45;&gt;b", in: diagram.svg)
+        #expect(edge.localizedCaseInsensitiveContains("stroke=\"#ffffff\""))
+        #expect(edge.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
+        let authored = try await renderer.render(Self.fence(
+            """
+            digraph {
+                bgcolor="#654321";
+                node [color=black, fontcolor=black, style=filled, fillcolor="#123456"];
+                a -> b [color=black, fontcolor=black, label=label];
+            }
+            """
+        ), context: dark)
+        #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"#654321\""))
+        #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"#123456\""))
+        let authoredEdge = try Self.groupBody(className: "edge", title: "a&#45;&gt;b", in: authored.svg)
+        #expect(authoredEdge.contains("stroke=\"black\""))
+        // Graphviz omits SVG's default black text paint instead of emitting it.
+        #expect(authoredEdge.range(of: #"<text(?![^>]*fill=)[^>]*>"#, options: .regularExpression) != nil)
+        await renderer.shutdown()
+    }
+
     @Test func authoredTransparentCanvasAndGraphPaintRemainIntact() async throws {
         let renderer = GraphvizWebRenderer()
         let diagram = try await renderer.render(

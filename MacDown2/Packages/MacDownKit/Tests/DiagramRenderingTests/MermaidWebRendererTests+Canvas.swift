@@ -10,9 +10,41 @@ extension MermaidWebRendererTests {
     @Test func explicitNodeColorsRemainAuthored() async throws {
         let renderer = MermaidWebRenderer()
         let source = "graph TD; A-->B; style A fill:#123456,stroke:#ABCDEF;"
-        let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+        let diagram = try await renderer.render(Self.fence(source), context: MermaidRenderContext(
+            foregroundRed: 1, foregroundGreen: 1, foregroundBlue: 1,
+            backgroundRed: 0, backgroundGreen: 0, backgroundBlue: 0
+        ))
         #expect(diagram.svg.localizedCaseInsensitiveContains("#123456"))
         #expect(diagram.svg.localizedCaseInsensitiveContains("#ABCDEF"))
+        await renderer.shutdown()
+    }
+
+    @Test func authoredInitAndFrontmatterColorsSurviveDarkScreenDefaults() async throws {
+        let renderer = MermaidWebRenderer(poolSize: 1)
+        let dark = MermaidRenderContext(
+            foregroundRed: 1, foregroundGreen: 1, foregroundBlue: 1,
+            backgroundRed: 0, backgroundGreen: 0, backgroundBlue: 0
+        )
+        let sources = [
+            "%%{init: {\"themeVariables\":{\"primaryColor\":\"#123456\","
+                + "\"primaryTextColor\":\"#000000\",\"background\":\"#654321\"}}}%%\ngraph TD; A-->B;",
+            """
+            ---
+            config:
+              themeVariables:
+                primaryColor: '#123456'
+                primaryTextColor: '#000000'
+                background: '#654321'
+            ---
+            graph TD; A-->B;
+            """,
+        ]
+        for source in sources {
+            let diagram = try await renderer.render(Self.fence(source), context: dark)
+            #expect(diagram.svg.localizedCaseInsensitiveContains("#123456"))
+            #expect(diagram.svg.localizedCaseInsensitiveContains("#000000"))
+            #expect(diagram.svg.contains(##"fill="#654321""##))
+        }
         await renderer.shutdown()
     }
 

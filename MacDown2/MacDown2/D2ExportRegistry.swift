@@ -14,9 +14,16 @@ extension ContributionRegistry {
     /// already rendered for one is not re-rendered for the other.
     static let sharedD2Renderer = D2DiagramCache(renderer: D2WebRenderer())
 
-    /// Screen and print use the same opaque policy; authored D2 styles remain
-    /// in source and are never rewritten by the surrounding app theme.
-    static func d2RenderContext(theme _: Theme, isPrintTarget _: Bool) -> D2RenderContext {
-        .neutralLight
+    /// Resolve defaults before rendering; explicit source styles remain authored.
+    static func d2RenderContext(theme: Theme, isPrintTarget: Bool) -> D2RenderContext {
+        let destination: DiagramDestination = isPrintTarget ? .print : .screen
+        return D2RenderContext(
+            palette: .resolved(
+                for: destination,
+                foreground: theme.chrome.foreground,
+                background: theme.chrome.background
+            ),
+            destination: destination
+        )
     }
 }

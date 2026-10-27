@@ -42,19 +42,19 @@ struct D2DiagramCacheTests {
         #expect(await counting.callCount == 1)
     }
 
-    @Test func appThemeVariantsShareTheResolvedNeutralArtwork() async throws {
+    @Test func screenThemeChangesInvalidateCachedArtwork() async throws {
         let counting = CountingRenderer()
         let cache = D2DiagramCache(renderer: counting)
         let dark = D2RenderContext(
             foregroundRed: 1, foregroundGreen: 1, foregroundBlue: 1,
             backgroundRed: 0, backgroundGreen: 0, backgroundBlue: 0
         )
-        #expect(dark.palette == Self.context.palette)
+        #expect(dark.palette != Self.context.palette)
 
         _ = try await cache.render(Self.fence("a -> b"), context: Self.context)
         _ = try await cache.render(Self.fence("a -> b"), context: dark)
 
-        #expect(await counting.callCount == 1)
+        #expect(await counting.callCount == 2)
     }
 
     @Test func policyFingerprintChangeCannotReuseAnOldDiagram() async throws {
@@ -66,6 +66,16 @@ struct D2DiagramCacheTests {
         )
         _ = try await cache.render(Self.fence("a -> b"), context: .neutralLight)
         _ = try await cache.render(Self.fence("a -> b"), context: D2RenderContext(palette: updated))
+        #expect(await counting.callCount == 2)
+    }
+
+    @Test func destinationIsPartOfCacheIdentityEvenWithTheSamePalette() async throws {
+        let counting = CountingRenderer()
+        let cache = D2DiagramCache(renderer: counting)
+        let screen = D2RenderContext(palette: .neutralLight, destination: .screen)
+        _ = try await cache.render(Self.fence("a -> b"), context: .neutralLight)
+        _ = try await cache.render(Self.fence("a -> b"), context: screen)
+        _ = try await cache.render(Self.fence("a -> b"), context: .neutralLight)
         #expect(await counting.callCount == 2)
     }
 

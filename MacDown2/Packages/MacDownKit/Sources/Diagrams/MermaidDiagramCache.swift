@@ -56,7 +56,7 @@ public actor MermaidDiagramCache: MermaidDiagramRendering {
     public func render(_ fence: MermaidFence, context: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
         let key = Key(
             sourceDigest: SHA256.hash(data: Data(fence.source.utf8)),
-            paletteFingerprint: context.palette.fingerprint
+            paletteFingerprint: context.fingerprint
         )
         if let cached = entries[key] {
             touch(key)

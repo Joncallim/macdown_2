@@ -41,7 +41,7 @@ public actor D2DiagramCache: D2DiagramRendering {
     public func render(_ fence: D2Fence, context: D2RenderContext) async throws -> RenderedD2Diagram {
         let key = Key(
             sourceDigest: SHA256.hash(data: Data(fence.source.utf8)),
-            paletteFingerprint: context.palette.fingerprint
+            paletteFingerprint: context.fingerprint
         )
         if let cached = entries[key] {
             touch(key)
