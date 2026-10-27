@@ -42,7 +42,11 @@ extension MermaidWebRendererTests {
         for source in sources {
             let diagram = try await renderer.render(Self.fence(source), context: dark)
             #expect(diagram.svg.localizedCaseInsensitiveContains("#123456"))
-            #expect(diagram.svg.localizedCaseInsensitiveContains("#000000"))
+            #expect(diagram.svg.localizedCaseInsensitiveContains(".node path{fill:#123456;"))
+            #expect(diagram.svg.range(
+                of: #"\.label\{[^}]*color:#000000;"#,
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil)
             #expect(diagram.svg.contains(##"fill="#654321""##))
         }
         await renderer.shutdown()

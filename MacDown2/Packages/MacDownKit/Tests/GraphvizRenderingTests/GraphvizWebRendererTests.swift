@@ -293,7 +293,7 @@ extension GraphvizWebRendererTests {
             backgroundRed: 0, backgroundGreen: 0, backgroundBlue: 0
         )
         let diagram = try await renderer.render(Self.fence("digraph { a -> b [label=label]; }"), context: dark)
-        let edge = try Self.groupBody(className: "edge", title: "a&#45;&gt;b", in: diagram.svg)
+        let edge = try Self.groupBody(className: "edge", title: "a-&gt;b", in: diagram.svg)
         #expect(edge.localizedCaseInsensitiveContains("stroke=\"#ffffff\""))
         #expect(edge.localizedCaseInsensitiveContains("fill=\"#ffffff\""))
         let authored = try await renderer.render(Self.fence(
@@ -307,7 +307,7 @@ extension GraphvizWebRendererTests {
         ), context: dark)
         #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"#654321\""))
         #expect(authored.svg.localizedCaseInsensitiveContains("fill=\"#123456\""))
-        let authoredEdge = try Self.groupBody(className: "edge", title: "a&#45;&gt;b", in: authored.svg)
+        let authoredEdge = try Self.groupBody(className: "edge", title: "a-&gt;b", in: authored.svg)
         #expect(authoredEdge.contains("stroke=\"black\""))
         // Graphviz omits SVG's default black text paint instead of emitting it.
         #expect(authoredEdge.range(of: #"<text(?![^>]*fill=)[^>]*>"#, options: .regularExpression) != nil)

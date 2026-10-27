@@ -52,6 +52,9 @@ async function main() {
         assert.equal(result.ok, true, result.message);
         const config = seen.at(-1);
         assert.equal(config.themeVariables.primaryTextColor, palette.text);
+        assert.equal(config.themeVariables.nodeBkg, palette.nodeFill);
+        assert.equal(config.themeVariables.mainBkg, palette.nodeFill);
+        assert.equal(config.themeVariables.textColor, palette.text);
         assert.equal(config.themeVariables.lineColor, palette.stroke);
         for (const key of ['secondaryBorderColor', 'tertiaryBorderColor', 'activationBorderColor',
             'pieStrokeColor', 'pieOuterStrokeColor', 'archGroupBorderColor']) {
@@ -95,12 +98,25 @@ async function main() {
         const config = seen.at(-1);
         assert.equal(config.themeVariables.primaryColor, '#123456');
         assert.equal(config.themeVariables.primaryTextColor, '#000000');
+        assert.equal(config.themeVariables.nodeBkg, '#123456', 'derived flowchart fill');
+        assert.equal(config.themeVariables.mainBkg, '#123456', 'derived primary fill');
+        assert.equal(config.themeVariables.textColor, '#000000', 'derived label paint');
+        assert.equal(config.themeVariables.defaultLinkColor, '#ABCDEF', 'derived edge paint');
         assert.equal(config.themeVariables.lineColor, '#ABCDEF');
         assert.equal(result.svg, '#654321');
         assert.equal(config.securityLevel, 'strict');
         assert.ok(config.secure.includes('securityLevel'));
     }
-    console.log('PASS Mermaid real parser: screen/light/print defaults; authored init/frontmatter colors; strict security');
+    const authoredAlias = '%%{init: {"themeVariables":{"primaryColor":"#123456","nodeBkg":"#112233","primaryTextColor":"#000000","textColor":"#ABCDEF"}}}%%\ngraph TD; A-->B;';
+    assert.equal((await __macdownRenderMermaid(authoredAlias, dark)).ok, true);
+    assert.equal(seen.at(-1).themeVariables.nodeBkg, '#112233', 'explicit alias wins over primary fill');
+    assert.equal(seen.at(-1).themeVariables.textColor, '#ABCDEF', 'explicit text paint wins over primary text');
+    for (const palette of [light, dark, light]) {
+        assert.equal((await __macdownRenderMermaid('graph TD; A-->B;', palette)).ok, true);
+        assert.equal(seen.at(-1).themeVariables.nodeBkg, palette.nodeFill, 'authored fill does not leak');
+        assert.equal(seen.at(-1).themeVariables.textColor, palette.text, 'authored label paint does not leak');
+    }
+    console.log('PASS Mermaid real parser: screen/light/print defaults; authored init/frontmatter derived paints and explicit aliases; strict security');
     delete global.document;
     load('D2Rendering/Resources/d2-browser.js');
     load('D2Rendering/Resources/render.js');

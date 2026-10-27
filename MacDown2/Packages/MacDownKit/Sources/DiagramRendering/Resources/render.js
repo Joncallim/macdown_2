@@ -174,7 +174,7 @@ window.__macdownRenderMermaid = async function (source, theme) {
         var background = theme && theme.canvas ? theme.canvas : "#FFFFFF";
         var nodeFill = theme && theme.nodeFill ? theme.nodeFill : "#F3F5F8";
         var stroke = theme && theme.stroke ? theme.stroke : "#1A1A1A";
-        mermaid.initialize({
+        var configuration = {
             startOnLoad: false,
             securityLevel: "strict",
             secure: [
@@ -235,10 +235,21 @@ window.__macdownRenderMermaid = async function (source, theme) {
                 pie9: theme.pie9,
                 pie10: theme.pie10,
                 pie11: theme.pie11,
-                pie12: theme.pie12,
-                textColor: foreground
+                pie12: theme.pie12
             }
-        });
+        };
+        mermaid.initialize(configuration);
+        // Use Mermaid's own sanitized source config, rather than its merged
+        // config: the latter already contains computed aliases such as nodeBkg.
+        // Reinitialize from raw defaults plus authored variables so primaryColor
+        // and primaryTextColor can also update the paints derived from them.
+        var parsed = await mermaid.parse(source);
+        if (parsed.config.themeVariables) {
+            configuration.themeVariables = Object.assign(
+                {}, configuration.themeVariables, parsed.config.themeVariables
+            );
+            mermaid.initialize(configuration);
+        }
         var result = await mermaid.render(id, source);
         // Read the resolved library configuration after its own safe directive
         // parser has applied init/frontmatter. An authored canvas color is
