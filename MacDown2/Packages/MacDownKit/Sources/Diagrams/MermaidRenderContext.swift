@@ -1,15 +1,15 @@
-import Foundation
+import Themes
 
-/// Fixed neutral-light Mermaid policy. The component-shaped initializer stays
-/// source-compatible, but app-theme colors are deliberately ignored.
+/// A resolved diagram policy, independent of the surrounding app theme.
 public struct MermaidRenderContext: Sendable, Equatable, Hashable {
-    public let foregroundRed: Double
-    public let foregroundGreen: Double
-    public let foregroundBlue: Double
-    public let backgroundRed: Double
-    public let backgroundGreen: Double
-    public let backgroundBlue: Double
+    public let palette: DiagramPalette
 
+    public init(palette: DiagramPalette = .neutralLight) {
+        self.palette = palette
+    }
+
+    /// Preserve callers of the earlier component API without allowing an
+    /// app theme to change first-party diagram defaults.
     public init(
         foregroundRed _: Double,
         foregroundGreen _: Double,
@@ -18,16 +18,8 @@ public struct MermaidRenderContext: Sendable, Equatable, Hashable {
         backgroundGreen _: Double,
         backgroundBlue _: Double
     ) {
-        foregroundRed = 0x1A / 255.0
-        foregroundGreen = 0x1A / 255.0
-        foregroundBlue = 0x1A / 255.0
-        backgroundRed = 1
-        backgroundGreen = 1
-        backgroundBlue = 1
+        palette = .neutralLight
     }
 
-    public static let neutralLight = MermaidRenderContext(
-        foregroundRed: 0x1A / 255.0, foregroundGreen: 0x1A / 255.0, foregroundBlue: 0x1A / 255.0,
-        backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
-    )
+    public static let neutralLight = MermaidRenderContext()
 }

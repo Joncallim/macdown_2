@@ -23,22 +23,43 @@ function getViz() {
     return __vizInstancePromise;
 }
 
+function opaqueGraphvizCanvas(svg, fill) {
+    const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+    const root = document.documentElement;
+    if (!root || root.localName !== "svg") throw new Error("invalid Graphviz SVG root");
+    const values = (root.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    if (values.length !== 4 || !values.every(Number.isFinite) || values[2] <= 0 || values[3] <= 0) {
+        throw new Error("invalid Graphviz SVG dimensions");
+    }
+    const canvas = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    canvas.setAttribute("x", String(values[0]));
+    canvas.setAttribute("y", String(values[1]));
+    canvas.setAttribute("width", String(values[2]));
+    canvas.setAttribute("height", String(values[3]));
+    canvas.setAttribute("fill", fill);
+    root.insertBefore(canvas, root.firstChild);
+    return { svg: new XMLSerializer().serializeToString(root), width: values[2], height: values[3] };
+}
+
 window.__macdownRenderGraphviz = async function (source, theme) {
     try {
+        if (!theme || theme.policyID !== "neutral-light-v1") {
+            throw new Error("unsupported diagram palette");
+        }
         const viz = await getViz();
-        const background = "#FFFFFF";
+        const background = theme && theme.canvas ? theme.canvas : "#FFFFFF";
         const svg = viz.renderString(source, {
             format: "svg",
-            graphAttributes: { bgcolor: background }
+            graphAttributes: {
+                bgcolor: background,
+                fontcolor: theme.text
+            },
+            nodeAttributes: {
+                fontcolor: theme.text
+            }
         });
-        let width = 0;
-        let height = 0;
-        const viewBoxMatch = svg.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/);
-        if (viewBoxMatch) {
-            width = parseFloat(viewBoxMatch[3]);
-            height = parseFloat(viewBoxMatch[4]);
-        }
-        return { ok: true, svg: svg, width: width, height: height };
+        const canvas = opaqueGraphvizCanvas(svg, background);
+        return { ok: true, svg: canvas.svg, width: canvas.width, height: canvas.height };
     } catch (error) {
         const message = error && error.message ? error.message : String(error);
         return { ok: false, message: message };

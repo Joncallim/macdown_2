@@ -139,10 +139,7 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
             "return await window.__macdownRenderMermaid(source, theme);",
             arguments: [
                 "source": source,
-                "theme": [
-                    "foreground": context.foregroundHex,
-                    "background": context.backgroundHex,
-                ],
+                "theme": context.palette.rendererArguments,
             ],
             in: nil,
             contentWorld: .page
@@ -163,6 +160,9 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         let pngData = (dict["png"] as? String).flatMap { Data(base64Encoded: $0) }
         let width = (dict["width"] as? NSNumber)?.doubleValue ?? 0
         let height = (dict["height"] as? NSNumber)?.doubleValue ?? 0
+        guard width.isFinite, height.isFinite, width > 0, height > 0 else {
+            throw MermaidRenderError.rendererUnavailable
+        }
         return RenderedMermaidDiagram(svg: svg, pngData: pngData, naturalWidth: width, naturalHeight: height)
     }
 
@@ -173,6 +173,20 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         let result = try await webView.callAsyncJavaScript(
             "return await window.__macdownInspectMermaidSVG(svg);",
             arguments: ["svg": svg],
+            in: nil,
+            contentWorld: .page
+        )
+        guard let dict = result as? [String: Any] else {
+            throw MermaidRenderError.rendererUnavailable
+        }
+        return dict
+    }
+
+    /// Checks the production raster admission without allocating a large canvas.
+    func inspectRasterSizeForTesting(width: Double, height: Double) async throws -> [String: Any] {
+        let result = try await webView.callAsyncJavaScript(
+            "return checkedRasterSize(width, height);",
+            arguments: ["width": width, "height": height],
             in: nil,
             contentWorld: .page
         )

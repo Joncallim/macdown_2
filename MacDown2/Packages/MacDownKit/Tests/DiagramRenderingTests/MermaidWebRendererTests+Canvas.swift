@@ -7,6 +7,44 @@ import Testing
 /// Canvas rasterization and pie-palette cases of the `MermaidWebRenderer`
 /// suite, kept in an extension so the suite stays one Swift Testing suite.
 extension MermaidWebRendererTests {
+    @Test func explicitNodeColorsRemainAuthored() async throws {
+        let renderer = MermaidWebRenderer()
+        let source = "graph TD; A-->B; style A fill:#123456,stroke:#ABCDEF;"
+        let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#123456"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#ABCDEF"))
+        await renderer.shutdown()
+    }
+
+    @Test @MainActor func canvasRejectsMissingOrNonFiniteDimensions() async throws {
+        for svg in [
+            #"<svg xmlns="http://www.w3.org/2000/svg"/>"#,
+            #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 NaN 80"/>"#,
+        ] {
+            await #expect(throws: Error.self) {
+                _ = try await MermaidSVGProbe.canvasProbe(svg)
+            }
+        }
+    }
+
+    @Test @MainActor func rasterBudgetAdmitsBoundaryAndRejectsOversizeBeforeCanvasCreation() async throws {
+        let page = try await MermaidHarnessPage.make()
+        defer { page.teardown() }
+        let admitted = try await page.inspectRasterSizeForTesting(width: 2048, height: 1024)
+        #expect((admitted["width"] as? NSNumber)?.intValue == 4096)
+        #expect((admitted["height"] as? NSNumber)?.intValue == 2048)
+        for (width, height) in [(2048.5, 100.0), (2048.0, 1024.5), (1e308, 1.0)] {
+            await #expect(throws: Error.self) {
+                _ = try await page.inspectRasterSizeForTesting(width: width, height: height)
+            }
+        }
+        await #expect(throws: Error.self) {
+            _ = try await page.inspectSVGCanvasForTesting(
+                #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1e308 1"/>"#
+            )
+        }
+    }
+
     @Test @MainActor func canvasUsesNegativeOriginAndCommaSeparatedExponentViewBoxForPNG() async throws {
         let probe = try await MermaidSVGProbe.canvasProbe(
             #"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10,-20,3.2e2,1.8e2">"#

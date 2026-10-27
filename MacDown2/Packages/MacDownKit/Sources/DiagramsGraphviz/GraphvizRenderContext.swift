@@ -1,17 +1,14 @@
-import Foundation
+import Themes
 
-/// Fixed neutral-light policy for Graphviz. The legacy component-shaped
-/// initializer remains source-compatible, but app-theme colors are deliberately
-/// ignored because Graphviz artwork uses native defaults on an opaque white
-/// canvas.
+/// A resolved diagram policy, independent of the surrounding app theme.
 public struct GraphvizRenderContext: Sendable, Equatable, Hashable {
-    public let foregroundRed: Double
-    public let foregroundGreen: Double
-    public let foregroundBlue: Double
-    public let backgroundRed: Double
-    public let backgroundGreen: Double
-    public let backgroundBlue: Double
+    public let palette: DiagramPalette
 
+    public init(palette: DiagramPalette = .neutralLight) {
+        self.palette = palette
+    }
+
+    /// Legacy component inputs intentionally resolve to the fixed policy.
     public init(
         foregroundRed _: Double,
         foregroundGreen _: Double,
@@ -20,16 +17,8 @@ public struct GraphvizRenderContext: Sendable, Equatable, Hashable {
         backgroundGreen _: Double,
         backgroundBlue _: Double
     ) {
-        foregroundRed = 0
-        foregroundGreen = 0
-        foregroundBlue = 0
-        backgroundRed = 1
-        backgroundGreen = 1
-        backgroundBlue = 1
+        palette = .neutralLight
     }
 
-    public static let neutralLight = GraphvizRenderContext(
-        foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
-        backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
-    )
+    public static let neutralLight = GraphvizRenderContext()
 }

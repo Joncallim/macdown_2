@@ -1,30 +1,24 @@
-import Foundation
+import Themes
 
-/// Theme inputs, mirroring `MermaidRenderContext`'s shape. Not yet acted
-/// on by `D2WebRenderer` — same disclosed, deliberate scope limit already
-/// recorded for Mermaid (issue #79); not solved for D2/Graphviz here
-/// either (epic-21-implementation.md §6 Definition of Done).
+/// A resolved diagram policy, independent of the surrounding app theme.
 public struct D2RenderContext: Sendable, Equatable, Hashable {
-    public let foregroundRed: Double
-    public let foregroundGreen: Double
-    public let foregroundBlue: Double
-    public let backgroundRed: Double
-    public let backgroundGreen: Double
-    public let backgroundBlue: Double
+    public let palette: DiagramPalette
 
-    public init(
-        foregroundRed: Double,
-        foregroundGreen: Double,
-        foregroundBlue: Double,
-        backgroundRed: Double,
-        backgroundGreen: Double,
-        backgroundBlue: Double
-    ) {
-        self.foregroundRed = foregroundRed
-        self.foregroundGreen = foregroundGreen
-        self.foregroundBlue = foregroundBlue
-        self.backgroundRed = backgroundRed
-        self.backgroundGreen = backgroundGreen
-        self.backgroundBlue = backgroundBlue
+    public init(palette: DiagramPalette = .neutralLight) {
+        self.palette = palette
     }
+
+    /// Legacy component inputs intentionally resolve to the fixed policy.
+    public init(
+        foregroundRed _: Double,
+        foregroundGreen _: Double,
+        foregroundBlue _: Double,
+        backgroundRed _: Double,
+        backgroundGreen _: Double,
+        backgroundBlue _: Double
+    ) {
+        palette = .neutralLight
+    }
+
+    public static let neutralLight = D2RenderContext()
 }

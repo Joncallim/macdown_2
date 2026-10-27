@@ -31,14 +31,11 @@ public actor D2WebRenderer: D2DiagramRendering {
         self.maxOutputBytes = maxOutputBytes
     }
 
-    /// `context`'s theme colors are accepted but not yet passed through
-    /// to D2's own theming — the same disclosed, deliberate scope limit
-    /// already recorded for Mermaid (issue #79).
-    public func render(_ fence: D2Fence, context _: D2RenderContext) async throws -> RenderedD2Diagram {
+    public func render(_ fence: D2Fence, context: D2RenderContext) async throws -> RenderedD2Diagram {
         let activePool = try availablePool()
         let diagram = try await withPoolErrorMapping {
             try await activePool.withPage { page in
-                try await Self.render(fence, on: page)
+                try await Self.render(fence, context: context, on: page)
             }
         }
         let byteCount = diagram.svg.utf8.count
@@ -82,16 +79,20 @@ public actor D2WebRenderer: D2DiagramRendering {
     }
 
     @MainActor
-    private static func render(_ fence: D2Fence, on page: DiagramHarnessPage) async throws -> RenderedD2Diagram {
+    private static func render(_ fence: D2Fence, context: D2RenderContext,
+                               on page: DiagramHarnessPage) async throws -> RenderedD2Diagram {
         let result = try await page.evaluate(
-            "return await window.__macdownRenderD2(source);",
-            arguments: ["source": fence.source]
+            "return await window.__macdownRenderD2(source, theme);",
+            arguments: ["source": fence.source, "theme": context.palette.rendererArguments]
         )
         guard result.succeeded else {
             let message = result.message ?? "unknown error"
             throw D2RenderError.invalidSyntax(message)
         }
         guard let svg = result.svg else {
+            throw D2RenderError.rendererUnavailable
+        }
+        guard result.width.isFinite, result.height.isFinite, result.width > 0, result.height > 0 else {
             throw D2RenderError.rendererUnavailable
         }
         return RenderedD2Diagram(svg: svg, naturalWidth: result.width, naturalHeight: result.height)

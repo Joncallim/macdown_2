@@ -33,6 +33,26 @@ struct D2WebRendererTests {
         await renderer.shutdown()
     }
 
+    @Test func bundledDefaultProfileUsesLightNodeTextAndStroke() async throws {
+        let renderer = D2WebRenderer()
+        let diagram = try await renderer.render(Self.fence("a -> b"), context: Self.context)
+        // These are actual bundled theme-0 defaults from a real render, not
+        // just proof that themeID/darkThemeID options reached D2.
+        #expect(diagram.svg.contains(".fill-B6{fill:#F7F8FE;}"))
+        #expect(diagram.svg.contains(".fill-N1{fill:#0A0F25;}"))
+        #expect(diagram.svg.contains(".stroke-B1{stroke:#0D32B2;}"))
+        #expect(diagram.svg.range(
+            of: #"<rect[^>]*class=" stroke-B1 fill-B6""#, options: .regularExpression
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: #"<text[^>]*class="text-bold fill-N1"[^>]*>a</text>"#, options: .regularExpression
+        ) != nil)
+        #expect(diagram.svg.range(
+            of: #"<path[^>]*class="connection stroke-B1""#, options: .regularExpression
+        ) != nil)
+        await renderer.shutdown()
+    }
+
     @Test func bundledBackgroundDecodesWhiteInAppKit() async throws {
         let renderer = D2WebRenderer()
         let diagram = try await renderer.render(Self.fence("a -> b"), context: Self.context)

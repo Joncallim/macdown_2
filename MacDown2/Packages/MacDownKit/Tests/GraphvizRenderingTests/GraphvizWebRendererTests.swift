@@ -287,3 +287,18 @@ struct GraphvizWebRendererTests {
         await renderer.shutdown()
     }
 }
+
+extension GraphvizWebRendererTests {
+    @Test func authoredTransparentCanvasAndGraphPaintRemainIntact() async throws {
+        let renderer = GraphvizWebRenderer()
+        let diagram = try await renderer.render(
+            Self.fence("digraph { bgcolor=transparent; node [style=filled, fillcolor=\"#123456\"]; a -> b; }"),
+            context: Self.context
+        )
+        #expect(diagram.svg.range(
+            of: ##"<svg[^>]*><rect[^>]*fill="#FFFFFF""##, options: .regularExpression
+        ) != nil)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("fill=\"#123456\""))
+        await renderer.shutdown()
+    }
+}

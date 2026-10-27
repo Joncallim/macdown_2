@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Bounded LRU-style cache, mirroring `MermaidDiagramCache`'s exact
@@ -18,8 +19,11 @@ public actor D2DiagramCache: D2DiagramRendering {
     }
 
     private struct Key: Hashable {
-        let source: String
-        let context: D2RenderContext
+        let sourceDigest: SHA256.Digest
+        let paletteFingerprint: String
+        let rendererVersion = "d2-js-0.1.33"
+        let layoutPolicy = "bundled-default-v1"
+        let outputKind = "svg"
     }
 
     private let budget: Budget
@@ -35,7 +39,10 @@ public actor D2DiagramCache: D2DiagramRendering {
     }
 
     public func render(_ fence: D2Fence, context: D2RenderContext) async throws -> RenderedD2Diagram {
-        let key = Key(source: fence.source, context: context)
+        let key = Key(
+            sourceDigest: SHA256.hash(data: Data(fence.source.utf8)),
+            paletteFingerprint: context.palette.fingerprint
+        )
         if let cached = entries[key] {
             touch(key)
             return cached

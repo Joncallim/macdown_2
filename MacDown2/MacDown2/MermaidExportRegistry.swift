@@ -10,8 +10,6 @@ import Themes
 /// only, never for Preview: epic-20-implementation.md §2.2 invariant,
 /// identical reasoning to Math's own).
 extension ContributionRegistry {
-    private static let printSafeForegroundComponent = 0x1A as Double / 255.0
-
     /// One process-lifetime, shared renderer/cache instance backs both
     /// Export (`standardForExport`) and Preview (`MermaidPreviewRenderer`,
     /// Slice 4) — a diagram already rendered for one is not re-rendered for

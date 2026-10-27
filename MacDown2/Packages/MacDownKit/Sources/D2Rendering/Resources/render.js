@@ -42,8 +42,11 @@ function opaqueD2Canvas(svg, fill) {
     return { svg: new XMLSerializer().serializeToString(root), width: values[2], height: values[3] };
 }
 
-window.__macdownRenderD2 = async function (source) {
+window.__macdownRenderD2 = async function (source, theme) {
     try {
+        if (!theme || theme.policyID !== "neutral-light-v1") {
+            throw new Error("unsupported diagram palette");
+        }
         const d2 = new window.D2();
         const compiled = await d2.compile(source);
         // This bundled D2.js version documents themeID/darkThemeID. Pin
@@ -55,7 +58,7 @@ window.__macdownRenderD2 = async function (source) {
             options.darkThemeID = authored.themeID;
         }
         const svg = await d2.render(compiled.diagram, options);
-        const canvas = opaqueD2Canvas(svg, "#FFFFFF");
+        const canvas = opaqueD2Canvas(svg, theme.canvas);
         return { ok: true, svg: canvas.svg, width: canvas.width, height: canvas.height };
     } catch (error) {
         const message = error && error.message ? error.message : String(error);
