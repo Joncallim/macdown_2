@@ -7,8 +7,14 @@ import Observation
 public final class ThemeController {
     public private(set) var light: Theme
     public private(set) var dark: Theme
+    public private(set) var systemAppearance: ThemeAppearance
+    public private(set) var appearanceMode: ThemeAppearanceMode
     public private(set) var appearance: ThemeAppearance
     public private(set) var current: Theme
+
+    /// AppKit owns the actual application appearance. The app assigns this
+    /// callback after construction so Themes stays platform-neutral.
+    public var appearanceModeDidChange: ((ThemeAppearanceMode) -> Void)?
 
     private let availableThemes: [Theme]
     private let preferenceStore: ThemePreferenceStoring
@@ -20,7 +26,11 @@ public final class ThemeController {
     ) {
         availableThemes = available
         self.preferenceStore = preferenceStore
-        self.appearance = appearance
+        let initialAppearanceMode = preferenceStore.loadAppearanceMode() ?? .system
+        systemAppearance = appearance
+        appearanceMode = initialAppearanceMode
+        let effectiveAppearance = initialAppearanceMode.resolvedAppearance(systemAppearance: appearance)
+        self.appearance = effectiveAppearance
 
         let defaultLight = available.first { $0.appearance == .light } ?? BundledThemes.light
         let defaultDark = available.first { $0.appearance == .dark } ?? BundledThemes.dark
@@ -37,17 +47,27 @@ public final class ThemeController {
 
         light = initialLight
         dark = initialDark
-        current = appearance == .dark ? initialDark : initialLight
+        current = effectiveAppearance == .dark ? initialDark : initialLight
     }
 
     public var available: [Theme] {
         availableThemes
     }
 
-    /// Fed by the app from `NSApp.effectiveAppearance` changes.
+    /// Fed by the app from macOS appearance changes.
     public func setAppearance(_ appearance: ThemeAppearance) {
-        self.appearance = appearance
-        current = appearance == .dark ? dark : light
+        systemAppearance = appearance
+        guard appearanceMode == .system else { return }
+        apply(appearance)
+    }
+
+    /// Applies the app-wide choice without changing either saved theme slot.
+    public func setAppearanceMode(_ mode: ThemeAppearanceMode) {
+        guard appearanceMode != mode else { return }
+        appearanceMode = mode
+        preferenceStore.saveAppearanceMode(mode)
+        apply(mode.resolvedAppearance(systemAppearance: systemAppearance))
+        appearanceModeDidChange?(mode)
     }
 
     /// Select a theme for its appearance slot.
@@ -83,5 +103,10 @@ public final class ThemeController {
             current = theme
         }
         preferenceStore.saveSelection(lightID: light.id, darkID: dark.id)
+    }
+
+    private func apply(_ appearance: ThemeAppearance) {
+        self.appearance = appearance
+        current = appearance == .dark ? dark : light
     }
 }

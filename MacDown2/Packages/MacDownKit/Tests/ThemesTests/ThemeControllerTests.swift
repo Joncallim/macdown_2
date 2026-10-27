@@ -4,6 +4,7 @@ import Testing
 
 final class FakeThemePreferenceStore: ThemePreferenceStoring, @unchecked Sendable {
     private var selection: (lightID: String, darkID: String)?
+    private var appearanceMode: ThemeAppearanceMode?
     private var writes = 0
     private let lock = NSLock()
 
@@ -24,6 +25,18 @@ final class FakeThemePreferenceStore: ThemePreferenceStoring, @unchecked Sendabl
         defer { lock.unlock() }
         selection = (lightID, darkID)
         writes += 1
+    }
+
+    func loadAppearanceMode() -> ThemeAppearanceMode? {
+        lock.lock()
+        defer { lock.unlock() }
+        return appearanceMode
+    }
+
+    func saveAppearanceMode(_ mode: ThemeAppearanceMode) {
+        lock.lock()
+        defer { lock.unlock() }
+        appearanceMode = mode
     }
 }
 
@@ -65,6 +78,57 @@ struct ThemeControllerTests {
 
         controller.setAppearance(.dark)
         #expect(controller.current.id == darkTheme.id)
+    }
+
+    @Test func followsSystemByDefaultAndPersistsManualChoice() {
+        let store = FakeThemePreferenceStore()
+        let controller = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: store,
+            appearance: .light
+        )
+
+        #expect(controller.appearanceMode == .system)
+        controller.setAppearanceMode(.dark)
+        #expect(controller.current.id == darkTheme.id)
+        #expect(store.loadAppearanceMode() == .dark)
+
+        let restored = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: store,
+            appearance: .light
+        )
+        #expect(restored.appearanceMode == .dark)
+        #expect(restored.current.id == darkTheme.id)
+    }
+
+    @Test func manualChoiceIgnoresSystemChangesUntilFollowingSystemAgain() {
+        let controller = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: FakeThemePreferenceStore(),
+            appearance: .light
+        )
+
+        controller.setAppearanceMode(.dark)
+        controller.setAppearance(.light)
+        #expect(controller.current.id == darkTheme.id)
+        #expect(controller.systemAppearance == .light)
+
+        controller.setAppearanceMode(.system)
+        #expect(controller.current.id == lightTheme.id)
+        controller.setAppearance(.dark)
+        #expect(controller.current.id == darkTheme.id)
+    }
+
+    @Test func userDefaultsAppearanceModeRoundTrips() throws {
+        let suiteName = "themes-appearance-mode-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = UserDefaultsThemePreferenceStore(suiteName: suiteName)
+
+        #expect(store.loadAppearanceMode() == nil)
+        store.saveAppearanceMode(.light)
+        #expect(store.loadAppearanceMode() == .light)
     }
 
     @Test func selectThemePersists() {
