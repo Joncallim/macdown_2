@@ -381,6 +381,12 @@ private extension WindowController {
         }
         model.tabStore.setActiveIdentityWillChange { _, _ in invalidate() }
         model.setFolderAssociationWillChange(invalidate)
-        fileTreeModel.setRootAccessWillChange(invalidate)
+        fileTreeModel.setRootAccessWillChange { [weak self] in
+            invalidate()
+            // A vanished or replaced folder scope must retire the old
+            // search rows synchronously, before a watcher or root rebuild
+            // can leave them actionable against a different folder.
+            self?.folderSearchModel.rootAccessWasRevoked()
+        }
     }
 }

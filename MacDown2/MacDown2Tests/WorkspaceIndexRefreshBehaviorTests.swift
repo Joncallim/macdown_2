@@ -14,47 +14,6 @@ import Workspace
 @MainActor
 @Suite("Workspace index refresh behavior")
 struct WorkspaceIndexRefreshBehaviorTests {
-    private func makeController(
-        root: URL,
-        index: WorkspaceFileIndex = WorkspaceFileIndex()
-    ) async throws -> ControllerFixture {
-        let suiteName = "index-refresh-\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        let preferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
-        let stateDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("index-session-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: stateDirectory, withIntermediateDirectories: true)
-        let coordinator = WindowCoordinator(
-            sessionStore: WorkspaceSessionStore(fileURL: stateDirectory.appendingPathComponent("session.json")),
-            themeController: ThemeController(),
-            grammarRegistry: GrammarRegistry(),
-            fileTreePreferences: preferences,
-            recentFolderRoots: RecentFolderRoots(preferences: preferences),
-            recentFileDocuments: RecentFileDocuments(preferences: preferences),
-            appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),
-            workspaceStateStore: WorkspaceStateStore(defaults: defaults)
-        )
-        let model = coordinator.makeWindowModel()
-        model.newDocument()
-        let controller = WindowController(
-            model: model,
-            coordinator: coordinator,
-            themeController: ThemeController(),
-            grammarRegistry: GrammarRegistry(),
-            fileTreePreferences: preferences,
-            workspaceFileIndex: index
-        )
-        coordinator.controllers = [controller]
-        await controller.setFileTreeRoot(root)
-        return ControllerFixture(
-            controller: controller,
-            coordinator: coordinator,
-            defaults: defaults,
-            suiteName: suiteName,
-            stateDirectory: stateDirectory
-        )
-    }
-
     private func paths(_ controller: WindowController) async -> Set<String> {
         await Set(controller.workspaceFileIndex.allPaths().map(\.relativePath))
     }
@@ -67,6 +26,147 @@ struct WorkspaceIndexRefreshBehaviorTests {
             try Data().write(to: root.appendingPathComponent(file))
         }
         return root
+    }
+
+    private func waitForSearch(
+        _ model: FolderSearchModel,
+        paths expectedPaths: Set<String>,
+        outcome expectedOutcome: FolderSearchOutcome? = nil
+    ) async throws {
+        for _ in 0 ..< 200 {
+            let paths = Set(model.results.map(\.relativePath))
+            if !model.isSearching, paths == expectedPaths, model.outcome != nil,
+               expectedOutcome == nil || model.outcome == expectedOutcome {
+                return
+            }
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        Issue.record("Folder Search did not reflect the completed index refresh")
+    }
+
+    @Test func anActiveFolderSearchFollowsSameRootIndexRefreshes() async throws {
+        let root = try tempRoot(["a.md"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "needle a".write(to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+        let fixture = try await makeController(root: root)
+        defer { fixture.retire() }
+        let controller = fixture.controller
+        let search = controller.folderSearchModel
+        search.query = "needle"
+        try await waitForSearch(search, paths: ["a.md"])
+
+        try "needle b".write(to: root.appendingPathComponent("b.md"), atomically: true, encoding: .utf8)
+        await controller.refreshWorkspaceIndex()
+        try await waitForSearch(search, paths: ["a.md", "b.md"])
+
+        try FileManager.default.removeItem(at: root.appendingPathComponent("a.md"))
+        await controller.refreshWorkspaceIndex()
+        try await waitForSearch(search, paths: ["b.md"])
+    }
+
+    @Test func aFailedIndexRefreshReplacesStaleSearchResultsAndRecoveryRerunsTheQuery() async throws {
+        let root = try tempRoot(["a.md"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "needle".write(to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+        let probe = IndexWalkProbe(unavailableRoot: root, unavailableWalkNumber: 2)
+        let fixture = try await makeController(root: root, index: probe.makeIndex())
+        defer { fixture.retire() }
+        let controller = fixture.controller
+        let search = controller.folderSearchModel
+        search.query = "needle"
+        try await waitForSearch(search, paths: ["a.md"])
+
+        await controller.refreshWorkspaceIndex()
+        #expect(probe.injectedUnavailabilityWasObserved)
+        try await waitForSearch(search, paths: [], outcome: .indexUnavailable)
+
+        try "needle again".write(to: root.appendingPathComponent("restored.md"), atomically: true, encoding: .utf8)
+        await controller.refreshWorkspaceIndex()
+        try await waitForSearch(search, paths: ["a.md", "restored.md"])
+    }
+
+    @Test func losingTheFolderAccessScopeRetiresVisibleSearchResults() async throws {
+        let root = try tempRoot(["a.md"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "needle".write(to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+        let fixture = try await makeController(root: root)
+        defer { fixture.retire() }
+        let search = fixture.controller.folderSearchModel
+        search.query = "needle"
+        try await waitForSearch(search, paths: ["a.md"])
+
+        fixture.controller.fileTreeModel.tearDown()
+
+        #expect(fixture.controller.fileTreeModel.rootAccessURL == nil)
+        #expect(search.root == nil)
+        #expect(search.results.isEmpty)
+        #expect(search.outcome == .indexUnavailable)
+        search.query = "another term"
+        #expect(search.outcome == .indexUnavailable)
+    }
+
+    @Test func automaticRefreshNeverReincludesExcludedOrUnreviewedReplaceTargets() async throws {
+        let root = try tempRoot(["a.md", "b.md"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "needle a".write(to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+        try "needle b".write(to: root.appendingPathComponent("b.md"), atomically: true, encoding: .utf8)
+        let fixture = try await makeController(root: root)
+        defer { fixture.retire() }
+        let controller = fixture.controller
+        let search = controller.folderSearchModel
+        search.query = "needle"
+        try await waitForSearch(search, paths: ["a.md", "b.md"])
+
+        search.isReplaceVisible = true
+        search.replacement = "changed"
+        search.setIncluded(false, path: "a.md")
+        search.requestReplace()
+        #expect(search.isConfirmingReplace)
+        let previousSummary = FolderReplaceSummary(replacedMatches: 1, replacedFiles: 1, skipped: [])
+        search.replaceSummary = previousSummary
+
+        try "needle c".write(to: root.appendingPathComponent("c.md"), atomically: true, encoding: .utf8)
+        await controller.refreshWorkspaceIndex()
+        try await waitForSearch(search, paths: ["a.md", "b.md", "c.md"])
+
+        #expect(!search.isConfirmingReplace)
+        #expect(search.replaceSummary == previousSummary)
+        #expect(Set(search.includedResults.map(\.relativePath)) == ["b.md"])
+        #expect(!search.isIncluded(path: "a.md"))
+        #expect(!search.isIncluded(path: "c.md"))
+
+        search.requestReplace()
+        search.confirmReplace()
+        for _ in 0 ..< 200 where search.isReplacing {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        #expect(search.replaceSummary?.replacedFiles == 1)
+        #expect(try String(contentsOf: root.appendingPathComponent("a.md"), encoding: .utf8) == "needle a")
+        #expect(try String(contentsOf: root.appendingPathComponent("b.md"), encoding: .utf8) == "changed b")
+        #expect(try String(contentsOf: root.appendingPathComponent("c.md"), encoding: .utf8) == "needle c")
+    }
+
+    @Test func changedResultRevisionNeedsFreshReplaceSelectionAfterIndexRefresh() async throws {
+        let root = try tempRoot(["a.md"])
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "needle".write(to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+        let fixture = try await makeController(root: root)
+        defer { fixture.retire() }
+        let controller = fixture.controller
+        let search = controller.folderSearchModel
+        search.query = "needle"
+        try await waitForSearch(search, paths: ["a.md"])
+        search.isReplaceVisible = true
+        #expect(search.isIncluded(path: "a.md"))
+
+        try "needle changed externally".write(
+            to: root.appendingPathComponent("a.md"), atomically: true, encoding: .utf8
+        )
+        await controller.refreshWorkspaceIndex()
+        try await waitForSearch(search, paths: ["a.md"])
+
+        #expect(!search.isIncluded(path: "a.md"))
+        #expect(!search.canReplace)
     }
 
     @Test func aFileAddedByAnotherProgramAppearsAfterTheIndexRefreshes() async throws {
@@ -158,11 +258,8 @@ struct WorkspaceIndexRefreshBehaviorTests {
 
     @Test func failedForcedRefreshInvalidatesFreshnessSoActivationRetries() async throws {
         let root = try tempRoot(["a.md"])
-        defer {
-            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
-            try? FileManager.default.removeItem(at: root)
-        }
-        let probe = IndexWalkProbe(unreadableRoot: root, unreadableWalkNumber: 2)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let probe = IndexWalkProbe(unavailableRoot: root, unavailableWalkNumber: 2)
         let fixture = try await makeController(root: root, index: probe.makeIndex())
         defer { fixture.retire() }
         let controller = fixture.controller
@@ -176,12 +273,11 @@ struct WorkspaceIndexRefreshBehaviorTests {
             Issue.record("the forced refresh should fail after access is removed")
             return
         }
-        #expect(probe.permissionChangeSucceeded)
+        #expect(probe.injectedUnavailabilityWasObserved)
         #expect(controller.lastWorkspaceIndexRefresh == nil)
         #expect(controller.lastWorkspaceIndexRefreshRoot == nil)
         #expect(controller.lastWorkspaceIndexRefreshGeneration == nil)
 
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
         await controller.refreshWorkspaceIndex(minInterval: 60)
 
         #expect(probe.count == 3)
@@ -192,5 +288,48 @@ struct WorkspaceIndexRefreshBehaviorTests {
             return
         }
         #expect(await paths(controller) == ["a.md"])
+    }
+}
+
+extension WorkspaceIndexRefreshBehaviorTests {
+    private func makeController(
+        root: URL,
+        index: WorkspaceFileIndex = WorkspaceFileIndex()
+    ) async throws -> ControllerFixture {
+        let suiteName = "index-refresh-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let preferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
+        let stateDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("index-session-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: stateDirectory, withIntermediateDirectories: true)
+        let coordinator = WindowCoordinator(
+            sessionStore: WorkspaceSessionStore(fileURL: stateDirectory.appendingPathComponent("session.json")),
+            themeController: ThemeController(),
+            grammarRegistry: GrammarRegistry(),
+            fileTreePreferences: preferences,
+            recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
+            appSettings: AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults)),
+            workspaceStateStore: WorkspaceStateStore(defaults: defaults)
+        )
+        let model = coordinator.makeWindowModel()
+        model.newDocument()
+        let controller = WindowController(
+            model: model,
+            coordinator: coordinator,
+            themeController: ThemeController(),
+            grammarRegistry: GrammarRegistry(),
+            fileTreePreferences: preferences,
+            workspaceFileIndex: index
+        )
+        coordinator.controllers = [controller]
+        await controller.setFileTreeRoot(root)
+        return ControllerFixture(
+            controller: controller,
+            coordinator: coordinator,
+            defaults: defaults,
+            suiteName: suiteName,
+            stateDirectory: stateDirectory
+        )
     }
 }

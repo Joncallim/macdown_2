@@ -63,11 +63,13 @@ public actor WorkspaceFileIndex {
     private var generation = 0
     private var currentWalkTask: Task<[IndexedPath], Never>?
     private let walk: @Sendable (URL, Set<String>) -> [IndexedPath]
+    private let simulatedUnavailability: (@Sendable (URL) -> String?)?
 
     public init() {
         walk = { root, excludedDirectoryNames in
             DirectoryWalker().walk(root: root, excludedDirectoryNames: excludedDirectoryNames)
         }
+        simulatedUnavailability = nil
     }
 
     /// Test-only seam (package-internal, not part of the public API):
@@ -81,6 +83,18 @@ public actor WorkspaceFileIndex {
     /// own `RELEASE_HARDENING.md` §12 rules out.
     init(walk: @escaping @Sendable (URL, Set<String>) -> [IndexedPath]) {
         self.walk = walk
+        simulatedUnavailability = nil
+    }
+
+    /// Test-only failure seam. The real root check still runs first; tests
+    /// can then force a failed walk without depending on permission bits,
+    /// which sandboxed macOS runners may ignore.
+    init(
+        walk: @escaping @Sendable (URL, Set<String>) -> [IndexedPath],
+        simulatedUnavailability: @escaping @Sendable (URL) -> String?
+    ) {
+        self.walk = walk
+        self.simulatedUnavailability = simulatedUnavailability
     }
 
     /// Rebuilds the index from `root`, discarding any previous snapshot
@@ -110,7 +124,7 @@ public actor WorkspaceFileIndex {
         // read as a genuinely empty workspace and leave the previous
         // snapshot's rows usable. Report the failure and drop the stale
         // snapshot instead (#183 F18).
-        if let failure = Self.unavailabilityReason(of: root) {
+        if let failure = Self.unavailabilityReason(of: root) ?? simulatedUnavailability?(root) {
             setPaths([])
             state = .failed(failure)
             return

@@ -53,7 +53,8 @@ final class WindowCoordinator {
     private var hasRestoredSession = false
     let documentOpens = KeyedSerialRunner<String>()
     var launchSession: WorkspaceSession? // as at launch; handed out once by `consumeLaunchSession()`
-    private var saveTask: Task<Void, Never>?
+    var saveTask: Task<Void, Never>?
+    @ObservationIgnored var terminationSaveInProgress = false
     var sessionPublicationOrder = SessionPublicationOrder()
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
     /// Test seam: runs after a new controller's root/index rebuild and before publication.
@@ -264,7 +265,11 @@ final class WindowCoordinator {
     /// Schedules a session save, debounced so rapid changes coalesce into one
     /// write. Call this after any structural or document change.
     func scheduleSaveSession() {
+        sessionPublicationOrder.invalidateCapturedSnapshots()
         saveTask?.cancel()
+        guard !terminationSaveInProgress else {
+            return
+        }
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
             guard let self, !Task.isCancelled else { return }

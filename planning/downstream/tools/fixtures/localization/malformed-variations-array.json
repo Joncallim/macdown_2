@@ -1,0 +1,13 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Hello": {
+      "localizations": {
+        "fr": {
+          "stringUnit": { "value": "Bonjour" },
+          "substitutions": { "arg1": { "argNum": 1, "formatSpecifier": "@", "variations": [] } }
+        }
+      }
+    }
+  }
+}
