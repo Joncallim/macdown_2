@@ -1044,6 +1044,12 @@
         }
       }
     },
+    "Save Changes": {
+      "extractionState": "manual"
+    },
+    "Save changes to \"%@\"? If the original file is unavailable, you may be asked to choose a location.": {
+      "extractionState": "manual"
+    },
     "Saving…": {
       "localizations": {
         "fr": {

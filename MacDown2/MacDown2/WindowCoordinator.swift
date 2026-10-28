@@ -154,7 +154,8 @@ final class WindowCoordinator {
         folderRenameURL: URL? = nil,
         relativeTo overrideKeyWindow: NSWindow? = nil,
         encoding: FileEncodingMetadata? = nil,
-        shouldContinue: (@MainActor () -> Bool)? = nil
+        shouldContinue: (@MainActor () -> Bool)? = nil,
+        useAmbientWindow: Bool = true
     ) async {
         guard shouldContinue?() ?? true else { return }
         // A link to a file opens (and saves to) that file; resolved first so the
@@ -175,7 +176,7 @@ final class WindowCoordinator {
             )
             return
         }
-        let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
+        let keyWindow = overrideKeyWindow ?? (useAmbientWindow ? NSApp.keyWindow : nil)
         let model = makeWindowModel()
         let outcome = await model.tabStore.openFileInTab(url, encoding: encoding)
         if shouldContinue != nil {
@@ -203,20 +204,28 @@ final class WindowCoordinator {
         }
         controller.fileTreeModel.selectedURL = folderSelectionURL
         controller.fileTreeModel.renamingURL = folderRenameURL
-        addController(controller, addingAsTab: true, keyWindow: keyWindow)
+        addController(controller, addingAsTab: true, keyWindow: keyWindow, useAmbientWindow: useAmbientWindow)
         recentFileDocuments.record(url)
     }
 
     /// Shows the open panel and opens the chosen file.
     /// - Parameter relativeTo: when non-`nil`, the panel presents against
     ///   this window explicitly and the opened document opens relative to
-    ///   it — used by the command palette (post-review finding #4). `nil`
-    ///   (the real menu path) keeps the previous ambient behavior.
+    ///   it — used by the command palette (post-review finding #4). The real
+    ///   menu path captures the current application window at dispatch.
     func openFile(relativeTo controller: WindowController? = nil) {
+        let trace = OpenPanelTrace()
+        let provider = controller.map { NSFilePanelProvider(window: $0.window) }
+            ?? NSFilePanelProvider(applicationWindow: NSApp.keyWindow)
         Task { @MainActor in
-            let provider = controller.map { NSFilePanelProvider(window: $0.window) } ?? panelProvider
-            guard let url = await provider.chooseFile() else { return }
-            await openDocument(at: url, relativeTo: controller?.window)
+            guard let url = await provider.chooseFile(trace: trace) else { return }
+            guard provider.canCompleteScopedOpen else { return }
+            await openDocument(
+                at: url,
+                relativeTo: provider.scopedOpenWindow,
+                shouldContinue: { provider.canCompleteScopedOpen },
+                useAmbientWindow: false
+            )
         }
     }
 
@@ -346,11 +355,13 @@ final class WindowCoordinator {
     func addController(
         _ controller: WindowController,
         addingAsTab: Bool,
-        keyWindow: NSWindow? = nil
+        keyWindow: NSWindow? = nil,
+        useAmbientWindow: Bool = true
     ) {
         controllers.append(controller)
 
-        if addingAsTab, let key = Self.tabHost(keyWindow ?? NSApp.keyWindow), key != controller.window,
+        let hostWindow = keyWindow ?? (useAmbientWindow ? NSApp.keyWindow : nil)
+        if addingAsTab, let key = Self.tabHost(hostWindow), key != controller.window,
            let tab = controller.window {
             key.addTabbedWindow(tab, ordered: .above)
         }
@@ -382,15 +393,4 @@ final class WindowCoordinator {
     func commandStateDidChange() {
         commandStateRevision &+= 1
     }
-}
-
-// MARK: - Session snapshot
-
-struct TabSnapshot {
-    let record: TabRecord
-    let documentID: String
-    let documentText: String
-    let documentState: FileDocumentState
-    let documentGeneration: UInt
-    let documentRecoveryEpoch: UUID
 }
