@@ -394,14 +394,3 @@ final class WindowCoordinator {
         commandStateRevision &+= 1
     }
 }
-
-// MARK: - Session snapshot
-
-struct TabSnapshot {
-    let record: TabRecord
-    let documentID: String
-    let documentText: String
-    let documentState: FileDocumentState
-    let documentGeneration: UInt
-    let documentRecoveryEpoch: UUID
-}

@@ -36,6 +36,18 @@ private struct ControllerTabSnapshot {
     let tab: TabSnapshot
 }
 
+/// Captures one tab's document state while a window session is being saved.
+/// Kept with the session-publication code so the coordinator's core type stays
+/// focused on live window ownership.
+struct TabSnapshot {
+    let record: TabRecord
+    let documentID: String
+    let documentText: String
+    let documentState: FileDocumentState
+    let documentGeneration: UInt
+    let documentRecoveryEpoch: UUID
+}
+
 /// Orders session publications by snapshot and invalidates snapshots when
 /// session state changes, before the next debounced save begins (#183 F20).
 struct SessionPublicationOrder {
