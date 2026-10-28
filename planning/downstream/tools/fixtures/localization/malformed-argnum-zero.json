@@ -1,0 +1,13 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%lld file": {
+      "localizations": {
+        "fr": {
+          "stringUnit": { "value": "%#@files@" },
+          "substitutions": { "files": { "argNum": 0, "formatSpecifier": "lld" } }
+        }
+      }
+    }
+  }
+}

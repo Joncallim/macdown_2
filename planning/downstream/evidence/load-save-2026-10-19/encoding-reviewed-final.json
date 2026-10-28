@@ -1,0 +1,18 @@
+{
+  "baseHead": "91e62f8f273b3e48cadd7967751fcf3d46d34f1e",
+  "sourceSHA256": {
+    "MacDown2/Packages/MacDownKit/Sources/Workspace/TabStore.swift": "45f6b725ceda31a24c915ec9140a8ad7a7c678c39303d9ebbe10dc67161b767d",
+    "MacDown2/Packages/MacDownKit/Sources/Workspace/TabStore+Opening.swift": "a89dbe2ff3e93d8dd907659bb56d609d64ba59f0e98ee0308c50d232986595c3",
+    "MacDown2/Packages/MacDownKit/Tests/WorkspaceTests/TabStoreEncodingOpenTests.swift": "472fc5e83f05135cf02829ab05e5c079e85db78f845a6267e5eb94ee04e049e7",
+    "MacDown2/Packages/MacDownKit/Tests/WorkspaceTests/FileEncodingSessionRestoreTests.swift": "e29d6af67ee8bf13d1367fa484901aa3ded92ce45d1bced8547fe252e4db0361"
+  },
+  "command": [
+    "swift",
+    "test",
+    "--no-parallel",
+    "--force-resolved-versions",
+    "--filter",
+    "TabStoreEncodingOpenTests|TabStoreCoreTests"
+  ],
+  "exitCode": 0
+}

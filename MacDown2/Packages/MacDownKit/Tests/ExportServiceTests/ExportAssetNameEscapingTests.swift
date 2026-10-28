@@ -1,5 +1,6 @@
 @testable import ExportService
 import Foundation
+import SwiftSoup
 import Testing
 import Themes
 
@@ -22,11 +23,57 @@ struct ExportAssetNameEscapingTests {
         return try String(contentsOf: out, encoding: .utf8)
     }
 
-    @Test(arguments: ["plain.html", "My Notes.html", "café.html", "a&b.html", "it's.html", "100%.html"])
+    @Test(arguments: [
+        "plain.html", "My Notes.html", "café.html", "a&b.html", "it's.html",
+        "100%.html", "report#one.html", "report?one.html", "report%23one.html", "雪.html",
+    ])
     func localImagesAreEmbeddedWhateverTheOutputNameNeedsEscaping(name: String) async throws {
         let html = try await exportedHTML(outputName: name)
         #expect(html.contains("data:image/png;base64,"), "image not embedded for \(name)")
         #expect(!html.contains(".assets/"), "a companion reference was left behind for \(name)")
+    }
+
+    @Test(arguments: ["report#one.html", "report?one.html", "report%23one.html", "雪.html"])
+    func companionImageURLResolvesToTheWrittenManifestFile(name: String) async throws {
+        let dir = try ExportTestSupport.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try ExportTestSupport.writeFixture(named: "pic.png", in: dir, bytes: png)
+        let out = dir.appendingPathComponent(name)
+        let request = ExportRequest(
+            text: "![a](pic.png)\n", sourceGeneration: 1, theme: BundledThemes.light,
+            documentURL: dir.appendingPathComponent("doc.md")
+        )
+        let result = try await ExportService.exportHTML(
+            request, to: .html(url: out, mode: .standalone(style: .embedded))
+        )
+        let html = try String(contentsOf: out, encoding: .utf8)
+        let document = try SwiftSoup.parse(html)
+        let image = try #require(try document.select("img").first())
+        let source = try image.attr("src")
+        let resolved = try #require(URL(string: source, relativeTo: out)?.absoluteURL)
+        let expected = try #require(result.companionFiles.first { $0.lastPathComponent.hasSuffix(".png") })
+        #expect(resolved.standardizedFileURL == expected.standardizedFileURL)
+        #expect(try Data(contentsOf: resolved) == png)
+    }
+
+    @Test(arguments: ["report#one.html", "report?one.html", "report%23one.html", "雪.html"])
+    func linkedStylesheetURLResolvesToTheWrittenManifestFile(name: String) async throws {
+        let dir = try ExportTestSupport.makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let out = dir.appendingPathComponent(name)
+        let request = ExportRequest(text: "# Heading\n", sourceGeneration: 1, theme: BundledThemes.light)
+        let target = ExportTarget.html(url: out, mode: .standalone(style: .linked))
+        let prepared = try await ExportService.prepare(request, target: target)
+        let stylesheetResource = ExportHTMLWriter.linkedStylesheetResource(for: prepared.stylesheet)
+        let result = try await ExportService.exportHTML(request, to: target)
+        let document = try SwiftSoup.parse(String(contentsOf: out, encoding: .utf8))
+        let stylesheet = try #require(try document.select("link[rel=stylesheet]").first())
+        let href = try stylesheet.attr("href")
+        let resolved = try #require(URL(string: href, relativeTo: out)?.absoluteURL)
+        let expected = try #require(result.companionFiles.first { $0.lastPathComponent.hasSuffix(".css") })
+        #expect(resolved.standardizedFileURL == expected.standardizedFileURL)
+        #expect(expected.lastPathComponent == stylesheetResource.identity.fileName)
+        #expect(try Data(contentsOf: resolved) == stylesheetResource.bytes)
     }
 
     @Test func escapedDestinationMatchesTheRenderersForm() {

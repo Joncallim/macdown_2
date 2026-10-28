@@ -1,3 +1,4 @@
+import AppKit
 @testable import DiagramRendering
 import Diagrams
 import Foundation
@@ -5,12 +6,9 @@ import Testing
 
 @Suite("MermaidWebRenderer")
 struct MermaidWebRendererTests {
-    private static let context = MermaidRenderContext(
-        foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
-        backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
-    )
+    static let context = MermaidRenderContext.neutralLight
 
-    private static func fence(_ source: String) -> MermaidFence {
+    static func fence(_ source: String) -> MermaidFence {
         MermaidFence(source: source, sourceRange: 0 ..< source.count)
     }
 
@@ -25,8 +23,61 @@ struct MermaidWebRendererTests {
         let renderer = MermaidWebRenderer()
         let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: Self.context)
         #expect(diagram.svg.contains("<svg"))
+        #expect(diagram.svg.range(
+            of: ##"<rect x=\"0\" y=\"0\" width=\"[0-9.]+\" height=\"[0-9.]+\" fill=\"#FFFFFF\""##,
+            options: [.regularExpression]
+        ) != nil)
         #expect(diagram.naturalWidth > 0)
         #expect(diagram.naturalHeight > 0)
+        await renderer.shutdown()
+    }
+
+    @Test func sequenceThemeDirectivesCannotOverrideNeutralLightPalette() async throws {
+        let renderer = MermaidWebRenderer()
+        let sources = [
+            """
+            %%{init: {"theme":"dark"}}%%
+            sequenceDiagram
+                Alice->>Bob: Hello
+            """,
+            """
+            ---
+            config:
+              theme: dark
+            ---
+            sequenceDiagram
+                Alice->>Bob: Hello
+            """,
+        ]
+
+        for source in sources {
+            let diagram = try await renderer.render(Self.fence(source), context: Self.context)
+            #expect(!diagram.svg.localizedCaseInsensitiveContains("lightgrey"))
+            #expect(diagram.svg
+                .range(of: #"\.messageLine0\{[^}]*stroke:#1A1A1A"#, options: [.regularExpression]) != nil)
+            #expect(diagram.svg.range(of: #"\.messageText\{[^}]*fill:#1A1A1A"#, options: [.regularExpression]) != nil)
+            #expect(diagram.svg.contains(#"[id$="-arrowhead"] path{fill:#1A1A1A;stroke:#1A1A1A;}"#))
+
+            let messageLine = try MermaidSVGProbe.svgTag(named: "line", withClass: "messageLine0", in: diagram.svg)
+            let viewBox = try MermaidSVGProbe.svgViewBox(in: diagram.svg)
+            let pngData = try #require(diagram.pngData)
+            let lineStart = try CGPoint(
+                x: MermaidSVGProbe.svgNumberAttribute("x1", from: messageLine),
+                y: MermaidSVGProbe.svgNumberAttribute("y1", from: messageLine)
+            )
+            let lineEnd = try CGPoint(
+                x: MermaidSVGProbe.svgNumberAttribute("x2", from: messageLine),
+                y: MermaidSVGProbe.svgNumberAttribute("y2", from: messageLine)
+            )
+            let lineMidpoint = CGPoint(x: (lineStart.x + lineEnd.x) / 2, y: (lineStart.y + lineEnd.y) / 2)
+            #expect(try MermaidSVGProbe.containsDarkPixel(
+                in: pngData, aroundSVGPoint: lineMidpoint, viewBox: viewBox, radius: 5
+            ))
+            #expect(try MermaidSVGProbe.containsDarkPixel(
+                in: pngData, aroundSVGPoint: lineEnd, viewBox: viewBox, radius: 14
+            ))
+        }
+
         await renderer.shutdown()
     }
 
@@ -64,6 +115,39 @@ struct MermaidWebRendererTests {
         // a failed render must not leave the page in a poisoned state.
         let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: Self.context)
         #expect(diagram.svg.contains("<svg"))
+        await renderer.shutdown()
+    }
+
+    @Test func samePooledPageTracksLightDarkLightContexts() async throws {
+        let renderer = MermaidWebRenderer(poolSize: 1)
+        let light = Self.context
+        let dark = MermaidRenderContext(
+            foregroundRed: 0xEE / 255.0, foregroundGreen: 0xDD / 255.0, foregroundBlue: 0xCC / 255.0,
+            backgroundRed: 0x11 / 255.0, backgroundGreen: 0x22 / 255.0, backgroundBlue: 0x33 / 255.0
+        )
+        let lightSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: light).svg
+        let darkSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: dark).svg
+        let lightAgainSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: light).svg
+        #expect(lightSVG.localizedCaseInsensitiveContains("#1A1A1A"))
+        #expect(lightSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#EEDDCC"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#112233"))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#1A1A1A"))
+        #expect(lightAgainSVG.localizedCaseInsensitiveContains("#ffffff"))
+        await renderer.shutdown()
+    }
+
+    @Test func nonFiniteAndOutOfRangeComponentsNormalizeSafely() async throws {
+        let renderer = MermaidWebRenderer()
+        let context = MermaidRenderContext(
+            foregroundRed: .nan, foregroundGreen: .infinity, foregroundBlue: -.infinity,
+            backgroundRed: 2, backgroundGreen: -1, backgroundBlue: .nan
+        )
+        let diagram = try await renderer.render(Self.fence("graph TD; A-->B;"), context: context)
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#1A1A1A"))
+        #expect(diagram.svg.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(!diagram.svg.localizedCaseInsensitiveContains("nan"))
+        #expect(!diagram.svg.localizedCaseInsensitiveContains("infinity"))
         await renderer.shutdown()
     }
 

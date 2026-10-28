@@ -23,7 +23,26 @@ struct CommandRegistryConsistencyTests {
         var titles: Set<String> = []
         for file in files {
             let text = try String(contentsOf: sourceDirectory.appendingPathComponent(file), encoding: .utf8)
-            for line in text.split(separator: "\n") where !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") {
+            // The catalog describes shipped commands. The native acceptance
+            // menu exists only in a separately flagged test build.
+            var acceptanceBlockDepth = 0
+            for line in text.split(separator: "\n") {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed == "#if ISSUE117_NATIVE_ACCEPTANCE" {
+                    acceptanceBlockDepth += 1
+                    continue
+                }
+                if acceptanceBlockDepth > 0 {
+                    if trimmed.hasPrefix("#if ") {
+                        acceptanceBlockDepth += 1
+                    } else if trimmed == "#endif" {
+                        acceptanceBlockDepth -= 1
+                    }
+                    continue
+                }
+                if trimmed.hasPrefix("//") {
+                    continue
+                }
                 for match in line.matches(of: pattern) {
                     if let title = match.output[1].substring {
                         titles.insert(String(title))
@@ -55,6 +74,8 @@ struct CommandRegistryConsistencyTests {
         #expect(titles.count > 40, "scan found only \(titles.count) titles; the source location is probably wrong")
         #expect(titles.contains("Save As…"))
         #expect(titles.contains("Sort Lines"))
+        #expect(!titles.contains("Validate Export… (#117 Test Build)"))
+        #expect(!titles.contains("Show #117 Acceptance Log"))
     }
 
     @Test func shippedCatalogIsConsistentWithMenuAndPalette() throws {

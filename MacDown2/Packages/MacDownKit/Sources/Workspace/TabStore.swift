@@ -93,6 +93,22 @@ public enum DeletedDocumentOutcome: Sendable, Equatable {
     case needsPrompt(UUID)
 }
 
+/// The identity of the document currently exposed by one tab store. The tab UUID matters even when two tabs
+/// happen to refer to the same file and recovery lifetime: a preview grant never follows a tab switch.
+public struct ActiveDocumentIdentity: Equatable, Sendable {
+    public let tabID: UUID
+    public let documentID: String
+    public let recoveryEpoch: UUID
+    public let fileURL: URL?
+
+    init(tab: WorkspaceTab) {
+        tabID = tab.id
+        documentID = tab.document.id
+        recoveryEpoch = tab.document.recoveryEpoch
+        fileURL = tab.document.fileURL
+    }
+}
+
 /// In-app tab state: ordered tabs, active tab, dirty-close prompts, and session
 /// persistence.
 ///
@@ -103,10 +119,27 @@ public enum DeletedDocumentOutcome: Sendable, Equatable {
 public final class TabStore {
     /// All open tabs, ordered left-to-right. Pinned tabs always precede
     /// unpinned tabs.
-    public internal(set) var tabs: [WorkspaceTab]
+    public internal(set) var tabs: [WorkspaceTab] {
+        willSet {
+            precondition(!isNotifyingActiveIdentityChange, "Active identity callback cannot mutate TabStore")
+            notifyBeforeActiveIdentityChange(from: activeIdentity(in: tabs, selectedBy: activeTabID),
+                                             to: activeIdentity(in: newValue, selectedBy: activeTabID))
+        }
+    }
 
     /// The tab currently shown in the content area.
-    public internal(set) var activeTabID: UUID?
+    public internal(set) var activeTabID: UUID? {
+        willSet {
+            precondition(!isNotifyingActiveIdentityChange, "Active identity callback cannot mutate TabStore")
+            notifyBeforeActiveIdentityChange(from: activeIdentity(in: tabs, selectedBy: activeTabID),
+                                             to: activeIdentity(in: tabs, selectedBy: newValue))
+        }
+    }
+
+    @ObservationIgnored private var activeIdentityWillChange: (@MainActor (
+        ActiveDocumentIdentity?, ActiveDocumentIdentity?
+    ) -> Void)?
+    @ObservationIgnored private var isNotifyingActiveIdentityChange = false
 
     /// Non-nil while the dirty-close alert should be shown for this tab.
     public internal(set) var pendingCloseTabID: UUID?
@@ -155,7 +188,9 @@ public final class TabStore {
     var saveTask: Task<Void, Never>?
     var lastPublishedSession: WorkspaceSession?
     var hasRestoredSession = false
-    private var openRequestGeneration: UInt = 0
+    var openRequestGeneration: UInt = 0
+    /// Test seam inside the detached detection operation; production leaves this unset.
+    var beforeAutomaticEncodingDetection: (@Sendable () -> Void)?
     /// Test seam for an edit arriving after a rename's managed epoch is
     /// prepared but before the batch captures a replacement snapshot.
     var onRenameReplacementPrepared: (@MainActor (FileDocument) async -> Void)?
@@ -186,6 +221,29 @@ public final class TabStore {
         renameSessionPublisher = publisher
     }
 
+    /// Called synchronously before a changed active document or tab identity becomes observable. The callback
+    /// must not mutate this tab store or suspend; preview owners use it to revoke old admission immediately.
+    public func setActiveIdentityWillChange(
+        _ callback: (@MainActor (ActiveDocumentIdentity?, ActiveDocumentIdentity?) -> Void)?
+    ) {
+        precondition(callback == nil || activeIdentityWillChange == nil, "Active identity observer already installed")
+        activeIdentityWillChange = callback
+    }
+
+    private func activeIdentity(in tabs: [WorkspaceTab], selectedBy tabID: UUID?) -> ActiveDocumentIdentity? {
+        guard let tabID, let tab = tabs.first(where: { $0.id == tabID }) else { return nil }
+        return ActiveDocumentIdentity(tab: tab)
+    }
+
+    private func notifyBeforeActiveIdentityChange(
+        from old: ActiveDocumentIdentity?, to new: ActiveDocumentIdentity?
+    ) {
+        guard old != new, let activeIdentityWillChange else { return }
+        isNotifyingActiveIdentityChange = true
+        defer { isNotifyingActiveIdentityChange = false }
+        activeIdentityWillChange(old, new)
+    }
+
     // MARK: - Lifecycle intents
 
     /// Creates a new Markdown tab and activates it.
@@ -200,84 +258,6 @@ public final class TabStore {
         tabs.append(tab)
         activeTabID = tab.id
         persist()
-    }
-
-    /// Opens a file into a tab. If a tab for the same standardized file URL
-    /// already exists, that tab is activated and no new tab is created.
-    /// Returns the resulting tab, or the real reason the file could not be
-    /// loaded — never fabricated, so a permission error is not misreported
-    /// as "file not found."
-    /// The tab already showing `standardized`, made active when this open request
-    /// is still the newest one.
-    private func activateOpenTab(for standardized: URL, requestGeneration: UInt) -> WorkspaceTab? {
-        guard let existing = tabs.first(where: { $0.document.fileURL?.standardizedFileURL == standardized }) else {
-            return nil
-        }
-        if requestGeneration == openRequestGeneration {
-            activeTabID = existing.id
-        }
-        persist()
-        return existing
-    }
-
-    @discardableResult
-    public func openFileInTab(
-        _ url: URL,
-        encoding: FileEncodingMetadata? = nil
-    ) async -> Result<WorkspaceTab, FileStoreError> {
-        let url = url.resolvingFinalSymlink()
-        let standardized = url.standardizedFileURL
-        openRequestGeneration &+= 1
-        let requestGeneration = openRequestGeneration
-
-        if let existing = activateOpenTab(for: standardized, requestGeneration: requestGeneration) {
-            return .success(existing)
-        }
-
-        let document: FileDocument
-        do {
-            document = try await FileDocument.create(
-                fileURL: url,
-                encoding: encoding ?? .utf8Default,
-                recoveryBuffer: recoveryBuffer
-            )
-        } catch {
-            return .failure((error as? FileStoreError) ?? .readFailed(underlying: error))
-        }
-        do {
-            let loaded = try await Task.detached(priority: .userInitiated) {
-                try document.load()
-            }.value
-            // The await above lets another intent open/activate this file.
-            // Reuse that tab rather than publishing a duplicate completion.
-            if let existing = activateOpenTab(for: standardized, requestGeneration: requestGeneration) {
-                return .success(existing)
-            }
-            // BOM-less UTF-16 is "valid UTF-8" — full of NUL bytes. Text with a
-            // NUL whose bytes unmistakably are UTF-16 is reopened as such rather
-            // than shown (and saved back) as garbage.
-            if encoding == nil, loaded.text.unicodeScalars.contains("\u{0}"),
-               let detected = FileStore().conservativelyDetectedEncoding(at: url) {
-                return await openFileInTab(url, encoding: detected)
-            }
-            let tab = WorkspaceTab(document: loaded)
-            tabs.append(tab)
-            if requestGeneration == openRequestGeneration {
-                activeTabID = tab.id
-            }
-            persist()
-            return .success(tab)
-        } catch {
-            let failure = (error as? FileStoreError) ?? .readFailed(underlying: error)
-            // Neither BOM-marked nor valid UTF-8. Retry once if the bytes
-            // themselves identify the encoding (BOM-less UTF-16); anything
-            // ambiguous stays a failure that offers an explicit choice.
-            if encoding == nil, failure.isUndecodableText,
-               let detected = FileStore().conservativelyDetectedEncoding(at: url) {
-                return await openFileInTab(url, encoding: detected)
-            }
-            return .failure(failure)
-        }
     }
 
     // MARK: - Document write-back

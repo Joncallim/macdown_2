@@ -92,13 +92,13 @@ struct WorkspaceCommands: Commands {
                 coordinator?.saveKeyDocument()
             }
             .keyboardShortcut("s", modifiers: .command)
-            .disabled(coordinator?.keyModel?.canSave != true)
+            .disabled(coordinator?.canSaveCurrentDocument != true)
 
             Button("Save As…") {
                 coordinator?.saveKeyDocumentAs()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
-            .disabled(coordinator?.keyModel?.hasActiveDocument != true)
+            .disabled(coordinator?.canSaveAsCurrentDocument != true)
 
             encodingMenus
 
@@ -115,6 +115,17 @@ struct WorkspaceCommands: Commands {
             }
             .keyboardShortcut("e", modifiers: [.command, .shift])
             .disabled(coordinator?.exportCoordinator.canExportActiveDocument != true)
+
+            #if ISSUE117_NATIVE_ACCEPTANCE
+                Button("Validate Export… (#117 Test Build)") {
+                    Issue117NativeAcceptance.run(from: coordinator)
+                }
+                .disabled(coordinator?.exportCoordinator.canExportActiveDocument != true)
+
+                Button("Show #117 Acceptance Log") {
+                    Issue117NativeAcceptance.showLog()
+                }
+            #endif
         }
 
         CommandMenu("Folder") {
@@ -199,6 +210,18 @@ struct WorkspaceCommands: Commands {
                     }
                 )
                 .keyboardShortcut("3", modifiers: [.command, .option])
+            }
+
+            Picker(
+                "Appearance",
+                selection: Binding(
+                    get: { themeController.appearanceMode },
+                    set: { themeController.setAppearanceMode($0) }
+                )
+            ) {
+                Text("Follow System").tag(ThemeAppearanceMode.system)
+                Text("Light").tag(ThemeAppearanceMode.light)
+                Text("Dark").tag(ThemeAppearanceMode.dark)
             }
 
             Menu("Theme") {

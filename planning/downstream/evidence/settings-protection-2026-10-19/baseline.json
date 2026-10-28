@@ -1,0 +1,13 @@
+{
+  "baseHead": "a4c48bc72955db21bdd8546c0e97bff051093216",
+  "command": [
+    "swift",
+    "test",
+    "--no-parallel",
+    "--force-resolved-versions",
+    "--filter",
+    "SettingsWriteProtectionTests"
+  ],
+  "exitCode": 1,
+  "testSHA256": "fa8ed609f8dd9bd6f2d5f6947b59aa997e1aaef98dbca13ae45f6383111245bd"
+}

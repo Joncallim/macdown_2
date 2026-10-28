@@ -11,6 +11,7 @@
     "paths": [
       "MacDown2/**/*.swift",
       "MacDown2/**/*.xcstrings",
+      "MacDown2/MacDown2/Info.plist",
       "MacDown2/MacDown2/Assets.xcassets/**",
       "MacDown2/Packages/MacDownKit/Sources/*/Resources/harness.html",
       "MacDown2/Packages/MacDownKit/Sources/*/Resources/render.js",
@@ -101,7 +102,7 @@
       "npm_file_sha256": "9898965444a940cdbedda3b039f717e96a86ffe9b3170bf30f8fea94ffb66e8a",
       "modifications": "Trailing `export{lw as D2}` replaced with `window.D2=lw;` (one statement; every other byte identical). Documented in NOTICE.txt.",
       "provenance": "verified",
-      "evidence": "Byte comparison with dist/browser/index.js in the npm tarball @terrastruct/d2@0.1.33 (2026-09-28): 8,194,848-byte common prefix, 2-byte common suffix, difference is exactly the export statement.",
+      "evidence": "The integrity-checked @terrastruct/d2@0.1.33 npm archive matches the shipped browser file except for the documented export replacement. npm gitHead names source commit 581c91096b62d644fb5168313142c836b7e68e74; the js/wasm source-build graph and 16 external Go module licence-text hashes are recorded in compliance/evidence/d2-0.1.33/. This is publisher provenance and source-graph evidence, not an independent rebuild or completed source offer.",
       "lc": [
         "LC-01",
         "LC-03",
@@ -114,7 +115,7 @@
         "status": "planned"
       },
       "open_items": [
-        "LC-03: identify the D2 Go source revision and the Go modules compiled into the embedded WebAssembly, record their licences, and publish the upstream package plus the one-line patch through LC-09."
+        "LC-03: complete independent review of the recorded D2 Go/WASM source graph, including the embedded Liberation Mono WOFF's Reserved Font Name treatment, and publish the upstream package plus the one-line patch through LC-09."
       ],
       "runtime_resources": [
         {
@@ -123,6 +124,172 @@
           "path": "MacDown2/Packages/MacDownKit/Sources/D2Rendering/Resources/d2-browser.js"
         }
       ]
+    },
+    {
+      "id": "d2-liberation-mono",
+      "name": "Liberation Mono WOFF (embedded in D2 WebAssembly via Chroma)",
+      "kind": "embedded",
+      "version": "bundled in Chroma v2.14.0",
+      "upstream": "https://github.com/alecthomas/chroma",
+      "resolution": "exact",
+      "licence": "OFL-1.1",
+      "copyright": [
+        "Digitized data copyright (c) 2010 Google Corporation; Reserved Font Names Arimo, Tinos and Cousine",
+        "Copyright (c) 2012 Red Hat, Inc.; Reserved Font Name Liberation"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/d2--LIBERATION-MONO-OFL.txt",
+          "sha256": "985e76906c34ca203039d0d0aa47237d059de14d7c70c891e7f75171d0258753",
+          "upstream": "https://github.com/alecthomas/chroma",
+          "upstream_revision": "v2.14.0",
+          "upstream_path": "formatters/svg/font_liberation_mono.go"
+        }
+      ],
+      "embedded_in": "d2",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-03",
+        "LC-07"
+      ],
+      "notes": "The Chroma v2.14.0 module ZIP in the retained D2 source-review archive contains the full copyright/OFL header and 233,248-byte base64 WOFF. That exact string occurs once in both publisher d2.wasm variants at byte offset 14,657,061. Decoded WOFF SHA-256: 29d9447a83dbf9866aff37f7dc972441302da97f9a242ea0405f60841e9b630f. Its name table identifies Liberation Mono and OFL-1.1. This proves publisher-byte correspondence, not an independent D2 rebuild or a Reserved Font Name clearance; see compliance/evidence/d2-0.1.33/README.md."
+    },
+    {
+      "id": "expat",
+      "name": "Expat (embedded in Viz.js WebAssembly)",
+      "kind": "embedded",
+      "version": "2.8.4",
+      "upstream": "https://github.com/libexpat/libexpat",
+      "revision": "12cf0b1f25f026a022fe728ad8f7e3d017285b80",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark Cooper",
+        "Copyright (c) 2001-2025 Expat maintainers"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/expat--COPYING.txt",
+          "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
+          "upstream": "https://github.com/libexpat/libexpat",
+          "upstream_revision": "12cf0b1f25f026a022fe728ad8f7e3d017285b80",
+          "upstream_path": "expat/COPYING"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "notes": "The Viz.js 3.30.0 Dockerfile statically builds Expat 2.8.4 and links -lexpat. The npm backend publisher provenance names the same gzip archive digest independently downloaded here. COPYING is byte-identical to that archive. See compliance/evidence/viz-js-3.30.0/ for correspondence checks and limits; no independent rebuild is claimed."
+    },
+    {
+      "id": "graphviz-ellipse-maisonobe",
+      "name": "Luc Maisonobe-derived ellipse routine (via Graphviz/Viz.js)",
+      "kind": "embedded",
+      "version": "Graphviz 16.0.0 source snapshot",
+      "upstream": "https://gitlab.com/graphviz/graphviz",
+      "revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+      "resolution": "exact",
+      "licence": "BSD-3-Clause AND EPL-2.0",
+      "copyright": [
+        "Copyright (c) 2003-2004, Luc Maisonobe",
+        "Copyright (c) 2012 AT&T Intellectual Property"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/graphviz-ellipse--LUC-MAISONOBE.txt",
+          "sha256": "354cf0b3bc6b4bc4b0db8b446aaa3f82777f64debfd3cc12bdd3ffbb1db97c3a",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/common/ellipse.c",
+          "upstream_excerpt": "Verbatim Luc Maisonobe attribution and licence comment; Graphviz EPL-2.0 text is carried by viz-js"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+      "notes": "The Viz.js build links libgvc, which links Graphviz libcommon; its source list includes ellipse.c. That file credits a Luc Maisonobe-derived implementation under a separate three-clause notice alongside Graphviz EPL-2.0. Source linkage does not prove the exact published WebAssembly objects; the broader linked-code audit stays open."
+    },
+    {
+      "id": "graphviz-randomkit",
+      "name": "Random kit routines (via Graphviz/Viz.js)",
+      "kind": "embedded",
+      "version": "Random kit 1.3 in Graphviz 16.0.0",
+      "upstream": "https://gitlab.com/graphviz/graphviz",
+      "revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+      "resolution": "exact",
+      "licence": "BSD-3-Clause AND MIT",
+      "copyright": [
+        "Copyright (c) 2003-2005, Jean-Sebastien Roy",
+        "Copyright (C) 1997-2002, Makoto Matsumoto and Takuji Nishimura"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/graphviz-randomkit--SOURCE-NOTICE.txt",
+          "sha256": "d153c538b26c67cf85a430d30df672154daec3e17be7d92e52dba2887e8d6097",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/neatogen/randomkit.c",
+          "upstream_excerpt": "Verbatim opening copyright and licence comment"
+        },
+        {
+          "path": "compliance/licenses/graphviz-randomkit--HEADER-NOTICE.txt",
+          "sha256": "1be5b0283ded0074ee5c213b0b011a05cfc472fbd4e87518977f7131b972b347",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/neatogen/randomkit.h",
+          "upstream_excerpt": "Verbatim opening copyright and licence comment"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+      "notes": "The Neato plugin source build links libneatogen_C.la, whose source list includes randomkit.c. The C and header comments separately preserve the BSD-style Mersenne Twister notice and MIT permissions. Source linkage does not prove the exact published WebAssembly objects; the broader linked-code audit stays open."
+    },
+    {
+      "id": "graphviz-rbtree",
+      "name": "Graphviz red-black tree library (via Viz.js)",
+      "kind": "embedded",
+      "version": "Graphviz 16.0.0 source snapshot",
+      "upstream": "https://gitlab.com/graphviz/graphviz",
+      "revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+      "resolution": "exact",
+      "licence": "LicenseRef-Graphviz-RBTree",
+      "copyright": [
+        "No explicit copyright line in upstream Graphviz lib/rbtree/LICENSE"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/graphviz-rbtree--LICENSE.txt",
+          "sha256": "fcb423209a3a3909f41e629a4973eab3995ceb93136dd72485fb12ad3de29dfc",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "lib/rbtree/LICENSE"
+        }
+      ],
+      "embedded_in": "viz-js",
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-02",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+      "notes": "The Graphviz 16.0.0 Neato plugin source build links librbtree_C.la, and its overlap source calls the tree functions. Viz.js links the Neato plugin. This is source build linkage, not an independent proof of the exact published WebAssembly code. The upstream text is preserved verbatim under a custom LicenseRef because it has no stated SPDX identifier or explicit copyright line. The broader Graphviz/Emscripten audit remains open."
     },
     {
       "id": "libyaml",
@@ -288,12 +455,40 @@
       ]
     },
     {
+      "id": "katex-react-helpers",
+      "name": "React-derived KaTeX utility helpers (via Mermaid)",
+      "kind": "attribution",
+      "version": "KaTeX 0.16.47",
+      "upstream": "https://github.com/KaTeX/KaTeX",
+      "resolution": "exact",
+      "licence": "Apache-2.0",
+      "copyright": [
+        "Copyright 2013-2014 Facebook, Inc."
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/react-katex--APACHE-2.0.txt",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "upstream": "https://github.com/facebook/react",
+          "upstream_revision": "95d82cacd6e9cc6a2fe6366d79510cc9133886cb",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "evidence": "compliance/evidence/katex-react-attribution/mapping.json",
+      "notes": "Conservative attribution for the hyphenate and escape helpers that KaTeX 0.16.47 explicitly credits to Facebook React under Apache 2. The verified Mermaid source map reaches both helper lines. React v0.11.0 is a matching Apache-era reference for the full licence text, not a proven exact original adaptation revision. The remaining Mermaid nested-attribution item stays open."
+    },
+    {
       "id": "neon",
       "name": "Neon",
       "kind": "swiftpm",
-      "version": "484d6fb",
-      "upstream": "https://github.com/ChimeHQ/Neon",
-      "revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+      "version": "dabf50c",
+      "upstream": "https://github.com/Joncallim/Neon",
+      "revision": "dabf50c947148c49acd0d321dfe8f3805d10b3da",
       "resolution": "exact",
       "licence": "BSD-3-Clause",
       "copyright": [
@@ -303,8 +498,8 @@
         {
           "path": "compliance/licenses/neon--LICENSE.txt",
           "sha256": "d11b5eea8e9ae2f6dd06545633e8daf0dfcbc7dbb911a20d1504c905e5808775",
-          "upstream": "https://github.com/ChimeHQ/Neon",
-          "upstream_revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+          "upstream": "https://github.com/Joncallim/Neon",
+          "upstream_revision": "dabf50c947148c49acd0d321dfe8f3805d10b3da",
           "upstream_path": "LICENSE"
         }
       ],
@@ -314,7 +509,7 @@
         "LC-07"
       ],
       "manifest_requirement": {
-        "revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"
+        "revision": "dabf50c947148c49acd0d321dfe8f3805d10b3da"
       }
     },
     {
@@ -406,6 +601,33 @@
         "exact": "0.8.0"
       },
       "notes": "COPYING bundles several notices (cmark BSD-2-Clause plus MIT-licensed components and test data). It is reproduced in full."
+    },
+    {
+      "id": "swiftsoup",
+      "name": "SwiftSoup",
+      "kind": "swiftpm",
+      "version": "2.13.9",
+      "upstream": "https://github.com/scinfu/SwiftSoup",
+      "revision": "18b80329749eca5ea29fc50211dca5c7eff5bfec",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2009-2025 Jonathan Hedley",
+        "Copyright (c) 2016-2025 Nabil Chatbi (Swift port)"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/swiftsoup--LICENSE.txt",
+          "sha256": "6d9f121428f5571c4e20362fa91186c552f82648c0161dacc12e239b1544d49d",
+          "upstream": "https://github.com/scinfu/SwiftSoup",
+          "upstream_revision": "18b80329749eca5ea29fc50211dca5c7eff5bfec",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": ["LC-01", "LC-07"],
+      "manifest_requirement": {"exact": "2.13.9"},
+      "evidence": "Pinned SwiftSoup 2.13.9 at immutable revision 18b80329749eca5ea29fc50211dca5c7eff5bfec for bounded emitted-HTML anchor analysis (#117). The copied MIT licence matches the clean locked package checkout byte for byte. The preliminary parser/WebKit concordance corpus is retained at GitHub/_cleanup-archive/issue117-anchor-parser-probe-2026-10-21; production target validation still requires its own regression and Release evidence."
     },
     {
       "id": "swift-concurrency-extras",
@@ -505,6 +727,51 @@
         "branch": "main"
       },
       "evidence": "Locked at cbe31cb3601aa29c1f64b6e4328733511126d6d5 in MacDown2/Packages/MacDownKit/Package.resolved (#165), which CI enforces; declared as branch main, so the lock is what fixes the revision; the licence text at this commit is byte-identical to the captured copy (verified 2026-09-28)."
+    },
+    {
+      "id": "prismjs-textual",
+      "name": "Prism.js bundled by Textual",
+      "kind": "swiftpm-resource",
+      "version": "1.29.0",
+      "upstream": "https://github.com/PrismJS/prism",
+      "npm": "prismjs@1.29.0",
+      "revision": "59e5a3471377057de1f401ba38337aca27b80e03",
+      "resolution": "exact",
+      "licence": "MIT",
+      "copyright": [
+        "Copyright (c) 2012 Lea Verou",
+        "Copyright (c) 2024 Guille Gonzalez (Textual header and helpers)"
+      ],
+      "licence_texts": [
+        {
+          "path": "compliance/licenses/prismjs--LICENSE.txt",
+          "sha256": "2b947f0901a7ffcf08a89957da9783c0e9c6e72cb6ce8e959f501ab5409e4d2b",
+          "upstream": "https://github.com/PrismJS/prism",
+          "upstream_revision": "59e5a3471377057de1f401ba38337aca27b80e03",
+          "upstream_path": "LICENSE"
+        },
+        {
+          "path": "compliance/licenses/textual--LICENSE.txt",
+          "sha256": "9c9191ada6888f3da1a888b6c74dae46e98787b1150c734e3b1e5ec5bbf73b09",
+          "upstream": "https://github.com/Joncallim/textual",
+          "upstream_revision": "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6",
+          "upstream_path": "LICENSE"
+        }
+      ],
+      "provenance": "verified",
+      "lc": [
+        "LC-01",
+        "LC-07"
+      ],
+      "modifications": "Textual concatenates the cdnjs Prism 1.29.0 default distribution, 57 npm language-component files, newline separators and its MIT-licensed generated header/token-flattening helpers. The default includes file-highlight; four default grammars are also present among the appended files. No MostlyText modification.",
+      "runtime_resources": [
+        {
+          "name": "prism-bundle.js",
+          "sha256": "22b70192dc9d73377b5b8fe2c85655c7e3218afd37b65db638b4e168c4bacbf5",
+          "source": "textual fork at d3ddabb1da37681083cdc3da706f96cf2fb6a3c6, Sources/Textual/Internal/Highlighter/Prism/prism-bundle.js"
+        }
+      ],
+      "notes": "All 138163 bytes are accounted for in compliance/evidence/prism-textual-1.29.0/bundle-audit.json. Actual app bytes equal the locked Textual resource. CDN default bytes and all appended npm component bytes match; Textual helper equals its source heredoc. This is exact distribution provenance, not reproduced minification or native runtime/network proof. No build-only npm dependencies or merely referenced plugins are treated as shipped."
     },
     {
       "id": "swiftui-math",
@@ -633,9 +900,7 @@
         "LC-01",
         "LC-07"
       ],
-      "open_items": [
-        "Product decision, not a licensing gap: SwiftUIMath copies its whole font bundle, so all 12 fonts ship whether or not MostlyText ever selects them. The notices cover all 12, and the artifact check requires all 12 to be present with these digests. Whether to keep them all or trim unused fonts (which needs a patched or forked dependency) is for E19 and the owner to decide. Until that decision is recorded, this item stays open."
-      ],
+      "open_items": [],
       "runtime_resources": [
         {
           "name": "Asana-Math.otf",
@@ -698,15 +963,15 @@
           "source": "swiftui-math 0.1.0 Sources/SwiftUIMath/mathFonts.bundle/xits-math.otf"
         }
       ],
-      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence). runtime_resources records the 12 font files by upstream digest; they are not in this repository."
+      "notes": "Shipped as SwiftUIMath's mathFonts.bundle resource. The bundle's OFL.txt opens with the STIX/XITS copyright block followed by the full SIL OFL 1.1 text; each other OFL font's own copyright line is recorded in FONT-COPYRIGHTS. Latin Modern Math and TeX Gyre Termes Math are under the GUST Font License (an LPPL-1.3c-based font licence). runtime_resources records the 12 font files by upstream digest; they are not in this repository. The recorded owner decision is to keep all 12 for 1.0 (https://github.com/Joncallim/macdown_2/issues/148#issuecomment-5868785863, corroborated by comment 5867001043). This resolves the font-set decision only: all 12 runtime resource digests, licence texts and the final-artifact check remain required."
     },
     {
       "id": "textual",
       "name": "Textual",
       "kind": "swiftpm",
-      "version": "0.5.0",
-      "upstream": "https://github.com/gonzalezreal/textual",
-      "revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+      "version": "d3ddabb",
+      "upstream": "https://github.com/Joncallim/textual",
+      "revision": "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6",
       "resolution": "exact",
       "licence": "MIT",
       "copyright": [
@@ -716,8 +981,8 @@
         {
           "path": "compliance/licenses/textual--LICENSE.txt",
           "sha256": "9c9191ada6888f3da1a888b6c74dae46e98787b1150c734e3b1e5ec5bbf73b09",
-          "upstream": "https://github.com/gonzalezreal/textual",
-          "upstream_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+          "upstream": "https://github.com/Joncallim/textual",
+          "upstream_revision": "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6",
           "upstream_path": "LICENSE"
         }
       ],
@@ -727,8 +992,9 @@
         "LC-07"
       ],
       "manifest_requirement": {
-        "exact": "0.5.0"
-      }
+        "revision": "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6"
+      },
+      "evidence": "Forked from gonzalezreal/textual 0.5.0 at 01b51875a5406eefc95f52a058cb059e7bc94dc4 for bounded preview-image HTML copy. The MIT licence and bundled Prism bytes match the original digests; the local dependency candidate passed focused tests and independent source review before its immutable revision was pushed."
     },
     {
       "id": "theme-tomorrow-dark",
@@ -1760,15 +2026,21 @@
       "licence_texts": [
         {
           "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/VIZJS-LICENSE.txt",
-          "sha256": "b9a0b3fcb35b2b675f3a199c31eb19edd1dec3aa08687be4fb0d317e865e35cd"
+          "sha256": "f1fb91bf7cbcb42b2af56949e4fa909e1979d5b57c2826cabacdb4b631457720",
+          "upstream": "https://github.com/mdaines/viz-js",
+          "upstream_revision": "99da545270e6e7b127a5c7ba65974b8a604a6358",
+          "upstream_path": "LICENSE"
         },
         {
           "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/GRAPHVIZ-EPL-LICENSE.txt",
-          "sha256": "6e1f002892b81cbe0647019b150c8a056efc1add565671a4f8af629b6cd2cc7b"
+          "sha256": "0becf16567beb77fa252b7664631dd177c8f9a1889e48995b45379c7130e5303",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "upstream_revision": "06fff22d8e1a2aead6de0042e5e5ec2f7749be29",
+          "upstream_path": "COPYING"
         },
         {
           "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/NOTICE.txt",
-          "sha256": "3bc3f8a7d7d089aad4fbc5b1486e9c00df4446f3f0c70bda8eceac7340fbe96f"
+          "sha256": "d463e0d074d10cd5cb61034729d11790c7cce11120763d538678ae97e2a06466"
         }
       ],
       "owns": [
@@ -1786,7 +2058,7 @@
       "npm_file_sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
       "modifications": null,
       "provenance": "verified",
-      "evidence": "SHA-256 equals dist/viz-global.js in the npm tarball @viz-js/viz@3.30.0 (2026-09-28). The bundle reports Graphviz 16.0.0.",
+      "evidence": "2026-10-19: shipped bundle equals the integrity-checked npm tarball; npm gitHead, release tag, wrapper sources and backend publisher provenance agree on revision 99da545270e6e7b127a5c7ba65974b8a604a6358. Graphviz and Expat archive digests match the bundled backend build record. See compliance/evidence/viz-js-3.30.0/. This is not an independent rebuild or signature verification.",
       "lc": [
         "LC-01",
         "LC-02",
@@ -1798,6 +2070,34 @@
           "version": "16.0.0",
           "licence": "EPL-2.0",
           "upstream": "https://gitlab.com/graphviz/graphviz"
+        },
+        {
+          "name": "Expat",
+          "version": "2.8.4",
+          "licence": "MIT",
+          "upstream": "https://github.com/libexpat/libexpat",
+          "inventory_id": "expat"
+        },
+        {
+          "name": "Graphviz red-black tree library",
+          "version": "Graphviz 16.0.0 source snapshot",
+          "licence": "LicenseRef-Graphviz-RBTree",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "inventory_id": "graphviz-rbtree"
+        },
+        {
+          "name": "Luc Maisonobe-derived ellipse routine",
+          "version": "Graphviz 16.0.0 source snapshot",
+          "licence": "BSD-3-Clause AND EPL-2.0",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "inventory_id": "graphviz-ellipse-maisonobe"
+        },
+        {
+          "name": "Random kit routines",
+          "version": "Random kit 1.3 in Graphviz 16.0.0",
+          "licence": "BSD-3-Clause AND MIT",
+          "upstream": "https://gitlab.com/graphviz/graphviz",
+          "inventory_id": "graphviz-randomkit"
         }
       ],
       "source_offer": {
@@ -1807,8 +2107,8 @@
         "status": "planned"
       },
       "open_items": [
-        "LC-02: pin the exact Graphviz 16.0.0 source archive and the viz-js 3.30.0 build scripts, record their hashes and publish them through LC-09.",
-        "Confirm whether the Graphviz WebAssembly build links other libraries (for example expat) that need their own notices."
+        "LC-02: exact Graphviz 16.0.0, Viz.js 3.30.0 and Expat 2.8.4 source/build inputs are hashed in compliance/evidence/viz-js-3.30.0; assemble and review the complete corresponding-source offer, then publish it through LC-09.",
+        "Expat 2.8.4, Graphviz's red-black tree, Luc Maisonobe-derived ellipse routine and Random kit source linkage and notices are recorded. Complete the remaining embedded Graphviz and Emscripten runtime attribution audit, including generated Bison parser skeleton exceptions; the source linker chains alone are not a complete linked-code inventory."
       ],
       "runtime_resources": [
         {
@@ -1816,7 +2116,13 @@
           "sha256": "c857641af952c8f82ac7243917f8563959046e5cfc44d7e84eff9a2b470f5eab",
           "path": "MacDown2/Packages/MacDownKit/Sources/GraphvizRendering/Resources/viz-global.js"
         }
-      ]
+      ],
+      "revision": "99da545270e6e7b127a5c7ba65974b8a604a6358",
+      "source_inputs": {
+        "record": "compliance/evidence/viz-js-3.30.0/source-audit.json",
+        "downloads": "compliance/evidence/viz-js-3.30.0/downloads.json",
+        "scope": "Exact downloaded upstream source and publisher build metadata; public source offer and exhaustive linked-code attribution remain unverified."
+      }
     },
     {
       "id": "yams",

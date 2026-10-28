@@ -1,0 +1,38 @@
+# probe-si = stock tree-sitter da6fe9be + counters; markdown_inline from vendored TreeSitterMarkdown. Each H5TS line: first = fresh parse, second = reparse after a 1-byte edit in the middle.
+--- plain.txt (400 paragraphs) 
+H5TS syms=149 ranges=1 old=1 bytes=37490 ms=5.266 advance=14401 noreuse=0 reduce=14803 maxver=1 reuse_ok=7200 reuse_bytes=7208 select_children=0 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=7200 goto_iters=7200 vc1=14401 vc2=0 vc3=0 vc4+=0
+--- plain.txt (400 paragraphs) one included range per paragraph
+H5TS syms=149 ranges=400 old=1 bytes=37488 ms=4.644 advance=13601 noreuse=0 reduce=13603 maxver=1 reuse_ok=6800 reuse_bytes=6808 select_children=0 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=6800 goto_iters=1363599 vc1=13601 vc2=0 vc3=0 vc4+=0
+--- code.txt (400 paragraphs) 
+H5TS syms=149 ranges=1 old=1 bytes=17490 ms=2.587 advance=11201 noreuse=0 reduce=10003 maxver=1 reuse_ok=7200 reuse_bytes=8292 select_children=0 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=4000 goto_iters=4000 vc1=11201 vc2=0 vc3=0 vc4+=0
+--- code.txt (400 paragraphs) one included range per paragraph
+H5TS syms=149 ranges=400 old=1 bytes=17488 ms=2.394 advance=10401 noreuse=0 reduce=8803 maxver=1 reuse_ok=6800 reuse_bytes=7892 select_children=0 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=3600 goto_iters=721998 vc1=10401 vc2=0 vc3=0 vc4+=0
+--- em.txt (400 paragraphs) 
+H5TS syms=149 ranges=1 old=1 bytes=12800 ms=5.335 advance=17598 noreuse=16396 reduce=35596 maxver=2 reuse_ok=1201 reuse_bytes=1204 select_children=0 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=8799 goto_iters=8799 vc1=1202 vc2=16396 vc3=0 vc4+=0
+--- em.txt (400 paragraphs) one included range per paragraph
+H5TS syms=149 ranges=400 old=1 bytes=12798 ms=5.318 advance=15998 noreuse=14796 reduce=32396 maxver=2 reuse_ok=1201 reuse_bytes=1204 select_children=0 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=8398 goto_iters=1684198 vc1=1202 vc2=14796 vc3=0 vc4+=0
+--- strong.txt (400 paragraphs) 
+H5TS syms=149 ranges=1 old=1 bytes=15200 ms=9.508 advance=30798 noreuse=29596 reduce=54796 maxver=4 reuse_ok=1201 reuse_bytes=1204 select_children=1200 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=23199 goto_iters=23199 vc1=1202 vc2=13996 vc3=7200 vc4+=8400
+--- strong.txt (400 paragraphs) one included range per paragraph
+H5TS syms=149 ranges=400 old=1 bytes=15198 ms=10.473 advance=29198 noreuse=27996 reduce=51596 maxver=4 reuse_ok=1201 reuse_bytes=1204 select_children=1200 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=22798 goto_iters=4571398 vc1=1202 vc2=12396 vc3=7200 vc4+=8400
+--- under.txt (400 paragraphs) 
+H5TS syms=149 ranges=1 old=1 bytes=9200 ms=3.836 advance=12798 noreuse=11996 reduce=25596 maxver=2 reuse_ok=801 reuse_bytes=804 select_children=0 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=7199 goto_iters=7199 vc1=802 vc2=11996 vc3=0 vc4+=0
+--- under.txt (400 paragraphs) one included range per paragraph
+H5TS syms=149 ranges=400 old=1 bytes=9198 ms=3.810 advance=11198 noreuse=10396 reduce=22396 maxver=2 reuse_ok=801 reuse_bytes=804 select_children=0 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=6798 goto_iters=1363398 vc1=802 vc2=10396 vc3=0 vc4+=0
+--- link.txt (400 paragraphs) 
+H5TS syms=149 ranges=1 old=1 bytes=21780 ms=6.828 advance=23200 noreuse=18400 reduce=38400 maxver=3 reuse_ok=3199 reuse_bytes=5202 select_children=800 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=5600 goto_iters=5600 vc1=4800 vc2=16800 vc3=1600 vc4+=0
+--- link.txt (400 paragraphs) one included range per paragraph
+H5TS syms=149 ranges=400 old=1 bytes=21778 ms=6.973 advance=22400 noreuse=18400 reduce=37200 maxver=3 reuse_ok=2799 reuse_bytes=4802 select_children=800 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=5201 goto_iters=1043000 vc1=4000 vc2=16800 vc3=1600 vc4+=0
+--- dense.txt (400 paragraphs) 
+H5TS syms=149 ranges=1 old=1 bytes=49270 ms=55.275 advance=168353 noreuse=168343 reduce=278342 maxver=10 reuse_ok=8 reuse_bytes=11 select_children=2800 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=121955 goto_iters=121955 vc1=10 vc2=6807 vc3=39184 vc4+=122352
+--- dense.txt (400 paragraphs) one included range per paragraph
+H5TS syms=149 ranges=400 old=1 bytes=49268 ms=63.638 advance=164353 noreuse=164343 reduce=270343 maxver=10 reuse_ok=8 reuse_bytes=11 select_children=2800 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=119154 goto_iters=23899554 vc1=10 vc2=6807 vc3=39184 vc4+=118352
+--- dense400.txt    49270 bytes: combined tree (ranges) vs EXPERIMENT E2 separate trees
+H5TS syms=149 ranges=400 old=1 bytes=49268 ms=60.253 advance=164353 noreuse=164343 reduce=270343 maxver=10 reuse_ok=8 reuse_bytes=11 select_children=2800 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=119154 goto_iters=23899554 vc1=10 vc2=6807 vc3=39184 vc4+=118352
+SEPARATE trees=400 total_ms=49.779 worst_one_ms=0.2092
+--- dense1600.txt   199870 bytes: combined tree (ranges) vs EXPERIMENT E2 separate trees
+H5TS syms=149 ranges=1600 old=1 bytes=199868 ms=327.717 advance=657553 noreuse=657543 reduce=1081543 maxver=10 reuse_ok=8 reuse_bytes=11 select_children=11200 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=476754 goto_iters=381678354 vc1=10 vc2=27207 vc3=156784 vc4+=473552
+SEPARATE trees=1600 total_ms=198.513 worst_one_ms=0.2161
+--- dense6400.txt   809470 bytes: combined tree (ranges) vs EXPERIMENT E2 separate trees
+H5TS syms=149 ranges=6400 old=1 bytes=809468 ms=2586.761 advance=2630353 noreuse=2630343 reduce=4326343 maxver=10 reuse_ok=8 reuse_bytes=11 select_children=44800 compare=0 compare_nodes=0 compare_equal=0 ptr_skips=0 lexer_goto=1907154 goto_iters=6103993554 vc1=10 vc2=108807 vc3=627184 vc4+=1894352
+SEPARATE trees=6400 total_ms=814.876 worst_one_ms=0.2770

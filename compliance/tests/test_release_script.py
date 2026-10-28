@@ -24,22 +24,50 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "release/macos/sign-notarize-dmg.sh"
+PIN_SCRIPT = REPO / "MacDown2/scripts/pin-xcode-package-versions.sh"
 
 STUBS = {
     "security": 'echo \'  1) ABCDEF "Developer ID Application: Test Owner (TEAMID1234)"\'',
     "sw_vers": 'echo 26.0',
-    "xcodegen": "true",
+    "xcodegen": "mkdir -p MacDown2.xcodeproj",
     "spctl": "true",
-    "shasum": 'shift 2; for f in "$@"; do echo "0000  $f"; done',
+    "syspolicy_check": 'echo "syspolicy_check $*" >> "$CALLS"; exit "${SYSPOLICY_STATUS:-0}"',
+    "shasum": textwrap.dedent("""\
+        shift 2
+        for f in "$@"; do
+          if grep -q 'rewritten by xcodebuild' "$f"; then digest=1111
+          elif grep -q 'altered before release' "$f"; then digest=2222
+          else digest=0000
+          fi
+          echo "$digest  $f"
+        done"""),
     "defaults": 'case "$3" in CFBundleShortVersionString) echo 0.1.0;; CFBundleVersion) echo 7;; *) echo com.example.App;; esac',
     "codesign": 'case "$*" in *-d*) printf "Authority=Developer ID Application: Test Owner (TEAMID1234)\\nTimestamp=now\\nflags=0x10000(runtime)\\n" >&2;; esac; true',
     "hdiutil": 'for last in "$@"; do :; done; touch "$last"',
     "ditto": 'if [ "$1" = -c ]; then for last in "$@"; do :; done; touch "$last"; else cp -R "$1" "$2"; fi',
     "xcodebuild": textwrap.dedent("""\
         if [ "$1" = -version ]; then echo "Xcode 26.0"; exit 0; fi
+        echo "xcodebuild $*" >> "$CALLS"
         while [ $# -gt 0 ]; do
-          case "$1" in -derivedDataPath) dd="$2"; shift;; -scheme) scheme="$2"; shift;; esac; shift
+          case "$1" in
+            -derivedDataPath) dd="$2"; shift;;
+            -project) project="$2"; shift;;
+            -scheme) scheme="$2"; shift;;
+          esac
+          shift
         done
+        if [ "${XCODE_REWRITES_LOCK:-0}" = 1 ]; then
+          workspace="$(dirname "$project")/MacDown2.xcodeproj/project.xcworkspace/xcshareddata/swiftpm"
+          mkdir -p "$workspace"
+          printf 'rewritten by xcodebuild\\n' > "$workspace/Package.resolved"
+        fi
+        if [ "${XCODE_REWRITES_SOURCE_AND_WORKSPACE_LOCK:-0}" = 1 ]; then
+          source="$(dirname "$project")/Packages/MacDownKit/Package.resolved"
+          workspace="$(dirname "$project")/MacDown2.xcodeproj/project.xcworkspace/xcshareddata/swiftpm"
+          printf 'rewritten by xcodebuild\\n' > "$source"
+          mkdir -p "$workspace"
+          cp "$source" "$workspace/Package.resolved"
+        fi
         out="$dd/Build/Products/Release"; mkdir -p "$out"
         if [ "$scheme" = MacDown2 ]; then mkdir -p "$out/MacDown2.app/Contents"; touch "$out/MacDown2.app/Contents/Info"
         else touch "$out/macdown2"; fi"""),
@@ -73,7 +101,14 @@ class ReleaseScriptModeTests(unittest.TestCase):
         (self.repo / "MacDown2").mkdir()
         shutil.copy(SCRIPT, self.repo / "release/macos/sign-notarize-dmg.sh")
         (self.repo / "compliance/tools/compliance.py").write_text(FAKE_COMPLIANCE)
-        (self.repo / ".gitignore").write_text("build/\n")
+        package_dir = self.repo / "MacDown2/Packages/MacDownKit"
+        package_dir.mkdir(parents=True)
+        (package_dir / "Package.resolved").write_text('{"pins": []}\n')
+        pin_script = self.repo / "MacDown2/scripts/pin-xcode-package-versions.sh"
+        pin_script.parent.mkdir()
+        shutil.copy(PIN_SCRIPT, pin_script)
+        pin_script.chmod(0o755)
+        (self.repo / ".gitignore").write_text("build/\nMacDown2/MacDown2.xcodeproj/\n")
         bin_dir = base / "bin"
         bin_dir.mkdir()
         for name, body in STUBS.items():
@@ -110,6 +145,53 @@ class ReleaseScriptModeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertFalse((self.out / "DerivedData").exists())
         self.assertNotIn("notarytool submit", self.calls.read_text())
+
+    def test_release_builds_use_and_preserve_the_committed_xcode_package_lock(self) -> None:
+        result = self.run_script("--release-candidate")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        source = self.repo / "MacDown2/Packages/MacDownKit/Package.resolved"
+        workspace = (self.repo / "MacDown2/MacDown2.xcodeproj/project.xcworkspace/"
+                     "xcshareddata/swiftpm/Package.resolved")
+        self.assertEqual(workspace.read_text(), source.read_text())
+        builds = [line for line in self.calls.read_text().splitlines() if line.startswith("xcodebuild ")]
+        self.assertEqual(len(builds), 2)
+        self.assertTrue(all("-onlyUsePackageVersionsFromResolvedFile" in build for build in builds))
+
+    def test_release_build_stops_before_notarisation_when_xcode_rewrites_the_lock(self) -> None:
+        result = self.run_script("--release-candidate", XCODE_REWRITES_LOCK="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Package.resolved changed during the Release builds", result.stdout)
+        self.assertNotIn("notarytool submit", self.calls.read_text())
+
+    def test_release_build_stops_when_xcode_rewrites_source_and_workspace_locks(self) -> None:
+        result = self.run_script("--release-candidate", XCODE_REWRITES_SOURCE_AND_WORKSPACE_LOCK="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("source Package.resolved changed during the Release builds", result.stdout)
+        self.assertNotIn("notarytool submit", self.calls.read_text())
+
+    def test_altered_initial_source_lock_is_unverified_for_dry_run_and_fatal_for_release_candidate(self) -> None:
+        source = self.repo / "MacDown2/Packages/MacDownKit/Package.resolved"
+        source.write_text("altered before release\n")
+        dry_run = self.run_script("--dry-run")
+        self.assertEqual(dry_run.returncode, 0, dry_run.stdout)
+        self.assertIn("UNVERIFIED (dry run): the source Package.resolved differs", self.summary())
+        self.assertEqual(
+            (self.repo / "MacDown2/MacDown2.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved").read_text(),
+            source.read_text(),
+        )
+        shutil.rmtree(self.out, ignore_errors=True)
+        shutil.rmtree(self.repo / "MacDown2/MacDown2.xcodeproj", ignore_errors=True)
+        release_candidate = self.run_script("--release-candidate")
+        self.assertNotEqual(release_candidate.returncode, 0)
+        self.assertIn("source Package.resolved differs from the committed lock", release_candidate.stdout)
+        self.assertFalse((self.repo / "MacDown2/MacDown2.xcodeproj").exists())
+
+    def test_release_build_stops_before_xcodegen_when_committed_lock_is_missing(self) -> None:
+        (self.repo / "MacDown2/Packages/MacDownKit/Package.resolved").unlink()
+        result = self.run_script("--dry-run")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("committed MacDownKit Package.resolved lock file is missing", result.stdout)
+        self.assertFalse((self.repo / "MacDown2/MacDown2.xcodeproj").exists())
 
     def test_dry_run_records_failed_licence_gate_and_log_as_unverified_and_continues(self) -> None:
         result = self.run_script("--dry-run", COMPLIANCE_FAILS="1", NOTARY_LOG_FAILS="1")
@@ -154,6 +236,17 @@ class ReleaseScriptModeTests(unittest.TestCase):
         self.assertTrue((self.out / "MacDown2-0.1.0-7.dmg").exists())
         sums = (self.out / "evidence/SHA256SUMS").read_text()
         self.assertIn("macdown2.zip", sums.split("# not distributed")[0])
+        self.assertIn("syspolicy_check distribution ", self.calls.read_text())
+
+    def test_distribution_check_failure_stops_before_final_hashes(self) -> None:
+        for mode in ("--dry-run", "--release-candidate"):
+            with self.subTest(mode=mode):
+                shutil.rmtree(self.out, ignore_errors=True)
+                result = self.run_script(mode, SYSPOLICY_STATUS="70")
+                self.assertEqual(result.returncode, 70, result.stdout + result.stderr)
+                self.assertIn("syspolicy_check distribution ", self.calls.read_text())
+                self.assertFalse((self.out / "evidence/SHA256SUMS").exists())
+                self.assertNotIn("Done (", result.stdout)
 
 
 if __name__ == "__main__":

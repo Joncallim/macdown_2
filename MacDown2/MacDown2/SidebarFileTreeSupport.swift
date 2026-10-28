@@ -17,6 +17,7 @@ struct FileTreeRowView: View {
     let didDelete: (URL) -> Void
     let didCreate: (URL, Bool, FileTreeOperationContext) -> Void
     @State private var newName = ""
+    @State private var renameSubmitted = false
     @State private var dragPayload: FileTreeInternalDrag?
     @FocusState private var renameFocused: Bool
 
@@ -162,9 +163,15 @@ struct FileTreeRowView: View {
 
     private func commitRename() {
         let old = row.entry.url
-        guard model.renamingURL == old else { return }
+        guard model.renamingURL == old, !renameSubmitted else { return }
+        if newName == row.entry.name {
+            model.renamingURL = nil
+            return
+        }
+        renameSubmitted = true
         let context = model.beginOperation()
         Task {
+            defer { renameSubmitted = false }
             do {
                 let result = try await model.rename(old, to: newName, context: context)
                 didRename(old, result.url)

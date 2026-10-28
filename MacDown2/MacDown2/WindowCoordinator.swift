@@ -53,11 +53,21 @@ final class WindowCoordinator {
     private var hasRestoredSession = false
     let documentOpens = KeyedSerialRunner<String>()
     var launchSession: WorkspaceSession? // as at launch; handed out once by `consumeLaunchSession()`
-    private var saveTask: Task<Void, Never>?
+    var saveTask: Task<Void, Never>?
+    @ObservationIgnored var terminationSaveInProgress = false
     var sessionPublicationOrder = SessionPublicationOrder()
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
+    /// Test seam: runs after a new controller's root/index rebuild and before publication.
+    var afterFolderSearchRootRebuild: (@MainActor () async -> Void)?
+    /// Test seam: runs after file loading and before the post-load continuation check.
+    var afterFolderSearchFileLoad: (@MainActor () async -> Void)?
+    var afterFolderSearchEditorLayoutChange: (@MainActor () -> Void)?
     var restoreTask: Task<Void, Never>?
     var unsavedRestoreTask: Task<Void, Never>?
+    /// Latest-request ownership for folder-search navigation.
+    @ObservationIgnored var folderSearchRequestGate = FolderSearchRequestGate()
+    @ObservationIgnored var folderSearchNavigationRevision: UInt = 0
+    @ObservationIgnored var pendingFolderSearchReveals: [UUID: PendingFolderSearchReveal] = [:]
     // `pendingNewDocumentTasks` and `addController` are internal rather than
     // private for the same reason as the properties above:
     // `WindowCoordinator+NewDocument.swift` is a same-module extension in a
@@ -143,8 +153,10 @@ final class WindowCoordinator {
         folderSelectionURL: URL? = nil,
         folderRenameURL: URL? = nil,
         relativeTo overrideKeyWindow: NSWindow? = nil,
-        encoding: FileEncodingMetadata? = nil
+        encoding: FileEncodingMetadata? = nil,
+        shouldContinue: (@MainActor () -> Bool)? = nil
     ) async {
+        guard shouldContinue?() ?? true else { return }
         // A link to a file opens (and saves to) that file; resolved first so the
         // same file is not opened twice, once through the link and once directly.
         let url = url.resolvingFinalSymlink()
@@ -158,13 +170,18 @@ final class WindowCoordinator {
                     selectionURL: folderSelectionURL,
                     renameURL: folderRenameURL
                 ),
-                encoding: encoding
+                encoding: encoding,
+                shouldContinue: shouldContinue
             )
             return
         }
         let keyWindow = overrideKeyWindow ?? NSApp.keyWindow
         let model = makeWindowModel()
         let outcome = await model.tabStore.openFileInTab(url, encoding: encoding)
+        if shouldContinue != nil {
+            await afterFolderSearchFileLoad?()
+        }
+        guard shouldContinue?() ?? true else { return }
         model.setFolderRoot(folderRoot)
 
         guard !model.tabStore.tabs.isEmpty else {
@@ -173,15 +190,16 @@ final class WindowCoordinator {
             }
             return
         }
-        let controller = WindowController(
-            model: model,
-            coordinator: self,
-            themeController: themeController,
-            grammarRegistry: grammarRegistry,
-            fileTreePreferences: fileTreePreferences
-        )
+        let controller = makeWindowController(model: model)
         if let folderRoot {
             await controller.setFileTreeRoot(folderRoot, accessURL: folderAccessURL)
+        }
+        if shouldContinue != nil {
+            await afterFolderSearchRootRebuild?()
+        }
+        guard shouldContinue?() ?? true else {
+            controller.window?.close()
+            return
         }
         controller.fileTreeModel.selectedURL = folderSelectionURL
         controller.fileTreeModel.renamingURL = folderRenameURL
@@ -247,7 +265,11 @@ final class WindowCoordinator {
     /// Schedules a session save, debounced so rapid changes coalesce into one
     /// write. Call this after any structural or document change.
     func scheduleSaveSession() {
+        sessionPublicationOrder.invalidateCapturedSnapshots()
         saveTask?.cancel()
+        guard !terminationSaveInProgress else {
+            return
+        }
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
             guard let self, !Task.isCancelled else { return }
@@ -339,8 +361,20 @@ final class WindowCoordinator {
     }
 
     func updateKeyModel() {
-        keyModel = controllers.first { $0.window == NSApp.keyWindow }?.model
+        keyModel = currentCommandController(keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow)?.model
         commandStateDidChange()
+    }
+
+    /// Resolve menu commands against a live document window. A dismissed
+    /// panel may leave no key window without another document-key notification.
+    /// A visible non-document key window is intentional and must not redirect
+    /// Save or Export to a different document.
+    func currentCommandController(keyWindow: NSWindow?, mainWindow: NSWindow?) -> WindowController? {
+        if let keyWindow, let controller = controllers.first(where: { $0.window === keyWindow }) {
+            return controller
+        }
+        guard keyWindow?.isVisible != true, let mainWindow else { return nil }
+        return controllers.first(where: { $0.window === mainWindow })
     }
 
     /// Invalidates SwiftUI command validation after AppKit has processed an

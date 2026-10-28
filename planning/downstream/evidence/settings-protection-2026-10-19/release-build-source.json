@@ -1,0 +1,16 @@
+{
+  "baseHead": "a4c48bc72955db21bdd8546c0e97bff051093216",
+  "sourceFiles": {
+    "MacDown2/MacDown2/SettingsView.swift": "5c51aaf4490802062f38a8f5409c9e92537fcba4c6a4cf1f49a5cf9ccf95a121",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/AppSettingsModel.swift": "006e5542486c93a79a3fed10558770ce8085eb12d228529b5877e15c6d38a340",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/AppSettingsStoring.swift": "b1f0ce5a223f929530540462bf87237211be8bfc14f8dbba1f38cbe3626bc30b",
+    "MacDown2/Packages/MacDownKit/Sources/AppSettings/UserDefaultsAppSettingsStore.swift": "d49593085567851f386cf6031bd1366c33fff1aa1819bf3f488b1872c423290e",
+    "MacDown2/Packages/MacDownKit/Tests/AppSettingsTests/SettingsCompatibilityTests.swift": "755aeb52f0479c4a9ebe6ce104f4e4d2878a5237cf4239f992a3e2f0e8cfba61",
+    "planning/OPEN_ISSUE_ACCEPTANCE_REGISTER.md": "35b896b24714fed94dbc9c923eccc30f7b0e4663a69bde9f0fb9a9e42641e157",
+    "planning/downstream/evidence/settings-53-2026-10-18/README.md": "8262703afaf6bf063cf724f450702ef570c7bacbd27e348499c494440e9b452e",
+    "planning/epic-13-implementation.md": "9d016502d241b222c71dee340a75124c6b3a2ef106e1039df9beaa0c1e919696",
+    "MacDown2/Packages/MacDownKit/Tests/AppSettingsTests/SettingsWriteProtectionTests.swift": "94cfabb5e464beebe25166ee2fd8888ff75a65bcedb67acb5e31094b557ff072",
+    "planning/downstream/SETTINGS_WRITE_PROTECTION_2026-10-19.md": "9033daec433e14a5f153041191314f8938ebfc86dbb1e434d85a9656f3494f9b"
+  },
+  "lockSHA256": "9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977"
+}

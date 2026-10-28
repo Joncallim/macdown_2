@@ -1,0 +1,567 @@
+{
+  "schema": 1,
+  "scope": "declaration_coverage_only",
+  "migration_complete": false,
+  "baseline_integration": "d3cc8883a08df02a9a98165b1833ca950948dc5d",
+  "baseline_master": "4aa46bfa6b91bf1c1d218b9b1f67480312f66396",
+  "legacy_source": {
+    "repository": "https://github.com/MacDownApp/macdown",
+    "commit": "3e2a2bf101c215c143bf00d9f857965f0ee82487",
+    "header_path": "MacDown/Code/Preferences/MPPreferences.h",
+    "header_sha256": "ca14a6761cf05cd8e5beb52bd366cd513c9e3a07544fc18e04d8ac8a41e56394",
+    "implementation_path": "MacDown/Code/Preferences/MPPreferences.m",
+    "implementation_sha256": "1724574caba513eec335b1d0b4601a7c5cc8cb044ba3caf7c2e05fb563b30333"
+  },
+  "limits": [
+    "This record is not read by the app and cannot import or write preferences.",
+    "Source spellings and dynamic declarations are checked; PAPreferences aliases or actual user keys are not inferred.",
+    "A destination candidate is not proof of equivalent semantics or permission to replace a persisted value.",
+    "Final E22/E23 surfaces and E17 execution, precedence, consent, recovery and idempotence remain required."
+  ],
+  "entries": [
+    {
+      "key": "firstVersionInstalled",
+      "declaration_type": "NSString *",
+      "kind": "stored",
+      "disposition": "legacy_provenance_only",
+      "rationale": "Original-app provenance only; never the new app's first-run/migration state.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "latestVersionInstalled",
+      "declaration_type": "NSString *",
+      "kind": "stored",
+      "disposition": "legacy_provenance_only",
+      "rationale": "Same; not proof the new product completed initialization.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "updateIncludesPreReleases",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "owned_policy_pending",
+      "rationale": "Explicit update-channel suggestion only; no hidden channel/feed/key import.",
+      "owner": "#18",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "supressesUntitledDocumentOnLaunch",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "No baseline equivalent. Untitled suppression is not session restoration; retain misspelling and report unsupported unless final exact behavior exists.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "createFileForLinkTarget",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Unsupported unless the exact final action policy exists; never enable implicit file creation from import.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "extensionIntraEmphasis",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Parser-specific grammar difference; no generic Markdown switch.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "extensionTables",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unconditional_capability",
+      "rationale": "Current parser always parses tables; true requests an unconditional capability, while false cannot be represented. No import toggle.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "source_evidence": "MacDown2/Packages/MacDownKit/Sources/MarkdownEngine/MarkdownParseOptions.swift; BlockConversionTests.swift"
+    },
+    {
+      "key": "extensionFencedCode",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unconditional_capability",
+      "rationale": "Current parser always parses fenced code; false has no matching disable preference.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "source_evidence": "MacDown2/Packages/MacDownKit/Sources/MarkdownEngine/MarkdownParseOptions.swift; BlockConversionTests.swift"
+    },
+    {
+      "key": "extensionAutolink",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Current parser supports CommonMark angle-bracket autolinks but not GFM extended bare autolinks. Legacy semantics are not interchangeable; no toggle is mapped.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "extensionStrikethough",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unconditional_capability",
+      "rationale": "Preserve the legacy misspelling. Current parser always parses strikethrough; false has no matching disable preference.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "source_evidence": "MacDown2/Packages/MacDownKit/Sources/MarkdownEngine/MarkdownParseOptions.swift; BlockConversionTests.swift"
+    },
+    {
+      "key": "extensionUnderline",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Unsupported grammar; not editor underline formatting.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "extensionSuperscript",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Unsupported unless the actual final grammar supports it.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "extensionHighlight",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Unsupported grammar; not syntax highlighting.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "extensionFootnotes",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Current engine has no footnote support; the former inert option was removed. Preserve the unsupported request in any future import report.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "extensionQuote",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Original extension differs from ordinary block quotes; unsupported unless exact equivalent exists.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "extensionSmartyPants",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Unsupported typography; no punctuation normalization or hidden system substitution changes.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "markdownManualRender",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Manual render is not hiding Preview; unsupported at baseline.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorBaseFontInfo",
+      "declaration_type": "NSDictionary *",
+      "kind": "stored",
+      "disposition": "candidate_equivalent",
+      "rationale": "Validate name/size; resolve installed PostScript name through NSFont to the final FontDescriptor on MainActor. Preserve current font and warn if unavailable; never download.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "destination_candidate": "EditorSettings.font",
+      "destination_source": "MacDown2/Packages/MacDownKit/Sources/AppSettings/EditorSettings.swift",
+      "semantic_verification": "pending isolated legacy-value conversion, exact behavior and destination precedence evidence"
+    },
+    {
+      "key": "editorAutoIncrementNumberedLists",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "candidate_equivalent",
+      "rationale": "Boolean -> editor.autoIncrementOrderedLists.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "destination_candidate": "EditorSettings.autoIncrementOrderedLists",
+      "destination_source": "MacDown2/Packages/MacDownKit/Sources/AppSettings/EditorSettings.swift",
+      "semantic_verification": "pending isolated legacy-value conversion, exact behavior and destination precedence evidence"
+    },
+    {
+      "key": "editorConvertTabs",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "candidate_equivalent",
+      "rationale": "Boolean -> editor.convertsTabsToSpaces; does not encode indentation width.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "destination_candidate": "EditorSettings.convertsTabsToSpaces",
+      "destination_source": "MacDown2/Packages/MacDownKit/Sources/AppSettings/EditorSettings.swift",
+      "semantic_verification": "pending isolated legacy-value conversion, exact behavior and destination precedence evidence"
+    },
+    {
+      "key": "editorInsertPrefixInBlock",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "candidate_equivalent",
+      "rationale": "Boolean -> editor.continuesMarkdownPrefixes after semantic list/quote fixture.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "destination_candidate": "EditorSettings.continuesMarkdownPrefixes",
+      "destination_source": "MacDown2/Packages/MacDownKit/Sources/AppSettings/EditorSettings.swift",
+      "semantic_verification": "pending isolated legacy-value conversion, exact behavior and destination precedence evidence"
+    },
+    {
+      "key": "editorCompleteMatchingCharacters",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "candidate_equivalent",
+      "rationale": "Boolean -> editor.completesMatchingCharacters.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "destination_candidate": "EditorSettings.completesMatchingCharacters",
+      "destination_source": "MacDown2/Packages/MacDownKit/Sources/AppSettings/EditorSettings.swift",
+      "semantic_verification": "pending isolated legacy-value conversion, exact behavior and destination precedence evidence"
+    },
+    {
+      "key": "editorSyncScrolling",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Only an exact final scroll-sync preference; not preview layout or an invented switch.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorSmartHome",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "candidate_equivalent",
+      "rationale": "Boolean -> editor.smartHome.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "destination_candidate": "EditorSettings.smartHome",
+      "destination_source": "MacDown2/Packages/MacDownKit/Sources/AppSettings/EditorSettings.swift",
+      "semantic_verification": "pending isolated legacy-value conversion, exact behavior and destination precedence evidence"
+    },
+    {
+      "key": "editorStyleName",
+      "declaration_type": "NSString *",
+      "kind": "stored",
+      "disposition": "owned_policy_pending",
+      "rationale": "Only curated exact compatible theme aliases; no nearest-name guess or executable old-style import. Unknown/custom style remains unsupported with safe explicit conversion outside this import.",
+      "owner": "#113",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorHorizontalInset",
+      "declaration_type": "CGFloat",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Only same-unit final layout preference; not page width.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorVerticalInset",
+      "declaration_type": "CGFloat",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Only same-unit equivalent; not line spacing.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorLineSpacing",
+      "declaration_type": "CGFloat",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Verify points versus multiplier before any real mapping; no newline/font-size rewrite.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorWidthLimited",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Map together with maximum width only if exact final width policy exists; unsupported otherwise.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorMaximumWidth",
+      "declaration_type": "CGFloat",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Valid finite positive points plus enable flag; saved number alone cannot enable a width restriction.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorOnRight",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Only exact pane-order option; split layout is not equivalent.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorShowWordCount",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "No independent word-count visibility setting exists. Never map to showsStatusBar, which controls additional information.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorWordCountType",
+      "declaration_type": "NSInteger",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Exact old/new enum conversion only; no raw-integer cast or invented counting mode.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorScrollsPastEnd",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Only exact final preference; otherwise report unsupported.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorEnsuresNewlineAtEndOfFile",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Suggestion only if separately approved final setting exists; do not enable byte-changing save behavior silently.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorUnorderedListMarkerType",
+      "declaration_type": "NSInteger",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "0='*', 1='+', 2='-'; only exact preferred-new-list setting. Invalid enum rejected; existing source markers never rewritten.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "previewZoomRelativeToBaseFontSize",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Unsupported coupling unless final equivalent exists; editor font is not a proxy.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlTemplateName",
+      "declaration_type": "NSString *",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Default is equivalent fixed-template policy only; other executable markup templates unsupported. Not an export-format switch.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlStyleName",
+      "declaration_type": "NSString *",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Legacy CSS is not embedded/linked delivery. No arbitrary stylesheet import.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlDetectFrontMatter",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Actual final parser policy; never blockDirectives.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlTaskList",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unconditional_capability",
+      "rationale": "Current parser always parses task lists; false has no matching disable preference.",
+      "owner": "#53",
+      "implementation_status": "not_implemented",
+      "source_evidence": "MacDown2/Packages/MacDownKit/Sources/MarkdownEngine/MarkdownParseOptions.swift; BlockConversionTests.swift"
+    },
+    {
+      "key": "htmlHardWrap",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Rendering hard breaks differ from editor line wrapping; only exact final parser/render option.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlMathJax",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "owned_policy_pending",
+      "rationale": "Explain the engine/capability change; no MathJax runtime/URL/hidden switch.",
+      "owner": "#116",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlMathJaxInlineDollar",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "owned_policy_pending",
+      "rationale": "Explain #116's shared grammar and unsupported disabling behavior; no second grammar.",
+      "owner": "#116",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlSyntaxHighlighting",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Export code highlighting, not source editor highlighting; map only a real matching control.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlHighlightingThemeName",
+      "declaration_type": "NSString *",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Legacy HTML stylesheet, not an E23 theme ID; no unreviewed alias.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlLineNumbers",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Exported code line numbers, NOT E22's source gutter.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlGraphviz",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "owned_policy_pending",
+      "rationale": "Report local Graphviz capability; no old scripts or no-op setting.",
+      "owner": "#79/#117",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlMermaid",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "owned_policy_pending",
+      "rationale": "Same for local Mermaid.",
+      "owner": "#79/#117",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlCodeBlockAccessory",
+      "declaration_type": "NSInteger",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Unsupported unless exact final enum semantics exist; no raw-value cast.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlDefaultDirectoryUrl",
+      "declaration_type": "NSURL *",
+      "kind": "stored",
+      "disposition": "unsupported_current_surface",
+      "rationale": "Never an access grant. At most a validated picker suggestion with explicit user selection; no background enumeration.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "htmlRendersTOC",
+      "declaration_type": "BOOL",
+      "kind": "stored",
+      "disposition": "owned_policy_pending",
+      "rationale": "Explain explicit [TOC] contribution policy; never insert markers or rewrite documents.",
+      "owner": "#117",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorBaseFontName",
+      "declaration_type": "NSString *",
+      "kind": "calculated",
+      "disposition": "derive_from_stored_value",
+      "rationale": "Calculated accessor; do not import as an independent stored preference.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorBaseFontSize",
+      "declaration_type": "CGFloat",
+      "kind": "calculated",
+      "disposition": "derive_from_stored_value",
+      "rationale": "Calculated accessor; do not import as an independent stored preference.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorBaseFont",
+      "declaration_type": "NSFont *",
+      "kind": "calculated",
+      "disposition": "derive_from_stored_value",
+      "rationale": "Calculated accessor; do not import as an independent stored preference.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "editorUnorderedListMarker",
+      "declaration_type": "NSString *",
+      "kind": "calculated",
+      "disposition": "derive_from_stored_value",
+      "rationale": "Calculated accessor; do not import as an independent stored preference.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "filesToOpen",
+      "declaration_type": "NSArray *",
+      "kind": "transient",
+      "disposition": "never_replay",
+      "rationale": "Transient IPC; never replay during import.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    },
+    {
+      "key": "pipedContentFileToOpen",
+      "declaration_type": "NSString *",
+      "kind": "transient",
+      "disposition": "never_replay",
+      "rationale": "Transient IPC; never replay during import.",
+      "owner": "#53",
+      "implementation_status": "not_implemented"
+    }
+  ]
+}

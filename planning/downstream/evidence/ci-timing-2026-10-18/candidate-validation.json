@@ -1,0 +1,611 @@
+{
+  "recorded_utc": "2026-10-18T17:22:31.580748+00:00",
+  "tested_code_head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+  "tracked_tree_clean_before_and_after_each_command": true,
+  "macdown2_subtree": "d2fde6a29c21acd8607dae1c990f46fe81bc06d6",
+  "base_integration_head": "60f779fc0f7324cd5dd3b7b503030e9c22d7d44f",
+  "environment": {
+    "host": "CORTANA",
+    "hardware": "M3 Pro",
+    "macOS": "26.5.1",
+    "Xcode": "26.6",
+    "Swift": "6.3.3"
+  },
+  "records": [
+    {
+      "name": "app-target-tests",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "xcodebuild",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-scheme",
+        "MacDown2",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "-enableCodeCoverage",
+        "NO",
+        "-parallel-testing-enabled",
+        "NO",
+        "-only-testing:MacDown2Tests",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "test-without-building"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T17:16:42.044132+00:00",
+      "load_before": "1:16  up 19 days, 52 mins, 2 users, load averages: 11.61 7.36 6.84",
+      "exit_code": 0,
+      "elapsed_seconds": 174.893,
+      "finished_utc": "2026-10-18T17:19:36.944921+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:19  up 19 days, 55 mins, 2 users, load averages: 5.65 6.47 6.57"
+    },
+    {
+      "name": "build-for-testing",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "xcodebuild",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-scheme",
+        "MacDown2",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "-enableCodeCoverage",
+        "NO",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "build-for-testing"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T17:16:14.365931+00:00",
+      "load_before": "1:16  up 19 days, 52 mins, 2 users, load averages: 5.19 5.95 6.35",
+      "exit_code": 0,
+      "elapsed_seconds": 27.581,
+      "finished_utc": "2026-10-18T17:16:41.950851+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:16  up 19 days, 52 mins, 2 users, load averages: 11.61 7.36 6.84"
+    },
+    {
+      "name": "candidate-full-debug",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "swift",
+        "test",
+        "--no-parallel",
+        "--force-resolved-versions"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+      "started_utc": "2026-10-18T17:10:19.400726+00:00",
+      "load_before": "1:10  up 19 days, 46 mins, 2 users, load averages: 4.96 6.88 6.74",
+      "exit_code": 0,
+      "elapsed_seconds": 258.25,
+      "finished_utc": "2026-10-18T17:14:37.655420+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:14  up 19 days, 50 mins, 2 users, load averages: 5.85 6.08 6.43"
+    },
+    {
+      "name": "committed-source-compliance",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "python3",
+        "compliance/tools/compliance.py",
+        "check"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-validation-60f779fc-2026-10-18/final-f9f9926f/candidate-source-f9f9926f",
+      "started_utc": "2026-10-18T17:10:19.118921+00:00",
+      "load_before": "1:10  up 19 days, 46 mins, 2 users, load averages: 4.96 6.88 6.74",
+      "exit_code": 0,
+      "elapsed_seconds": 0.211,
+      "finished_utc": "2026-10-18T17:10:19.337660+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:10  up 19 days, 46 mins, 2 users, load averages: 4.96 6.88 6.74"
+    },
+    {
+      "name": "isolated-window-close-diagnostic",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "xcodebuild",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-scheme",
+        "MacDown2",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "-enableCodeCoverage",
+        "NO",
+        "-parallel-testing-enabled",
+        "NO",
+        "-only-testing:MacDown2Tests/WindowCloseRetiredLifetimeTests",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "test-without-building"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T17:20:12.745374+00:00",
+      "load_before": "1:20  up 19 days, 56 mins, 2 users, load averages: 5.37 6.33 6.51",
+      "exit_code": 0,
+      "elapsed_seconds": 18.794,
+      "finished_utc": "2026-10-18T17:20:31.573550+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:20  up 19 days, 56 mins, 2 users, load averages: 5.62 6.33 6.51"
+    },
+    {
+      "name": "pin-xcode-check",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "MacDown2/scripts/pin-xcode-package-versions.sh",
+        "--check"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T17:19:37.055351+00:00",
+      "load_before": "1:19  up 19 days, 55 mins, 2 users, load averages: 5.65 6.47 6.57",
+      "exit_code": 0,
+      "elapsed_seconds": 0.012,
+      "finished_utc": "2026-10-18T17:19:37.071411+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:19  up 19 days, 55 mins, 2 users, load averages: 5.65 6.47 6.57"
+    },
+    {
+      "name": "pin-xcode",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "MacDown2/scripts/pin-xcode-package-versions.sh"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T17:15:12.195303+00:00",
+      "load_before": "1:15  up 19 days, 51 mins, 2 users, load averages: 6.86 6.37 6.52",
+      "exit_code": 0,
+      "elapsed_seconds": 0.016,
+      "finished_utc": "2026-10-18T17:15:12.215122+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:15  up 19 days, 51 mins, 2 users, load averages: 6.86 6.37 6.52"
+    },
+    {
+      "name": "release-app",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "xcodebuild",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-scheme",
+        "MacDown2",
+        "-configuration",
+        "Release",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "build"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T17:15:12.280027+00:00",
+      "load_before": "1:15  up 19 days, 51 mins, 2 users, load averages: 6.86 6.37 6.52",
+      "exit_code": 0,
+      "elapsed_seconds": 53.413,
+      "finished_utc": "2026-10-18T17:16:05.697057+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:16  up 19 days, 52 mins, 2 users, load averages: 5.04 5.95 6.35"
+    },
+    {
+      "name": "release-cli",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "xcodebuild",
+        "-project",
+        "MacDown2/MacDown2.xcodeproj",
+        "-scheme",
+        "macdown2",
+        "-configuration",
+        "Release",
+        "-destination",
+        "platform=macOS",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "build"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+      "started_utc": "2026-10-18T17:16:05.796313+00:00",
+      "load_before": "1:16  up 19 days, 52 mins, 2 users, load averages: 5.04 5.95 6.35",
+      "exit_code": 0,
+      "elapsed_seconds": 8.494,
+      "finished_utc": "2026-10-18T17:16:14.294052+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:16  up 19 days, 52 mins, 2 users, load averages: 5.19 5.95 6.35"
+    },
+    {
+      "name": "release-performance-1",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "swift",
+        "test",
+        "-c",
+        "release",
+        "-Xswiftc",
+        "-enable-testing",
+        "--no-parallel",
+        "--force-resolved-versions",
+        "--filter",
+        "Performance|MarkdownTreeReuse"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+      "started_utc": "2026-10-18T17:14:37.758991+00:00",
+      "load_before": "1:14  up 19 days, 50 mins, 2 users, load averages: 5.85 6.08 6.43",
+      "exit_code": 0,
+      "elapsed_seconds": 20.595,
+      "finished_utc": "2026-10-18T17:14:58.357485+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:14  up 19 days, 51 mins, 2 users, load averages: 7.07 6.38 6.53"
+    },
+    {
+      "name": "release-performance-2",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "swift",
+        "test",
+        "-c",
+        "release",
+        "-Xswiftc",
+        "-enable-testing",
+        "--no-parallel",
+        "--force-resolved-versions",
+        "--filter",
+        "Performance|MarkdownTreeReuse"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+      "started_utc": "2026-10-18T17:14:58.432274+00:00",
+      "load_before": "1:14  up 19 days, 51 mins, 2 users, load averages: 7.07 6.38 6.53",
+      "exit_code": 0,
+      "elapsed_seconds": 6.914,
+      "finished_utc": "2026-10-18T17:15:05.350286+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:15  up 19 days, 51 mins, 2 users, load averages: 7.20 6.43 6.54"
+    },
+    {
+      "name": "release-performance-3",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "swift",
+        "test",
+        "-c",
+        "release",
+        "-Xswiftc",
+        "-enable-testing",
+        "--no-parallel",
+        "--force-resolved-versions",
+        "--filter",
+        "Performance|MarkdownTreeReuse"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+      "started_utc": "2026-10-18T17:15:05.417975+00:00",
+      "load_before": "1:15  up 19 days, 51 mins, 2 users, load averages: 7.20 6.43 6.54",
+      "exit_code": 0,
+      "elapsed_seconds": 6.566,
+      "finished_utc": "2026-10-18T17:15:11.987641+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:15  up 19 days, 51 mins, 2 users, load averages: 6.86 6.37 6.52"
+    },
+    {
+      "name": "xcodegen",
+      "head": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "tree": "179bbf19220e18d2fe908145a4c1c2474c735d75",
+      "command": [
+        "xcodegen",
+        "generate"
+      ],
+      "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2",
+      "started_utc": "2026-10-18T17:15:12.056930+00:00",
+      "load_before": "1:15  up 19 days, 51 mins, 2 users, load averages: 6.86 6.37 6.52",
+      "exit_code": 0,
+      "elapsed_seconds": 0.067,
+      "finished_utc": "2026-10-18T17:15:12.127219+00:00",
+      "head_after": "f9f9926ff07d7e8550fa703f329d7e0f943d16a2",
+      "git_status_after": "",
+      "load_after": "1:15  up 19 days, 51 mins, 2 users, load averages: 6.86 6.37 6.52"
+    }
+  ],
+  "supplemental_checks": {
+    "swiftlint_strict_exit_code": 0,
+    "swiftformat_lint_exit_code": 0,
+    "release_compliance_exit_code": 1,
+    "release_compliance_unresolved_items": 8
+  },
+  "diagnostics": {
+    "full_suite_window_close_seconds": 103.099,
+    "isolated_window_close_seconds": 0.894,
+    "full_suite_app_test_execution_seconds": 149.232,
+    "sampled_physical_footprints_GB": [
+      3.7,
+      4.5
+    ],
+    "cause": "unestablished; sampled full-suite/isolated contrast does not establish mechanism",
+    "test_build_warning_counts": {
+      "AppIntents metadata tool": 15,
+      "actor isolation": 277,
+      "other": 1,
+      "cmark umbrella header": 1,
+      "dependency scan": 24
+    }
+  },
+  "local_evidence_root": "/Users/jonathanlim/GitHub/_cleanup-archive/astra-validation-60f779fc-2026-10-18",
+  "raw_log_manifest": [
+    {
+      "path": "blocking-cancel-outside-watchdog.log",
+      "bytes": 3727,
+      "sha256": "159db04e80209ff0730a86a1f34459cd8c986f467cac8e0415d153efb604f812"
+    },
+    {
+      "path": "blocking-cancel-outside-watchdog.patch",
+      "bytes": 532,
+      "sha256": "37b353e0a4aafe760db2618f9b656aca3ca954d1d9f4d831ff9272dcce674979"
+    },
+    {
+      "path": "candidate-focused-debug.log",
+      "bytes": 6604,
+      "sha256": "41270ff95a54fcf4ae68d3ec8e29a5f3b286fb60cd0822375f8af4fb897f3af3"
+    },
+    {
+      "path": "candidate-full-debug.log",
+      "bytes": 892724,
+      "sha256": "175f54ecd795c028d6695ab0a9116e6b1d119a2d1eb1b87548162297d5b3573d"
+    },
+    {
+      "path": "ci-39145925261-job117729630575.log",
+      "bytes": 1481257,
+      "sha256": "c6512fd2d7f3c9f88d8575d30912c1b8561131baeb3e7e4f3a5c446f19c53816"
+    },
+    {
+      "path": "commit-message.txt",
+      "bytes": 1121,
+      "sha256": "5b5554daaf42a2991cf1489c7a843038fe8c95dba4cec8596372f07f8418d095"
+    },
+    {
+      "path": "committed-source-compliance.log",
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    {
+      "path": "committed-source-release-compliance.log",
+      "bytes": 1925,
+      "sha256": "0d6822d8318b7e53ae435442aa10f8a88d266edcc5906f855a173e8b36081c80"
+    },
+    {
+      "path": "corrected-focused-debug.log",
+      "bytes": 7421,
+      "sha256": "edf46504a3b626b33fd3b4ae6fa71ad482971661a2d649d3d2db451dd07e9267"
+    },
+    {
+      "path": "early-restore-30ms.log",
+      "bytes": 2780,
+      "sha256": "396a06b527f883af4c94a1bf880cb70512896f08cbb1f6f3b486a7dcace0b42c"
+    },
+    {
+      "path": "early-restore-30ms.patch",
+      "bytes": 524,
+      "sha256": "37946a0f38a20eefa9b7f8b079e1474e03aebafe2e9e9e2ec436258537bab2f7"
+    },
+    {
+      "path": "eligible-long-pause-diagnostic.log",
+      "bytes": 3416,
+      "sha256": "409cc369883da26823fb308d59731368d04472c4c6cdd49ece7d2ce58f32cf65"
+    },
+    {
+      "path": "eligible-long-pause-diagnostic.patch",
+      "bytes": 777,
+      "sha256": "89f2dd7a05d4660c4cd25ff02c81d232217016aeeeb861666cc67b81cb6d0cb2"
+    },
+    {
+      "path": "local-compliance.log",
+      "bytes": 160,
+      "sha256": "3a78f48859821aee3ccfe10dcf71734f418939da4e01e8ef1c6979a22a0b9002"
+    },
+    {
+      "path": "local-swiftformat.log",
+      "bytes": 222,
+      "sha256": "4fe32919a26f124cb10a52bf616023837fb9fb46db6c7f9a5be37c07d720d681"
+    },
+    {
+      "path": "local-swiftlint.log",
+      "bytes": 47482,
+      "sha256": "f9d3374d6e734d7f2c1112cc3157a5b847abfcb02d21193b9cf264254fa31cda"
+    },
+    {
+      "path": "long-pause-diagnostic.log",
+      "bytes": 1803,
+      "sha256": "2926febb800ebe4ba30213184023c8fc02c936309751ebcc895bc106cad6ec1e"
+    },
+    {
+      "path": "long-pause-diagnostic.patch",
+      "bytes": 777,
+      "sha256": "3822ad7849321741f679a6b0b877dfe39efc727803edbbf2f3d7de696e3e6175"
+    },
+    {
+      "path": "pin-xcode-check.log",
+      "bytes": 66,
+      "sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c"
+    },
+    {
+      "path": "pin-xcode.log",
+      "bytes": 70,
+      "sha256": "b2be8d12c3194b89502a2b9bcdb39f066f3ffdf67f4945db582b64bf30595151"
+    },
+    {
+      "path": "release-app.log",
+      "bytes": 4516883,
+      "sha256": "43610f8353b263a0f8265031c2f5c97037207d74d67dcdf3221a67265e1e3ab4"
+    },
+    {
+      "path": "release-cli.log",
+      "bytes": 82530,
+      "sha256": "cb508bedf088e89e5230d8d56f4bb5e80f545db2a4a1157cdd5ee658a9d5105b"
+    },
+    {
+      "path": "release-performance-1.log",
+      "bytes": 9348,
+      "sha256": "625ed7253cc46b8a32f4bafe77a6f7afff10eeaacb47001bf25103e21201af8f"
+    },
+    {
+      "path": "release-performance-2.log",
+      "bytes": 7754,
+      "sha256": "96ac48f40b71ec00b38d17c058e6bead827f325ec2aedee8383e77017cecbef1"
+    },
+    {
+      "path": "release-performance-3.log",
+      "bytes": 7767,
+      "sha256": "9bc75c9c0353f109cd45171822b54ee4cb4a32d1e2e997d549ffde5c0f53954d"
+    },
+    {
+      "path": "warning-cleanup-commit-message.txt",
+      "bytes": 788,
+      "sha256": "4fe3fad07b00134a6d1f112aabfc18126305ead6a5150dedc37b344b69e6a6cb"
+    },
+    {
+      "path": "warning-cleanup-swiftformat.log",
+      "bytes": 222,
+      "sha256": "7d365a8397160c4ceaca89c1ef724e08d09fccd1205bd886cae577c5b0cb9c76"
+    },
+    {
+      "path": "warning-cleanup-swiftlint.log",
+      "bytes": 47536,
+      "sha256": "e9eda908b25251649751fd94dbde03b2ff40f809422c121df3e93a676b022106"
+    },
+    {
+      "path": "xcodegen.log",
+      "bytes": 175,
+      "sha256": "58aa2a3119b37b0a5af3e23bf3029d9ae18ed71807d26d2f10974839c4481fd0"
+    },
+    {
+      "path": "final-f9f9926f/app-target-stall-sample-command.log",
+      "bytes": 298,
+      "sha256": "b0baf340b3a8a3786217c00d70888090c95929fff10a549c0dfdf557e51c7fe2"
+    },
+    {
+      "path": "final-f9f9926f/app-target-stall-second-sample-command.log",
+      "bytes": 305,
+      "sha256": "57935f83d18d1e0400dd59663f0e8226892680d907d76fa8496da9b0a92ce238"
+    },
+    {
+      "path": "final-f9f9926f/app-target-stall-second.sample.txt",
+      "bytes": 24559320,
+      "sha256": "849e9aac2f54401dda9774dc352d38b5d804d2db7d6c3d1662523dab8333f65f"
+    },
+    {
+      "path": "final-f9f9926f/app-target-stall.sample.txt",
+      "bytes": 2374606,
+      "sha256": "7ddd0723ca4d86b231e9420f8c71c9e9453ff5c9b0f64b78ff4ca7e914caaa5f"
+    },
+    {
+      "path": "final-f9f9926f/app-target-tests.log",
+      "bytes": 164558,
+      "sha256": "39e46f2ee89c2edad0bdef336fe928cf96b4d482e3100b9a99a4ffa2269ea611"
+    },
+    {
+      "path": "final-f9f9926f/build-for-testing.log",
+      "bytes": 2823062,
+      "sha256": "270aaf709e02de78ef1f3837d956b05dcc20224855c62163c41f7f88d2f4bdb9"
+    },
+    {
+      "path": "final-f9f9926f/candidate-full-debug.log",
+      "bytes": 892776,
+      "sha256": "e0f16bfd9336a87d3896dee3ac3a899bef97ec55c10b13817f2a6fa34be92e48"
+    },
+    {
+      "path": "final-f9f9926f/committed-source-compliance.log",
+      "bytes": 54,
+      "sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7"
+    },
+    {
+      "path": "final-f9f9926f/isolated-window-close-diagnostic.log",
+      "bytes": 7648,
+      "sha256": "4780225a18889267e662374f3403b0970fab29e62c306fe8a0187b874f64e6d2"
+    },
+    {
+      "path": "final-f9f9926f/pin-xcode-check.log",
+      "bytes": 66,
+      "sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c"
+    },
+    {
+      "path": "final-f9f9926f/pin-xcode.log",
+      "bytes": 70,
+      "sha256": "b2be8d12c3194b89502a2b9bcdb39f066f3ffdf67f4945db582b64bf30595151"
+    },
+    {
+      "path": "final-f9f9926f/release-app.log",
+      "bytes": 912025,
+      "sha256": "145d79bb1b8f0d8f86733902eb5b6908122f6f67b9005095cde6dd231ef567dd"
+    },
+    {
+      "path": "final-f9f9926f/release-cli.log",
+      "bytes": 82121,
+      "sha256": "8479ff0f98e77a84de516a5d07e641e9f750ae1f5ecf84064cb51bae024ebe55"
+    },
+    {
+      "path": "final-f9f9926f/release-compliance.log",
+      "bytes": 1925,
+      "sha256": "0d6822d8318b7e53ae435442aa10f8a88d266edcc5906f855a173e8b36081c80"
+    },
+    {
+      "path": "final-f9f9926f/release-performance-1.log",
+      "bytes": 7989,
+      "sha256": "c6ed3fae0fc2da16df94933f985bca273d56b31ed1317fde90b4e19099edec3f"
+    },
+    {
+      "path": "final-f9f9926f/release-performance-2.log",
+      "bytes": 7767,
+      "sha256": "bcb0bb3d1f14f66f6922fccab093ed0c43f188fc04d4d70c21af0f176316d72b"
+    },
+    {
+      "path": "final-f9f9926f/release-performance-3.log",
+      "bytes": 7754,
+      "sha256": "def91f12969b38368d301575c5b701b3dcfecb1978904db0851e7ea99c64aecf"
+    },
+    {
+      "path": "final-f9f9926f/swiftformat.log",
+      "bytes": 222,
+      "sha256": "1bb26ece6c916adee55a47e9a78cda18cd6d991452dfe1a70dc00e8057e4c892"
+    },
+    {
+      "path": "final-f9f9926f/swiftlint.log",
+      "bytes": 47536,
+      "sha256": "ce7607830ff64d837978223407d77b006d83458b6edfa35c6e7dbf5e797fc528"
+    },
+    {
+      "path": "final-f9f9926f/xcodegen.log",
+      "bytes": 175,
+      "sha256": "58aa2a3119b37b0a5af3e23bf3029d9ae18ed71807d26d2f10974839c4481fd0"
+    }
+  ],
+  "hosted_result_for_tested_code_head": "none; not pushed",
+  "independent_review": "pending",
+  "owner_review": "pending"
+}

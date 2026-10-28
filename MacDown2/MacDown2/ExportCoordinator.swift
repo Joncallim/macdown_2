@@ -31,10 +31,13 @@ struct ExportCoordinator {
     /// How many diagnostics one alert lists before it summarises the rest.
     private let diagnosticsShownAtMost = 6
 
-    /// Whether the key window's active document is exportable Markdown and
+    /// Whether the selected document is exportable Markdown and
     /// does not already have an export in flight.
     var canExportActiveDocument: Bool {
-        guard let model = coordinator.keyModel, model.activeDocument?.format.id == "markdown" else {
+        _ = coordinator.commandStateRevision
+        guard let model = coordinator.currentCommandController(
+            keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow
+        )?.model, model.activeDocument?.format.id == "markdown" else {
             return false
         }
         return !coordinator.isExporting(model)
@@ -48,7 +51,9 @@ struct ExportCoordinator {
     /// set for the whole call including panel presentation — cancelling the
     /// panel already exits through the same `defer`.
     func exportActiveDocument() async {
-        guard let model = coordinator.keyModel, let document = model.activeDocument else { return }
+        guard let model = coordinator.currentCommandController(
+            keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow
+        )?.model, let document = model.activeDocument else { return }
         guard document.format.id == "markdown" else { return }
         guard !coordinator.isExporting(model) else { return }
 
@@ -101,7 +106,7 @@ struct ExportCoordinator {
             format: Self.exportFormatOption(from: appSettings.previewExport.defaultExportFormat),
             style: Self.exportStyleEmbedding(from: appSettings.previewExport.defaultExportStyle)
         )
-        Self.apply(selectionModel.format, to: panel, defaultBaseName: defaultName)
+        Self.initializeFilename(selectionModel.format, in: panel, defaultBaseName: defaultName)
 
         let panelView = ExportPanelView(model: selectionModel) { [weak panel] format in
             guard let panel else { return }
@@ -127,9 +132,16 @@ struct ExportCoordinator {
         return ExportSelection(url: url, format: selectionModel.format, style: selectionModel.style)
     }
 
+    /// Starts with the document's name even when AppKit prepopulates the field.
+    /// Later format changes preserve whatever name the user has entered.
+    static func initializeFilename(_ format: ExportFormatOption, in panel: NSSavePanel, defaultBaseName: String) {
+        panel.nameFieldStringValue = defaultBaseName
+        apply(format, to: panel, defaultBaseName: defaultBaseName)
+    }
+
     /// Keeps the panel's filename and enforced content type in step with the
     /// chosen format, so picking PDF cannot save a PDF named `.html`.
-    private static func apply(_ format: ExportFormatOption, to panel: NSSavePanel, defaultBaseName: String) {
+    static func apply(_ format: ExportFormatOption, to panel: NSSavePanel, defaultBaseName: String) {
         panel.allowedContentTypes = [format.contentType]
 
         let typed = panel.nameFieldStringValue
@@ -248,7 +260,7 @@ struct ExportCoordinator {
         let results = try await registry.run(
             document: parsed, sourceText: document.text, sourceGeneration: document.mutationGeneration
         )
-        return ExportContributionAdapter.adapt(results)
+        return ExportContributionAdapter.adapt(results, destination: isPrintTarget ? .pdfExport : .htmlExport)
     }
 
     // MARK: - Feedback

@@ -1,0 +1,28 @@
+[0/1] Planning build
+Building for debugging...
+[0/2] Write swift-version--58304C5D6DBC2206.txt
+Build complete! (6.48s)
+Test Suite 'Selected tests' started at 2026-10-19 22:52:39.122.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-19 22:52:39.130.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-19 22:52:39.130.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-19 22:52:39.130.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.008) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "TextFilter blocking cleanup deadline" started.
+◇ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+◇ Test case passing 1 argument setupDelay → 0.0 seconds to cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+CLEANUP_TIMELINE setup=0.00163925 seconds, cleanup=0.205281125 seconds, cancellationRequested=1.1166e-05 seconds, cancellationTaskStarted=6.6083e-05 seconds, cancellationReturned=0.205094625 seconds, watchdogTaskStarted=0.205105791 seconds, watchdogSleepReturned=0.20514775 seconds, timeoutGateCompleted=0.205151375 seconds, gateWaitReturned=0.205171333 seconds
+✘ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) recorded an issue with 1 argument setupDelay → 0.0 seconds at TextFilterBlockingCleanupDeadlineTests.swift:81:13: Expectation failed: (fixtureStarted.duration(to: finished) → 0.206920375 seconds) < (.milliseconds(150) → 0.15 seconds)
+↳ whole fixture call: setup 0.00163925 seconds, cleanup 0.205281125 seconds; cancellationRequested=1.1166e-05 seconds, cancellationTaskStarted=6.6083e-05 seconds, cancellationReturned=0.205094625 seconds, watchdogTaskStarted=0.205105791 seconds, watchdogSleepReturned=0.20514775 seconds, timeoutGateCompleted=0.205151375 seconds, gateWaitReturned=0.205171333 seconds
+✘ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) recorded an issue with 1 argument setupDelay → 0.0 seconds at TextFilterBlockingCleanupDeadlineTests.swift:86:9: Expectation failed: (cleanupElapsed → 0.205281125 seconds) < (.milliseconds(150) → 0.15 seconds)
+↳ fixture setup took 0.00163925 seconds; cleanup includes cancellation dispatch; cancellationRequested=1.1166e-05 seconds, cancellationTaskStarted=6.6083e-05 seconds, cancellationReturned=0.205094625 seconds, watchdogTaskStarted=0.205105791 seconds, watchdogSleepReturned=0.20514775 seconds, timeoutGateCompleted=0.205151375 seconds, gateWaitReturned=0.205171333 seconds
+◇ Test case passing 1 argument setupDelay → 0.2 seconds to cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+CLEANUP_TIMELINE setup=0.209821 seconds, cleanup=0.205226083 seconds, cancellationRequested=2.416e-06 seconds, cancellationTaskStarted=1.7291e-05 seconds, cancellationReturned=0.205088458 seconds, watchdogTaskStarted=0.205106958 seconds, watchdogSleepReturned=0.20515275 seconds, timeoutGateCompleted=0.205161291 seconds, gateWaitReturned=0.205169 seconds
+✘ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) recorded an issue with 1 argument setupDelay → 0.2 seconds at TextFilterBlockingCleanupDeadlineTests.swift:86:9: Expectation failed: (cleanupElapsed → 0.205226083 seconds) < (.milliseconds(150) → 0.15 seconds)
+↳ fixture setup took 0.209821 seconds; cleanup includes cancellation dispatch; cancellationRequested=2.416e-06 seconds, cancellationTaskStarted=1.7291e-05 seconds, cancellationReturned=0.205088458 seconds, watchdogTaskStarted=0.205106958 seconds, watchdogSleepReturned=0.20515275 seconds, timeoutGateCompleted=0.205161291 seconds, gateWaitReturned=0.205169 seconds
+✘ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) with 2 test cases failed after 0.624 seconds with 3 issues.
+✘ Suite "TextFilter blocking cleanup deadline" failed after 0.624 seconds with 3 issues.
+✘ Test run with 1 test in 1 suite failed after 0.624 seconds with 3 issues.

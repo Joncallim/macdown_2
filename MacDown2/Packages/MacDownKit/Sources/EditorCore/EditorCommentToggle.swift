@@ -195,9 +195,9 @@ enum EditorCommentToggle {
         func leadingWhitespace(of line: String) -> Substring {
             line.prefix { $0 == " " || $0 == "\t" }
         }
-        /// A CRLF document's lines keep their trailing "\r" after the "\n" split,
-        /// which must not make an otherwise-blank line look non-blank.
         func isBlank(_ line: String) -> Bool {
+            // A CRLF document's lines keep their trailing "\r" after the "\n" split,
+            // which must not make an otherwise-blank line look non-blank.
             let body = line.hasSuffix("\r") ? String(line.dropLast()) : line
             return leadingWhitespace(of: body).count == body.count
         }

@@ -1,17 +1,20 @@
-import Foundation
+import Themes
 
-/// Theme inputs that affect rendering but are not part of the diagram source
-/// itself (epic-20-implementation.md §6). Unlike `ExportMathRenderContext`,
-/// carries no pixel scale: SVG is resolution-independent, so scale is a
-/// display-time concern, not a render-time one.
+/// Resolved artwork defaults and destination, shared by preview and export.
 public struct MermaidRenderContext: Sendable, Equatable, Hashable {
-    public let foregroundRed: Double
-    public let foregroundGreen: Double
-    public let foregroundBlue: Double
-    public let backgroundRed: Double
-    public let backgroundGreen: Double
-    public let backgroundBlue: Double
+    public let palette: DiagramPalette
+    public let destination: DiagramDestination
 
+    public var fingerprint: String {
+        destination.rawValue + "|" + palette.fingerprint
+    }
+
+    public init(palette: DiagramPalette = .neutralLight, destination: DiagramDestination = .print) {
+        self.palette = palette
+        self.destination = destination
+    }
+
+    /// Component callers describe screen preview colors.
     public init(
         foregroundRed: Double,
         foregroundGreen: Double,
@@ -20,11 +23,13 @@ public struct MermaidRenderContext: Sendable, Equatable, Hashable {
         backgroundGreen: Double,
         backgroundBlue: Double
     ) {
-        self.foregroundRed = foregroundRed
-        self.foregroundGreen = foregroundGreen
-        self.foregroundBlue = foregroundBlue
-        self.backgroundRed = backgroundRed
-        self.backgroundGreen = backgroundGreen
-        self.backgroundBlue = backgroundBlue
+        destination = .screen
+        palette = .resolved(
+            for: .screen,
+            foreground: ThemeColor(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue),
+            background: ThemeColor(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
+        )
     }
+
+    public static let neutralLight = MermaidRenderContext()
 }

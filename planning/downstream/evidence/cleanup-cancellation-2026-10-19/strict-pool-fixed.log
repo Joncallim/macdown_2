@@ -1,0 +1,43 @@
+[0/1] Planning build
+Building for debugging...
+[0/3] Write sources
+[1/3] Write swift-version--58304C5D6DBC2206.txt
+[3/7] Compiling TextFiltersTests TextFilterFixtureOwnershipSupport.swift
+[4/7] Emitting module TextFiltersTests
+[5/7] Compiling TextFiltersTests TextFilterBlockingCleanupDeadlineTests.swift
+[6/7] Compiling TextFiltersTests TextFilterCancellationIsolationTests.swift
+[7/15] Compiling TextFiltersTests TextFilterFixtureOwnershipTests.swift
+[8/15] Compiling TextFiltersTests TextFilterRunnerTests.swift
+[9/15] Compiling TextFiltersTests TextFilterProcessLifecycleTests.swift
+[10/15] Compiling TextFiltersTests TextFilterRunnerDetachedOwnershipTests.swift
+[11/15] Compiling TextFiltersTests TextFilterRunnerAdversarialTests.swift
+[12/15] Compiling TextFiltersTests TextFilterFixtureCleanupSafetyTests.swift
+[13/15] Compiling TextFiltersTests TextFilterFixtureHeldGroupCleanupTests.swift
+[14/15] Compiling TextFiltersTests TextFilterProcessGroupTests.swift
+[14/16] Write Objects.LinkFileList
+[15/16] Linking MacDownKitPackageTests
+Build complete! (19.37s)
+Test Suite 'Selected tests' started at 2026-10-19 22:57:37.463.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-19 22:57:37.472.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-19 22:57:37.472.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-19 22:57:37.472.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.009) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "TextFilter blocking cleanup deadline" started.
+◇ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+◇ Test case passing 1 argument setupDelay → 0.0 seconds to cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+CLEANUP_TIMELINE setup=0.001503875 seconds, cleanup=0.027732125 seconds, cancellationRequested=1.3625e-05 seconds, cancellationTaskStarted=6.075e-05 seconds, cleanupTaskAcquired=6.4125e-05 seconds, watchdogTaskStarted=6.6375e-05 seconds, watchdogSleepReturned=0.027541834 seconds, timeoutGateCompleted=0.027556334 seconds, gateWaitReturned=0.0275595 seconds
+◇ Test case passing 1 argument setupDelay → 0.2 seconds to cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) started.
+CLEANUP_TIMELINE setup=0.20147525 seconds, cleanup=0.025574209 seconds, cancellationRequested=3.5e-06 seconds, cancellationTaskStarted=2.0625e-05 seconds, cleanupTaskAcquired=3.1792e-05 seconds, watchdogTaskStarted=3.7e-05 seconds, watchdogSleepReturned=0.02551275 seconds, timeoutGateCompleted=0.025524042 seconds, gateWaitReturned=0.025526875 seconds
+✔ Test cleanupDeadlineIncludesBlockingCancellationDispatch(setupDelay:) with 2 test cases passed after 0.611 seconds.
+✔ Suite "TextFilter blocking cleanup deadline" passed after 0.611 seconds.
+◇ Suite "TextFilter fixture cancellation isolation" started.
+◇ Test blockedCancellationKeepsOwnerResponsiveAndSharesTheCompleteCleanupTask() started.
+✔ Test blockedCancellationKeepsOwnerResponsiveAndSharesTheCompleteCleanupTask() passed after 0.007 seconds.
+◇ Test timeoutDuringCancellationReachesTheEventualJoinBeforeDirectoryRemoval() started.
+✔ Test timeoutDuringCancellationReachesTheEventualJoinBeforeDirectoryRemoval() passed after 0.031 seconds.
+✔ Suite "TextFilter fixture cancellation isolation" passed after 0.038 seconds.
+✔ Test run with 3 tests in 2 suites passed after 0.650 seconds.

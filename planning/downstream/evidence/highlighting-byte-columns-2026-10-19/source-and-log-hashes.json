@@ -1,0 +1,21 @@
+{
+  "base": "2c69411c1ae0fb727a211139fc19ceedad1fd4de",
+  "baseline_test_sha256": "856458003c2ea92322b3be57ee826085731f378e2c448a708cb2ad9b0a6e7815",
+  "baseline_note": "The initial failing mounted fixture preceded the review-requested store eviction cleanup and lint-only extraction of mountedWindow. The coordinate oracle and assertions are unchanged.",
+  "proposed_source_sha256": {
+    "Sources/Highlighting/NeonSyntaxHighlighter.swift": "148fd1942544b9f93110c3627ce7aeb347da36cac20cf3c89644629ca1abb565",
+    "Tests/HighlightingTests/LocationTransformerTests.swift": "e9ecf94d49a4dc09a0180b67ad6ef0c5256b8f2abead503a4f3e9cd8d1ba9d92",
+    "Tests/HighlightingTests/LocationTransformerByteGeometryTests.swift": "c90d3c3a767f8189ecdc5f328d6bc8deb6b8a8d6c948391de74048abc5c5a06b"
+  },
+  "archive_raw_log_sha256": {
+    "byte-geometry-before.log": "435248421613c1ab510715ee6a9fd615d5fb1de1c0096da3f3c6a8fede593b77",
+    "byte-geometry-debug.log": "e9625ad5df39f26a3a14d1b51c91aca4c6e56b395026645035f6ab5c79c7760b",
+    "byte-geometry-release.log": "ff36f61b4154459cb825fbcb9f2a2d0e2d55b322f77105530b48a38c406a1f91"
+  },
+  "repository_display_log_sha256": {
+    "byte-geometry-before.log": "7f6141e0abb6e1ea56aa7f29bc992708845b4f33cb0db7dbd3f87609619f5078",
+    "byte-geometry-debug.log": "b7ce17298f457ebe6a829d00cd7d63da4d1e68c2431202d2fe6f0b87cc0f1da1",
+    "byte-geometry-release.log": "65b736414ac3a061925a64ea64e6a2f22cf9410a87e3567d0192e77a808bf7e0"
+  },
+  "repository_log_encoding": "Display copies replace each literal carriage-return byte with the two characters backslash-r; LF and all other bytes are retained. Byte-exact originals remain in the external archive with their hashes above. This makes CRLF fixture output visible without trailing-whitespace artifacts."
+}

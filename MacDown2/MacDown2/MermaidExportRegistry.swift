@@ -17,30 +17,16 @@ extension ContributionRegistry {
     /// (`MermaidDiagramCache`, epic-20-implementation.md §5).
     static let sharedMermaidRenderer = MermaidDiagramCache(renderer: MermaidWebRenderer())
 
-    /// `MermaidWebRenderer.render`'s `context` parameter is not yet wired to
-    /// Mermaid's own theming (epic-20-implementation.md §6, a documented
-    /// Slice 2 limitation) — every diagram currently renders with Mermaid's
-    /// default theme regardless of `isPrintTarget` or the live app theme.
-    /// This function still threads real theme colors through today so that
-    /// wiring Mermaid's own theme variables later (§18 residual work) is an
-    /// addition to `MermaidWebRenderer`'s JavaScript call, not a second
-    /// plumbing pass through every caller. `MathExportRegistry`'s own
-    /// print-safety lesson — a raster equation's baked-in colors cannot be
-    /// recolored by `structural.css`'s `@media print` override, so print
-    /// export needs its own fixed-contrast color rather than the live
-    /// theme's — applies identically here once Mermaid's SVG output actually
-    /// carries theme-driven colors; tracked, not yet applicable while
-    /// rendering ignores this context entirely.
-    static func mermaidRenderContext(theme: Theme, isPrintTarget _: Bool) -> MermaidRenderContext {
-        let foreground = theme.chrome.foreground
-        let background = theme.chrome.background
+    /// Screen defaults follow preview colors; PDF uses the separate light policy.
+    static func mermaidRenderContext(theme: Theme, isPrintTarget: Bool) -> MermaidRenderContext {
+        let destination: DiagramDestination = isPrintTarget ? .print : .screen
         return MermaidRenderContext(
-            foregroundRed: foreground.red,
-            foregroundGreen: foreground.green,
-            foregroundBlue: foreground.blue,
-            backgroundRed: background.red,
-            backgroundGreen: background.green,
-            backgroundBlue: background.blue
+            palette: .resolved(
+                for: destination,
+                foreground: theme.chrome.foreground,
+                background: theme.chrome.background
+            ),
+            destination: destination
         )
     }
 }

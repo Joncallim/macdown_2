@@ -14,19 +14,16 @@ extension ContributionRegistry {
     /// already rendered for one is not re-rendered for the other.
     static let sharedD2Renderer = D2DiagramCache(renderer: D2WebRenderer())
 
-    /// `D2WebRenderer.render`'s `context` parameter is not yet wired to
-    /// D2's own theming — same disclosed, deliberate scope limit already
-    /// recorded for Mermaid (issue #79).
-    static func d2RenderContext(theme: Theme, isPrintTarget _: Bool) -> D2RenderContext {
-        let foreground = theme.chrome.foreground
-        let background = theme.chrome.background
+    /// Resolve defaults before rendering; explicit source styles remain authored.
+    static func d2RenderContext(theme: Theme, isPrintTarget: Bool) -> D2RenderContext {
+        let destination: DiagramDestination = isPrintTarget ? .print : .screen
         return D2RenderContext(
-            foregroundRed: foreground.red,
-            foregroundGreen: foreground.green,
-            foregroundBlue: foreground.blue,
-            backgroundRed: background.red,
-            backgroundGreen: background.green,
-            backgroundBlue: background.blue
+            palette: .resolved(
+                for: destination,
+                foreground: theme.chrome.foreground,
+                background: theme.chrome.background
+            ),
+            destination: destination
         )
     }
 }

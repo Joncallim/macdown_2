@@ -71,13 +71,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         launchURLs = Self.openFilesPaths(from: args).map { URL(fileURLWithPath: $0) }
         launchFolderURL = Self.openFolderPath(from: args).map { URL(fileURLWithPath: $0, isDirectory: true) }
-        themeController = ThemeController()
+        themeController = ThemeController(preferenceStore: UserDefaultsThemePreferenceStore(defaults: defaults))
         grammarRegistry = GrammarRegistry()
         fileTreePreferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
         recentFolderRoots = RecentFolderRoots(preferences: fileTreePreferences)
         recentFileDocuments = RecentFileDocuments(preferences: fileTreePreferences)
         appSettings = AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults))
         super.init()
+        connectThemeAppearanceOverride()
 
         coordinator = WindowCoordinator(
             sessionStore: sessionStore,
@@ -95,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = true
-        syncThemeAppearance()
+        applyThemeAppearanceOverride()
 
         DistributedNotificationCenter.default().addObserver(
             self,
@@ -176,7 +177,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func systemAppearanceChanged() {
+        guard themeController.appearanceMode == .system else { return }
         syncThemeAppearance()
+    }
+
+    private func connectThemeAppearanceOverride() {
+        themeController.appearanceModeDidChange = { [weak self] _ in
+            self?.applyThemeAppearanceOverride()
+        }
+    }
+
+    private func applyThemeAppearanceOverride() {
+        switch themeController.appearanceMode {
+        case .system:
+            NSApp.appearance = nil
+            syncThemeAppearance()
+        case .light:
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
     }
 
     private func syncThemeAppearance() {
@@ -225,10 +245,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Launch argument parsing
 
     /// The arguments the test hooks (`-UITesting`, `-sessionDir`, `-openFiles`, `-openFolder`) are read from.
-    /// Debug builds only: a release build ignores them, so they cannot redirect the session and recovery
-    /// directories, disable the single-instance guard or force-open paths.
+    /// Debug builds only, except the separately flagged and explicitly launched
+    /// #117 native acceptance build. An ordinary Release build ignores them,
+    /// so they cannot redirect session/recovery directories or force-open paths.
     static var launchArguments: [String] {
-        #if DEBUG
+        #if ISSUE117_NATIVE_ACCEPTANCE
+            let args = ProcessInfo.processInfo.arguments
+            precondition(
+                args.contains("-Issue117Acceptance") && args.contains("-UITesting")
+                    && args.contains("-sessionDir") && args.contains("-openFiles"),
+                "Launch the isolated #117 acceptance build with its retained launcher"
+            )
+            return args
+        #elseif DEBUG
             ProcessInfo.processInfo.arguments
         #else
             []

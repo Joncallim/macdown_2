@@ -45,6 +45,30 @@ struct GraphvizDiagramCacheTests {
         #expect(await counting.callCount == 1)
     }
 
+    @Test func screenThemeChangesInvalidateCachedArtwork() async throws {
+        let counting = CountingRenderer()
+        let cache = GraphvizDiagramCache(renderer: counting)
+        let dark = GraphvizRenderContext(
+            foregroundRed: 1, foregroundGreen: 1, foregroundBlue: 1,
+            backgroundRed: 0, backgroundGreen: 0, backgroundBlue: 0
+        )
+
+        _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: Self.context)
+        _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: dark)
+
+        #expect(await counting.callCount == 2)
+    }
+
+    @Test func destinationIsPartOfCacheIdentityEvenWithTheSamePalette() async throws {
+        let counting = CountingRenderer()
+        let cache = GraphvizDiagramCache(renderer: counting)
+        let screen = GraphvizRenderContext(palette: .neutralLight, destination: .screen)
+        _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: .neutralLight)
+        _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: screen)
+        _ = try await cache.render(Self.fence("digraph { a -> b; }"), context: .neutralLight)
+        #expect(await counting.callCount == 2)
+    }
+
     @Test func aFailedRenderIsNotCached() async throws {
         let counting = CountingRenderer()
         await counting.setFailNextCall(true)

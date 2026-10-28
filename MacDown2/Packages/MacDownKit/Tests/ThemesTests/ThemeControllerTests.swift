@@ -4,7 +4,15 @@ import Testing
 
 final class FakeThemePreferenceStore: ThemePreferenceStoring, @unchecked Sendable {
     private var selection: (lightID: String, darkID: String)?
+    private var appearanceMode: ThemeAppearanceMode?
+    private var writes = 0
     private let lock = NSLock()
+
+    var saveCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return writes
+    }
 
     func loadSelection() -> (lightID: String, darkID: String)? {
         lock.lock()
@@ -16,6 +24,19 @@ final class FakeThemePreferenceStore: ThemePreferenceStoring, @unchecked Sendabl
         lock.lock()
         defer { lock.unlock() }
         selection = (lightID, darkID)
+        writes += 1
+    }
+
+    func loadAppearanceMode() -> ThemeAppearanceMode? {
+        lock.lock()
+        defer { lock.unlock() }
+        return appearanceMode
+    }
+
+    func saveAppearanceMode(_ mode: ThemeAppearanceMode) {
+        lock.lock()
+        defer { lock.unlock() }
+        appearanceMode = mode
     }
 }
 
@@ -57,6 +78,57 @@ struct ThemeControllerTests {
 
         controller.setAppearance(.dark)
         #expect(controller.current.id == darkTheme.id)
+    }
+
+    @Test func followsSystemByDefaultAndPersistsManualChoice() {
+        let store = FakeThemePreferenceStore()
+        let controller = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: store,
+            appearance: .light
+        )
+
+        #expect(controller.appearanceMode == .system)
+        controller.setAppearanceMode(.dark)
+        #expect(controller.current.id == darkTheme.id)
+        #expect(store.loadAppearanceMode() == .dark)
+
+        let restored = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: store,
+            appearance: .light
+        )
+        #expect(restored.appearanceMode == .dark)
+        #expect(restored.current.id == darkTheme.id)
+    }
+
+    @Test func manualChoiceIgnoresSystemChangesUntilFollowingSystemAgain() {
+        let controller = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: FakeThemePreferenceStore(),
+            appearance: .light
+        )
+
+        controller.setAppearanceMode(.dark)
+        controller.setAppearance(.light)
+        #expect(controller.current.id == darkTheme.id)
+        #expect(controller.systemAppearance == .light)
+
+        controller.setAppearanceMode(.system)
+        #expect(controller.current.id == lightTheme.id)
+        controller.setAppearance(.dark)
+        #expect(controller.current.id == darkTheme.id)
+    }
+
+    @Test func userDefaultsAppearanceModeRoundTrips() throws {
+        let suiteName = "themes-appearance-mode-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = UserDefaultsThemePreferenceStore(suiteName: suiteName)
+
+        #expect(store.loadAppearanceMode() == nil)
+        store.saveAppearanceMode(.light)
+        #expect(store.loadAppearanceMode() == .light)
     }
 
     @Test func selectThemePersists() {
@@ -117,5 +189,66 @@ struct ThemeControllerTests {
             appearance: .light
         )
         #expect(controller.light.id == lightTheme.id)
+    }
+
+    @Test func crossedSavedIDsRestoreMatchingAppearancesWithoutRewritingPreferences() {
+        let store = FakeThemePreferenceStore()
+        store.saveSelection(lightID: darkTheme.id, darkID: lightTheme.id)
+
+        let controller = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: store,
+            appearance: .light
+        )
+        #expect(controller.light.id == lightTheme.id)
+        #expect(controller.dark.id == darkTheme.id)
+        #expect(controller.current.id == lightTheme.id)
+
+        controller.setAppearance(.dark)
+        #expect(controller.current.id == darkTheme.id)
+        #expect(store.saveCount == 1)
+        #expect(store.loadSelection()?.lightID == darkTheme.id)
+        #expect(store.loadSelection()?.darkID == lightTheme.id)
+    }
+
+    @Test func unknownSavedIDsFallBackWithoutRewritingPreferences() {
+        let store = FakeThemePreferenceStore()
+        store.saveSelection(lightID: "missing-light", darkID: "missing-dark")
+
+        let controller = ThemeController(
+            available: [lightTheme, darkTheme],
+            preferenceStore: store,
+            appearance: .dark
+        )
+        #expect(controller.current.id == darkTheme.id)
+        controller.setAppearance(.light)
+        #expect(controller.current.id == lightTheme.id)
+        #expect(store.saveCount == 1)
+        #expect(store.loadSelection()?.lightID == "missing-light")
+        #expect(store.loadSelection()?.darkID == "missing-dark")
+    }
+
+    @Test func missingAppearanceInInjectedCatalogUsesMatchingBundledFallback() {
+        let lightOnly = ThemeController(
+            available: [lightTheme],
+            preferenceStore: FakeThemePreferenceStore(),
+            appearance: .dark
+        )
+        #expect(lightOnly.dark.id == BundledThemes.dark.id)
+        #expect(lightOnly.current.appearance == .dark)
+
+        let darkOnly = ThemeController(
+            available: [darkTheme],
+            preferenceStore: FakeThemePreferenceStore(),
+            appearance: .light
+        )
+        #expect(darkOnly.light.id == BundledThemes.light.id)
+        #expect(darkOnly.current.appearance == .light)
+    }
+
+    @Test func emptyInjectedCatalogStillHasMatchingBundledFallbacks() {
+        let controller = ThemeController(available: [], preferenceStore: FakeThemePreferenceStore())
+        #expect(controller.light.id == BundledThemes.light.id)
+        #expect(controller.dark.id == BundledThemes.dark.id)
     }
 }

@@ -8,6 +8,27 @@ import Testing
 /// tests it grew) to stay under the project's file-length budget.
 @Suite("TextFilterRunner adversarial corpus")
 struct TextFilterRunnerAdversarialTests {
+    private enum FixtureFailure: Error {
+        case expected
+    }
+
+    private final class ProcessIdentityBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var identity: FixtureProcessIdentity?
+
+        func set(_ identity: FixtureProcessIdentity) {
+            lock.lock()
+            self.identity = identity
+            lock.unlock()
+        }
+
+        func get() -> FixtureProcessIdentity? {
+            lock.lock()
+            defer { lock.unlock() }
+            return identity
+        }
+    }
+
     private static func command(
         _ script: String,
         named name: String = "\(UUID().uuidString).sh",
@@ -16,6 +37,64 @@ struct TextFilterRunnerAdversarialTests {
         -> TextFilterCommand {
         let url = try TextFilterFixtures.makeExecutableScript(script, named: name, in: directory)
         return TextFilterCommand(id: name, name: name, executableURL: url)
+    }
+
+    private static func markerAppears(at url: URL, timeout: Duration) async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while !FileManager.default.fileExists(atPath: url.path), ContinuousClock.now < deadline {
+            guard !Task.isCancelled else { return false }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return FileManager.default.fileExists(atPath: url.path)
+    }
+
+    private static func workerIdentity(from ready: URL) throws -> FixtureProcessIdentity {
+        let output = try String(contentsOf: ready, encoding: .utf8)
+        let fields = output.split(whereSeparator: \.isWhitespace)
+        guard fields.count == 2,
+              fields[0] == "ready",
+              let pid = pid_t(fields[1]),
+              let identity = TextFilterFixtures.ownedProcessIdentity(for: pid)
+        else { throw FixtureFailure.expected }
+        return identity
+    }
+
+    private static func waitForProcessExit(
+        _ identityBox: ProcessIdentityBox,
+        timeout: Duration
+    ) async -> FixtureCleanupJoinResult {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while !Task.isCancelled, ContinuousClock.now < deadline {
+            guard let identity = identityBox.get() else {
+                try? await Task.sleep(for: .milliseconds(10))
+                continue
+            }
+            if let current = TextFilterFixtures.ownedProcessIdentity(for: identity.pid) {
+                guard current == identity else {
+                    return .unresolved("detached worker PID was reused before exit was proven")
+                }
+            } else if TextFilterFixtures.processIsGone(identity.pid) {
+                return .completed(nil)
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return Task.isCancelled
+            ? .unresolved("detached worker exit proof was cancelled")
+            : .unresolved("detached worker did not exit before its bounded lifetime")
+    }
+
+    private static func runExpectingOutputIncomplete(_ command: TextFilterCommand) async throws {
+        do {
+            _ = try await TextFilterRunner().run(command, input: "")
+            Issue.record("expected TextFilterError.outputIncomplete")
+        } catch let error as TextFilterError {
+            #expect(error == .outputIncomplete)
+            if error != .outputIncomplete {
+                throw error
+            }
+        } catch {
+            throw error
+        }
     }
 
     /// Second-adversarial-pass finding #2: the direct-child-only policy
@@ -87,55 +166,62 @@ struct TextFilterRunnerAdversarialTests {
         )
     }
 
-    /// Third-adversarial-pass finding #7: this session's containment
-    /// reaches the invocation's *initial process group* — a real,
-    /// non-trivial guarantee (it defeats a plain backgrounded `&` job or
-    /// an ordinary pipeline stage that outlives its shell), but not
-    /// literally "every descendant, however deeply nested or regrouped."
-    /// A descendant that calls `setsid()` to leave the group is outside
-    /// E14's containment contract by explicit, documented design — this
-    /// makes that boundary executable instead of only a doc comment. (The
-    /// still-open pipe from this detached descendant is why the run below
-    /// fails closed at all here; that part is incidental to what this
-    /// test is actually about.)
-    @Test func aDescendantThatDetachesItsOwnSessionSurvivesContainmentByDesign() async throws {
-        let directory = try TextFilterFixtures.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let pidFile = directory.appendingPathComponent("detached-pid")
-        let command = try Self.command(
-            """
-            #!/bin/sh
-            perl -e 'use POSIX qw(setsid); setsid(); sleep 30;' &
-            echo $! > "\(pidFile.path)"
-            exit 0
-            """,
-            in: directory
-        )
-
-        do {
-            _ = try await TextFilterRunner().run(command, input: "")
-            Issue.record("expected outputIncomplete: the detached descendant still holds the pipe open")
-        } catch TextFilterError.outputIncomplete {
-            // expected -- see the doc comment above; not what this test verifies
-        }
-
-        var detachedPID: pid_t?
-        for _ in 0 ..< 100 {
-            if let contents = try? String(contentsOf: pidFile, encoding: .utf8),
-               let value = pid_t(contents.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                detachedPID = value
-                break
+    /// Keeps the original session-detachment boundary coverage without
+    /// trusting or signalling a PID file: the detached worker has a bounded
+    /// alarm, publishes readiness through a marker, and only writes its
+    /// completion marker after this test releases it *after* TextFilterRunner
+    /// returns. Process-group containment must not kill that worker.
+    @Test func aSessionDetachedDescendantOutlivesRunnerGroupWithBoundedFixtureLifetime() async throws {
+        try await TextFilterFixtures.withOwnedTemporaryDirectory { directory, owner in
+            let ready = directory.appendingPathComponent("ready")
+            let release = directory.appendingPathComponent("release")
+            let done = directory.appendingPathComponent("done")
+            let identityBox = ProcessIdentityBox()
+            let command = try Self.command(
+                """
+                #!/bin/sh
+                perl -e '
+                use POSIX qw(setsid);
+                my ($ready, $release, $done) = @ARGV;
+                exit 1 if setsid() == -1;
+                $SIG{ALRM} = sub { exit 0 };
+                alarm 5;
+                open my $r, ">", $ready or exit 1;
+                print $r "ready $$\\n";
+                close $r;
+                while (!-e $release) { select undef, undef, undef, 0.01 }
+                open my $d, ">", $done or exit 1;
+                print $d "done\\n";
+                close $d;
+                ' "\(ready.path)" "\(release.path)" "\(done.path)" &
+                exit 0
+                """,
+                in: directory
+            )
+            try await owner.registerCleanup(
+                cancel: {
+                    try? "release".write(to: release, atomically: true, encoding: .utf8)
+                },
+                join: {
+                    guard await Self.markerAppears(at: done, timeout: .seconds(2)) else {
+                        return .unresolved(
+                            "detached marker worker did not publish completion before its bounded lifetime"
+                        )
+                    }
+                    return await Self.waitForProcessExit(identityBox, timeout: .seconds(2))
+                }
+            )
+            let task = try await owner.start {
+                try await Self.runExpectingOutputIncomplete(command)
             }
-            try await Task.sleep(for: .milliseconds(20))
+
+            _ = try await task.value
+            #expect(FileManager.default.fileExists(atPath: ready.path))
+            let identity = try Self.workerIdentity(from: ready)
+            identityBox.set(identity)
+            try "release".write(to: release, atomically: true, encoding: .utf8)
+            #expect(await Self.markerAppears(at: done, timeout: .seconds(2)))
         }
-        let recordedPID = try #require(detachedPID, "the detached-descendant fixture never reported its pid")
-        #expect(
-            TextFilterFixtures.processExists(recordedPID),
-            "a session-detached descendant is documented as outside this contract -- it must survive"
-        )
-        // This test intentionally leaves a real process running past
-        // containment; clean it up directly rather than leaking it.
-        kill(recordedPID, SIGKILL)
     }
 
     /// Third-adversarial-pass finding #1's exact reproducer: a still-alive

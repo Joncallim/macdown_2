@@ -1,0 +1,271 @@
+{
+  "utc": "2026-10-18T20:46:55.709699+00:00",
+  "candidate": "ceecea9c4a8297db6aa24e3afa9163406e4a10e5",
+  "pins_sha256": "9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977",
+  "checkouts": [
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/neon",
+      "identity": "neon",
+      "head": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/rearrange",
+      "identity": "rearrange",
+      "head": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-cmark",
+      "identity": "swift-cmark",
+      "head": "924936d0427cb25a61169739a7660230bffa6ea6",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-concurrency-extras",
+      "identity": "swift-concurrency-extras",
+      "head": "5fa253428866f2360c3754e88537f700ed2656b5",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-markdown",
+      "identity": "swift-markdown",
+      "head": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swifttreesitter",
+      "identity": "swifttreesitter",
+      "head": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swiftui-math",
+      "identity": "swiftui-math",
+      "head": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/textual",
+      "identity": "textual",
+      "head": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter",
+      "identity": "tree-sitter",
+      "head": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-bash",
+      "identity": "tree-sitter-bash",
+      "head": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-cpp",
+      "identity": "tree-sitter-cpp",
+      "head": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-css",
+      "identity": "tree-sitter-css",
+      "head": "c0d581e32d183a536731ed6c3a72758b27e20411",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-html",
+      "identity": "tree-sitter-html",
+      "head": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-json",
+      "identity": "tree-sitter-json",
+      "head": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-python",
+      "identity": "tree-sitter-python",
+      "head": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-ruby",
+      "identity": "tree-sitter-ruby",
+      "head": "71bd32fb7607035768799732addba884a37a6210",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-swift",
+      "identity": "tree-sitter-swift",
+      "head": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-toml",
+      "identity": "tree-sitter-toml",
+      "head": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-typescript",
+      "identity": "tree-sitter-typescript",
+      "head": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-xml",
+      "identity": "tree-sitter-xml",
+      "head": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-yaml",
+      "identity": "tree-sitter-yaml",
+      "head": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/yams",
+      "identity": "yams",
+      "head": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/neon",
+      "identity": "neon",
+      "head": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/rearrange",
+      "identity": "rearrange",
+      "head": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark",
+      "identity": "swift-cmark",
+      "head": "924936d0427cb25a61169739a7660230bffa6ea6",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-concurrency-extras",
+      "identity": "swift-concurrency-extras",
+      "head": "5fa253428866f2360c3754e88537f700ed2656b5",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-markdown",
+      "identity": "swift-markdown",
+      "head": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swifttreesitter",
+      "identity": "swifttreesitter",
+      "head": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swiftui-math",
+      "identity": "swiftui-math",
+      "head": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/textual",
+      "identity": "textual",
+      "head": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter",
+      "identity": "tree-sitter",
+      "head": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-bash",
+      "identity": "tree-sitter-bash",
+      "head": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-cpp",
+      "identity": "tree-sitter-cpp",
+      "head": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-css",
+      "identity": "tree-sitter-css",
+      "head": "c0d581e32d183a536731ed6c3a72758b27e20411",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-html",
+      "identity": "tree-sitter-html",
+      "head": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-json",
+      "identity": "tree-sitter-json",
+      "head": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-python",
+      "identity": "tree-sitter-python",
+      "head": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-ruby",
+      "identity": "tree-sitter-ruby",
+      "head": "71bd32fb7607035768799732addba884a37a6210",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-swift",
+      "identity": "tree-sitter-swift",
+      "head": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-toml",
+      "identity": "tree-sitter-toml",
+      "head": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript",
+      "identity": "tree-sitter-typescript",
+      "head": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml",
+      "identity": "tree-sitter-xml",
+      "head": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-yaml",
+      "identity": "tree-sitter-yaml",
+      "head": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+      "status": ""
+    },
+    {
+      "path": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/yams",
+      "identity": "yams",
+      "head": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+      "status": ""
+    }
+  ]
+}

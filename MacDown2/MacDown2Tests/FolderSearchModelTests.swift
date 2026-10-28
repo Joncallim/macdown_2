@@ -48,6 +48,31 @@ struct FolderSearchModelTests {
         #expect(!model.isSearching)
     }
 
+    @Test func oldRenderedRowCannotBorrowNewRootsSearchIdentity() async throws {
+        let first = try TempTree(["same.md": "needle"])
+        let second = try TempTree(["same.md": "needle"])
+        let index = WorkspaceFileIndex()
+        await index.rebuild(root: first.root)
+        let model = FolderSearchModel(index: index, debounce: .zero)
+        model.setRoot(first.root)
+        model.query = "needle"
+        await waitUntil { model.presentedResults.count == 1 }
+        let oldRow = try #require(model.presentedResults.first)
+        #expect(model.isCurrentResult(oldRow))
+
+        model.setRoot(nil)
+        #expect(!model.isCurrentResult(oldRow))
+        await index.rebuild(root: second.root)
+        model.setRoot(second.root)
+        await waitUntil { model.presentedResults.count == 1 }
+        let newRow = try #require(model.presentedResults.first)
+
+        #expect(oldRow.match.relativePath == newRow.match.relativePath)
+        #expect(oldRow.id != newRow.id)
+        #expect(!model.isCurrentResult(oldRow))
+        #expect(model.isCurrentResult(newRow))
+    }
+
     @Test func emptyQueryClearsResultsWithoutSearching() async throws {
         let tree = try TempTree(["a.txt": "hello world"])
         let index = WorkspaceFileIndex()

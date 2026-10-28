@@ -1,0 +1,49 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "00006030-0012446C0E83001C",
+        "deviceName" : "My Mac",
+        "modelName" : "MacBook Pro",
+        "osBuildNumber" : "25F80",
+        "osVersion" : "26.5.1",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 0,
+      "passedTests" : 440,
+      "skippedTests" : 2,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "MacDown2 · Built with macOS 26.5.1",
+  "expectedFailures" : 0,
+  "failedTests" : 0,
+  "finishTime" : 1792358074.245,
+  "passedTests" : 413,
+  "result" : "Passed",
+  "skippedTests" : 2,
+  "startTime" : 1792358014.283,
+  "statistics" : [
+    {
+      "subtitle" : "38 test runs",
+      "title" : "11 tests ran with dynamic parameters"
+    }
+  ],
+  "testFailures" : [
+
+  ],
+  "title" : "Test - MacDown2",
+  "topInsights" : [
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "22% of duration",
+      "text" : "9 longest test runs with outlier durations exceeding 0.71s (three standard deviations)"
+    }
+  ],
+  "totalTestCount" : 415
+}

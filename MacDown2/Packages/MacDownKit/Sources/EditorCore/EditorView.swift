@@ -2,6 +2,17 @@ import AppKit
 import FileCore
 import SwiftUI
 
+final class EditorAttachmentScrollView: NSScrollView {
+    var onWindowChange: (() -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        DispatchQueue.main.async { [weak self] in
+            self?.onWindowChange?()
+        }
+    }
+}
+
 /// A SwiftUI representable that wraps a TextKit 2-backed `NSTextView`.
 ///
 /// The view uses a cached ``EditorTextSystem`` keyed by `identity` so that the
@@ -14,6 +25,7 @@ public struct EditorView: NSViewRepresentable {
     private let store: EditorTextSystemStore
     private let onSelectionChange: ((NSRange) -> Void)?
     private let onScrollChange: ((Int) -> Void)?
+    private let onLayoutChange: (() -> Void)?
 
     /// Creates an editor view.
     /// - Parameters:
@@ -32,7 +44,8 @@ public struct EditorView: NSViewRepresentable {
         configuration: EditorConfiguration,
         store: EditorTextSystemStore,
         onSelectionChange: ((NSRange) -> Void)? = nil,
-        onScrollChange: ((Int) -> Void)? = nil
+        onScrollChange: ((Int) -> Void)? = nil,
+        onLayoutChange: (() -> Void)? = nil
     ) {
         _text = text
         self.identity = identity
@@ -40,6 +53,7 @@ public struct EditorView: NSViewRepresentable {
         self.store = store
         self.onSelectionChange = onSelectionChange
         self.onScrollChange = onScrollChange
+        self.onLayoutChange = onLayoutChange
     }
 
     public func makeNSView(context: Context) -> NSScrollView {
@@ -49,7 +63,7 @@ public struct EditorView: NSViewRepresentable {
             configuration: configuration
         )
 
-        let scrollView = NSScrollView(frame: .zero)
+        let scrollView = EditorAttachmentScrollView(frame: .zero)
         scrollView.documentView = system.textView
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = !configuration.wrapsLines
@@ -99,6 +113,10 @@ public struct EditorView: NSViewRepresentable {
         context.coordinator.noteSynced(text)
         context.coordinator.onSelectionChange = onSelectionChange
         context.coordinator.onScrollChange = onScrollChange
+        context.coordinator.onLayoutChange = onLayoutChange
+        scrollView.onWindowChange = { [weak coordinator = context.coordinator] in
+            coordinator?.editorAttachmentDidChange()
+        }
 
         registerCoordinatorObservers(scrollView: scrollView, coordinator: context.coordinator)
 
@@ -107,6 +125,10 @@ public struct EditorView: NSViewRepresentable {
 
     public func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let system = context.coordinator.system else { return }
+
+        context.coordinator.onSelectionChange = onSelectionChange
+        context.coordinator.onScrollChange = onScrollChange
+        context.coordinator.onLayoutChange = onLayoutChange
 
         // Apply configuration changes (cheap because we diff at the call site
         // via SwiftUI's update cycle, but `apply` is idempotent).
@@ -172,6 +194,7 @@ public struct EditorView: NSViewRepresentable {
         var textBinding: Binding<String>?
         var onSelectionChange: ((NSRange) -> Void)?
         var onScrollChange: ((Int) -> Void)?
+        var onLayoutChange: (() -> Void)?
         var isApplyingModelText = false
         var sync = EditorModelSyncState()
         /// Captured in `shouldChangeTextIn` (every edit this delegate

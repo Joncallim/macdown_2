@@ -21,7 +21,7 @@ struct GraphvizExportRegistryTests {
         let parsed = try await ParseEngine().parse(text, revision: 0)
         let registry = ContributionRegistry.standardForExport(theme: BundledThemes.light, isPrintTarget: false)
         let results = try await registry.run(document: parsed, sourceText: text, sourceGeneration: 9)
-        let adaptation = ExportContributionAdapter.adapt(results)
+        let adaptation = ExportContributionAdapter.adapt(results, destination: .htmlExport)
 
         #expect(adaptation.contributions.count == 2)
         #expect(adaptation.standaloneDiagnostics.isEmpty)
@@ -42,6 +42,7 @@ struct GraphvizExportRegistryTests {
         #expect(!prepared.bodyHTML.contains("<script"))
         #expect(!prepared.bodyHTML.contains("src=\"http"))
         #expect(!prepared.bodyHTML.contains("href=\"http"))
+        #expect(prepared.bodyHTML.localizedCaseInsensitiveContains("font-family=\"helvetica"))
     }
 
     @Test func aMalformedGraphvizFenceLeavesAuthoredSourceUntouchedWithADiagnostic() async throws {

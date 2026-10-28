@@ -1,0 +1,165 @@
+diff --git a/Sources/Neon/TextViewHighlighter.swift b/Sources/Neon/TextViewHighlighter.swift
+index dbce7d1..08f8c5b 100644
+--- a/Sources/Neon/TextViewHighlighter.swift
++++ b/Sources/Neon/TextViewHighlighter.swift
+@@ -106,20 +106,23 @@ public final class TextViewHighlighter {
+ 		)
+ 
+ 		buffer.invalidationHandler = { [styler] in
++			DiagTrace.log("tvh.bufferFlush invalidate=\($0)")
+ 			styler.invalidate($0)
+ 
+ 			styler.validate()
+ 		}
+ 
+-		storageDelegate.willChangeContent = { [buffer, client] range, _ in
++		storageDelegate.willChangeContent = { [buffer, client, textView] range, _d in
+ 			// a change happening, start buffering invalidations
+ 			buffer.beginBuffering()
++			DiagTrace.log("tvh.willChange editedRange=\(range) delta=\(_d) length=\(textView.textStorage?.length ?? -1)")
+ 
+ 			client.willChangeContent(in: range)
+ 		}
+ 
+ 		storageDelegate.didChangeContent = { [buffer, client, styler] range, delta in
+ 			let adjustedRange = NSRange(location: range.location, length: range.length - delta)
++			DiagTrace.log("tvh.didChange editedRange=\(range) delta=\(delta) adjusted=\(adjustedRange)")
+ 
+ 			client.didChangeContent(in: adjustedRange, delta: delta)
+ 			styler.didChangeContent(in: adjustedRange, delta: delta)
+@@ -194,6 +197,7 @@ extension TextViewHighlighter {
+ 
+ 	@objc private func visibleContentChanged(_ notification: NSNotification) {
+ 		let visibleRange = textView.visibleTextRange
++		DiagTrace.log("tvh.visibleContentChanged \(visibleRange)")
+ 
+ 		styler.validate(.range(visibleRange))
+ 	}
+diff --git a/Sources/Neon/TokenSystemValidator.swift b/Sources/Neon/TokenSystemValidator.swift
+index 6ec8930..9e19b43 100644
+--- a/Sources/Neon/TokenSystemValidator.swift
++++ b/Sources/Neon/TokenSystemValidator.swift
+@@ -1,6 +1,7 @@
+ import Foundation
+ 
+ import RangeState
++import SwiftTreeSitterLayer
+ 
+ @MainActor
+ final class TokenSystemValidator<Interface: TextSystemInterface> {
+@@ -49,6 +50,7 @@ final class TokenSystemValidator<Interface: TextSystemInterface> {
+ 	}
+ 
+ 	private func applyStyles(for application: TokenApplication) {
++		DiagTrace.log("styler.apply range=\(application.range.map { "\($0)" } ?? "nil") tokens=\(application.tokens.count)")
+ 		textSystem.applyStyles(for: application)
+ 	}
+ }
+diff --git a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+index 81bd2b8..46d506f 100644
+--- a/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
++++ b/Sources/TreeSitterClient/BackgroundingLanguageLayerTree.swift
+@@ -50,6 +50,7 @@ final class BackgroundingLanguageLayerTree {
+ 
+ 	public func willChangeContent(in range: NSRange) {
+ 		self.pendingOldPoint = configuration.locationTransformer(range.max)
++		DiagTrace.log("bglt.willChange range=\(range) pendingOldPoint=\(pendingOldPoint.map { "\($0.row):\($0.column)" } ?? "nil")")
+ 	}
+ 
+ 	public func didChangeContent(
+@@ -67,6 +68,7 @@ final class BackgroundingLanguageLayerTree {
+ 
+ 		let oldEndPoint = pendingOldPoint ?? transformer(range.max) ?? .zero
+ 		let edit = InputEdit(range: range, delta: delta, oldEndPoint: oldEndPoint, transformer: transformer)
++		DiagTrace.log("bglt.didChange range=\(range) delta=\(delta) sync=\(sync) usedPending=\(pendingOldPoint != nil) edit: \(DiagTrace.edit(edit))")
+ 
+ 		backgroundProcessor.accessValue(
+ 			isolation: isolation,
+@@ -74,7 +76,9 @@ final class BackgroundingLanguageLayerTree {
+ 			operation: { $0.didChangeContent(snapshot.content, using: edit, resolveSublayers: false) },
+ 			completion: { result in
+ 				do {
+-					completion(try result.get())
++					let v = try result.get()
++					DiagTrace.log("bglt.didChange.done range=\(range) invalidated=\(DiagTrace.ranges(v))")
++					completion(v)
+ 				} catch {
+ 					preconditionFailure("didChangeContent should not be able to fail: \(error)")
+ 				}
+diff --git a/Sources/TreeSitterClient/TreeSitterClient.swift b/Sources/TreeSitterClient/TreeSitterClient.swift
+index 532665a..be6237c 100644
+--- a/Sources/TreeSitterClient/TreeSitterClient.swift
++++ b/Sources/TreeSitterClient/TreeSitterClient.swift
+@@ -146,6 +146,7 @@ public final class TreeSitterClient {
+ 	/// - Parameter range: the range that was affected by the edit
+ 	/// - Parameter delta: the change in length of the content
+ 	public func didChangeContent(in range: NSRange, delta: Int) {
++		DiagTrace.log("client.didChangeContent range=\(range) delta=\(delta) processedUpperBound=\(rangeProcessor.processedUpperBound) pending=\(rangeProcessor.pendingMutations.count)")
+ 		rangeProcessor.didChangeContent(in: range, delta: delta, isolation: MainActor.shared)
+ 		sublayerValidator.contentChanged(in: range, delta: delta)
+ 		versionedContent.contentChanged()
+@@ -186,17 +187,20 @@ extension TreeSitterClient {
+ 
+ 	private func didChange(_ mutation: RangeMutation, completion: @escaping () -> Void) {
+ 		let limit = mutation.postApplyLimit
++		DiagTrace.log("client.didChange(mutation) range=\(mutation.range) delta=\(mutation.delta) postApplyLimit=\(limit) docLength=\(configuration.lengthProvider())")
+ 
+ 		let content = configuration.contentSnapshotProvider(limit)
+ 
+ 		layerTree.didChangeContent(content, in: mutation.range, delta: mutation.delta, isolation: MainActor.shared, completion: { invalidated in
+ 			completion()
+-			self.handleInvalidation(invalidated, sublayers: false)
++			// DIAG experiment: DIAG_NEON_FIX=1 also invalidates the sublayer validator for the edit's invalidated set
++			self.handleInvalidation(invalidated, sublayers: ProcessInfo.processInfo.environment["DIAG_NEON_FIX"] == "1")
+ 		})
+ 	}
+ 
+ 	private func handleInvalidation(_ set: IndexSet, sublayers: Bool) {
+ 		let transformedSet = set.apply(rangeProcessor.pendingMutations)
++		DiagTrace.log("client.handleInvalidation sublayers=\(sublayers) set=\(DiagTrace.ranges(set)) transformed=\(DiagTrace.ranges(transformedSet)) pending=\(rangeProcessor.pendingMutations.count)")
+ 
+ 		if transformedSet.isEmpty {
+ 			return
+@@ -218,6 +222,7 @@ extension TreeSitterClient {
+ 
+ 		let set = IndexSet(integersIn: range)
+ 		let content = self.maximumProcessedContent
++		DiagTrace.log("client.resolveSublayers(sync) range=\(range) processedUpperBound=\(rangeProcessor.processedUpperBound)")
+ 
+ 		do {
+ 			let invalidatedSet = try self.layerTree.resolveSublayers(with: content, in: set)
+@@ -237,6 +242,7 @@ extension TreeSitterClient {
+ 	private func resolveSublayers(in range: NSRange) async {
+ 		let set = IndexSet(integersIn: range)
+ 		let content = self.maximumProcessedContentSnapshot
++		DiagTrace.log("client.resolveSublayers(async) range=\(range) processedUpperBound=\(rangeProcessor.processedUpperBound)")
+ 
+ 		do {
+ 			let invalidatedSet = try await self.layerTree.resolveSublayers(with: content, in: set, isolation: MainActor.shared)
+@@ -333,6 +339,7 @@ extension TreeSitterClient {
+ 	}
+ 
+ 	private func validateSublayers(in set: IndexSet) {
++		DiagTrace.log("client.validateSublayers set=\(DiagTrace.ranges(set))")
+ 		sublayerValidator.validate(.set(set), isolation: MainActor.shared)
+ 	}
+ 
+@@ -360,12 +367,16 @@ extension TreeSitterClient {
+ 
+ 				self.validateSublayers(in: set)
+ 
+-				return try self.layerTree.executeQuery(.highlights, in: set).highlights()
++				let h = try self.layerTree.executeQuery(.highlights, in: set).highlights()
++				DiagTrace.log("client.highlights(sync) set=\(DiagTrace.ranges(set)) count=\(h.count)")
++				return h
+ 			},
+ 			asyncValue: { input in
+ 				let query = ClientQuery(query: .highlights, indexSet: input.indexSet, textProvider: input.textProvider, mode: input.mode)
+ 
+-				return try await self.executeQuery(query).highlights()
++				let h = try await self.executeQuery(query).highlights()
++				DiagTrace.log("client.highlights(async) set=\(DiagTrace.ranges(input.indexSet)) count=\(h.count)")
++				return h
+ 			})
+ 	}
+ }

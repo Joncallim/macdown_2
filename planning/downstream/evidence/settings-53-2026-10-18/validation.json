@@ -1,0 +1,881 @@
+{
+  "candidate_head": "5659816625c71503825aac33467f2d1cce3fd03c",
+  "candidate_tree": "bbc1e3305dbaccdaeb5b9b253fdcccb00ab8372e",
+  "source_archive_sha256": "09507af170144fd0c68c10da11eb70183e8fe4a1e2768e55c800199707794f41",
+  "raw_evidence_root": "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18",
+  "initial_validation": {
+    "head": "5659816625c71503825aac33467f2d1cce3fd03c",
+    "tree": "bbc1e3305dbaccdaeb5b9b253fdcccb00ab8372e",
+    "source_archive_sha256": "09507af170144fd0c68c10da11eb70183e8fe4a1e2768e55c800199707794f41",
+    "commands": [
+      {
+        "name": "swiftformat",
+        "argv": [
+          "swiftformat",
+          "--lint",
+          "MacDown2"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:08:13.777453+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:14.033931+00:00",
+        "seconds": 0.255988874938339,
+        "log_sha256": "7498c6ebd78e31e7a928a49257f4dd33b02e9515dd4a2e423fdb34f82b067405",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-swiftformat.log"
+      },
+      {
+        "name": "swiftlint",
+        "argv": [
+          "swiftlint",
+          "lint",
+          "--strict",
+          "MacDown2"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:08:14.096246+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:14.614294+00:00",
+        "seconds": 0.5179965000133961,
+        "log_sha256": "c21dcbd6b779803445e27e7aa25ae9a935144b4443fe7786a371ca3ee82bc402",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-swiftlint.log"
+      },
+      {
+        "name": "legacy-coverage",
+        "argv": [
+          "python3",
+          "planning/downstream/tools/check_legacy_preference_map.py"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:08:14.672476+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:14.736043+00:00",
+        "seconds": 0.06350858299992979,
+        "log_sha256": "147f93cb21dac9fdcd98fa670d1f505a294848296f91e69e993535a7c6df6678",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-legacy-coverage.log"
+      },
+      {
+        "name": "legacy-checker-tests",
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "planning/downstream/tools",
+          "-p",
+          "test_legacy_preference_map.py"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:08:14.792304+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:14.868087+00:00",
+        "seconds": 0.07575691607780755,
+        "log_sha256": "1d83585b97486319bb9c2fff2996c7435fd78e26e63e611aae2ad6791d35db6b",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-legacy-checker-tests.log"
+      },
+      {
+        "name": "settings-debug",
+        "argv": [
+          "swift",
+          "test",
+          "--no-parallel",
+          "--force-resolved-versions",
+          "--filter",
+          "AppSettingsTests"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+        "started_utc": "2026-10-18T19:08:14.926690+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:36.399659+00:00",
+        "seconds": 21.473101542098448,
+        "log_sha256": "1535dc538eb981f84e0b2bcbccb9ea2806101d2c888ea9d7e12548bb8af3f5b1",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-settings-debug.log"
+      },
+      {
+        "name": "settings-release",
+        "argv": [
+          "swift",
+          "test",
+          "-c",
+          "release",
+          "-Xswiftc",
+          "-enable-testing",
+          "--no-parallel",
+          "--force-resolved-versions",
+          "--filter",
+          "AppSettingsTests"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+        "started_utc": "2026-10-18T19:08:36.462852+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:49.955157+00:00",
+        "seconds": 13.492265708046034,
+        "log_sha256": "3e6c1d9e7497cd7d7651185f80a46d03d832f21404c85127a5d5f6ec34021841",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-settings-release.log"
+      },
+      {
+        "name": "source-compliance",
+        "argv": [
+          "python3",
+          "compliance/tools/compliance.py",
+          "check"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/validated-source-5659816625c71503825aac33467f2d1cce3fd03c",
+        "started_utc": "2026-10-18T19:08:50.028713+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:50.366052+00:00",
+        "seconds": 0.33733058301731944,
+        "log_sha256": "1c5db2ff733b1322bc72e36c65800fef3b2f3a18c967fcbe07d0a34482f810a7",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-source-compliance.log"
+      },
+      {
+        "name": "release-preflight",
+        "argv": [
+          "python3",
+          "compliance/tools/compliance.py",
+          "check",
+          "--release"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/validated-source-5659816625c71503825aac33467f2d1cce3fd03c",
+        "started_utc": "2026-10-18T19:08:50.425557+00:00",
+        "expected_exit": 1,
+        "exit_code": 1,
+        "ended_utc": "2026-10-18T19:08:50.633606+00:00",
+        "seconds": 0.2080237918999046,
+        "log_sha256": "0d6822d8318b7e53ae435442aa10f8a88d266edcc5906f855a173e8b36081c80",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-release-preflight.log"
+      },
+      {
+        "name": "xcodegen",
+        "argv": [
+          "xcodegen",
+          "generate"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2",
+        "started_utc": "2026-10-18T19:08:50.691774+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:50.787047+00:00",
+        "seconds": 0.09522083285264671,
+        "log_sha256": "58aa2a3119b37b0a5af3e23bf3029d9ae18ed71807d26d2f10974839c4481fd0",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-xcodegen.log"
+      },
+      {
+        "name": "pin-xcode",
+        "argv": [
+          "MacDown2/scripts/pin-xcode-package-versions.sh"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:08:50.854452+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:08:50.872775+00:00",
+        "seconds": 0.018295624991878867,
+        "log_sha256": "b2be8d12c3194b89502a2b9bcdb39f066f3ffdf67f4945db582b64bf30595151",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-pin-xcode.log"
+      },
+      {
+        "name": "release-app",
+        "argv": [
+          "xcodebuild",
+          "-derivedDataPath",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData",
+          "-clonedSourcePackagesDirPath",
+          "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+          "-project",
+          "MacDown2/MacDown2.xcodeproj",
+          "-scheme",
+          "MacDown2",
+          "-configuration",
+          "Release",
+          "-destination",
+          "platform=macOS",
+          "-onlyUsePackageVersionsFromResolvedFile",
+          "CODE_SIGNING_ALLOWED=NO",
+          "CODE_SIGNING_REQUIRED=NO",
+          "SWIFT_TREAT_WARNINGS_AS_ERRORS=YES",
+          "build"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:08:50.934401+00:00",
+        "expected_exit": 0,
+        "exit_code": 65,
+        "ended_utc": "2026-10-18T19:09:20.255111+00:00",
+        "seconds": 29.32185574993491,
+        "log_sha256": "8f4c3aac651b0a6780e27b2ab281bc6c8cf634373609de292f66c6a48d29f88e",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "final-release-app.log"
+      }
+    ],
+    "performance_suites_run": false,
+    "native_ui_run": false
+  },
+  "corrected_build_continuation": {
+    "head": "5659816625c71503825aac33467f2d1cce3fd03c",
+    "tree": "bbc1e3305dbaccdaeb5b9b253fdcccb00ab8372e",
+    "reason": "Correct validation-only global warning flag conflict; source is unchanged. Initial failure retained in final-validation.json.",
+    "commands": [
+      {
+        "name": "release-app",
+        "argv": [
+          "xcodebuild",
+          "-derivedDataPath",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData",
+          "-xcconfig",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/FirstPartyWarnings.xcconfig",
+          "-clonedSourcePackagesDirPath",
+          "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+          "-project",
+          "MacDown2/MacDown2.xcodeproj",
+          "-scheme",
+          "MacDown2",
+          "-configuration",
+          "Release",
+          "-destination",
+          "platform=macOS",
+          "-onlyUsePackageVersionsFromResolvedFile",
+          "CODE_SIGNING_ALLOWED=NO",
+          "CODE_SIGNING_REQUIRED=NO",
+          "build"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:09:58.790597+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:12:03.272568+00:00",
+        "seconds": 124.47789216716774,
+        "log_sha256": "51c2f8d6d185023dce1db84cbc82893462342cec0e22d9e918b36dcbcb2f2424",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "scoped-release-app.log"
+      },
+      {
+        "name": "release-cli",
+        "argv": [
+          "xcodebuild",
+          "-derivedDataPath",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData",
+          "-xcconfig",
+          "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/FirstPartyWarnings.xcconfig",
+          "-clonedSourcePackagesDirPath",
+          "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages",
+          "-project",
+          "MacDown2/MacDown2.xcodeproj",
+          "-scheme",
+          "macdown2",
+          "-configuration",
+          "Release",
+          "-destination",
+          "platform=macOS",
+          "-onlyUsePackageVersionsFromResolvedFile",
+          "CODE_SIGNING_ALLOWED=NO",
+          "CODE_SIGNING_REQUIRED=NO",
+          "build"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:12:03.391907+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:12:13.015856+00:00",
+        "seconds": 9.623904292006046,
+        "log_sha256": "ba4333dc5b7fff289e5d248f7d2033231adb8397855b17c750cc1833442e52da",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "scoped-release-cli.log"
+      },
+      {
+        "name": "pins-match",
+        "argv": [
+          "MacDown2/scripts/pin-xcode-package-versions.sh",
+          "--check"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:12:13.086707+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:12:13.098202+00:00",
+        "seconds": 0.011476041981950402,
+        "log_sha256": "6de0463752066c4bf8e671e01c68b909ec8f55dc8aeb224fdd3bbf8132b2dd5c",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "scoped-pins-match.log"
+      },
+      {
+        "name": "lockfile-unchanged",
+        "argv": [
+          "git",
+          "diff",
+          "--exit-code",
+          "d3cc8883",
+          "HEAD",
+          "--",
+          "MacDown2/Packages/MacDownKit/Package.resolved"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:12:13.151573+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:12:13.159860+00:00",
+        "seconds": 0.008259042166173458,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "scoped-lockfile-unchanged.log"
+      },
+      {
+        "name": "diff-check",
+        "argv": [
+          "git",
+          "diff",
+          "--check",
+          "d3cc8883",
+          "HEAD"
+        ],
+        "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ",
+        "started_utc": "2026-10-18T19:12:13.211166+00:00",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "ended_utc": "2026-10-18T19:12:13.223429+00:00",
+        "seconds": 0.012245208024978638,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "head_after": "5659816625c71503825aac33467f2d1cce3fd03c",
+        "git_status_after": "",
+        "log": "scoped-diff-check.log"
+      }
+    ],
+    "performance_suites_run": false,
+    "native_ui_run": false
+  },
+  "build_inspection": {
+    "head": "5659816625c71503825aac33467f2d1cce3fd03c",
+    "logs": [
+      {
+        "file": "scoped-release-app.log",
+        "sha256": "51c2f8d6d185023dce1db84cbc82893462342cec0e22d9e918b36dcbcb2f2424",
+        "module": "MacDown2",
+        "compiler_commands": [
+          "builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MacDown2 -O -whole-module-optimization @/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/x86_64/MacDown2.SwiftFileList -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitter.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterMarkdownInline.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterMarkdown.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJSON.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterHTML.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterYAML.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTOML.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJavaScript.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTSX.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTypeScript.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterPython.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterRuby.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCSS.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterSwift.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCPP.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterBash.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterSQL.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterDTD.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterXML.modulemap -warnings-as-errors -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target x86_64-apple-macos26.0 -g -module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -swift-version 6 -I /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release -c -num-threads 11 -Xcc -ivfsstatcache -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/x86_64/MacDown2-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/x86_64/MacDown2.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/x86_64/MacDown2_const_extract_protocols.json -Xcc -iquote -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-generated-files.hmap -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-own-target-headers.hmap -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2-65534ef3569850492c072e967540a474-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-project-headers.hmap -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter/lib/include -Xcc -I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/bindings/swift -Xcc -I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-json/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-html/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-yaml/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-toml/bindings/swift -Xcc -I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript/bindings/swift/tsx -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript/bindings/swift/typescript -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-python/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-ruby/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-css/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-swift/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-cpp/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-bash/bindings/swift -Xcc -I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml/bindings/swift/dtd -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml/bindings/swift/xml -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark/src/include -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark/extensions/include -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-markdown/Sources/CAtomic/include -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Yams/Sources/CYaml/include -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/include -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources-normal/x86_64 -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources/x86_64 -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/x86_64/MacDown2-Swift.h -working-directory /Users/jonathanlim/GitHub/macdown_2-integ/MacDown2 -no-emit-module-separately-wmo",
+          "builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MacDown2 -O -whole-module-optimization @/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/arm64/MacDown2.SwiftFileList -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitter.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterMarkdownInline.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterMarkdown.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJSON.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterHTML.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterYAML.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTOML.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJavaScript.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTSX.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTypeScript.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterPython.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterRuby.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCSS.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterSwift.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCPP.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterBash.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterSQL.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterDTD.modulemap -Xcc -fmodule-map-file\\=/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterXML.modulemap -warnings-as-errors -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -swift-version 6 -I /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release -c -num-threads 11 -Xcc -ivfsstatcache -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/arm64/MacDown2-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/arm64/MacDown2.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/arm64/MacDown2_const_extract_protocols.json -Xcc -iquote -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-generated-files.hmap -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-own-target-headers.hmap -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2-65534ef3569850492c072e967540a474-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/MacDown2-project-headers.hmap -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter/lib/include -Xcc -I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdownInline/bindings/swift -Xcc -I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterMarkdown/Sources/TreeSitterMarkdown/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-json/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-html/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-yaml/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-toml/bindings/swift -Xcc -I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterJavaScript/Sources/TreeSitterJavaScript/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript/bindings/swift/tsx -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript/bindings/swift/typescript -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-python/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-ruby/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-css/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-swift/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-cpp/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-bash/bindings/swift -Xcc -I/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/TreeSitterSQL/Sources/TreeSitterSQL/bindings/swift -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml/bindings/swift/dtd -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml/bindings/swift/xml -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark/src/include -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark/extensions/include -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-markdown/Sources/CAtomic/include -Xcc -I/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Yams/Sources/CYaml/include -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/include -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources-normal/arm64 -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources/arm64 -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2.build/Objects-normal/arm64/MacDown2-Swift.h -working-directory /Users/jonathanlim/GitHub/macdown_2-integ/MacDown2 -no-emit-module-separately-wmo"
+        ],
+        "warnings": [
+          "2026-10-19 03:11:54.593 appintentsmetadataprocessor[77381:50563670] warning: Metadata extraction skipped. No AppIntents.framework dependency found."
+        ],
+        "errors": [],
+        "build_succeeded": true
+      },
+      {
+        "file": "scoped-release-cli.log",
+        "sha256": "ba4333dc5b7fff289e5d248f7d2033231adb8397855b17c750cc1833442e52da",
+        "module": "macdown2",
+        "compiler_commands": [
+          "builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name macdown2 -O -whole-module-optimization @/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/Objects-normal/arm64/macdown2.SwiftFileList -warnings-as-errors -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 6 -I /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/PackageFrameworks -F /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release -c -num-threads 11 -Xcc -ivfsstatcache -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/Objects-normal/arm64/macdown2-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/Objects-normal/arm64/macdown2.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/Objects-normal/arm64/macdown2_const_extract_protocols.json -Xcc -iquote -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/macdown2-generated-files.hmap -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/macdown2-own-target-headers.hmap -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/macdown2-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/MacDown2-65534ef3569850492c072e967540a474-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/macdown2-project-headers.hmap -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/include -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/DerivedSources-normal/arm64 -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/DerivedSources/arm64 -Xcc -I/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Intermediates.noindex/MacDown2.build/Release/macdown2.build/Objects-normal/arm64/macdown2-Swift.h -working-directory /Users/jonathanlim/GitHub/macdown_2-integ/MacDown2 -no-emit-module-separately-wmo"
+        ],
+        "warnings": [],
+        "errors": [],
+        "build_succeeded": true
+      }
+    ],
+    "tested_objects": {
+      "MacDown2": "380118ba43ae08c2d2899cd6285ef5f7bb378ff8",
+      "compliance": "1e2ffccdd91b697732a4ac50ebfa35cc3a87b306",
+      "planning/downstream/tools": "09953d4400d52f3f7c4f998f6f020756aa042276",
+      "planning/downstream/legacy-preference-dispositions.json": "a950c2fb849f34afd0f2913c8467d512128edf31"
+    },
+    "binaries": [
+      {
+        "path": "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/MacDown2.app/Contents/MacOS/MacDown2",
+        "bytes": 92978648,
+        "sha256": "5e5b96be41c78dc1f82fff27d8e693ccbedda4a841193f7cf97b6878ebb85c05"
+      },
+      {
+        "path": "/Users/jonathanlim/GitHub/_cleanup-archive/settings-53-d3cc8883-2026-10-18/DerivedData/Build/Products/Release/macdown2",
+        "bytes": 997848,
+        "sha256": "6eae5253ae8ee62e0a1c79c7e2472bc24ffac84b3ef1895e1cd230f015cd3044"
+      }
+    ]
+  },
+  "environment": [
+    {
+      "argv": [
+        "sw_vers"
+      ],
+      "exit_code": 0,
+      "stdout": "ProductName:\t\tmacOS\nProductVersion:\t\t26.5.1\nBuildVersion:\t\t25F80\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "xcodebuild",
+        "-version"
+      ],
+      "exit_code": 0,
+      "stdout": "Xcode 26.6\nBuild version 17F113\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "swift",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)\nTarget: arm64-apple-macosx26.0\n",
+      "stderr": "swift-driver version: 1.148.6 "
+    },
+    {
+      "argv": [
+        "python3",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "Python 3.15.0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sysctl",
+        "-n",
+        "hw.model"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "sysctl: sysctl fmt -1 1024 1: Operation not permitted\n"
+    },
+    {
+      "argv": [
+        "sysctl",
+        "-n",
+        "machdep.cpu.brand_string"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "sysctl: sysctl fmt -1 1024 1: Operation not permitted\n"
+    }
+  ],
+  "hardware": {
+    "hw.model": "Mac15,6",
+    "machdep.cpu.brand_string": "Apple M3 Pro"
+  },
+  "dependency_checkouts": {
+    "utc": "2026-10-18T19:10:32.858563+00:00",
+    "head": "5659816625c71503825aac33467f2d1cce3fd03c",
+    "lock_sha256": "9c7c1835b89d1248bd156e1caa45c7691098b36ef1aabea35a8974b5c15f8977",
+    "checkouts": [
+      {
+        "kind": "swiftpm",
+        "identity": "neon",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/Neon",
+        "expected_revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+        "head": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "rearrange",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/Rearrange",
+        "expected_revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+        "head": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swift-cmark",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-cmark",
+        "expected_revision": "924936d0427cb25a61169739a7660230bffa6ea6",
+        "head": "924936d0427cb25a61169739a7660230bffa6ea6",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swift-concurrency-extras",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-concurrency-extras",
+        "expected_revision": "5fa253428866f2360c3754e88537f700ed2656b5",
+        "head": "5fa253428866f2360c3754e88537f700ed2656b5",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swift-markdown",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swift-markdown",
+        "expected_revision": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "head": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swifttreesitter",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/SwiftTreeSitter",
+        "expected_revision": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+        "head": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "swiftui-math",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/swiftui-math",
+        "expected_revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+        "head": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "textual",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/textual",
+        "expected_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+        "head": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter",
+        "expected_revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+        "head": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-bash",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-bash",
+        "expected_revision": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+        "head": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-cpp",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-cpp",
+        "expected_revision": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "head": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-css",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-css",
+        "expected_revision": "c0d581e32d183a536731ed6c3a72758b27e20411",
+        "head": "c0d581e32d183a536731ed6c3a72758b27e20411",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-html",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-html",
+        "expected_revision": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+        "head": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-json",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-json",
+        "expected_revision": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+        "head": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-python",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-python",
+        "expected_revision": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+        "head": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-ruby",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-ruby",
+        "expected_revision": "71bd32fb7607035768799732addba884a37a6210",
+        "head": "71bd32fb7607035768799732addba884a37a6210",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-swift",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-swift",
+        "expected_revision": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+        "head": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-toml",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-toml",
+        "expected_revision": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+        "head": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-typescript",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-typescript",
+        "expected_revision": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+        "head": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-xml",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-xml",
+        "expected_revision": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+        "head": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "tree-sitter-yaml",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/tree-sitter-yaml",
+        "expected_revision": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+        "head": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+        "git_status": ""
+      },
+      {
+        "kind": "swiftpm",
+        "identity": "yams",
+        "checkout": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit/.build/checkouts/Yams",
+        "expected_revision": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "head": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "neon",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Neon",
+        "expected_revision": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+        "head": "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "rearrange",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Rearrange",
+        "expected_revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+        "head": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swift-cmark",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-cmark",
+        "expected_revision": "924936d0427cb25a61169739a7660230bffa6ea6",
+        "head": "924936d0427cb25a61169739a7660230bffa6ea6",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swift-concurrency-extras",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-concurrency-extras",
+        "expected_revision": "5fa253428866f2360c3754e88537f700ed2656b5",
+        "head": "5fa253428866f2360c3754e88537f700ed2656b5",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swift-markdown",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swift-markdown",
+        "expected_revision": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "head": "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swifttreesitter",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/SwiftTreeSitter",
+        "expected_revision": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+        "head": "cbe31cb3601aa29c1f64b6e4328733511126d6d5",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "swiftui-math",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/swiftui-math",
+        "expected_revision": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+        "head": "0b5c2cfaaec8d6193db206f675048eeb5ce95f71",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "textual",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/textual",
+        "expected_revision": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+        "head": "01b51875a5406eefc95f52a058cb059e7bc94dc4",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter",
+        "expected_revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+        "head": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-bash",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-bash",
+        "expected_revision": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+        "head": "a06c2e4415e9bc0346c6b86d401879ffb44058f7",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-cpp",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-cpp",
+        "expected_revision": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "head": "f41e1a044c8a84ea9fa8577fdd2eab92ec96de02",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-css",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-css",
+        "expected_revision": "c0d581e32d183a536731ed6c3a72758b27e20411",
+        "head": "c0d581e32d183a536731ed6c3a72758b27e20411",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-html",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-html",
+        "expected_revision": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+        "head": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-json",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-json",
+        "expected_revision": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+        "head": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-python",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-python",
+        "expected_revision": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+        "head": "bffb65a8cfe4e46290331dfef0dbf0ef3679de11",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-ruby",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-ruby",
+        "expected_revision": "71bd32fb7607035768799732addba884a37a6210",
+        "head": "71bd32fb7607035768799732addba884a37a6210",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-swift",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-swift",
+        "expected_revision": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+        "head": "31d17fe7e818a2048c808b5c6fdc2dc792f4f5b5",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-toml",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-toml",
+        "expected_revision": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+        "head": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-typescript",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-typescript",
+        "expected_revision": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+        "head": "f975a621f4e7f532fe322e13c4f79495e0a7b2e7",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-xml",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-xml",
+        "expected_revision": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+        "head": "4b64dd3a03ec002258d6268d712fd93716d6ab57",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "tree-sitter-yaml",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/tree-sitter-yaml",
+        "expected_revision": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+        "head": "b733d3f5f5005890f324333dd57e1f0badec5c87",
+        "git_status": ""
+      },
+      {
+        "kind": "xcode",
+        "identity": "yams",
+        "checkout": "/Users/jonathanlim/Library/Developer/Xcode/DerivedData/MacDown2-dzrmcfervtreklbefratupqpimsh/SourcePackages/checkouts/Yams",
+        "expected_revision": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "head": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "git_status": ""
+      }
+    ]
+  },
+  "baseline_regression": {
+    "head": "d3cc8883a08df02a9a98165b1833ca950948dc5d",
+    "argv": [
+      "swift",
+      "test",
+      "--no-parallel",
+      "--force-resolved-versions",
+      "--filter",
+      "SettingsCompatibilityTests/aPresentMalformedStatusBarIsUnreadableNotAMissingField"
+    ],
+    "cwd": "/Users/jonathanlim/GitHub/macdown_2-integ/MacDown2/Packages/MacDownKit",
+    "expected_exit": 1,
+    "started_utc": "2026-10-18T18:54:57.733683+00:00",
+    "working_diff_sha256": "6a543685b8281f9c473bae038bb1ab6f6465acf79e6cb6c414301beed21bcb4e",
+    "exit_code": 1,
+    "ended_utc": "2026-10-18T18:55:19.440967+00:00",
+    "log_sha256": "20b1a973c9007ebbc73febe21e0da1cf33641eef59ee8508c95d9fbf24675012"
+  },
+  "scope": {
+    "test_selection": "AppSettingsTests only in Debug and Release",
+    "native_ui_run": false,
+    "app_tests_run": false,
+    "performance_suites_run": false,
+    "user_preferences_accessed": false,
+    "release_approved": false,
+    "settings_migration_complete": false
+  },
+  "remaining_gates": {
+    "release_preflight_failures": 8,
+    "release_parser_ms": 484.814584,
+    "release_parser_limit_ms": 400,
+    "release_editing_assist_ms": 56.881709,
+    "release_editing_assist_limit_ms": 50,
+    "owner_review": "pending",
+    "external_state_changes": "not authorized or performed"
+  }
+}

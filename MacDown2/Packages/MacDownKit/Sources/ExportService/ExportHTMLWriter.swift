@@ -49,11 +49,7 @@ public enum ExportHTMLWriter {
         from prepared: PreparedExportDocument,
         additionalHead: String = ""
     ) -> String {
-        let body = embedResources(
-            in: prepared.bodyHTML,
-            manifest: prepared.manifest,
-            assetsDirectoryName: prepared.assetsDirectoryName
-        )
+        let body = selfContainedBody(from: prepared)
         let style = embeddedStyleElement(prepared.stylesheet)
         return BuiltInExportTemplate.document(
             title: prepared.title,
@@ -64,9 +60,17 @@ public enum ExportHTMLWriter {
         )
     }
 
+    static func selfContainedBody(from prepared: PreparedExportDocument) -> String {
+        embedResources(in: prepared.bodyHTML, manifest: prepared.manifest,
+                       assetsDirectoryName: prepared.assetsDirectoryName)
+    }
+
     /// A companion HTML document. `style` selects embedded (`<style>`) or linked
     /// (`<link rel="stylesheet" href="<name>.assets/<hash>.css">`) CSS.
-    public static func companionHTML(from prepared: PreparedExportDocument, style: ExportStyleEmbedding) -> String {
+    public static func companionHTML(
+        from prepared: PreparedExportDocument, style: ExportStyleEmbedding,
+        additionalHead: String = ""
+    ) -> String {
         let styleElement: String = switch style {
         case .embedded:
             embeddedStyleElement(prepared.stylesheet)
@@ -76,6 +80,7 @@ public enum ExportHTMLWriter {
         return BuiltInExportTemplate.document(
             title: prepared.title,
             visibleTitle: prepared.visibleTitle,
+            headExtras: additionalHead,
             styleElement: styleElement,
             body: prepared.bodyHTML
         )
@@ -90,7 +95,7 @@ public enum ExportHTMLWriter {
 
     private static func linkedStyleElement(_ prepared: PreparedExportDocument) -> String {
         let resource = linkedStylesheetResource(for: prepared.stylesheet)
-        let href = "\(cmarkEscapedDestination(prepared.assetsDirectoryName))/\(resource.identity.fileName)"
+        let href = "\(percentEncodedCompanionComponent(prepared.assetsDirectoryName))/\(resource.identity.fileName)"
         return "<link rel=\"stylesheet\" href=\"\(href)\">"
     }
 
@@ -118,12 +123,28 @@ public enum ExportHTMLWriter {
 
     /// The raw directory name plus the form cmark writes into an `href`/`src`.
     static func referenceForms(of directoryName: String) -> [String] {
-        var forms = [directoryName]
-        let escaped = cmarkEscapedDestination(directoryName)
-        if !forms.contains(escaped) {
-            forms.append(escaped)
+        var forms: [String] = []
+        let candidates = [
+            percentEncodedCompanionComponent(directoryName),
+            directoryName,
+            cmarkEscapedDestination(directoryName),
+        ]
+        for form in candidates where !forms.contains(form) {
+            forms.append(form)
         }
         return forms
+    }
+
+    /// An assets directory is one filesystem path component, not a complete
+    /// URL. Encode even cmark-safe `#`, `?` and `%` so the browser cannot treat
+    /// its name as a fragment, query, or pre-existing percent escape.
+    static func percentEncodedCompanionComponent(_ name: String) -> String {
+        let safe = Set(Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~".utf8))
+        var result = ""
+        for byte in name.utf8 {
+            result += safe.contains(byte) ? String(UnicodeScalar(byte)) : String(format: "%%%02X", byte)
+        }
+        return result
     }
 
     /// cmark's `houdini_escape_href`: unreserved/safe ASCII stays, `&` and `'`

@@ -47,6 +47,193 @@
       "version": "0.1.33"
     },
     {
+      "bom-ref": "d2-liberation-mono",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/alecthomas/chroma"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "OFL-1.1"
+        }
+      ],
+      "name": "Liberation Mono WOFF (embedded in D2 WebAssembly via Chroma)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "bundled in Chroma v2.14.0"
+    },
+    {
+      "bom-ref": "expat",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/libexpat/libexpat"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Expat (embedded in Viz.js WebAssembly)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/libexpat/libexpat@12cf0b1f25f026a022fe728ad8f7e3d017285b80",
+      "type": "library",
+      "version": "2.8.4"
+    },
+    {
+      "bom-ref": "graphviz-ellipse-maisonobe",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://gitlab.com/graphviz/graphviz"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause AND EPL-2.0"
+        }
+      ],
+      "name": "Luc Maisonobe-derived ellipse routine (via Graphviz/Viz.js)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "Graphviz 16.0.0 source snapshot"
+    },
+    {
+      "bom-ref": "graphviz-randomkit",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://gitlab.com/graphviz/graphviz"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause AND MIT"
+        }
+      ],
+      "name": "Random kit routines (via Graphviz/Viz.js)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "Random kit 1.3 in Graphviz 16.0.0"
+    },
+    {
+      "bom-ref": "graphviz-rbtree",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://gitlab.com/graphviz/graphviz"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "LicenseRef-Graphviz-RBTree"
+        }
+      ],
+      "name": "Graphviz red-black tree library (via Viz.js)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "embedded"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "Graphviz 16.0.0 source snapshot"
+    },
+    {
+      "bom-ref": "katex-react-helpers",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/KaTeX/KaTeX"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "name": "React-derived KaTeX utility helpers (via Mermaid)",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "attribution"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "type": "library",
+      "version": "KaTeX 0.16.47"
+    },
+    {
       "bom-ref": "libyaml",
       "externalReferences": [
         {
@@ -125,7 +312,7 @@
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/ChimeHQ/Neon"
+          "url": "https://github.com/Joncallim/Neon"
         }
       ],
       "licenses": [
@@ -148,9 +335,9 @@
           "value": "exact"
         }
       ],
-      "purl": "pkg:github/chimehq/neon@484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165",
+      "purl": "pkg:github/joncallim/neon@dabf50c947148c49acd0d321dfe8f3805d10b3da",
       "type": "library",
-      "version": "484d6fb"
+      "version": "dabf50c"
     },
     {
       "bom-ref": "nvim-treesitter-markdown-queries",
@@ -182,6 +369,41 @@
       ],
       "type": "library",
       "version": "2022-06 import"
+    },
+    {
+      "bom-ref": "prismjs-textual",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/PrismJS/prism"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "Prism.js bundled by Textual",
+      "pedigree": {
+        "notes": "Textual concatenates the cdnjs Prism 1.29.0 default distribution, 57 npm language-component files, newline separators and its MIT-licensed generated header/token-flattening helpers. The default includes file-highlight; four default grammars are also present among the appended files. No MostlyText modification."
+      },
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm-resource"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:npm/prismjs@1.29.0",
+      "type": "library",
+      "version": "1.29.0"
     },
     {
       "bom-ref": "rearrange",
@@ -312,6 +534,38 @@
       "version": "0.8.0"
     },
     {
+      "bom-ref": "swiftsoup",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/scinfu/SwiftSoup"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "SwiftSoup",
+      "properties": [
+        {
+          "name": "mostlytext:kind",
+          "value": "swiftpm"
+        },
+        {
+          "name": "mostlytext:provenance",
+          "value": "verified"
+        },
+        {
+          "name": "mostlytext:resolution",
+          "value": "exact"
+        }
+      ],
+      "purl": "pkg:github/scinfu/swiftsoup@18b80329749eca5ea29fc50211dca5c7eff5bfec",
+      "type": "library",
+      "version": "2.13.9"
+    },
+    {
       "bom-ref": "swifttreesitter",
       "externalReferences": [
         {
@@ -412,7 +666,7 @@
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/gonzalezreal/textual"
+          "url": "https://github.com/Joncallim/textual"
         }
       ],
       "licenses": [
@@ -435,9 +689,9 @@
           "value": "exact"
         }
       ],
-      "purl": "pkg:github/gonzalezreal/textual@01b51875a5406eefc95f52a058cb059e7bc94dc4",
+      "purl": "pkg:github/joncallim/textual@d3ddabb1da37681083cdc3da706f96cf2fb6a3c6",
       "type": "library",
-      "version": "0.5.0"
+      "version": "d3ddabb"
     },
     {
       "bom-ref": "theme-tomorrow-dark",
@@ -1153,14 +1407,22 @@
     {
       "dependsOn": [
         "d2",
+        "d2-liberation-mono",
+        "expat",
+        "graphviz-ellipse-maisonobe",
+        "graphviz-randomkit",
+        "graphviz-rbtree",
+        "katex-react-helpers",
         "libyaml",
         "mermaid",
         "neon",
         "nvim-treesitter-markdown-queries",
+        "prismjs-textual",
         "rearrange",
         "swift-cmark",
         "swift-concurrency-extras",
         "swift-markdown",
+        "swiftsoup",
         "swifttreesitter",
         "swiftui-math",
         "swiftui-math-fonts",
@@ -1204,7 +1466,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:1edc9b08-a6f2-554a-a165-edeb4ebca570",
+  "serialNumber": "urn:uuid:8538bbe2-e3fe-5a6a-ad27-c59de8edcb5d",
   "specVersion": "1.5",
   "version": 1
 }

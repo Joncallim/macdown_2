@@ -22,15 +22,47 @@ struct MermaidExportRegistryTests {
         #expect(!ContributionRegistry.standard.contributions.contains { $0.id == "mermaid" })
     }
 
-    @Test func mermaidRenderContextReflectsTheLiveTheme() {
-        let dark = BundledThemes.dark.chrome
-        let context = ContributionRegistry.mermaidRenderContext(theme: BundledThemes.dark, isPrintTarget: false)
-        #expect(context.foregroundRed == dark.foreground.red)
-        #expect(context.foregroundGreen == dark.foreground.green)
-        #expect(context.foregroundBlue == dark.foreground.blue)
-        #expect(context.backgroundRed == dark.background.red)
-        #expect(context.backgroundGreen == dark.background.green)
-        #expect(context.backgroundBlue == dark.background.blue)
+    @Test func allDiagramAdaptersResolveScreenAndPrintSeparately() {
+        let darkPreview = ContributionRegistry.mermaidRenderContext(
+            theme: BundledThemes.dark, isPrintTarget: false
+        )
+        let lightPrint = ContributionRegistry.mermaidRenderContext(
+            theme: BundledThemes.light, isPrintTarget: true
+        )
+
+        #expect(darkPreview.destination == .screen)
+        #expect(darkPreview.palette == .resolved(
+            for: .screen, foreground: BundledThemes.dark.chrome.foreground,
+            background: BundledThemes.dark.chrome.background
+        ))
+        #expect(ContributionRegistry.d2RenderContext(theme: BundledThemes.dark, isPrintTarget: false)
+            .palette == darkPreview.palette)
+        #expect(ContributionRegistry.graphvizRenderContext(theme: BundledThemes.dark, isPrintTarget: false)
+            .palette == darkPreview.palette)
+        #expect(ContributionRegistry.d2RenderContext(theme: BundledThemes.dark, isPrintTarget: true) == .neutralLight)
+        #expect(ContributionRegistry
+            .graphvizRenderContext(theme: BundledThemes.dark, isPrintTarget: true) == .neutralLight)
+        #expect(lightPrint == .neutralLight)
+    }
+
+    @Test func printExportRendersSequenceDiagramWithPrintSafeColors() async throws {
+        let text = "```mermaid\nsequenceDiagram\n    Alice->>Bob: Hello\n```\n"
+        let parsed = try await ParseEngine().parse(text, revision: 0)
+        let registry = ContributionRegistry.standardForExport(theme: BundledThemes.dark, isPrintTarget: true)
+        let results = try await registry.run(document: parsed, sourceText: text, sourceGeneration: 1)
+        let contribution = try #require(results.first)
+        let content = try #require(contribution.content)
+        let rendered: String = switch content.representation {
+        case let .markdown(value), let .html(value):
+            value
+        }
+        #expect(rendered.localizedCaseInsensitiveContains("<svg"))
+        #expect(rendered.localizedCaseInsensitiveContains("Alice"))
+        #expect(rendered.localizedCaseInsensitiveContains("Bob"))
+        #expect(rendered.localizedCaseInsensitiveContains("Hello"))
+        let regexOptions: String.CompareOptions = [.regularExpression, .caseInsensitive]
+        #expect(rendered.range(of: ##"stroke:#1A1A1A|stroke="#1A1A1A""##, options: regexOptions) != nil)
+        #expect(rendered.range(of: ##"fill:#FFFFFF|fill="#FFFFFF""##, options: regexOptions) != nil)
     }
 
     @Test func aRealMermaidFenceComposesIntoSelfContainedHTMLWithNoExternalReferences() async throws {
@@ -38,7 +70,7 @@ struct MermaidExportRegistryTests {
         let parsed = try await ParseEngine().parse(text, revision: 0)
         let registry = ContributionRegistry.standardForExport(theme: BundledThemes.light, isPrintTarget: false)
         let results = try await registry.run(document: parsed, sourceText: text, sourceGeneration: 9)
-        let adaptation = ExportContributionAdapter.adapt(results)
+        let adaptation = ExportContributionAdapter.adapt(results, destination: .htmlExport)
 
         // TOC + the one diagram actually placed content — proves the
         // registry change and the .html pass-through are wired together for

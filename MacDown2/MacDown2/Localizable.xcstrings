@@ -133,6 +133,9 @@
         }
       }
     },
+    "%@ is unavailable for this export; authored source preserved": {
+      "extractionState": "manual"
+    },
     "%@ is stale; authored source preserved": {
       "localizations": {
         "fr": {
@@ -485,6 +488,28 @@
         }
       }
     },
+    "Folder actions": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actions du dossier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダの操作"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Działania folderu"
+          }
+        }
+      }
+    },
     "HTML": {
       "localizations": {
         "fr": {
@@ -597,6 +622,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nowy plik"
+          }
+        }
+      }
+    },
+    "New Folder": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouveau dossier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規フォルダ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nowy folder"
           }
         }
       }
@@ -795,6 +842,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Śledzenie %@"
+          }
+        }
+      }
+    },
+    "Open Another Folder…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir un autre dossier…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のフォルダを開く…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz inny folder…"
           }
         }
       }

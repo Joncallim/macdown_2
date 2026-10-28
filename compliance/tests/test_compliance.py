@@ -462,6 +462,22 @@ class RepositoryTests(unittest.TestCase):
         report = compliance.check(REPO)
         self.assertEqual(report.errors, [], "\n".join(report.errors))
 
+    def test_generated_app_metadata_does_not_hide_unregistered_plists(self) -> None:
+        """XcodeGen's app metadata ships; other plist files still need ownership."""
+        fixture = Fixture()
+        self.addCleanup(fixture.close)
+        fixture.inventory["first_party"]["paths"] = compliance.load_inventory(REPO)["first_party"]["paths"]
+        fixture.save()
+        fixture.write("MacDown2/MacDown2/Info.plist", "<plist><dict/></plist>\n")
+        self.assertEqual(fixture.check().errors, [])
+
+        unexpected = "MacDown2/MacDown2/Unregistered.plist"
+        fixture.write(unexpected, "<plist><dict/></plist>\n")
+        errors = fixture.check().errors
+        self.assertEqual(len(errors), 1)
+        self.assertIn("unregistered distributed file", errors[0])
+        self.assertIn(unexpected, errors[0])
+
     def test_every_manifest_dependency_is_parsed(self) -> None:
         """Checks the parser against oracles that don't share its logic.
 

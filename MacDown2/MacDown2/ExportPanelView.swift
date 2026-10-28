@@ -67,6 +67,7 @@ final class ExportSelectionModel {
 /// export panel accessory without importing any of its Objective-C.
 struct ExportPanelView: View {
     @Bindable var model: ExportSelectionModel
+    var allowsLinkedStyle = true
     /// Called when the format changes so the save panel's filename extension and
     /// allowed content type can follow the selection.
     var onFormatChange: (ExportFormatOption) -> Void
@@ -82,7 +83,7 @@ struct ExportPanelView: View {
             .labelsHidden()
             .accessibilityLabel("Export format")
 
-            if model.format == .standaloneHTML {
+            if model.format == .standaloneHTML, allowsLinkedStyle {
                 Picker("Style", selection: $model.style) {
                     Text("Embedded CSS").tag(ExportStyleEmbedding.embedded)
                     Text("Linked CSS").tag(ExportStyleEmbedding.linked)

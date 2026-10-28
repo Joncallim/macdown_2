@@ -14,13 +14,20 @@ import Workspace
 /// `currentSession()` is not what the app publishes.
 @MainActor
 struct SessionViewStateRoundTripTests {
-    private final class MemorySessionStore: WorkspaceSessionStoring {
+    final class MemorySessionStore: WorkspaceSessionStoring {
         var session: WorkspaceSession?
+        var failNextSave = false
+        var publicationCount = 0
         func loadSession() -> WorkspaceSession? {
             session
         }
 
         func saveSession(_ session: WorkspaceSession) {
+            if failNextSave {
+                failNextSave = false
+                return
+            }
+            publicationCount += 1
             self.session = session
         }
     }
@@ -118,10 +125,23 @@ struct SessionViewStateRoundTripTests {
         #expect(record.cursorPosition == 11)
         #expect(record.selectionLength == 5)
     }
+}
 
-    // MARK: - #183 F20: a superseded autosave must not publish its obsolete session
+// MARK: - #183 F20: an obsolete snapshot must not publish the session
 
-    private func coordinatorWithOneTab(
+extension SessionViewStateRoundTripTests {
+    @Test func aScheduledChangeInvalidatesAnUnpublishedSnapshot() {
+        var order = SessionPublicationOrder()
+        let older = order.beginSnapshot()
+        #expect(!order.isSuperseded(older))
+
+        order.invalidateCapturedSnapshots()
+        #expect(order.isSuperseded(older))
+        let newer = order.beginSnapshot()
+        #expect(!order.isSuperseded(newer))
+    }
+
+    func coordinatorWithOneTab(
         sessions: MemorySessionStore,
         directory: URL
     ) throws -> WindowCoordinator {
@@ -182,7 +202,7 @@ struct SessionViewStateRoundTripTests {
 
     /// Suspends the FIRST caller until `release()`; later callers pass straight through.
     @MainActor
-    private final class FirstCallGate {
+    final class FirstCallGate {
         private(set) var entered = false
         private var continuation: CheckedContinuation<Void, Never>?
         private var callCount = 0
@@ -228,6 +248,77 @@ struct SessionViewStateRoundTripTests {
         gate.release()
         #expect(await older.value.persisted)
         #expect(sessions.session?.tabs.first?.cursorPosition == 3)
+    }
+
+    @Test func aPendingDebouncedChangeInvalidatesAnExplicitSnapshotBeforePublication() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+        let controller = try #require(coordinator.controllers.first)
+        let tabID = try #require(controller.model.tabStore.activeTabID)
+        let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        let gate = FirstCallGate()
+        coordinator.afterSessionRecoveryPersisted = { await gate.pass() }
+
+        system.selectionSet = EditorSelectionSet(single: NSRange(location: 0, length: 0))
+        let older = Task { @MainActor in await coordinator.saveSessionResult() }
+        for _ in 0 ..< 1000 where !gate.entered {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(gate.entered)
+
+        system.selectionSet = EditorSelectionSet(single: NSRange(location: 3, length: 0))
+        coordinator.scheduleSaveSession()
+        gate.release()
+
+        #expect(await older.value.persisted)
+        #expect(sessions.session?.tabs.first?.cursorPosition == 3)
+    }
+
+    @Test func failedNewerPublicationDoesNotAuthorizeAnOlderSnapshot() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+        let controller = try #require(coordinator.controllers.first)
+        let tabID = try #require(controller.model.tabStore.activeTabID)
+        let system = try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+        let gate = FirstCallGate()
+        coordinator.afterSessionRecoveryPersisted = { await gate.pass() }
+
+        system.selectionSet = EditorSelectionSet(single: NSRange(location: 0, length: 0))
+        let older = Task { @MainActor in await coordinator.saveSessionResult() }
+        for _ in 0 ..< 1000 where !gate.entered {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(gate.entered)
+
+        system.selectionSet = EditorSelectionSet(single: NSRange(location: 3, length: 0))
+        sessions.failNextSave = true
+        let newerResult = await coordinator.saveSessionResult()
+        #expect(!newerResult.persisted)
+        #expect(sessions.session == nil)
+        gate.release()
+
+        #expect(await older.value.persisted)
+        #expect(sessions.session?.tabs.first?.cursorPosition == 3)
+    }
+
+    @Test func repeatedInvalidationFailsAnExplicitPublisherWithoutWritingStaleState() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sessions = MemorySessionStore()
+        let coordinator = try coordinatorWithOneTab(sessions: sessions, directory: directory)
+        coordinator.afterSessionRecoveryPersisted = { [weak coordinator] in
+            guard let coordinator else { return }
+            coordinator.sessionPublicationOrder.invalidateCapturedSnapshots()
+        }
+
+        let result = await coordinator.saveSessionResult()
+
+        #expect(!result.persisted)
+        #expect(sessions.session == nil)
     }
 
     /// Review pass 1: the canonical session record must carry the document's

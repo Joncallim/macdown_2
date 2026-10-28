@@ -52,6 +52,21 @@ enum ExportFileWriter {
         return ExportResult(primaryFile: url, companionFiles: companionFiles, diagnostics: prepared.diagnostics)
     }
 
+    /// The opt-in path consumes the inspected UTF-8 bytes directly. Existing
+    /// content-addressed assets are verified and left untouched, so a failed
+    /// replacement cannot damage resources used by the previous primary.
+    static func writeValidatedHTML(
+        _ validated: ValidatedExportHTML, lease: ExportLifetimeLease,
+        afterCompanionDirectoryOpened: (() -> Void)? = nil,
+        beforePromotion: (() -> Void)? = nil
+    ) throws -> ExportResult {
+        try ValidatedFilePublication.write(
+            validated, lease: lease,
+            afterCompanionDirectoryOpened: afterCompanionDirectoryOpened,
+            beforePromotion: beforePromotion
+        )
+    }
+
     /// Writes every companion file a `.standalone` export needs: the resource
     /// manifest (marker first) when there are images, and the linked
     /// stylesheet when `style` calls for one. Both share one assets directory,

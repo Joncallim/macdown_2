@@ -32,6 +32,11 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     /// `fileTreeModel.root` exclusively through `setFolderRoot(_:accessURL:)`
     /// below, never mutated directly by any other call site.
     let workspaceFileIndex: WorkspaceFileIndex
+    /// Window-local preview authority. Every renderer load receives its own revocable token.
+    let previewResourceState = PreviewResourceWindowState()
+    /// Weak registrations for the disabled validated export path. The origin
+    /// retains the lease; the window only needs to revoke it at identity loss.
+    var validatedExportLeases: [WeakValidatedExportLease] = []
     /// Test seam: runs just before a root switch awaits the new root's tree and index rebuild.
     var beforeRootRebuild: (@MainActor () async -> Void)?
     /// Folder-wide search sidebar state (EPIC-22 §6.16, Slice 7b), one per
@@ -41,6 +46,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let folderSearchModel: FolderSearchModel
     let externalFileController: ExternalFileController
     weak var coordinator: WindowCoordinator?
+    private(set) var isClosed = false
     private var observationTask: Task<Void, Never>?
     /// Running text-filter commands, keyed by tab — see
     /// `WindowController+TextFilterTasks.swift`.
@@ -51,6 +57,19 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     private var lastObservedLanguageID: String?
     /// When the workspace index was last re-walked (`refreshWorkspaceIndex`).
     var lastWorkspaceIndexRefresh: Date?
+    var lastWorkspaceIndexRefreshRoot: URL?
+    /// Root-request identity prevents an older A → B → A completion from
+    /// claiming freshness for the latest request that happens to use the same URL.
+    var workspaceRootRequestGeneration: UInt = 0
+    /// A refresh may use the current tree root only after the current explicit
+    /// root request has applied it. After that point, accepted renames may
+    /// remap the actual root without starting a new request.
+    var workspaceTreeRootAppliedGeneration: UInt?
+    /// Identifies which overlapping index rebuild may publish completion.
+    var workspaceIndexBuildGeneration: UInt = 0
+    var lastWorkspaceIndexRefreshGeneration: UInt?
+    var pendingFolderSearchRoot: URL?
+    var pendingFolderSearchRootGeneration: UInt?
 
     init(
         model: WorkspaceModel,
@@ -58,7 +77,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         themeController: ThemeController,
         grammarRegistry: GrammarRegistry,
         fileTreePreferences: FileTreePreferences,
-        recoveryExecutor: any RecoveryActionExecuting = DefaultRecoveryActionExecutor()
+        recoveryExecutor: any RecoveryActionExecuting = DefaultRecoveryActionExecutor(),
+        workspaceFileIndex: WorkspaceFileIndex = WorkspaceFileIndex()
     ) {
         self.model = model
         self.coordinator = coordinator
@@ -75,7 +95,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         jsonAnalysisStore = JSONAnalysisStore(debounce: .milliseconds(100))
         outlineController = OutlineController()
         fileTreeModel = Self.makeFileTreeModel(preferences: fileTreePreferences)
-        workspaceFileIndex = WorkspaceFileIndex()
+        self.workspaceFileIndex = workspaceFileIndex
         folderSearchModel = FolderSearchModel(index: workspaceFileIndex)
         externalFileController = Self.makeExternalFileController(
             model: model,
@@ -101,6 +121,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             externalFileController: externalFileController
         )
         .environment(\.windowCoordinator, coordinator)
+        .environment(\.previewResourceWindowState, previewResourceState)
         let hostingController = NSHostingController(rootView: shell)
         let window = DocumentWindow(contentViewController: hostingController)
         window.coordinator = coordinator
@@ -110,11 +131,16 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         window.tabbingMode = .preferred
 
         super.init(window: window)
+        installPreviewIdentityInvalidation()
         makeSessionsForActiveTab()
         externalFileController.attach(owner: self)
         installFolderSearchHooks()
         installSaveAsGuard()
         window.delegate = self
+        startWindowObservations()
+    }
+
+    private func startWindowObservations() {
         fileTreeModel.startObservingPreferences()
         updateTitleAndEditedState()
         startObservingActiveDocument()
@@ -199,6 +225,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     func updateTitleAndEditedState() {
         let document = model.activeDocument
+        previewResourceState.reconcile(with: document)
         let baseTitle = document?.fileURL?.lastPathComponent ?? "Untitled"
         let isDirty = document?.state == .dirty || document?.state == .conflict
         let title = isDirty ? "● \(baseTitle)" : baseTitle
@@ -237,6 +264,21 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_: Notification) {
+        isClosed = true
+        revokeValidatedExports()
+        previewResourceState.close()
+        previewResourceState.setCurrentPreviewDocument(nil)
+        model.tabStore.setActiveIdentityWillChange(nil)
+        model.setFolderAssociationWillChange(nil)
+        fileTreeModel.setRootAccessWillChange(nil)
+        workspaceRootRequestGeneration &+= 1
+        workspaceTreeRootAppliedGeneration = nil
+        workspaceIndexBuildGeneration &+= 1
+        lastWorkspaceIndexRefresh = nil
+        lastWorkspaceIndexRefreshRoot = nil
+        lastWorkspaceIndexRefreshGeneration = nil
+        pendingFolderSearchRoot = nil
+        pendingFolderSearchRootGeneration = nil
         observationTask?.cancel()
         externalFileController.dispose()
         editorStore.evictAll()
@@ -325,5 +367,26 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // write whichever document is active *now* to the name the user
         // chose for that one.
         await model.saveAs(to: url, expecting: document)
+    }
+}
+
+private extension WindowController {
+    func installPreviewIdentityInvalidation() {
+        previewResourceState.setCurrentPreviewDocument { [weak model] in
+            (model?.tabStore.activeTabID, model?.activeDocument)
+        }
+        let invalidate: @MainActor () -> Void = { [weak self, weak state = previewResourceState] in
+            self?.revokeValidatedExports()
+            state?.invalidateForIdentityChange()
+        }
+        model.tabStore.setActiveIdentityWillChange { _, _ in invalidate() }
+        model.setFolderAssociationWillChange(invalidate)
+        fileTreeModel.setRootAccessWillChange { [weak self] in
+            invalidate()
+            // A vanished or replaced folder scope must retire the old
+            // search rows synchronously, before a watcher or root rebuild
+            // can leave them actionable against a different folder.
+            self?.folderSearchModel.rootAccessWasRevoked()
+        }
     }
 }

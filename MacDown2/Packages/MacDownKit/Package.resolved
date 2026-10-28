@@ -1,12 +1,12 @@
 {
-  "originHash" : "7c4c3d9c078ff79fa4fc477579c58e0600ce5e1813815dd3dca8e477074edaaa",
+  "originHash" : "c3e1365d1b130fdbd0d87e8a37e29366dd41d6534a439cda94044ebaf18cd71a",
   "pins" : [
     {
       "identity" : "neon",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ChimeHQ/Neon",
+      "location" : "https://github.com/Joncallim/Neon",
       "state" : {
-        "revision" : "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"
+        "revision" : "dabf50c947148c49acd0d321dfe8f3805d10b3da"
       }
     },
     {
@@ -46,6 +46,15 @@
       }
     },
     {
+      "identity" : "swiftsoup",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/scinfu/SwiftSoup",
+      "state" : {
+        "revision" : "18b80329749eca5ea29fc50211dca5c7eff5bfec",
+        "version" : "2.13.9"
+      }
+    },
+    {
       "identity" : "swifttreesitter",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ChimeHQ/SwiftTreeSitter",
@@ -66,10 +75,9 @@
     {
       "identity" : "textual",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/gonzalezreal/textual",
+      "location" : "https://github.com/Joncallim/textual",
       "state" : {
-        "revision" : "01b51875a5406eefc95f52a058cb059e7bc94dc4",
-        "version" : "0.5.0"
+        "revision" : "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6"
       }
     },
     {

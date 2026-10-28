@@ -33,7 +33,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", branch: "main"),
-        .package(url: "https://github.com/ChimeHQ/Neon", revision: "484d6fb9e0c4fb679a1d5f5ddaf2cac2ecf21165"),
+        .package(url: "https://github.com/Joncallim/Neon", revision: "dabf50c947148c49acd0d321dfe8f3805d10b3da"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-json", from: "0.24.8"),
         .package(url: "https://github.com/tree-sitter/tree-sitter-html", from: "0.23.2"),
         // EPIC-11 Gate 5 grammars. Every grammar is pinned exactly; see
@@ -68,13 +68,14 @@ let package = Package(
         .package(path: "../TreeSitterMarkdown"),
         .package(url: "https://github.com/swiftlang/swift-markdown", exact: "0.8.0"),
         .package(url: "https://github.com/swiftlang/swift-cmark", exact: "0.8.0"),
+        .package(url: "https://github.com/scinfu/SwiftSoup", exact: "2.13.9"),
         .package(url: "https://github.com/jpsim/Yams", exact: "6.2.2"),
-        .package(url: "https://github.com/gonzalezreal/textual", exact: "0.5.0"),
+        .package(url: "https://github.com/Joncallim/textual", revision: "d3ddabb1da37681083cdc3da706f96cf2fb6a3c6"),
         // Only a transitive dependency of `textual` (via its own Package.swift)
         // until this pin: `textual` does not re-export `SwiftUIMath` as one of
         // its own products, so `MathRendering` (below) needs this explicit,
         // same-version pin to import it directly (epic-19-implementation.md
-        // §16). Pinned to the exact version `textual` 0.5.0 itself requests
+        // §16). Pinned to the exact version the Textual fork itself requests
         // (`from: "0.1.0"`), so SwiftPM resolves one shared copy, not two.
         .package(url: "https://github.com/gonzalezreal/swiftui-math", exact: "0.1.0"),
     ],
@@ -140,12 +141,13 @@ let package = Package(
                 "Themes",
                 .product(name: "cmark-gfm", package: "swift-cmark"),
                 .product(name: "cmark-gfm-extensions", package: "swift-cmark"),
+                .product(name: "SwiftSoup", package: "SwiftSoup"),
             ],
             resources: [.process("Resources")]
         ),
         .target(name: "Contributions", dependencies: ["MarkdownEngine"], resources: [.process("Resources")]),
         .target(name: "TextFilters", resources: [.process("Resources")]),
-        .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"], resources: [.process("Resources")]),
         .target(
             name: "MathRendering",
             dependencies: [
@@ -155,33 +157,33 @@ let package = Package(
         ),
         .target(
             name: "Diagrams",
-            dependencies: ["MarkdownEngine", "Contributions"],
+            dependencies: ["MarkdownEngine", "Contributions", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(
             name: "DiagramRendering",
-            dependencies: ["Diagrams", "DiagramWebKitPool"],
+            dependencies: ["Diagrams", "DiagramWebKitPool", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(name: "DiagramWebKitPool"),
         .target(
             name: "DiagramsD2",
-            dependencies: ["MarkdownEngine", "Contributions"],
+            dependencies: ["MarkdownEngine", "Contributions", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(
             name: "D2Rendering",
-            dependencies: ["DiagramsD2", "DiagramWebKitPool"],
+            dependencies: ["DiagramsD2", "DiagramWebKitPool", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(
             name: "DiagramsGraphviz",
-            dependencies: ["MarkdownEngine", "Contributions"],
+            dependencies: ["MarkdownEngine", "Contributions", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(
             name: "GraphvizRendering",
-            dependencies: ["DiagramsGraphviz", "DiagramWebKitPool"],
+            dependencies: ["DiagramsGraphviz", "DiagramWebKitPool", "Themes"],
             resources: [.process("Resources")]
         ),
 
@@ -195,19 +197,32 @@ let package = Package(
         .testTarget(name: "EditorCoreTests", dependencies: ["EditorCore", "JSONSupport"]),
         .testTarget(name: "HighlightingTests", dependencies: ["Highlighting"]),
         .testTarget(name: "MarkdownEngineTests", dependencies: ["MarkdownEngine"]),
-        .testTarget(name: "PreviewTests", dependencies: ["Preview"]),
+        .testTarget(
+            name: "PreviewTests",
+            dependencies: ["Preview", .product(name: "Textual", package: "textual")]
+        ),
         .testTarget(name: "OutlineUITests", dependencies: ["OutlineUI", "JSONSupport"]),
         .testTarget(name: "JSONSupportTests", dependencies: ["JSONSupport"]),
-        .testTarget(name: "ExportServiceTests", dependencies: ["ExportService"]),
+        .testTarget(
+            name: "ExportServiceTests",
+            dependencies: ["ExportService", "MarkdownEngine", .product(name: "SwiftSoup", package: "SwiftSoup")]
+        ),
         .testTarget(name: "ContributionsTests", dependencies: ["Contributions", "MarkdownEngine"]),
         .testTarget(name: "TextFiltersTests", dependencies: ["TextFilters"]),
         .testTarget(name: "MathTests", dependencies: ["Math", "MarkdownEngine"]),
         .testTarget(name: "MathRenderingTests", dependencies: ["MathRendering"]),
         .testTarget(name: "DiagramsTests", dependencies: ["Diagrams", "MarkdownEngine"]),
         .testTarget(name: "DiagramRenderingTests", dependencies: ["DiagramRendering", "DiagramWebKitPool"]),
-        .testTarget(name: "DiagramsD2Tests", dependencies: ["DiagramsD2", "MarkdownEngine"]),
+        .testTarget(name: "DiagramsD2Tests", dependencies: ["DiagramsD2", "MarkdownEngine", "Themes"]),
         .testTarget(name: "D2RenderingTests", dependencies: ["D2Rendering"]),
         .testTarget(name: "DiagramsGraphvizTests", dependencies: ["DiagramsGraphviz", "MarkdownEngine"]),
         .testTarget(name: "GraphvizRenderingTests", dependencies: ["GraphvizRendering"]),
+        .testTarget(
+            name: "ExportDiagramIntegrationTests",
+            dependencies: [
+                "ExportService", "Diagrams", "DiagramRendering",
+                "DiagramsD2", "D2Rendering", "DiagramsGraphviz", "GraphvizRendering",
+            ]
+        ),
     ]
 )

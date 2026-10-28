@@ -40,6 +40,12 @@ public final class EditorFindModel {
     /// via `EditorFindModelStore`'s own per-identity caching, exactly like
     /// `query`/`options`/`matches` already do.
     public var isActive = false
+    /// Minted by an explicit user activation and consumed by the first
+    /// mounted Find bar. A view remount (for example when returning from
+    /// Preview Only) must refresh highlights without becoming a new
+    /// navigation intent, and a delayed mount must not mint an intent after
+    /// newer folder navigation has already happened.
+    public var pendingRevealNavigationToken: UInt?
 
     public private(set) var matches: [SearchMatch] = []
     public private(set) var currentIndex: Int?
@@ -67,12 +73,17 @@ public final class EditorFindModel {
     private var searchTask: Task<Result<[SearchMatch], SearchQueryError>, Never>?
     /// The dominant line ending of the text the current matches were computed
     /// against, used to adapt a multi-line replacement.
-    private var searchedLineEnding: LineEnding?
+    private(set) var searchedLineEnding: LineEnding?
     /// Exact identity of the text the current matches were computed against. SwiftUI reports text changes
     /// canonically (Å U+00C5 vs U+212B) and never for marked-text edits, so callers compare this with the live text.
     private var searchedFingerprint: ExactTextFingerprint?
     /// The query/options those matches answer (their recompute starts asynchronously, so text alone is not enough).
-    private var searchedInputs: (query: String, options: SearchOptions)?
+    private var searchedInputs: (query: ExactTextFingerprint, options: SearchOptions)?
+    /// The retained selection scope those matches answer. A text-change
+    /// notification can invalidate or remap this scope before the asynchronous
+    /// search refresh starts, even when the live text still has equal bytes.
+    private var searchedDomain: NSRange?
+    private var searchedScopeLost = false
     /// The range "In Selection" searches, retained across refreshes and
     /// remapped through Replace edits (#183 F03). It is sampled from the live
     /// selection only when a caller passes `selection` to `updateMatches`
@@ -203,7 +214,9 @@ public final class EditorFindModel {
         // Stamped at commit, so a search cancelled first leaves the earlier matches stamped with what they answer.
         searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
         searchedFingerprint = ExactTextFingerprint(text)
-        searchedInputs = (query, options)
+        searchedInputs = (ExactTextFingerprint(query), options)
+        searchedDomain = domain
+        searchedScopeLost = scopeLost
         switch result {
         case let .success(newMatches):
             matches = newMatches
@@ -219,8 +232,11 @@ public final class EditorFindModel {
 
     /// Whether the matches still apply to `text`: same exact content, same query and options, no search in flight.
     public func matchesAreCurrent(forLiveText text: String) -> Bool {
-        !isSearching && searchedFingerprint == ExactTextFingerprint(text)
-            && searchedInputs?.query == query && searchedInputs?.options == options
+        let scopeIsCurrent = !options.searchesSelectionOnly
+            || (!searchDomainLost && !searchedScopeLost && searchedDomain == searchDomain)
+        return !isSearching && searchedFingerprint == ExactTextFingerprint(text)
+            && searchedInputs?.query == ExactTextFingerprint(query) && searchedInputs?.options == options
+            && scopeIsCurrent
     }
 
     /// Retires any search in flight (closing Find, evicting the document): the matcher is cancelled and a late result
@@ -256,12 +272,8 @@ public final class EditorFindModel {
             let length = max(0, min(domain.length, fullLength - location))
             let end = location + length
             return .success(found.filter { $0.range.location >= location && NSMaxRange($0.range) <= end })
-        } catch let error as SearchQueryError {
-            return .failure(error)
         } catch {
-            // `matches` is `throws(SearchQueryError)`, so this is unreachable; it
-            // exists only because this function is not itself typed-throws.
-            return .failure(.invalidRegex(error.localizedDescription))
+            return .failure(error)
         }
     }
 
@@ -340,61 +352,5 @@ public final class EditorFindModel {
         guard !matches.isEmpty else { return nil }
         guard let anchor else { return 0 }
         return matches.firstIndex { $0.range.location >= anchor } ?? 0
-    }
-
-    // MARK: - Replace / Replace All (EPIC-22 §6.14, Slice 5b)
-
-    /// Builds the transaction that replaces just the CURRENT match with
-    /// `replacement`, or `nil` if there is no current match. Per §6.14
-    /// ("Replace/Replace All route through `EditorEditTransaction`
-    /// unchanged... N == 1 is a valid, and encouraged, use of this type"),
-    /// this is simply the one-replacement case of the same mechanism
-    /// `replaceAllTransaction(with:)` below uses for N.
-    ///
-    /// Matches this type's own "never mutates live text" contract (see the
-    /// type's own doc comment above): this is a pure data transformation
-    /// over the already-computed `matches`/`currentMatch`, not an edit. The
-    /// caller applies the returned transaction via
-    /// `EditorTextSystem.apply(_:)` — the only thing that actually mutates
-    /// the document — then re-runs `updateMatches(in:)` against the
-    /// POST-edit text, since every match after the replaced one has shifted
-    /// and the replacement itself may have changed which text still
-    /// matches at all.
-    public func replaceCurrentTransaction(with replacement: String) -> EditorEditTransaction? {
-        guard let match = currentMatch else { return nil }
-        let textReplacement = TextReplacement(
-            range: match.range,
-            replacementText: LineEnding.adaptingLineBreaks(in: replacement, to: searchedLineEnding)
-        )
-        guard let caretRange = EditorEditTransaction.resultingCaretRanges(for: [textReplacement]).first else {
-            return nil
-        }
-        return EditorEditTransaction(
-            replacements: [textReplacement],
-            undoActionName: "Replace",
-            resultingSelection: EditorSelectionSet(single: caretRange)
-        )
-    }
-
-    /// Builds ONE transaction replacing EVERY current match with
-    /// `replacement` — one undo group, one publication, per §4 invariant
-    /// #10 ("a multi-cursor edit affecting N ranges is one undo step, not
-    /// N"), never N separate transactions. Returns `nil` if there are no
-    /// matches. The resulting caret lands right after the LAST (highest
-    /// document-offset) replacement — an unsurprising "you finished at the
-    /// last thing that changed" convention, and the one position
-    /// `resultingCaretRanges(for:)` already computes for free.
-    public func replaceAllTransaction(with replacement: String) -> EditorEditTransaction? {
-        guard !matches.isEmpty else { return nil }
-        let adapted = LineEnding.adaptingLineBreaks(in: replacement, to: searchedLineEnding)
-        let textReplacements = matches.map { TextReplacement(range: $0.range, replacementText: adapted) }
-        guard let caretRange = EditorEditTransaction.resultingCaretRanges(for: textReplacements).last else {
-            return nil
-        }
-        return EditorEditTransaction(
-            replacements: textReplacements,
-            undoActionName: "Replace All",
-            resultingSelection: EditorSelectionSet(single: caretRange)
-        )
     }
 }

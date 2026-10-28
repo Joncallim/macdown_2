@@ -97,10 +97,10 @@ struct MathQuoteMarkerTests {
 /// or ZWNJ was not escaped and the author could add attributes (`style`, a remote `srcset`) to the exported `<img>`.
 struct MathAltEscapingTests {
     @Test(arguments: ["\u{0301}", "\u{200C}", "\u{200D}", "\u{FE0F}"])
-    func aQuoteFollowedByAnExtendingScalarCannotCloseTheAltAttribute(_ extender: String) {
+    func aQuoteFollowedByAnExtendingScalarCannotCloseTheAltAttribute(_ extender: String) throws {
         let image = RenderedMathImage(pngData: Data(), logicalWidth: 1, logicalHeight: 1)
 
-        let html = MathContribution.imgTag(image: image, alt: "a\"\(extender) style=\"position:fixed\" q")
+        let html = try MathContribution.imgTag(image: image, alt: "a\"\(extender) style=\"position:fixed\" q")
 
         #expect(html.contains("alt=\"a&quot;\(extender) style=&quot;position:fixed&quot; q\""))
     }

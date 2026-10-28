@@ -68,6 +68,7 @@ final class GoToLinePanel: NSPanel, NSWindowDelegate {
         // so the §11 no-copy discipline does not apply here.
         let text = textSystem.text as NSString
         let offset = textSystem.lineIndex.utf16Offset(forLine: line, column: column ?? 1, in: text)
+        coordinator?.folderSearchNavigationDidChange()
         textSystem.revealSelection(utf16Range: NSRange(location: offset, length: 0), flash: true, animated: true)
     }
 

@@ -1,0 +1,10 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Count %lld": {
+      "localizations": {
+        "fr": { "stringUnit": { "state": "translated", "value": "Compteur %@" } }
+      }
+    }
+  }
+}

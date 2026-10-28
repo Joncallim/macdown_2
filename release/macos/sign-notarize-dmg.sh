@@ -55,6 +55,8 @@ case "${1:-}" in
 esac
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+SOURCE_PACKAGE_RESOLVED="$REPO/MacDown2/Packages/MacDownKit/Package.resolved"
+SOURCE_PACKAGE_RESOLVED_REL="MacDown2/Packages/MacDownKit/Package.resolved"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="${OUT:-$REPO/build/release-$STAMP}"
 EVIDENCE="$OUT/evidence"
@@ -84,6 +86,12 @@ gate() {  # $1 message
   record "UNVERIFIED (dry run): $1"
   printf '\nUNVERIFIED (dry run, continuing): %s\n' "$1"
 }
+
+if [[ "$MODE" == "release-candidate" && -f "$SOURCE_PACKAGE_RESOLVED" ]] \
+  && { ! git -C "$REPO" diff --quiet HEAD -- "$SOURCE_PACKAGE_RESOLVED_REL" \
+       || ! git -C "$REPO" diff --cached --quiet -- "$SOURCE_PACKAGE_RESOLVED_REL"; }; then
+  fail "the source Package.resolved differs from the committed lock before Xcode generation"
+fi
 
 if [[ "$MODE" == "release-candidate" && -n "$(git -C "$REPO" status --porcelain)" ]]; then
   fail "a release candidate must be built from a clean working tree; commit or stash first"
@@ -116,14 +124,39 @@ if [[ "$MODE" == "preflight" ]]; then
 fi
 
 # ---------------------------------------------------------------- 2. build
+# XcodeGen recreates the project-local SwiftPM workspace.  Its generated
+# Package.resolved is deliberately untracked, so copy the reviewed
+# MacDownKit lock into that workspace before asking Xcode to build.  The
+# helper also makes the expected generated-project location explicit.
+PIN_XCODE_PACKAGES="$REPO/MacDown2/scripts/pin-xcode-package-versions.sh"
+[[ -f "$SOURCE_PACKAGE_RESOLVED" ]] \
+  || fail "the committed MacDownKit Package.resolved lock file is missing"
+[[ -x "$PIN_XCODE_PACKAGES" ]] \
+  || fail "the Xcode package pin helper is missing or not executable: $PIN_XCODE_PACKAGES"
+
+# A release candidate must start from the reviewed repository lock.  Dry runs
+# may intentionally exercise a dirty tree, but make that exception explicit
+# in their evidence rather than presenting it as a committed resolution.
+if ! git -C "$REPO" diff --quiet HEAD -- "$SOURCE_PACKAGE_RESOLVED_REL" \
+  || ! git -C "$REPO" diff --cached --quiet -- "$SOURCE_PACKAGE_RESOLVED_REL"; then
+  gate "the source Package.resolved differs from the committed lock before Xcode generation"
+fi
+SOURCE_PACKAGE_RESOLVED_SHA256="$(shasum -a 256 "$SOURCE_PACKAGE_RESOLVED" | awk '{print $1}')"
+[[ -n "$SOURCE_PACKAGE_RESOLVED_SHA256" ]] \
+  || fail "could not calculate the source Package.resolved digest"
+record "source Package.resolved sha256: $SOURCE_PACKAGE_RESOLVED_SHA256"
+
 step "Generate the Xcode project"
 (cd "$REPO/MacDown2" && xcodegen generate)
+"$PIN_XCODE_PACKAGES" \
+  || fail "could not copy the committed Package.resolved into the generated Xcode workspace"
 
 build() {  # $1 scheme, $2 "app" to apply ENTITLEMENTS
   local extra=()
   [[ -n "$ENTITLEMENTS" && "${2:-}" == "app" ]] && extra+=(CODE_SIGN_ENTITLEMENTS="$ENTITLEMENTS")
   xcodebuild -project "$REPO/MacDown2/MacDown2.xcodeproj" -scheme "$1" \
     -configuration Release -destination 'platform=macOS' -derivedDataPath "$DERIVED" \
+    -onlyUsePackageVersionsFromResolvedFile \
     CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$IDENTITY" DEVELOPMENT_TEAM="$TEAM_ID" \
     ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS=--timestamp \
     ${extra[@]+"${extra[@]}"} build
@@ -132,6 +165,14 @@ step "Release build: $APP_NAME"
 build "$APP_NAME" app
 step "Release build: $CLI_NAME"
 build "$CLI_NAME"
+
+# Do not package a release if either Xcode build rewrote or removed the
+# generated workspace lock.  This is intentionally after both builds: it
+# checks the resolution that produced every artifact below.
+[[ "$(shasum -a 256 "$SOURCE_PACKAGE_RESOLVED" | awk '{print $1}')" == "$SOURCE_PACKAGE_RESOLVED_SHA256" ]] \
+  || fail "the source Package.resolved changed during the Release builds"
+"$PIN_XCODE_PACKAGES" --check \
+  || fail "the generated Xcode workspace Package.resolved changed during the Release builds"
 
 PRODUCTS="$DERIVED/Build/Products/Release"
 APP="$PRODUCTS/$APP_NAME.app"

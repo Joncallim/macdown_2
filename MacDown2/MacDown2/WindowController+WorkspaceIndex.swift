@@ -26,14 +26,49 @@ extension WindowController {
     /// the new one lands, and no folder (or a closed one) is a no-op.
     ///
     /// `minInterval` lets a frequent trigger (a native tab becoming key) skip a
-    /// walk that just finished; file operations always walk.
+    /// walk that successfully finished for this root request; file operations always walk.
     func refreshWorkspaceIndex(minInterval: TimeInterval = 0) async {
-        guard let root = fileTreeModel.rootAccessURL else { return }
-        if minInterval > 0, let last = lastWorkspaceIndexRefresh, Date().timeIntervalSince(last) < minInterval {
+        let request = workspaceRootRequestGeneration
+        guard workspaceTreeRootAppliedGeneration == request,
+              let root = fileTreeModel.rootAccessURL
+        else { return }
+        if minInterval > 0, lastWorkspaceIndexRefreshGeneration == request,
+           lastWorkspaceIndexRefreshRoot == root,
+           let last = lastWorkspaceIndexRefresh, Date().timeIntervalSince(last) < minInterval {
             return
         }
-        lastWorkspaceIndexRefresh = Date()
+        workspaceIndexBuildGeneration &+= 1
+        let build = workspaceIndexBuildGeneration
         await workspaceFileIndex.rebuild(root: root)
+        guard !isClosed, workspaceRootRequestGeneration == request,
+              workspaceIndexBuildGeneration == build, fileTreeModel.rootAccessURL == root
+        else { return }
+        let indexState = await workspaceFileIndex.state
+        guard !isClosed, workspaceRootRequestGeneration == request,
+              workspaceIndexBuildGeneration == build, fileTreeModel.rootAccessURL == root
+        else { return }
+        if case .ready = indexState {
+            lastWorkspaceIndexRefresh = Date()
+            lastWorkspaceIndexRefreshRoot = root
+            lastWorkspaceIndexRefreshGeneration = request
+        } else if case .building = indexState {
+            return
+        } else {
+            // A failed walk drops the index snapshot. Do not let an older
+            // success keep activation inside the throttle window and strand
+            // the now-empty index until another forced refresh.
+            lastWorkspaceIndexRefresh = nil
+            lastWorkspaceIndexRefreshRoot = nil
+            lastWorkspaceIndexRefreshGeneration = nil
+        }
+        if (pendingFolderSearchRootGeneration == request && pendingFolderSearchRoot == root)
+            || folderSearchModel.root != root {
+            folderSearchModel.setRoot(root, lexicalRoot: fileTreeModel.root)
+            pendingFolderSearchRoot = nil
+            pendingFolderSearchRootGeneration = nil
+        } else {
+            folderSearchModel.indexDidRefresh(root: root)
+        }
     }
 
     /// Sets `fileTreeModel`'s root and rebuilds `workspaceFileIndex` to
@@ -55,17 +90,27 @@ extension WindowController {
     /// rebuilding it, so a stale snapshot from a previously-open folder can
     /// never leak into a later Quick Open query in this same window.
     func setFileTreeRoot(_ url: URL?, accessURL: URL? = nil) async {
+        workspaceRootRequestGeneration &+= 1
+        let request = workspaceRootRequestGeneration
+        workspaceTreeRootAppliedGeneration = nil
+        workspaceIndexBuildGeneration &+= 1
+        lastWorkspaceIndexRefresh = nil
+        lastWorkspaceIndexRefreshRoot = nil
+        lastWorkspaceIndexRefreshGeneration = nil
+        pendingFolderSearchRoot = nil
+        pendingFolderSearchRootGeneration = nil
         // Before the first suspension: results shown against the old root must
         // never be actionable against the new one (#183 F19).
         coordinator?.closeQuickOpenIfOrigin(self)
-        // A Replace in Folder run authorised against the OLD root must stop before the (awaited) tree and index
-        // rebuild for the new one, not after it: otherwise it keeps writing old-root files while the window already
-        // shows the new folder, and its summary is then dropped.
-        if url != fileTreeModel.root {
-            folderSearchModel.retireReplaceRun()
-        }
+        // Every explicit root request replaces the folder access scope, even
+        // when the lexical path is unchanged. Retire old results and any
+        // Replace run before the first await; neither may borrow new access.
+        folderSearchModel.setRoot(nil)
         await beforeRootRebuild?()
+        guard !isClosed, workspaceRootRequestGeneration == request else { return }
         await fileTreeModel.setRoot(url, accessURL: accessURL)
+        guard !isClosed, workspaceRootRequestGeneration == request else { return }
+        workspaceTreeRootAppliedGeneration = request
         // Closes Quick Open (Slice 6b) if it's open against this window —
         // an independent hostile review of that slice found the panel's
         // own results/selection could otherwise resolve against a folder
@@ -80,15 +125,41 @@ extension WindowController {
         coordinator?.closeQuickOpenIfOrigin(self)
         guard let indexRoot = fileTreeModel.rootAccessURL else {
             await workspaceFileIndex.clear()
+            guard !isClosed, workspaceRootRequestGeneration == request else { return }
             folderSearchModel.setRoot(nil)
             return
         }
+        pendingFolderSearchRoot = indexRoot
+        pendingFolderSearchRootGeneration = request
+        workspaceIndexBuildGeneration &+= 1
+        let build = workspaceIndexBuildGeneration
         await workspaceFileIndex.rebuild(root: indexRoot)
+        guard !isClosed, workspaceRootRequestGeneration == request,
+              workspaceIndexBuildGeneration == build,
+              fileTreeModel.rootAccessURL == indexRoot
+        else { return }
+        let indexState = await workspaceFileIndex.state
+        guard !isClosed, workspaceRootRequestGeneration == request,
+              workspaceIndexBuildGeneration == build,
+              fileTreeModel.rootAccessURL == indexRoot
+        else { return }
+        if case .ready = indexState {
+            lastWorkspaceIndexRefresh = Date()
+            lastWorkspaceIndexRefreshRoot = indexRoot
+            lastWorkspaceIndexRefreshGeneration = request
+        } else if case .building = indexState {
+            // A same-root activation refresh can supersede this initial
+            // rebuild. Leave the search root unpublished until that current
+            // rebuild completes; its refresh path publishes after `.ready`.
+            return
+        }
         // After the rebuild, not before: a folder search re-run by
         // `setRoot(_:)` reads `workspaceFileIndex` through the closure
         // captured at `FolderSearchModel.init` time, so it must see the
         // freshly-rebuilt snapshot for the new root, not the old (or
         // `.empty`) one.
         folderSearchModel.setRoot(indexRoot, lexicalRoot: fileTreeModel.root)
+        pendingFolderSearchRoot = nil
+        pendingFolderSearchRootGeneration = nil
     }
 }

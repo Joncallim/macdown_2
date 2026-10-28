@@ -83,6 +83,7 @@ extension FileTreeModel {
         guard generation == expectedGeneration, url == root || expanded.contains(url) else { return }
         if event == .vanished {
             if url == root {
+                notifyRootAccessWillChange()
                 rootIsTerminal = true
                 availability = .rootUnreadable(reason: String(
                     localized: "The folder is no longer available.",

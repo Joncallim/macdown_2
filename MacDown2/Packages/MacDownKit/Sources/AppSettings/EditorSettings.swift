@@ -65,7 +65,8 @@ public struct EditorSettings: Codable, Sendable, Equatable {
         font = try container.decode(FontDescriptor.self, forKey: .font)
         wrapsLines = try container.decode(Bool.self, forKey: .wrapsLines)
         showsInvisibles = try container.decode(Bool.self, forKey: .showsInvisibles)
-        showsStatusBar = try container.decodeIfPresent(Bool.self, forKey: .showsStatusBar) ?? true
+        showsStatusBar = try container.contains(.showsStatusBar)
+            ? container.decode(Bool.self, forKey: .showsStatusBar) : true
         let width = try container.decode(Int.self, forKey: .indentationWidth)
         guard (1 ... 8).contains(width) else {
             throw DecodingError.dataCorruptedError(

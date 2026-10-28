@@ -54,7 +54,8 @@ struct FindBarView: View {
     /// changed (the user is typing in the editor): highlights refresh but the
     /// selection must not move onto the current match, or the next keystroke would
     /// replace the matched text.
-    let onMatchesChanged: (_ reveal: Bool) -> Void
+    let onMatchesChanged: (_ reveal: Bool, _ navigationToken: UInt?) -> Void
+    let onNavigationIntent: () -> UInt
     let onClose: () -> Void
     /// EPIC-22 §6.14, Slice 5b: called with the transaction Replace/Replace
     /// All built (`EditorFindModel.replaceCurrentTransaction(with:)`/
@@ -173,7 +174,14 @@ struct FindBarView: View {
                 await Task.yield()
                 isQueryFocused = true
             }
-            recomputeMatches(anchor: model.currentMatch?.range.location ?? initialAnchor, sampleSelection: true)
+            let navigationToken = model.pendingRevealNavigationToken
+            model.pendingRevealNavigationToken = nil
+            recomputeMatches(
+                anchor: model.currentMatch?.range.location ?? initialAnchor,
+                sampleSelection: true,
+                reveal: navigationToken != nil,
+                navigationToken: navigationToken
+            )
         }
         // Opening the bar moves first responder into the query field on a
         // later SwiftUI pass, after the ⌃F key event already re-validated the
@@ -187,7 +195,11 @@ struct FindBarView: View {
                 coordinator?.commandStateDidChange()
             }
         }
-        .onChange(of: model.query) { _, _ in recomputeMatches(anchor: model.currentMatch?.range.location) }
+        // Literal search distinguishes canonically equal but byte-distinct
+        // queries, so Swift's normal String equality is not a refresh trigger.
+        .onChange(of: ExactTextFingerprint(model.query)) { _, _ in
+            recomputeMatches(anchor: model.currentMatch?.range.location)
+        }
         .onChange(of: model.options) { old, new in
             recomputeMatches(
                 anchor: model.currentMatch?.range.location,
@@ -297,8 +309,9 @@ struct FindBarView: View {
     /// resulting state up — used by both the keyboard (Return/Shift-Return)
     /// and the toolbar chevron buttons so both paths behave identically.
     private func navigate(_ navigation: () -> SearchMatch?) {
+        let navigationToken = onNavigationIntent()
         _ = navigation()
-        onMatchesChanged(true)
+        onMatchesChanged(true, navigationToken)
     }
 
     /// `updateMatches(in:)` runs off-main and can be superseded by a later
@@ -309,18 +322,24 @@ struct FindBarView: View {
     /// discarded call and re-announcing it would be a redundant, no-op
     /// re-application of whatever the current, still-authoritative state
     /// already is.
-    private func recomputeMatches(anchor: Int?, sampleSelection: Bool = false, reveal: Bool = true) {
+    private func recomputeMatches(
+        anchor: Int?,
+        sampleSelection: Bool = false,
+        reveal: Bool = true,
+        navigationToken: UInt? = nil
+    ) {
         let text = resolvedText()
         // Sampled only when "In Selection" is being (re)established; every
         // other refresh uses the model's retained domain (#183 F03).
         let selection = sampleSelection ? resolvedSelection() : nil
+        let intentToken = reveal ? (navigationToken ?? onNavigationIntent()) : nil
         Task {
             guard await model.updateMatches(in: text, selection: selection, preferringLocationNear: anchor),
                   model.isActive
             else {
                 return
             }
-            onMatchesChanged(reveal)
+            onMatchesChanged(reveal, intentToken)
         }
     }
 

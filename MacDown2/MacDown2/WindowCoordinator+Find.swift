@@ -23,8 +23,14 @@ extension WindowCoordinator {
 
         let identity = activeTab.id.uuidString
         let model = originController.findStore.model(for: identity)
-        model.isActive.toggle()
-        guard !model.isActive else { return }
+        if model.isActive {
+            model.isActive = false
+            model.pendingRevealNavigationToken = nil
+        } else {
+            model.pendingRevealNavigationToken = folderSearchNavigationDidChange()
+            model.isActive = true
+            return
+        }
         // Closing: clear highlighting immediately rather than waiting for
         // `FindBarView.onClose` to run — that closure only fires while the
         // bar's own view is still on screen to call it; toggling `isActive`

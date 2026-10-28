@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-18T20:42:07.723303+00:00",
+  "prior_attempt": "Files saved successfully; result aggregation hit an UnboundLocalError in the HTTP-error handler for the missing source map. That tooling failure did not change source or dependencies.",
+  "files": {
+    "prism-tag-object.json": {
+      "url": "https://api.github.com/repos/PrismJS/prism/git/tags/8893d805d9a1287de497364079127c6eb26c97c6",
+      "bytes": 660,
+      "sha256": "51bb7cf4b4dafa59c9b35c3c4fbdd1b35c8f4b9176aceed09bdfe93249035c38",
+      "note": "Retained from first read-only fetch, not downloaded again."
+    },
+    "prism-cdn-default.js": {
+      "url": "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.js",
+      "bytes": 58198,
+      "sha256": "4b9994fc5f441d4c4fff23dee2535c09010bf93b1d90c2c72b0430c3d3f1008e",
+      "note": "Retained from first read-only fetch, not downloaded again."
+    },
+    "cdnjs-prism-package.json": {
+      "url": "https://raw.githubusercontent.com/cdnjs/packages/master/packages/p/prism.json",
+      "bytes": 735,
+      "sha256": "6a17271361816e0bb5d37a610b8c6ca1ce86dd986ab81c02abbaab385c3c827e",
+      "note": "Retained from first read-only fetch, not downloaded again."
+    }
+  },
+  "source_map_probe": {
+    "url": "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js.map",
+    "status": 404
+  }
+}

@@ -12,7 +12,7 @@ final class DeadKeyCompositionUITests: XCTestCase {
     private var fixturesDir: URL!
     private var fixture: URL!
 
-    override func setUp() {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
 
@@ -29,7 +29,7 @@ final class DeadKeyCompositionUITests: XCTestCase {
         app.launchArguments = ["-UITesting", "-sessionDir", sessionDir.path, "-openFiles", fixture.path]
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         app.terminate()
         try? FileManager.default.removeItem(at: sessionDir)
         try? FileManager.default.removeItem(at: fixturesDir)
