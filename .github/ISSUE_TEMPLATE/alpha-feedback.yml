@@ -1,0 +1,53 @@
+name: Alpha feedback
+description: Something broken, confusing or missing in the MostlyText alpha (MacDown 2 source build)
+title: "[alpha] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping test MostlyText. Please work with copies of your documents, and do not attach personal files or secrets. A small synthetic Markdown example is best when a document is needed to show the problem.
+  - type: input
+    id: build
+    attributes:
+      label: Build tag or commit
+      description: Which alpha source build did you test?
+      placeholder: "For example: a tag or full commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Mac model and software versions
+      description: Include your Mac model or architecture, macOS version, and Xcode version.
+      placeholder: "For example: MacBook Pro (Apple silicon), macOS 26.x, Xcode 26.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feedback type
+      options:
+        - Bug
+        - Crash
+        - Slow
+        - Rendering looks wrong
+        - Missing feature
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened and what did you expect?
+      description: Describe the observed behavior and the result you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce (optional)
+      description: If useful, include a small synthetic Markdown sample. Do not paste a personal document.
+      placeholder: |
+        1. Open a copy of a document or create a new one.
+        2. Enter a small example, such as `# Example`.
+        3. Describe the action that triggers the problem.

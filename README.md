@@ -1,5 +1,7 @@
 # MacDown 2
 
+> **Website:** [mostlytext.app](https://mostlytext.app)
+
 A native macOS Markdown editor — a ground-up Swift / SwiftUI rewrite built on
 TextKit 2, a modular Swift package core, and a modern SwiftUI shell.
 
