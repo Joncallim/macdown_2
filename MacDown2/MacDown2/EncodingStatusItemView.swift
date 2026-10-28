@@ -17,7 +17,10 @@ struct EncodingStatusItemView: View {
                     ForEach(EncodingChoices.reopenCommon, id: \.rawValue) { candidate in
                         Toggle(
                             FileEncodingMetadata(encoding: candidate, bom: .none).displayName,
-                            isOn: Binding(get: { candidate == encoding.encoding }, set: { _ in onReopen(candidate) })
+                            isOn: Binding(get: { candidate == encoding.encoding }, set: { _ in
+                                guard candidate != encoding.encoding else { return }
+                                onReopen(candidate)
+                            })
                         )
                     }
                 }
