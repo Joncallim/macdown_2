@@ -69,7 +69,7 @@ final class FolderBrowserUITests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: folder.appendingPathComponent("B.md")), Data())
 
         // Folder actions remain discoverable after the folder is no longer empty.
-        let actions = app.buttons["folderActionsButton"]
+        let actions = app.menuButtons["folderActionsButton"]
         XCTAssertTrue(actions.waitForExistence(timeout: 5))
         actions.click()
         XCTAssertTrue(app.menuItems["Open Another Folder…"].waitForExistence(timeout: 5))

@@ -61,6 +61,10 @@ extension SidebarView {
                     }, didDelete: { url in coordinator?.documentFileWasDeleted(at: url) }, didCreate: createdItem
                 )
                 .tag(SidebarSelection.file(row.id))
+                // The row remains a discoverable accessibility container,
+                // while an inline rename field keeps its own identifier for
+                // keyboard and assistive-technology interaction.
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("fileRow-\(row.entry.name)")
             }
         }
@@ -151,6 +155,9 @@ extension SidebarView {
             }
             return !items.isEmpty
         }
+        // Keep the root header discoverable without collapsing its action
+        // menu into the header's accessibility identifier.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("folderRootHeader")
     }
 
