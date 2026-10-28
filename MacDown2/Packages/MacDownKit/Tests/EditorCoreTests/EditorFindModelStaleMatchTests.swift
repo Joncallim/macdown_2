@@ -43,6 +43,25 @@ struct EditorFindModelStaleMatchTests {
 /// Tenth review R10-02 / R10-05.
 @MainActor
 struct EditorFindModelExactIdentityTests {
+    @Test func aCanonicallyEqualButByteDistinctQueryInvalidatesLiteralMatches() async {
+        let composed = "é"
+        let decomposed = "e\u{301}"
+        let text = "\(composed) \(decomposed)"
+        let model = EditorFindModel(query: composed)
+        model.options = SearchOptions(isCaseSensitive: true)
+        await model.updateMatches(in: text)
+        #expect(model.matches.map(\.range.location) == [0])
+        #expect(model.matchesAreCurrent(forLiveText: text))
+        #expect(composed == decomposed)
+        #expect(ExactTextFingerprint(composed) != ExactTextFingerprint(decomposed))
+
+        model.query = decomposed
+        #expect(!model.matchesAreCurrent(forLiveText: text))
+        await model.updateMatches(in: text)
+        #expect(model.matchesAreCurrent(forLiveText: text))
+        #expect(model.matches.map(\.range.location) == [2])
+    }
+
     @Test func aCanonicallyEqualButByteDistinctChangeMakesTheMatchesStale() async {
         let model = EditorFindModel(query: "\u{00C5}")
         model.options = SearchOptions(isCaseSensitive: true)

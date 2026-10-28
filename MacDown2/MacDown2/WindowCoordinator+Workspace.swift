@@ -36,20 +36,36 @@ private struct ControllerTabSnapshot {
     let tab: TabSnapshot
 }
 
-/// Orders session publications by when their snapshot was taken: an older
-/// snapshot whose recovery work finished late must not publish over a newer one
-/// that already did (#183 F20).
+/// Captures one tab's document state while a window session is being saved.
+/// Kept with the session-publication code so the coordinator's core type stays
+/// focused on live window ownership.
+struct TabSnapshot {
+    let record: TabRecord
+    let documentID: String
+    let documentText: String
+    let documentState: FileDocumentState
+    let documentGeneration: UInt
+    let documentRecoveryEpoch: UUID
+}
+
+/// Orders session publications by snapshot and invalidates snapshots when
+/// session state changes, before the next debounced save begins (#183 F20).
 struct SessionPublicationOrder {
     private var lastSnapshot: UInt64 = 0
     private var lastPublished: UInt64 = 0
+    private var lastInvalidatedSnapshot: UInt64 = 0
 
     mutating func beginSnapshot() -> UInt64 {
         lastSnapshot += 1
         return lastSnapshot
     }
 
+    mutating func invalidateCapturedSnapshots() {
+        lastInvalidatedSnapshot = lastSnapshot
+    }
+
     func isSuperseded(_ sequence: UInt64) -> Bool {
-        sequence <= lastPublished
+        sequence < lastSnapshot || sequence <= lastPublished || sequence <= lastInvalidatedSnapshot
     }
 
     mutating func markPublished(_ sequence: UInt64) {
@@ -85,45 +101,76 @@ extension WindowCoordinator {
     /// one (`scheduleSaveSession` cancels the older task), so after the awaited
     /// recovery work it must not publish its by-then obsolete snapshot over the
     /// newer session (#183 F20). Explicit callers (termination, Save As, rename)
-    /// always publish.
+    /// retry an invalidated snapshot once, then report a publication failure
+    /// rather than claim success for an obsolete session.
     func saveSessionResult(
         allowingSaveAsPublicationFor publishingModel: WorkspaceModel? = nil,
         isAutosave: Bool = false
     ) async -> SessionSaveResult {
-        if let pendingController = controllers.first(where: {
-            $0.model.hasPendingRecoveryCleanup && $0.model !== publishingModel
-        }) {
-            return .pendingRecoveryCleanup(pendingController)
-        }
-        let (snapshot, activeID) = sessionSnapshot()
-        // Before the launch restore has consumed the saved session there are no windows to snapshot (a first-run
-        // welcome window, say): publishing now would replace the saved tabs with an empty session and orphan their
-        // recovery files. The saved session is still the truth, so leave it.
-        if snapshot.isEmpty, let launch = launchSession, !launch.tabs.isEmpty {
-            return .saved
-        }
-        let sequence = sessionPublicationOrder.beginSnapshot()
-        if let failedController = await persistDirtyRecovery(in: snapshot) {
-            return .recoveryFailed(failedController)
-        }
-        await afterSessionRecoveryPersisted?()
-        if isAutosave, Task.isCancelled {
-            return .saved
-        }
-        // A snapshot taken after this one has already published its (newer)
-        // session while this one's recovery work was awaiting: publishing now
-        // would roll the canonical session back. The newer session covers the
-        // same documents at a later state, so this save is satisfied (#183 F20).
-        guard !sessionPublicationOrder.isSuperseded(sequence) else { return .saved }
-        let session = WorkspaceSession(tabs: snapshot.map(\.tab.record), activeTabID: activeID)
-        guard sessionStore.saveSessionVerified(session) else {
-            if let controller = controllers.first {
-                return .recoveryFailed(controller)
+        for attempt in 0 ..< 2 {
+            if let pendingController = controllers.first(where: {
+                $0.model.hasPendingRecoveryCleanup && $0.model !== publishingModel
+            }) {
+                return .pendingRecoveryCleanup(pendingController)
             }
-            return .sessionPublicationFailed
+            let (snapshot, activeID) = sessionSnapshot()
+            // Before the launch restore has consumed the saved session there are no windows to snapshot (a first-run
+            // welcome window, say): publishing now would replace the saved tabs with an empty session and orphan their
+            // recovery files. The saved session is still the truth, so leave it.
+            if snapshot.isEmpty, let launch = launchSession, !launch.tabs.isEmpty {
+                return .saved
+            }
+            let sequence = sessionPublicationOrder.beginSnapshot()
+            if let failedController = await persistDirtyRecovery(in: snapshot) {
+                return .recoveryFailed(failedController)
+            }
+            await afterSessionRecoveryPersisted?()
+            if isAutosave, Task.isCancelled {
+                return .saved
+            }
+            // Editor text can advance dirty -> dirty without scheduling a coordinator session save. Check the live
+            // document lifetime and generation too, after recovery and before the synchronous canonical write.
+            // Scheduling a changed session invalidates A while B is debounced.
+            // Beginning B also invalidates A if B fails.
+            if sessionPublicationOrder.isSuperseded(sequence) || !capturedDocumentsRemainCurrent(snapshot) {
+                if isAutosave {
+                    return .saved
+                }
+                if attempt == 0 {
+                    continue
+                }
+                return .sessionPublicationFailed
+            }
+            let session = WorkspaceSession(tabs: snapshot.map(\.tab.record), activeTabID: activeID)
+            guard sessionStore.saveSessionVerified(session) else {
+                if let controller = controllers.first {
+                    return .recoveryFailed(controller)
+                }
+                return .sessionPublicationFailed
+            }
+            sessionPublicationOrder.markPublished(sequence)
+            return .saved
         }
-        sessionPublicationOrder.markPublished(sequence)
-        return .saved
+        return .sessionPublicationFailed
+    }
+
+    private func capturedDocumentsRemainCurrent(_ snapshot: [ControllerTabSnapshot]) -> Bool {
+        let current = Self.inTabOrder(controllers, window: \.window).compactMap { controller in
+            controller.model.tabStore.tabs.first.map { (controller, $0) }
+        }
+        guard current.count == snapshot.count else { return false }
+        return zip(snapshot, current).allSatisfy { saved, live in
+            let document = live.1.document
+            return saved.controller === live.0
+                && saved.tab.record.id == live.1.id
+                && saved.tab.documentID == document.id
+                && saved.tab.documentRecoveryEpoch == document.recoveryEpoch
+                && saved.tab.documentGeneration == document.mutationGeneration
+                && saved.tab.documentState == document.state
+                && saved.tab.record.fileURL == document.fileURL
+                && saved.tab.record.encoding == document.encoding
+                && saved.tab.documentText.isExactlyEqual(to: document.text)
+        }
     }
 
     private func sessionSnapshot() -> ([ControllerTabSnapshot], UUID?) {
@@ -196,7 +243,7 @@ extension WindowCoordinator {
                     guard let recovered = try? await recoveryBuffer.load(
                         for: entry.tab.documentID,
                         epoch: entry.tab.documentRecoveryEpoch
-                    ), recovered == entry.tab.documentText else {
+                    ), recovered.isExactlyEqual(to: entry.tab.documentText) else {
                         return entry.controller
                     }
                 }

@@ -105,4 +105,21 @@ struct ParseSessionBusyStateTests {
         _ = await parse.value
         #expect(!session.isParsing)
     }
+
+    /// A caller that leaves while parsing is suspended must not publish the
+    /// returned document after cancellation, even when the parser itself
+    /// completes successfully.
+    @Test func cancelledImmediateParseDoesNotPublishAStaleDocument() async {
+        let engine = GatedParseEngine()
+        let session = MarkdownParseSession(engine: engine, debounce: .seconds(10))
+
+        let parse = Task { await session.parseNow("stale") }
+        await engine.waitUntilStarted(1)
+        parse.cancel()
+        await engine.release(call: 1)
+
+        #expect(await parse.value == nil)
+        #expect(session.document == nil)
+        #expect(session.publishedText == nil)
+    }
 }

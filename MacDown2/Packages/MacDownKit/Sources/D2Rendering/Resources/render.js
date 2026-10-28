@@ -9,6 +9,31 @@
 // native SVG output has no <foreignObject> and displays correctly via
 // AppKit's own SVG decoder, so `svg` alone serves both Export and native
 // on-screen Preview display.
+// AppKit's SVG decoder does not reliably apply D2's scoped theme classes.
+// Give only generated theme-token paints a literal fallback. Existing literal
+// attributes (authored colors) always win; WebKit retains the original CSS.
+function d2ThemePaints(styles) {
+    const paints = new Map();
+    const declarations = /\.(fill|stroke)-(N[1-7]|B[1-6]|AA[245]|AB[45])\s*\{\s*(fill|stroke):\s*([^;{}]+)\s*;/g;
+    for (const match of styles.matchAll(declarations)) {
+        if (match[1] === match[3] && !paints.has(match[1] + "-" + match[2])) {
+            paints.set(match[1] + "-" + match[2], match[4].trim());
+        }
+    }
+    return paints;
+}
+
+function makeD2ThemePaintLiteral(root, styles) {
+    const paints = d2ThemePaints(styles);
+    for (const element of root.querySelectorAll("[class]")) {
+        for (const token of element.classList) {
+            const color = paints.get(token);
+            const property = token.split("-")[0];
+            if (color && !element.hasAttribute(property)) element.setAttribute(property, color);
+        }
+    }
+}
+
 function opaqueD2Canvas(svg, fill) {
     const document = new DOMParser().parseFromString(svg, "image/svg+xml");
     const root = document.documentElement;
@@ -19,19 +44,21 @@ function opaqueD2Canvas(svg, fill) {
     }
     // D2's generated background is the first rect in its nested SVG. AppKit's
     // SVG decoder does not apply D2's scoped CSS class to that rect and paints
-    // it black. Make the generated light-profile background literal while
+    // it black. Make the generated theme background literal while
     // leaving every authored shape/style untouched. Only match the bundled
-    // neutral profile's actual class and CSS declaration.
+    // theme token class and CSS declaration, never a literal authored paint.
     const diagramRoot = root.firstElementChild;
     const background = diagramRoot && diagramRoot.localName === "svg" ? diagramRoot.firstElementChild : null;
     const styles = diagramRoot ? Array.from(diagramRoot.childNodes)
         .filter(node => node.localName === "style").map(node => node.textContent).join("\n") : "";
+    const generatedFill = styles.match(/\.fill-N7\s*\{\s*fill:\s*(#[0-9A-F]{6})\s*;/i);
     if (background && background.localName === "rect" &&
         background.getAttribute("class")?.trim() === "fill-N7" &&
-        /\.fill-N7\s*\{\s*fill:\s*#FFFFFF\s*;/i.test(styles)) {
+        generatedFill) {
         background.removeAttribute("class");
-        background.setAttribute("fill", "#FFFFFF");
+        background.setAttribute("fill", generatedFill[1]);
     }
+    if (diagramRoot) makeD2ThemePaintLiteral(diagramRoot, styles);
     const canvas = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     canvas.setAttribute("x", String(values[0]));
     canvas.setAttribute("y", String(values[1]));
@@ -42,8 +69,11 @@ function opaqueD2Canvas(svg, fill) {
     return { svg: new XMLSerializer().serializeToString(root), width: values[2], height: values[3] };
 }
 
-window.__macdownRenderD2 = async function (source) {
+window.__macdownRenderD2 = async function (source, theme) {
     try {
+        if (!theme || !["neutral-light-v1", "preview-context-v1"].includes(theme.policyID)) {
+            throw new Error("unsupported diagram palette");
+        }
         const d2 = new window.D2();
         const compiled = await d2.compile(source);
         // This bundled D2.js version documents themeID/darkThemeID. Pin
@@ -54,8 +84,26 @@ window.__macdownRenderD2 = async function (source) {
         if (authored.themeID != null && authored.darkThemeID == null) {
             options.darkThemeID = authored.themeID;
         }
+        // D2 keeps generated theme tokens distinct from literal authored
+        // colors in its compiled diagram. Use its native override API;
+        // never search and replace black pixels or authored SVG paint.
+        const defaults = {
+            N1: theme.text, N2: theme.text, N3: theme.stroke,
+            N4: theme.stroke, N5: theme.nodeFill, N6: theme.nodeFill, N7: theme.canvas,
+            B1: theme.stroke, B2: theme.stroke, B3: theme.nodeFill,
+            B4: theme.nodeFill, B5: theme.nodeFill, B6: theme.nodeFill,
+            AA2: theme.text, AA4: theme.nodeFill, AA5: theme.nodeFill,
+            AB4: theme.nodeFill, AB5: theme.nodeFill
+        };
+        // An explicitly selected source theme remains an authored palette.
+        // Explicit per-token overrides also win over application defaults.
+        if (!authored.themeID) {
+            options.themeOverrides = Object.assign({}, defaults, authored.themeOverrides || {});
+            options.darkThemeOverrides = Object.assign({}, defaults,
+                authored.themeOverrides || {}, authored.darkThemeOverrides || {});
+        }
         const svg = await d2.render(compiled.diagram, options);
-        const canvas = opaqueD2Canvas(svg, "#FFFFFF");
+        const canvas = opaqueD2Canvas(svg, theme.canvas);
         return { ok: true, svg: canvas.svg, width: canvas.width, height: canvas.height };
     } catch (error) {
         const message = error && error.message ? error.message : String(error);

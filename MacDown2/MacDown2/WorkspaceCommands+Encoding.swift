@@ -53,7 +53,10 @@ extension WorkspaceCommands {
     private func reopenButton(_ encoding: String.Encoding, isCurrent: Bool) -> some View {
         Toggle(
             FileEncodingMetadata(encoding: encoding, bom: .none).displayName,
-            isOn: Binding(get: { isCurrent }, set: { _ in coordinator?.reopenKeyDocument(withEncoding: encoding) })
+            isOn: Binding(get: { isCurrent }, set: { _ in
+                guard !isCurrent else { return }
+                coordinator?.reopenKeyDocument(withEncoding: encoding)
+            })
         )
     }
 

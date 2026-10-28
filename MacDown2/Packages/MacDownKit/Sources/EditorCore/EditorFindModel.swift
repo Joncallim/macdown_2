@@ -78,7 +78,12 @@ public final class EditorFindModel {
     /// canonically (Å U+00C5 vs U+212B) and never for marked-text edits, so callers compare this with the live text.
     private var searchedFingerprint: ExactTextFingerprint?
     /// The query/options those matches answer (their recompute starts asynchronously, so text alone is not enough).
-    private var searchedInputs: (query: String, options: SearchOptions)?
+    private var searchedInputs: (query: ExactTextFingerprint, options: SearchOptions)?
+    /// The retained selection scope those matches answer. A text-change
+    /// notification can invalidate or remap this scope before the asynchronous
+    /// search refresh starts, even when the live text still has equal bytes.
+    private var searchedDomain: NSRange?
+    private var searchedScopeLost = false
     /// The range "In Selection" searches, retained across refreshes and
     /// remapped through Replace edits (#183 F03). It is sampled from the live
     /// selection only when a caller passes `selection` to `updateMatches`
@@ -209,7 +214,9 @@ public final class EditorFindModel {
         // Stamped at commit, so a search cancelled first leaves the earlier matches stamped with what they answer.
         searchedLineEnding = LineEndingProfile(detecting: text).dominantEnding
         searchedFingerprint = ExactTextFingerprint(text)
-        searchedInputs = (query, options)
+        searchedInputs = (ExactTextFingerprint(query), options)
+        searchedDomain = domain
+        searchedScopeLost = scopeLost
         switch result {
         case let .success(newMatches):
             matches = newMatches
@@ -225,8 +232,11 @@ public final class EditorFindModel {
 
     /// Whether the matches still apply to `text`: same exact content, same query and options, no search in flight.
     public func matchesAreCurrent(forLiveText text: String) -> Bool {
-        !isSearching && searchedFingerprint == ExactTextFingerprint(text)
-            && searchedInputs?.query == query && searchedInputs?.options == options
+        let scopeIsCurrent = !options.searchesSelectionOnly
+            || (!searchDomainLost && !searchedScopeLost && searchedDomain == searchDomain)
+        return !isSearching && searchedFingerprint == ExactTextFingerprint(text)
+            && searchedInputs?.query == ExactTextFingerprint(query) && searchedInputs?.options == options
+            && scopeIsCurrent
     }
 
     /// Retires any search in flight (closing Find, evicting the document): the matcher is cancelled and a late result

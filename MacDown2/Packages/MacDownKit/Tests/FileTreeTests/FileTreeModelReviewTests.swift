@@ -334,7 +334,9 @@ private final class MutationCounter {
 
     let created = try await model.createFile(in: root)
     #expect(counter.count == 1)
-
+    let unchanged = try await model.rename(created.url, to: "untitled.md")
+    #expect(unchanged.url == created.url)
+    #expect(counter.count == 1, "submitting the unchanged rename field must not mutate the file")
     _ = try await model.rename(created.url, to: "renamed.md")
     #expect(counter.count == 2)
 
