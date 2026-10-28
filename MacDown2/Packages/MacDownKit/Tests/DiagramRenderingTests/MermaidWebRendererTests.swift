@@ -6,10 +6,7 @@ import Testing
 
 @Suite("MermaidWebRenderer")
 struct MermaidWebRendererTests {
-    static let context = MermaidRenderContext(
-        foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
-        backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
-    )
+    static let context = MermaidRenderContext.neutralLight
 
     static func fence(_ source: String) -> MermaidFence {
         MermaidFence(source: source, sourceRange: 0 ..< source.count)
@@ -121,7 +118,7 @@ struct MermaidWebRendererTests {
         await renderer.shutdown()
     }
 
-    @Test func samePooledPageUsesNeutralLightContextAcrossThemeInputs() async throws {
+    @Test func samePooledPageTracksLightDarkLightContexts() async throws {
         let renderer = MermaidWebRenderer(poolSize: 1)
         let light = Self.context
         let dark = MermaidRenderContext(
@@ -133,8 +130,8 @@ struct MermaidWebRendererTests {
         let lightAgainSVG = try await renderer.render(Self.fence("graph TD; A-->B;"), context: light).svg
         #expect(lightSVG.localizedCaseInsensitiveContains("#1A1A1A"))
         #expect(lightSVG.localizedCaseInsensitiveContains("#ffffff"))
-        #expect(darkSVG.localizedCaseInsensitiveContains("#1A1A1A"))
-        #expect(darkSVG.localizedCaseInsensitiveContains("#ffffff"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#EEDDCC"))
+        #expect(darkSVG.localizedCaseInsensitiveContains("#112233"))
         #expect(lightAgainSVG.localizedCaseInsensitiveContains("#1A1A1A"))
         #expect(lightAgainSVG.localizedCaseInsensitiveContains("#ffffff"))
         await renderer.shutdown()
