@@ -14,6 +14,17 @@ import AppKit
 /// meant. The real menu commands are unchanged thin wrappers that resolve
 /// the key window once and delegate to the same body.
 extension WindowCoordinator {
+    var canSaveCurrentDocument: Bool {
+        _ = commandStateRevision
+        return currentCommandController(keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow)?.model.canSave == true
+    }
+
+    var canSaveAsCurrentDocument: Bool {
+        _ = commandStateRevision
+        return currentCommandController(keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow)?
+            .model.hasActiveDocument == true
+    }
+
     /// Closes the tab/window that is currently key.
     func closeKeyWindow() {
         guard let controller = controllers.first(where: { $0.window?.isKeyWindow ?? false }) else {
@@ -51,12 +62,14 @@ extension WindowCoordinator {
     }
 
     func saveKeyDocument() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        guard let controller = currentCommandController(keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow)
+        else { return }
         saveDocument(in: controller)
     }
 
     func saveKeyDocumentAs() {
-        guard let controller = controllers.first(where: { $0.window == NSApp.keyWindow }) else { return }
+        guard let controller = currentCommandController(keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow)
+        else { return }
         saveDocumentAs(in: controller)
     }
 

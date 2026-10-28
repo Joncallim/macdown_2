@@ -1,0 +1,10 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Hello %@": {
+      "localizations": {
+        "fr": { "stringUnit": { "state": "translated", "value": "Bonjour %@" } }
+      }
+    }
+  }
+}

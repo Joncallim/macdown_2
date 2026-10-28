@@ -53,7 +53,8 @@ final class WindowCoordinator {
     private var hasRestoredSession = false
     let documentOpens = KeyedSerialRunner<String>()
     var launchSession: WorkspaceSession? // as at launch; handed out once by `consumeLaunchSession()`
-    private var saveTask: Task<Void, Never>?
+    var saveTask: Task<Void, Never>?
+    @ObservationIgnored var terminationSaveInProgress = false
     var sessionPublicationOrder = SessionPublicationOrder()
     var afterSessionRecoveryPersisted: (@MainActor () async -> Void)? // test seam: before publishing
     /// Test seam: runs after a new controller's root/index rebuild and before publication.
@@ -273,7 +274,11 @@ final class WindowCoordinator {
     /// Schedules a session save, debounced so rapid changes coalesce into one
     /// write. Call this after any structural or document change.
     func scheduleSaveSession() {
+        sessionPublicationOrder.invalidateCapturedSnapshots()
         saveTask?.cancel()
+        guard !terminationSaveInProgress else {
+            return
+        }
         saveTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
             guard let self, !Task.isCancelled else { return }
@@ -367,8 +372,20 @@ final class WindowCoordinator {
     }
 
     func updateKeyModel() {
-        keyModel = controllers.first { $0.window == NSApp.keyWindow }?.model
+        keyModel = currentCommandController(keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow)?.model
         commandStateDidChange()
+    }
+
+    /// Resolve menu commands against a live document window. A dismissed
+    /// panel may leave no key window without another document-key notification.
+    /// A visible non-document key window is intentional and must not redirect
+    /// Save or Export to a different document.
+    func currentCommandController(keyWindow: NSWindow?, mainWindow: NSWindow?) -> WindowController? {
+        if let keyWindow, let controller = controllers.first(where: { $0.window === keyWindow }) {
+            return controller
+        }
+        guard keyWindow?.isVisible != true, let mainWindow else { return nil }
+        return controllers.first(where: { $0.window === mainWindow })
     }
 
     /// Invalidates SwiftUI command validation after AppKit has processed an

@@ -2,6 +2,46 @@ import Diagrams
 import Foundation
 import WebKit
 
+/// Only the navigation returned by this page's own harness load may make it ready.
+@MainActor
+final class MermaidHarnessNavigationCompletion {
+    private var navigation: WKNavigation?
+    private var continuation: CheckedContinuation<Void, any Error>?
+
+    var isPending: Bool {
+        continuation != nil
+    }
+
+    func begin(_ continuation: CheckedContinuation<Void, any Error>, start: () -> WKNavigation?) {
+        guard self.continuation == nil else {
+            continuation.resume(throwing: MermaidRenderError.rendererUnavailable)
+            return
+        }
+        self.continuation = continuation
+        guard let navigation = start() else {
+            complete(.failure(MermaidRenderError.rendererUnavailable))
+            return
+        }
+        self.navigation = navigation
+    }
+
+    func finish(for callback: WKNavigation?, with result: Result<Void, any Error>) {
+        guard let navigation, let callback, navigation === callback else { return }
+        complete(result)
+    }
+
+    func terminate(with error: any Error) {
+        complete(.failure(error))
+    }
+
+    private func complete(_ result: Result<Void, any Error>) {
+        guard let continuation else { return }
+        self.continuation = nil
+        navigation = nil
+        continuation.resume(with: result)
+    }
+}
+
 /// One offscreen, never-displayed page hosting the bundled Mermaid harness
 /// (epic-20-implementation.md §10). Owns exactly one `WKWebView`, loaded
 /// once and reused across many `render(_:)` calls by its owning pool slot
@@ -29,7 +69,7 @@ import WebKit
 final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let webView: WKWebView
     private let allowedDirectory: URL
-    private var loadContinuation: CheckedContinuation<Void, Error>?
+    private let loadCompletion = MermaidHarnessNavigationCompletion()
 
     /// The WebContent process died; the renderer replaces a terminated page instead of reusing it.
     private(set) var isTerminated = false
@@ -45,8 +85,13 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
             throw MermaidRenderError.rendererUnavailable
         }
         let page = MermaidHarnessPage(allowedDirectory: harnessURL.deletingLastPathComponent())
-        try await page.load(harnessURL: harnessURL)
-        return page
+        do {
+            try await page.load(harnessURL: harnessURL)
+            return page
+        } catch {
+            page.teardown()
+            throw error
+        }
     }
 
     private init(allowedDirectory: URL) {
@@ -59,16 +104,26 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         pagePreferences.allowsContentJavaScript = true
         configuration.defaultWebpagePreferences = pagePreferences
 
-        webView = WKWebView(frame: .zero, configuration: configuration)
+        webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 1200, height: 900), configuration: configuration)
         super.init()
         webView.navigationDelegate = self
         webView.uiDelegate = self
     }
 
     private func load(harnessURL: URL) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            loadContinuation = continuation
-            webView.loadFileURL(harnessURL, allowingReadAccessTo: allowedDirectory)
+        try Task.checkCancellation()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+                guard !isTerminated else {
+                    continuation.resume(throwing: MermaidRenderError.rendererUnavailable)
+                    return
+                }
+                loadCompletion.begin(continuation) {
+                    webView.loadFileURL(harnessURL, allowingReadAccessTo: allowedDirectory)
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.teardown() }
         }
     }
 
@@ -84,10 +139,7 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
             "return await window.__macdownRenderMermaid(source, theme);",
             arguments: [
                 "source": source,
-                "theme": [
-                    "foreground": context.foregroundHex,
-                    "background": context.backgroundHex,
-                ],
+                "theme": context.palette.rendererArguments,
             ],
             in: nil,
             contentWorld: .page
@@ -108,6 +160,9 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         let pngData = (dict["png"] as? String).flatMap { Data(base64Encoded: $0) }
         let width = (dict["width"] as? NSNumber)?.doubleValue ?? 0
         let height = (dict["height"] as? NSNumber)?.doubleValue ?? 0
+        guard width.isFinite, height.isFinite, width > 0, height > 0 else {
+            throw MermaidRenderError.rendererUnavailable
+        }
         return RenderedMermaidDiagram(svg: svg, pngData: pngData, naturalWidth: width, naturalHeight: height)
     }
 
@@ -127,7 +182,23 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         return dict
     }
 
+    /// Checks the production raster admission without allocating a large canvas.
+    func inspectRasterSizeForTesting(width: Double, height: Double) async throws -> [String: Any] {
+        let result = try await webView.callAsyncJavaScript(
+            "return checkedRasterSize(width, height);",
+            arguments: ["width": width, "height": height],
+            in: nil,
+            contentWorld: .page
+        )
+        guard let dict = result as? [String: Any] else {
+            throw MermaidRenderError.rendererUnavailable
+        }
+        return dict
+    }
+
     func teardown() {
+        isTerminated = true
+        loadCompletion.terminate(with: MermaidRenderError.rendererUnavailable)
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
         webView.stopLoading()
@@ -135,25 +206,21 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     // MARK: - WKNavigationDelegate
 
-    func webView(_: WKWebView, didFinish _: WKNavigation!) {
-        loadContinuation?.resume()
-        loadContinuation = nil
+    func webView(_: WKWebView, didFinish navigation: WKNavigation!) {
+        loadCompletion.finish(for: navigation, with: .success(()))
     }
 
     func webViewWebContentProcessDidTerminate(_: WKWebView) {
         isTerminated = true
-        loadContinuation?.resume(throwing: MermaidRenderError.timedOut)
-        loadContinuation = nil
+        loadCompletion.terminate(with: MermaidRenderError.timedOut)
     }
 
-    func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
-        loadContinuation?.resume(throwing: error)
-        loadContinuation = nil
+    func webView(_: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        loadCompletion.finish(for: navigation, with: .failure(error))
     }
 
-    func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {
-        loadContinuation?.resume(throwing: error)
-        loadContinuation = nil
+    func webView(_: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        loadCompletion.finish(for: navigation, with: .failure(error))
     }
 
     func webView(
@@ -177,23 +244,5 @@ final class MermaidHarnessPage: NSObject, WKNavigationDelegate, WKUIDelegate {
         windowFeatures _: WKWindowFeatures
     ) -> WKWebView? {
         nil
-    }
-}
-
-private extension MermaidRenderContext {
-    var foregroundHex: String {
-        hex(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue)
-    }
-
-    var backgroundHex: String {
-        hex(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
-    }
-
-    func hex(red: Double, green: Double, blue: Double) -> String {
-        let components = [red, green, blue].map { value in
-            let finite = value.isFinite ? value : 0
-            return UInt8((min(max(finite, 0), 1) * 255).rounded())
-        }
-        return String(format: "#%02X%02X%02X", components[0], components[1], components[2])
     }
 }

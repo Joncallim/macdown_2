@@ -4,7 +4,7 @@ import WebKit
 
 // MARK: - Scheme handler
 
-/// Serves `macdown-preview://` resources for the current preview request.
+/// Serves `macdown-preview://` resources for one identified preview load.
 ///
 /// The main document and every subresource (relative image/style/font/media
 /// and intra-preview navigations) arrive here. The main document is served
@@ -17,11 +17,20 @@ import WebKit
 ///
 /// Reads remain synchronous, but delivery callbacks can reenter stop or
 /// request replacement. Each admitted attempt therefore owns a revocable
-/// delivery token. This does not establish immutable resource authority:
-/// a delayed task can still start against the mutable request's newer root
-/// until the explicit directory-grant integration in #121 is complete.
+/// delivery token. A load also gets a unique URL authority: a delayed task
+/// cannot start against a later request's resource root. This does not close
+/// the separate validation-to-open race for local resources.
 @MainActor
 final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
+    private struct Load {
+        let request: HTMLPreviewRequest
+        let documentID: String
+        let recoveryEpoch: UUID
+        let generation: UInt
+        let authority: String
+        let mainURL: URL
+    }
+
     private struct DeliveryAttempt {
         let taskID: ObjectIdentifier
         let webViewID: ObjectIdentifier
@@ -30,14 +39,43 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
 
     private var attempts: [ObjectIdentifier: DeliveryAttempt] = [:]
 
-    /// The request currently being rendered; `nil` between loads and after
-    /// disposal (nothing is served then).
+    private var load: Load?
+
     var request: HTMLPreviewRequest? {
-        willSet {
-            // Retire consumers before replacement/disposal can reenter WebKit.
-            // This revokes delivery, not blocking I/O or resource ownership.
-            attempts.removeAll()
-        }
+        load?.request
+    }
+
+    var mainURL: URL? {
+        load?.mainURL
+    }
+
+    /// The URL authority is unique even when a document is saved twice with
+    /// identical bytes. The immutable load binds it to one document lifetime
+    /// and saved generation; an old URL can never borrow a newer root.
+    func install(
+        _ request: HTMLPreviewRequest,
+        documentID: String,
+        recoveryEpoch: UUID,
+        generation: UInt
+    ) -> URL? {
+        let authority = UUID().uuidString.lowercased()
+        guard let mainURL = URL(string: "\(HTMLPreviewNavigationPolicy.previewURLScheme)://\(authority)/")
+        else { return nil }
+        attempts.removeAll()
+        load = Load(
+            request: request,
+            documentID: documentID,
+            recoveryEpoch: recoveryEpoch,
+            generation: generation,
+            authority: authority,
+            mainURL: mainURL
+        )
+        return mainURL
+    }
+
+    func retire() {
+        attempts.removeAll()
+        load = nil
     }
 
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
@@ -50,7 +88,8 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
         // the current path mapping ignores them.
         guard let url = task.request.url,
               url.scheme?.lowercased() == HTMLPreviewNavigationPolicy.previewURLScheme,
-              url.host == "document",
+              let load,
+              url.host == load.authority,
               url.user == nil,
               url.password == nil,
               url.port == nil
@@ -58,17 +97,12 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
             fail(task, attempt: attempt)
             return
         }
-        guard let request else {
-            // Nothing is being previewed (between loads or after disposal).
-            fail(task, attempt: attempt)
-            return
-        }
         guard isLive(attempt) else { return }
         if url.path.isEmpty || url.path == "/" {
-            serveMainDocument(request: request, url: url, task: task, attempt: attempt)
+            serveMainDocument(request: load.request, url: url, task: task, attempt: attempt)
             return
         }
-        serveSubresource(request: request, url: url, task: task, attempt: attempt)
+        serveSubresource(request: load.request, url: url, task: task, attempt: attempt)
     }
 
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {
@@ -187,7 +221,7 @@ final class PreviewSchemeHandler: NSObject, WKURLSchemeHandler {
         task.didFinish()
     }
 
-    /// Maps a `macdown-preview://document/<relative-path>` URL onto the
+    /// Maps a `macdown-preview://<load-authority>/<relative-path>` URL onto the
     /// approved document directory, decoding path components and rejecting
     /// anything outside it.
     private func approvedResourceURL(for url: URL, rootURL: URL) -> URL? {

@@ -307,10 +307,11 @@ public final class WorkspaceModel {
     /// Opens an existing file chosen by the user into a new tab, or activates
     /// the existing tab if the file is already open.
     public func openFile() async {
+        let errorRevisionAtStart = errorRevision
         guard let url = await panel.chooseFile() else { return }
         switch await tabStore.openFileInTab(url) {
         case .success:
-            lastError = nil
+            clearLastError(ifUnchangedSince: errorRevisionAtStart)
         case let .failure(underlying):
             lastError = .openFailed(underlying: underlying)
         }

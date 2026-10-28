@@ -1,0 +1,8 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Hello": {
+      "localizations": { "fr": { "stringUnit": { "value": 7 } } }
+    }
+  }
+}

@@ -10,8 +10,6 @@ import Themes
 /// only, never for Preview: epic-20-implementation.md §2.2 invariant,
 /// identical reasoning to Math's own).
 extension ContributionRegistry {
-    private static let printSafeForegroundComponent = 0x1A as Double / 255.0
-
     /// One process-lifetime, shared renderer/cache instance backs both
     /// Export (`standardForExport`) and Preview (`MermaidPreviewRenderer`,
     /// Slice 4) — a diagram already rendered for one is not re-rendered for
@@ -19,11 +17,16 @@ extension ContributionRegistry {
     /// (`MermaidDiagramCache`, epic-20-implementation.md §5).
     static let sharedMermaidRenderer = MermaidDiagramCache(renderer: MermaidWebRenderer())
 
-    /// Mermaid uses the approved neutral-light-v1 palette for every
-    /// destination. The returned SVG is authored with opaque neutral canvas
-    /// and default text colors, so a dark editor theme cannot produce
-    /// light-on-white export artwork or a mismatched preview canvas.
-    static func mermaidRenderContext(theme _: Theme, isPrintTarget _: Bool) -> MermaidRenderContext {
-        .neutralLight
+    /// Screen defaults follow preview colors; PDF uses the separate light policy.
+    static func mermaidRenderContext(theme: Theme, isPrintTarget: Bool) -> MermaidRenderContext {
+        let destination: DiagramDestination = isPrintTarget ? .print : .screen
+        return MermaidRenderContext(
+            palette: .resolved(
+                for: destination,
+                foreground: theme.chrome.foreground,
+                background: theme.chrome.background
+            ),
+            destination: destination
+        )
     }
 }

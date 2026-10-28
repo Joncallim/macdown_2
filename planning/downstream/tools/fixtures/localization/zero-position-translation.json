@@ -1,0 +1,8 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%1$@": {
+      "localizations": { "fr": { "stringUnit": { "value": "%0$@" } } }
+    }
+  }
+}

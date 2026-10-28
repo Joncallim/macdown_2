@@ -1,3 +1,6 @@
+import AppKit
+import CoreGraphics
+import CoreText
 import ExportService
 import Foundation
 @testable import MacDown2
@@ -30,6 +33,210 @@ import Themes
 /// interactive GUI login session to get genuine execution evidence.
 @MainActor
 struct PDFExportAdapterTests {
+    @Test func vectorSnapshotIsPaginatedWithoutLosingSelectableText() throws {
+        let source = try makeTallTextPDF()
+        let output = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PDFSnapshotFallback-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: output) }
+        let info = NSPrintInfo()
+        info.paperSize = NSSize(width: 100, height: 100)
+        info.leftMargin = 0
+        info.rightMargin = 0
+        info.topMargin = 0
+        info.bottomMargin = 0
+
+        try PDFSnapshotFallback.paginate(source, printInfo: info, to: output, maxBytes: 1_000_000)
+        let result = try #require(PDFDocument(url: output))
+        #expect(result.pageCount == 3)
+        #expect(result.page(at: 0)?.string?.contains("TOP") == true)
+        #expect(result.page(at: 1)?.string?.contains("MIDDLE") == true)
+        #expect(result.page(at: 2)?.string?.contains("BOTTOM") == true)
+    }
+
+    @Test func vectorSnapshotMovesAnIntersectedHeadingToTheNextPage() throws {
+        let data = NSMutableData()
+        var mediaBox = CGRect(x: 0, y: 0, width: 100, height: 300)
+        let consumer = try #require(CGDataConsumer(data: data as CFMutableData))
+        let context = try #require(CGContext(consumer: consumer, mediaBox: &mediaBox, nil))
+        let font = CTFontCreateWithName("Helvetica-Bold" as CFString, 18, nil)
+        let fontKey = NSAttributedString.Key(rawValue: kCTFontAttributeName as String)
+        context.beginPDFPage(nil)
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: "CUT", attributes: [fontKey: font]))
+        context.textPosition = CGPoint(x: 10, y: 197)
+        CTLineDraw(line, context)
+        context.endPDFPage()
+        context.closePDF()
+
+        let output = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PDFSnapshotCut-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: output) }
+        let info = NSPrintInfo()
+        info.paperSize = NSSize(width: 100, height: 100)
+        info.leftMargin = 0
+        info.rightMargin = 0
+        info.topMargin = 0
+        info.bottomMargin = 0
+        try PDFSnapshotFallback.paginate(data as Data, printInfo: info, to: output, maxBytes: 1_000_000)
+
+        let result = try #require(PDFDocument(url: output))
+        let pageText = (0 ..< result.pageCount).map { result.page(at: $0)?.string ?? "" }
+        #expect(pageText.contains { $0.contains("CUT") })
+        // PDFKit can extract text from a clipped form even when no glyph is
+        // visible on that page. Check actual painted pixels on both sides.
+        let provider = try #require(CGDataProvider(url: output as CFURL))
+        let pdf = try #require(CGPDFDocument(provider))
+        let first = try #require(pdf.page(at: 1))
+        let second = try #require(pdf.page(at: 2))
+        #expect(try paintedPixelCount(in: first) == 0)
+        #expect(try paintedPixelCount(in: second) > 0)
+    }
+
+    private func paintedPixelCount(in page: CGPDFPage) throws -> Int {
+        let width = 100
+        let height = 100
+        var pixels = [UInt8](repeating: 255, count: width * height * 4)
+        return try pixels.withUnsafeMutableBytes { bytes in
+            let context = try #require(CGContext(
+                data: bytes.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: width * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ))
+            context.setFillColor(CGColor(gray: 1, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+            context.drawPDFPage(page)
+            let raw = bytes.bindMemory(to: UInt8.self)
+            return stride(from: 0, to: raw.count, by: 4)
+                .filter { raw[$0] < 128 || raw[$0 + 1] < 128 || raw[$0 + 2] < 128 }
+                .count
+        }
+    }
+
+    @Test func printDestinationIsConfiguredBeforeTheOperationStarts() {
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("fixture.pdf")
+        let scratch = PDFExportAdapter.temporaryURL(nextTo: destination)
+        let info = PDFExportAdapter.printInfo(savingTo: scratch)
+
+        #expect(scratch.pathExtension == "pdf")
+        #expect(info.jobDisposition == .save)
+        #expect(info.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] as? URL == scratch)
+
+        let operation = NSPrintOperation(
+            view: NSView(frame: NSRect(x: 0, y: 0, width: 100, height: 100)),
+            printInfo: NSPrintInfo()
+        )
+        PDFExportAdapter.configure(operation, savingTo: scratch)
+        #expect(operation.printInfo.jobDisposition == .save)
+        #expect(operation.printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] as? URL == scratch)
+    }
+
+    @Test func contentlessPDFIsRejectedForNonemptyDocument() throws {
+        #expect(try !PDFExportAdapter.isPrintablePDF(makePDF(painted: false), sourceHasContent: true))
+        #expect(try PDFExportAdapter.isPrintablePDF(makePDF(painted: true), sourceHasContent: true))
+        #expect(try PDFExportAdapter.isPrintablePDF(makePDF(painted: false), sourceHasContent: false))
+    }
+
+    @Test func graphicsSetupAndEmptyTextDoNotCountAsPrintedContent() {
+        // These are explicit PDF operators. CGContext may optimize them away
+        // when no paint follows, which would leave the old byte heuristic
+        // untested rather than prove it rejects valid-but-empty streams.
+        let content = "q 1 0 0 1 9 11 cm BT ET 2 2 m 30 30 l Q"
+        let pdf = makeRawPDF(contentStream: content)
+        #expect(PDFDocument(data: pdf)?.pageCount == 1)
+        #expect(!PDFExportAdapter.isPrintablePDF(pdf, sourceHasContent: true))
+    }
+
+    private func makeRawPDF(contentStream: String) -> Data {
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R >>",
+            "<< /Length \(contentStream.utf8.count) >>\nstream\n\(contentStream)\nendstream",
+        ]
+        var pdf = "%PDF-1.4\n"
+        var offsets = [Int]()
+        for (index, object) in objects.enumerated() {
+            offsets.append(pdf.utf8.count)
+            pdf += "\(index + 1) 0 obj\n\(object)\nendobj\n"
+        }
+        let xrefOffset = pdf.utf8.count
+        pdf += "xref\n0 \(objects.count + 1)\n0000000000 65535 f \n"
+        for offset in offsets {
+            pdf += String(format: "%010d 00000 n \n", offset)
+        }
+        pdf += "trailer\n<< /Size \(objects.count + 1) /Root 1 0 R >>\n"
+        pdf += "startxref\n\(xrefOffset)\n%%EOF\n"
+        return Data(pdf.utf8)
+    }
+
+    @Test func visibleTextAndVectorOnlyDiagramCountAsPrintedContent() throws {
+        #expect(try PDFExportAdapter.isPrintablePDF(makeTallTextPDF(), sourceHasContent: true))
+
+        let data = NSMutableData()
+        var mediaBox = CGRect(x: 0, y: 0, width: 100, height: 100)
+        let consumer = try #require(CGDataConsumer(data: data as CFMutableData))
+        let context = try #require(CGContext(consumer: consumer, mediaBox: &mediaBox, nil))
+        context.beginPDFPage(nil)
+        context.setStrokeColor(CGColor(gray: 0, alpha: 1))
+        context.setLineWidth(2)
+        context.stroke(CGRect(x: 10, y: 10, width: 30, height: 25))
+        context.move(to: CGPoint(x: 40, y: 22))
+        context.addLine(to: CGPoint(x: 70, y: 60))
+        context.strokePath()
+        context.endPDFPage()
+        context.closePDF()
+
+        #expect(PDFExportAdapter.isPrintablePDF(data as Data, sourceHasContent: true))
+        #expect(PDFDocument(data: data as Data)?.page(at: 0)?.string?.isEmpty != false)
+    }
+
+    private func makePDF(painted: Bool) throws -> Data {
+        let data = NSMutableData()
+        var mediaBox = CGRect(x: 0, y: 0, width: 100, height: 100)
+        let consumer = try #require(CGDataConsumer(data: data as CFMutableData))
+        let context = try #require(CGContext(consumer: consumer, mediaBox: &mediaBox, nil))
+        context.beginPDFPage(nil)
+        if painted {
+            context.setFillColor(CGColor(gray: 0, alpha: 1))
+            context.fill(CGRect(x: 10, y: 10, width: 25, height: 25))
+        }
+        context.endPDFPage()
+        context.closePDF()
+        return data as Data
+    }
+
+    private func makeTallTextPDF() throws -> Data {
+        let data = NSMutableData()
+        var mediaBox = CGRect(x: 0, y: 0, width: 100, height: 300)
+        let consumer = try #require(CGDataConsumer(data: data as CFMutableData))
+        let context = try #require(CGContext(consumer: consumer, mediaBox: &mediaBox, nil))
+        let font = CTFontCreateWithName("Helvetica" as CFString, 12, nil)
+        let fontKey = NSAttributedString.Key(rawValue: kCTFontAttributeName as String)
+        context.beginPDFPage(nil)
+        for (label, offsetY) in [("TOP", 260.0), ("MIDDLE", 160.0), ("BOTTOM", 60.0)] {
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: label, attributes: [fontKey: font]))
+            context.textPosition = CGPoint(x: 10, y: offsetY)
+            CTLineDraw(line, context)
+        }
+        context.endPDFPage()
+        context.closePDF()
+        return data as Data
+    }
+
+    @Test func hardenedHTMLRetainsThePDFPolicy() async throws {
+        let prepared = try await ExportService.prepare(
+            ExportRequest(text: "# Printable\n\nA short document.\n", sourceGeneration: 1, theme: BundledThemes.light),
+            target: .pdf(url: FileManager.default.temporaryDirectory.appendingPathComponent("print.pdf"))
+        )
+        let html = await PDFExportAdapter.hardenedHTML(from: prepared)
+        #expect(html.contains("Content-Security-Policy"))
+        #expect(html.contains("default-src 'none'"))
+        #expect(html.contains("A short document."))
+    }
+
     /// A document long enough that it cannot possibly fit on one page under
     /// any reasonable page size, with several fenced code blocks — the
     /// content `structural.css`'s `page-break-inside: avoid` rule targets —

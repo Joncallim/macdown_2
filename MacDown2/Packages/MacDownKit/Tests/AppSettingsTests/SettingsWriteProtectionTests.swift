@@ -44,6 +44,33 @@ struct SettingsWriteProtectionTests {
         }
     }
 
+    private func readableShapeWithUnknownMember(for key: String) -> Data {
+        switch key {
+        case "appSettings.general":
+            return Data("{\"launchBehavior\":\"restorePreviousSession\",\"unknown\":true}".utf8)
+        case "appSettings.editor":
+            return Data((
+                "{\"font\":{\"familyName\":\"Menlo\",\"size\":13},\"wrapsLines\":true,\"showsInvisibles\":false,"
+                    + "\"showsStatusBar\":true,\"indentationWidth\":4,\"assistsEnabled\":true,"
+                    + "\"continuesMarkdownPrefixes\":true,\"completesMatchingCharacters\":true,"
+                    + "\"convertsTabsToSpaces\":true,\"smartHome\":true,\"autoIncrementOrderedLists\":true,"
+                    + "\"unknown\":true}"
+            ).utf8)
+        case "appSettings.markdown":
+            return Data("{\"parsesBlockDirectives\":false,\"unknown\":true}".utf8)
+        case "appSettings.previewExport":
+            return Data((
+                "{\"defaultPreviewLayout\":\"split\",\"defaultExportFormat\":\"standaloneHTML\","
+                    + "\"defaultExportStyle\":\"embedded\",\"unknown\":true}"
+            ).utf8)
+        case "appSettings.formats":
+            return Data("{\"defaultEncodingForNewDocuments\":\"utf-8\",\"unknown\":true}".utf8)
+        default:
+            Issue.record("unknown test domain")
+            return Data()
+        }
+    }
+
     @Test(arguments: keys, UnreadableValue.allCases)
     func everyUnreadablePrimarySurvivesOrdinarySaveAndRestart(key: String, value: UnreadableValue) {
         isolated { defaults, store in
@@ -60,6 +87,20 @@ struct SettingsWriteProtectionTests {
             #expect(store.preservedUnreadableData(forDomain: key) == backup)
             let reopened = UserDefaultsAppSettingsStore(defaults: defaults)
             #expect(reopened.unreadableDomains == [key])
+        }
+    }
+
+    @Test(arguments: keys)
+    func anUnknownTopLevelMemberProtectsEveryWholeDomain(key: String) {
+        isolated { defaults, store in
+            let original = readableShapeWithUnknownMember(for: key)
+            defaults.set(original, forKey: key)
+
+            #expect(store.unreadableDomains == [key])
+            writeDefault(key, to: &store)
+
+            #expect(defaults.data(forKey: key) == original)
+            #expect(UserDefaultsAppSettingsStore(defaults: defaults).unreadableDomains == [key])
         }
     }
 

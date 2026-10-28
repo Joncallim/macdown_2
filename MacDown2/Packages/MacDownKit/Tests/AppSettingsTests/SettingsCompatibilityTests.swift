@@ -19,10 +19,16 @@ struct SettingsCompatibilityTests {
         try body(defaults, UserDefaultsAppSettingsStore(defaults: defaults))
     }
 
-    private func editorJSON(statusBar: String? = nil, fontSize: String = "15", width: String = "2", extra: String = "",
-                            omit: String? = nil) -> Data {
+    private func editorJSON(
+        statusBar: String? = nil,
+        fontSize: String = "15",
+        fontExtra: String? = nil,
+        width: String = "2",
+        extra: String = "",
+        omit: String? = nil
+    ) -> Data {
         var fields = [
-            "\"font\":{\"familyName\":\"Menlo\",\"size\":\(fontSize)}",
+            "\"font\":{\"familyName\":\"Menlo\",\"size\":\(fontSize)\(fontExtra.map { ",\($0)" } ?? "")}",
             "\"wrapsLines\":false",
             "\"showsInvisibles\":true",
             "\"indentationWidth\":\(width)",
@@ -186,6 +192,27 @@ struct SettingsCompatibilityTests {
             defaults.set(editorJSON(), forKey: Self.editorKey)
             #expect(store.editor.indentationWidth == 2)
             #expect(store.unreadableDomains.isEmpty)
+        }
+    }
+
+    /// A schema-less historical blob cannot distinguish an additive field from
+    /// a value written by a newer schema-less build. Reject the whole blob so
+    /// an ordinary edit cannot silently discard that unknown field (#53).
+    @Test func aSchemaLessUnknownFieldIsProtectedFromAnOrdinaryEditorSave() {
+        isolated { defaults, store in
+            var store = store
+            let original = editorJSON(extra: "\"unknownFutureField\":\"retain me\"")
+            defaults.set(original, forKey: Self.editorKey)
+
+            #expect(store.editor == .default)
+            #expect(store.unreadableDomains == [Self.editorKey])
+
+            store.editor = EditorSettings(indentationWidth: 3)
+
+            #expect(defaults.data(forKey: Self.editorKey) == original)
+            let reopened = UserDefaultsAppSettingsStore(defaults: defaults)
+            #expect(reopened.editor == .default)
+            #expect(reopened.unreadableDomains == [Self.editorKey])
         }
     }
 

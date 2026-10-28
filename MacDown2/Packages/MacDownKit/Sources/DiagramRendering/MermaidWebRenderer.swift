@@ -2,121 +2,115 @@ import Diagrams
 import DiagramWebKitPool
 import Foundation
 
-/// The real, WebKit-backed implementation of `MermaidDiagramRendering`
-/// (epic-20-implementation.md §6, §11). Owns a small, bounded pool of
-/// `MermaidHarnessPage`s — offscreen web views, never displayed — created
-/// lazily and reused across many render calls (pool warm-up, i.e. loading
-/// the Mermaid harness into a fresh page, is the expensive part; nothing
-/// about a single document owns the pool exclusively, so it is
-/// process-lifetime, torn down only by an explicit `shutdown()` call, not
-/// per-document).
-///
-/// An `actor` so concurrent render calls are safely distributed across the
-/// pool without a caller needing to reason about `WKWebView`'s own
-/// main-thread affinity. Checkout/checkin uses a simple continuation-based
-/// wait queue rather than a fixed thread/dispatch semaphore, matching this
-/// package's other actor-based concurrency (`Contributing`'s own
-/// cancellation contract; the generation-token idiom recurring elsewhere in
-/// this codebase, epic-20-implementation.md §2.1) rather than introducing a
-/// new concurrency primitive.
+/// Renders Mermaid in a bounded, offscreen WebKit pool. The shared pool owns
+/// cancellation, construction and once-settled script evaluation. Admission
+/// closes during shutdown; a new pool starts only after the old one retires.
 public actor MermaidWebRenderer: MermaidDiagramRendering {
-    /// Provisional pending real-diagram calibration (§11, §18) — not a
-    /// value with independent architectural significance.
     public static let defaultMaxOutputBytes = 2 * 1024 * 1024
 
-    private let poolSize: Int
-    private let timeout: Duration
     private let maxOutputBytes: Int
-
-    private var slots: [MermaidHarnessPage?]
-    private var busy: [Bool]
-    private var waiters: [CheckedContinuation<Int, Never>] = []
+    private let makePool: @Sendable () -> DiagramWebKitPool
+    private var pool: DiagramWebKitPool?
+    private var retirement: (id: UUID, task: Task<Void, Never>)?
 
     public init(
         poolSize: Int = 2,
         timeout: Duration = .seconds(5),
         maxOutputBytes: Int = MermaidWebRenderer.defaultMaxOutputBytes
     ) {
-        self.poolSize = max(1, poolSize)
-        self.timeout = timeout
+        let boundedSize = max(1, poolSize)
+        makePool = {
+            DiagramWebKitPool(
+                harnessResourceName: "harness",
+                bundle: Bundle.module,
+                poolSize: boundedSize,
+                timeout: timeout
+            )
+        }
         self.maxOutputBytes = maxOutputBytes
-        slots = Array(repeating: nil, count: self.poolSize)
-        busy = Array(repeating: false, count: self.poolSize)
+        pool = makePool()
+    }
+
+    /// Supplies deterministic page factories for lifecycle tests.
+    init(
+        pool: DiagramWebKitPool,
+        makePool: @escaping @Sendable () -> DiagramWebKitPool,
+        maxOutputBytes: Int = MermaidWebRenderer.defaultMaxOutputBytes
+    ) {
+        self.pool = pool
+        self.makePool = makePool
+        self.maxOutputBytes = maxOutputBytes
     }
 
     public func render(_ fence: MermaidFence, context: MermaidRenderContext) async throws -> RenderedMermaidDiagram {
-        let index = await checkout()
-        let page: MermaidHarnessPage
+        let activePool = try availablePool()
         do {
-            page = try await self.page(at: index)
-        } catch {
-            checkin(index)
-            throw error
-        }
-        let diagram: RenderedMermaidDiagram
-        do {
-            diagram = try await DiagramTimeoutRace.run(
-                timeout: timeout,
-                timeoutError: MermaidRenderError.timedOut
-            ) { try await page.render(fence.source, context: context) }
-        } catch {
-            // The script may still be running: replace the page instead of reusing it.
-            if error is CancellationError || (error as? MermaidRenderError) == .timedOut {
-                slots[index] = nil
-                await page.teardown()
+            let result = try await activePool.withPage { page in
+                try await page.evaluate(
+                    "return await window.__macdownRenderMermaid(source, theme);",
+                    arguments: [
+                        "source": fence.source,
+                        "theme": context.palette.rendererArguments,
+                    ]
+                )
             }
-            checkin(index)
-            throw error
+            guard result.succeeded else {
+                throw MermaidRenderError.invalidSyntax(result.message ?? "unknown error")
+            }
+            guard let svg = result.svg else {
+                throw MermaidRenderError.rendererUnavailable
+            }
+            guard result.width.isFinite, result.height.isFinite, result.width > 0, result.height > 0 else {
+                throw MermaidRenderError.rendererUnavailable
+            }
+            let byteCount = svg.utf8.count
+            guard byteCount <= maxOutputBytes else {
+                throw MermaidRenderError.outputTooLarge(byteCount: byteCount)
+            }
+            return RenderedMermaidDiagram(
+                svg: svg,
+                pngData: result.pngBase64.flatMap { Data(base64Encoded: $0) },
+                naturalWidth: result.width,
+                naturalHeight: result.height
+            )
+        } catch DiagramPoolError.timedOut {
+            throw MermaidRenderError.timedOut
+        } catch DiagramPoolError.pageUnavailable {
+            throw MermaidRenderError.rendererUnavailable
         }
-        checkin(index)
-        let byteCount = diagram.svg.utf8.count
-        guard byteCount <= maxOutputBytes else {
-            throw MermaidRenderError.outputTooLarge(byteCount: byteCount)
-        }
-        return diagram
     }
 
-    /// Tears down every pooled page. Called on app termination and in
-    /// tests; not required between individual documents.
+    /// Closes admission to the current generation and waits for its pages
+    /// and constructions to retire. A later render may create a fresh pool.
     public func shutdown() async {
-        for case let page? in slots {
-            await page.teardown()
-        }
-        slots = Array(repeating: nil, count: poolSize)
-    }
-
-    private func page(at index: Int) async throws -> MermaidHarnessPage {
-        if let existing = slots[index] {
-            if await !existing.isTerminated {
-                return existing
-            }
-            await existing.teardown()
-            slots[index] = nil
-        }
-        let page = try await MermaidHarnessPage.make()
-        slots[index] = page
-        return page
-    }
-
-    private func checkout() async -> Int {
-        if let index = busy.firstIndex(of: false) {
-            busy[index] = true
-            return index
-        }
-        return await withCheckedContinuation { continuation in
-            waiters.append(continuation)
-        }
-    }
-
-    /// Hands the slot directly to the next waiter if one is queued (it stays
-    /// marked busy — ownership transfers without ever appearing free);
-    /// otherwise marks it free.
-    private func checkin(_ index: Int) {
-        guard waiters.isEmpty else {
-            let continuation = waiters.removeFirst()
-            continuation.resume(returning: index)
+        if retirement != nil {
+            await finishRetirement()
             return
         }
-        busy[index] = false
+        guard let oldPool = pool else { return }
+        pool = nil
+        retirement = (UUID(), Task { await oldPool.shutdown() })
+        await finishRetirement()
+    }
+
+    private func availablePool() throws -> DiagramWebKitPool {
+        try Task.checkCancellation()
+        guard retirement == nil else {
+            throw MermaidRenderError.rendererUnavailable
+        }
+        if let pool {
+            return pool
+        }
+        let fresh = makePool()
+        pool = fresh
+        return fresh
+    }
+
+    private func finishRetirement() async {
+        guard let current = retirement else { return }
+        await current.task.value
+        if retirement?.id == current.id {
+            retirement = nil
+        }
     }
 }

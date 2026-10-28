@@ -62,7 +62,7 @@ struct MermaidDiagramBlockView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .task(id: source) {
+        .task(id: [source, context.fingerprint]) {
             await render()
         }
     }

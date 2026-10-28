@@ -83,8 +83,26 @@ extension WindowCoordinator {
         await unsavedRestoreTask?.value
     }
 
+    /// A termination snapshot owns the publication lane. Any autosave already
+    /// in flight is cancelled and drained before restoration and publication.
+    func cancelAndDrainScheduledSessionSaveForTermination() async {
+        let pendingSave = saveTask
+        saveTask = nil
+        pendingSave?.cancel()
+        await pendingSave?.value
+    }
+
+    /// Drains fixture startup autosaves before a controlled publication interleaving.
+    func awaitScheduledSessionSaveForTesting() async {
+        await saveTask?.value
+    }
+
     /// The Quit-time session save: after any in-flight restore has produced its windows.
     func saveSessionForTermination() async -> SessionSaveResult {
+        let wasTerminationSaveInProgress = terminationSaveInProgress
+        terminationSaveInProgress = true
+        defer { terminationSaveInProgress = wasTerminationSaveInProgress }
+        await cancelAndDrainScheduledSessionSaveForTermination()
         await awaitLaunchRestore()
         return await saveSessionResult()
     }

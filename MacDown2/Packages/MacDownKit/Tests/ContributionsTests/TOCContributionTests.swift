@@ -170,6 +170,18 @@ struct TOCContributionTests {
         #expect(TOCContribution.markdownList(for: headings) == "- Use \\[brackets\\] and \\*stars\\*")
     }
 
+    @Test func linkedListEncodesAllocatedFragmentsOnceAndPreservesNesting() async throws {
+        let text = "# Café\n## 100% ready\n# Café\n"
+        let document = try await Self.document(text)
+        let index = try HeadingAnchorIndex(
+            document: document, sourceText: text, documentID: "toc-fixture",
+            recoveryEpoch: UUID(), sourceGeneration: 1, reservedIDs: []
+        )
+        #expect(index.headings.map(\.fragment) == ["café", "100-ready", "café-1"])
+        #expect(TOCContribution.linkedMarkdownList(for: index) ==
+            "- [Café](#caf%C3%A9)\n  - [100% ready](#100-ready)\n- [Café](#caf%C3%A9-1)")
+    }
+
     // MARK: - run (end-to-end, real parse)
 
     @Test func runProducesAPlacementForEachMarkerFromRealHeadings() async throws {

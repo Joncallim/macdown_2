@@ -1,0 +1,4902 @@
+{
+  "schema": 1,
+  "scope": "catalog-backed product strings only; excludes authored document text and stable engine codes by construction",
+  "limitations": [
+    "Static call sites include only direct String/AttributedString localized literals; nonliteral and SwiftUI extraction evidence is unknown.",
+    "Translation quality, native-speaker review, runtime resolution, catalog compilation, CLDR behavior, and layout acceptance are not evaluated."
+  ],
+  "entries": [
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "    Editor Only",
+      "source_default_value": "    Editor Only",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "    Preview Only",
+      "source_default_value": "    Preview Only",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "    Split Editor & Preview",
+      "source_default_value": "    Split Editor & Preview",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@",
+      "source_default_value": "%@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@ %@; authored source preserved",
+      "source_default_value": "%@ %@; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          },
+          {
+            "position": 2,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@ has an invalid source range; authored source preserved",
+      "source_default_value": "%@ has an invalid source range; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@ is stale; authored source preserved",
+      "source_default_value": "%@ is stale; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@ is unavailable for this export; authored source preserved",
+      "source_default_value": "%@ is unavailable for this export; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {},
+      "locale_states": {},
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@ overlaps another placement; authored source preserved",
+      "source_default_value": "%@ overlaps another placement; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@ produced HTML, which Preview does not support; authored source preserved",
+      "source_default_value": "%@ produced HTML, which Preview does not support; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@ produced empty content; authored source preserved",
+      "source_default_value": "%@ produced empty content; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@'s document does not match the current source; authored source preserved",
+      "source_default_value": "%@'s document does not match the current source; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "%@'s range does not fall inside exactly one preview block; authored source preserved",
+      "source_default_value": "%@'s range does not fall inside exactly one preview block; authored source preserved",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "A competing version was preserved as %@. Reveal it, then use Save As to keep this copy.",
+      "source_default_value": "A competing version was preserved as %@. Reveal it, then use Save As to keep this copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "A fast, native Markdown editor for Mac, with live preview, math, and diagrams built right in.",
+      "source_default_value": "A fast, native Markdown editor for Mac, with live preview, math, and diagrams built right in.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Applies the next time a new, untitled document is saved. Open documents keep their own encoding.",
+      "source_default_value": "Applies the next time a new, untitled document is saved. Open documents keep their own encoding.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Command",
+      "source_default_value": "Command",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Couldn't Open File",
+      "source_default_value": "Couldn't Open File",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Creating Document…",
+      "source_default_value": "Creating Document…",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Editor Only",
+      "source_default_value": "Editor Only",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Embedded CSS",
+      "source_default_value": "Embedded CSS",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Empty folder",
+      "source_default_value": "Empty folder",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Export",
+      "source_default_value": "Export",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "HTML",
+      "source_default_value": "HTML",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/MacDown2/ExportPanelView.swift:18"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Line %@, column %@: %@",
+      "source_default_value": "Line %@, column %@: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          },
+          {
+            "position": 2,
+            "type": "@"
+          },
+          {
+            "position": 3,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "en": {},
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "en": "new",
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Linked CSS",
+      "source_default_value": "Linked CSS",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Live file monitoring is unavailable for this document.",
+      "source_default_value": "Live file monitoring is unavailable for this document.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "New File",
+      "source_default_value": "New File",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "No Commands Installed",
+      "source_default_value": "No Commands Installed",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "No Document",
+      "source_default_value": "No Document",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "No Matching Commands",
+      "source_default_value": "No Matching Commands",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "No folder opened",
+      "source_default_value": "No folder opened",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "No headings",
+      "source_default_value": "No headings",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "No matching files",
+      "source_default_value": "No matching files",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "No outline available for %@",
+      "source_default_value": "No outline available for %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "No preview for %@",
+      "source_default_value": "No preview for %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Now following %@",
+      "source_default_value": "Now following %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Open File",
+      "source_default_value": "Open File",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "PDF",
+      "source_default_value": "PDF",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/MacDown2/ExportPanelView.swift:20"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Preferences from the original MacDown were found. Importing them isn't supported yet.",
+      "source_default_value": "Preferences from the original MacDown were found. Importing them isn't supported yet.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Preview Only",
+      "source_default_value": "Preview Only",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Recovery cleanup for %@ needs attention. Reveal it, retry, or use Save As.",
+      "source_default_value": "Recovery cleanup for %@ needs attention. Reveal it, retry, or use Save As.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Recovery for %@ could not be cleaned up. Keep this window open, or use Save As.",
+      "source_default_value": "Recovery for %@ could not be cleaned up. Keep this window open, or use Save As.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Reloaded from disk",
+      "source_default_value": "Reloaded from disk",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Reopen windows from last session",
+      "source_default_value": "Reopen windows from last session",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Saving…",
+      "source_default_value": "Saving…",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Self-contained HTML",
+      "source_default_value": "Self-contained HTML",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/MacDown2/ExportPanelView.swift:19"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Split Editor & Preview",
+      "source_default_value": "Split Editor & Preview",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Start with a new document",
+      "source_default_value": "Start with a new document",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Tables, task lists, and strikethrough always parse and cannot be turned off. Autolinks are recognised only in <https://…> form, and footnotes are not supported yet.",
+      "source_default_value": "Tables, task lists, and strikethrough always parse and cannot be turned off. Autolinks are recognised only in <https://…> form, and footnotes are not supported yet.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "These are starting points for the export panel — every export can still change them.",
+      "source_default_value": "These are starting points for the export panel — every export can still change them.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "This diagram could not be rendered.",
+      "source_default_value": "This diagram could not be rendered.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "This file changed on disk. Your local edits are still safe.",
+      "source_default_value": "This file changed on disk. Your local edits are still safe.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "UTF-16",
+      "source_default_value": "UTF-16",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "UTF-8",
+      "source_default_value": "UTF-8",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "Welcome to MacDown 2",
+      "source_default_value": "Welcome to MacDown 2",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/MacDown2/FirstRunWindowController.swift:28"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "^[%lld valid placement](inflect: true) exceeded the preview budget and remain as authored source",
+      "source_default_value": "^[%lld valid placement](inflect: true) exceeded the preview budget and remain as authored source",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "lld"
+          }
+        ],
+        "contains_inflection_markup": true
+      },
+      "variants": {
+        "fr": {
+          "arg1": [
+            "one",
+            "other"
+          ]
+        },
+        "ja": {
+          "arg1": [
+            "other"
+          ]
+        },
+        "pl": {
+          "arg1": [
+            "few",
+            "many",
+            "one",
+            "other"
+          ]
+        }
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "has a partial block placement outside a top-level paragraph",
+      "source_default_value": "has a partial block placement outside a top-level paragraph",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/MacDown2/PreviewContributionAdmission.swift:162"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "has a partial block placement that does not align with whole physical lines",
+      "source_default_value": "has a partial block placement that does not align with whole physical lines",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/MacDown2/PreviewContributionAdmission.swift:169"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "has an inline placement that is not confined to one physical line",
+      "source_default_value": "has an inline placement that is not confined to one physical line",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/MacDown2/PreviewContributionAdmission.swift:154"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "internal composition invariant violated; contributions left as authored source",
+      "source_default_value": "internal composition invariant violated; contributions left as authored source",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "parsed revision %lld could not be represented; contributions skipped",
+      "source_default_value": "parsed revision %lld could not be represented; contributions skipped",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "lld"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "preview blocks are not ordered/non-overlapping; contributions left as authored source",
+      "source_default_value": "preview blocks are not ordered/non-overlapping; contributions left as authored source",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "— Save As… ⌘⇧S to name this document",
+      "source_default_value": "— Save As… ⌘⇧S to name this document",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "⌘⇧O opens a folder",
+      "source_default_value": "⌘⇧O opens a folder",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "✓ Editor Only",
+      "source_default_value": "✓ Editor Only",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "✓ Preview Only",
+      "source_default_value": "✓ Preview Only",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "MacDown2",
+      "catalog": "MacDown2/MacDown2/Localizable.xcstrings",
+      "bundle": "Bundle.main (project target resource)",
+      "key": "✓ Split Editor & Preview",
+      "source_default_value": "✓ Split Editor & Preview",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Contributions",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Contributions/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "%@ failed: %@",
+      "source_default_value": "%@ failed: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          },
+          {
+            "position": 2,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Diagrams",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Diagrams/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "diagram could not be rendered: %@",
+      "source_default_value": "diagram could not be rendered: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Diagrams",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Diagrams/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "rendered output too large (%@ bytes)",
+      "source_default_value": "rendered output too large (%@ bytes)",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Diagrams",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Diagrams/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "renderer unavailable",
+      "source_default_value": "renderer unavailable",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Diagrams/MermaidContribution.swift:83"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Diagrams",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Diagrams/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "rendering timed out",
+      "source_default_value": "rendering timed out",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Diagrams/MermaidContribution.swift:80"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "DiagramsD2",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/DiagramsD2/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "diagram could not be rendered: %@",
+      "source_default_value": "diagram could not be rendered: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "DiagramsD2",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/DiagramsD2/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "rendered output too large (%@ bytes)",
+      "source_default_value": "rendered output too large (%@ bytes)",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "DiagramsD2",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/DiagramsD2/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "renderer unavailable",
+      "source_default_value": "renderer unavailable",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/DiagramsD2/D2Contribution.swift:69"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "DiagramsD2",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/DiagramsD2/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "rendering timed out",
+      "source_default_value": "rendering timed out",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/DiagramsD2/D2Contribution.swift:66"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "DiagramsGraphviz",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/DiagramsGraphviz/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "diagram could not be rendered: %@",
+      "source_default_value": "diagram could not be rendered: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "DiagramsGraphviz",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/DiagramsGraphviz/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "rendered output too large (%@ bytes)",
+      "source_default_value": "rendered output too large (%@ bytes)",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "DiagramsGraphviz",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/DiagramsGraphviz/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "renderer unavailable",
+      "source_default_value": "renderer unavailable",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/DiagramsGraphviz/GraphvizContribution.swift:68"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "DiagramsGraphviz",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/DiagramsGraphviz/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "rendering timed out",
+      "source_default_value": "rendering timed out",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/DiagramsGraphviz/GraphvizContribution.swift:65"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "EditorCore",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/EditorCore/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Line numbers",
+      "source_default_value": "Line numbers",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/EditorCore/EditorGutterView.swift:28"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Check that the destination folder exists and is writable.",
+      "source_default_value": "Check that the destination folder exists and is writable.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/ExportService/ExportError.swift:90"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Choose a different destination folder.",
+      "source_default_value": "Choose a different destination folder.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/ExportService/ExportError.swift:92"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Choose the HTML format, which preserves authored raw HTML.",
+      "source_default_value": "Choose the HTML format, which preserves authored raw HTML.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/ExportService/ExportError.swift:86"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Export destination is invalid: %@",
+      "source_default_value": "Export destination is invalid: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Fix the image paths, or export as HTML, which keeps unresolved references as authored.",
+      "source_default_value": "Fix the image paths, or export as HTML, which keeps unresolved references as authored.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/ExportService/ExportError.swift:82"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "HTML rendering failed: %@",
+      "source_default_value": "HTML rendering failed: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Markdown parse failed: %@",
+      "source_default_value": "Markdown parse failed: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Split the document, or reduce the size of the images it references.",
+      "source_default_value": "Split the document, or reduce the size of the images it references.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/ExportService/ExportError.swift:94"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "This document contains raw HTML, which cannot be embedded in a self-contained file. Export it as HTML instead.",
+      "source_default_value": "This document contains raw HTML, which cannot be embedded in a self-contained file. Export it as HTML instead.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "This document is too large to export: %@.",
+      "source_default_value": "This document is too large to export: %@.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "This export must embed every image, but some could not be resolved:\n%@",
+      "source_default_value": "This export must embed every image, but some could not be resolved:\n%@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Writing export output failed: %@",
+      "source_default_value": "Writing export output failed: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "ExportService",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/ExportService/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "…and %@ more.",
+      "source_default_value": "…and %@ more.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "\"%@\" already exists.",
+      "source_default_value": "\"%@\" already exists.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "A folder cannot be moved into itself.",
+      "source_default_value": "A folder cannot be moved into itself.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/FileTree/FileTreeOperations.swift:27"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "A name is required.",
+      "source_default_value": "A name is required.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/FileTree/FileTreeOperations.swift:19"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Folder operation failed (POSIX error %@).",
+      "source_default_value": "Folder operation failed (POSIX error %@).",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Names cannot contain / or :.",
+      "source_default_value": "Names cannot contain / or :.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/FileTree/FileTreeOperations.swift:20"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The destination is not a folder.",
+      "source_default_value": "The destination is not a folder.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/FileTree/FileTreeOperations.swift:24"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The destination is outside the open folder.",
+      "source_default_value": "The destination is outside the open folder.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/FileTree/FileTreeOperations.swift:25"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The folder changed before the operation could start.",
+      "source_default_value": "The folder changed before the operation could start.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/FileTree/FileTreeOperations.swift:26"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The folder is no longer available.",
+      "source_default_value": "The folder is no longer available.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "FileTree",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/FileTree/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The item no longer exists.",
+      "source_default_value": "The item no longer exists.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/FileTree/FileTreeOperations.swift:23"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Document exceeds the maximum nesting depth of %@.",
+      "source_default_value": "Document exceeds the maximum nesting depth of %@.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Duplicate object key '%@' (first defined at line %@).",
+      "source_default_value": "Duplicate object key '%@' (first defined at line %@).",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          },
+          {
+            "position": 2,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Empty input: expected a JSON value.",
+      "source_default_value": "Empty input: expected a JSON value.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/JSONSupport/JSONParser.swift:41"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Expected ',' or ']' in array.",
+      "source_default_value": "Expected ',' or ']' in array.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Expected ',' or '}' in object.",
+      "source_default_value": "Expected ',' or '}' in object.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Expected ':' after object key.",
+      "source_default_value": "Expected ':' after object key.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Expected a JSON value.",
+      "source_default_value": "Expected a JSON value.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Expected a quoted object key.",
+      "source_default_value": "Expected a quoted object key.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Invalid \\u escape.",
+      "source_default_value": "Invalid \\u escape.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Invalid escape sequence '\\%@'.",
+      "source_default_value": "Invalid escape sequence '\\%@'.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Invalid literal: expected 'true', 'false', or 'null'.",
+      "source_default_value": "Invalid literal: expected 'true', 'false', or 'null'.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Invalid number: expected a digit after '.'.",
+      "source_default_value": "Invalid number: expected a digit after '.'.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Invalid number: expected a digit in exponent.",
+      "source_default_value": "Invalid number: expected a digit in exponent.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Invalid number: expected a digit.",
+      "source_default_value": "Invalid number: expected a digit.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Unescaped control character in string.",
+      "source_default_value": "Unescaped control character in string.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Unexpected character while reading a JSON value.",
+      "source_default_value": "Unexpected character while reading a JSON value.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Unexpected content after the JSON value.",
+      "source_default_value": "Unexpected content after the JSON value.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/JSONSupport/JSONParser.swift:54"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Unpaired surrogate in string.",
+      "source_default_value": "Unpaired surrogate in string.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Unterminated array: expected ',' or ']'.",
+      "source_default_value": "Unterminated array: expected ',' or ']'.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Unterminated object: expected ',' or '}'.",
+      "source_default_value": "Unterminated object: expected ',' or '}'.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Unterminated string.",
+      "source_default_value": "Unterminated string.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "JSONSupport",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/JSONSupport/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Unterminated string: dangling escape.",
+      "source_default_value": "Unterminated string: dangling escape.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Couldn't run the command: %@",
+      "source_default_value": "Couldn't run the command: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The command could not be confirmed stopped.",
+      "source_default_value": "The command could not be confirmed stopped.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/TextFilters/TextFilterError.swift:59"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The command exited with status %@.",
+      "source_default_value": "The command exited with status %@.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The command exited with status %@: %@",
+      "source_default_value": "The command exited with status %@: %@",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          },
+          {
+            "position": 2,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The command produced more output than MacDown 2 will accept.",
+      "source_default_value": "The command produced more output than MacDown 2 will accept.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/TextFilters/TextFilterError.swift:53"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The command took too long and was stopped.",
+      "source_default_value": "The command took too long and was stopped.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/TextFilters/TextFilterError.swift:49"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The command was cancelled.",
+      "source_default_value": "The command was cancelled.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/TextFilters/TextFilterError.swift:51"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The command's output could not be fully read.",
+      "source_default_value": "The command's output could not be fully read.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/TextFilters/TextFilterError.swift:57"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "TextFilters",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/TextFilters/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The command's output wasn't valid text.",
+      "source_default_value": "The command's output wasn't valid text.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/TextFilters/TextFilterError.swift:55"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "MacDown cannot access the backing file. Use Save As to keep this copy.",
+      "source_default_value": "MacDown cannot access the backing file. Use Save As to keep this copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:74"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "MacDown could not safely follow the moved file. Use Save As to keep this copy.",
+      "source_default_value": "MacDown could not safely follow the moved file. Use Save As to keep this copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:84"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "MacDown preserved a competing version as %@. Reveal it, then use Save As to keep this copy.",
+      "source_default_value": "MacDown preserved a competing version as %@. Reveal it, then use Save As to keep this copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "MacDown retained recovery for %@. Keep this window open and retry, or use Save As after revealing the recovery copy.",
+      "source_default_value": "MacDown retained recovery for %@. Keep this window open and retry, or use Save As after revealing the recovery copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [
+          {
+            "position": 1,
+            "type": "@"
+          }
+        ],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [],
+      "callsite_evidence": "unknown_or_nonliteral_static_callsite",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "Resolve the external file change before saving, or use Save As to keep this copy.",
+      "source_default_value": "Resolve the external file change before saving, or use Save As to keep this copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:49"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The backing file cannot be read safely. Use Save As to keep this copy.",
+      "source_default_value": "The backing file cannot be read safely. Use Save As to keep this copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:89"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The backing file is no longer available. Use Save As to keep this copy.",
+      "source_default_value": "The backing file is no longer available. Use Save As to keep this copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:69"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The backing path is no longer a regular file. Use Save As to keep this copy.",
+      "source_default_value": "The backing path is no longer a regular file. Use Save As to keep this copy.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:79"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The document could not be opened.",
+      "source_default_value": "The document could not be opened.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:29"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "The document could not be saved.",
+      "source_default_value": "The document could not be saved.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:31"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    },
+    {
+      "target": "Workspace",
+      "catalog": "MacDown2/Packages/MacDownKit/Sources/Workspace/Resources/Localizable.xcstrings",
+      "bundle": "Bundle.module (SwiftPM processed resource)",
+      "key": "There is no active document.",
+      "source_default_value": "There is no active document.",
+      "translator_comment": "unknown_no_catalog_comment",
+      "required_locales": [
+        "fr",
+        "ja",
+        "pl"
+      ],
+      "required_locale_evidence": "planning/downstream/issue-17-handoff.md: retain established three plural-family verification locales",
+      "interpolation": {
+        "printf_argument_types": [],
+        "contains_inflection_markup": false
+      },
+      "variants": {
+        "fr": {},
+        "ja": {},
+        "pl": {}
+      },
+      "locale_states": {
+        "fr": "translated",
+        "ja": "translated",
+        "pl": "translated"
+      },
+      "callsites": [
+        "MacDown2/Packages/MacDownKit/Sources/Workspace/WorkspaceError.swift:47"
+      ],
+      "callsite_evidence": "direct_literal_static_match",
+      "review_state": "unknown_no_native_review_record_in_checkout"
+    }
+  ]
+}

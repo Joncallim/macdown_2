@@ -8,7 +8,10 @@ import Foundation
 public actor GraphvizWebRenderer: GraphvizDiagramRendering {
     public static let defaultMaxOutputBytes = 2 * 1024 * 1024
 
-    private let pool: DiagramWebKitPool
+    private var pool: DiagramWebKitPool?
+    private var retirement: (id: UUID, task: Task<Void, Never>)?
+    private let poolSize: Int
+    private let timeout: Duration
     private let maxOutputBytes: Int
 
     public init(
@@ -16,6 +19,8 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
         timeout: Duration = .seconds(5),
         maxOutputBytes: Int = GraphvizWebRenderer.defaultMaxOutputBytes
     ) {
+        self.poolSize = poolSize
+        self.timeout = timeout
         pool = DiagramWebKitPool(
             harnessResourceName: "harness",
             bundle: Bundle.module,
@@ -27,8 +32,9 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
 
     public func render(_ fence: GraphvizFence,
                        context: GraphvizRenderContext) async throws -> RenderedGraphvizDiagram {
+        let activePool = try availablePool()
         let diagram = try await withPoolErrorMapping {
-            try await pool.withPage { page in
+            try await activePool.withPage { page in
                 try await Self.render(fence, context: context, on: page)
             }
         }
@@ -40,7 +46,36 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
     }
 
     public func shutdown() async {
-        await pool.shutdown()
+        if retirement != nil {
+            await finishRetirement()
+            return
+        }
+        guard let retiring = pool else { return }
+        pool = nil
+        retirement = (UUID(), Task { await retiring.shutdown() })
+        await finishRetirement()
+    }
+
+    private func availablePool() throws -> DiagramWebKitPool {
+        try Task.checkCancellation()
+        guard retirement == nil else { throw GraphvizRenderError.rendererUnavailable }
+        if let pool {
+            return pool
+        }
+        let fresh = DiagramWebKitPool(
+            harnessResourceName: "harness", bundle: Bundle.module,
+            poolSize: poolSize, timeout: timeout
+        )
+        pool = fresh
+        return fresh
+    }
+
+    private func finishRetirement() async {
+        guard let current = retirement else { return }
+        await current.task.value
+        if retirement?.id == current.id {
+            retirement = nil
+        }
     }
 
     @MainActor
@@ -51,25 +86,20 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
             "return await window.__macdownRenderGraphviz(source, theme);",
             arguments: [
                 "source": fence.source,
-                "theme": [
-                    "foreground": context.foregroundHex,
-                    "background": context.backgroundHex,
-                ],
+                "theme": context.palette.rendererArguments,
             ]
         )
-        guard let dict = result as? [String: Any], let succeeded = dict["ok"] as? Bool else {
-            throw GraphvizRenderError.rendererUnavailable
-        }
-        guard succeeded else {
-            let message = (dict["message"] as? String) ?? "unknown error"
+        guard result.succeeded else {
+            let message = result.message ?? "unknown error"
             throw GraphvizRenderError.invalidSyntax(message)
         }
-        guard let svg = dict["svg"] as? String else {
+        guard let svg = result.svg else {
             throw GraphvizRenderError.rendererUnavailable
         }
-        let width = (dict["width"] as? NSNumber)?.doubleValue ?? 0
-        let height = (dict["height"] as? NSNumber)?.doubleValue ?? 0
-        return RenderedGraphvizDiagram(svg: svg, naturalWidth: width, naturalHeight: height)
+        guard result.width.isFinite, result.height.isFinite, result.width > 0, result.height > 0 else {
+            throw GraphvizRenderError.rendererUnavailable
+        }
+        return RenderedGraphvizDiagram(svg: svg, naturalWidth: result.width, naturalHeight: result.height)
     }
 
     private func withPoolErrorMapping<T: Sendable>(_ body: () async throws -> T) async throws -> T {
@@ -80,23 +110,5 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
         } catch DiagramPoolError.pageUnavailable {
             throw GraphvizRenderError.rendererUnavailable
         }
-    }
-}
-
-private extension GraphvizRenderContext {
-    var foregroundHex: String {
-        hex(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue)
-    }
-
-    var backgroundHex: String {
-        hex(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
-    }
-
-    func hex(red: Double, green: Double, blue: Double) -> String {
-        let components = [red, green, blue].map { value in
-            let finite = value.isFinite ? value : 0
-            return UInt8((min(max(finite, 0), 1) * 255).rounded())
-        }
-        return String(format: "#%02X%02X%02X", components[0], components[1], components[2])
     }
 }

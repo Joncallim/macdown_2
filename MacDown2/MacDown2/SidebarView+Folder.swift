@@ -61,6 +61,10 @@ extension SidebarView {
                     }, didDelete: { url in coordinator?.documentFileWasDeleted(at: url) }, didCreate: createdItem
                 )
                 .tag(SidebarSelection.file(row.id))
+                // The row remains a discoverable accessibility container,
+                // while an inline rename field keeps its own identifier for
+                // keyboard and assistive-technology interaction.
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("fileRow-\(row.entry.name)")
             }
         }
@@ -95,6 +99,19 @@ extension SidebarView {
             Label(fileTreeModel.root?.lastPathComponent ?? "Folder", systemImage: "folder")
                 .lineLimit(1)
             Spacer()
+            if let root = fileTreeModel.root {
+                Menu {
+                    Button("Open Another Folder…") { coordinator?.chooseFolder() }
+                    Divider()
+                    Button("New File") { create(in: root, isDirectory: false) }
+                    Button("New Folder") { create(in: root, isDirectory: true) }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .menuStyle(.borderlessButton)
+                .help("Folder actions")
+                .accessibilityIdentifier("folderActionsButton")
+            }
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -138,6 +155,9 @@ extension SidebarView {
             }
             return !items.isEmpty
         }
+        // Keep the root header discoverable without collapsing its action
+        // menu into the header's accessibility identifier.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("folderRootHeader")
     }
 
@@ -178,14 +198,25 @@ extension SidebarView {
         let originRoot = fileTreeModel.root
         let originAccessURL = fileTreeModel.rootAccessURL
         fileTreeModel.selectedURL = url
-        fileTreeModel.renamingURL = url
-        if !isDirectory {
+        if isDirectory {
+            fileTreeModel.renamingURL = url
+        } else {
+            // The new document opens in its own native tab. Only that tab
+            // should host the rename field; focus loss in this source tab
+            // must not submit an unchanged "untitled.md" rename.
+            fileTreeModel.renamingURL = nil
+            guard let originWindow = coordinator?.controllers.first(where: { $0.model === model })?.window else {
+                return
+            }
             fileTreeModel.pendingOpenURL = url
             Task {
                 await coordinator?.openDocument(
                     at: url,
                     folderRoot: originRoot,
-                    folderAccessURL: originAccessURL
+                    folderAccessURL: originAccessURL,
+                    folderSelectionURL: url,
+                    folderRenameURL: url,
+                    relativeTo: originWindow
                 )
                 if fileTreeModel.isCurrent(context), fileTreeModel.root == originRoot {
                     fileTreeModel.pendingOpenURL = nil

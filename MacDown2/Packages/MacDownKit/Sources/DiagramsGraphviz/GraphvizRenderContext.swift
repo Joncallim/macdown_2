@@ -1,35 +1,35 @@
-import Foundation
+import Themes
 
-/// Fixed neutral-light policy for Graphviz. The legacy component-shaped
-/// initializer remains source-compatible, but app-theme colors are deliberately
-/// ignored because Graphviz artwork uses native defaults on an opaque white
-/// canvas.
+/// Resolved artwork defaults and destination, shared by preview and export.
 public struct GraphvizRenderContext: Sendable, Equatable, Hashable {
-    public let foregroundRed: Double
-    public let foregroundGreen: Double
-    public let foregroundBlue: Double
-    public let backgroundRed: Double
-    public let backgroundGreen: Double
-    public let backgroundBlue: Double
+    public let palette: DiagramPalette
+    public let destination: DiagramDestination
 
-    public init(
-        foregroundRed _: Double,
-        foregroundGreen _: Double,
-        foregroundBlue _: Double,
-        backgroundRed _: Double,
-        backgroundGreen _: Double,
-        backgroundBlue _: Double
-    ) {
-        foregroundRed = 0
-        foregroundGreen = 0
-        foregroundBlue = 0
-        backgroundRed = 1
-        backgroundGreen = 1
-        backgroundBlue = 1
+    public var fingerprint: String {
+        destination.rawValue + "|" + palette.fingerprint
     }
 
-    public static let neutralLight = GraphvizRenderContext(
-        foregroundRed: 0, foregroundGreen: 0, foregroundBlue: 0,
-        backgroundRed: 1, backgroundGreen: 1, backgroundBlue: 1
-    )
+    public init(palette: DiagramPalette = .neutralLight, destination: DiagramDestination = .print) {
+        self.palette = palette
+        self.destination = destination
+    }
+
+    /// Component callers describe screen preview colors.
+    public init(
+        foregroundRed: Double,
+        foregroundGreen: Double,
+        foregroundBlue: Double,
+        backgroundRed: Double,
+        backgroundGreen: Double,
+        backgroundBlue: Double
+    ) {
+        destination = .screen
+        palette = .resolved(
+            for: .screen,
+            foreground: ThemeColor(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue),
+            background: ThemeColor(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
+        )
+    }
+
+    public static let neutralLight = GraphvizRenderContext()
 }

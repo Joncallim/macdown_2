@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [master]
@@ -22,14 +25,23 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install tools
         run: |
           # Runner images can ship an untrusted tap (e.g. aws/tap) that makes
           # Homebrew refuse to install; untap defensively.
           brew untap aws/tap 2>/dev/null || true
-          brew install swiftlint swiftformat
+          brew install swiftlint
+          # SwiftFormat's unpinned Homebrew formula can change formatting rules
+          # without a source change. Use the version that formatted this tree.
+          curl -fsSLo "$RUNNER_TEMP/swiftformat.zip" \
+            https://github.com/nicklockwood/SwiftFormat/releases/download/0.63.1/swiftformat.zip
+          echo '385ef1a263ba28685157b98c5536b9c9105e124518f28b7ef8a2bee4b167eaeb  '"$RUNNER_TEMP/swiftformat.zip" | shasum -a 256 -c -
+          unzip -p "$RUNNER_TEMP/swiftformat.zip" swiftformat > "$RUNNER_TEMP/swiftformat"
+          chmod +x "$RUNNER_TEMP/swiftformat"
       - name: SwiftFormat (lint)
-        run: swiftformat --lint MacDown2
+        run: '"$RUNNER_TEMP/swiftformat" --lint MacDown2'
       - name: SwiftLint (strict)
         run: swiftlint lint --strict MacDown2
 
@@ -39,8 +51,13 @@ jobs:
     # which crashed (SIGBUS) once E06's dependencies exercised newer Swift
     # runtime paths. Host now matches the deployment target.
     runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      PR535_DIAGNOSTICS: ${{ github.event_name == 'pull_request' && github.event.number == 535 && github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       # Select Xcode 26 FIRST so every subsequent step (swift build/test,
       # xcodegen, xcodebuild) uses the same Swift 6.2+ toolchain.
       - name: Select Xcode 26
@@ -49,12 +66,165 @@ jobs:
           if [ -z "$XCODE" ]; then XCODE=$(ls -d /Applications/Xcode*.app | head -1); fi
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
+          if [ "$PR535_DIAGNOSTICS" = true ]; then
+            test "$(xcodebuild -version | head -1)" = 'Xcode 26.0.1'
+          fi
       - name: Install XcodeGen
         run: |
           # Runner images can ship an untrusted tap (e.g. aws/tap) that makes
           # Homebrew refuse to install; untap defensively.
           brew untap aws/tap 2>/dev/null || true
           brew install xcodegen
+      - name: Prepare bounded package crash diagnostics
+        if: env.PR535_DIAGNOSTICS == 'true'
+        env:
+          EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          EVENT_MERGE: ${{ github.event.pull_request.merge_commit_sha }}
+          EVENT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          diagnostics="$RUNNER_TEMP/pr535-package-diagnostics"
+          mkdir -p "$diagnostics"
+          touch "$diagnostics/start-marker"
+          {
+            printf 'event_head=%s\nevent_base=%s\nevent_merge=%s\nevent_sha=%s\nrun=%s\nattempt=%s\n' \
+              "$EVENT_HEAD" "$EVENT_BASE" "$EVENT_MERGE" "$EVENT_SHA" "$RUN_ID" "$RUN_ATTEMPT"
+            printf 'actual_checkout=%s\n' "$(git rev-parse HEAD)"
+            git show -s --format='checkout_parents=%P' HEAD
+            xcode-select -p
+            xcodebuild -version
+            swift --version
+            sw_vers
+            shasum -a 256 MacDown2/Packages/MacDownKit/Package.resolved
+          } > "$diagnostics/identity.txt"
+          cat > "$diagnostics/diagnostic.py" <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import signal
+          import subprocess
+          import sys
+          import time
+
+          root = Path(os.environ['RUNNER_TEMP']) / 'pr535-package-diagnostics'
+          mode = sys.argv[1]
+          if mode == 'log':
+              # Drain after the cap to avoid changing the test's execution via SIGPIPE.
+              cap = 8 * 1024 * 1024
+              count = 0
+              with (root / sys.argv[2]).open('wb') as log:
+                  while chunk := sys.stdin.buffer.read1(65536):
+                      kept = chunk[:max(0, cap - count)]
+                      log.write(kept)
+                      sys.stdout.buffer.write(kept)
+                      sys.stdout.buffer.flush()
+                      count += len(chunk)
+              sys.exit(74 if count > cap else 0)
+          elif mode == 'run':
+              script = r'''
+          set -euo pipefail
+          capture() {
+            label="$1"
+            shift
+            set +e
+            swift "$@" 2>&1 | python3 "$RUNNER_TEMP/pr535-package-diagnostics/diagnostic.py" log "$label.log"
+            codes=("${PIPESTATUS[@]}")
+            set -e
+            printf '%s swift=%s log=%s\n' "$label" "${codes[0]}" "${codes[1]}" >> "$RUNNER_TEMP/pr535-package-diagnostics/status.txt"
+            if [ "${codes[0]}" -ne 0 ]; then return "${codes[0]}"; fi
+            return "${codes[1]}"
+          }
+          capture build build --force-resolved-versions
+          capture test test --no-parallel --force-resolved-versions
+          '''
+              process = subprocess.Popen(['bash', '-c', script], start_new_session=True)
+              known = {process.pid}
+              deadline = time.monotonic() + 1200
+              result = 1
+              try:
+                  with (root / 'processes.tsv').open('w') as history:
+                      while True:
+                          rows = subprocess.check_output(
+                              ['ps', '-axo', 'pid=,ppid=,pgid=,comm='], text=True
+                          ).splitlines()
+                          parsed = [row.strip().split(None, 3) for row in rows]
+                          for _ in range(4):
+                              for row in parsed:
+                                  if len(row) == 4 and (int(row[1]) in known or int(row[2]) == process.pid):
+                                      pid = int(row[0])
+                                      if pid not in known:
+                                          if history.tell() + len(row[3].encode()) + 64 > 1024 * 1024:
+                                              raise RuntimeError('process history exceeded 1 MiB')
+                                          history.write('\t'.join(row) + '\n')
+                                          history.flush()
+                                          known.add(pid)
+                          result = process.poll()
+                          if result is not None:
+                              break
+                          if time.monotonic() >= deadline:
+                              result = 124
+                              break
+                          time.sleep(0.25)
+              finally:
+                  # Terminate only this supervisor's dedicated process group on timeout/error.
+                  if process.poll() is None:
+                      os.killpg(process.pid, signal.SIGTERM)
+                      def live_group():
+                          rows = subprocess.check_output(['ps', '-axo', 'pgid=,stat='], text=True).splitlines()
+                          return any(int(row.split()[0]) == process.pid and not row.split()[1].startswith('Z') for row in rows)
+                      grace = time.monotonic() + 3
+                      while live_group() and time.monotonic() < grace:
+                          time.sleep(0.1)
+                      if live_group():
+                          os.killpg(process.pid, signal.SIGKILL)
+                      process.wait()
+              (root / 'supervisor-exit.txt').write_text(str(result) + '\n')
+              sys.exit(result if result >= 0 else 128 - result)
+          elif mode == 'collect':
+              time.sleep(5)  # Allow crash reporting to finish writing the fresh report.
+              marker = (root / 'start-marker').stat().st_mtime
+              pids = set()
+              for line in (root / 'processes.tsv').read_text().splitlines() if (root / 'processes.tsv').exists() else []:
+                  fields = line.split('\t', 3)
+                  if len(fields) == 4 and Path(fields[3]).name == 'MacDownKitPackageTests':
+                      pids.add(int(fields[0]))
+              destination = root / 'crashes'
+              destination.mkdir(exist_ok=True)
+              used = 0
+              report_dir = Path.home() / 'Library/Logs/DiagnosticReports'
+              decoder = json.JSONDecoder()
+              with (root / 'collection.txt').open('w') as record:
+                  record.write('observed_test_pids=' + ','.join(map(str, sorted(pids))) + '\n')
+                  if report_dir.exists():
+                      for report in sorted(report_dir.glob('MacDownKitPackageTests*.ips')):
+                          if record.tell() > 1024 * 1024:
+                              raise RuntimeError('collection log exceeded 1 MiB')
+                          if report.is_symlink() or report.stat().st_mtime < marker:
+                              continue
+                          size = report.stat().st_size
+                          if size > 1024 * 1024 or used + size > 8 * 1024 * 1024:
+                              record.write('size_cap_skipped=' + report.name + '\n')
+                              continue
+                          with report.open('rb') as source:
+                              raw = source.read(1024 * 1024 + 1)
+                          if len(raw) > 1024 * 1024 or used + len(raw) > 8 * 1024 * 1024:
+                              record.write('size_cap_skipped=' + report.name + '\n')
+                              continue
+                          text = raw.decode('utf-8')
+                          header, end = decoder.raw_decode(text.lstrip())
+                          body, _ = decoder.raw_decode(text.lstrip()[end:].lstrip())
+                          if body.get('pid') not in pids or body.get('procName') != 'MacDownKitPackageTests':
+                              continue
+                          (destination / report.name).write_bytes(raw)
+                          used += len(raw)
+                          record.write('collected=' + report.name + '\n')
+                  record.write('collected_bytes=' + str(used) + '\n')
+          else:
+              raise SystemExit('unknown diagnostic mode')
+          PY
       - name: Package build + tests
         working-directory: MacDown2/Packages/MacDownKit
         # --force-resolved-versions builds exactly the revisions in the
@@ -62,12 +232,29 @@ jobs:
         # unresolvable, instead of re-resolving. SwiftTreeSitter tracks
         # `branch: "main"`, so re-resolving could silently change it (#148 LC-05).
         run: |
+          if [ "$PR535_DIAGNOSTICS" = true ]; then
+            exec python3 "$RUNNER_TEMP/pr535-package-diagnostics/diagnostic.py" run
+          fi
           swift build --force-resolved-versions
           # Monitor/save-queue/performance tests share temporary filesystem
           # resources; concurrent XCTest scheduling makes these load-sensitive
           # tests exceed their bounded coordination timeouts on CI. Keep the
           # full suite and its assertions intact, but serialize execution.
           swift test --no-parallel --force-resolved-versions
+      - name: Collect fresh package test crash reports
+        if: ${{ always() && env.PR535_DIAGNOSTICS == 'true' }}
+        run: |
+          if [ -f "$RUNNER_TEMP/pr535-package-diagnostics/diagnostic.py" ]; then
+            python3 "$RUNNER_TEMP/pr535-package-diagnostics/diagnostic.py" collect
+          fi
+      - name: Upload bounded package crash diagnostics
+        if: ${{ always() && env.PR535_DIAGNOSTICS == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr535-package-crash-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pr535-package-diagnostics
+          retention-days: 7
+          if-no-files-found: error
       - name: Generate Xcode project
         working-directory: MacDown2
         run: xcodegen generate
