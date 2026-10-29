@@ -86,10 +86,7 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
             "return await window.__macdownRenderGraphviz(source, theme);",
             arguments: [
                 "source": fence.source,
-                "theme": [
-                    "foreground": context.foregroundHex,
-                    "background": context.backgroundHex,
-                ],
+                "theme": context.palette.rendererArguments,
             ]
         )
         guard result.succeeded else {
@@ -97,6 +94,9 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
             throw GraphvizRenderError.invalidSyntax(message)
         }
         guard let svg = result.svg else {
+            throw GraphvizRenderError.rendererUnavailable
+        }
+        guard result.width.isFinite, result.height.isFinite, result.width > 0, result.height > 0 else {
             throw GraphvizRenderError.rendererUnavailable
         }
         return RenderedGraphvizDiagram(svg: svg, naturalWidth: result.width, naturalHeight: result.height)
@@ -110,23 +110,5 @@ public actor GraphvizWebRenderer: GraphvizDiagramRendering {
         } catch DiagramPoolError.pageUnavailable {
             throw GraphvizRenderError.rendererUnavailable
         }
-    }
-}
-
-private extension GraphvizRenderContext {
-    var foregroundHex: String {
-        hex(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue)
-    }
-
-    var backgroundHex: String {
-        hex(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
-    }
-
-    func hex(red: Double, green: Double, blue: Double) -> String {
-        let components = [red, green, blue].map { value in
-            let finite = value.isFinite ? value : 0
-            return UInt8((min(max(finite, 0), 1) * 255).rounded())
-        }
-        return String(format: "#%02X%02X%02X", components[0], components[1], components[2])
     }
 }

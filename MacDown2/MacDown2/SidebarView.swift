@@ -47,18 +47,7 @@ struct SidebarView: View {
                 coordinator?.commandStateDidChange()
             }
         }
-        .onKeyPress(.return) {
-            if let url = fileTreeModel.selectedURL {
-                activateFileTreeURL(url)
-            } else if isJSON, let jsonSelected = outlineController.jsonSelectedItemID {
-                outlineController.activateJSON(jsonSelected)
-            } else if let selectedItemID = outlineController.selectedItemID {
-                outlineController.activate(selectedItemID)
-            } else {
-                return .ignored
-            }
-            return .handled
-        }
+        .onKeyPress(.return) { handleSidebarReturn() }
         .alert(
             "Folder Operation Failed",
             isPresented: Binding(
@@ -191,22 +180,35 @@ struct SidebarView: View {
             // NEW root that happens to share that path -- silently opening
             // the wrong file, rather than the file the user actually saw
             // and clicked.
-            FolderSearchView(model: folderSearchModel) { fileMatch in
-                guard let root = folderSearchModel.root, let firstMatch = fileMatch.matches.first else { return }
+            FolderSearchView(model: folderSearchModel) { presented in
+                guard folderSearchModel.isCurrentResult(presented),
+                      let root = folderSearchModel.root,
+                      root == presented.accessRoot,
+                      folderSearchModel.lexicalRoot == presented.lexicalRoot,
+                      let firstMatch = presented.match.matches.first,
+                      let originController = coordinator?.controllers.first(where: {
+                          $0.folderSearchModel === folderSearchModel
+                      })
+                else { return }
+                let origin = FolderSearchOrigin(
+                    controller: originController,
+                    generation: originController.workspaceRootRequestGeneration,
+                    lexicalRoot: presented.lexicalRoot,
+                    accessRoot: root,
+                    presentedResult: presented
+                )
                 Task {
-                    // `folderAccessURL: root`, not `fileTreeModel.rootAccessURL`
-                    // -- same reasoning as `root` just above: both must
-                    // come from the same, already-captured
-                    // `folderSearchModel.root` value, not whatever the
-                    // live file tree root happens to be right now.
+                    // The row's lexical and access roots travel together;
+                    // neither is reconstructed from a later live tree root.
                     await coordinator?.openFolderSearchResult(
-                        relativePath: fileMatch.relativePath,
+                        relativePath: presented.match.relativePath,
                         // The folder as opened (a symlink root stays a symlink
                         // path), so the file has the identity a sidebar open
                         // would give it; access is still the physical root.
-                        root: folderSearchModel.lexicalRoot ?? root,
+                        root: presented.lexicalRoot,
                         folderAccessURL: root,
-                        range: firstMatch.range
+                        range: firstMatch.range,
+                        origin: origin
                     )
                 }
             }
@@ -304,5 +306,23 @@ struct SidebarView: View {
                 )
             }
         }
+    }
+}
+
+private extension SidebarView {
+    func handleSidebarReturn() -> KeyPress.Result {
+        // A focused inline rename field owns Return. Do not open a file or
+        // navigate the outline before the field can commit its new name.
+        guard fileTreeModel.renamingURL == nil else { return .ignored }
+        if let url = fileTreeModel.selectedURL {
+            activateFileTreeURL(url)
+        } else if isJSON, let jsonSelected = outlineController.jsonSelectedItemID {
+            outlineController.activateJSON(jsonSelected)
+        } else if let selectedItemID = outlineController.selectedItemID {
+            outlineController.activate(selectedItemID)
+        } else {
+            return .ignored
+        }
+        return .handled
     }
 }

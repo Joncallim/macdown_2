@@ -33,6 +33,74 @@ struct PendingFolderSearchReveal {
     let navigationRevision: UInt
     let range: NSRange
     let controllerID: ObjectIdentifier
+    let originControllerID: ObjectIdentifier?
+    let originGeneration: UInt?
+    let originLexicalRoot: URL?
+    let originAccessRoot: URL?
+    let originResult: FolderSearchModel.PresentedResult?
+
+    init(
+        generation: UInt,
+        navigationRevision: UInt,
+        range: NSRange,
+        controllerID: ObjectIdentifier,
+        originControllerID: ObjectIdentifier? = nil,
+        originGeneration: UInt? = nil,
+        originLexicalRoot: URL? = nil,
+        originAccessRoot: URL? = nil,
+        originResult: FolderSearchModel.PresentedResult? = nil
+    ) {
+        self.generation = generation
+        self.navigationRevision = navigationRevision
+        self.range = range
+        self.controllerID = controllerID
+        self.originControllerID = originControllerID
+        self.originGeneration = originGeneration
+        self.originLexicalRoot = originLexicalRoot
+        self.originAccessRoot = originAccessRoot
+        self.originResult = originResult
+    }
+}
+
+/// Identity of the window and folder that produced a clicked search row.
+/// Capture this in the button action, before its asynchronous open is queued.
+@MainActor
+struct FolderSearchOrigin {
+    let controller: WindowController
+    let generation: UInt
+    let lexicalRoot: URL
+    let accessRoot: URL
+    /// Present for a clicked sidebar row. Direct, non-row callers can still
+    /// use the existing root-only origin checks.
+    let presentedResult: FolderSearchModel.PresentedResult?
+
+    init(
+        controller: WindowController,
+        generation: UInt,
+        lexicalRoot: URL,
+        accessRoot: URL,
+        presentedResult: FolderSearchModel.PresentedResult? = nil
+    ) {
+        self.controller = controller
+        self.generation = generation
+        self.lexicalRoot = lexicalRoot
+        self.accessRoot = accessRoot
+        self.presentedResult = presentedResult
+    }
+
+    var isCurrent: Bool {
+        !controller.isClosed
+            && controller.workspaceRootRequestGeneration == generation
+            && controller.folderSearchModel.root == accessRoot
+            && (controller.folderSearchModel.lexicalRoot ?? accessRoot) == lexicalRoot
+            && controller.fileTreeModel.root == lexicalRoot
+            && controller.fileTreeModel.rootAccessURL == accessRoot
+            && (presentedResult.map { controller.folderSearchModel.isCurrentResult($0) } ?? true)
+    }
+
+    func matches(lexicalRoot: URL, accessRoot: URL?) -> Bool {
+        isCurrent && self.lexicalRoot == lexicalRoot && self.accessRoot == accessRoot
+    }
 }
 
 /// Opens a folder-search result and reveals the matched range (EPIC-22
@@ -54,13 +122,14 @@ extension WindowCoordinator {
         relativePath: String,
         root: URL,
         folderAccessURL: URL?,
-        range: NSRange
+        range: NSRange,
+        origin: FolderSearchOrigin? = nil
     ) async {
+        guard origin?.matches(lexicalRoot: root, accessRoot: folderAccessURL) ?? true else { return }
         let url = root.appendingPathComponent(relativePath)
         let navigationRevision = folderSearchNavigationDidChange()
         let requestGeneration = folderSearchRequestGate.begin()
         let requestToken = FolderSearchRequestToken()
-        pendingFolderSearchReveals.removeAll()
         await withTaskCancellationHandler {
             await openDocument(
                 at: url,
@@ -68,19 +137,19 @@ extension WindowCoordinator {
                 folderAccessURL: folderAccessURL,
                 folderSelectionURL: url,
                 shouldContinue: { [self] in
-                    folderSearchRequestGate.owns(requestGeneration)
-                        && folderSearchNavigationRevision == navigationRevision
-                        && !requestToken.isCancelled
-                        && !Task.isCancelled
+                    folderSearchRequestIsCurrent(
+                        requestGeneration, navigationRevision: navigationRevision,
+                        token: requestToken, origin: origin
+                    )
                 }
             )
         } onCancel: {
             requestToken.cancel()
         }
-        guard folderSearchRequestGate.owns(requestGeneration),
-              folderSearchNavigationRevision == navigationRevision,
-              !requestToken.isCancelled,
-              !Task.isCancelled
+        guard folderSearchRequestIsCurrent(
+            requestGeneration, navigationRevision: navigationRevision,
+            token: requestToken, origin: origin
+        )
         else {
             return
         }
@@ -88,7 +157,6 @@ extension WindowCoordinator {
               let tabID = controller.model.tabStore.tabID(forFileURL: url)
         else { return }
 
-        guard !requestToken.isCancelled, !Task.isCancelled else { return }
         if !attemptFolderSearchReveal(
             tabID: tabID,
             generation: requestGeneration,
@@ -99,7 +167,12 @@ extension WindowCoordinator {
                 generation: requestGeneration,
                 navigationRevision: navigationRevision,
                 range: range,
-                controllerID: ObjectIdentifier(controller)
+                controllerID: ObjectIdentifier(controller),
+                originControllerID: origin.map { ObjectIdentifier($0.controller) },
+                originGeneration: origin?.generation,
+                originLexicalRoot: origin?.lexicalRoot,
+                originAccessRoot: origin?.accessRoot,
+                originResult: origin?.presentedResult
             )
         }
     }
@@ -113,6 +186,7 @@ extension WindowCoordinator {
               let pending = pendingFolderSearchReveals[tabUUID],
               folderSearchRequestGate.owns(pending.generation),
               folderSearchNavigationRevision == pending.navigationRevision,
+              pendingFolderSearchOriginIsCurrent(pending),
               let controller = controllers.first(where: {
                   ObjectIdentifier($0) == pending.controllerID
                       && $0.model.tabStore.activeTabID == tabUUID
@@ -128,6 +202,37 @@ extension WindowCoordinator {
             return
         }
         pendingFolderSearchReveals[tabUUID] = pending
+    }
+
+    private func folderSearchOriginIsCurrent(_ origin: FolderSearchOrigin?) -> Bool {
+        origin?.isCurrent ?? true
+    }
+
+    private func folderSearchRequestIsCurrent(
+        _ generation: UInt,
+        navigationRevision: UInt,
+        token: FolderSearchRequestToken,
+        origin: FolderSearchOrigin?
+    ) -> Bool {
+        folderSearchRequestGate.owns(generation)
+            && folderSearchNavigationRevision == navigationRevision
+            && !token.isCancelled
+            && !Task.isCancelled
+            && folderSearchOriginIsCurrent(origin)
+    }
+
+    private func pendingFolderSearchOriginIsCurrent(_ pending: PendingFolderSearchReveal) -> Bool {
+        guard let originID = pending.originControllerID else { return true }
+        return controllers.contains { controller in
+            ObjectIdentifier(controller) == originID
+                && !controller.isClosed
+                && controller.workspaceRootRequestGeneration == pending.originGeneration
+                && controller.fileTreeModel.root == pending.originLexicalRoot
+                && controller.fileTreeModel.rootAccessURL == pending.originAccessRoot
+                && (pending.originResult.map { result in
+                    controller.folderSearchModel.isCurrentResult(result)
+                } ?? true)
+        }
     }
 
     /// Invalidates a deferred folder-search reveal when a newer user-driven

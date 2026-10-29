@@ -1,12 +1,10 @@
 import Foundation
 
-/// The one failure signal `MathContribution` can obtain for a span that
-/// could not be typeset. `SwiftUIMath` (the underlying rendering library)
-/// exposes no public/SPI parse-error detail — only "rendered nothing"
-/// (epic-19-implementation.md §2.1) — so there is deliberately no case here
-/// carrying a message string; a caller with a more detailed failure reason
-/// of its own normalizes to this one case at the `MathImageRendering`
-/// boundary (epic-19-implementation.md §6.2).
+/// Rendering failures are isolated to their equation. `SwiftUIMath` does not
+/// expose public parse-error detail, so its empty output maps to
+/// `couldNotTypeset`; invalid renderer dimensions are a separate output
+/// failure, not a claim that the author's equation has invalid syntax.
 public enum MathRenderError: Error, Sendable, Equatable {
     case couldNotTypeset
+    case invalidImageDimensions
 }

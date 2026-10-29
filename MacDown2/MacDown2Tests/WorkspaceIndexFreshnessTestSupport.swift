@@ -36,12 +36,12 @@ final class IndexWalkProbe: @unchecked Sendable {
     private var walkCount = 0
     private var completedWalkCount = 0
     private var heldRoot: URL?
-    private var unreadableRoot: URL?
-    private let unreadableWalkNumber: Int?
+    private let unavailableRoot: URL?
+    private let unavailableWalkNumber: Int?
     private let gate: IndexWalkGate?
     private let gatesByWalk: [Int: IndexWalkGate]
     private var hasHeldWalk = false
-    private var changedPermissions = false
+    private var reportedUnavailability = false
     private let holdEveryWalk: Bool
 
     var count: Int {
@@ -56,32 +56,31 @@ final class IndexWalkProbe: @unchecked Sendable {
         return completedWalkCount
     }
 
-    var permissionChangeSucceeded: Bool {
+    var injectedUnavailabilityWasObserved: Bool {
         lock.lock()
         defer { lock.unlock() }
-        return changedPermissions
+        return reportedUnavailability
     }
 
     init(
         heldRoot: URL? = nil,
-        unreadableRoot: URL? = nil,
-        unreadableWalkNumber: Int? = nil,
+        unavailableRoot: URL? = nil,
+        unavailableWalkNumber: Int? = nil,
         gate: IndexWalkGate? = nil,
         gatesByWalk: [Int: IndexWalkGate] = [:],
         holdEveryWalk: Bool = false
     ) {
         self.heldRoot = heldRoot?.standardizedFileURL
-        self.unreadableRoot = unreadableRoot?.standardizedFileURL
-        self.unreadableWalkNumber = unreadableWalkNumber
+        self.unavailableRoot = unavailableRoot?.standardizedFileURL
+        self.unavailableWalkNumber = unavailableWalkNumber
         self.gate = gate
         self.gatesByWalk = gatesByWalk
         self.holdEveryWalk = holdEveryWalk
     }
 
     func makeIndex() -> WorkspaceFileIndex {
-        WorkspaceFileIndex { [self] root, excluded in
+        WorkspaceFileIndex(walk: { [self] root, excluded in
             let shouldHold: Bool
-            let shouldChangePermissions: Bool
             let selectedGate: IndexWalkGate?
             lock.lock()
             walkCount += 1
@@ -92,31 +91,24 @@ final class IndexWalkProbe: @unchecked Sendable {
             if shouldHold, !holdEveryWalk {
                 hasHeldWalk = true
             }
-            shouldChangePermissions = root.standardizedFileURL == unreadableRoot
-                && !changedPermissions
-                && (unreadableWalkNumber == nil || unreadableWalkNumber == walkNumber)
-            if shouldChangePermissions {
-                changedPermissions = true
-            }
             lock.unlock()
             if shouldHold {
                 selectedGate?.blockUntilReleased()
-            }
-            if shouldChangePermissions {
-                do {
-                    try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: root.path)
-                } catch {
-                    lock.lock()
-                    changedPermissions = false
-                    lock.unlock()
-                }
             }
             let result = DirectoryWalker().walk(root: root, excludedDirectoryNames: excluded)
             lock.lock()
             completedWalkCount += 1
             lock.unlock()
             return result
-        }
+        }, simulatedUnavailability: { [self] root in
+            lock.lock()
+            defer { lock.unlock() }
+            guard root.standardizedFileURL == unavailableRoot,
+                  unavailableWalkNumber == nil || completedWalkCount == unavailableWalkNumber
+            else { return nil }
+            reportedUnavailability = true
+            return "The folder cannot be read."
+        })
     }
 }
 

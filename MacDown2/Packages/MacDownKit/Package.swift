@@ -147,7 +147,7 @@ let package = Package(
         ),
         .target(name: "Contributions", dependencies: ["MarkdownEngine"], resources: [.process("Resources")]),
         .target(name: "TextFilters", resources: [.process("Resources")]),
-        .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"]),
+        .target(name: "Math", dependencies: ["MarkdownEngine", "Contributions"], resources: [.process("Resources")]),
         .target(
             name: "MathRendering",
             dependencies: [
@@ -157,33 +157,33 @@ let package = Package(
         ),
         .target(
             name: "Diagrams",
-            dependencies: ["MarkdownEngine", "Contributions"],
+            dependencies: ["MarkdownEngine", "Contributions", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(
             name: "DiagramRendering",
-            dependencies: ["Diagrams", "DiagramWebKitPool"],
+            dependencies: ["Diagrams", "DiagramWebKitPool", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(name: "DiagramWebKitPool"),
         .target(
             name: "DiagramsD2",
-            dependencies: ["MarkdownEngine", "Contributions"],
+            dependencies: ["MarkdownEngine", "Contributions", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(
             name: "D2Rendering",
-            dependencies: ["DiagramsD2", "DiagramWebKitPool"],
+            dependencies: ["DiagramsD2", "DiagramWebKitPool", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(
             name: "DiagramsGraphviz",
-            dependencies: ["MarkdownEngine", "Contributions"],
+            dependencies: ["MarkdownEngine", "Contributions", "Themes"],
             resources: [.process("Resources")]
         ),
         .target(
             name: "GraphvizRendering",
-            dependencies: ["DiagramsGraphviz", "DiagramWebKitPool"],
+            dependencies: ["DiagramsGraphviz", "DiagramWebKitPool", "Themes"],
             resources: [.process("Resources")]
         ),
 
@@ -213,7 +213,7 @@ let package = Package(
         .testTarget(name: "MathRenderingTests", dependencies: ["MathRendering"]),
         .testTarget(name: "DiagramsTests", dependencies: ["Diagrams", "MarkdownEngine"]),
         .testTarget(name: "DiagramRenderingTests", dependencies: ["DiagramRendering", "DiagramWebKitPool"]),
-        .testTarget(name: "DiagramsD2Tests", dependencies: ["DiagramsD2", "MarkdownEngine"]),
+        .testTarget(name: "DiagramsD2Tests", dependencies: ["DiagramsD2", "MarkdownEngine", "Themes"]),
         .testTarget(name: "D2RenderingTests", dependencies: ["D2Rendering"]),
         .testTarget(name: "DiagramsGraphvizTests", dependencies: ["DiagramsGraphviz", "MarkdownEngine"]),
         .testTarget(name: "GraphvizRenderingTests", dependencies: ["GraphvizRendering"]),

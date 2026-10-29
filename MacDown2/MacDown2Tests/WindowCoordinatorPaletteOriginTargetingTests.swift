@@ -132,6 +132,7 @@ struct PaletteOriginTargetingTests {
             .standardizedFileURL)
         #expect(fixture.controllerB.model.tabStore.tabs.isEmpty)
         #expect(fixture.controllerA.fileTreeModel.pendingOpenURL == nil)
+        #expect(fixture.controllerA.fileTreeModel.renamingURL == nil)
 
         // Opening the newly created file — like "Open…" — creates a new
         // tabbed window; it must join A's tab group, not B's or a
@@ -146,6 +147,7 @@ struct PaletteOriginTargetingTests {
         #expect(openedWindow.tabGroup === originWindow.tabGroup)
         #expect(opened.model.activeDocument?.fileURL?.deletingLastPathComponent().standardizedFileURL == dirA
             .standardizedFileURL)
+        #expect(opened.fileTreeModel.renamingURL == opened.model.activeDocument?.fileURL)
     }
 
     // MARK: - Open… (below the panel)

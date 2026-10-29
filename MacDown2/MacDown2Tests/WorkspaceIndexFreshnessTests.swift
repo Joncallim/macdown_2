@@ -259,11 +259,8 @@ struct WorkspaceIndexFreshnessTests {
 
     @Test func failedInitialBuildDoesNotEarnFreshness() async throws {
         let root = try tempRoot(["a.md"])
-        defer {
-            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
-            try? FileManager.default.removeItem(at: root)
-        }
-        let probe = IndexWalkProbe(unreadableRoot: root)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let probe = IndexWalkProbe(unavailableRoot: root, unavailableWalkNumber: 1)
         let fixture = try makeUnrootedController(index: probe.makeIndex())
         defer { fixture.retire() }
         let controller = fixture.controller
@@ -274,12 +271,10 @@ struct WorkspaceIndexFreshnessTests {
             Issue.record("an unreadable root must leave the index failed")
             return
         }
-        #expect(probe.permissionChangeSucceeded)
+        #expect(probe.injectedUnavailabilityWasObserved)
         #expect(controller.fileTreeModel.rootAccessURL == root.standardizedFileURL)
         #expect(controller.lastWorkspaceIndexRefresh == nil)
         #expect(controller.lastWorkspaceIndexRefreshGeneration == nil)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
-
         await controller.refreshWorkspaceIndex(minInterval: 60)
 
         #expect(probe.count == 2)
