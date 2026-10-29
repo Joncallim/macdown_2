@@ -28,7 +28,11 @@ public extension EditorTextSystem {
 
     /// Captures the selection and vertical viewport before an external reload.
     func viewportSnapshot() -> EditorViewportSnapshot {
-        EditorViewportSnapshot(selectedRange: selectedRange, scrollOffset: scrollOffset)
+        EditorViewportSnapshot(
+            selectedRange: selectedRange,
+            scrollOffset: scrollOffset,
+            topVisibleUTF16Offset: topVisibleUTF16Offset
+        )
     }
 
     /// Replaces editor content from a stable external snapshot without
@@ -53,6 +57,8 @@ public extension EditorTextSystem {
         storedSelectionSet = nil
         textView.setSelectedRange(clampedToLiveText(snapshot.selectedRange))
         pendingScrollOffset = max(0, snapshot.scrollOffset)
+        pendingExternalViewport = snapshot
+        pendingExternalViewportRevision = editRevision
         if clearUndo {
             undoManager.removeAllActions()
         }

@@ -6,9 +6,18 @@ import AppKit
 public struct EditorViewportSnapshot: Equatable {
     public let selectedRange: NSRange
     public let scrollOffset: CGFloat
+    /// The source location at the top of the viewport when it was captured.
+    /// A disk replacement can change TextKit's frame metrics before a raw
+    /// offset is safe to restore, while this location remains meaningful.
+    public let topVisibleUTF16Offset: Int?
 
-    public init(selectedRange: NSRange, scrollOffset: CGFloat) {
+    public init(
+        selectedRange: NSRange,
+        scrollOffset: CGFloat,
+        topVisibleUTF16Offset: Int? = nil
+    ) {
         self.selectedRange = selectedRange
         self.scrollOffset = scrollOffset
+        self.topVisibleUTF16Offset = topVisibleUTF16Offset
     }
 }

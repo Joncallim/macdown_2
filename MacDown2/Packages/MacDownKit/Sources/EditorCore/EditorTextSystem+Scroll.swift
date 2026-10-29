@@ -24,20 +24,15 @@ public extension EditorTextSystem {
     /// Returns `0` when the text view has no layout or is not installed in a
     /// scroll view. This is the editor side of the scroll-sync seam.
     var topVisibleUTF16Offset: Int {
-        // Without a scroll view there is no viewport to measure against.
         guard let scrollView else { return 0 }
 
         let clipOrigin = scrollView.contentView.bounds.origin
+        // This is the same clip-view conversion used by the gutter's
+        // visible-fragment enumeration. `convert(_:from:)` gives TextKit the
+        // lookup coordinates for this mounted editor; subtracting
+        // `textContainerInset` here would apply the inset twice and anchor a
+        // reload above the reader's actual top line.
         let point = textView.convert(clipOrigin, from: scrollView.contentView)
-
-        // `NSTextView.characterIndexForInsertion(at:)` (view-local, unlike the
-        // similar-looking but screen-space `NSTextInputClient.characterIndex(for:)`)
-        // was tried first, but can misreport a point inside a correctly
-        // laid-out fragment as past the END of the document — seen right
-        // after the outline sidebar's "reveal heading" jump, feeding a bogus
-        // near-end offset into scroll-sync and dragging the preview to the
-        // bottom while the editor had genuinely landed on target. The layout
-        // manager's own fragment lookup at the same point does not share it.
         guard let fragment = layoutManager.textLayoutFragment(for: point) else {
             return 0
         }
@@ -173,5 +168,92 @@ public extension EditorTextSystem {
         scrollView.contentView.scroll(to: origin)
         scrollView.reflectScrolledClipView(scrollView.contentView)
         pendingScrollOffset = nil
+    }
+
+    /// Restores a disk-reload viewport only after the replacement has its
+    /// current TextKit layout. The captured source location takes precedence
+    /// over a raw offset because frame-height changes can otherwise clamp the
+    /// old offset and visibly pull the reader upward.
+    /// Restores the pending snapshot and returns whether it needs one final
+    /// post-selection pass. The second pass consumes the snapshot.
+    @discardableResult
+    internal func applyPendingExternalViewport() -> Bool {
+        guard let scrollView, let snapshot = pendingExternalViewport else { return false }
+
+        guard let location = snapshot.topVisibleUTF16Offset,
+              let frame = layoutFragmentFrame(atUTF16Location: location)
+        else {
+            pendingExternalViewport = nil
+            pendingExternalViewportRevision = nil
+            return false
+        }
+
+        pendingScrollOffset = nil
+        let maxY = max(0, textView.frame.height - scrollView.contentView.bounds.height)
+        var origin = scrollView.contentView.bounds.origin
+        // The lookup point is already converted from the clip view, while
+        // the fragment frame itself begins inside NSTextView's vertical inset.
+        // Add that inset only when converting the frame back to a clip origin.
+        origin.y = min(max(0, frame.minY + textView.textContainerInset.height), maxY)
+        scrollView.contentView.scroll(to: origin)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+
+        if pendingExternalViewportRevision == editRevision {
+            pendingExternalViewportRevision = nil
+            return true
+        }
+        pendingExternalViewport = nil
+        return false
+    }
+
+    /// Brings the frame height up to date off the back of an editing or
+    /// caret-movement event, one run-loop turn later.
+    ///
+    /// Keyboard-driven caret movement and typing are entirely internal to
+    /// `NSTextView` — they never flow through SwiftUI's `updateNSView`, so
+    /// `syncFrameHeightToContent()` would otherwise never run for those paths
+    /// and the frame would fall behind the content again. Cheap on the common
+    /// path: the signature check inside no-ops once the frame has caught up.
+    ///
+    /// Deferred one run-loop turn because the delegate callbacks that drive
+    /// this fire *during* `NSTextView`'s own handling, before it has finished
+    /// updating its layout; measuring then reads a half-updated state.
+    ///
+    /// This deliberately does **not** scroll. An earlier version called
+    /// `scrollRangeToVisible(selection)` here, which meant every selection
+    /// change — including ones the user never initiated — yanked the viewport
+    /// back to the caret, so scrolling away from the caret and releasing
+    /// snapped straight back to it. `NSTextView` already scrolls to follow the
+    /// caret on its own; all it ever needed from us was a frame tall enough
+    /// to have somewhere to scroll to.
+    func scheduleFrameHeightSync() {
+        frameSyncTask?.cancel()
+        frameSyncTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .milliseconds(50))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self else { return }
+            syncFrameHeightToContent()
+            let needsExternalViewportSettle = applyPendingExternalViewport()
+            applyPendingScrollOffset()
+
+            // Setting a replacement selection can trigger NSTextView's own
+            // deferred visibility adjustment. Restore one more time after
+            // that run-loop turn, but only if this is still the same disk
+            // replacement; a later edit/reload must never inherit it.
+            guard needsExternalViewportSettle else { return }
+            do {
+                try await Task.sleep(for: .milliseconds(50))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled,
+                  pendingExternalViewportRevision == editRevision
+            else { return }
+            syncFrameHeightToContent()
+            _ = applyPendingExternalViewport()
+        }
     }
 }

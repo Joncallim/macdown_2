@@ -83,6 +83,38 @@ struct EditorTextSystemTests {
         #expect(abs(system.scrollOffset - viewport.scrollOffset) < 0.5)
     }
 
+    @Test("mounted external replacement preserves an off-screen selection and viewport")
+    func mountedExternalReplacementPreservesOffScreenViewport() async {
+        let text = (1 ... 180)
+            .map { "LINE_\(String(format: "%03d", $0)) selection and scroll preservation marker" }
+            .joined(separator: "\n")
+        let system = makeSystem(text: text)
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
+        scrollView.documentView = system.textView
+        system.scrollView = scrollView
+        system.textView.frame = NSRect(x: 0, y: 0, width: 420, height: 180)
+        system.syncFrameHeightToContent()
+
+        let selectedLine = (text as NSString).range(of: "LINE_120")
+        system.selectedRange = selectedLine
+        system.scrollOffset = 10000
+        let viewport = system.viewportSnapshot()
+        #expect(viewport.scrollOffset > 0)
+        #expect(viewport.topVisibleUTF16Offset != nil)
+        system.replaceTextFromExternal(
+            text.replacingOccurrences(
+                of: "LINE_180 selection and scroll preservation marker",
+                with: "LINE_180 refreshed from disk"
+            ),
+            preserving: viewport,
+            clearUndo: true
+        )
+        try? await Task.sleep(for: .milliseconds(150))
+
+        #expect(system.selectedRange == selectedLine)
+        #expect(system.topVisibleUTF16Offset == viewport.topVisibleUTF16Offset)
+    }
+
     @Test("selectedRange can be read and written")
     func selectedRangeRoundTrip() {
         let system = makeSystem(text: "hello world")
