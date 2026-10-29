@@ -178,7 +178,16 @@ public extension EditorTextSystem {
     /// post-selection pass. The second pass consumes the snapshot.
     @discardableResult
     internal func applyPendingExternalViewport() -> Bool {
-        guard let scrollView, let snapshot = pendingExternalViewport else { return false }
+        guard let snapshot = pendingExternalViewport else { return false }
+        guard pendingExternalViewportRevision == editRevision else {
+            pendingExternalViewport = nil
+            pendingExternalViewportRevision = nil
+            // The raw offset belongs to the same superseded disk reload;
+            // falling back to it would still move the reader after an edit.
+            pendingScrollOffset = nil
+            return false
+        }
+        guard let scrollView else { return false }
 
         guard let location = snapshot.topVisibleUTF16Offset,
               let frame = layoutFragmentFrame(atUTF16Location: location)
@@ -194,15 +203,11 @@ public extension EditorTextSystem {
         // The lookup point is already converted from the clip view, while
         // the fragment frame itself begins inside NSTextView's vertical inset.
         // Add that inset only when converting the frame back to a clip origin.
-        origin.y = min(max(0, frame.minY + textView.textContainerInset.height), maxY)
+        let fragmentOffset = snapshot.topVisibleFragmentOffset ?? 0
+        origin.y = min(max(0, frame.minY + textView.textContainerInset.height + fragmentOffset), maxY)
         scrollView.contentView.scroll(to: origin)
         scrollView.reflectScrolledClipView(scrollView.contentView)
 
-        guard pendingExternalViewportRevision == editRevision else {
-            pendingExternalViewport = nil
-            pendingExternalViewportRevision = nil
-            return false
-        }
         return true
     }
 
