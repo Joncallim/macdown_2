@@ -1,6 +1,44 @@
 # MostlyText 1.0 release path
 
-## Current integration checkpoint — 2026-10-26
+## Current coordination checkpoint — 2026-10-29
+
+This dated update supersedes the live-status statements in the October 26
+snapshot below; that snapshot is retained as historical evidence, not as a
+current work queue. GitHub branch, PR, issue and exact-head check metadata were
+read on 2026-10-29. Merge status is not release or native acceptance.
+
+- The current `integration-final` head is
+  [`1c773427`](https://github.com/Joncallim/macdown_2/commit/1c773427ae0e4bb934b9d6a0914707ef98a1bfe9).
+  [#509](https://github.com/Joncallim/macdown_2/pull/509) merged on October 28,
+  followed by [#505](https://github.com/Joncallim/macdown_2/pull/505).
+  [#120](https://github.com/Joncallim/macdown_2/issues/120) is closed. The
+  historical draft and Trash-hold statements below no longer describe these
+  items. Their issue/PR evidence remains authoritative; this document does not
+  broaden owner-accepted evidence limitations or claim a published release.
+- [#520](https://github.com/Joncallim/macdown_2/pull/520) remains draft at
+  `758152ed6638e381704e23af34cc7c067bc92208`.
+  [CI 40721494606](https://github.com/Joncallim/macdown_2/actions/runs/40721494606)
+  passed build-and-test, but lint was cancelled with no executed steps, so the
+  overall run is not green. Compliance passed. Reconcile the current native
+  evidence and outstanding check before merge; the October 26 candidate is
+  not evidence for this head.
+- [#532](https://github.com/Joncallim/macdown_2/pull/532) remains draft at
+  `f5605d9aead306e15ccb1bd8fb4f48b8931c1f76`.
+  [CI 40322381213](https://github.com/Joncallim/macdown_2/actions/runs/40322381213)
+  failed at package build/tests; subsequent app checks did not run. Lint and
+  Compliance passed. Its native Release export acceptance remains unverified
+  by this checkpoint; the older pending-run description below is historical.
+- [#519](https://github.com/Joncallim/macdown_2/pull/519) and
+  [#533](https://github.com/Joncallim/macdown_2/pull/533) remain draft at their
+  October 26 heads. Their exact-head CI and Compliance passed, but those
+  results alone do not establish native permission acceptance or explain the
+  historical session-publication failure.
+- Release, migration, dependency/pin, signing, website and publication gates
+  remain separate. This documentation change waives none of them. Historical
+  workflow and credential descriptions below must be reconciled with their
+  owning issue and current owner decisions before execution.
+
+## Historical integration checkpoint — 2026-10-26
 
 The order and release gates below remain the coordination contract, but their
 2026-09-28 status and credential inventory are historical. This snapshot
@@ -57,7 +95,7 @@ run `40282586058` passed; current integration-head CI run `40286608868` also
 passed.
 This change does not establish a pre-allocation raster memory budget.
 
-## Current draft and acceptance status — 2026-10-26
+## Historical draft and acceptance status — 2026-10-26
 
 - [#532](https://github.com/Joncallim/macdown_2/pull/532) is a draft #117
   slice at `7a9a06c15b04e7ce7e5bf2788da7b8c177c97fbd`. It freezes the accepted
