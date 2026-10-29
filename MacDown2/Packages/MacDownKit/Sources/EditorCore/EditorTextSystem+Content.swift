@@ -28,7 +28,30 @@ public extension EditorTextSystem {
 
     /// Captures the selection and vertical viewport before an external reload.
     func viewportSnapshot() -> EditorViewportSnapshot {
-        EditorViewportSnapshot(selectedRange: selectedRange, scrollOffset: scrollOffset)
+        let sourceLocation: Int?
+        let fragmentOffset: CGFloat?
+        if let scrollView,
+           let fragment = layoutManager.textLayoutFragment(for: textView.convert(
+               scrollView.contentView.bounds.origin,
+               from: scrollView.contentView
+           )) {
+            sourceLocation = contentStorage.offset(
+                from: contentStorage.documentRange.location,
+                to: fragment.rangeInElement.location
+            )
+            fragmentOffset = scrollOffset - fragment.layoutFragmentFrame.minY - textView.textContainerInset.height
+        } else {
+            // An unavailable fragment is not a source anchor at zero. Keep
+            // the raw-offset fallback for editors without visible layout.
+            sourceLocation = nil
+            fragmentOffset = nil
+        }
+        return EditorViewportSnapshot(
+            selectedRange: selectedRange,
+            scrollOffset: scrollOffset,
+            topVisibleUTF16Offset: sourceLocation,
+            topVisibleFragmentOffset: fragmentOffset
+        )
     }
 
     /// Replaces editor content from a stable external snapshot without
@@ -53,6 +76,8 @@ public extension EditorTextSystem {
         storedSelectionSet = nil
         textView.setSelectedRange(clampedToLiveText(snapshot.selectedRange))
         pendingScrollOffset = max(0, snapshot.scrollOffset)
+        pendingExternalViewport = snapshot
+        pendingExternalViewportRevision = editRevision
         if clearUndo {
             undoManager.removeAllActions()
         }
