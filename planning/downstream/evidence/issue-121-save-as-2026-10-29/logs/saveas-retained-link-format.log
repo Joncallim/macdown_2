@@ -1,0 +1,6 @@
+Running SwiftFormat...
+(lint mode - no files will be changed.)
+Reading config file at /Users/jonathanlim/GitHub/macdown_2-nav173/.swiftformat
+warning: Failed to write cache file at /Users/jonathanlim/Library/Caches/com.charcoaldesign.swiftformat/swiftformat.cache.
+SwiftFormat completed in 0.13s.
+0/2 files require formatting.

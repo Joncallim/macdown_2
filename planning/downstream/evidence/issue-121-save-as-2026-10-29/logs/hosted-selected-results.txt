@@ -1,0 +1,10 @@
+2026-10-29T09:14:23.0067240Z Image: macos-26-arm64
+2026-10-29T09:14:27.2018950Z HEAD is now at 9299aca Merge 9e2940353b66bfa8fd6951e144201ac85e394cca into 7b8b4055796d7452fc6dd1b27ced71470c92623c
+2026-10-29T09:14:27.7752890Z   test "$(xcodebuild -version | head -1)" = 'Xcode 26.0.1'
+2026-10-29T09:14:31.4462450Z Xcode 26.0.1
+2026-10-29T09:30:54.0086180Z ◇ Suite "TextFilter held-group cleanup" started.
+2026-10-29T09:30:54.0087630Z ◇ Test failedReapBecomesUnresolvedWithoutAStaleNumericSignal() started.
+2026-10-29T09:30:54.0088670Z ✔ Test failedReapBecomesUnresolvedWithoutAStaleNumericSignal() passed after 0.149 seconds.
+2026-10-29T09:30:54.0091760Z ✔ Suite "TextFilter held-group cleanup" passed after 0.356 seconds.
+2026-10-29T09:31:36.4807010Z ✘ Test run with 2819 tests in 384 suites passed after 418.918 seconds with 2 known issues.
+2026-10-29T09:54:20.4140790Z ✔ Test run with 522 tests in 106 suites passed after 226.072 seconds.

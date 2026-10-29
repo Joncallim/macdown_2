@@ -1,0 +1,15 @@
+[0/1] Planning build
+Test Suite 'Selected tests' started at 2026-10-29 18:33:08.613.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-29 18:33:08.620.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-29 18:33:08.620.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-29 18:33:08.620.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "TextFilter held-group cleanup" started.
+◇ Test failedReapBecomesUnresolvedWithoutAStaleNumericSignal() started.
+✔ Test failedReapBecomesUnresolvedWithoutAStaleNumericSignal() passed after 0.423 seconds.
+✔ Suite "TextFilter held-group cleanup" passed after 0.424 seconds.
+✔ Test run with 1 test in 1 suite passed after 0.424 seconds.

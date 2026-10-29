@@ -68,6 +68,40 @@ struct PreviewLinkActionTests {
         }
     }
 
+    @Test(arguments: ["related.md#section", "../shared.md?view=source#section"])
+    @MainActor
+    func aParsedRelativeLinkUsesTheCurrentDocumentAfterSaveAs(_ target: String) throws {
+        let oldBase = URL(fileURLWithPath: "/tmp/original/A/story.md")
+        let currentBase = URL(fileURLWithPath: "/tmp/moved/B/story.md")
+        let parsed = try PreviewMarkupParser(baseURL: oldBase).attributedString(for: "[target](\(target))")
+        let retainedLink = try #require(parsed.runs.compactMap(\.link).first)
+        #expect(retainedLink.baseURL != nil, "Exercise Textual retaining a parsed relative reference")
+        let resolved = PreviewLinkResolver(baseURL: currentBase).resolve(retainedLink)
+        let expected = try #require(URL(string: target, relativeTo: currentBase)?.absoluteURL)
+        #expect(resolved == expected)
+        #expect(resolved.baseURL == nil)
+        #expect(PreviewLinkResolver.action(for: resolved, currentDocument: currentBase)
+            == .openInApp(currentBase.deletingLastPathComponent()
+                .appendingPathComponent(target.hasPrefix("../") ? "../shared.md" : "related.md")
+                .standardizedFileURL))
+    }
+
+    @Test @MainActor func saveAsDoesNotRebaseExplicitAbsoluteTargetsOrWeakenLinkPolicy() throws {
+        let oldBase = URL(fileURLWithPath: "/tmp/original/A/story.md")
+        let currentBase = URL(fileURLWithPath: "/tmp/moved/B/story.md")
+        let resolver = PreviewLinkResolver(baseURL: currentBase)
+        for target in ["file:///tmp/original/A/related.md", "https://example.invalid/related.md"] {
+            let parsed = try PreviewMarkupParser(baseURL: oldBase).attributedString(for: "[target](\(target))")
+            let link = try #require(parsed.runs.compactMap(\.link).first)
+            #expect(resolver.resolve(link) == URL(string: target))
+        }
+        for (target, action) in [("#heading", PreviewLinkResolver.LinkAction.ignore), ("setup.command", .reveal)] {
+            let parsed = try PreviewMarkupParser(baseURL: oldBase).attributedString(for: "[target](\(target))")
+            let link = try #require(parsed.runs.compactMap(\.link).first)
+            #expect(PreviewLinkResolver.action(for: resolver.resolve(link), currentDocument: currentBase) == action)
+        }
+    }
+
     @Test func aSameDocumentAnchorDoesNotReopenTheDocument() throws {
         let current = URL(fileURLWithPath: "/Users/me/notes/this.md")
         let anchor = try #require(URL(string: "file:///Users/me/notes/this.md#heading"))

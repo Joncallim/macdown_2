@@ -1,0 +1,12 @@
+{
+  "candidate": "9e2940353b66bfa8fd6951e144201ac85e394cca",
+  "base": "7b8b4055796d7452fc6dd1b27ced71470c92623c",
+  "localSwift": "Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)\nTarget: arm64-apple-macosx26.0",
+  "localXcode": "Xcode 26.6\nBuild version 17F113",
+  "localOS": "ProductName:\t\tmacOS\nProductVersion:\t\t26.5.1\nBuildVersion:\t\t25F80",
+  "baseIsAncestor": true,
+  "componentSourcesUnchanged": {
+    "Sources/TextFilters": true,
+    "Tests/TextFiltersTests": true
+  }
+}

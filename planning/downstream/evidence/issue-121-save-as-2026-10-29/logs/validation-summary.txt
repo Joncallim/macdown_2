@@ -1,0 +1,6 @@
+retained-link-package-full.log (complete log retained in local evidence root)
+✔ Test failedReapBecomesUnresolvedWithoutAStaleNumericSignal() passed after 0.553 seconds.
+━ Test run with 2821 tests in 384 suites passed after 261.575 seconds with 2 known issues.
+retained-link-app-tests.log (complete log retained in local evidence root)
+✔ Test run with 522 tests in 106 suites passed after 72.910 seconds.
+** TEST EXECUTE SUCCEEDED **

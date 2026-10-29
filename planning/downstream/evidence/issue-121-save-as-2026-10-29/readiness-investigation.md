@@ -1,0 +1,11 @@
+# Retained #519 package-readiness failure
+
+The original complete-package-tests.log is retained unchanged. It failed in the held-group fixture's readiness assertion after its unchanged one-second poll. The remaining stale-numeric-signal, unresolved-reap and owned-group cleanup assertions completed with no additional issue; the case lasted 1.856 seconds. The two Neon known issues were separately reported. This is a real failed local gate, not an observed containment failure.
+
+The fixture launches a shell with an empty environment; its first operation is external `touch ready`, then it waits for a release file. The original test did not capture child stderr or monotonic startup/marker timestamps, and successful cleanup removed the directory. Delayed scheduling, child launch/tool latency and a failed touch cannot now be distinguished. No cause is proved by the missing marker alone.
+
+One explicitly bounded, unchanged focused diagnostic on the same candidate passed in 0.424 seconds. No deadline, assertion, production TextFilters code or fixture code was altered. No repeated-until-green loop was used and this focused result does not substitute for a complete-suite pass.
+
+The hosted CI associated with 9e294035 passed this same test in 0.149 seconds, the full package with 2819 tests / 384 suites and two known issues, and all 522 app tests. The checkout was GitHub merge 9299aca of 9e294035 into 7b8b4055; the base is already an ancestor of the candidate. TextFilters production and test sources are byte-unchanged between that base and candidate. The host is macos-26-arm64 with Xcode 26.0.1; CORTANA is macOS 26.5.1 with Xcode 26.6 / Swift 6.3.3. Toolchain and scheduling differences are confounders, not an attribution. See hosted-selected-results.txt and held-group-host-comparison.json; the full hosted log is retained locally.
+
+A separate signed-native acceptance then found a real Save As stale-link defect. The local resolver correction has a new RED-to-GREEN parser regression and is undergoing its own necessary complete package validation. A resulting pass will describe that new source candidate only; it will not erase the first readiness failure or establish its cause. Future recurrence needs child stderr plus monotonic spawn/ready/deadline/cleanup acknowledgement, preserving all ownership checks and the existing bound.
