@@ -45,6 +45,29 @@ struct PreviewLinkActionTests {
             .openInApp(URL(fileURLWithPath: "/Users/me/notes/other.md")))
     }
 
+    @Test(arguments: ["/tmp/A/story.md", "/tmp/B/story.md"])
+    @MainActor
+    func parserRelativeDocumentLinksKeepTheirAbsoluteDestination(_ path: String) throws {
+        let base = URL(fileURLWithPath: path)
+        let parsed = try PreviewMarkupParser(baseURL: base)
+            .attributedString(for: "[related](related.md#section)")
+        let link = try #require(parsed.runs.compactMap(\.link).first)
+        let resolved = PreviewLinkResolver(baseURL: base).resolve(link)
+        #expect(resolved.baseURL == nil, "File opening requires a self-contained URL")
+        #expect(PreviewLinkResolver.action(for: resolved, currentDocument: base)
+            == .openInApp(base.deletingLastPathComponent().appendingPathComponent("related.md")))
+    }
+
+    @Test @MainActor func parserRelativeLinksKeepAnchorAndExecutableSafetyRules() throws {
+        let base = URL(fileURLWithPath: "/tmp/preview-actions/story.md")
+        let resolver = PreviewLinkResolver(baseURL: base)
+        for (target, expected) in [("#heading", PreviewLinkResolver.LinkAction.ignore), ("setup.command", .reveal)] {
+            let parsed = try PreviewMarkupParser(baseURL: base).attributedString(for: "[target](\(target))")
+            let link = try #require(parsed.runs.compactMap(\.link).first)
+            #expect(PreviewLinkResolver.action(for: resolver.resolve(link), currentDocument: base) == expected)
+        }
+    }
+
     @Test func aSameDocumentAnchorDoesNotReopenTheDocument() throws {
         let current = URL(fileURLWithPath: "/Users/me/notes/this.md")
         let anchor = try #require(URL(string: "file:///Users/me/notes/this.md#heading"))

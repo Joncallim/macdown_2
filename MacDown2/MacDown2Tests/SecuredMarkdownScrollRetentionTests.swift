@@ -11,8 +11,13 @@ import Themes
 @Suite("Secured Markdown scroll retention", .serialized)
 @MainActor
 struct SecuredMarkdownScrollRetentionTests {
-    @Test func aSourceGenerationDoesNotCollapseUnchangedParagraphsAboveTheViewport() async throws {
-        var document = makeDocument()
+    enum Transition: Sendable {
+        case edit, saveAs, saveAsWithLinks
+    }
+
+    @Test(arguments: [Transition.edit, .saveAs, .saveAsWithLinks])
+    func aDocumentTransitionDoesNotCollapseUnchangedParagraphsAboveTheViewport(_ transition: Transition) async throws {
+        var document = makeDocument(includeLinks: transition == .saveAsWithLinks)
         let source = document.text
         let parsed = try await ParseEngine().parse(source, revision: 1)
         let owner = PreviewResourceWindowState()
@@ -44,21 +49,29 @@ struct SecuredMarkdownScrollRetentionTests {
         let priorLoad = try #require(loads.lastID)
         controller.targetSourceLine = nil
 
-        let editedSource = source + " edited"
-        document = document.updatingText(editedSource)
-        let edited = try await ParseEngine().parse(editedSource, revision: 2)
+        document = changedDocument(document, for: transition)
+        let edited = try await ParseEngine().parse(document.text, revision: 2)
         hosting.rootView = preview(
             document, parsed: edited, ownership: (tabID, owner), controller: controller, loads: loads
         )
         let minimumOffset = try await minimumOffsetDuringUpdate(in: hosting, scroll: scroll, initial: before)
         let currentLoad = try #require(loads.lastID)
-        #expect(currentLoad != priorLoad, "A new source must still receive a new resource lifetime")
+        #expect(currentLoad != priorLoad, "A changed document must still receive a new resource lifetime")
         #expect(
             minimumOffset >= before - 1,
             "Unchanged text collapsed and clamped the preview from \(before) to \(minimumOffset)"
         )
         #expect(scroll.contentView.bounds.minY >= before - 1)
         #expect(controller.targetSourceLine != 1, "A geometry collapse must not masquerade as a user scroll to the top")
+    }
+
+    private func changedDocument(_ document: FileCore.FileDocument, for transition: Transition) -> FileCore
+        .FileDocument {
+        switch transition {
+        case .edit: document.updatingText(document.text + " edited")
+        case .saveAs,
+             .saveAsWithLinks: document.renamed(to: URL(fileURLWithPath: "/tmp/secured-scroll-destination/story.md"))
+        }
     }
 
     private func preview(
@@ -71,7 +84,8 @@ struct SecuredMarkdownScrollRetentionTests {
         ) { loader, loadID in
             TextualMarkdownPreview(
                 document: parsed, text: document.text,
-                theme: PreviewTheme(theme: BundledThemes.light), controller: controller,
+                theme: PreviewTheme(theme: BundledThemes.light),
+                linkResolver: PreviewLinkResolver(baseURL: document.fileURL), controller: controller,
                 resourceImageLoader: loader, resourceLoadID: loadID
             )
             .onAppear { loads.lastID = loadID }
@@ -92,9 +106,10 @@ struct SecuredMarkdownScrollRetentionTests {
         return minimumOffset
     }
 
-    private func makeDocument() -> FileCore.FileDocument {
+    private func makeDocument(includeLinks: Bool) -> FileCore.FileDocument {
         let source = (1 ... 120).map {
             "Paragraph \($0): ordinary preview text that remains unchanged while another paragraph is edited."
+                + (includeLinks ? " [related](related.md)" : "")
         }.joined(separator: "\n\n")
         return FileDocument(fileURL: URL(fileURLWithPath: "/tmp/secured-scroll-fixture/story.md"), text: source)
     }

@@ -110,7 +110,7 @@ struct BlockView: View {
     private var secureOrLegacyText: some View {
         let source = renderedSource
         let parser = markupCache.parser(for: source, baseURL: linkResolver.baseURL)
-        let text = StructuredText(source, parser: parser)
+        let text = StructuredText(parser.renderingInput, parser: parser)
         // Textual's attachment overlay can retain old symbol geometry when
         // an existing block gains or changes inline math. Remount only blocks
         // with a possible math delimiter when their parsed input changes;

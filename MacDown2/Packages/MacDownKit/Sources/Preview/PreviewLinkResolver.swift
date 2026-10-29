@@ -17,7 +17,8 @@ public struct PreviewLinkResolver: Sendable, Equatable {
     /// is set.
     public func resolve(_ url: URL) -> URL {
         guard url.scheme == nil || url.scheme?.isEmpty == true else {
-            return url
+            // Parsed relative URLs inherit a scheme from their base. Flatten it before routing drops fragments.
+            return url.absoluteURL
         }
         guard let baseURL else { return url }
         return URL(string: url.absoluteString, relativeTo: baseURL)?.absoluteURL ?? url

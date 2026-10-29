@@ -43,15 +43,38 @@ struct PreviewMarkupCacheTests {
         #expect(try resolved.attributedString(for: source) != changed.attributedString(for: changed.source))
     }
 
-    @Test func relativeLinksReparseWhenTheDocumentBaseChanges() throws {
+    @Test(arguments: ["Ordinary **formatted** prose", "`[code](relative.md)`", "Inline $x^2$ math"])
+    func textWithoutURLAttributesKeepsItsIdentityWhenTheDocumentMoves(_ source: String) {
         let cache = PreviewMarkupCache()
-        let source = "[related](related.md)"
         let first = cache.parser(for: source, baseURL: URL(fileURLWithPath: "/tmp/A/story.md"))
         let moved = cache.parser(for: source, baseURL: URL(fileURLWithPath: "/tmp/B/story.md"))
-        #expect(first.renderingIdentity(mathContentID: "", resourceLoadID: nil)
-            != moved.renderingIdentity(mathContentID: "", resourceLoadID: nil))
-        #expect(try first.attributedString(for: source).runs.compactMap(\.link)
-            != moved.attributedString(for: source).runs.compactMap(\.link))
+        #expect(first.renderingIdentity(mathContentID: source, resourceLoadID: nil)
+            == moved.renderingIdentity(mathContentID: source, resourceLoadID: nil))
+    }
+
+    @Test(arguments: ["[related](related.md)", "![image](image.png)", "![image][ref]\n\n[ref]: image.png"])
+    func URLAttributesReparseWhenTheDocumentBaseChanges(_ source: String) throws {
+        let cache = PreviewMarkupCache()
+        let first = cache.parser(for: source, baseURL: URL(fileURLWithPath: "/tmp/A/story.md"))
+        let moved = cache.parser(for: source, baseURL: URL(fileURLWithPath: "/tmp/B/story.md"))
+        if first.hasResourceReferences {
+            #expect(first.renderingIdentity(mathContentID: "", resourceLoadID: nil)
+                != moved.renderingIdentity(mathContentID: "", resourceLoadID: nil))
+        } else {
+            #expect(first.renderingIdentity(mathContentID: "", resourceLoadID: nil)
+                == moved.renderingIdentity(mathContentID: "", resourceLoadID: nil))
+            #expect(first.renderingInput != moved.renderingInput)
+        }
+        #expect(try first.attributedString(for: first.renderingInput) == first.attributedString(for: source))
+        #expect(try moved.attributedString(for: moved.renderingInput) == moved.attributedString(for: source))
+        let initialURLs = try first.attributedString(for: source).runs.compactMap {
+            ($0.link ?? $0.imageURL)?.absoluteString
+        }
+        let movedURLs = try moved.attributedString(for: source).runs.compactMap {
+            ($0.link ?? $0.imageURL)?.absoluteString
+        }
+        #expect(!initialURLs.isEmpty)
+        #expect(initialURLs != movedURLs)
     }
 
     @Test func cachedParsingIsIndependentOfResourceGenerationsAndReusedByTextual() throws {

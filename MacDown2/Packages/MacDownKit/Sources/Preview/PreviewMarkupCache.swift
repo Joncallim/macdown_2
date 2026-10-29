@@ -38,6 +38,7 @@ struct CachedPreviewMarkup: MarkupParser {
     let result: Result<AttributedString, any Error>
 
     let hasResourceReferences: Bool
+    private let hasURLReferences: Bool
 
     init(source: String, baseURL: URL?, result: Result<AttributedString, any Error>) {
         self.source = source
@@ -45,22 +46,33 @@ struct CachedPreviewMarkup: MarkupParser {
         self.result = result
         if case let .success(attributed) = result {
             hasResourceReferences = attributed.runs.contains { $0.imageURL != nil || $0.textual.emojiURL != nil }
+            hasURLReferences = hasResourceReferences || attributed.runs.contains { $0.link != nil }
         } else {
             // A failed classification must not retain potentially resource-bearing Textual state.
             hasResourceReferences = true
+            hasURLReferences = true
         }
+    }
+
+    /// Textual observes only its input string, not changes to its parser. A link-only block can rebind in place
+    /// when that input changes; the private adapter key never becomes rendered text or authored resource input.
+    var renderingInput: String {
+        guard hasURLReferences, !hasResourceReferences else { return source }
+        let location = baseURL?.absoluteString ?? ""
+        return "\u{0}\(location.utf8.count):\(location)\(source)"
     }
 
     func renderingIdentity(mathContentID: String, resourceLoadID: UUID?) -> PreviewTextRenderingIdentity {
         PreviewTextRenderingIdentity(
-            baseURL: baseURL, mathContentID: mathContentID,
+            // Resources still replace asynchronous attachment state; ordinary links reparse in place.
+            baseURL: hasResourceReferences ? baseURL : nil, mathContentID: mathContentID,
             resourceLoadID: hasResourceReferences ? resourceLoadID : nil
         )
     }
 
     func attributedString(for input: String) throws -> AttributedString {
         // Preserve the established attachment parser path; cache only ordinary text output.
-        guard input == source, !hasResourceReferences else {
+        guard input == source || input == renderingInput, !hasResourceReferences else {
             return try PreviewMarkupParser(baseURL: baseURL, syntaxExtensions: [.math]).attributedString(for: input)
         }
         return try result.get()
