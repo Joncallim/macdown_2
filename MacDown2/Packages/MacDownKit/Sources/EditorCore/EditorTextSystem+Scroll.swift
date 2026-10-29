@@ -198,12 +198,12 @@ public extension EditorTextSystem {
         scrollView.contentView.scroll(to: origin)
         scrollView.reflectScrolledClipView(scrollView.contentView)
 
-        if pendingExternalViewportRevision == editRevision {
+        guard pendingExternalViewportRevision == editRevision else {
+            pendingExternalViewport = nil
             pendingExternalViewportRevision = nil
-            return true
+            return false
         }
-        pendingExternalViewport = nil
-        return false
+        return true
     }
 
     /// Brings the frame height up to date off the back of an editing or
@@ -237,6 +237,7 @@ public extension EditorTextSystem {
             guard !Task.isCancelled, let self else { return }
             syncFrameHeightToContent()
             let needsExternalViewportSettle = applyPendingExternalViewport()
+            let externalViewportRevision = pendingExternalViewportRevision
             applyPendingScrollOffset()
 
             // Setting a replacement selection can trigger NSTextView's own
@@ -250,10 +251,12 @@ public extension EditorTextSystem {
                 return
             }
             guard !Task.isCancelled,
-                  pendingExternalViewportRevision == editRevision
+                  externalViewportRevision == editRevision
             else { return }
             syncFrameHeightToContent()
             _ = applyPendingExternalViewport()
+            pendingExternalViewport = nil
+            pendingExternalViewportRevision = nil
         }
     }
 }

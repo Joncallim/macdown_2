@@ -113,6 +113,8 @@ struct EditorTextSystemTests {
 
         #expect(system.selectedRange == selectedLine)
         #expect(system.topVisibleUTF16Offset == viewport.topVisibleUTF16Offset)
+        #expect(system.pendingExternalViewport == nil)
+        #expect(system.pendingExternalViewportRevision == nil)
     }
 
     @Test("selectedRange can be read and written")
