@@ -1,9 +1,13 @@
+import AppKit
 import AppSettings
 import EditorCore
 import FileCore
+import FileTree
+import Highlighting
 @testable import MacDown2
 import MarkdownEngine
 import Testing
+import Themes
 import Workspace
 
 @Suite("AppSettings wiring")
@@ -133,5 +137,78 @@ struct AppSettingsWiringTests {
             from: FormatSettings(defaultEncodingForNewDocuments: "shift-jis")
         )
         #expect(resolved == .utf8Default)
+    }
+}
+
+extension AppSettingsWiringTests {
+    @Test("document windows use saved font settings and follow later changes")
+    func documentWindowsShareTheLiveFontSettings() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let suiteName = "document-font-settings-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let preferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
+        let settings = AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults))
+        settings.editor.font = FontDescriptor(familyName: "Helvetica", size: 19)
+        let coordinator = WindowCoordinator(
+            sessionStore: WorkspaceSessionStore(fileURL: root.appendingPathComponent("session.json")),
+            recoveryBuffer: RecoveryBuffer(recoveryDirectory: root.appendingPathComponent("Recovery")),
+            themeController: ThemeController(preferenceStore: UserDefaultsThemePreferenceStore(defaults: defaults)),
+            grammarRegistry: GrammarRegistry(),
+            fileTreePreferences: preferences,
+            recentFolderRoots: RecentFolderRoots(preferences: preferences),
+            recentFileDocuments: RecentFileDocuments(preferences: preferences),
+            appSettings: settings,
+            workspaceStateStore: WorkspaceStateStore(defaults: defaults)
+        )
+        defer {
+            for controller in coordinator.controllers {
+                coordinator.removeController(controller)
+                controller.close()
+            }
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let first = try makeFontSettingsEditor(coordinator: coordinator)
+        try #require(await editorUsesFont(first, descriptor: settings.editor.font))
+        settings.editor.font = FontDescriptor(familyName: "Menlo", size: 24)
+        #expect(await editorUsesFont(first, descriptor: settings.editor.font))
+        let second = try makeFontSettingsEditor(coordinator: coordinator)
+        #expect(await editorUsesFont(second, descriptor: settings.editor.font))
+    }
+
+    private func makeFontSettingsEditor(coordinator: WindowCoordinator) throws -> EditorTextSystem {
+        let model = coordinator.makeWindowModel()
+        let format = try #require(FileFormatRegistry.defaultFormats.first { $0.id == "plaintext" })
+        model.tabStore.newTab(document: FileDocument(
+            text: "Document font settings must reach rendered text.",
+            format: format,
+            recoveryBuffer: coordinator.recoveryBuffer
+        ))
+        let tabID = try #require(model.tabStore.activeTab?.id)
+        model.tabStore.setPreviewLayout(.editorOnly, for: tabID)
+        let controller = WindowController(
+            model: model,
+            coordinator: coordinator,
+            themeController: coordinator.themeController,
+            grammarRegistry: coordinator.grammarRegistry,
+            fileTreePreferences: coordinator.fileTreePreferences
+        )
+        coordinator.controllers.append(controller)
+        return try #require(controller.editorStore.existingSystem(for: tabID.uuidString))
+    }
+
+    private func editorUsesFont(_ system: EditorTextSystem, descriptor: FontDescriptor) async -> Bool {
+        let expected = DocumentEditorSplitView.resolvedFont(from: descriptor)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
+            let rendered = system.textView.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+            if system.textView.font == expected, rendered == expected {
+                return true
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return false
     }
 }

@@ -46,7 +46,11 @@ struct EditorGutterViewDrawPathTests {
         let inked: (Int, Int) -> Bool = { column, row in abs(luma(bitmap, column, row) - background) > 0.12 }
         let width = bitmap.pixelsWide
         let height = bitmap.pixelsHigh
-        let rowHasInk = (0 ..< height).map { row in (0 ..< width).contains { inked($0, row) } }
+        // Current-line presentation adds a separate marker to the LEFT of
+        // each active numeral. This orientation test measures the numeral's
+        // asymmetric "2" only, not that marker's unrelated shape.
+        let numeralColumns = (width / 2) ..< width
+        let rowHasInk = (0 ..< height).map { row in numeralColumns.contains { inked($0, row) } }
         var clusters: [ClosedRange<Int>] = []
         var start: Int?
         for (row, hasInk) in rowHasInk.enumerated() {
@@ -63,7 +67,7 @@ struct EditorGutterViewDrawPathTests {
         }
         guard clusters.count >= 2 else { return nil }
         let band = clusters[1]
-        let columns = (0 ..< width).filter { column in band.contains { inked(column, $0) } }
+        let columns = numeralColumns.filter { column in band.contains { inked(column, $0) } }
         guard let first = columns.first, let last = columns.last else { return nil }
         return Mask(rows: band.map { row in (first ... last).map { inked($0, row) } })
     }

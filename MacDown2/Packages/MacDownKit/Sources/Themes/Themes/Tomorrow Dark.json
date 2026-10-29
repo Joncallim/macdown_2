@@ -6,7 +6,8 @@
     "background": {"red": 0.176, "green": 0.176, "blue": 0.176, "alpha": 1},
     "foreground": {"red": 0.8, "green": 0.8, "blue": 0.8, "alpha": 1},
     "caret": {"red": 0.8, "green": 0.6, "blue": 0.8, "alpha": 1},
-    "selection": {"red": 0.318, "green": 0.318, "blue": 0.318, "alpha": 1}
+    "selection": {"red": 0.318, "green": 0.318, "blue": 0.318, "alpha": 1},
+    "currentLine": {"red": 0.8, "green": 0.8, "blue": 0.8, "alpha": 0.09}
   },
   "tokenStyles": {
     "keyword": {"color": {"red": 0.8, "green": 0.6, "blue": 0.8, "alpha": 1}},

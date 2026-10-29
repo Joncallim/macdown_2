@@ -704,7 +704,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "2f6debe020ccc248035b394ba5bb3c1720130c086384b9c1f1ceeb535495eb61"
+          "content": "817cf2cfba59fd7590c255824cea3e3899729f31fd75533e15970a35ee6975ed"
         }
       ],
       "licenses": [
@@ -714,7 +714,7 @@
       ],
       "name": "Editor theme “Tomorrow Dark” (colour values)",
       "pedigree": {
-        "notes": "Colour values re-expressed as this app's JSON theme format and mapped to tree-sitter capture names."
+        "notes": "Colour values re-expressed as this app's JSON theme format and mapped to tree-sitter capture names. The translucent current-line wash is a local UI choice using the existing foreground colour."
       },
       "properties": [
         {
@@ -749,7 +749,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "e69b56879eda7abdcc84a51158ae5a3c4669aad4343e7631298f35329412e3e6"
+          "content": "c0ea792ab447f64794e321b43ae6ea9d0ed0ff28302cdd50a39522a205aca964"
         }
       ],
       "licenses": [
@@ -759,7 +759,7 @@
       ],
       "name": "Editor theme “Tomorrow Light” (colour values)",
       "pedigree": {
-        "notes": "Token colours taken from GitHub Light syntax v0.4.1; chrome colours (#2d2d2d text, #6c4f6c caret, #b4d7ff selection) are local choices with no identified upstream."
+        "notes": "Token colours taken from GitHub Light syntax v0.4.1; chrome colours (#2d2d2d text, #6c4f6c caret, #b4d7ff selection) and the translucent current-line wash are local choices with no identified upstream."
       },
       "properties": [
         {
@@ -1466,7 +1466,7 @@
       "version": "1.0.0"
     }
   },
-  "serialNumber": "urn:uuid:8538bbe2-e3fe-5a6a-ad27-c59de8edcb5d",
+  "serialNumber": "urn:uuid:3e32bd69-7265-5c5e-836b-801a38ec3027",
   "specVersion": "1.5",
   "version": 1
 }

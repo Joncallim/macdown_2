@@ -120,7 +120,8 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             folderSearchModel: folderSearchModel,
             externalFileController: externalFileController
         )
-        .environment(\.windowCoordinator, coordinator)
+        // AppKit creates this hosting root outside the App scene's environment.
+        .environment(\.windowCoordinator, coordinator).environment(\.appSettings, coordinator.appSettings)
         .environment(\.previewResourceWindowState, previewResourceState)
         let hostingController = NSHostingController(rootView: shell)
         let window = DocumentWindow(contentViewController: hostingController)
