@@ -17,6 +17,7 @@ struct BlockView: View {
     let resourceImageLoader: PreviewResourceImageLoader?
     let resourceLoadID: UUID?
     @Environment(\.previewOpenDocument) private var openDocument
+    @State private var markupCache = PreviewMarkupCache()
     let definitionIndex: PreviewLinkDefinitionIndex
     let mermaidFenceView: ((String) -> AnyView)?
     let d2FenceView: ((String) -> AnyView)?
@@ -108,20 +109,22 @@ struct BlockView: View {
     @ViewBuilder
     private var secureOrLegacyText: some View {
         let source = renderedSource
-        let text = StructuredText(
-            source,
-            parser: PreviewMarkupParser(baseURL: linkResolver.baseURL, syntaxExtensions: [.math])
-        )
+        let parser = markupCache.parser(for: source, baseURL: linkResolver.baseURL)
+        let text = StructuredText(source, parser: parser)
         // Textual's attachment overlay can retain old symbol geometry when
         // an existing block gains or changes inline math. Remount only blocks
         // with a possible math delimiter when their parsed input changes;
         // the outer PreviewBlock ID stays stable for scroll position and sync.
         let mathContentID = Self.inlineMathContentID(blockSource: block.source, renderedSource: source)
-        let content = text.id(mathContentID)
+        let content = text.id(parser.renderingIdentity(
+            mathContentID: mathContentID,
+            resourceLoadID: resourceImageLoader == nil ? nil : resourceLoadID
+        ))
         if let resourceImageLoader {
             // Textual keys its attachment task only by attributed text and can publish after cancellation.
-            // A new resource identity must therefore replace its complete state subtree.
-            content.id(resourceLoadID)
+            // Replace only resource-bearing subtrees: remounting ordinary paragraphs temporarily empties
+            // every Textual block, collapses scroll geometry, and feeds a false top-of-document scroll back.
+            content
                 .textual.imageAttachmentLoader(resourceImageLoader)
                 .textual.emojiAttachmentLoader(resourceImageLoader)
                 .textual.textSelection(.enabled)
