@@ -1,17 +1,20 @@
-import Foundation
+import Themes
 
-/// Theme inputs, mirroring `MermaidRenderContext`'s shape. Not yet acted
-/// on by `D2WebRenderer` — same disclosed, deliberate scope limit already
-/// recorded for Mermaid (issue #79); not solved for D2/Graphviz here
-/// either (epic-21-implementation.md §6 Definition of Done).
+/// Resolved artwork defaults and destination, shared by preview and export.
 public struct D2RenderContext: Sendable, Equatable, Hashable {
-    public let foregroundRed: Double
-    public let foregroundGreen: Double
-    public let foregroundBlue: Double
-    public let backgroundRed: Double
-    public let backgroundGreen: Double
-    public let backgroundBlue: Double
+    public let palette: DiagramPalette
+    public let destination: DiagramDestination
 
+    public var fingerprint: String {
+        destination.rawValue + "|" + palette.fingerprint
+    }
+
+    public init(palette: DiagramPalette = .neutralLight, destination: DiagramDestination = .print) {
+        self.palette = palette
+        self.destination = destination
+    }
+
+    /// Component callers describe screen preview colors.
     public init(
         foregroundRed: Double,
         foregroundGreen: Double,
@@ -20,11 +23,13 @@ public struct D2RenderContext: Sendable, Equatable, Hashable {
         backgroundGreen: Double,
         backgroundBlue: Double
     ) {
-        self.foregroundRed = foregroundRed
-        self.foregroundGreen = foregroundGreen
-        self.foregroundBlue = foregroundBlue
-        self.backgroundRed = backgroundRed
-        self.backgroundGreen = backgroundGreen
-        self.backgroundBlue = backgroundBlue
+        destination = .screen
+        palette = .resolved(
+            for: .screen,
+            foreground: ThemeColor(red: foregroundRed, green: foregroundGreen, blue: foregroundBlue),
+            background: ThemeColor(red: backgroundRed, green: backgroundGreen, blue: backgroundBlue)
+        )
     }
+
+    public static let neutralLight = D2RenderContext()
 }

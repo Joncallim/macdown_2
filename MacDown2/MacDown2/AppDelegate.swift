@@ -71,13 +71,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         launchURLs = Self.openFilesPaths(from: args).map { URL(fileURLWithPath: $0) }
         launchFolderURL = Self.openFolderPath(from: args).map { URL(fileURLWithPath: $0, isDirectory: true) }
-        themeController = ThemeController()
+        themeController = ThemeController(preferenceStore: UserDefaultsThemePreferenceStore(defaults: defaults))
         grammarRegistry = GrammarRegistry()
         fileTreePreferences = FileTreePreferences(store: UserDefaultsFileTreePreferenceStore(defaults: defaults))
         recentFolderRoots = RecentFolderRoots(preferences: fileTreePreferences)
         recentFileDocuments = RecentFileDocuments(preferences: fileTreePreferences)
         appSettings = AppSettingsModel(store: UserDefaultsAppSettingsStore(defaults: defaults))
         super.init()
+        connectThemeAppearanceOverride()
 
         coordinator = WindowCoordinator(
             sessionStore: sessionStore,
@@ -95,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = true
-        syncThemeAppearance()
+        applyThemeAppearanceOverride()
 
         DistributedNotificationCenter.default().addObserver(
             self,
@@ -176,7 +177,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func systemAppearanceChanged() {
+        guard themeController.appearanceMode == .system else { return }
         syncThemeAppearance()
+    }
+
+    private func connectThemeAppearanceOverride() {
+        themeController.appearanceModeDidChange = { [weak self] _ in
+            self?.applyThemeAppearanceOverride()
+        }
+    }
+
+    private func applyThemeAppearanceOverride() {
+        switch themeController.appearanceMode {
+        case .system:
+            NSApp.appearance = nil
+            syncThemeAppearance()
+        case .light:
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
     }
 
     private func syncThemeAppearance() {

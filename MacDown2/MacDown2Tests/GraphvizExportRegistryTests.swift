@@ -42,6 +42,7 @@ struct GraphvizExportRegistryTests {
         #expect(!prepared.bodyHTML.contains("<script"))
         #expect(!prepared.bodyHTML.contains("src=\"http"))
         #expect(!prepared.bodyHTML.contains("href=\"http"))
+        #expect(prepared.bodyHTML.localizedCaseInsensitiveContains("font-family=\"helvetica"))
     }
 
     @Test func aMalformedGraphvizFenceLeavesAuthoredSourceUntouchedWithADiagnostic() async throws {

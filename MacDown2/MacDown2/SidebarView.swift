@@ -47,18 +47,7 @@ struct SidebarView: View {
                 coordinator?.commandStateDidChange()
             }
         }
-        .onKeyPress(.return) {
-            if let url = fileTreeModel.selectedURL {
-                activateFileTreeURL(url)
-            } else if isJSON, let jsonSelected = outlineController.jsonSelectedItemID {
-                outlineController.activateJSON(jsonSelected)
-            } else if let selectedItemID = outlineController.selectedItemID {
-                outlineController.activate(selectedItemID)
-            } else {
-                return .ignored
-            }
-            return .handled
-        }
+        .onKeyPress(.return) { handleSidebarReturn() }
         .alert(
             "Folder Operation Failed",
             isPresented: Binding(
@@ -317,5 +306,23 @@ struct SidebarView: View {
                 )
             }
         }
+    }
+}
+
+private extension SidebarView {
+    func handleSidebarReturn() -> KeyPress.Result {
+        // A focused inline rename field owns Return. Do not open a file or
+        // navigate the outline before the field can commit its new name.
+        guard fileTreeModel.renamingURL == nil else { return .ignored }
+        if let url = fileTreeModel.selectedURL {
+            activateFileTreeURL(url)
+        } else if isJSON, let jsonSelected = outlineController.jsonSelectedItemID {
+            outlineController.activateJSON(jsonSelected)
+        } else if let selectedItemID = outlineController.selectedItemID {
+            outlineController.activate(selectedItemID)
+        } else {
+            return .ignored
+        }
+        return .handled
     }
 }

@@ -135,7 +135,7 @@ struct ExportCoordinator {
             format: Self.exportFormatOption(from: appSettings.previewExport.defaultExportFormat),
             style: Self.exportStyleEmbedding(from: appSettings.previewExport.defaultExportStyle)
         )
-        Self.apply(selectionModel.format, to: panel, defaultBaseName: defaultName)
+        Self.initializeFilename(selectionModel.format, in: panel, defaultBaseName: defaultName)
 
         let panelView = ExportPanelView(model: selectionModel) { [weak panel] format in
             guard let panel else { return }
@@ -168,6 +168,13 @@ struct ExportCoordinator {
 
         guard let url, !Task.isCancelled else { return nil }
         return ExportSelection(url: url, format: selectionModel.format, style: selectionModel.style)
+    }
+
+    /// Starts with the document's name even when AppKit prepopulates the field.
+    /// Later format changes preserve whatever name the user has entered.
+    static func initializeFilename(_ format: ExportFormatOption, in panel: NSSavePanel, defaultBaseName: String) {
+        panel.nameFieldStringValue = defaultBaseName
+        apply(format, to: panel, defaultBaseName: defaultBaseName)
     }
 
     /// Keeps the panel's filename and enforced content type in step with the

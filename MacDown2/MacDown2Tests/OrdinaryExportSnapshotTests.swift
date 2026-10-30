@@ -76,7 +76,7 @@ struct OrdinaryExportSnapshotTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let store = OrdinaryExportSettingsStore()
         let settings = AppSettingsModel(store: store)
-        let themeController = ThemeController()
+        let themeController = ThemeController(preferenceStore: OrdinaryExportThemeStore())
         themeController.setAppearance(.light)
         let preferences = FileTreePreferences()
         let coordinator = WindowCoordinator(
@@ -108,6 +108,20 @@ struct OrdinaryExportSnapshotTests {
         let directory: URL
         let outputURL: URL
     }
+}
+
+/// Exports capture themes independently of the owner's saved appearance and theme choices.
+private struct OrdinaryExportThemeStore: ThemePreferenceStoring {
+    func loadSelection() -> (lightID: String, darkID: String)? {
+        (BundledThemes.light.id, BundledThemes.dark.id)
+    }
+
+    func saveSelection(lightID _: String, darkID _: String) {}
+    func loadAppearanceMode() -> ThemeAppearanceMode? {
+        .system
+    }
+
+    func saveAppearanceMode(_: ThemeAppearanceMode) {}
 }
 
 @MainActor

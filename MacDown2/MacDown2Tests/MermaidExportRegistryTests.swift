@@ -22,7 +22,7 @@ struct MermaidExportRegistryTests {
         #expect(!ContributionRegistry.standard.contributions.contains { $0.id == "mermaid" })
     }
 
-    @Test func mermaidRenderContextUsesNeutralLightPolicyForEveryDestination() {
+    @Test func allDiagramAdaptersResolveScreenAndPrintSeparately() {
         let darkPreview = ContributionRegistry.mermaidRenderContext(
             theme: BundledThemes.dark, isPrintTarget: false
         )
@@ -30,7 +30,18 @@ struct MermaidExportRegistryTests {
             theme: BundledThemes.light, isPrintTarget: true
         )
 
-        #expect(darkPreview == .neutralLight)
+        #expect(darkPreview.destination == .screen)
+        #expect(darkPreview.palette == .resolved(
+            for: .screen, foreground: BundledThemes.dark.chrome.foreground,
+            background: BundledThemes.dark.chrome.background
+        ))
+        #expect(ContributionRegistry.d2RenderContext(theme: BundledThemes.dark, isPrintTarget: false)
+            .palette == darkPreview.palette)
+        #expect(ContributionRegistry.graphvizRenderContext(theme: BundledThemes.dark, isPrintTarget: false)
+            .palette == darkPreview.palette)
+        #expect(ContributionRegistry.d2RenderContext(theme: BundledThemes.dark, isPrintTarget: true) == .neutralLight)
+        #expect(ContributionRegistry
+            .graphvizRenderContext(theme: BundledThemes.dark, isPrintTarget: true) == .neutralLight)
         #expect(lightPrint == .neutralLight)
     }
 

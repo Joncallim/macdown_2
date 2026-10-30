@@ -212,6 +212,18 @@ struct WorkspaceCommands: Commands {
                 .keyboardShortcut("3", modifiers: [.command, .option])
             }
 
+            Picker(
+                "Appearance",
+                selection: Binding(
+                    get: { themeController.appearanceMode },
+                    set: { themeController.setAppearanceMode($0) }
+                )
+            ) {
+                Text("Follow System").tag(ThemeAppearanceMode.system)
+                Text("Light").tag(ThemeAppearanceMode.light)
+                Text("Dark").tag(ThemeAppearanceMode.dark)
+            }
+
             Menu("Theme") {
                 let active = themeController.current
                 let lightThemes = themeController.available.filter { $0.appearance == .light }
