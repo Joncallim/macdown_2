@@ -1,3 +1,4 @@
+import FileCore
 import Preview
 import SwiftUI
 
@@ -27,11 +28,16 @@ extension DocumentEditorSplitView {
     }
 
     private var canRequestPreviewResources: Bool {
+        Self.resourceAccessAvailable(document: document, mode: tab.previewMode)
+    }
+
+    static func resourceAccessAvailable(document: FileCore.FileDocument, mode: PreviewMode?) -> Bool {
+        guard document.fileURL != nil else { return false }
         switch PreviewRouter.previewKind(for: document.format) {
-        case .markdown: true
+        case .markdown: return true
         case .html:
-            (tab.previewMode ?? PreviewRouter.defaultPreviewMode(for: document.format)) != .source
-        case .jsonOutline, .none: false
+            return (mode ?? PreviewRouter.defaultPreviewMode(for: document.format)) != .source
+        case .jsonOutline, .none: return false
         }
     }
 }

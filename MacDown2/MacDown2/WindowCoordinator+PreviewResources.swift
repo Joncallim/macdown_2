@@ -1,8 +1,41 @@
 import AppKit
 import FileCore
+import Preview
 import Workspace
 
 extension WindowCoordinator {
+    private var previewCommandModel: WorkspaceModel? {
+        currentCommandController(keyWindow: NSApp.keyWindow, mainWindow: NSApp.mainWindow)?.model
+    }
+
+    var canChooseKeyPreviewResources: Bool {
+        _ = commandStateRevision
+        guard let tab = previewCommandModel?.tabStore.activeTab else { return false }
+        return DocumentEditorSplitView.resourceAccessAvailable(document: tab.document, mode: tab.previewMode)
+    }
+
+    var canSetKeyHTMLPreviewMode: Bool {
+        _ = commandStateRevision
+        guard let document = previewCommandModel?.activeDocument else { return false }
+        return PreviewRouter.previewKind(for: document.format) == .html
+    }
+
+    func chooseKeyPreviewResources() {
+        guard let model = previewCommandModel, let tab = model.tabStore.activeTab,
+              DocumentEditorSplitView.resourceAccessAvailable(document: tab.document, mode: tab.previewMode)
+        else { return }
+        allowPreviewResources(for: model, document: tab.document, tabID: tab.id)
+    }
+
+    func setKeyHTMLPreviewMode(_ mode: PreviewMode) {
+        guard let model = previewCommandModel, let tab = model.tabStore.activeTab,
+              PreviewRouter.previewKind(for: tab.document.format) == .html,
+              PreviewRouter.supports(mode, for: tab.document.format)
+        else { return }
+        model.tabStore.setPreviewMode(mode, for: tab.id)
+        scheduleSaveSession()
+    }
+
     /// The request originates in a document view, so use that view's native window rather than ambient key focus.
     func allowPreviewResources(for model: WorkspaceModel, document: FileDocument, tabID: UUID) {
         guard let controller = controllers.first(where: { $0.model === model }),
