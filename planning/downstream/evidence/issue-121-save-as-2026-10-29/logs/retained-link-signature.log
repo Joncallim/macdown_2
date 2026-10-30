@@ -1,0 +1,14 @@
+Executable=/private/tmp/mostlytext-519-scroll-fix-20261029/release-build/Build/Products/Release/MacDown2.app/Contents/MacOS/MacDown2
+Identifier=com.joncallim.MacDown2
+Format=app bundle with Mach-O universal (x86_64 arm64)
+CodeDirectory v=20500 size=102722 flags=0x10000(runtime) hashes=3203+3 location=embedded
+Signature size=8974
+Authority=Developer ID Application: Jonathan Lim (968BRM85G5)
+Authority=Developer ID Certification Authority
+Authority=Apple Root CA
+Timestamp=29 Oct 2026 at 18:55:02
+Info.plist entries=27
+TeamIdentifier=968BRM85G5
+Runtime Version=26.5.0
+Sealed Resources version=2 rules=13 files=306
+Internal requirements count=1 size=216

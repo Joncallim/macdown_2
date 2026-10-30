@@ -1,0 +1,12 @@
+{
+  "initialAppearance": "Light",
+  "laterAppearance": "Dark",
+  "automaticAppearanceSwitching": true,
+  "globalPreferencesMTimeLocal": "2026-10-29T19:00:19.680614+08:00",
+  "beforeSourceScrollbar": 0.9400890296325453,
+  "afterSourceScrollbar": 0.002986173323055289,
+  "afterCaret": "Ln991Col19",
+  "afterSourceCharacters": 35307,
+  "actions": "typez,readstate,BackSpace,readstate,SaveAs+GoTo requested in one control call; calltimedout30.886sandkernelreset; follow-upAXshowsnoSaveAssheet,dirtysourcehasoriginalbytes",
+  "outcome": "Observedviewportmovementunderappearance/control-callconfound;exactactionphaseandcauseunproven;notcountedaspassingeditingacceptance"
+}

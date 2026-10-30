@@ -72,6 +72,20 @@ final class PreviewResourceWindowState {
         return origin
     }
 
+    func cancelSelection(_ origin: SelectionOrigin) {
+        if pendingSelection == origin {
+            pendingSelection = nil
+        }
+    }
+
+    func isPendingSelection(_ origin: SelectionOrigin, for document: FileCore.FileDocument) -> Bool {
+        !isClosed && pendingSelection == origin && origin.matches(document)
+    }
+
+    func hasGrant(for document: FileCore.FileDocument) -> Bool {
+        !isClosed && attachment?.matches(document) == true
+    }
+
     /// Called after the panel returns. Both its receipt and the document are checked against the pre-panel origin
     /// before and after opening the pinned descriptor; a stale result is revoked, never installed.
     func install(

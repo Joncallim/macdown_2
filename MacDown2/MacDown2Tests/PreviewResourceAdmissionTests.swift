@@ -192,3 +192,104 @@ struct PreviewResourceAdmissionTests {
         signal.wait(timeout: .now() + 5) == .success
     }
 }
+
+extension PreviewResourceAdmissionTests {
+    @Test func imageBurstRecoversAfterTemporaryReservationsSettle() async throws {
+        let fixture = try await makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.sandbox) }
+        let finish = DispatchSemaphore(value: 0)
+        defer { for _ in 0 ..< 8 {
+            finish.signal()
+        } }
+        let admission = gatedAdmission(finish)
+        let context = PreviewResourceLoad(grant: fixture.grant)
+        let reference = try ResourceReference.parse("image.png")
+        let reads = (0 ..< 8).map { _ in
+            Task {
+                let payload = try await PreviewResourceImageProvider.readImage(
+                    reference, in: context, admission: admission
+                )
+                return payload.snapshot.bytes
+            }
+        }
+        defer { for read in reads {
+            read.cancel()
+        } }
+        try await waitForFullReservations(context, in: admission)
+        #expect(await admission.status(for: context)?.reserved == PreviewResourceAdmission.loadLimit)
+        // Hold long enough for a failed attempt, then release within the bounded retry window.
+        try await Task.sleep(for: .milliseconds(35))
+        for _ in 0 ..< 8 {
+            finish.signal()
+        }
+        for read in reads {
+            let bytes = try await read.value
+            #expect(bytes == Data("image".utf8))
+        }
+        await admission.retire(context)
+        try await waitForDrain(of: context, in: admission)
+        fixture.grant.revoke()
+    }
+
+    @Test func saturatedImageRetryIsBoundedAndHonorsCancellationAndRevocation() async throws {
+        let fixture = try await makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.sandbox) }
+        let finish = DispatchSemaphore(value: 0)
+        defer { for _ in 0 ..< 4 {
+            finish.signal()
+        } }
+        let admission = gatedAdmission(finish)
+        let context = PreviewResourceLoad(grant: fixture.grant)
+        let reference = try ResourceReference.parse("image.png")
+        let reads = (0 ..< 4).map { _ in Task { try await admission.read(reference, in: context) } }
+        defer { for read in reads {
+            read.cancel()
+        } }
+        try await waitForFullReservations(context, in: admission)
+        await #expect(throws: PreviewResourceAdmissionError.limitExceeded) {
+            try await PreviewResourceImageProvider.readImage(reference, in: context, admission: admission)
+        }
+        let cancelled = Task {
+            try await PreviewResourceImageProvider.readImage(reference, in: context, admission: admission)
+        }
+        try await Task.sleep(for: .milliseconds(35))
+        cancelled.cancel()
+        await #expect(throws: CancellationError.self) { try await cancelled.value }
+        let revoked = Task {
+            try await PreviewResourceImageProvider.readImage(reference, in: context, admission: admission)
+        }
+        try await Task.sleep(for: .milliseconds(35))
+        await admission.retire(context)
+        await #expect(throws: PreviewResourceAdmissionError.revoked) { try await revoked.value }
+        for _ in 0 ..< 4 {
+            finish.signal()
+        }
+        for read in reads {
+            _ = try? await read.value
+        }
+        try await waitForDrain(of: context, in: admission)
+        fixture.grant.revoke()
+    }
+
+    private func gatedAdmission(_ finish: DispatchSemaphore) -> PreviewResourceAdmission {
+        PreviewResourceAdmission(readOperation: { reference, directory, cancellation in
+            finish.wait()
+            return try ContainedResourceReader.read(
+                reference, in: directory, maxBytes: PreviewResourceAdmission.resourceLimit,
+                cancellation: cancellation
+            )
+        })
+    }
+
+    private func waitForFullReservations(_ context: PreviewResourceLoad,
+                                         in admission: PreviewResourceAdmission) async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while await admission.status(for: context)?.reserved != PreviewResourceAdmission.loadLimit {
+            guard ContinuousClock.now < deadline else {
+                Issue.record("Controlled image burst did not fill the unchanged input reservation cap")
+                throw PreviewResourceAdmissionError.limitExceeded
+            }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+    }
+}

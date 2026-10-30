@@ -1,0 +1,7 @@
+◇ Suite "TextFilter held-group cleanup" started.
+◇ Test failedReapBecomesUnresolvedWithoutAStaleNumericSignal() started.
+✘ Test failedReapBecomesUnresolvedWithoutAStaleNumericSignal() recorded an issue at TextFilterFixtureHeldGroupCleanupTests.swift:147:13: Expectation failed: (FileManager.default → <NSFileManager: 0x1049b2f40>).fileExists(atPath: ready.path → "/var/folders/j5/wl06phn904v7z5wrg04dh3z40000gn/T/00C1D342-6E57-4F48-91AD-BC3CB3C55B43/ready")
+✘ Test failedReapBecomesUnresolvedWithoutAStaleNumericSignal() failed after 1.856 seconds with 1 issue.
+◇ Test cancellationBeforeReleaseMarkerStillJoinsTheHeldGroup() started.
+✔ Test cancellationBeforeReleaseMarkerStillJoinsTheHeldGroup() passed after 0.468 seconds.
+✘ Suite "TextFilter held-group cleanup" failed after 2.325 seconds with 1 issue.

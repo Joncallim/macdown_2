@@ -30,6 +30,24 @@ struct BoundedHTMLPreviewHandlerTests {
         handler.dispose()
     }
 
+    @Test func ungrantedSourceLoadsButSiblingImageIsDenied() throws {
+        let document = FileDocument(fileURL: URL(fileURLWithPath: "/tmp/preview-document.html"))
+        let load = try BoundedHTMLPreviewLoad(document: document, source: "<p>source</p>", grant: nil)
+        let handler = BoundedHTMLPreviewHandler(load: load)
+        let view = makeView()
+        let main = RecordedHTMLTask(url: load.mainURL)
+        handler.webView(view, start: main)
+        #expect(main.events == ["response", "data", "finish"])
+        let source = try #require(String(bytes: main.bytes, encoding: .utf8))
+        #expect(source.contains("source"))
+
+        let image = try RecordedHTMLTask(url: #require(URL(string: load.mainURL.absoluteString + "image.png")))
+        handler.webView(view, start: image)
+        #expect(image.events == ["failure"])
+        #expect(image.bytes.isEmpty)
+        handler.dispose()
+    }
+
     @Test func stoppingAtResponseNeverDeliversDataOrTerminalCallback() throws {
         let document = FileDocument(fileURL: URL(fileURLWithPath: "/tmp/preview-document.html"))
         let load = try BoundedHTMLPreviewLoad(document: document, source: "<p>stopped</p>", grant: nil)
@@ -103,6 +121,37 @@ struct BoundedHTMLPreviewHandlerTests {
         handler.webView(view, start: task)
         #expect(task.events == ["failure"])
         #expect(handler.activeAttemptCount == 0)
+        handler.dispose()
+        fixture.grant.revoke()
+    }
+
+    @Test func replacementBeforeContainedOpenNeverServesOutsideBytes() async throws {
+        let fixture = try await makeGrant(filename: "image.png", text: "inside")
+        let outside = fixture.folder.deletingLastPathComponent()
+            .appendingPathComponent("outside-\(UUID().uuidString).png")
+        let outsideBytes = Data("outside-sentinel".utf8)
+        try outsideBytes.write(to: outside)
+        defer {
+            try? FileManager.default.removeItem(at: fixture.folder)
+            try? FileManager.default.removeItem(at: outside)
+        }
+        let image = fixture.folder.appendingPathComponent("image.png")
+        let admission = PreviewResourceAdmission(readOperation: { reference, directory, cancellation in
+            try FileManager.default.removeItem(at: image)
+            try FileManager.default.createSymbolicLink(at: image, withDestinationURL: outside)
+            return try ContainedResourceReader.read(
+                reference, in: directory,
+                maxBytes: PreviewResourceAdmission.resourceLimit, cancellation: cancellation
+            )
+        })
+        let load = try BoundedHTMLPreviewLoad(document: fixture.document, source: "hello", grant: fixture.token)
+        let handler = BoundedHTMLPreviewHandler(load: load, admission: admission)
+        let view = makeView()
+        let task = try RecordedHTMLTask(url: #require(URL(string: load.mainURL.absoluteString + "image.png")))
+        handler.webView(view, start: task)
+        try await waitForTerminal(task)
+        #expect(task.events == ["failure"])
+        #expect(task.bytes != outsideBytes)
         handler.dispose()
         fixture.grant.revoke()
     }
@@ -203,8 +252,10 @@ struct BoundedHTMLPreviewHandlerTests {
             token: PreviewResourceLoad(grant: grant)
         )
     }
+}
 
-    private func waitForTerminal(_ task: RecordedHTMLTask) async throws {
+private extension BoundedHTMLPreviewHandlerTests {
+    func waitForTerminal(_ task: RecordedHTMLTask) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while !task.events.contains("finish"), !task.events.contains("failure") {
             guard ContinuousClock.now < deadline else {
@@ -215,7 +266,7 @@ struct BoundedHTMLPreviewHandlerTests {
         }
     }
 
-    private func waitForDrain(of token: PreviewResourceLoad, in admission: PreviewResourceAdmission) async throws {
+    func waitForDrain(of token: PreviewResourceLoad, in admission: PreviewResourceAdmission) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while await admission.status(for: token) != nil {
             guard ContinuousClock.now < deadline else {
@@ -226,7 +277,7 @@ struct BoundedHTMLPreviewHandlerTests {
         }
     }
 
-    private func waitForAttemptDrain(in handler: BoundedHTMLPreviewHandler) async throws {
+    func waitForAttemptDrain(in handler: BoundedHTMLPreviewHandler) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while handler.activeAttemptCount != 0 {
             guard ContinuousClock.now < deadline else {
@@ -237,14 +288,14 @@ struct BoundedHTMLPreviewHandlerTests {
         }
     }
 
-    private func makeView() -> WKWebView {
+    func makeView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
         return WKWebView(frame: .zero, configuration: configuration)
     }
 
-    private nonisolated static func waitForSignal(_ signal: DispatchSemaphore) -> Bool {
+    nonisolated static func waitForSignal(_ signal: DispatchSemaphore) -> Bool {
         signal.wait(timeout: .now() + 2) == .success
     }
 }

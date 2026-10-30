@@ -72,6 +72,12 @@ final class CommandPalettePanel: NSPanel, NSWindowDelegate {
         contentView = NSHostingView(rootView: view)
     }
 
+    /// SwiftUI menu availability depends on AppKit key focus, which is not observable itself.
+    /// Refresh after this panel takes focus so commands do not retain the document's enabled state.
+    func windowDidBecomeKey(_: Notification) {
+        coordinator?.commandStateDidChange()
+    }
+
     func windowWillClose(_: Notification) {
         coordinator?.commandPaletteDidClose(self)
     }

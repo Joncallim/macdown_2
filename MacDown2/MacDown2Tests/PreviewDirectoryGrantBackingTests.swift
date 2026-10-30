@@ -61,7 +61,7 @@ struct PreviewDirectoryGrantBackingTests {
         let document = other.appendingPathComponent("story.md")
         let selection = try #require(PreviewResourceFolderSelection.fixture(documentURL: document, folderURL: root))
 
-        await #expect(throws: ResourceReadError.denied) {
+        await #expect(throws: PreviewResourceSelectionError.folderDoesNotContainDocument) {
             try await PreviewDirectoryGrantBacking.acquire(
                 selection: selection, currentDocumentURL: document, epoch: UUID()
             )

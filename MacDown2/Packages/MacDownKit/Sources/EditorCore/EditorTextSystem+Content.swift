@@ -6,6 +6,7 @@ public extension EditorTextSystem {
     /// Replaces the entire document text. This is intended for external reloads
     /// and conflict resolution; it resets selection and scroll.
     func setText(_ text: String) {
+        cancelPresentationViewportRestoration()
         textView.string = text
         // The undo history addresses ranges of the text just replaced; undoing into the new
         // text raised NSRangeException (a crash) once the string was shorter.
@@ -28,7 +29,30 @@ public extension EditorTextSystem {
 
     /// Captures the selection and vertical viewport before an external reload.
     func viewportSnapshot() -> EditorViewportSnapshot {
-        EditorViewportSnapshot(selectedRange: selectedRange, scrollOffset: scrollOffset)
+        let sourceLocation: Int?
+        let fragmentOffset: CGFloat?
+        if let scrollView,
+           let fragment = layoutManager.textLayoutFragment(for: textView.convert(
+               scrollView.contentView.bounds.origin,
+               from: scrollView.contentView
+           )) {
+            sourceLocation = contentStorage.offset(
+                from: contentStorage.documentRange.location,
+                to: fragment.rangeInElement.location
+            )
+            fragmentOffset = scrollOffset - fragment.layoutFragmentFrame.minY - textView.textContainerInset.height
+        } else {
+            // An unavailable fragment is not a source anchor at zero. Keep
+            // the raw-offset fallback for editors without visible layout.
+            sourceLocation = nil
+            fragmentOffset = nil
+        }
+        return EditorViewportSnapshot(
+            selectedRange: selectedRange,
+            scrollOffset: scrollOffset,
+            topVisibleUTF16Offset: sourceLocation,
+            topVisibleFragmentOffset: fragmentOffset
+        )
     }
 
     /// Replaces editor content from a stable external snapshot without
@@ -38,6 +62,7 @@ public extension EditorTextSystem {
         preserving snapshot: EditorViewportSnapshot,
         clearUndo: Bool
     ) {
+        cancelPresentationViewportRestoration()
         isPerformingProgrammaticTextUpdate = true
         defer { isPerformingProgrammaticTextUpdate = false }
 
@@ -57,5 +82,18 @@ public extension EditorTextSystem {
             undoManager.removeAllActions()
         }
         scheduleFrameHeightSync()
+    }
+}
+
+extension EditorTextSystem {
+    /// Monotonic content generation used by caches whose inputs can change
+    /// without changing the UTF-16 length (for example, newline edits).
+    public var contentRevision: UInt64 {
+        editRevision
+    }
+
+    func noteTextEdit() {
+        cancelPresentationViewportRestoration()
+        editRevision &+= 1
     }
 }

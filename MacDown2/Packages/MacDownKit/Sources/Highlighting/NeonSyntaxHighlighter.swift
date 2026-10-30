@@ -108,8 +108,10 @@ public final class NeonSyntaxHighlighter: SyntaxHighlighting {
 
     public func applyTheme(_ theme: Theme) {
         currentTheme = theme
-        applyChrome(theme: theme)
-        highlighter?.invalidate(.all)
+        textSystem.preservingViewportForPresentationChange {
+            applyChrome(theme: theme)
+            highlighter?.invalidate(.all)
+        }
     }
 
     public func applyFont(_ font: NSFont) {

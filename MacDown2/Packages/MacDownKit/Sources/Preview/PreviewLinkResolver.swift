@@ -2,8 +2,8 @@ import Foundation
 
 /// Resolves links clicked in the preview.
 ///
-/// Absolute URLs are returned unchanged. Relative URLs are resolved against the
-/// document's base URL when one is available.
+/// Explicit absolute targets retain their destination. Relative references use the current document base,
+/// including a parsed URL that still carries the document's previous base after Save As.
 public struct PreviewLinkResolver: Sendable, Equatable {
     public let baseURL: URL?
 
@@ -13,14 +13,12 @@ public struct PreviewLinkResolver: Sendable, Equatable {
 
     /// Resolves `url` relative to the document base URL.
     ///
-    /// Returns `url` unchanged when it is already absolute or when no base URL
-    /// is set.
+    /// Inspect the authored reference rather than its inherited scheme. Retained parsed links may have
+    /// an old base; explicitly absolute links must never be retargeted merely because the document moved.
     public func resolve(_ url: URL) -> URL {
-        guard url.scheme == nil || url.scheme?.isEmpty == true else {
-            return url
-        }
-        guard let baseURL else { return url }
-        return URL(string: url.absoluteString, relativeTo: baseURL)?.absoluteURL ?? url
+        let reference = url.relativeString
+        guard let baseURL, URL(string: reference)?.scheme == nil else { return url.absoluteURL }
+        return URL(string: reference, relativeTo: baseURL)?.absoluteURL ?? url.absoluteURL
     }
 
     /// What clicking a resolved Preview link may do. The document is untrusted

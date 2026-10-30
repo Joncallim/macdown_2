@@ -6,6 +6,15 @@ import Testing
 @Suite("Preview window resource ownership")
 @MainActor
 struct PreviewResourceWindowStateTests {
+    @Test func absentGrantDeniesBothResourceConsumers() {
+        let document = FileDocument(fileURL: URL(fileURLWithPath: "/tmp/story.md"))
+        let owner = PreviewResourceWindowState()
+        #expect(!owner.hasGrant(for: document))
+        #expect(owner.beginLoad(for: document, consumer: .markdown) == nil)
+        #expect(owner.beginLoad(for: document, consumer: .html) == nil)
+        owner.close()
+    }
+
     @Test func closingWindowRevokesBothConsumersAndItsBacking() async throws {
         let folder = try makeFolder()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -17,16 +26,35 @@ struct PreviewResourceWindowStateTests {
         let owner = PreviewResourceWindowState()
         let origin = try #require(owner.beginSelection(for: document))
         try await owner.install(selection, from: origin) { document }
+        #expect(owner.hasGrant(for: document))
         let markdown = try #require(owner.beginLoad(for: document, consumer: .markdown))
         let html = try #require(owner.beginLoad(for: document, consumer: .html))
         #expect(markdown.id != html.id)
 
         owner.close()
+        #expect(!owner.hasGrant(for: document))
         #expect(markdown.isRevoked)
         #expect(html.isRevoked)
         #expect(markdown.acquireUse() == nil)
         #expect(html.acquireUse() == nil)
         #expect(owner.beginLoad(for: document, consumer: .markdown) == nil)
+    }
+
+    @Test func cancelledFolderSelectionCannotInstallAfterPanelDismissal() async throws {
+        let folder = try makeFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let document = FileDocument(fileURL: folder.appendingPathComponent("story.md"))
+        let documentURL = try #require(document.fileURL)
+        let selection = try #require(PreviewResourceFolderSelection.fixture(
+            documentURL: documentURL, folderURL: folder
+        ))
+        let owner = PreviewResourceWindowState()
+        let origin = try #require(owner.beginSelection(for: document))
+        owner.cancelSelection(origin)
+        await #expect(throws: PreviewResourceAdmissionError.revoked) {
+            try await owner.install(selection, from: origin) { document }
+        }
+        #expect(!owner.hasGrant(for: document))
     }
 
     @Test func switchedDocumentRejectsAnAwaitingFolderSelection() async throws {

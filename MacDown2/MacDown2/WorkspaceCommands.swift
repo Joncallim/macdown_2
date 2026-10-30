@@ -171,6 +171,8 @@ struct WorkspaceCommands: Commands {
         }
 
         CommandGroup(before: .sidebar) {
+            previewMenu
+
             Menu("Layout") {
                 let layout = previewLayout
                     ?? DocumentEditorSplitView.defaultPreviewLayout(from: appSettings?.previewExport)

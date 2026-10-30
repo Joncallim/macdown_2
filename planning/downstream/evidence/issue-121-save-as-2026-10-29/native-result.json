@@ -1,0 +1,28 @@
+{
+  "sourceBase": "9e2940353b66bfa8fd6951e144201ac85e394cca",
+  "sourcePatchSHA256": "5956f6a5215f3958370f0ff0af26c1f680ae2f0bff75ca55a974a5b27cb7c867",
+  "executableSHA256": "e0d65c638e4826fade7fc4f89d446dcba98ec009f29bd0fb185f170675553838",
+  "linkRichSaveAs": {
+    "sourceBytes": 11483,
+    "sourceSHA256": "dd105729262bedb3729442047a905d6db067cc61e652795119cef6eda4e14eb7",
+    "beforeAfterSourceScrollbar": 0.5025325333125535,
+    "beforeAfterCaret": "Ln 123, Col 27",
+    "relativeLinkBefore": "A/related.md / RELATED_TARGET_FROM_A",
+    "relativeLinkAfter": "B/related.md / RELATED_TARGET_FROM_B",
+    "resourceResult": "Old grant unavailable after Save As; fresh B grant loaded BLUE near paragraph90; source position unchanged at grant"
+  },
+  "explicitAbsoluteLinkAfterSaveAs": "Authored file URL to A/related.md still opened A/related.md from B/corrected-absolute.md",
+  "originalStableDarkControl": {
+    "sourceBytes": 35307,
+    "sourceSHA256": "2fb7c0d7dd82170ce104d9fad4d65e62e32ac9d38b421ceefe58fb0009e2a445",
+    "beforeAfterEditDeleteSaveAsGrantSourceScrollbar": 0.9690132433314412,
+    "beforeAfterCaret": "Ln 991, Col 19",
+    "sourceVisibleRegion": "paragraphs475-485",
+    "resourceResult": "GREEN before Save As; alt/unavailable after Save As; BLUE after fresh B grant"
+  },
+  "appearanceTransition": "Separate viewport movement under automatic Light-to-Dark/control-timeout confound remains unproved; not counted as a passing transition test",
+  "realUserStateUnchanged": true,
+  "ownedAppExit": 0,
+  "safetyGuardTriggered": false,
+  "scope": "Developer ID hardened-runtime isolated acceptance startup; not normal shipping startup/notarization/full #121/#115 proof"
+}

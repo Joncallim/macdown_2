@@ -7,13 +7,17 @@ public extension EditorTextSystem {
     /// The current selected range in UTF-16 offsets.
     var selectedRange: NSRange {
         get { textView.selectedRange() }
-        set { textView.setSelectedRange(newValue) }
+        set {
+            cancelPresentationViewportRestoration()
+            textView.setSelectedRange(newValue)
+        }
     }
 
     /// The current vertical scroll offset of the clip view.
     var scrollOffset: CGFloat {
         get { scrollView?.contentView.bounds.origin.y ?? pendingScrollOffset ?? 0 }
         set {
+            cancelPresentationViewportRestoration()
             pendingScrollOffset = newValue
             applyPendingScrollOffset()
         }
@@ -63,6 +67,7 @@ public extension EditorTextSystem {
     /// scrolls to the end of the live text, by this code's decision rather
     /// than by an undocumented AppKit one.
     func scrollToVisible(utf16Range range: NSRange) {
+        cancelPresentationViewportRestoration()
         syncFrameHeightToContent()
         textView.scrollRangeToVisible(clampedToLiveText(range))
     }
@@ -83,6 +88,7 @@ public extension EditorTextSystem {
     /// instant `scrollRangeToVisible(_:)` if no scroll view is attached yet
     /// or the target's layout fragment cannot be resolved.
     func revealSelection(utf16Range range: NSRange, flash: Bool, animated: Bool = false) {
+        cancelPresentationViewportRestoration()
         syncFrameHeightToContent()
         let clamped = clampedToLiveText(range)
         textView.setSelectedRange(clamped)

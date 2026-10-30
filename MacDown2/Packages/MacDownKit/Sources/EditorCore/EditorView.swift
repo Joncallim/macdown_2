@@ -4,6 +4,12 @@ import SwiftUI
 
 final class EditorAttachmentScrollView: NSScrollView {
     var onWindowChange: (() -> Void)?
+    var onUserScroll: (() -> Void)?
+
+    override func scrollWheel(with event: NSEvent) {
+        onUserScroll?()
+        super.scrollWheel(with: event)
+    }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -70,6 +76,7 @@ public struct EditorView: NSViewRepresentable {
         scrollView.autohidesScrollers = configuration.wrapsLines
         scrollView.borderType = .noBorder
         system.scrollView = scrollView
+        scrollView.onUserScroll = { [weak system] in system?.cancelPresentationViewportRestoration() }
 
         let gutterView = EditorGutterView(scrollView: scrollView, system: system)
         scrollView.verticalRulerView = gutterView
@@ -257,6 +264,7 @@ public struct EditorView: NSViewRepresentable {
         ) -> Bool {
             guard let system else { return true }
             guard let replacementString else { return true }
+            system.cancelPresentationViewportRestoration()
             // Captured before every branch below (including the E10/IME
             // early returns), since AppKit performs exactly
             // (affectedRange, replacementString) as the edit on every path
@@ -302,6 +310,7 @@ public struct EditorView: NSViewRepresentable {
         /// `false` when AppKit should continue with the responder chain.
         public func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             guard let system else { return false }
+            system.cancelPresentationViewportRestoration()
             // Escape collapses a multi-selection to its primary range
             // regardless of the Markdown-assist configuration below (§6.9)
             // — multi-cursor collapse is not a Markdown editing assist. Still

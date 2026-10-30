@@ -1,0 +1,42 @@
+{
+  "complete-package-tests.log": {
+    "bytes": 952128,
+    "sha256": "14cae4a1296ac5d1e0ea7b9ff07a24921eda05dd9162838ceec0b5fb10ff5849"
+  },
+  "held-group-focused-once.log": {
+    "bytes": 909,
+    "sha256": "c0905c4aa9b248d03fb2e9d63c34038d2555416273552f6669e025d16690cfe3"
+  },
+  "hosted-build-and-test.log": {
+    "bytes": 17191510,
+    "sha256": "42c40d9ccb7386925ef6c9fee95efe108d96664a0f7907063950dc0c718dbd13"
+  },
+  "saveas-retained-link-before.log": {
+    "bytes": 3774,
+    "sha256": "fd12eddcabe27561053deda97ad067bb12a40bd4232bc98e6a9b28f71a028940"
+  },
+  "saveas-retained-link-after.log": {
+    "bytes": 7273,
+    "sha256": "f4d5052fe79b78ed791b95cb587a0e4f4aa0bb7d363b29c8b9514a74e9e67a62"
+  },
+  "retained-link-package-full.log": {
+    "bytes": 952392,
+    "sha256": "a812cd31fc0d42067854d0058ddfb049c093fb4070d2f6b75a41a475d65e55c0"
+  },
+  "retained-link-app-build.log": {
+    "bytes": 391036,
+    "sha256": "4e22799a52873cfc1bd8a5b5ad010f5acb9e0402522c267bd6bd4900c62ce51d"
+  },
+  "retained-link-app-tests.log": {
+    "bytes": 288179,
+    "sha256": "95bb7adad6b5b2480d5d4f30576d6ee05d1cf6987dfa0c53d3adbcb8d17f9ef4"
+  },
+  "retained-link-signed-release-build.log": {
+    "bytes": 296082,
+    "sha256": "0afca6babd82ec37c28a1a4fd5262993b93bcbf5b2af2531e619f44000c42c67"
+  },
+  "retained-link-validation.json": {
+    "bytes": 2519,
+    "sha256": "d5a38bab3728343abef8dbbc82b36e1d2c0ab896e9b0b23f11249e9e04607830"
+  }
+}

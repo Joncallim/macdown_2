@@ -7,6 +7,7 @@ public extension EditorTextView {
     /// Setting empty marked text (backspacing a pinyin composition down to nothing) ends the composition without
     /// an `unmarkText` call.
     override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        owningSystem?.cancelPresentationViewportRestoration()
         let wasComposing = hasMarkedText()
         super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
         if wasComposing, !hasMarkedText() {

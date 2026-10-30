@@ -1,0 +1,90 @@
+[0/1] Planning build
+Building for debugging...
+[0/3] Write sources
+[1/3] Write swift-version--58304C5D6DBC2206.txt
+[3/5] Emitting module Preview
+[4/5] Compiling Preview PreviewLinkResolver.swift
+[4/6] Write Objects.LinkFileList
+[5/6] Linking MacDownKitPackageTests
+Build complete! (10.08s)
+Test Suite 'Selected tests' started at 2026-10-29 18:46:48.637.
+Test Suite 'MacDownKitPackageTests.xctest' started at 2026-10-29 18:46:48.655.
+Test Suite 'MacDownKitPackageTests.xctest' passed at 2026-10-29 18:46:48.655.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-29 18:46:48.655.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.019) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite PreviewLinkActionTests started.
+◇ Test webAndMailLinksOpen() started.
+✔ Test webAndMailLinksOpen() passed after 0.001 seconds.
+◇ Test localDocumentsOpenInTheAppButOtherLocalFilesOnlyRevealInFinder() started.
+✔ Test localDocumentsOpenInTheAppButOtherLocalFilesOnlyRevealInFinder() passed after 0.001 seconds.
+◇ Test everyOtherSchemeIsIgnored() started.
+✔ Test everyOtherSchemeIsIgnored() passed after 0.001 seconds.
+◇ Test aFragmentOrQueryIsDroppedWhenOpeningADocument() started.
+✔ Test aFragmentOrQueryIsDroppedWhenOpeningADocument() passed after 0.001 seconds.
+◇ Test parserRelativeDocumentLinksKeepTheirAbsoluteDestination(_:) started.
+◇ Test case passing 1 argument path → "/tmp/A/story.md" to parserRelativeDocumentLinksKeepTheirAbsoluteDestination(_:) started.
+◇ Test case passing 1 argument path → "/tmp/B/story.md" to parserRelativeDocumentLinksKeepTheirAbsoluteDestination(_:) started.
+✔ Test parserRelativeDocumentLinksKeepTheirAbsoluteDestination(_:) with 2 test cases passed after 0.002 seconds.
+◇ Test parserRelativeLinksKeepAnchorAndExecutableSafetyRules() started.
+✔ Test parserRelativeLinksKeepAnchorAndExecutableSafetyRules() passed after 0.001 seconds.
+◇ Test aParsedRelativeLinkUsesTheCurrentDocumentAfterSaveAs(_:) started.
+◇ Test case passing 1 argument target → "related.md#section" to aParsedRelativeLinkUsesTheCurrentDocumentAfterSaveAs(_:) started.
+◇ Test case passing 1 argument target → "../shared.md?view=source#section" to aParsedRelativeLinkUsesTheCurrentDocumentAfterSaveAs(_:) started.
+✔ Test aParsedRelativeLinkUsesTheCurrentDocumentAfterSaveAs(_:) with 2 test cases passed after 0.001 seconds.
+◇ Test saveAsDoesNotRebaseExplicitAbsoluteTargetsOrWeakenLinkPolicy() started.
+✔ Test saveAsDoesNotRebaseExplicitAbsoluteTargetsOrWeakenLinkPolicy() passed after 0.001 seconds.
+◇ Test aSameDocumentAnchorDoesNotReopenTheDocument() started.
+✔ Test aSameDocumentAnchorDoesNotReopenTheDocument() passed after 0.001 seconds.
+✔ Suite PreviewLinkActionTests passed after 0.004 seconds.
+◇ Suite "Preview resource rendering identity" started.
+◇ Test nonResourceTextKeepsItsIdentityAcrossResourceGenerations(_:) started.
+◇ Test case passing 1 argument source → "Ordinary **formatted** prose" to nonResourceTextKeepsItsIdentityAcrossResourceGenerations(_:) started.
+◇ Test case passing 1 argument source → "`![code](image.png)`" to nonResourceTextKeepsItsIdentityAcrossResourceGenerations(_:) started.
+◇ Test case passing 1 argument source → "\![escaped](image.png)" to nonResourceTextKeepsItsIdentityAcrossResourceGenerations(_:) started.
+◇ Test case passing 1 argument source → "[ordinary link](relative.md)" to nonResourceTextKeepsItsIdentityAcrossResourceGenerations(_:) started.
+◇ Test case passing 1 argument source → "Unresolved ![image][missing]" to nonResourceTextKeepsItsIdentityAcrossResourceGenerations(_:) started.
+◇ Test case passing 1 argument source → "Inline $x^2$ math" to nonResourceTextKeepsItsIdentityAcrossResourceGenerations(_:) started.
+✔ Test nonResourceTextKeepsItsIdentityAcrossResourceGenerations(_:) with 6 test cases passed after 0.003 seconds.
+◇ Test imageTextStillReplacesItsAttachmentState(_:) started.
+◇ Test case passing 1 argument source → "![image](image.png)" to imageTextStillReplacesItsAttachmentState(_:) started.
+◇ Test case passing 1 argument source → "![image][ref]
+
+[ref]: image.png" to imageTextStillReplacesItsAttachmentState(_:) started.
+◇ Test case passing 1 argument source → "![remote](https://example.invalid/a.png)" to imageTextStillReplacesItsAttachmentState(_:) started.
+✔ Test imageTextStillReplacesItsAttachmentState(_:) with 3 test cases passed after 0.001 seconds.
+◇ Test documentDefinitionsAreResolvedBeforeClassifyingTheBlock() started.
+✔ Test documentDefinitionsAreResolvedBeforeClassifyingTheBlock() passed after 0.001 seconds.
+◇ Test textWithoutURLAttributesKeepsItsIdentityWhenTheDocumentMoves(_:) started.
+◇ Test case passing 1 argument source → "Ordinary **formatted** prose" to textWithoutURLAttributesKeepsItsIdentityWhenTheDocumentMoves(_:) started.
+◇ Test case passing 1 argument source → "`[code](relative.md)`" to textWithoutURLAttributesKeepsItsIdentityWhenTheDocumentMoves(_:) started.
+◇ Test case passing 1 argument source → "Inline $x^2$ math" to textWithoutURLAttributesKeepsItsIdentityWhenTheDocumentMoves(_:) started.
+✔ Test textWithoutURLAttributesKeepsItsIdentityWhenTheDocumentMoves(_:) with 3 test cases passed after 0.001 seconds.
+◇ Test URLAttributesReparseWhenTheDocumentBaseChanges(_:) started.
+◇ Test case passing 1 argument source → "[related](related.md)" to URLAttributesReparseWhenTheDocumentBaseChanges(_:) started.
+◇ Test case passing 1 argument source → "![image](image.png)" to URLAttributesReparseWhenTheDocumentBaseChanges(_:) started.
+◇ Test case passing 1 argument source → "![image][ref]
+
+[ref]: image.png" to URLAttributesReparseWhenTheDocumentBaseChanges(_:) started.
+✔ Test URLAttributesReparseWhenTheDocumentBaseChanges(_:) with 3 test cases passed after 0.002 seconds.
+◇ Test cachedParsingIsIndependentOfResourceGenerationsAndReusedByTextual() started.
+✔ Test cachedParsingIsIndependentOfResourceGenerationsAndReusedByTextual() passed after 0.001 seconds.
+◇ Test emojiURLsAndFailedParsingRetainConservativeResourceInvalidation() started.
+✔ Test emojiURLsAndFailedParsingRetainConservativeResourceInvalidation() passed after 0.001 seconds.
+◇ Test resourceTextUsesTheOriginalParserInsteadOfCachedAttachmentOutput() started.
+✔ Test resourceTextUsesTheOriginalParserInsteadOfCachedAttachmentOutput() passed after 0.001 seconds.
+◇ Test mathContentStillChangesRenderingIdentity() started.
+✔ Test mathContentStillChangesRenderingIdentity() passed after 0.001 seconds.
+✔ Suite "Preview resource rendering identity" passed after 0.009 seconds.
+◇ Suite "PreviewLinkResolver" started.
+◇ Test leavesAbsoluteURLUnchanged() started.
+✔ Test leavesAbsoluteURLUnchanged() passed after 0.001 seconds.
+◇ Test resolvesRelativeURLAgainstBaseURL() started.
+✔ Test resolvesRelativeURLAgainstBaseURL() passed after 0.001 seconds.
+◇ Test returnsOriginalWhenNoBaseURL() started.
+✔ Test returnsOriginalWhenNoBaseURL() passed after 0.001 seconds.
+✔ Suite "PreviewLinkResolver" passed after 0.001 seconds.
+✔ Test run with 21 tests in 3 suites passed after 0.014 seconds.

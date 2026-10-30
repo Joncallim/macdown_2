@@ -1,0 +1,12 @@
+{
+  "candidate": "9e2940353b66bfa8fd6951e144201ac85e394cca",
+  "executable_sha256": "e83d15a17f2d77a2546eee150fb63d9a553639c3c14be3e2a9fc09c44b21d014",
+  "source_before": "fixtures/A/links-bounded.md",
+  "source_after_SaveAs": "fixtures/B/signed-final-links.md",
+  "source_scrollbar_before_after": 0.4815220795490135,
+  "caret_before_after": "Ln123Col27",
+  "before_link_click": "A/related.md, RELATED_TARGET_FROM_A",
+  "after_SaveAs_link_click": "A/related.md, RELATED_TARGET_FROM_A",
+  "expected_after_SaveAs": "B/related.md, RELATED_TARGET_FROM_B",
+  "status": "FAIL:viewportpreservedbutnativevisiblelinkretainedoldtarget;firstreceiptCUAtranscript"
+}

@@ -19,6 +19,7 @@ public extension EditorView {
             object: scrollView.documentView
         )
         (scrollView as? EditorAttachmentScrollView)?.onWindowChange = nil
+        (scrollView as? EditorAttachmentScrollView)?.onUserScroll = nil
         NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidUndoChange, object: nil)
         NotificationCenter.default.removeObserver(coordinator, name: .NSUndoManagerDidRedoChange, object: nil)
         coordinator.onSelectionChange = nil
@@ -27,6 +28,7 @@ public extension EditorView {
         coordinator.gutterView = nil
         guard let system = coordinator.system else { return }
         if system.textView.delegate === coordinator {
+            system.cancelPresentationViewportRestoration()
             system.textView.delegate = nil
             system.isDetachedFromEditorView = true
         }

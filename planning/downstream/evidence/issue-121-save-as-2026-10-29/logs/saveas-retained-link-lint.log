@@ -1,0 +1,4 @@
+Linting Swift files at paths MacDown2/Packages/MacDownKit/Sources/Preview/PreviewLinkResolver.swift, MacDown2/Packages/MacDownKit/Tests/PreviewTests/PreviewLinkActionTests.swift
+Linting 'PreviewLinkActionTests.swift' (1/2)
+Linting 'PreviewLinkResolver.swift' (2/2)
+Done linting! Found 0 violations, 0 serious in 2 files.

@@ -32,6 +32,7 @@ struct DocumentEditorSplitView: View {
     let outlineController: OutlineController
 
     @Environment(\.windowCoordinator) var coordinator
+    @Environment(\.previewResourceWindowState) var previewResourceWindowState
     /// Not `private`: read by DocumentEditorSplitView+EditorPane.swift.
     @Environment(\.appSettings) var appSettings
 
@@ -189,6 +190,9 @@ struct DocumentEditorSplitView: View {
 
                 if previewLayout.showsPreview {
                     previewPane
+                        .overlay(alignment: .bottomTrailing) {
+                            previewResourceAction
+                        }
                         // `.contain` (not the default) matters here: without it,
                         // this identifier silently overrides every more-specific
                         // identifier `previewPane`'s own content sets further down
@@ -314,18 +318,24 @@ struct DocumentEditorSplitView: View {
     private var previewPane: some View {
         switch PreviewRouter.previewKind(for: document.format) {
         case .markdown:
-            TextualMarkdownPreview(
-                document: parseSession.document,
-                text: parseSession.publishedText,
-                theme: PreviewTheme(theme: themeController.current),
-                linkResolver: PreviewLinkResolver(baseURL: document.fileURL),
-                controller: scrollController,
-                blocks: previewDisplayCache.output,
-                linkDefinitions: previewLinkDefinitions,
-                mermaidFenceView: mermaidFenceView,
-                d2FenceView: d2FenceView,
-                graphvizFenceView: graphvizFenceView
-            )
+            SecuredMarkdownResourceHost(
+                tabID: tab.id, document: document, sourceGeneration: document.mutationGeneration
+            ) { resourceImageLoader, resourceLoadID in
+                TextualMarkdownPreview(
+                    document: parseSession.document,
+                    text: parseSession.publishedText,
+                    theme: PreviewTheme(theme: themeController.current),
+                    linkResolver: PreviewLinkResolver(baseURL: document.fileURL),
+                    controller: scrollController,
+                    resourceImageLoader: resourceImageLoader,
+                    resourceLoadID: resourceLoadID,
+                    blocks: previewDisplayCache.output,
+                    linkDefinitions: previewLinkDefinitions,
+                    mermaidFenceView: mermaidFenceView,
+                    d2FenceView: d2FenceView,
+                    graphvizFenceView: graphvizFenceView
+                )
+            }
             .environment(\.previewOpenDocument) { [weak coordinator] url in
                 Task { @MainActor in await coordinator?.openDocument(at: url) }
             }
