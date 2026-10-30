@@ -16,18 +16,13 @@ struct SecuredMarkdownMountedTests {
     @Test func aGrantedImageCopiesAsPNGAndLoadsAgainUnderANewDocumentGeneration() async throws {
         let (folder, imageBytes) = try makeFolderWithImage()
         defer { try? FileManager.default.removeItem(at: folder) }
-        let source = "![fixture](image.png)"
+        let source = "MOUNTED_LEFT_519 ![fixture](image.png) MOUNTED_RIGHT_519"
         let parsed = try await ParseEngine().parse(source, revision: 1)
         var document = FileDocument(fileURL: folder.appendingPathComponent("story.md"), text: source)
         let owner = PreviewResourceWindowState()
         let tabID = UUID()
         owner.setCurrentPreviewDocument { (tabID, document) }
-        let documentURL = try #require(document.fileURL)
-        let selection = try #require(PreviewResourceFolderSelection.fixture(
-            documentURL: documentURL, folderURL: folder
-        ))
-        let origin = try #require(owner.beginSelection(for: document))
-        try await owner.install(selection, from: origin) { document }
+        try await installGrant(owner: owner, document: document, folder: folder)
         let recorder = LoadIDRecorder()
         let initialInput = await PreviewResourceAdmission.shared.globalStatus().retained
         let hosting = NSHostingView(rootView: mountedView(
@@ -49,9 +44,13 @@ struct SecuredMarkdownMountedTests {
             recorder: recorder,
             minimumRetained: initialInput + imageBytes.count
         )
-        let originalPasteboard = snapshotPasteboard()
-        defer { restorePasteboard(originalPasteboard) }
-        try await assertGrantedImageCopies(from: hosting, phase: "initial generation")
+        let pasteboard = try makePasteboardSession()
+        defer {
+            if NSPasteboard.general.changeCount == pasteboard.lastChangeCount {
+                restorePasteboard(pasteboard.original)
+            }
+        }
+        try await assertGrantedImageCopies(from: hosting, phase: "initial generation", pasteboard: pasteboard)
 
         document = document.updatingText(source).markClean()
         hosting.rootView = mountedView(
@@ -62,8 +61,32 @@ struct SecuredMarkdownMountedTests {
             after: first, recorder: recorder, minimumRetained: initialInput + imageBytes.count
         )
         #expect(second != first)
-        try await assertGrantedImageCopies(from: hosting, phase: "replacement generation")
-        try await assertRevocationStopsCopy(from: hosting, owner: owner, document: document, tabID: tabID)
+        try await assertGrantedImageCopies(from: hosting, phase: "replacement generation", pasteboard: pasteboard)
+        let revocation = RevocationContext(owner: owner, document: document, tabID: tabID,
+                                           recorder: recorder, priorID: second)
+        try await assertRevocationStopsCopy(from: hosting, context: revocation, pasteboard: pasteboard)
+    }
+
+    private func installGrant(
+        owner: PreviewResourceWindowState,
+        document: FileCore.FileDocument,
+        folder: URL
+    ) async throws {
+        let documentURL = try #require(document.fileURL)
+        let selection = try #require(PreviewResourceFolderSelection.fixture(
+            documentURL: documentURL,
+            folderURL: folder
+        ))
+        let origin = try #require(owner.beginSelection(for: document))
+        try await owner.install(selection, from: origin) { document }
+    }
+
+    private func makePasteboardSession() throws -> PasteboardSession {
+        let count = NSPasteboard.general.changeCount
+        let original = snapshotPasteboard()
+        try #require(NSPasteboard.general.changeCount == count,
+                     "The pasteboard changed during snapshot; leave it untouched")
+        return PasteboardSession(original: original, changeCount: count)
     }
 
     private func mountedView(
@@ -74,13 +97,14 @@ struct SecuredMarkdownMountedTests {
         SecuredMarkdownResourceHost(
             tabID: tabID, document: document, sourceGeneration: document.mutationGeneration
         ) { loader, loadID in
-            TextualMarkdownPreview(
+            let renderingRevision = owner.revision
+            return TextualMarkdownPreview(
                 document: parsed, text: document.text,
                 theme: PreviewTheme(theme: BundledThemes.light),
                 resourceImageLoader: loader, resourceLoadID: loadID
             )
-            .onAppear { recorder.record(loadID) }
-            .onChange(of: loadID) { _, current in recorder.record(current) }
+            .onAppear { recorder.record(loadID, revision: renderingRevision) }
+            .onChange(of: loadID) { _, current in recorder.record(current, revision: renderingRevision) }
         }
         .environment(\.previewResourceWindowState, owner)
     }
@@ -100,29 +124,40 @@ struct SecuredMarkdownMountedTests {
         throw PreviewResourceAdmissionError.limitExceeded
     }
 
-    private func copiedHTML(from view: NSView) async throws -> String {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+    private func copiedHTML(
+        from view: NSView, pasteboard: PasteboardSession, deadline: ContinuousClock.Instant, phase: String
+    ) async throws -> String {
         while ContinuousClock.now < deadline {
-            if let interaction = findTextInteraction(in: view) {
-                let pasteboard = NSPasteboard.general
-                let previousChangeCount = pasteboard.changeCount
+            for interaction in textInteractions(in: view) {
+                let board = NSPasteboard.general
+                guard board.changeCount == pasteboard.lastChangeCount else {
+                    Issue.record("The general pasteboard changed outside this test; preserving the newer contents")
+                    throw PreviewResourceAdmissionError.limitExceeded
+                }
                 _ = interaction.perform(NSSelectorFromString("selectAll:"), with: nil)
                 _ = interaction.perform(NSSelectorFromString("copy:"), with: nil)
-                if pasteboard.changeCount != previousChangeCount, let html = pasteboard.string(forType: .html) {
-                    return html
+                let current = board.changeCount
+                if current != pasteboard.lastChangeCount {
+                    pasteboard.lastChangeCount = current
+                    if let html = board.string(forType: .html),
+                       html.contains("MOUNTED_LEFT_519"), html.contains("MOUNTED_RIGHT_519") {
+                        return html
+                    }
                 }
             }
             try await Task.sleep(for: .milliseconds(20))
         }
-        Issue.record("Mounted Textual did not produce HTML from its native copy action")
+        Issue.record("The sentinel-bearing Textual block did not produce fresh native HTML in \(phase)")
         throw PreviewResourceAdmissionError.limitExceeded
     }
 
-    private func assertGrantedImageCopies(from view: NSView, phase: String) async throws {
+    private func assertGrantedImageCopies(
+        from view: NSView, phase: String, pasteboard: PasteboardSession
+    ) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         var lastHTML = ""
         while ContinuousClock.now < deadline {
-            lastHTML = try await copiedHTML(from: view)
+            lastHTML = try await copiedHTML(from: view, pasteboard: pasteboard, deadline: deadline, phase: phase)
             if lastHTML.contains("data:image/png;base64,") {
                 return
             }
@@ -132,28 +167,50 @@ struct SecuredMarkdownMountedTests {
     }
 
     private func assertRevocationStopsCopy(
-        from view: NSView, owner: PreviewResourceWindowState,
-        document: FileCore.FileDocument, tabID: UUID
+        from view: NSView, context: RevocationContext, pasteboard: PasteboardSession
     ) async throws {
+        let owner = context.owner
+        let document = context.document
+        let tabID = context.tabID
+        let recorder = context.recorder
+        let priorID = context.priorID
+        let revision = owner.revision
         owner.invalidateForIdentityChange()
+        #expect(owner.revision != revision)
         #expect(owner.beginPreviewLoad(
             for: document, tabID: tabID, sourceGeneration: document.mutationGeneration,
             grantRevision: owner.revision, consumer: .markdown
         ) == nil)
-        let html = try await copiedHTML(from: view)
-        #expect(!html.contains("data:image/png;base64,"))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        let revokedRevision = owner.revision
+        while ContinuousClock.now < deadline,
+              recorder.lastID == priorID || recorder.lastRevision != revokedRevision {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        try #require(recorder.lastID != nil && recorder.lastID != priorID && recorder.lastRevision == revokedRevision,
+                     "Mounted host must acknowledge the revoked resource identity")
+        var sawRevokedBlock = false
+        while ContinuousClock.now < deadline {
+            let html = try await copiedHTML(from: view, pasteboard: pasteboard, deadline: deadline, phase: "revocation")
+            if !html.contains("data:image/png;base64,") {
+                sawRevokedBlock = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        try #require(sawRevokedBlock, "The sentinel-bearing block must reflect revocation")
+        try await Task.sleep(for: .milliseconds(250))
+        let later = try await copiedHTML(from: view, pasteboard: pasteboard,
+                                         deadline: .now.advanced(by: .seconds(5)), phase: "post-revocation dwell")
+        #expect(!later.contains("data:image/png;base64,"), "The revoked image must not reappear")
     }
 
-    private func findTextInteraction(in view: NSView) -> NSView? {
-        if NSStringFromClass(type(of: view)).hasSuffix(".NSTextInteractionView") {
-            return view
-        }
+    private func textInteractions(in view: NSView) -> [NSView] {
+        var found = NSStringFromClass(type(of: view)).hasSuffix(".NSTextInteractionView") ? [view] : []
         for child in view.subviews {
-            if let found = findTextInteraction(in: child) {
-                return found
-            }
+            found.append(contentsOf: textInteractions(in: child))
         }
-        return nil
+        return found
     }
 
     private func snapshotPasteboard() -> [NSPasteboardItem] {
@@ -201,10 +258,32 @@ struct SecuredMarkdownMountedTests {
 @MainActor
 private final class LoadIDRecorder {
     private(set) var lastID: UUID?
+    private(set) var lastRevision: UUID?
 
-    func record(_ id: UUID?) {
+    func record(_ id: UUID?, revision: UUID) {
         if let id {
             lastID = id
+            lastRevision = revision
         }
     }
+}
+
+@MainActor
+private final class PasteboardSession {
+    let original: [NSPasteboardItem]
+    var lastChangeCount: Int
+
+    init(original: [NSPasteboardItem], changeCount: Int) {
+        self.original = original
+        lastChangeCount = changeCount
+    }
+}
+
+@MainActor
+private struct RevocationContext {
+    let owner: PreviewResourceWindowState
+    let document: FileCore.FileDocument
+    let tabID: UUID
+    let recorder: LoadIDRecorder
+    let priorID: UUID
 }
