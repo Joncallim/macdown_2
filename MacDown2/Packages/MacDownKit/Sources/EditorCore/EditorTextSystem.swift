@@ -48,7 +48,7 @@ public final class EditorTextSystem {
     /// Not `private`: `EditorTextSystem+Content.swift`'s `setText`/
     /// `replaceTextFromExternal` bump this on every whole-document
     /// replacement, mirroring the incremental-edit path's own bump in
-    /// `noteTextEdit()` below.
+    /// `noteTextEdit()`.
     var editRevision: UInt64 = 0
     var lastExternalReplacementText: String?
     /// `true` while no `EditorView` hosts this system (Preview Only, between mounts): its text view has no delegate,
@@ -142,6 +142,11 @@ public final class EditorTextSystem {
     /// (via its document view) already strongly references the text view, and
     /// the store strongly references this system.
     weak var scrollView: NSScrollView?
+    var presentationViewport: PresentationViewport?
+    var presentationViewportTask: Task<Void, Never>?
+    var presentationScrollObservers: [NSObjectProtocol] = []
+    var presentationViewportGeneration: UInt64 = 0
+    var isRestoringPresentationViewport = false
 
     /// Creates a text system for `identity` with the given initial text and
     /// configuration. The caller should cache the result and reuse it across
@@ -173,16 +178,6 @@ public final class EditorTextSystem {
     /// The current plain-text content of the editor.
     public var text: String {
         textView.string
-    }
-
-    /// Monotonic content generation used by caches whose inputs can change
-    /// without changing the UTF-16 length (for example, newline edits).
-    public var contentRevision: UInt64 {
-        editRevision
-    }
-
-    func noteTextEdit() {
-        editRevision &+= 1
     }
 
     // MARK: - Configuration
@@ -385,6 +380,7 @@ public final class EditorTextSystem {
     /// Call this before evicting the system from the cache. It severs the
     /// text-view delegate and breaks the layout graph held by the stack.
     func prepareForDeallocation() {
+        cancelPresentationViewportRestoration()
         frameSyncTask?.cancel()
         frameSyncTask = nil
         textView.delegate = nil
