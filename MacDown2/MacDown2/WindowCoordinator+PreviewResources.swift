@@ -50,14 +50,30 @@ extension WindowCoordinator {
 }
 
 extension WindowController {
-    func choosePreviewResourceFolder(for document: FileDocument) {
+    private func mayPresentPreviewResourceSelection(
+        _ origin: PreviewResourceWindowState.SelectionOrigin, in window: NSWindow
+    ) -> Bool {
+        guard !isClosed, self.window === window, let document = model.activeDocument else { return false }
+        return previewResourceState.isPendingSelection(origin, for: document)
+    }
+
+    @discardableResult
+    func choosePreviewResourceFolder(
+        for document: FileDocument,
+        chooser: @escaping @MainActor (NSWindow, URL) async -> PreviewResourceFolderSelection? = { window, url in
+            await NSFilePanelProvider(window: window).choosePreviewResourceFolder(near: url)
+        }
+    ) -> Task<Void, Never>? {
         guard !isClosed, let window, let documentURL = document.fileURL,
               let origin = previewResourceState.beginSelection(for: document)
-        else { return }
+        else { return nil }
 
-        Task { @MainActor [weak self] in
-            let provider = NSFilePanelProvider(window: window)
-            guard let selection = await provider.choosePreviewResourceFolder(near: documentURL) else {
+        return Task { @MainActor [weak self] in
+            guard self?.mayPresentPreviewResourceSelection(origin, in: window) == true else {
+                self?.previewResourceState.cancelSelection(origin)
+                return
+            }
+            guard let selection = await chooser(window, documentURL) else {
                 self?.previewResourceState.cancelSelection(origin)
                 return
             }
