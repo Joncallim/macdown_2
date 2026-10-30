@@ -51,7 +51,7 @@ struct SecuredMarkdownMountedTests {
         )
         let originalPasteboard = snapshotPasteboard()
         defer { restorePasteboard(originalPasteboard) }
-        try await assertGrantedImageCopies(from: hosting)
+        try await assertGrantedImageCopies(from: hosting, phase: "initial generation")
 
         document = document.updatingText(source).markClean()
         hosting.rootView = mountedView(
@@ -62,7 +62,7 @@ struct SecuredMarkdownMountedTests {
             after: first, recorder: recorder, minimumRetained: initialInput + imageBytes.count
         )
         #expect(second != first)
-        try await assertGrantedImageCopies(from: hosting)
+        try await assertGrantedImageCopies(from: hosting, phase: "replacement generation")
         try await assertRevocationStopsCopy(from: hosting, owner: owner, document: document, tabID: tabID)
     }
 
@@ -104,9 +104,11 @@ struct SecuredMarkdownMountedTests {
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         while ContinuousClock.now < deadline {
             if let interaction = findTextInteraction(in: view) {
+                let pasteboard = NSPasteboard.general
+                let previousChangeCount = pasteboard.changeCount
                 _ = interaction.perform(NSSelectorFromString("selectAll:"), with: nil)
                 _ = interaction.perform(NSSelectorFromString("copy:"), with: nil)
-                if let html = NSPasteboard.general.string(forType: .html) {
+                if pasteboard.changeCount != previousChangeCount, let html = pasteboard.string(forType: .html) {
                     return html
                 }
             }
@@ -116,7 +118,7 @@ struct SecuredMarkdownMountedTests {
         throw PreviewResourceAdmissionError.limitExceeded
     }
 
-    private func assertGrantedImageCopies(from view: NSView) async throws {
+    private func assertGrantedImageCopies(from view: NSView, phase: String) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         var lastHTML = ""
         while ContinuousClock.now < deadline {
@@ -126,7 +128,7 @@ struct SecuredMarkdownMountedTests {
             }
             try await Task.sleep(for: .milliseconds(20))
         }
-        Issue.record("Mounted Textual never copied its admitted image; final HTML: \(lastHTML)")
+        Issue.record("Mounted Textual never copied its admitted image in \(phase); final HTML: \(lastHTML)")
     }
 
     private func assertRevocationStopsCopy(
