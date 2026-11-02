@@ -30,6 +30,13 @@ jobs:
           cat "$RUNNER_TEMP/bookmark-diagnostics/unsigned.json"
           cat "$RUNNER_TEMP/bookmark-diagnostics/ad-hoc.json"
           cat "$RUNNER_TEMP/bookmark-diagnostics/app-scope.json"
+      - name: Measure live text backing storage with private fixture only
+        run: |
+          set -euo pipefail
+          xcrun swiftc MacDown2/scripts/profile-text-storage.swift -o "$RUNNER_TEMP/bookmark-diagnostics/storage-probe"
+          codesign --force --sign - "$RUNNER_TEMP/bookmark-diagnostics/storage-probe"
+          "$RUNNER_TEMP/bookmark-diagnostics/storage-probe" > "$RUNNER_TEMP/bookmark-diagnostics/storage-profile.json"
+          cat "$RUNNER_TEMP/bookmark-diagnostics/storage-profile.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
