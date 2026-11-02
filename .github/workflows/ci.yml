@@ -20,12 +20,15 @@ jobs:
           xcodebuild -version
           xcrun swiftc MacDown2/scripts/probe-host-bookmarks.swift -o "$RUNNER_TEMP/bookmark-diagnostics/probe"
           "$RUNNER_TEMP/bookmark-diagnostics/probe" unsigned > "$RUNNER_TEMP/bookmark-diagnostics/unsigned.json"
+          codesign --force --sign - "$RUNNER_TEMP/bookmark-diagnostics/probe"
+          "$RUNNER_TEMP/bookmark-diagnostics/probe" ad-hoc-only > "$RUNNER_TEMP/bookmark-diagnostics/ad-hoc.json"
           cat > "$RUNNER_TEMP/bookmark-diagnostics/entitlements.plist" <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>com.apple.security.files.bookmarks.app-scope</key><true/></dict></plist>
           PLIST
           codesign --force --sign - --entitlements "$RUNNER_TEMP/bookmark-diagnostics/entitlements.plist" "$RUNNER_TEMP/bookmark-diagnostics/probe"
           "$RUNNER_TEMP/bookmark-diagnostics/probe" ad-hoc-app-scope > "$RUNNER_TEMP/bookmark-diagnostics/app-scope.json"
           cat "$RUNNER_TEMP/bookmark-diagnostics/unsigned.json"
+          cat "$RUNNER_TEMP/bookmark-diagnostics/ad-hoc.json"
           cat "$RUNNER_TEMP/bookmark-diagnostics/app-scope.json"
       - uses: actions/upload-artifact@v4
         if: always()
