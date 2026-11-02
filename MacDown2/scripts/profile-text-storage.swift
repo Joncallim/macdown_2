@@ -38,4 +38,7 @@ func profile() throws {
     let bytes = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys,.prettyPrinted])
     print(String(decoding: bytes, as: UTF8.self))
 }
-try profile()
+@main
+struct StorageProfileMain {
+    @MainActor static func main() throws { try profile() }
+}
