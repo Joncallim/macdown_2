@@ -47,7 +47,9 @@ jobs:
           shasum -a 256 "$helper" "$owned" > "$output/helper-input-sha256.txt"
           codesign --force --sign - "$owned"
           codesign --verify --strict "$owned"
-          capture owned-helper "$owned" --test-bundle-path "$bundle/Contents/MacOS/HostedBookmarkProbePackageTests" --testing-library swift-testing --no-parallel
+          frameworks="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/Library/Frameworks"
+          test -d "$frameworks/Testing.framework"
+          capture owned-helper env DYLD_FRAMEWORK_PATH="$frameworks" "$owned" --test-bundle-path "$bundle/Contents/MacOS/HostedBookmarkProbePackageTests" --testing-library swift-testing --no-parallel
           cat "$output/exits.txt"
           test "$(tail -1 "$output/exits.txt")" = "owned-helper=0"
       - uses: actions/upload-artifact@v4
