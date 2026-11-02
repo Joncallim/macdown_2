@@ -160,8 +160,11 @@ extension WindowController {
               active.state == document.state,
               active.text.isExactlyEqual(to: document.text)
         else {
+            FileHandle.standardError.write(Data("CLOSE_PHASE before-renew\n".utf8))
             await model.renewRecoveryLifetime(retiredFrom: document)
+            FileHandle.standardError.write(Data("CLOSE_PHASE after-renew-before-performClose\n".utf8))
             window?.performClose(nil)
+            FileHandle.standardError.write(Data("CLOSE_PHASE after-performClose\n".utf8))
             return
         }
         coordinator.removeController(self)
