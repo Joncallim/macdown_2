@@ -1,33 +1,51 @@
-name: Foundation bookmark diagnostics (not integration CI)
+name: Package runner identity diagnostics (not integration CI)
 permissions:
   contents: read
 on:
   workflow_dispatch:
 jobs:
-  private-foundation-probe:
+  private-package-runner-probe:
     runs-on: macos-26-intel
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Prepare private hosted diagnostic output
-        run: |
-          mkdir -p "$RUNNER_TEMP/bookmark-diagnostics"
-          sw_vers
-          uname -m
-          xcodebuild -version
-      - name: Measure live text backing storage with private fixture only
+      - name: Probe the actual SwiftPM loader with private fixtures
+        working-directory: .github/diagnostics/HostedBookmarkProbe
         run: |
           set -euo pipefail
-          xcrun swiftc -parse-as-library MacDown2/scripts/profile-text-storage.swift -o "$RUNNER_TEMP/bookmark-diagnostics/storage-probe"
-          codesign --force --sign - "$RUNNER_TEMP/bookmark-diagnostics/storage-probe"
-          "$RUNNER_TEMP/bookmark-diagnostics/storage-probe" > "$RUNNER_TEMP/bookmark-diagnostics/storage-profile.json"
-          cat "$RUNNER_TEMP/bookmark-diagnostics/storage-profile.json"
+          output="$RUNNER_TEMP/host-scope-diag"
+          mkdir -p "$output"
+          sw_vers
+          uname -m
+          swift --version
+          capture() {
+            name="$1"
+            shift
+            set +e
+            "$@" > "$output/$name.txt" 2>&1
+            result=$?
+            set -e
+            printf '%s=%s\n' "$name" "$result" >> "$output/exits.txt"
+            grep 'HOST_SCOPE_RESULT' "$output/$name.txt" || true
+          }
+          capture default swift test --no-parallel
+          bin="$(swift build --show-bin-path)"
+          bundle="$bin/HostedBookmarkProbePackageTests.xctest"
+          codesign --force --sign - "$bundle"
+          codesign --verify --strict "$bundle"
+          capture signed-bundle swift test --skip-build --no-parallel
+          capture standalone swift test --disable-xctest --no-parallel
+          executable="$bin/HostedBookmarkProbePackageTests"
+          file "$executable" > "$output/standalone-file.txt"
+          codesign --force --sign - "$executable"
+          codesign --verify --strict "$executable"
+          capture signed-standalone swift test --skip-build --disable-xctest --no-parallel
+          cat "$output/exits.txt"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: private-foundation-bookmark-diagnostics
-          path: |
-            ${{ runner.temp }}/bookmark-diagnostics/*.json
+          name: private-package-runner-identity-diagnostics
+          path: ${{ runner.temp }}/host-scope-diag
           retention-days: 14
