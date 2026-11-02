@@ -2,6 +2,10 @@ import Foundation
 import Testing
 
 struct ScopeTests {
+    @Test func assertionFailureMustReturnNonzero() {
+        #expect(false, "Intentional runner-exit negative control")
+    }
+
     @Test func scopedBookmarkUsesTheActualRunnerIdentity() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("host-scope-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)

@@ -49,9 +49,14 @@ jobs:
           codesign --verify --strict "$owned"
           frameworks="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/Library/Frameworks"
           test -d "$frameworks/Testing.framework"
-          capture owned-helper env DYLD_FRAMEWORK_PATH="$frameworks" "$owned" --test-bundle-path "$bundle/Contents/MacOS/HostedBookmarkProbePackageTests" --testing-library swift-testing --no-parallel
+          capture owned-helper env DYLD_FRAMEWORK_PATH="$frameworks" "$owned" --test-bundle-path "$bundle/Contents/MacOS/HostedBookmarkProbePackageTests" --testing-library swift-testing --no-parallel --filter scopedBookmarkUsesTheActualRunnerIdentity
+          capture owned-negative env DYLD_FRAMEWORK_PATH="$frameworks" "$owned" --test-bundle-path "$bundle/Contents/MacOS/HostedBookmarkProbePackageTests" --testing-library swift-testing --no-parallel --filter assertionFailureMustReturnNonzero
           cat "$output/exits.txt"
-          test "$(tail -1 "$output/exits.txt")" = "owned-helper=0"
+          grep -q '^owned-helper=0$' "$output/exits.txt"
+          grep -q '^owned-negative=1$' "$output/exits.txt"
+          grep -q '"success":true' "$output/owned-helper.txt"
+          grep -q 'Test run with 1 test.*passed' "$output/owned-helper.txt"
+          grep -q 'Test run with 1 test.*failed' "$output/owned-negative.txt"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
