@@ -34,7 +34,7 @@ jobs:
           xcodebuild -project MacDown2/MacDown2.xcodeproj -scheme MacDown2 -destination 'platform=macOS' \
             -derivedDataPath "$RUNNER_TEMP/AppCloseDerived" -onlyUsePackageVersionsFromResolvedFile \
             -enableCodeCoverage NO -parallel-testing-enabled NO build-for-testing
-      - name: Bound the unchanged close fixture and capture its phases
+      - name: Bound the complete corrected app suite and retain samples
         env:
           NSUnbufferedIO: YES
         run: |
@@ -43,13 +43,13 @@ jobs:
           from pathlib import Path
           root=Path(os.environ['RUNNER_TEMP'])/'app-close-diagnostics';root.mkdir()
           derived=Path(os.environ['RUNNER_TEMP'])/'AppCloseDerived'
-          command=['xcodebuild','-project','MacDown2/MacDown2.xcodeproj','-scheme','MacDown2','-destination','platform=macOS','-derivedDataPath',str(derived),'-onlyUsePackageVersionsFromResolvedFile','-enableCodeCoverage','NO','-parallel-testing-enabled','NO','-only-testing:MacDown2Tests/CloseAfterRetireTests','-resultBundlePath',str(root/'close.xcresult'),'test-without-building']
-          record={'diagnosticOnly':True,'selection':'three CloseAfterRetireTests; not full qualification','command':command,'samples':[]}
+          command=['xcodebuild','-project','MacDown2/MacDown2.xcodeproj','-scheme','MacDown2','-destination','platform=macOS','-derivedDataPath',str(derived),'-onlyUsePackageVersionsFromResolvedFile','-enableCodeCoverage','NO','-parallel-testing-enabled','NO','-only-testing:MacDown2Tests','-resultBundlePath',str(root/'close.xcresult'),'test-without-building']
+          record={'diagnosticOnly':True,'selection':'complete MacDown2Tests target; app-only diagnostic, not full integration CI','command':command,'samples':[]}
           start=time.monotonic()
           with (root/'test.log').open('w') as log:
               process=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
               sampled=set()
-              while process.poll() is None and time.monotonic()-start<150:
+              while process.poll() is None and time.monotonic()-start<600:
                   elapsed=int(time.monotonic()-start)
                   bucket=elapsed//40
                   if bucket>=1 and bucket not in sampled:
@@ -72,6 +72,9 @@ jobs:
           (root/'receipt.json').write_text(json.dumps(record,indent=2)+'\n')
           print(json.dumps(record))
           print('\n'.join(line[:800] for line in (root/'test.log').read_text(errors='replace').splitlines() if 'CLOSE_PHASE' in line or 'Test run with' in line or 'recorded an issue' in line))
+          summary=(root/'test.log').read_text(errors='replace')
+          if not record['timedOut'] and record['exit']==0:
+              assert '596 tests in 121 suites passed' in summary, 'Complete app corpus did not execute'
           raise SystemExit(124 if record['timedOut'] else record['exit'])
           PY
       - name: Preserve bounded diagnostic evidence
