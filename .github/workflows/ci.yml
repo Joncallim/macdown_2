@@ -40,12 +40,16 @@ jobs:
           codesign --verify --strict "$bundle"
           capture signed-bundle swift test --skip-build --no-parallel
           capture standalone swift test --disable-xctest --no-parallel
-          executable="$bin/HostedBookmarkProbePackageTests"
-          file "$executable" > "$output/standalone-file.txt"
-          codesign --force --sign - "$executable"
-          codesign --verify --strict "$executable"
-          capture signed-standalone swift test --skip-build --disable-xctest --no-parallel
+          helper="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/libexec/swift/pm/swiftpm-testing-helper"
+          owned="$RUNNER_TEMP/owned-swiftpm-testing-helper"
+          cp "$helper" "$owned"
+          cmp "$helper" "$owned"
+          shasum -a 256 "$helper" "$owned" > "$output/helper-input-sha256.txt"
+          codesign --force --sign - "$owned"
+          codesign --verify --strict "$owned"
+          capture owned-helper "$owned" --test-bundle-path "$bundle/Contents/MacOS/HostedBookmarkProbePackageTests" --testing-library swift-testing --no-parallel
           cat "$output/exits.txt"
+          test "$(tail -1 "$output/exits.txt")" = "owned-helper=0"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
