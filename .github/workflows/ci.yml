@@ -19,6 +19,9 @@ jobs:
           mkdir -p "$output"
           sw_vers
           uname -m
+          XCODE=$(ls -d /Applications/Xcode*.app | grep "26" | head -1)
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
           swift --version
           capture() {
             name="$1"
