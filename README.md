@@ -1,3 +1,12 @@
+> **Repository migration — 3 November 2026.** The application source and its
+> complete history are now at [Joncallim/mostlytext](https://github.com/Joncallim/mostlytext).
+> The separately licensed website is [Joncallim/mostlytext-site](https://github.com/Joncallim/mostlytext-site).
+> This repository retains the engineering backlog, historical PR/test evidence
+> and existing alpha release assets during migration. Existing issue numbers
+> continue to refer here. No native acceptance, signed release or issue completion
+> is implied by the source move; use the new application README for current
+> contribution/build instructions. Historical project notes follow below.
+
 # MacDown 2
 
 > **Website:** [mostlytext.app](https://mostlytext.app)
