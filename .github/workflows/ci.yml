@@ -74,7 +74,7 @@ jobs:
           print('\n'.join(line[:800] for line in (root/'test.log').read_text(errors='replace').splitlines() if 'CLOSE_PHASE' in line or 'Test run with' in line or 'recorded an issue' in line))
           summary=(root/'test.log').read_text(errors='replace')
           if not record['timedOut'] and record['exit']==0:
-              assert '596 tests in 121 suites passed' in summary, 'Complete app corpus did not execute'
+              assert '599 tests in 122 suites passed' in summary, 'Complete app corpus did not execute'
           raise SystemExit(124 if record['timedOut'] else record['exit'])
           PY
       - name: Preserve bounded diagnostic evidence
