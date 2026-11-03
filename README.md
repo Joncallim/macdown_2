@@ -1,9 +1,12 @@
 > **Repository migration — 3 November 2026.** The application source and its
 > complete history are now at [Joncallim/mostlytext](https://github.com/Joncallim/mostlytext).
 > The separately licensed website is [Joncallim/mostlytext-site](https://github.com/Joncallim/mostlytext-site).
-> This repository retains the engineering backlog, historical PR/test evidence
-> and existing alpha release assets during migration. Existing issue numbers
-> continue to refer here. No native acceptance, signed release or issue completion
+> All 17 open engineering issues have transferred to the
+> [MostlyText backlog](https://github.com/Joncallim/mostlytext/issues), with discussions
+> and old-link redirects preserved. See the
+> [old-to-new issue map](https://github.com/Joncallim/mostlytext/blob/main/planning/ISSUE_TRANSFER_MAP.md).
+> This repository retains historical closed issues, PR/test evidence and alpha
+> release assets. Historical notes below use their original issue numbers. No native acceptance, signed release or issue completion
 > is implied by the source move; use the new application README for current
 > contribution/build instructions. Historical project notes follow below.
 
